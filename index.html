@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stick Squad Defense</title>
+<title>Stick Tower Defense</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <style>
   :root{
@@ -332,7 +332,7 @@
             </label>
           </div>
           <div class="settings-panel hidden" data-panel="about">
-            <p>Stick Squad Defense — a self-contained, dependency-free browser tower defense game.</p>
+            <p>Stick Tower Defense — a self-contained, dependency-free browser tower defense game.</p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
             <button id="viewReadmeBtn">📄 View as page</button>
             <button id="expandAboutBtn">More info ▾</button>
@@ -362,7 +362,7 @@
     </div>
 
     <div id="start-screen">
-      <h1>STICK SQUAD DEFENSE</h1>
+      <h1>STICK TOWER DEFENSE</h1>
       <p>Place stick-figure defenders along the hedge maze to stop the emoji horde before they reach the end of the path. Tap "Build" to pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, sell, move, or change its target priority. More tower types unlock as you clear waves. You also earn a free tower relocation every 2 waves — use "Move" to relocate one without selling it.</p>
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
@@ -1306,7 +1306,7 @@ function serializeGameState(){
 }
 function downloadSaveFile(){
   const state = serializeGameState();
-  const text = 'STICK SQUAD DEFENSE — SAVE FILE\n' +
+  const text = 'STICK TOWER DEFENSE — SAVE FILE\n' +
     'Seed: ' + state.seed + '\n' +
     'Saved: ' + state.savedAt + '\n' +
     'Do not edit below this line — upload this whole file via Settings > Game > Load Save to restore.\n\n' +
@@ -3362,7 +3362,7 @@ document.getElementById('loadSaveInput').addEventListener('change', (e) => {
   e.target.value = ''; // allow re-selecting the same file later
 });
 function getReadmeText(){
-  return 'STICK SQUAD DEFENSE\n' +
+  return 'STICK TOWER DEFENSE\n' +
 '====================\n\n' +
 'A self-contained, dependency-free browser tower defense game. Single index.html file, ' +
 'no build step, no external assets — everything is drawn procedurally on a Canvas.\n\n' +
