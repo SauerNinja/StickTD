@@ -38,18 +38,18 @@
     cursor:pointer;min-height:48px;}
   #expandBtn:disabled{background:#5a5a5a;border-color:var(--wood);color:#999;cursor:default;}
 
-  #topleft-controls{position:absolute;top:8px;left:8px;z-index:8;display:flex;gap:6px;pointer-events:auto;}
-  #topleft-controls button{background:var(--gold);color:#3a2a00;border:none;border-radius:6px;
-    padding:8px 12px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:40px;}
-  #topleft-controls button.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
-  #topleft-controls button.has-unlock{position:relative;}
-  #topleft-controls button.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
+  .hud-action-btn{background:var(--gold);color:#3a2a00;border:none;border-radius:6px;
+    padding:8px 12px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:40px;
+    pointer-events:auto;}
+  .hud-action-btn.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
+  .hud-action-btn.has-unlock{position:relative;}
+  .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
     border-radius:50%;background:var(--danger);box-shadow:0 0 4px var(--danger);}
 
   #unlock-toast{position:absolute;top:56px;left:50%;transform:translateX(-50%);
-    background:rgba(30,20,10,0.95);border:2px solid var(--gold);border-radius:8px;
+    max-width:88%;background:rgba(30,20,10,0.95);border:2px solid var(--gold);border-radius:8px;
     padding:8px 16px;color:var(--paper);font-weight:bold;font-size:clamp(11px,1.8vw,14px);
-    white-space:nowrap;z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+    text-align:center;z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s;}
   #unlock-toast.show{opacity:1;}
 
   /* Build dropdown — condensed rows anchored under the top-left Build button, not a full-screen modal */
@@ -64,6 +64,8 @@
   #tower-modal-header h2{margin:0;color:var(--gold);font-size:clamp(15px,2.4vw,19px);}
   #towerModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     width:32px;height:32px;min-width:32px;min-height:32px;cursor:pointer;font-size:14px;}
+  #build-resources{padding:6px 12px;font-size:12px;color:var(--paper);opacity:0.9;
+    border-bottom:1px solid rgba(241,196,15,0.2);}
   #tower-modal-grid{overflow-y:auto;padding:6px;}
   .build-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;
     cursor:pointer;color:var(--paper);position:relative;}
@@ -80,6 +82,32 @@
     padding:4px 4px 4px 36px;display:none;}
   .build-row-blurb.show{display:block;}
   .build-row-lock{flex-basis:100%;font-size:10.5px;color:var(--danger);padding-left:36px;}
+
+  #settings-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:24;
+    display:flex;align-items:center;justify-content:center;padding:16px;}
+  #settings-modal.hidden{display:none;}
+  #settings-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+    max-width:460px;width:100%;display:flex;flex-direction:column;overflow:hidden;}
+  #settings-modal-header{display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;border-bottom:2px solid var(--wood-light);}
+  #settings-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
+  #settingsModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
+    width:36px;height:36px;min-width:36px;min-height:36px;cursor:pointer;font-size:16px;}
+  #settings-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
+  .settings-tab{background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
+    border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;min-height:36px;}
+  .settings-tab.active{border-color:var(--gold);background:rgba(241,196,15,0.2);}
+  /* fixed max-height: this is what guarantees expanding About content scrolls internally
+     instead of resizing/reflowing the modal or anything behind it */
+  #settings-body{padding:14px;overflow-y:auto;max-height:320px;color:var(--paper);}
+  .settings-panel.hidden{display:none;}
+  .settings-panel label{display:flex;align-items:center;gap:8px;margin-bottom:10px;
+    cursor:pointer;font-size:13px;line-height:1.4;}
+  .settings-panel p{font-size:12.5px;line-height:1.5;margin-top:0;}
+  .settings-panel button{background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);
+    border-radius:6px;padding:8px 12px;font-size:12.5px;cursor:pointer;margin-right:8px;margin-bottom:8px;}
+  #about-expand-content{margin-top:10px;font-size:12px;line-height:1.6;opacity:0.9;}
+  #about-expand-content.hidden{display:none;}
 
   #spec-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:21;
     display:flex;align-items:center;justify-content:center;padding:16px;}
@@ -172,6 +200,11 @@
     text-shadow:2px 2px 0 #000;margin-bottom:6px;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;gap:8px;margin-top:16px;}
+  #rating-picker{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:14px;}
+  .rating-badge{font-weight:bold;font-size:13px;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.3);}
+  .rating-badge.rating-teen{color:#f1c40f;}
+  .rating-badge.rating-mature{color:#e63946;}
+  #goreLabel{font-size:11.5px;opacity:0.9;display:flex;align-items:center;gap:6px;cursor:pointer;}
   .quality-label{font-size:clamp(11px,1.8vw,14px);opacity:0.85;}
   .quality-btn{background:var(--wood-light);color:var(--paper);border:2px solid var(--wood);
     border-radius:6px;padding:8px 16px;font-size:clamp(12px,2vw,15px);font-weight:bold;
@@ -194,10 +227,11 @@
     <canvas id="gameCanvas"></canvas>
 
     <div id="hud-top">
+      <button id="buildBtn" class="hud-action-btn">🏗️ Build</button>
+      <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
+      <button id="settingsBtn" class="hud-action-btn">⚙️</button>
       <div class="hud-stat">❤️ <span id="livesVal">20</span></div>
       <div class="hud-stat">💰 <span id="goldVal">150</span></div>
-      <div class="hud-stat" title="Wood, from cleared trees">🪵 <span id="woodVal">0</span></div>
-      <div class="hud-stat" title="Stone, from cleared rocks">🪨 <span id="stoneVal">0</span></div>
       <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
       <div class="hud-stat">Wave <span id="waveVal">0/15</span></div>
       <div id="hud-controls">
@@ -207,11 +241,6 @@
       </div>
       <button id="nextWaveBtn">Next Wave ▶</button>
       <button id="expandBtn" title="Grows the map by one ring — only between waves. You also get one free every 3 waves cleared.">🗺️ Expand</button>
-    </div>
-
-    <div id="topleft-controls">
-      <button id="buildBtn">🏗️ Build</button>
-      <button id="shopBtn">🛒 Shop</button>
     </div>
 
     <div id="inspect-panel" class="hidden">
@@ -246,7 +275,7 @@
       <button id="zoomResetBtn" aria-label="Reset view">⤾</button>
     </div>
 
-    <div id="unlock-toast">🎉 New tower unlocked: <span id="unlockToastText"></span></div>
+    <div id="unlock-toast"><span id="unlockToastText"></span></div>
 
     <div id="tower-modal" class="hidden">
       <div id="tower-modal-inner">
@@ -254,6 +283,7 @@
           <h2>Build</h2>
           <button id="towerModalClose">✕</button>
         </div>
+        <div id="build-resources">🪵 <span id="woodVal">0</span> &nbsp; 🪨 <span id="stoneVal">0</span></div>
         <div id="tower-modal-grid"></div>
       </div>
     </div>
@@ -267,6 +297,39 @@
         <div id="shop-tabs"></div>
         <div id="shop-selected-note"></div>
         <div id="shop-grid"></div>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="hidden">
+      <div id="settings-modal-inner">
+        <div id="settings-modal-header">
+          <h2>Settings</h2>
+          <button id="settingsModalClose">✕</button>
+        </div>
+        <div id="settings-tabs">
+          <button class="settings-tab active" data-tab="video">🖥️ Video</button>
+          <button class="settings-tab" data-tab="audio">🔊 Audio</button>
+          <button class="settings-tab" data-tab="game">🎮 Game</button>
+          <button class="settings-tab" data-tab="about">ℹ️ About</button>
+        </div>
+        <div id="settings-body">
+          <div class="settings-panel" data-panel="video">
+            <label><input type="radio" name="gfxSetting" id="gfxHighRadio"> High graphics</label>
+            <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Low graphics (default — better on weaker devices)</label>
+          </div>
+          <div class="settings-panel hidden" data-panel="audio">
+            <label><input type="checkbox" id="settingsMuteToggle"> Mute all sound</label>
+          </div>
+          <div class="settings-panel hidden" data-panel="game">
+            <label><input type="checkbox" id="settingsGoreToggle"> 🩸 Gore effects (18+, default on)</label>
+          </div>
+          <div class="settings-panel hidden" data-panel="about">
+            <p>Stick Squad Defense — a self-contained, dependency-free browser tower defense game.</p>
+            <button id="downloadReadmeBtn">⬇️ Download README</button>
+            <button id="expandAboutBtn">More info ▾</button>
+            <div id="about-expand-content" class="hidden"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -294,8 +357,12 @@
       <p>Place stick-figure defenders along the hedge maze to stop the emoji horde before they reach the end of the path. Tap "Build" to pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, sell, move, or change its target priority. More tower types unlock as you clear waves. You also earn a free tower relocation every 2 waves — use "Move" to relocate one without selling it.</p>
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
-        <button class="quality-btn selected" id="qualityHigh" data-quality="high">High</button>
-        <button class="quality-btn" id="qualityLow" data-quality="low">Low</button>
+        <button class="quality-btn" id="qualityHigh" data-quality="high">High</button>
+        <button class="quality-btn selected" id="qualityLow" data-quality="low">Low</button>
+      </div>
+      <div id="rating-picker">
+        <span id="ratingBadge" class="rating-badge rating-mature">🟥 Rated Mature (Gore Enabled)</span>
+        <label id="goreLabel"><input type="checkbox" id="goreToggle" checked> I am 18+ — enable intense effects (🩸 Mature)</label>
       </div>
       <button class="big-btn" id="playBtn">▶ PLAY</button>
     </div>
@@ -321,47 +388,105 @@ const CANVAS_W = TILE_SIZE * COLS, CANVAS_H = TILE_SIZE * ROWS;
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
 
+// Each job has a fixed color identity (not random) so you can tell towers apart by class at a
+// glance, plus a distinct body build — some classes read as taller/lankier, others shorter/stouter.
+function jitterColorLightness(hslStr, amount){
+  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+  if(!m) return hslStr;
+  const h = +m[1], s = +m[2], l = +m[3];
+  const newL = Math.max(30, Math.min(92, l + (Math.random()*2-1)*amount));
+  return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
+}
+const JOB_COLORS = {
+  SWORDSMAN: { main:'hsl(355,65%,80%)', shade:'hsl(355,50%,60%)' }, // warm red
+  ARCHER:    { main:'hsl(130,50%,78%)', shade:'hsl(130,42%,58%)' }, // forest green
+  AXEMAN:    { main:'hsl(28,70%,78%)',  shade:'hsl(28,55%,58%)'  }, // burnt orange
+  SPEARMAN:  { main:'hsl(195,55%,80%)', shade:'hsl(195,42%,60%)' }, // cyan/teal
+  HAMMERMAN: { main:'hsl(45,45%,75%)',  shade:'hsl(45,35%,52%)'  }, // dull bronze
+  MAGE:      { main:'hsl(270,50%,82%)', shade:'hsl(270,38%,62%)' }, // violet
+  BOMBER:    { main:'hsl(42,60%,78%)',  shade:'hsl(42,48%,58%)'  }, // amber/brown
+  GATLING:   { main:'hsl(220,18%,80%)', shade:'hsl(220,22%,55%)' } // desaturated steel gray-blue
+};
+const JOB_BUILD = {
+  SWORDSMAN: { scaleX:1.00, scaleY:1.00 }, // average
+  ARCHER:    { scaleX:0.90, scaleY:1.08 }, // lean and tall
+  AXEMAN:    { scaleX:1.15, scaleY:0.90 }, // stout
+  SPEARMAN:  { scaleX:0.86, scaleY:1.15 }, // tall and lanky
+  HAMMERMAN: { scaleX:1.25, scaleY:0.85 }, // broadest and shortest — a wall of a man
+  MAGE:      { scaleX:0.85, scaleY:1.05 }, // slender
+  BOMBER:    { scaleX:1.20, scaleY:0.88 }, // stout, heavy-set
+  GATLING:   { scaleX:1.12, scaleY:0.95 }  // bulky
+};
+// Flavor lines per class — tied to combat role/personality, not to any real-world region or ethnicity.
+const JOB_QUOTES = {
+  SWORDSMAN: ["For honor!", "Steel and resolve.", "Stand and fight!"],
+  ARCHER:    ["Straight and true.", "Never miss twice.", "Eyes on the horizon."],
+  AXEMAN:    ["Close or far, I'm ready!", "Feel my swing!", "Two blades, one job."],
+  SPEARMAN:  ["Keep your distance.", "Reach exceeds your grasp.", "Patience, then the strike."],
+  HAMMERMAN: ["Nothing gets past this shield!", "Stand behind me.", "One good hit is all it takes."],
+  MAGE:      ["Arcane forces, obey!", "The cold does the work for me.", "Knowledge is my weapon."],
+  BOMBER:    ["Fire in the hole!", "Stand back — way back.", "Boom first, questions later."],
+  GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum."]
+};
+function randomJobQuote(type){
+  const lines = JOB_QUOTES[type];
+  return lines ? lines[Math.floor(Math.random()*lines.length)] : '';
+}
+
 // Hero items — bought from the shop, type-restricted (a Swordsman can only equip Swordsman gear).
 // Every tower auto-equips a free "starter" (wood-tier) item. Up to 3 items total; filling all 3
 // slots awakens the tower into a Hero (visual crown/aura + flat stat bonus on top of everything else).
-const MAX_ITEM_SLOTS = 3;
+const MAX_ITEM_SLOTS = 4;
 const HERO_BONUS_STAT = 5;
 
 const SHOP_ITEMS = {
   SWORDSMAN: [
     { id:'SW_WOOD', name:'Wooden Sword',   icon:'🥢', str:1, dex:0, int:0, cost:0,   tier:'starter' },
     { id:'SW_IRON', name:'Iron Longsword', icon:'⚔️', str:3, dex:1, int:0, cost:80 },
-    { id:'SW_GOLD', name:'Blade of Kings', icon:'🗡️', str:6, dex:2, int:0, cost:220 }
+    { id:'SW_GOLD', name:'Blade of Kings', icon:'🗡️', str:6, dex:2, int:0, cost:220 },
+    { id:'SW_MASTER', name:'Masterwork Excalibur', icon:'🌟', str:8, dex:3, int:0, cost:180, woodCost:20, stoneCost:20 }
   ],
   ARCHER: [
     { id:'AR_WOOD', name:'Wooden Bow',     icon:'🏹', str:0, dex:1, int:0, cost:0,   tier:'starter' },
     { id:'AR_IRON', name:"Hunter's Bow",   icon:'🎯', str:1, dex:3, int:0, cost:80 },
-    { id:'AR_GOLD', name:'Eagle Eye Bow',  icon:'🦅', str:1, dex:5, int:2, cost:220 }
+    { id:'AR_GOLD', name:'Eagle Eye Bow',  icon:'🦅', str:1, dex:5, int:2, cost:220 },
+    { id:'AR_MASTER', name:'Masterwork Longbow', icon:'🏆', str:1, dex:7, int:2, cost:180, woodCost:25, stoneCost:10 }
   ],
   AXEMAN: [
     { id:'AX_WOOD', name:'Wooden Hatchet',    icon:'🪵', str:1, dex:0, int:0, cost:0,   tier:'starter' },
     { id:'AX_IRON', name:'Twin Iron Axes',    icon:'🪓', str:3, dex:2, int:0, cost:80 },
-    { id:'AX_GOLD', name:"Berserker's Fury",  icon:'💥', str:6, dex:4, int:0, cost:220 }
+    { id:'AX_GOLD', name:"Berserker's Fury",  icon:'💥', str:6, dex:4, int:0, cost:220 },
+    { id:'AX_MASTER', name:'Masterwork War Axes', icon:'⚡', str:8, dex:5, int:0, cost:180, woodCost:15, stoneCost:25 }
   ],
   SPEARMAN: [
     { id:'SP_WOOD', name:'Wooden Spear', icon:'🥢', str:0, dex:0, int:1, cost:0,   tier:'starter' },
     { id:'SP_IRON', name:'Long Iron Spear', icon:'🔱', str:2, dex:0, int:2, cost:80 },
-    { id:'SP_GOLD', name:'Dragon Lance', icon:'🐉', str:4, dex:0, int:5, cost:220 }
+    { id:'SP_GOLD', name:'Dragon Lance', icon:'🐉', str:4, dex:0, int:5, cost:220 },
+    { id:'SP_MASTER', name:'Masterwork Halberd', icon:'🌟', str:5, dex:0, int:7, cost:180, woodCost:25, stoneCost:15 }
+  ],
+  HAMMERMAN: [
+    { id:'HM_WOOD', name:'Wooden Mallet', icon:'🥢', str:1, dex:0, int:0, cost:0,   tier:'starter' },
+    { id:'HM_IRON', name:'Iron Warhammer', icon:'🔨', str:3, dex:1, int:0, cost:80 },
+    { id:'HM_GOLD', name:"Champion's Maul", icon:'🛡️', str:6, dex:2, int:1, cost:220 },
+    { id:'HM_MASTER', name:'Masterwork Warhammer', icon:'⚡', str:8, dex:3, int:2, cost:180, woodCost:20, stoneCost:20 }
   ],
   MAGE: [
     { id:'MG_WOOD', name:'Wooden Wand',   icon:'🪄', str:0, dex:0, int:1, cost:0,   tier:'starter' },
     { id:'MG_IRON', name:'Crystal Staff', icon:'🔮', str:0, dex:1, int:3, cost:80 },
-    { id:'MG_GOLD', name:'Archmage Rod',  icon:'✨', str:2, dex:2, int:6, cost:220 }
+    { id:'MG_GOLD', name:'Archmage Rod',  icon:'✨', str:2, dex:2, int:6, cost:220 },
+    { id:'MG_MASTER', name:'Masterwork Grimoire', icon:'📖', str:2, dex:3, int:8, cost:180, woodCost:10, stoneCost:20 }
   ],
   BOMBER: [
     { id:'BM_WOOD', name:'Wooden Satchel',  icon:'🎒', str:1, dex:0, int:0, cost:0,   tier:'starter' },
     { id:'BM_IRON', name:'Iron Grenades',   icon:'💣', str:3, dex:0, int:1, cost:80 },
-    { id:'BM_GOLD', name:'Volatile Compound', icon:'☠️', str:6, dex:0, int:3, cost:220 }
+    { id:'BM_GOLD', name:'Volatile Compound', icon:'☠️', str:6, dex:0, int:3, cost:220 },
+    { id:'BM_MASTER', name:'Masterwork Cannon', icon:'💥', str:8, dex:0, int:4, cost:180, woodCost:15, stoneCost:25 }
   ],
   GATLING: [
     { id:'GT_WOOD', name:'Wooden Crank',      icon:'⚙️', str:0, dex:1, int:0, cost:0,   tier:'starter' },
     { id:'GT_IRON', name:'Oiled Gears',       icon:'🔧', str:1, dex:3, int:0, cost:80 },
-    { id:'GT_GOLD', name:'Overcharged Barrel',icon:'🔥', str:2, dex:6, int:1, cost:220 }
+    { id:'GT_GOLD', name:'Overcharged Barrel',icon:'🔥', str:2, dex:6, int:1, cost:220 },
+    { id:'GT_MASTER', name:'Masterwork Minigun', icon:'🎇', str:3, dex:8, int:1, cost:180, woodCost:10, stoneCost:25 }
   ]
 };
 
@@ -409,11 +534,11 @@ const CONFIG = {
     },
     ARCHER: {
       name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
-      blurb: 'Long range, single target, leads fast-moving enemies.',
+      blurb: 'Draws the bow fully before loosing — slower arrows, but real power behind every shot.',
       tiers: [
-        { range: 260, damage: 14, cooldown: 650, projectileSpeed: 520 },
-        { range: 290, damage: 22, cooldown: 550, projectileSpeed: 560, upgradeCost: 70 },
-        { range: 320, damage: 34, cooldown: 450, projectileSpeed: 600, upgradeCost: 100 }
+        { range: 260, damage: 20, cooldown: 650, drawTime: 450, projectileSpeed: 320 },
+        { range: 290, damage: 30, cooldown: 550, drawTime: 400, projectileSpeed: 360, upgradeCost: 70 },
+        { range: 320, damage: 44, cooldown: 450, drawTime: 350, projectileSpeed: 400, upgradeCost: 100 }
       ]
     },
     AXEMAN: {
@@ -432,6 +557,15 @@ const CONFIG = {
         { range: 150, damage: 40, cooldown: 1800 },
         { range: 165, damage: 60, cooldown: 1650, upgradeCost: 80 },
         { range: 180, damage: 85, cooldown: 1500, upgradeCost: 120 }
+      ]
+    },
+    HAMMERMAN: {
+      name: 'Hammerman', icon: '🔨', baseCost: 85, unlocksAfterWave: 4,
+      blurb: 'Stuns whatever it hits. Carries a shield and extra HP — the tower to put in harm\'s way when a mob breaks off to attack.',
+      tiers: [
+        { range: 95,  damage: 20, cooldown: 950, stunMs: 500 },
+        { range: 105, damage: 30, cooldown: 850, stunMs: 650, upgradeCost: 75 },
+        { range: 120, damage: 45, cooldown: 750, stunMs: 800, upgradeCost: 115 }
       ]
     },
     MAGE: {
@@ -460,14 +594,23 @@ const CONFIG = {
         { range: 220, damage: 7,  cooldown: 110, projectileSpeed: 600, upgradeCost: 75 },
         { range: 240, damage: 10, cooldown: 90,  projectileSpeed: 640, upgradeCost: 110 }
       ]
+    },
+    BARRICADE: {
+      name: 'Barricade', icon: '🚧', baseCost: 40, unlocksAfterWave: 0,
+      blurb: "Doesn't attack — just a tough, cheap obstacle. Breakaway enemies will target it if it's their nearest option, soaking the hit instead of a real tower.",
+      tiers: [
+        { range: 0, damage: 0, cooldown: 999999 }
+      ]
     }
   },
   ENEMIES: {
-    GRUNT:  { emoji:'😡', baseHp:60,  speed:70,  bounty:5,  radius:16, armor:0 },
-    SWARM:  { emoji:'🐜', baseHp:22,  speed:110, bounty:2,  radius:12, armor:0 },
-    TANK:   { emoji:'🗿', baseHp:220, speed:38,  bounty:14, radius:20, armor:6 },
-    RUNNER: { emoji:'🥷', baseHp:45,  speed:150, bounty:8,  radius:14, armor:0 },
-    BOSS:   { emoji:'👹', baseHp:2200,speed:30,  bounty:150,radius:30, armor:8 }
+    GRUNT:  { emoji:'😡', baseHp:60,  speed:70,  bounty:5,  radius:16, armor:0, breakawayChance:0.02, breakDamage:6 },
+    SWARM:  { emoji:'🐜', baseHp:22,  speed:110, bounty:2,  radius:12, armor:0, breakawayChance:0.02, breakDamage:4 },
+    TANK:   { emoji:'🗿', baseHp:220, speed:38,  bounty:14, radius:20, armor:6, breakawayChance:0.02, breakDamage:10 },
+    RUNNER: { emoji:'🥷', baseHp:45,  speed:150, bounty:8,  radius:14, armor:0, breakawayChance:0.02, breakDamage:6 },
+    BOSS:   { emoji:'👹', baseHp:2200,speed:30,  bounty:150,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
+    FIRE:   { emoji:'🔥', baseHp:55,  speed:90,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:9, statusOnTower:'BURN' },
+    ICE:    { emoji:'🧊', baseHp:60,  speed:75,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:7, statusOnTower:'ICE' }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
@@ -477,13 +620,13 @@ const CONFIG = {
     [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250}],
     [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700}],
     [{type:'RUNNER',count:10,spawnDelay:400}],
-    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400}],
+    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'FIRE',count:2,spawnDelay:1200}],
     [{type:'SWARM',count:20,spawnDelay:200},{type:'TANK',count:3,spawnDelay:1500}],
     [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300}],
-    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350}],
-    [{type:'TANK',count:8,spawnDelay:1100}],
-    [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180}],
-    [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300}],
+    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'ICE',count:2,spawnDelay:1300}],
+    [{type:'TANK',count:8,spawnDelay:1100},{type:'FIRE',count:3,spawnDelay:1000}],
+    [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180},{type:'ICE',count:3,spawnDelay:1000}],
+    [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}],
     [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600}]
   ],
   SCENERY: {
@@ -543,7 +686,7 @@ function randomWalkSegment(startX, startY, targetX, region, direction){
   return steps;
 }
 function initRegionAndPath(){
-  const w = 4, h = 4;
+  const w = 3, h = 3;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
@@ -610,10 +753,62 @@ function shuffleArray(arr){
   return arr;
 }
 
-function isTileBuildable(gx, gy, ignoreTower){
+function findNearestActiveTower(x, y, maxDist){
+  let best = null, bestD = maxDist || Infinity;
+  for(const t of towerPool){
+    if(!t.active) continue;
+    const d = Math.hypot(t.x-x, t.y-y);
+    if(d < bestD){ bestD = d; best = t; }
+  }
+  return best;
+}
+
+function findTouchingBarricade(e){
+  for(const t of towerPool){
+    if(!t.active || t.type !== 'BARRICADE') continue;
+    if(Math.hypot(t.x-e.x, t.y-e.y) <= e.radius + 14) return t;
+  }
+  return null;
+}
+// Run once per tick, before enemies move: figures out who's physically touching a Barricade
+// (freezing it for a 10s window on first contact, breaking the barricade once that expires),
+// then propagates that stop backward to anything close behind on the path — the "pile up".
+function updateBarricadesAndPileup(){
+  const active = [];
+  for(const e of enemyPool){
+    if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime) continue;
+    e.pileBlocked = false;
+    active.push(e);
+  }
+  for(const e of active){
+    const barricade = findTouchingBarricade(e);
+    if(!barricade) continue;
+    if(!barricade.blockActive){
+      barricade.blockActive = true;
+      barricade.blockExpiresAt = gameTime + 10000;
+      spawnFloatingText(barricade.x, barricade.y - 24, '🚧 Blocked!', '#e63946');
+    }
+    if(gameTime < barricade.blockExpiresAt){
+      e.pileBlocked = true;
+    } else {
+      barricade.active = false; // 10s window over — the barricade breaks and traffic resumes
+      spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
+      playSound('death');
+    }
+  }
+  active.sort((a,b) => b.traveled - a.traveled); // front of the line first
+  for(let i=1; i<active.length; i++){
+    const ahead = active[i-1], behind = active[i];
+    if(ahead.pileBlocked && !behind.pileBlocked && (ahead.traveled - behind.traveled) < 28){
+      behind.pileBlocked = true;
+    }
+  }
+}
+
+function isTileBuildable(gx, gy, ignoreTower, allowPath){
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return false;
   if(!isInActiveRegion(gx, gy)) return false;
-  if(pathCells.has(gx+','+gy)) return false;
+  if(!allowPath && pathCells.has(gx+','+gy)) return false;
   if(sceneryMap.has(gx+','+gy)) return false;
   if(towerPool.some(t => t.active && t !== ignoreTower && t.gridX===gx && t.gridY===gy)) return false;
   return true;
@@ -621,16 +816,27 @@ function isTileBuildable(gx, gy, ignoreTower){
 
 function spawnScenery(gx, gy){
   const S = CONFIG.SCENERY;
-  const type = Math.random() < 0.5 ? 'TREE' : 'ROCK';
+  let type;
+  const roll = Math.random();
+  if(roll < 0.04) type = 'CHEST';
+  else if(roll < 0.07) type = 'ITEM';
+  else if(roll < 0.53) type = 'TREE';
+  else type = 'ROCK';
+
   const isSuper = Math.random() < S.superChance;
   const scale = isSuper ? S.maxScale : (S.minScale + Math.random()*(S.maxScale-S.minScale));
   const sizeFrac = (scale - S.minScale) / (S.maxScale - S.minScale); // 0..1
-  const clearCost = Math.round(S.minClearCost + sizeFrac*(S.maxClearCost-S.minClearCost));
-  const clearMs = isSuper ? S.superClearMs : Math.round(S.minClearMs + sizeFrac*(S.maxClearMs-S.minClearMs));
   const baseYield = Math.round(S.baseResourceYield * scale) * (isSuper ? S.superYieldMultiplier : 1);
+
+  let clearCost = Math.round(S.minClearCost + sizeFrac*(S.maxClearCost-S.minClearCost));
+  let clearMs = isSuper ? S.superClearMs : Math.round(S.minClearMs + sizeFrac*(S.maxClearMs-S.minClearMs));
+  let goldYield = 0;
+  if(type === 'CHEST'){ clearCost = 0; clearMs = 500; goldYield = 40 + Math.floor(Math.random()*90); }
+  if(type === 'ITEM'){ clearCost = 0; clearMs = 500; }
+
   sceneryMap.set(gx+','+gy, {
     gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2,
-    type, isSuper, scale, clearCost, clearMs,
+    type, isSuper, scale, clearCost, clearMs, goldYield,
     woodYield: type === 'TREE' ? baseYield : 0,
     stoneYield: type === 'ROCK' ? baseYield : 0,
     isClearing: false, clearStart: 0
@@ -648,6 +854,19 @@ function generateScenery(){
   shuffleArray(cells);
   const count = Math.floor(cells.length * CONFIG.SCENERY.coverage);
   for(let i=0; i<count; i++) spawnScenery(cells[i][0], cells[i][1]);
+}
+
+// A handful of free Barricades pre-placed directly on the path within the starting region —
+// the smaller start leans on these for early chokepoints instead of needing to buy them right away.
+function seedStartingBarricades(){
+  const pathTiles = pathWaypointTiles.filter(p => isInActiveRegion(p.x, p.y));
+  shuffleArray(pathTiles);
+  const count = Math.min(2, pathTiles.length);
+  for(let i=0; i<count; i++){
+    const t = acquireActive(towerPool);
+    if(!t) break;
+    t.create('BARRICADE', pathTiles[i].x, pathTiles[i].y);
+  }
 }
 
 // Scatter scenery only on the newly-revealed ring of tiles from a map expansion, leaving the
@@ -698,18 +917,32 @@ function updateScenery(dt){
   for(const [key, item] of sceneryMap){
     if(!item.isClearing) continue;
     if(gameTime - item.clearStart >= item.clearMs){
-      wood += item.woodYield;
-      stone += item.stoneYield;
-      let msg = '';
-      if(item.woodYield) msg += '+' + item.woodYield + '🪵 ';
-      if(item.stoneYield) msg += '+' + item.stoneYield + '🪨';
-      spawnFloatingText(item.x, item.y - 20, msg.trim(), '#c9a86a');
-      if(item.isSuper){
-        gold += CONFIG.SCENERY.superBonusGold;
-        spawnFloatingText(item.x, item.y - 36, '+' + CONFIG.SCENERY.superBonusGold + '💰 SUPER!', '#ffd700');
+      if(item.type === 'CHEST'){
+        gold += item.goldYield;
+        spawnFloatingText(item.x, item.y - 20, '+' + item.goldYield + '💰', '#ffd700');
+        spawnParticles(item.x, item.y, '#ffd700', 12);
+        playSound('wave');
+      } else if(item.type === 'ITEM'){
+        const p = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
+        globalPassiveCounts[p.id] = (globalPassiveCounts[p.id]||0) + 1;
+        for(const t of towerPool) if(t.active) t.recomputeStats();
+        spawnFloatingText(item.x, item.y - 20, '✨ ' + p.name, '#a78bfa');
+        spawnParticles(item.x, item.y, '#a78bfa', 12);
+        playSound('wave');
+      } else {
+        wood += item.woodYield;
+        stone += item.stoneYield;
+        let msg = '';
+        if(item.woodYield) msg += '+' + item.woodYield + '🪵 ';
+        if(item.stoneYield) msg += '+' + item.stoneYield + '🪨';
+        spawnFloatingText(item.x, item.y - 20, msg.trim(), '#c9a86a');
+        if(item.isSuper){
+          gold += CONFIG.SCENERY.superBonusGold;
+          spawnFloatingText(item.x, item.y - 36, '+' + CONFIG.SCENERY.superBonusGold + '💰 SUPER!', '#ffd700');
+        }
+        spawnParticles(item.x, item.y, item.type === 'TREE' ? '#4caf50' : '#9aa0a6', item.isSuper ? 16 : 8);
+        playSound('death');
       }
-      spawnParticles(item.x, item.y, item.type === 'TREE' ? '#4caf50' : '#9aa0a6', item.isSuper ? 16 : 8);
-      playSound('death');
       sceneryMap.delete(key);
       updateHUD();
     }
@@ -729,7 +962,8 @@ function drawScenery(ctx){
     }
     ctx.font = Math.round(size) + 'px serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(item.type === 'TREE' ? '🌳' : '🪨', item.x, item.y + 2);
+    const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : '💎';
+    ctx.fillText(emoji, item.x, item.y + 2);
 
     if(item.isClearing){
       const progress = Math.min(1, (gameTime-item.clearStart)/item.clearMs);
@@ -747,9 +981,10 @@ function drawScenery(ctx){
     } else if(key === hoveredSceneryKey){
       // cost label only shown while hovered/tapped, not cluttering the map at all times
       ctx.font = 'bold 10px Verdana';
-      ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.fillText('💰'+item.clearCost, item.x, item.y + size*0.5 + 4);
+      const costStr = item.clearCost > 0 ? '💰'+item.clearCost : 'FREE';
+      ctx.fillStyle = item.clearCost > 0 ? '#fff' : '#7dd3fc';
+      ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
     }
   }
 }
@@ -781,16 +1016,8 @@ function drawMap(ctx){
   for(let gx=0; gx<COLS; gx++){
     for(let gy=0; gy<ROWS; gy++){
       if(pathCells.has(gx+','+gy)) continue;
+      if(!isInActiveRegion(gx, gy)) continue; // leave as plain brown background — seamless, no grid clutter
       const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
-      if(!isInActiveRegion(gx, gy)){
-        // fog tile — not yet part of the expanded map, no icon clutter, just dark unexplored ground
-        ctx.fillStyle = '#2b2f2a';
-        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
-        continue;
-      }
       // buildable tiles rendered as a crisp chess-style checkerboard
       const light = (gx+gy) % 2 === 0;
       ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
@@ -815,7 +1042,7 @@ function drawBuildPreview(ctx){
     valid = isTileBuildable(gx, gy, moveModeTower);
   } else {
     const cost = CONFIG.TOWERS[selectedBuildType].baseCost;
-    valid = isTileBuildable(gx, gy) && gold >= cost;
+    valid = isTileBuildable(gx, gy, null, selectedBuildType === 'BARRICADE') && gold >= cost;
   }
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
   ctx.save();
@@ -901,7 +1128,8 @@ function unlockAudio(){ audioEngine.unlock(); }
    ========================================================= */
 let gold = 150, lives = 20;
 let wood = 0, stone = 0;
-let graphicsQuality = 'high'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
+let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
+let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
 let gameSpeed = 1; // 1x / 2x / 3x fast-forward, cycled via the HUD button
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let isMuted = false;
@@ -930,16 +1158,22 @@ function checkTowerUnlocks(){
     .filter(type => CONFIG.TOWERS[type].unlocksAfterWave === wavesCompleted && wavesCompleted > 0);
   if(newlyUnlocked.length) showUnlockToast(newlyUnlocked);
 }
-function showUnlockToast(types){
-  const names = types.map(t => CONFIG.TOWERS[t].name).join(', ');
+function showToast(message){
   const toast = document.getElementById('unlock-toast');
-  document.getElementById('unlockToastText').textContent = names;
+  document.getElementById('unlockToastText').textContent = message;
   toast.classList.add('show');
   clearTimeout(unlockToastTimer);
   unlockToastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
-  hasUnseenUnlock = true;
   playSound('wave');
+}
+function showUnlockToast(types){
+  const names = types.map(t => CONFIG.TOWERS[t].name).join(', ');
+  showToast('🎉 New tower unlocked: ' + names);
+  hasUnseenUnlock = true;
   refreshTrayUI();
+}
+function showMilestoneToast(wave){
+  showToast('🏆 Survived to Wave ' + wave + '!');
 }
 
 /* =========================================================
@@ -947,6 +1181,7 @@ function showUnlockToast(types){
    ========================================================= */
 const MIN_ZOOM = 0.6, MAX_ZOOM = 2.5;
 const camera = { x: 0, y: 0, zoom: 1 };
+let screenShakeUntil = 0, screenShakeMag = 0; // gore kills trigger a brief impact shake
 
 function clampCamera(){
   const minX = Math.min(0, CANVAS_W*(1-camera.zoom));
@@ -1020,6 +1255,17 @@ class Enemy{
     this.flashTimer = 0;
     this.slowMultiplier = 1;
     this.slowTimer = 0;
+    this.stunnedUntil = 0;
+    this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
+    // Breakaway: a small per-spawn chance this enemy abandons the path partway through to
+    // 1v1 the nearest tower instead. Fire/Ice specialize in this and inflict a status effect.
+    this.willBreakaway = Math.random() < (def.breakawayChance || 0);
+    this.breakawayDone = false;
+    this.isBreakaway = false;
+    this.breakawayTarget = null;
+    this.breakAttackTimer = 0;
+    this.breakDamage = def.breakDamage || 6;
+    this.statusOnTower = def.statusOnTower || null;
     this.active = true;
   }
   applySlow(factor, duration){
@@ -1027,7 +1273,21 @@ class Enemy{
     if(newMultiplier < this.slowMultiplier) this.slowMultiplier = newMultiplier; // strongest slow wins
     this.slowTimer = Math.max(this.slowTimer, duration);
   }
+  applyStun(ms){
+    this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms);
+  }
   update(dt){
+    if(this.pileBlocked){
+      this.vx = 0; this.vy = 0;
+      if(this.flashTimer > 0) this.flashTimer -= dt;
+      return;
+    }
+    if(this.stunnedUntil > gameTime){
+      this.vx = 0; this.vy = 0;
+      if(this.flashTimer > 0) this.flashTimer -= dt;
+      return;
+    }
+    if(this.isBreakaway){ this.updateBreakaway(dt); return; }
     if(this.slowTimer > 0){
       this.slowTimer -= dt;
       if(this.slowTimer <= 0){ this.slowTimer = 0; this.slowMultiplier = 1; }
@@ -1048,6 +1308,41 @@ class Enemy{
       this.traveled += moveDist;
     }
     if(this.flashTimer > 0) this.flashTimer -= dt;
+    // once eligible and a little into its walk, actually trigger the breakaway
+    if(this.willBreakaway && !this.breakawayDone && this.traveled > 32){
+      this.tryStartBreakaway();
+    }
+  }
+  tryStartBreakaway(){
+    const target = findNearestActiveTower(this.x, this.y, 320);
+    if(!target){ this.breakawayDone = true; return; } // nothing worth breaking away for — stay on path
+    this.isBreakaway = true;
+    this.breakawayTarget = target;
+    this.breakAttackTimer = 0;
+    spawnFloatingText(this.x, this.y - this.radius - 6, '⚡ Breaking off!', '#ff8844');
+  }
+  updateBreakaway(dt){
+    const t = this.breakawayTarget;
+    if(!t || !t.active){ this.endBreakaway(); return; }
+    const dx = t.x - this.x, dy = t.y - this.y;
+    const dist = Math.hypot(dx,dy) || 0.0001;
+    const engageRange = 26;
+    if(dist > engageRange){
+      this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+      this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
+    } else {
+      this.vx = 0; this.vy = 0;
+      this.breakAttackTimer -= dt;
+      if(this.breakAttackTimer <= 0){
+        this.breakAttackTimer = 800;
+        const defeated = t.takeDamage(this.breakDamage, this.statusOnTower);
+        if(defeated) this.endBreakaway();
+      }
+    }
+  }
+  endBreakaway(){
+    this.isBreakaway = false;
+    this.breakawayDone = true; // won't try again this life — resumes its original path from here
   }
   reachEnd(){ this.active = false; loseLife(1); }
   applyDamage(amount){
@@ -1056,13 +1351,20 @@ class Enemy{
     this.hp -= dmg;
     this.flashTimer = 120;
     spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
-    spawnParticles(this.x, this.y, '#ffaa33', 3);
+    spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 5 : 3);
     if(this.hp <= 0) this.die();
   }
   die(){
     this.active = false;
     gold += this.bounty;
-    spawnParticles(this.x, this.y, '#ffd23f', 9);
+    if(goreMode){
+      spawnParticles(this.x, this.y, '#c0392b', 22);       // main burst
+      spawnParticles(this.x, this.y, '#7a0f0f', 10);        // darker pooling splatter, layered underneath
+      screenShakeUntil = gameTime + 130;
+      screenShakeMag = Math.max(screenShakeMag, 4);
+    } else {
+      spawnParticles(this.x, this.y, '#ffd23f', 9);
+    }
     playSound('death');
     updateHUD();
   }
@@ -1080,6 +1382,10 @@ class Enemy{
     if(this.slowMultiplier < 1){
       ctx.fillStyle = 'rgba(125,211,252,0.35)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+    }
+    if(this.pileBlocked){
+      ctx.fillStyle = 'rgba(230,57,70,0.3)';
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.1, 0, Math.PI*2); ctx.fill();
     }
     const speed = Math.hypot(this.vx, this.vy);
     ctx.save();
@@ -1129,6 +1435,18 @@ class Tower{
     this.swingDuration = type === 'SPEARMAN' ? 550 : 300;
     this.slowFactor = 0; this.slowDuration = 0; this.splashRadius = 0;
     this.meleeRange = 0; this.meleeDamage = 0; this.meleeCooldown = 0;
+    this.stunMs = 0; // HAMMERMAN only, from tier config
+    this.isDrawing = false; this.drawStart = 0; this.drawProgress = 0; this.baseDrawTime = 0; // ARCHER only
+    // Tower HP — mostly irrelevant unless a breakaway enemy engages this tower directly.
+    this.maxHp = type === 'BARRICADE' ? 320 : (type === 'HAMMERMAN' ? 180 : 100);
+    this.blockActive = false;  // BARRICADE only: true once the first mob touches it
+    this.blockExpiresAt = 0;   // gameTime the 10s block window ends and the barricade breaks
+    this.hp = this.maxHp;
+    this.shieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks
+    this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
+    this.burnUntil = 0;       // FIRE breakaway status
+    this.burnTickTimer = 0;
+    this.iceSlowUntil = 0;    // ICE breakaway status — halves effective attack speed
     // WC3-hero-style distributable stats: STR = damage, DEX = attack speed, INT = range
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0;
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
@@ -1146,9 +1464,9 @@ class Tower{
     this.baseAngle2 = 0;
     this.swingStart2 = 0;
     this.renderSwordAngle2 = this.angle;
-    const skinHue = Math.floor(Math.random()*360);
-    this.skinMain = 'hsl(' + skinHue + ', 70%, 78%)';
-    this.skinShade = 'hsl(' + skinHue + ', 55%, 58%)';
+    const jobColor = JOB_COLORS[type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
+    this.skinMain = jitterColorLightness(jobColor.main, 8);
+    this.skinShade = jitterColorLightness(jobColor.shade, 8);
     this.active = true;
     this.applyTierStats();
   }
@@ -1162,6 +1480,7 @@ class Tower{
     this.baseMeleeDamage = this.meleeDamage || 0;
     this.baseMeleeCooldown = this.meleeCooldown || 0;
     this.baseMeleeRange = this.meleeRange || 0;
+    this.baseDrawTime = this.drawTime || 0;
     this.recomputeStats();
   }
   // STR = +5% damage/point, DEX = +5% attack speed/point (lower cooldown), INT = +6 range/point
@@ -1185,12 +1504,17 @@ class Tower{
     if(this.baseMeleeDamage) this.meleeDamage = Math.round(this.baseMeleeDamage * strMult);
     if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange) this.meleeRange = Math.round(this.baseMeleeRange + intBonus);
+    if(this.baseDrawTime) this.drawTime = Math.max(120, Math.round(this.baseDrawTime / dexMult));
   }
   // Purchase and equip a type-matching shop item with gold (starter items have cost 0, used at creation).
   buyItem(def){
     if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
     if(def.cost > 0 && gold < def.cost) return false;
+    if(def.woodCost && wood < def.woodCost) return false;
+    if(def.stoneCost && stone < def.stoneCost) return false;
     if(def.cost > 0) gold -= def.cost;
+    if(def.woodCost) wood -= def.woodCost;
+    if(def.stoneCost) stone -= def.stoneCost;
     this.equippedItems.push(def);
     this.recomputeStats();
     this.checkHeroStatus();
@@ -1201,6 +1525,8 @@ class Tower{
     if(!it) return false;
     this.equippedItems.splice(index, 1);
     if(it.cost > 0) gold += Math.floor(it.cost*0.5); // half refund
+    if(it.woodCost) wood += Math.floor(it.woodCost*0.5);
+    if(it.stoneCost) stone += Math.floor(it.stoneCost*0.5);
     this.recomputeStats();
     return true;
   }
@@ -1223,10 +1549,14 @@ class Tower{
     return true;
   }
   canUpgrade(){ return this.level < this.def.tiers.length; }
-  upgradeCost(){ return this.canUpgrade() ? this.def.tiers[this.level].upgradeCost : 0; }
+  // Named differently from the tier data's "upgradeCost" field on purpose — applyTierStats()
+  // copies every tier field onto the instance via Object.assign, and a method with the exact
+  // same name as a data field gets silently overwritten (shadowed) by that number after the
+  // first upgrade, breaking every upgrade after that. This was a real, reproducible crash.
+  nextUpgradeCost(){ return this.canUpgrade() ? this.def.tiers[this.level].upgradeCost : 0; }
   upgrade(){
     if(!this.canUpgrade()) return false;
-    const cost = this.upgradeCost();
+    const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
     this.statPoints += 3;
@@ -1289,16 +1619,70 @@ class Tower{
   }
 
   update(dt, enemyHash){
-    this.cooldownTimer -= dt;
+    this.updateHealthStatus(dt);
+    if(this.disabledUntil > gameTime) return; // overrun by a breakaway enemy — can't act until it recovers
+    const iceMult = this.iceSlowUntil > gameTime ? 0.5 : 1;
+    this.cooldownTimer -= dt*iceMult;
     const nearby = queryNearby(enemyHash, this.x, this.y, this.targetingRange);
     this.findTarget(nearby);
     if(this.target && !this.target.active) this.target = null;
     if(this.target) this.angle = Math.atan2(this.target.y-this.y, this.target.x-this.x);
-    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN') this.updateSwordsman(dt, nearby);
+    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
+    else if(this.type === 'ARCHER') this.updateArcher(dt);
     else this.updateRanged();
   }
+  // Called from a breakaway enemy's attack. Returns true if this hit dropped the tower to 0 HP.
+  takeDamage(amount, statusType){
+    const reduced = Math.max(1, Math.round(amount * (1-this.shieldPct)));
+    this.hp = Math.max(0, this.hp - reduced);
+    spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
+    if(statusType === 'BURN') this.burnUntil = gameTime + 3000;
+    if(statusType === 'ICE') this.iceSlowUntil = Math.max(this.iceSlowUntil, gameTime + 3000);
+    if(this.hp <= 0 && this.disabledUntil <= gameTime){
+      this.disabledUntil = gameTime + 4000;
+      this.hp = Math.round(this.maxHp * 0.3); // recovers with partial HP once the disable ends
+      spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
+      playSound('lose');
+      return true;
+    }
+    return false;
+  }
+  updateHealthStatus(dt){
+    if(this.burnUntil > gameTime){
+      this.burnTickTimer -= dt;
+      if(this.burnTickTimer <= 0){
+        this.burnTickTimer = 500;
+        this.hp = Math.max(0, this.hp - 4);
+        spawnFloatingText(this.x, this.y - 30, '-4🔥', '#ff8844');
+        if(this.hp <= 0 && this.disabledUntil <= gameTime){
+          this.disabledUntil = gameTime + 4000;
+          this.hp = Math.round(this.maxHp * 0.3);
+        }
+      }
+    }
+    if(this.hp < this.maxHp && this.disabledUntil <= gameTime){
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp*0.01*dt/1000); // slow passive regen
+    }
+  }
 
+  updateArcher(dt){
+    if(!this.target){ this.isDrawing = false; this.drawProgress = 0; return; }
+    if(!this.isDrawing && this.cooldownTimer <= 0){
+      this.isDrawing = true;
+      this.drawStart = gameTime;
+    }
+    if(this.isDrawing){
+      const elapsed = gameTime - this.drawStart;
+      this.drawProgress = Math.min(1, elapsed / Math.max(1, this.drawTime));
+      if(this.drawProgress >= 1){
+        this.fireProjectile();
+        this.isDrawing = false;
+        this.drawProgress = 0;
+        this.cooldownTimer = this.cooldown;
+      }
+    }
+  }
   updateRanged(){
     if(this.target && this.cooldownTimer <= 0){
       this.fireProjectile();
@@ -1407,7 +1791,7 @@ class Tower{
     if(this.isSwinging){
       const t = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       const currAngle = this.baseAngle + this.swingOffset(t);
-      this.checkConeHits(nearby, this.lastSwordAngle, currAngle, this.hitSet);
+      this.checkConeHits(nearby, this.lastSwordAngle, currAngle, this.hitSet, undefined, undefined, this.stunMs);
       this.lastSwordAngle = currAngle;
       this.renderSwordAngle = currAngle;
       if(t >= 1) this.isSwinging = false;
@@ -1455,9 +1839,9 @@ class Tower{
       return w - (w*p*0.5);
     }
   }
-  // damage/radius default to this.damage/this.range (Swordsman, Spearman) but can be overridden
+  // damage/radius default to this.damage/this.range (Swordsman, Spearman, Hammerman) but can be overridden
   // (Axeman's melee mode uses meleeDamage/meleeRange instead, since its own damage/range are its throw stats)
-  checkConeHits(nearby, prevA, currA, hitSet, damage, radius){
+  checkConeHits(nearby, prevA, currA, hitSet, damage, radius, stunMs){
     damage = damage ?? this.damage;
     radius = radius ?? this.range;
     const lo = Math.min(prevA, currA), hi = Math.max(prevA, currA);
@@ -1470,12 +1854,29 @@ class Tower{
       while(ang > hi + Math.PI) ang -= Math.PI*2;
       if(ang >= lo && ang <= hi){
         e.applyDamage(damage);
+        if(stunMs) e.applyStun(stunMs);
         hitSet.add(e.id);
       }
     }
   }
 
   draw(ctx, isSelected){
+    if(this.type === 'BARRICADE'){
+      if(isSelected){
+        ctx.beginPath(); ctx.arc(this.x, this.y, 18, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      ctx.font = Math.round(28*STICKMAN_SCALE) + 'px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🚧', this.x, this.y);
+      if(this.hp < this.maxHp){
+        const barW = 26, barY = this.y - 22;
+        ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x-barW/2, barY, barW, 4);
+        ctx.fillStyle = (this.hp/this.maxHp) > 0.4 ? '#4caf50' : '#e63946';
+        ctx.fillRect(this.x-barW/2, barY, barW*Math.max(0,this.hp/this.maxHp), 4);
+      }
+      return;
+    }
     if(isSelected){
       if(this.type === 'AXEMAN'){
         const activeRange = this.axeMode === 'RANGE' ? this.range : this.meleeRange;
@@ -1498,12 +1899,12 @@ class Tower{
         ctx.stroke();
       }
     }
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low' };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
-    const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN';
+    const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN';
     const drawAngle = usesSwingAngle ? this.renderSwordAngle : this.angle;
 
     if(this.isHero){
@@ -1515,17 +1916,34 @@ class Tower{
       ctx.stroke();
     }
 
+    if(this.disabledUntil > gameTime){
+      // overrun — greyed out and marked dizzy while it can't act
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.filter = 'grayscale(1)';
+    }
     drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
+    if(this.disabledUntil > gameTime){
+      ctx.restore();
+      ctx.font = '14px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('💫', this.x, this.y - 30);
+    }
 
     if(this.isHero){
       ctx.font = '13px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('👑', this.x, this.y - 41*STICKMAN_SCALE);
+      const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
+      ctx.fillText('👑', this.x, this.y - 41*STICKMAN_SCALE*buildY);
     }
-    if(this.equippedItems.length){
-      ctx.font = '9px serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(this.equippedItems.map(i => i.icon).join(''), this.x, this.y + 27*STICKMAN_SCALE);
+    if(this.hp < this.maxHp){
+      const barW = 26, barY = this.y - 34;
+      ctx.fillStyle = '#3a1a1a';
+      ctx.fillRect(this.x-barW/2, barY, barW, 4);
+      ctx.fillStyle = (this.hp/this.maxHp) > 0.4 ? '#4caf50' : '#e63946';
+      ctx.fillRect(this.x-barW/2, barY, barW*Math.max(0,this.hp/this.maxHp), 4);
+      if(this.burnUntil > gameTime){ ctx.font='10px serif'; ctx.textAlign='left'; ctx.fillText('🔥', this.x+barW/2+2, barY+3); }
+      if(this.iceSlowUntil > gameTime){ ctx.font='10px serif'; ctx.textAlign='left'; ctx.fillText('🧊', this.x+barW/2+(this.burnUntil>gameTime?14:2), barY+3); }
     }
   }
 }
@@ -1742,10 +2160,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinMain = (extra && extra.skinMain) || '#f5f0e6';
   const skinShade = (extra && extra.skinShade) || '#cfc8b8';
   const lowGfx = !!(extra && extra.lowGfx);
+  const build = JOB_BUILD[type] || { scaleX:1, scaleY:1 };
 
   ctx.save();
   ctx.translate(Math.round(x)+0.5, Math.round(y)+0.5);
   ctx.scale(STICKMAN_SCALE, STICKMAN_SCALE);
+  ctx.scale(build.scaleX, build.scaleY);
   ctx.lineWidth = 3;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
@@ -1798,6 +2218,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       }
     }
   } else if(type === 'ARCHER'){
+    const drawAmt = extra.drawProgress || 0; // 0 = relaxed, 1 = fully drawn and about to loose
+    // quiver of arrows on the back — drawn first so the arms/bow sit in front of it
+    const quiverX = -7, quiverY = -13;
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2;
+    for(const fan of [-0.35, 0, 0.35]){
+      ctx.beginPath();
+      ctx.moveTo(quiverX, quiverY);
+      ctx.lineTo(quiverX + Math.sin(fan)*5, quiverY - 10 + Math.cos(fan)*2);
+      ctx.stroke();
+    }
     // front (bow) arm extends nearly straight out toward the target
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen+5, skinMain, -0.08);
     const handX = hand.handX, handY = hand.handY;
@@ -1805,8 +2235,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const bowTopY = handY + Math.sin(angle - Math.PI/2)*10;
     const bowBotX = handX + Math.cos(angle + Math.PI/2)*10;
     const bowBotY = handY + Math.sin(angle + Math.PI/2)*10;
-    const bowMidX = handX + Math.cos(angle)*6;
-    const bowMidY = handY + Math.sin(angle)*6;
+    const bowFlex = 4 + drawAmt*7; // the bow itself bends further under tension as it's drawn
+    const bowMidX = handX + Math.cos(angle)*bowFlex;
+    const bowMidY = handY + Math.sin(angle)*bowFlex;
     if(level >= 3 && !lowGfx){
       ctx.strokeStyle = 'rgba(125,211,252,0.5)'; ctx.lineWidth = 6;
       ctx.beginPath();
@@ -1820,16 +2251,30 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.moveTo(bowTopX,bowTopY);
     ctx.quadraticCurveTo(bowMidX,bowMidY,bowBotX,bowBotY);
     ctx.stroke();
-    // drawing hand pulled back near the shoulder/cheek — the classic archer silhouette,
-    // instead of the string converging on the same point as the bow-holding hand
-    const drawX = shoulderX - Math.cos(angle)*9, drawY = shoulderY - Math.sin(angle)*9;
+    // drawing arm: a real elbow-bent second arm (not a straight line), pulling back further
+    // as the shot charges — both arms now animate the same way for a matching silhouette
+    const pullBack = 6 + drawAmt*15;
+    const backHand = drawArmAndHand(ctx, shoulderX, shoulderY, angle + Math.PI, pullBack, skinMain, 0.35);
+    const drawX = backHand.handX, drawY = backHand.handY;
     ctx.strokeStyle = 'rgba(245,240,230,0.8)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(bowTopX,bowTopY); ctx.lineTo(drawX,drawY); ctx.lineTo(bowBotX,bowBotY);
     ctx.stroke();
-    ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(shoulderX,shoulderY); ctx.lineTo(drawX,drawY); ctx.stroke();
+    // nocked arrow — only visible once a draw is actually underway, growing clearer as it charges
+    if(drawAmt > 0.05){
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, drawAmt*1.3);
+      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(drawX,drawY); ctx.lineTo(handX,handY); ctx.stroke();
+      ctx.strokeStyle = '#c7ccd1'; ctx.lineWidth = 1;
+      const fx = handX + Math.cos(angle)*4, fy = handY + Math.sin(angle)*4;
+      ctx.beginPath();
+      ctx.moveTo(fx,fy); ctx.lineTo(fx - Math.cos(angle-0.3)*5, fy - Math.sin(angle-0.3)*5);
+      ctx.moveTo(fx,fy); ctx.lineTo(fx - Math.cos(angle+0.3)*5, fy - Math.sin(angle+0.3)*5);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.fillStyle = skinMain;
     ctx.beginPath(); ctx.arc(drawX,drawY,1.8,0,Math.PI*2); ctx.fill();
   } else if(type === 'MAGE'){
@@ -1892,6 +2337,30 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.lineTo(tipX - Math.cos(angle)*8 - perpX*3, tipY - Math.sin(angle)*8 - perpY*3);
     ctx.closePath();
     ctx.fill();
+  } else if(type === 'HAMMERMAN'){
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const handX = hand.handX, handY = hand.handY;
+    // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
+    const haftLen = 18;
+    const tipX = handX + Math.cos(angle)*haftLen, tipY = handY + Math.sin(angle)*haftLen;
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const headLen = 10;
+    ctx.fillStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
+    ctx.beginPath();
+    ctx.moveTo(tipX + perpX*8 - Math.cos(angle)*headLen*0.3, tipY + perpY*8 - Math.sin(angle)*headLen*0.3);
+    ctx.lineTo(tipX + perpX*8 + Math.cos(angle)*headLen*0.7, tipY + perpY*8 + Math.sin(angle)*headLen*0.7);
+    ctx.lineTo(tipX - perpX*8 + Math.cos(angle)*headLen*0.7, tipY - perpY*8 + Math.sin(angle)*headLen*0.7);
+    ctx.lineTo(tipX - perpX*8 - Math.cos(angle)*headLen*0.3, tipY - perpY*8 - Math.sin(angle)*headLen*0.3);
+    ctx.closePath();
+    ctx.fill();
+    // shield strapped to the off-hand — the tower's defining trait, shown explicitly rather than implied
+    const shieldX = -10, shieldY = -2;
+    ctx.fillStyle = level >= 3 ? '#bdeaff' : '#9aa0a6';
+    ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
   }
 
   ctx.restore();
@@ -1926,9 +2395,25 @@ function queryNearby(hash, x, y, range){
 /* =========================================================
    WAVES
    ========================================================= */
+// Waves beyond the hand-authored 15 are generated procedurally — the game never hard-stops.
+// Enemy HP already scales indefinitely with waveIndex (see spawnEnemy), so difficulty keeps
+// climbing naturally; this just keeps composition/pacing varied as waves keep coming.
+function generateProceduralWave(n){
+  const group = [];
+  group.push({ type:'GRUNT', count: 8 + n*2, spawnDelay: Math.max(250, 550 - n*10) });
+  group.push({ type:'SWARM', count: 10 + n*3, spawnDelay: Math.max(120, 200 - n*3) });
+  if(n >= 2) group.push({ type:'TANK', count: 2 + Math.floor(n/2), spawnDelay: Math.max(700, 1300 - n*15) });
+  if(n >= 3) group.push({ type:'RUNNER', count: 4 + Math.floor(n*1.5), spawnDelay: Math.max(180, 380 - n*8) });
+  if(n >= 1) group.push({ type:'FIRE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
+  if(n >= 2) group.push({ type:'ICE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
+  if(n % 5 === 0) group.push({ type:'BOSS', count: 1 + Math.floor(n/15), spawnDelay: 0 });
+  return group;
+}
 function startNextWave(){
-  if(waveIndex >= CONFIG.WAVES.length || waveState !== 'IDLE') return;
-  const waveDef = CONFIG.WAVES[waveIndex];
+  if(waveState !== 'IDLE') return;
+  const waveDef = waveIndex < CONFIG.WAVES.length
+    ? CONFIG.WAVES[waveIndex]
+    : generateProceduralWave(waveIndex - CONFIG.WAVES.length + 1);
   spawnQueue = [];
   for(const group of waveDef){
     for(let i=0;i<group.count;i++){
@@ -1953,7 +2438,7 @@ function spawnEnemy(type){
 }
 function loseLife(n){
   lives -= n;
-  if(lives <= 0){ lives = 0; endGame(false); }
+  if(lives <= 0){ lives = 0; endGame(); }
   updateHUD();
 }
 
@@ -1974,6 +2459,7 @@ function update(dt){
     if(!spawnQueue.length) waveState = 'ACTIVE';
   }
 
+  updateBarricadesAndPileup();
   for(const e of enemyPool) if(e.active) e.update(dt);
   const enemyHash = buildEnemyHash();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHash);
@@ -1994,11 +2480,10 @@ function update(dt){
       if(wavesCompleted <= 4 || wavesCompleted % 3 === 0){
         grantFreeExpansion();
       }
-      if(waveIndex >= CONFIG.WAVES.length){
-        endGame(true);
-      } else {
-        gold += 10;
+      if(wavesCompleted % 10 === 0){
+        showMilestoneToast(wavesCompleted);
       }
+      gold += 10 + Math.floor(wavesCompleted/2); // scaling reward — keeps pace with infinite waves
       updateHUD();
     }
   }
@@ -2008,7 +2493,15 @@ function render(ctx){
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   ctx.save();
-  ctx.translate(camera.x, camera.y);
+  let shakeX = 0, shakeY = 0;
+  if(screenShakeUntil > gameTime){
+    const remain = (screenShakeUntil - gameTime) / 130;
+    shakeX = (Math.random()*2-1) * screenShakeMag * remain;
+    shakeY = (Math.random()*2-1) * screenShakeMag * remain;
+  } else {
+    screenShakeMag = 0;
+  }
+  ctx.translate(camera.x + shakeX, camera.y + shakeY);
   ctx.scale(camera.zoom, camera.zoom);
 
   ctx.drawImage(mapCanvas, 0, 0); // static map, pre-rendered once — see BOOT
@@ -2116,13 +2609,14 @@ function handleTap(clientX, clientY){
       spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '🔒 Expand map first', '#e63946');
       return;
     }
-    if(!isTileBuildable(gx, gy)) return;
+    if(!isTileBuildable(gx, gy, null, selectedBuildType === 'BARRICADE')) return;
     const cost = CONFIG.TOWERS[selectedBuildType].baseCost;
     if(gold < cost) return;
     const t = acquireActive(towerPool);
     if(!t) return;
     gold -= cost;
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
+    if(t.type !== 'BARRICADE') spawnFloatingText(t.x, t.y - 40, randomJobQuote(t.type), '#f5f0e6');
     selectedBuildType = null;
     selectedTower = t;
     playSound('click');
@@ -2269,8 +2763,10 @@ function updateHUD(){
   document.getElementById('woodVal').textContent = wood;
   document.getElementById('stoneVal').textContent = stone;
   document.getElementById('moveVal').textContent = moveCharges;
-  waveVal.textContent = Math.min(waveIndex, CONFIG.WAVES.length) + '/' + CONFIG.WAVES.length;
-  nextWaveBtn.disabled = waveState !== 'IDLE' || waveIndex >= CONFIG.WAVES.length;
+  waveVal.textContent = waveIndex < CONFIG.WAVES.length
+    ? waveIndex + '/' + CONFIG.WAVES.length
+    : waveIndex + ' ∞';
+  nextWaveBtn.disabled = waveState !== 'IDLE';
 
   const expandBtn = document.getElementById('expandBtn');
   const fullyExpanded = regionFullyExpanded();
@@ -2369,11 +2865,36 @@ function buildShopTabs(){
   passiveBtn.className = shopActiveTab === 'PASSIVES' ? 'active' : '';
   passiveBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); shopActiveTab = 'PASSIVES'; buildShopTabs(); buildShopGrid(); });
   tabs.appendChild(passiveBtn);
+  const invBtn = document.createElement('button');
+  invBtn.textContent = '🎒';
+  invBtn.title = 'Inventory';
+  invBtn.className = shopActiveTab === 'INVENTORY' ? 'active' : '';
+  invBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); shopActiveTab = 'INVENTORY'; buildShopTabs(); buildShopGrid(); });
+  tabs.appendChild(invBtn);
 }
 function buildShopGrid(){
   const grid = document.getElementById('shop-grid');
   const note = document.getElementById('shop-selected-note');
   grid.innerHTML = '';
+
+  if(shopActiveTab === 'INVENTORY'){
+    note.innerHTML = '🪵 ' + wood + ' wood &nbsp; 🪨 ' + stone + ' stone';
+    const roster = towerPool.filter(t => t.active && t.type !== 'BARRICADE');
+    if(!roster.length){
+      grid.innerHTML = '<p class="shop-empty-note">No towers placed yet.</p>';
+      return;
+    }
+    for(const t of roster){
+      const row = document.createElement('div');
+      row.className = 'shop-equipped-row';
+      row.style.gridColumn = '1/-1';
+      const itemIcons = t.equippedItems.length ? t.equippedItems.map(i => i.icon).join(' ') : '—';
+      row.innerHTML = '<span>' + CONFIG.TOWERS[t.type].icon + ' ' + t.def.name + ' Lv.' + t.level +
+        (t.isHero ? ' ⭐' : '') + '</span><span style="margin-left:auto;">' + itemIcons + '</span>';
+      grid.appendChild(row);
+    }
+    return;
+  }
 
   if(shopActiveTab === 'PASSIVES'){
     note.textContent = 'Applies permanently to every tower you own, current and future.';
@@ -2424,14 +2945,20 @@ function buildShopGrid(){
     if(def.tier === 'starter') continue; // free starting gear, not purchasable
     const alreadyOwned = matchingTowerSelected && selectedTower.equippedItems.some(i => i.id === def.id);
     const full = matchingTowerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
-    const canBuy = matchingTowerSelected && !full && gold >= def.cost;
+    const hasGold = gold >= def.cost;
+    const hasWood = !def.woodCost || wood >= def.woodCost;
+    const hasStone = !def.stoneCost || stone >= def.stoneCost;
+    const canBuy = matchingTowerSelected && !full && hasGold && hasWood && hasStone;
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (canBuy ? '' : ' disabled') + (alreadyOwned ? ' owned' : '');
+    let costLine = '💰' + def.cost;
+    if(def.woodCost) costLine += ' 🪵' + def.woodCost;
+    if(def.stoneCost) costLine += ' 🪨' + def.stoneCost;
     card.innerHTML =
       '<div class="icon">' + def.icon + '</div>' +
       '<div class="name">' + def.name + '</div>' +
       '<div class="stat-line">' + itemStatLine(def) + '</div>' +
-      '<div class="cost">💰' + def.cost + '</div>';
+      '<div class="cost">' + costLine + '</div>';
     if(canBuy){
       card.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
@@ -2491,6 +3018,92 @@ document.getElementById('inspShopShortcutBtn').addEventListener('pointerdown', (
   if(!selectedTower) return;
   openShopModal(selectedTower.type);
 });
+
+// --- Settings modal (usable from the start screen or mid-game — not gated on gameState) ---
+function syncSettingsUI(){
+  document.getElementById('gfxHighRadio').checked = graphicsQuality === 'high';
+  document.getElementById('gfxLowRadio').checked = graphicsQuality === 'low';
+  document.getElementById('settingsMuteToggle').checked = isMuted;
+  document.getElementById('settingsGoreToggle').checked = goreMode;
+}
+document.getElementById('settingsBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  unlockAudio();
+  syncSettingsUI();
+  document.getElementById('settings-modal').classList.remove('hidden');
+});
+document.getElementById('settingsModalClose').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  document.getElementById('settings-modal').classList.add('hidden');
+});
+document.getElementById('settings-modal').addEventListener('pointerdown', (e) => {
+  if(e.target.id === 'settings-modal') document.getElementById('settings-modal').classList.add('hidden');
+});
+document.querySelectorAll('.settings-tab').forEach(tab => {
+  tab.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
+  });
+});
+document.getElementById('gfxHighRadio').addEventListener('change', () => {
+  graphicsQuality = 'high'; setupCanvas();
+  document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'high'));
+});
+document.getElementById('gfxLowRadio').addEventListener('change', () => {
+  graphicsQuality = 'low'; setupCanvas();
+  document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'low'));
+});
+document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
+  isMuted = e.target.checked;
+  if(audioEngine.master) audioEngine.master.gain.value = isMuted ? 0 : 0.5;
+  document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🔊';
+});
+document.getElementById('settingsGoreToggle').addEventListener('change', (e) => {
+  goreMode = e.target.checked;
+  const badge = document.getElementById('ratingBadge');
+  const startCheckbox = document.getElementById('goreToggle');
+  if(goreMode){
+    badge.textContent = '🟥 Rated Mature (Gore Enabled)'; badge.className = 'rating-badge rating-mature';
+  } else {
+    badge.textContent = '🟨 Rated Teen'; badge.className = 'rating-badge rating-teen';
+  }
+  if(startCheckbox) startCheckbox.checked = goreMode;
+});
+document.getElementById('downloadReadmeBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const content = '# Stick Squad Defense\n\n' +
+    'A self-contained, dependency-free browser tower defense game — single index.html, no build step.\n\n' +
+    '## Towers\nSwordsman, Archer, Axeman, Spearman, Hammerman, Mage, Bomber, Gatling, and the utility Barricade.\n\n' +
+    '## Features\nInfinite waves, a map that starts tiny and expands (bought with gold or earned free), ' +
+    'a hero item/equipment system, breakaway enemies that can 1v1 your towers, Fire/Ice status effects, ' +
+    'wood/stone resources from clearing scenery, and a full Settings menu.\n\n' +
+    '## License\nMIT.\n';
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'README.md'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const content = document.getElementById('about-expand-content');
+  const willShow = content.classList.contains('hidden');
+  if(willShow){
+    content.innerHTML = '<p>8 distinct tower classes, each with its own color, body shape, and combat role. ' +
+      'The map starts as a small 3x3 area and grows ring by ring — some rings are free milestones, others cost gold. ' +
+      'Enemies occasionally break off the path to attack a tower directly; Barricades placed on the path can ' +
+      'temporarily jam the whole line behind them. Items are bought per-class from the Shop and equip directly ' +
+      'onto a tower — fully-geared towers awaken as Heroes.</p>';
+    e.target.textContent = 'Less info ▴';
+  } else {
+    e.target.textContent = 'More info ▾';
+  }
+  content.classList.toggle('hidden');
+});
+
 document.getElementById('inspAxeModeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower || selectedTower.type !== 'AXEMAN') return;
@@ -2521,7 +3134,7 @@ function updateInspectPanel(){
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
   inspLevel.textContent = 'Lv.' + t.level + specLabel + heroLabel;
   if(t.canUpgrade()){
-    const cost = t.upgradeCost();
+    const cost = t.nextUpgradeCost();
     inspUpgradeBtn.disabled = gold < cost;
     inspUpgradeCost.textContent = '(💰' + cost + ')';
   } else {
@@ -2690,6 +3303,18 @@ document.querySelectorAll('.quality-btn').forEach(btn => {
   });
 });
 
+document.getElementById('goreToggle').addEventListener('change', (e) => {
+  goreMode = e.target.checked;
+  const badge = document.getElementById('ratingBadge');
+  if(goreMode){
+    badge.textContent = '🟥 Rated Mature (Gore Enabled)';
+    badge.className = 'rating-badge rating-mature';
+  } else {
+    badge.textContent = '🟨 Rated Teen';
+    badge.className = 'rating-badge rating-teen';
+  }
+});
+
 document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
@@ -2707,13 +3332,11 @@ document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   lastTime = performance.now();
 });
 
-function endGame(victory){
-  gameState = victory ? 'VICTORY' : 'GAME_OVER';
-  endTitle.textContent = victory ? 'Victory!' : 'Game Over';
-  endMessage.textContent = victory
-    ? 'Your stick squad held the maze for all 15 waves. The hedges are safe... for now.'
-    : 'The horde broke through. Rebuild your squad and try again.';
-  if(!victory) playSound('lose');
+function endGame(){
+  gameState = 'GAME_OVER';
+  endTitle.textContent = 'Game Over';
+  endMessage.textContent = 'The horde broke through on wave ' + waveIndex + '. Rebuild your squad and try again.';
+  playSound('lose');
   endScreen.classList.remove('hidden');
 }
 
@@ -2723,6 +3346,7 @@ function resetGame(){
   globalPassiveCounts = {};
   selectedBuildType = null; selectedTower = null; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
+  screenShakeUntil = 0; screenShakeMag = 0;
   moveCharges = 1;
   exitMoveMode();
   initRegionAndPath();
@@ -2739,6 +3363,7 @@ function resetGame(){
   for(const p of projectilePool) p.active = false;
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
+  seedStartingBarricades();
   updateHUD();
   updateInspectPanel();
 }
@@ -2751,6 +3376,7 @@ const mapCanvas = document.createElement('canvas');
 mapCanvas.width = CANVAS_W; mapCanvas.height = CANVAS_H;
 drawMap(mapCanvas.getContext('2d')); // rendered once here and re-baked on each map expansion — see rebakeMap()
 generateScenery();
+seedStartingBarricades();
 centerCameraOnActiveRegion();
 updateHUD();
 requestAnimationFrame(loop);
