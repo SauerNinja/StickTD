@@ -106,6 +106,9 @@
   .settings-panel p{font-size:12.5px;line-height:1.5;margin-top:0;}
   .settings-panel button{background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);
     border-radius:6px;padding:8px 12px;font-size:12.5px;cursor:pointer;margin-right:8px;margin-bottom:8px;}
+  .settings-file-label{display:inline-flex !important;background:var(--wood-light);color:var(--paper);
+    border:1px solid var(--gold);border-radius:6px;padding:8px 12px;font-size:12.5px;cursor:pointer;
+    margin-bottom:8px;width:auto !important;}
   #about-expand-content{margin-top:10px;font-size:12px;line-height:1.6;opacity:0.9;}
   #about-expand-content.hidden{display:none;}
 
@@ -322,10 +325,16 @@
           </div>
           <div class="settings-panel hidden" data-panel="game">
             <label><input type="checkbox" id="settingsGoreToggle"> 🩸 Gore effects (18+, default on)</label>
+            <p style="margin-top:14px;">Your progress isn't auto-saved. Download a save file any time, and load it later (or on another device) to pick up exactly where you left off.</p>
+            <button id="downloadSaveBtn">💾 Save Game (.txt)</button>
+            <label id="loadSaveLabel" class="settings-file-label">📂 Load Save
+              <input type="file" id="loadSaveInput" accept=".txt" style="display:none;">
+            </label>
           </div>
           <div class="settings-panel hidden" data-panel="about">
             <p>Stick Squad Defense — a self-contained, dependency-free browser tower defense game.</p>
-            <button id="downloadReadmeBtn">⬇️ Download README</button>
+            <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
+            <button id="viewReadmeBtn">📄 View as page</button>
             <button id="expandAboutBtn">More info ▾</button>
             <div id="about-expand-content" class="hidden"></div>
           </div>
@@ -387,6 +396,7 @@ const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const CANVAS_W = TILE_SIZE * COLS, CANVAS_H = TILE_SIZE * ROWS;
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
+const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
 
 // Each job has a fixed color identity (not random) so you can tell towers apart by class at a
 // glance, plus a distinct body build — some classes read as taller/lankier, others shorter/stouter.
@@ -396,6 +406,14 @@ function jitterColorLightness(hslStr, amount){
   const h = +m[1], s = +m[2], l = +m[3];
   const newL = Math.max(30, Math.min(92, l + (Math.random()*2-1)*amount));
   return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
+}
+// Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of
+// the most expensive Canvas2D operations). Only called when graphicsQuality is 'high'.
+function drawGroundShadow(ctx, x, y, radiusX){
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + radiusX*0.55, radiusX, radiusX*0.4, 0, 0, Math.PI*2);
+  ctx.fill();
 }
 const JOB_COLORS = {
   SWORDSMAN: { main:'hsl(355,65%,80%)', shade:'hsl(355,50%,60%)' }, // warm red
@@ -609,6 +627,7 @@ const CONFIG = {
     TANK:   { emoji:'🗿', baseHp:220, speed:38,  bounty:14, radius:20, armor:6, breakawayChance:0.02, breakDamage:10 },
     RUNNER: { emoji:'🥷', baseHp:45,  speed:150, bounty:8,  radius:14, armor:0, breakawayChance:0.02, breakDamage:6 },
     BOSS:   { emoji:'👹', baseHp:2200,speed:30,  bounty:150,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
+    TROLL:  { emoji:'🧌', baseHp:130, speed:65,  bounty:45, radius:18, armor:2, breakawayChance:0, breakDamage:0 },
     FIRE:   { emoji:'🔥', baseHp:55,  speed:90,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:9, statusOnTower:'BURN' },
     ICE:    { emoji:'🧊', baseHp:60,  speed:75,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:7, statusOnTower:'ICE' }
   },
@@ -668,32 +687,68 @@ function rebuildPathCellsAndPx(){
     x: p.x*TILE_SIZE + TILE_SIZE/2, y: p.y*TILE_SIZE + TILE_SIZE/2
   }));
 }
-function randomWalkSegment(startX, startY, targetX, region, direction){
-  // Walks from (startX,startY) toward targetX (direction: +1 right, -1 left), wandering
-  // vertically within the region's bounds. Returns the steps taken (excluding the start point).
-  const steps = [];
-  let cx = startX, cy = startY;
-  while(cx !== targetX){
-    const choices = [direction, direction]; // biased to keep progressing toward the target column
-    if(cy > region.y0) choices.push('up');
-    if(cy < region.y1) choices.push('down');
-    const move = choices[Math.floor(Math.random()*choices.length)];
-    if(move === direction) cx += direction;
-    else if(move === 'up') cy--;
-    else cy++;
-    steps.push({x:cx, y:cy});
+// Builds a spiral path across the whole region: samples points along an inward-winding spiral
+// (with randomized jaggy radius jitter), then bridges every gap between consecutive samples one
+// cardinal step at a time. Because every hop is forced to be a single adjacent tile, the resulting
+// path is guaranteed fully connected end to end — there is no way for this to produce a dead end.
+function buildSpiralPathTiles(region){
+  const cx = (region.x0+region.x1)/2, cy = (region.y0+region.y1)/2;
+  const maxR = Math.max(region.x1-region.x0, region.y1-region.y0)/2 + 0.5;
+  const turns = 1.3 + Math.random()*0.4;
+  const sampleCount = Math.max(24, Math.round(maxR*14));
+  const startAngle = Math.random()*Math.PI*2;
+  const points = [];
+  for(let i=0; i<=sampleCount; i++){
+    const t = i/sampleCount;
+    const angle = startAngle + t*turns*Math.PI*2;
+    let r = maxR*(1-t) + (Math.random()-0.5)*0.7; // spirals from the outer edge inward, with jaggy jitter
+    r = Math.max(0, r);
+    const gx = Math.round(cx + Math.cos(angle)*r);
+    const gy = Math.round(cy + Math.sin(angle)*r);
+    points.push({
+      x: Math.max(region.x0, Math.min(region.x1, gx)),
+      y: Math.max(region.y0, Math.min(region.y1, gy))
+    });
   }
-  return steps;
+  const tiles = [points[0]];
+  for(let i=1; i<points.length; i++){
+    let cur = tiles[tiles.length-1];
+    const target = points[i];
+    let guard = 0;
+    while((cur.x !== target.x || cur.y !== target.y) && guard < 80){
+      guard++;
+      const dx = target.x-cur.x, dy = target.y-cur.y;
+      let next;
+      if(Math.abs(dx) >= Math.abs(dy) && dx !== 0) next = {x:cur.x+Math.sign(dx), y:cur.y};
+      else if(dy !== 0) next = {x:cur.x, y:cur.y+Math.sign(dy)};
+      else next = {x:cur.x+Math.sign(dx), y:cur.y};
+      cur = next;
+      tiles.push(cur);
+    }
+  }
+  const deduped = [tiles[0]];
+  for(let i=1; i<tiles.length; i++){
+    const p = tiles[i], last = deduped[deduped.length-1];
+    if(p.x !== last.x || p.y !== last.y) deduped.push(p);
+  }
+  return deduped;
+}
+// Regenerates the spiral, retrying a few times if it happens to land on an existing tower's tile
+function generateConflictFreePath(region, maxAttempts){
+  for(let attempt=0; attempt<(maxAttempts||6); attempt++){
+    const tiles = buildSpiralPathTiles(region);
+    const conflict = towerPool.some(t => t.active && tiles.some(p => p.x===t.gridX && p.y===t.gridY));
+    if(!conflict) return tiles;
+  }
+  return buildSpiralPathTiles(region); // give up avoiding conflicts after enough tries — exceedingly rare
 }
 function initRegionAndPath(){
-  const w = 3, h = 3;
+  const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
-  const entryY = y0 + Math.floor(Math.random()*h);
-  const steps = randomWalkSegment(activeRegion.x0, entryY, activeRegion.x1, activeRegion, 1);
-  pathWaypointTiles = [{x:activeRegion.x0, y:entryY}, ...steps];
+  pathWaypointTiles = generateConflictFreePath(activeRegion);
   rebuildPathCellsAndPx();
 }
 function performExpansion(label, labelColor){
@@ -704,34 +759,40 @@ function performExpansion(label, labelColor){
     x1: Math.min(COLS-1, activeRegion.x1+1),
     y1: Math.min(ROWS-1, activeRegion.y1+1)
   };
-
-  // extend the path leftward from its current first point, and rightward from its current last point,
-  // wandering within the NEW region's bounds — the existing middle of the path is untouched
-  const first = pathWaypointTiles[0];
-  const leftSteps = newRegion.x0 < oldRegion.x0 ? randomWalkSegment(first.x, first.y, newRegion.x0, newRegion, -1) : [];
-  const last = pathWaypointTiles[pathWaypointTiles.length-1];
-  const rightSteps = newRegion.x1 > oldRegion.x1 ? randomWalkSegment(last.x, last.y, newRegion.x1, newRegion, 1) : [];
-  pathWaypointTiles = [...leftSteps.reverse(), ...pathWaypointTiles, ...rightSteps];
-
   activeRegion = newRegion;
   expansionLevel++;
+  pathWaypointTiles = generateConflictFreePath(newRegion);
   rebuildPathCellsAndPx();
+  // clear any pre-existing scenery that now happens to sit on the new spiral's route
+  for(const tile of pathWaypointTiles){
+    sceneryMap.delete(tile.x+','+tile.y);
+  }
   scatterSceneryInRing(oldRegion, newRegion);
   rebakeMap();
   spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, label, labelColor);
   playSound('wave');
   updateHUD();
 }
+let expansionsUsedThisCycle = 0; // resets each time a new wave starts — caps expansion to once per idle period
+let queuedFreeExpansions = 0;    // any free milestone that couldn't fire this cycle waits here for the next one
+
 function expandRegion(){
   if(regionFullyExpanded()) return false;
+  if(expansionsUsedThisCycle >= 1) return false; // one per idle period — button should already be disabled
   const cost = expansionCost();
   if(gold < cost) return false;
   gold -= cost;
+  expansionsUsedThisCycle++;
   performExpansion('🗺️ Map Expanded!', '#ffd700');
   return true;
 }
 function grantFreeExpansion(){
   if(regionFullyExpanded()) return false;
+  if(expansionsUsedThisCycle >= 1){
+    queuedFreeExpansions++; // queue it rather than applying two expansions back to back
+    return false;
+  }
+  expansionsUsedThisCycle++;
   performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
   return true;
 }
@@ -773,11 +834,27 @@ function findTouchingBarricade(e){
 // Run once per tick, before enemies move: figures out who's physically touching a Barricade
 // (freezing it for a 10s window on first contact, breaking the barricade once that expires),
 // then propagates that stop backward to anything close behind on the path — the "pile up".
+function getPositionAtTraveled(dist){
+  if(dist <= 0) return { x: waypointsPx[0].x, y: waypointsPx[0].y };
+  let acc = 0;
+  for(let i=0; i<waypointsPx.length-1; i++){
+    const a = waypointsPx[i], b = waypointsPx[i+1];
+    const segLen = Math.hypot(b.x-a.x, b.y-a.y);
+    if(acc+segLen >= dist){
+      const t = segLen > 0 ? (dist-acc)/segLen : 0;
+      return { x: a.x+(b.x-a.x)*t, y: a.y+(b.y-a.y)*t };
+    }
+    acc += segLen;
+  }
+  const last = waypointsPx[waypointsPx.length-1];
+  return { x: last.x, y: last.y };
+}
 function updateBarricadesAndPileup(){
   const active = [];
   for(const e of enemyPool){
     if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime) continue;
     e.pileBlocked = false;
+    e.touchingBarricade = false;
     active.push(e);
   }
   for(const e of active){
@@ -790,6 +867,7 @@ function updateBarricadesAndPileup(){
     }
     if(gameTime < barricade.blockExpiresAt){
       e.pileBlocked = true;
+      e.touchingBarricade = true;
     } else {
       barricade.active = false; // 10s window over — the barricade breaks and traffic resumes
       spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
@@ -797,10 +875,14 @@ function updateBarricadesAndPileup(){
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
+  const QUEUE_SPACING = 20; // enemies queued behind a blocked one never render on top of each other
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
-    if(ahead.pileBlocked && !behind.pileBlocked && (ahead.traveled - behind.traveled) < 28){
+    if(ahead.pileBlocked && !behind.pileBlocked && (ahead.traveled - behind.traveled) < QUEUE_SPACING*1.4){
       behind.pileBlocked = true;
+      const slotDist = Math.max(0, ahead.traveled - QUEUE_SPACING);
+      const pos = getPositionAtTraveled(slotDist);
+      behind.x = pos.x; behind.y = pos.y;
     }
   }
 }
@@ -814,6 +896,23 @@ function isTileBuildable(gx, gy, ignoreTower, allowPath){
   return true;
 }
 
+function spawnDebrisNear(x, y){
+  const gx = Math.round(x/TILE_SIZE), gy = Math.round(y/TILE_SIZE);
+  const candidates = [];
+  for(let dx=-1; dx<=1; dx++){
+    for(let dy=-1; dy<=1; dy++){
+      const cx = gx+dx, cy = gy+dy;
+      if(isTileBuildable(cx, cy)) candidates.push([cx,cy]);
+    }
+  }
+  if(!candidates.length) return;
+  const [cx, cy] = candidates[Math.floor(Math.random()*candidates.length)];
+  sceneryMap.set(cx+','+cy, {
+    gx: cx, gy: cy, x: cx*TILE_SIZE+TILE_SIZE/2, y: cy*TILE_SIZE+TILE_SIZE/2,
+    type: 'STICKS', isSuper: false, scale: 1, clearCost: 30, clearMs: 1200, goldYield: 0,
+    woodYield: 0, stoneYield: 0, isClearing: false, clearStart: 0
+  });
+}
 function spawnScenery(gx, gy){
   const S = CONFIG.SCENERY;
   let type;
@@ -929,6 +1028,10 @@ function updateScenery(dt){
         spawnFloatingText(item.x, item.y - 20, '✨ ' + p.name, '#a78bfa');
         spawnParticles(item.x, item.y, '#a78bfa', 12);
         playSound('wave');
+      } else if(item.type === 'STICKS'){
+        spawnFloatingText(item.x, item.y - 20, 'Cleared!', '#c9a86a');
+        spawnParticles(item.x, item.y, '#8a5a2b', 8);
+        playSound('death');
       } else {
         wood += item.woodYield;
         stone += item.stoneYield;
@@ -962,7 +1065,7 @@ function drawScenery(ctx){
     }
     ctx.font = Math.round(size) + 'px serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : '💎';
+    const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
     ctx.fillText(emoji, item.x, item.y + 2);
 
     if(item.isClearing){
@@ -1176,6 +1279,102 @@ function showMilestoneToast(wave){
   showToast('🏆 Survived to Wave ' + wave + '!');
 }
 
+// --- Save / Load: a downloadable .txt file containing a random seed (cosmetic identifier) plus
+// the full serialized game state as JSON, restorable on this device or any other. ---
+function generateSaveSeed(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for(let i=0; i<6; i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function serializeGameState(){
+  const towersData = towerPool.filter(t => t.active).map(t => ({
+    type: t.type, gridX: t.gridX, gridY: t.gridY, level: t.level,
+    str: t.str, dex: t.dex, int: t.int, statPoints: t.statPoints,
+    spec: t.spec || null,
+    itemIds: t.equippedItems.map(i => i.id),
+    hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode
+  }));
+  const sceneryData = [...sceneryMap.entries()].map(([key, item]) => ({ key, item }));
+  return {
+    seed: generateSaveSeed(), savedAt: new Date().toISOString(),
+    gold, lives, waveIndex, wavesCompleted, wood, stone, moveCharges,
+    globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
+    goreMode, graphicsQuality,
+    towers: towersData, scenery: sceneryData
+  };
+}
+function downloadSaveFile(){
+  const state = serializeGameState();
+  const text = 'STICK SQUAD DEFENSE — SAVE FILE\n' +
+    'Seed: ' + state.seed + '\n' +
+    'Saved: ' + state.savedAt + '\n' +
+    'Do not edit below this line — upload this whole file via Settings > Game > Load Save to restore.\n\n' +
+    JSON.stringify(state);
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'savegame-' + state.seed + '.txt'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 Saved (seed ' + state.seed + ')');
+}
+function restoreGameState(state){
+  for(const e of enemyPool) e.active = false;
+  for(const t of towerPool) t.active = false;
+  for(const p of projectilePool) p.active = false;
+  for(const p of particles) p.active = false;
+  for(const t of floatingTexts) t.active = false;
+  sceneryMap.clear();
+
+  gold = state.gold; lives = state.lives; waveIndex = state.waveIndex;
+  wavesCompleted = state.wavesCompleted; wood = state.wood; stone = state.stone;
+  moveCharges = state.moveCharges; globalPassiveCounts = state.globalPassiveCounts || {};
+  activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
+  expansionLevel = state.expansionLevel || 0;
+  if(state.goreMode !== undefined) goreMode = state.goreMode;
+  if(state.graphicsQuality){ graphicsQuality = state.graphicsQuality; setupCanvas(); }
+  rebuildPathCellsAndPx();
+
+  for(const s of (state.scenery || [])) sceneryMap.set(s.key, s.item);
+
+  for(const td of (state.towers || [])){
+    const t = acquireActive(towerPool);
+    if(!t) continue;
+    t.create(td.type, td.gridX, td.gridY);
+    t.level = td.level;
+    t.applyTierStats();
+    t.str = td.str||0; t.dex = td.dex||0; t.int = td.int||0; t.statPoints = td.statPoints||0;
+    if(td.spec) t.spec = td.spec;
+    if(td.targetMode) t.targetMode = td.targetMode;
+    t.equippedItems = (td.itemIds||[]).map(id => (SHOP_ITEMS[td.type]||[]).find(i => i.id===id)).filter(Boolean);
+    t.recomputeStats();
+    t.checkHeroStatus();
+    if(td.hp !== undefined) t.hp = td.hp;
+    if(td.maxHp !== undefined) t.maxHp = td.maxHp;
+  }
+
+  expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
+  waveState = 'IDLE'; spawnQueue = [];
+  screenShakeUntil = 0; screenShakeMag = 0;
+  rebakeMap();
+  centerCameraOnActiveRegion();
+  gameState = 'PLAYING';
+  document.getElementById('start-screen').classList.add('hidden');
+  updateHUD();
+  updateInspectPanel();
+}
+function loadSaveFileText(text){
+  const jsonStart = text.indexOf('{');
+  if(jsonStart === -1){ showToast('⚠️ Not a valid save file'); return; }
+  try{
+    const state = JSON.parse(text.slice(jsonStart));
+    restoreGameState(state);
+    showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')');
+  } catch(err){
+    showToast('⚠️ Could not read that save file');
+  }
+}
+
 /* =========================================================
    CAMERA (zoom + pan)
    ========================================================= */
@@ -1257,6 +1456,8 @@ class Enemy{
     this.slowTimer = 0;
     this.stunnedUntil = 0;
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
+    this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
+    this.bumpTime = 0;
     // Breakaway: a small per-spawn chance this enemy abandons the path partway through to
     // 1v1 the nearest tower instead. Fire/Ice specialize in this and inflict a status effect.
     this.willBreakaway = Math.random() < (def.breakawayChance || 0);
@@ -1266,6 +1467,8 @@ class Enemy{
     this.breakAttackTimer = 0;
     this.breakDamage = def.breakDamage || 6;
     this.statusOnTower = def.statusOnTower || null;
+    this.isTroll = type === 'TROLL';
+    this.trollSwingTimer = 4000 + Math.random()*2500;
     this.active = true;
   }
   applySlow(factor, duration){
@@ -1279,6 +1482,7 @@ class Enemy{
   update(dt){
     if(this.pileBlocked){
       this.vx = 0; this.vy = 0;
+      if(this.touchingBarricade) this.bumpTime += dt;
       if(this.flashTimer > 0) this.flashTimer -= dt;
       return;
     }
@@ -1288,6 +1492,7 @@ class Enemy{
       return;
     }
     if(this.isBreakaway){ this.updateBreakaway(dt); return; }
+    if(this.isTroll){ this.updateTroll(dt); return; }
     if(this.slowTimer > 0){
       this.slowTimer -= dt;
       if(this.slowTimer <= 0){ this.slowTimer = 0; this.slowMultiplier = 1; }
@@ -1311,6 +1516,35 @@ class Enemy{
     // once eligible and a little into its walk, actually trigger the breakaway
     if(this.willBreakaway && !this.breakawayDone && this.traveled > 32){
       this.tryStartBreakaway();
+    }
+  }
+  updateTroll(dt){
+    // walks BACKWARD toward the entrance instead of forward toward the base — no threat to your
+    // lives on its own, but a big bounty if you kill it before it wanders off, and it occasionally
+    // takes a swing at a nearby tower, leaving debris that costs gold to clear.
+    if(this.flashTimer > 0) this.flashTimer -= dt;
+    this.trollSwingTimer -= dt;
+    if(this.trollSwingTimer <= 0){
+      this.trollSwingTimer = 4000 + Math.random()*2500;
+      const tower = findNearestActiveTower(this.x, this.y, 150);
+      if(tower && Math.random() < 0.4){
+        tower.takeDamage(12, null);
+        spawnDebrisNear(tower.x, tower.y);
+        spawnFloatingText(this.x, this.y - this.radius - 8, '🥢 Swing!', '#8a5a2b');
+        playSound('sword');
+      }
+    }
+    const target = waypointsPx[this.pathIndex-1];
+    if(!target){ this.active = false; return; } // wandered back past the entrance — just gone, no penalty either way
+    const dx = target.x - this.x, dy = target.y - this.y;
+    const dist = Math.hypot(dx,dy) || 0.0001;
+    const moveDist = this.speed * dt / 1000;
+    this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+    if(dist <= moveDist){
+      this.x = target.x; this.y = target.y;
+      this.pathIndex--;
+    } else {
+      this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     }
   }
   tryStartBreakaway(){
@@ -1357,13 +1591,16 @@ class Enemy{
   die(){
     this.active = false;
     gold += this.bounty;
+    const low = graphicsQuality === 'low';
     if(goreMode){
-      spawnParticles(this.x, this.y, '#c0392b', 22);       // main burst
-      spawnParticles(this.x, this.y, '#7a0f0f', 10);        // darker pooling splatter, layered underneath
-      screenShakeUntil = gameTime + 130;
-      screenShakeMag = Math.max(screenShakeMag, 4);
+      spawnParticles(this.x, this.y, '#c0392b', low ? 10 : 22);  // main burst
+      spawnParticles(this.x, this.y, '#7a0f0f', low ? 4 : 10);   // darker pooling splatter, layered underneath
+      if(!low){
+        screenShakeUntil = gameTime + 130;
+        screenShakeMag = Math.max(screenShakeMag, 4);
+      }
     } else {
-      spawnParticles(this.x, this.y, '#ffd23f', 9);
+      spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
     playSound('death');
     updateHUD();
@@ -1387,9 +1624,21 @@ class Enemy{
       ctx.fillStyle = 'rgba(230,57,70,0.3)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.1, 0, Math.PI*2); ctx.fill();
     }
+    if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, this.radius*0.7);
     const speed = Math.hypot(this.vx, this.vy);
+    let bumpDx = 0, bumpDy = 0;
+    if(this.touchingBarricade){
+      const nextWp = waypointsPx[this.pathIndex+1];
+      if(nextWp){
+        const ddx = nextWp.x-this.x, ddy = nextWp.y-this.y;
+        const dlen = Math.hypot(ddx,ddy) || 1;
+        const bumpAmt = Math.abs(Math.sin(this.bumpTime/220)) * 4;
+        bumpDx = (ddx/dlen)*bumpAmt;
+        bumpDy = (ddy/dlen)*bumpAmt;
+      }
+    }
     ctx.save();
-    ctx.translate(Math.round(this.x)+0.5, Math.round(this.y)+0.5);
+    ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy)+0.5);
     if(speed > 20){
       const angle = Math.atan2(this.vy, this.vx);
       const stretch = 1 + Math.min(0.25, speed/700);
@@ -1424,7 +1673,7 @@ class Tower{
     this.target = null;
     this.cooldownTimer = 0;
     this.angle = -Math.PI/2;
-    this.renderSwordAngle = this.angle;
+    this.renderSwordAngle = IDLE_WEAPON_ANGLE;
     this.targetMode = 'FIRST';
     this.totalSpent = CONFIG.TOWERS[type].baseCost;
     this.isSwinging = false;
@@ -1463,7 +1712,7 @@ class Tower{
     this.lastSwordAngle2 = 0;
     this.baseAngle2 = 0;
     this.swingStart2 = 0;
-    this.renderSwordAngle2 = this.angle;
+    this.renderSwordAngle2 = IDLE_WEAPON_ANGLE;
     const jobColor = JOB_COLORS[type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
     this.skinMain = jitterColorLightness(jobColor.main, 8);
     this.skinShade = jitterColorLightness(jobColor.shade, 8);
@@ -1714,7 +1963,7 @@ class Tower{
   }
 
   updateAxeman(dt, nearby){
-    if(!this.target){ this.renderSwordAngle = this.angle; }
+    if(!this.target){ this.renderSwordAngle = IDLE_WEAPON_ANGLE; }
     if(this.target && !this.isSwinging && this.cooldownTimer <= 0){
       if(this.axeMode === 'MELEE'){
         this.isSwinging = true;
@@ -1796,7 +2045,7 @@ class Tower{
       this.renderSwordAngle = currAngle;
       if(t >= 1) this.isSwinging = false;
     } else {
-      this.renderSwordAngle = this.angle;
+      this.renderSwordAngle = this.target ? this.angle : IDLE_WEAPON_ANGLE;
     }
     if(hasDual){
       if(this.isSwinging2){
@@ -1807,7 +2056,7 @@ class Tower{
         this.renderSwordAngle2 = currAngle2;
         if(t2 >= 1) this.isSwinging2 = false;
       } else {
-        this.renderSwordAngle2 = this.angle;
+        this.renderSwordAngle2 = this.target2 ? this.angle : IDLE_WEAPON_ANGLE;
       }
     }
   }
@@ -1869,11 +2118,20 @@ class Tower{
       ctx.font = Math.round(28*STICKMAN_SCALE) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('🚧', this.x, this.y);
-      if(this.hp < this.maxHp){
-        const barW = 26, barY = this.y - 22;
+      if(this.blockActive && this.hp > 0){
+        const remainMs = Math.max(0, this.blockExpiresAt - gameTime);
+        const frac = remainMs / 10000; // 1 = just triggered, 0 = about to break
+        const scaled = Math.ceil(frac*10);
+        const r = Math.round(230 - frac*(230-76));
+        const g = Math.round(57 + frac*(175-57));
+        const b = Math.round(70 + frac*(80-70));
+        ctx.font = 'bold 11px Verdana';
+        ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+        ctx.fillText(scaled + '/10', this.x, this.y - 22);
+        const barW = 26, barY = this.y - 14;
         ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x-barW/2, barY, barW, 4);
-        ctx.fillStyle = (this.hp/this.maxHp) > 0.4 ? '#4caf50' : '#e63946';
-        ctx.fillRect(this.x-barW/2, barY, barW*Math.max(0,this.hp/this.maxHp), 4);
+        ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+        ctx.fillRect(this.x-barW/2, barY, barW*frac, 4);
       }
       return;
     }
@@ -1899,7 +2157,12 @@ class Tower{
         ctx.stroke();
       }
     }
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress };
+    let lungeAmt = 0;
+    if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN')){
+      const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
+      lungeAmt = Math.sin(st*Math.PI) * 4; // small forward step, peaks mid-swing, settles back
+    }
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -1915,6 +2178,8 @@ class Tower{
       ctx.lineWidth = 2;
       ctx.stroke();
     }
+
+    if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, 16);
 
     if(this.disabledUntil > gameTime){
       // overrun — greyed out and marked dizzy while it can't act
@@ -2164,6 +2429,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
 
   ctx.save();
   ctx.translate(Math.round(x)+0.5, Math.round(y)+0.5);
+  const lunge = (extra && extra.lungeAmt) || 0;
+  if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
   ctx.scale(STICKMAN_SCALE, STICKMAN_SCALE);
   ctx.scale(build.scaleX, build.scaleY);
   ctx.lineWidth = 3;
@@ -2417,7 +2684,9 @@ function startNextWave(){
   spawnQueue = [];
   for(const group of waveDef){
     for(let i=0;i<group.count;i++){
-      spawnQueue.push({ type: group.type, delay: i*group.spawnDelay });
+      let type = group.type;
+      if(type !== 'BOSS' && type !== 'TROLL' && Math.random() < 0.02) type = 'TROLL';
+      spawnQueue.push({ type, delay: i*group.spawnDelay });
     }
   }
   spawnQueue.sort((a,b) => a.delay - b.delay);
@@ -2472,12 +2741,17 @@ function update(dt){
     if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
+      expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
       maybeSpawnMoreScenery();
       if(wavesCompleted % 2 === 0 && moveCharges < MAX_MOVE_CHARGES){
         moveCharges++;
       }
-      if(wavesCompleted <= 4 || wavesCompleted % 3 === 0){
+      if(queuedFreeExpansions > 0 && !regionFullyExpanded()){
+        queuedFreeExpansions--;
+        expansionsUsedThisCycle++;
+        performExpansion('🎁 Queued Expansion!', '#7dd3fc');
+      } else if(wavesCompleted <= 4 || wavesCompleted % 3 === 0){
         grantFreeExpansion();
       }
       if(wavesCompleted % 10 === 0){
@@ -2538,7 +2812,7 @@ const ctx = canvas.getContext('2d');
 let dprValue = 1;
 
 function setupCanvas(){
-  const dprCap = graphicsQuality === 'low' ? 1 : 3;
+  const dprCap = graphicsQuality === 'low' ? 1 : 2;
   dprValue = Math.min(window.devicePixelRatio || 1, dprCap);
   canvas.width = CANVAS_W * dprValue;
   canvas.height = CANVAS_H * dprValue;
@@ -2772,6 +3046,9 @@ function updateHUD(){
   const fullyExpanded = regionFullyExpanded();
   if(fullyExpanded){
     expandBtn.textContent = '🗺️ Max Size';
+    expandBtn.disabled = true;
+  } else if(expansionsUsedThisCycle >= 1){
+    expandBtn.textContent = '🗺️ Used This Round';
     expandBtn.disabled = true;
   } else {
     const cost = expansionCost();
@@ -3072,20 +3349,75 @@ document.getElementById('settingsGoreToggle').addEventListener('change', (e) => 
   }
   if(startCheckbox) startCheckbox.checked = goreMode;
 });
+document.getElementById('downloadSaveBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  downloadSaveFile();
+});
+document.getElementById('loadSaveInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => loadSaveFileText(reader.result);
+  reader.readAsText(file);
+  e.target.value = ''; // allow re-selecting the same file later
+});
+function getReadmeText(){
+  return 'STICK SQUAD DEFENSE\n' +
+'====================\n\n' +
+'A self-contained, dependency-free browser tower defense game. Single index.html file, ' +
+'no build step, no external assets — everything is drawn procedurally on a Canvas.\n\n' +
+'HOW TO PLAY\n' +
+'-----------\n' +
+'Tap Build, pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, ' +
+'sell, move, buy it gear from the Shop, or change its targeting priority. The map starts tiny ' +
+'(2x2 tiles) and grows outward in rings as you clear waves — some expansions are free milestones, ' +
+'others you buy with gold, but only one expansion can happen per round; extra ones queue for the next.\n\n' +
+'TOWERS\n' +
+'------\n' +
+'Swordsman - melee cone sweep, can specialize into Two-Hander or Dual Wield at level 5.\n' +
+'Archer - ranged, now draws the bow before firing: slower arrows, but real power behind each shot.\n' +
+'Axeman - dual-wields hand axes, manually toggles between a close swing and a ranged throw.\n' +
+'Spearman - long melee reach, slow but hard-hitting.\n' +
+'Hammerman - stuns on hit, carries a shield and extra HP.\n' +
+'Mage - slows enemies it hits.\n' +
+'Bomber - splash damage against groups.\n' +
+'Gatling - very fast, low damage per shot, shreds swarms.\n' +
+'Barricade - does not attack. Extremely tough, can be placed directly on the enemy path, and ' +
+'freezes the first enemy that touches it (and anything queued behind it) for 10 seconds before breaking.\n\n' +
+'ENEMIES\n' +
+'-------\n' +
+'Grunt, Swarm, Tank, Runner, and the wave-15 Boss are the core roster; Fire and Ice enemies can break ' +
+'off the path entirely to 1v1 a tower directly, inflicting burn or a slow debuff on it. Waves continue ' +
+'indefinitely past 15 with procedurally scaled difficulty.\n\n' +
+'ITEMS AND HEROES\n' +
+'----------------\n' +
+'Every tower starts with a free class-specific item. Buy better gear per class from the Shop, plus ' +
+'global passive upgrades that apply to every tower you own. A tower with all 4 item slots filled ' +
+'awakens into a Hero, with a permanent stat bonus and a visible crown.\n\n' +
+'RESOURCES\n' +
+'---------\n' +
+'Gold from kills and wave clears. Wood and stone from clearing scattered trees and rocks (and rare ' +
+'treasure chests/relics) — spent on the priciest tier of shop gear alongside gold.\n\n' +
+'SETTINGS\n' +
+'--------\n' +
+'Video (graphics quality), Audio (mute), Game (18+ gore toggle), and About (this file).\n\n' +
+'LICENSE\n' +
+'-------\n' +
+'MIT.\n';
+}
 document.getElementById('downloadReadmeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  const content = '# Stick Squad Defense\n\n' +
-    'A self-contained, dependency-free browser tower defense game — single index.html, no build step.\n\n' +
-    '## Towers\nSwordsman, Archer, Axeman, Spearman, Hammerman, Mage, Bomber, Gatling, and the utility Barricade.\n\n' +
-    '## Features\nInfinite waves, a map that starts tiny and expands (bought with gold or earned free), ' +
-    'a hero item/equipment system, breakaway enemies that can 1v1 your towers, Fire/Ice status effects, ' +
-    'wood/stone resources from clearing scenery, and a full Settings menu.\n\n' +
-    '## License\nMIT.\n';
-  const blob = new Blob([content], { type: 'text/markdown' });
+  const blob = new Blob([getReadmeText()], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'README.md'; a.click();
+  a.href = url; a.download = 'README.txt'; a.click();
   URL.revokeObjectURL(url);
+});
+document.getElementById('viewReadmeBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const blob = new Blob([getReadmeText()], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 });
 document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -3093,10 +3425,11 @@ document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) =>
   const willShow = content.classList.contains('hidden');
   if(willShow){
     content.innerHTML = '<p>8 distinct tower classes, each with its own color, body shape, and combat role. ' +
-      'The map starts as a small 3x3 area and grows ring by ring — some rings are free milestones, others cost gold. ' +
-      'Enemies occasionally break off the path to attack a tower directly; Barricades placed on the path can ' +
-      'temporarily jam the whole line behind them. Items are bought per-class from the Shop and equip directly ' +
-      'onto a tower — fully-geared towers awaken as Heroes.</p>';
+      'The map starts as a tiny 2x2 area and grows ring by ring — one expansion per round at most, extra ' +
+      'ones queue for the next. Enemies occasionally break off the path to attack a tower directly; ' +
+      'Barricades placed on the path can temporarily jam the whole line behind them, and enemies now ' +
+      'queue up single-file instead of overlapping. Items are bought per-class from the Shop and equip ' +
+      'directly onto a tower — fully-geared towers awaken as Heroes.</p>';
     e.target.textContent = 'Less info ▴';
   } else {
     e.target.textContent = 'More info ▾';
@@ -3347,6 +3680,7 @@ function resetGame(){
   selectedBuildType = null; selectedTower = null; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
   screenShakeUntil = 0; screenShakeMag = 0;
+  expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
   moveCharges = 1;
   exitMoveMode();
   initRegionAndPath();
