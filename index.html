@@ -178,10 +178,18 @@
   #inspClose{margin-left:auto;background:var(--danger);}
   #inspStatsRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
     margin-top:2px;padding-top:8px;border-top:1px solid rgba(241,196,15,0.3);}
-  #inspStatPoints{font-weight:bold;color:var(--gold);margin-right:4px;}
-  #inspStatsRow button{background:var(--wood-light);color:var(--paper);border:1px solid #7dd3fc;
-    border-radius:6px;padding:6px 9px;min-height:36px;cursor:pointer;font-size:inherit;}
-  #inspStatsRow button:disabled{opacity:0.35;cursor:default;border-color:var(--wood);}
+  #inspStatPoints{font-weight:bold;color:var(--gold);margin-right:2px;}
+  .info-btn{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;
+    padding:0;line-height:1;margin-right:2px;flex-shrink:0;}
+  #inspStatsRow button.stat-btn{background:linear-gradient(180deg,rgba(0,0,0,0.35),rgba(0,0,0,0.15));
+    color:var(--paper);border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:6px 9px;
+    min-height:36px;cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 5px rgba(0,0,0,0.5);}
+  #inspStatsRow button.stat-btn:disabled{cursor:default;} /* stays normal color when disabled — no dimming */
+  #inspStatsRow button.stat-btn .plus-hint{display:none;}
+  #inspStatsRow button.stat-btn.has-points{border-color:#4caf50;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.5), 0 0 10px 2px rgba(76,175,80,0.7);}
+  #inspStatsRow button.stat-btn.has-points .plus-hint{display:inline;color:#4caf50;font-weight:bold;}
+  #inspItemsLabel{font-weight:bold;color:var(--gold);}
   #inspItemsRow{flex-basis:100%;display:flex;align-items:center;gap:8px;
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
   #inspItemsSummary{font-size:13px;}
@@ -201,6 +209,8 @@
   #start-screen.hidden,#end-screen.hidden{display:none;}
   #start-screen h1,#end-screen h1{font-size:clamp(22px,5vw,40px);color:var(--gold);
     text-shadow:2px 2px 0 #000;margin-bottom:6px;}
+  #versionTag{font-size:11px;color:var(--paper);opacity:0.55;margin-bottom:14px;}
+  #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;gap:8px;margin-top:16px;}
   #rating-picker{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:14px;}
@@ -256,12 +266,15 @@
       <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
       <button id="inspClose">✕</button>
       <div id="inspStatsRow">
-        <span id="inspStatPoints">Points: 0</span>
-        <button id="inspStrBtn" title="Strength: +5% damage per point">💪 STR <span id="inspStrVal">0</span> +</button>
-        <button id="inspDexBtn" title="Dexterity: +5% attack speed per point">🏃 DEX <span id="inspDexVal">0</span> +</button>
-        <button id="inspIntBtn" title="Intelligence: +6 range per point">🧠 INT <span id="inspIntVal">0</span> +</button>
+        <button class="info-btn" id="statsInfoBtn" title="Tap for how stats work">❓</button>
+        <span id="inspStatPoints">STATS: <span id="inspStatPointsVal">0</span></span>
+        <button id="inspStrBtn" class="stat-btn" title="Strength: +5% damage per point">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
+        <button id="inspDexBtn" class="stat-btn" title="Dexterity: +5% attack speed per point">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
+        <button id="inspIntBtn" class="stat-btn" title="Intelligence: +6 range per point">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
       </div>
       <div id="inspItemsRow">
+        <button class="info-btn" id="inventoryInfoBtn" title="Tap for how items work">❓</button>
+        <span id="inspItemsLabel">INVENTORY</span>
         <span id="inspItemsSummary">No items</span>
         <button id="inspShopShortcutBtn">🛒 Items</button>
       </div>
@@ -333,6 +346,7 @@
           </div>
           <div class="settings-panel hidden" data-panel="about">
             <p>Stick Tower Defense — a self-contained, dependency-free browser tower defense game.</p>
+            <p id="aboutVersionLine">Version <span id="aboutVersionText"></span></p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
             <button id="viewReadmeBtn">📄 View as page</button>
             <button id="expandAboutBtn">More info ▾</button>
@@ -363,6 +377,7 @@
 
     <div id="start-screen">
       <h1>STICK TOWER DEFENSE</h1>
+      <div id="versionTag">v<span id="versionText"></span></div>
       <p>Place stick-figure defenders along the hedge maze to stop the emoji horde before they reach the end of the path. Tap "Build" to pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, sell, move, or change its target priority. More tower types unlock as you clear waves. You also earn a free tower relocation every 2 waves — use "Move" to relocate one without selling it.</p>
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
@@ -392,6 +407,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
+const GAME_VERSION = '1.0.0'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const CANVAS_W = TILE_SIZE * COLS, CANVAS_H = TILE_SIZE * ROWS;
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
@@ -543,20 +559,20 @@ const CONFIG = {
       name: 'Swordsman', icon: '⚔️', baseCost: 50, unlocksAfterWave: 0,
       blurb: 'Melee sweep — hits everything in a cone in front of it. Picks a specialization at level 5.',
       tiers: [
-        { range: 90,  damage: 18, cooldown: 900 },
-        { range: 100, damage: 28, cooldown: 800, upgradeCost: 60 },
-        { range: 115, damage: 42, cooldown: 700, upgradeCost: 90 },
-        { range: 125, damage: 58, cooldown: 650, upgradeCost: 130 },
-        { range: 135, damage: 78, cooldown: 600, upgradeCost: 180 }
+        { range: 90,  damage: 18, cooldown: 780 },
+        { range: 100, damage: 28, cooldown: 700, upgradeCost: 60 },
+        { range: 115, damage: 42, cooldown: 620, upgradeCost: 90 },
+        { range: 125, damage: 58, cooldown: 570, upgradeCost: 130 },
+        { range: 135, damage: 78, cooldown: 520, upgradeCost: 180 }
       ]
     },
     ARCHER: {
       name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
       blurb: 'Draws the bow fully before loosing — slower arrows, but real power behind every shot.',
       tiers: [
-        { range: 260, damage: 20, cooldown: 650, drawTime: 450, projectileSpeed: 320 },
-        { range: 290, damage: 30, cooldown: 550, drawTime: 400, projectileSpeed: 360, upgradeCost: 70 },
-        { range: 320, damage: 44, cooldown: 450, drawTime: 350, projectileSpeed: 400, upgradeCost: 100 }
+        { range: 260, damage: 20, cooldown: 740, drawTime: 510, projectileSpeed: 320 },
+        { range: 290, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 360, upgradeCost: 70 },
+        { range: 320, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 400, upgradeCost: 100 }
       ]
     },
     AXEMAN: {
@@ -687,68 +703,149 @@ function rebuildPathCellsAndPx(){
     x: p.x*TILE_SIZE + TILE_SIZE/2, y: p.y*TILE_SIZE + TILE_SIZE/2
   }));
 }
-// Builds a spiral path across the whole region: samples points along an inward-winding spiral
-// (with randomized jaggy radius jitter), then bridges every gap between consecutive samples one
-// cardinal step at a time. Because every hop is forced to be a single adjacent tile, the resulting
-// path is guaranteed fully connected end to end — there is no way for this to produce a dead end.
+// Winds back and forth through every OTHER row (or column, whichever axis is longer — maximizes
+// total walk length), connecting each used row/column to the next via a single bridge tile through
+// the skipped one. This isn't probabilistic: by construction roughly half the region is path and
+// half stays open to build on, and every step is to an adjacent tile so it can never disconnect.
+// A little organic jaggy variation is layered on top without breaking either guarantee.
 function buildSpiralPathTiles(region){
-  const cx = (region.x0+region.x1)/2, cy = (region.y0+region.y1)/2;
-  const maxR = Math.max(region.x1-region.x0, region.y1-region.y0)/2 + 0.5;
-  const turns = 1.3 + Math.random()*0.4;
-  const sampleCount = Math.max(24, Math.round(maxR*14));
-  const startAngle = Math.random()*Math.PI*2;
-  const points = [];
-  for(let i=0; i<=sampleCount; i++){
-    const t = i/sampleCount;
-    const angle = startAngle + t*turns*Math.PI*2;
-    let r = maxR*(1-t) + (Math.random()-0.5)*0.7; // spirals from the outer edge inward, with jaggy jitter
-    r = Math.max(0, r);
-    const gx = Math.round(cx + Math.cos(angle)*r);
-    const gy = Math.round(cy + Math.sin(angle)*r);
-    points.push({
-      x: Math.max(region.x0, Math.min(region.x1, gx)),
-      y: Math.max(region.y0, Math.min(region.y1, gy))
-    });
+  const width = region.x1-region.x0+1, height = region.y1-region.y0+1;
+  const horizontal = width >= height; // walk along the longer axis for maximum length
+  const tiles = [];
+  const jag = () => (Math.random() < 0.3 ? (Math.random()<0.5?-1:1) : 0); // occasional small organic bump
+
+  if(horizontal){
+    let dir = 1;
+    for(let y=region.y0; y<=region.y1; y+=2){
+      const jy = Math.max(region.y0, Math.min(region.y1, y + jag()));
+      if(dir === 1){ for(let x=region.x0; x<=region.x1; x++) tiles.push({x, y:jy}); }
+      else { for(let x=region.x1; x>=region.x0; x--) tiles.push({x, y:jy}); }
+      if(y+2 <= region.y1){
+        const lastX = dir === 1 ? region.x1 : region.x0;
+        for(let by=jy; by!==y+1; by += Math.sign(y+1-jy)) tiles.push({x:lastX, y:by});
+        tiles.push({x:lastX, y:y+1});
+      }
+      dir *= -1;
+    }
+  } else {
+    let dir = 1;
+    for(let x=region.x0; x<=region.x1; x+=2){
+      const jx = Math.max(region.x0, Math.min(region.x1, x + jag()));
+      if(dir === 1){ for(let y=region.y0; y<=region.y1; y++) tiles.push({x:jx, y}); }
+      else { for(let y=region.y1; y>=region.y0; y--) tiles.push({x:jx, y}); }
+      if(x+2 <= region.x1){
+        const lastY = dir === 1 ? region.y1 : region.y0;
+        for(let bx=jx; bx!==x+1; bx += Math.sign(x+1-jx)) tiles.push({x:bx, y:lastY});
+        tiles.push({x:x+1, y:lastY});
+      }
+      dir *= -1;
+    }
   }
-  const tiles = [points[0]];
-  for(let i=1; i<points.length; i++){
-    let cur = tiles[tiles.length-1];
-    const target = points[i];
+
+  // dedupe and guarantee every consecutive pair is a single adjacent step (organic jag can create
+  // a diagonal-looking jump otherwise — this bridges any such gap exactly like before)
+  const bridged = [tiles[0]];
+  for(let i=1; i<tiles.length; i++){
+    let cur = bridged[bridged.length-1];
+    const target = tiles[i];
     let guard = 0;
-    while((cur.x !== target.x || cur.y !== target.y) && guard < 80){
+    while((cur.x !== target.x || cur.y !== target.y) && guard < 20){
       guard++;
       const dx = target.x-cur.x, dy = target.y-cur.y;
       let next;
       if(Math.abs(dx) >= Math.abs(dy) && dx !== 0) next = {x:cur.x+Math.sign(dx), y:cur.y};
       else if(dy !== 0) next = {x:cur.x, y:cur.y+Math.sign(dy)};
-      else next = {x:cur.x+Math.sign(dx), y:cur.y};
+      else break;
       cur = next;
-      tiles.push(cur);
+      bridged.push(cur);
     }
   }
-  const deduped = [tiles[0]];
-  for(let i=1; i<tiles.length; i++){
-    const p = tiles[i], last = deduped[deduped.length-1];
+  const deduped = [bridged[0]];
+  for(let i=1; i<bridged.length; i++){
+    const p = bridged[i], last = deduped[deduped.length-1];
     if(p.x !== last.x || p.y !== last.y) deduped.push(p);
   }
   return deduped;
 }
 // Regenerates the spiral, retrying a few times if it happens to land on an existing tower's tile
+function countDistinctTiles(tiles){
+  return new Set(tiles.map(t => t.x+','+t.y)).size;
+}
+// Ordered walk around the full outer boundary of a region — used to extend the path as a genuine
+// connected loop when the map expands, instead of regenerating the whole thing from scratch.
+function ringBoundaryTiles(region){
+  const {x0,y0,x1,y1} = region;
+  if(x0===x1 && y0===y1) return [{x:x0,y:y0}];
+  const tiles = [];
+  for(let x=x0; x<=x1; x++) tiles.push({x, y:y0});
+  for(let y=y0+1; y<=y1; y++) tiles.push({x:x1, y});
+  if(y1>y0) for(let x=x1-1; x>=x0; x--) tiles.push({x, y:y1});
+  if(x1>x0) for(let y=y1-1; y>=y0+1; y--) tiles.push({x:x0, y});
+  return tiles;
+}
+function bridgeTiles(from, to){
+  const tiles = [];
+  let cur = {...from};
+  let guard = 0;
+  while((cur.x !== to.x || cur.y !== to.y) && guard < 200){
+    guard++;
+    const dx = to.x-cur.x, dy = to.y-cur.y;
+    if(Math.abs(dx) >= Math.abs(dy) && dx !== 0) cur = {x:cur.x+Math.sign(dx), y:cur.y};
+    else if(dy !== 0) cur = {x:cur.x, y:cur.y+Math.sign(dy)};
+    else break;
+    tiles.push(cur);
+  }
+  return tiles;
+}
+// Prepends a full loop around the new outer ring to the existing path, entering near wherever the
+// path currently starts. The old path (and everything built around it) is never touched — this is
+// pure addition, which is also what makes it read as the spiral continuing outward, loop by loop.
+function extendPathWithNewRing(oldPath, newRegion){
+  const ring = ringBoundaryTiles(newRegion);
+  const start = oldPath[0];
+  let idx = 0, bestD = Infinity;
+  for(let i=0; i<ring.length; i++){
+    const d = Math.abs(ring[i].x-start.x) + Math.abs(ring[i].y-start.y);
+    if(d < bestD){ bestD = d; idx = i; }
+  }
+  const rotated = [...ring.slice(idx+1), ...ring.slice(0, idx+1)]; // closest point ends up last
+  const bridge = bridgeTiles(rotated[rotated.length-1], start);
+  const combined = [...rotated, ...bridge, ...oldPath];
+  const deduped = [combined[0]];
+  for(let i=1; i<combined.length; i++){
+    const p = combined[i], last = deduped[deduped.length-1];
+    if(p.x !== last.x || p.y !== last.y) deduped.push(p);
+  }
+  return deduped;
+}
+// Guaranteed-minimal fallback: a single straight line across the middle row. Leaves every other
+// tile in the region open — used only if the spiral genuinely can't leave enough room to build.
+function buildFallbackPath(region){
+  const midY = Math.floor((region.y0+region.y1)/2);
+  const tiles = [];
+  for(let x=region.x0; x<=region.x1; x++) tiles.push({x, y:midY});
+  return tiles;
+}
 function generateConflictFreePath(region, maxAttempts){
-  for(let attempt=0; attempt<(maxAttempts||6); attempt++){
+  const regionArea = (region.x1-region.x0+1) * (region.y1-region.y0+1);
+  const minOpenTiles = Math.min(2, Math.max(0, regionArea-2)); // always leave room to build at least 2 towers
+  for(let attempt=0; attempt<(maxAttempts||8); attempt++){
     const tiles = buildSpiralPathTiles(region);
     const conflict = towerPool.some(t => t.active && tiles.some(p => p.x===t.gridX && p.y===t.gridY));
-    if(!conflict) return tiles;
+    const openTiles = regionArea - countDistinctTiles(tiles);
+    if(!conflict && openTiles >= minOpenTiles) return tiles;
   }
-  return buildSpiralPathTiles(region); // give up avoiding conflicts after enough tries — exceedingly rare
+  return buildFallbackPath(region); // spiral couldn't leave enough room — guaranteed-safe straight path instead
 }
+let nextRingIsPath = true; // alternates each expansion — every other ring is pure buildable growth
 function initRegionAndPath(){
   const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
-  pathWaypointTiles = generateConflictFreePath(activeRegion);
+  nextRingIsPath = true;
+  pathWaypointTiles = generateConflictFreePath(activeRegion); // only the base level uses the half/half comb split
   rebuildPathCellsAndPx();
 }
 function performExpansion(label, labelColor){
@@ -761,7 +858,10 @@ function performExpansion(label, labelColor){
   };
   activeRegion = newRegion;
   expansionLevel++;
-  pathWaypointTiles = generateConflictFreePath(newRegion);
+  if(nextRingIsPath){
+    pathWaypointTiles = extendPathWithNewRing(pathWaypointTiles, newRegion); // spiral winds one more loop outward
+  } // else: leave the path exactly as-is — this ring is pure buildable space, no regeneration needed
+  nextRingIsPath = !nextRingIsPath;
   rebuildPathCellsAndPx();
   // clear any pre-existing scenery that now happens to sit on the new spiral's route
   for(const tile of pathWaypointTiles){
@@ -859,19 +959,19 @@ function updateBarricadesAndPileup(){
   }
   for(const e of active){
     const barricade = findTouchingBarricade(e);
-    if(!barricade) continue;
-    if(!barricade.blockActive){
-      barricade.blockActive = true;
-      barricade.blockExpiresAt = gameTime + 10000;
-      spawnFloatingText(barricade.x, barricade.y - 24, '🚧 Blocked!', '#e63946');
-    }
-    if(gameTime < barricade.blockExpiresAt){
-      e.pileBlocked = true;
-      e.touchingBarricade = true;
-    } else {
-      barricade.active = false; // 10s window over — the barricade breaks and traffic resumes
-      spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
-      playSound('death');
+    if(!barricade || barricade.hp <= 0) continue;
+    e.pileBlocked = true;
+    e.touchingBarricade = true;
+    if(gameTime - barricade.lastBarricadeHitAt >= 2000){
+      barricade.lastBarricadeHitAt = gameTime;
+      barricade.hp = Math.max(0, barricade.hp - 1);
+      spawnFloatingText(barricade.x, barricade.y - 24, '-1', '#e63946');
+      spawnParticles(barricade.x, barricade.y, '#8a5a2b', 4);
+      if(barricade.hp <= 0){
+        barricade.active = false; // broken — traffic resumes
+        spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
+        playSound('death');
+      }
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
@@ -887,10 +987,15 @@ function updateBarricadesAndPileup(){
   }
 }
 
-function isTileBuildable(gx, gy, ignoreTower, allowPath){
+function isTileBuildable(gx, gy, ignoreTower, forType){
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return false;
   if(!isInActiveRegion(gx, gy)) return false;
-  if(!allowPath && pathCells.has(gx+','+gy)) return false;
+  const onPath = pathCells.has(gx+','+gy);
+  if(forType === 'BARRICADE'){
+    if(!onPath) return false; // Barricades ONLY go on the path itself
+  } else if(onPath){
+    return false; // everything else stays off the path, as before
+  }
   if(sceneryMap.has(gx+','+gy)) return false;
   if(towerPool.some(t => t.active && t !== ignoreTower && t.gridX===gx && t.gridY===gy)) return false;
   return true;
@@ -1142,10 +1247,10 @@ function drawBuildPreview(ctx){
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return;
   let valid;
   if(moveModeTower){
-    valid = isTileBuildable(gx, gy, moveModeTower);
+    valid = isTileBuildable(gx, gy, moveModeTower, moveModeTower.type);
   } else {
     const cost = CONFIG.TOWERS[selectedBuildType].baseCost;
-    valid = isTileBuildable(gx, gy, null, selectedBuildType === 'BARRICADE') && gold >= cost;
+    valid = isTileBuildable(gx, gy, null, selectedBuildType) && gold >= cost;
   }
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
   ctx.save();
@@ -1297,7 +1402,7 @@ function serializeGameState(){
   }));
   const sceneryData = [...sceneryMap.entries()].map(([key, item]) => ({ key, item }));
   return {
-    seed: generateSaveSeed(), savedAt: new Date().toISOString(),
+    seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION,
     gold, lives, waveIndex, wavesCompleted, wood, stone, moveCharges,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
     goreMode, graphicsQuality,
@@ -1308,6 +1413,7 @@ function downloadSaveFile(){
   const state = serializeGameState();
   const text = 'STICK TOWER DEFENSE — SAVE FILE\n' +
     'Seed: ' + state.seed + '\n' +
+    'Game version: ' + state.gameVersion + '\n' +
     'Saved: ' + state.savedAt + '\n' +
     'Do not edit below this line — upload this whole file via Settings > Game > Load Save to restore.\n\n' +
     JSON.stringify(state);
@@ -1349,8 +1455,9 @@ function restoreGameState(state){
     t.equippedItems = (td.itemIds||[]).map(id => (SHOP_ITEMS[td.type]||[]).find(i => i.id===id)).filter(Boolean);
     t.recomputeStats();
     t.checkHeroStatus();
-    if(td.hp !== undefined) t.hp = td.hp;
-    if(td.maxHp !== undefined) t.maxHp = td.maxHp;
+    if(td.hp !== undefined) t.hp = Math.min(td.hp, t.maxHp); // clamp protects against loading an older
+    // save made before a type's maxHp scale changed (e.g. Barricade). maxHp itself is never restored
+    // from save data — it's always fully determined by tower type in create().
   }
 
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
@@ -1369,7 +1476,9 @@ function loadSaveFileText(text){
   try{
     const state = JSON.parse(text.slice(jsonStart));
     restoreGameState(state);
-    showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')');
+    const versionNote = (state.gameVersion && state.gameVersion !== GAME_VERSION)
+      ? ' — from v' + state.gameVersion + ', this is v' + GAME_VERSION : '';
+    showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')' + versionNote);
   } catch(err){
     showToast('⚠️ Could not read that save file');
   }
@@ -1680,16 +1789,17 @@ class Tower{
     this.hitSet = new Set();
     this.lastSwordAngle = 0;
     this.swingStart = 0;
-    this.swingArc = Math.PI/2;
+    this.swingArc = Math.PI * 0.85; // ~153° — wide enough that anything in range gets caught by the sweep
     this.swingDuration = type === 'SPEARMAN' ? 550 : 300;
     this.slowFactor = 0; this.slowDuration = 0; this.splashRadius = 0;
     this.meleeRange = 0; this.meleeDamage = 0; this.meleeCooldown = 0;
     this.stunMs = 0; // HAMMERMAN only, from tier config
     this.isDrawing = false; this.drawStart = 0; this.drawProgress = 0; this.baseDrawTime = 0; // ARCHER only
     // Tower HP — mostly irrelevant unless a breakaway enemy engages this tower directly.
-    this.maxHp = type === 'BARRICADE' ? 320 : (type === 'HAMMERMAN' ? 180 : 100);
-    this.blockActive = false;  // BARRICADE only: true once the first mob touches it
-    this.blockExpiresAt = 0;   // gameTime the 10s block window ends and the barricade breaks
+    // BARRICADE is the exception: its HP IS the X/10 display, 1:1, and only drops when an
+    // enemy is actively blocked against it — rate-limited to at most 1 point per 2 seconds.
+    this.maxHp = type === 'BARRICADE' ? 10 : (type === 'HAMMERMAN' ? 180 : 100);
+    this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the 2s rate limit
     this.hp = this.maxHp;
     this.shieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks
     this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
@@ -1910,7 +2020,7 @@ class Tower{
         }
       }
     }
-    if(this.hp < this.maxHp && this.disabledUntil <= gameTime){
+    if(this.type !== 'BARRICADE' && this.hp < this.maxHp && this.disabledUntil <= gameTime){
       this.hp = Math.min(this.maxHp, this.hp + this.maxHp*0.01*dt/1000); // slow passive regen
     }
   }
@@ -2118,16 +2228,14 @@ class Tower{
       ctx.font = Math.round(28*STICKMAN_SCALE) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('🚧', this.x, this.y);
-      if(this.blockActive && this.hp > 0){
-        const remainMs = Math.max(0, this.blockExpiresAt - gameTime);
-        const frac = remainMs / 10000; // 1 = just triggered, 0 = about to break
-        const scaled = Math.ceil(frac*10);
+      if(this.hp < this.maxHp && this.hp > 0){
+        const frac = this.hp / this.maxHp;
         const r = Math.round(230 - frac*(230-76));
         const g = Math.round(57 + frac*(175-57));
         const b = Math.round(70 + frac*(80-70));
         ctx.font = 'bold 11px Verdana';
         ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-        ctx.fillText(scaled + '/10', this.x, this.y - 22);
+        ctx.fillText(Math.round(this.hp) + '/10', this.x, this.y - 22);
         const barW = 26, barY = this.y - 14;
         ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x-barW/2, barY, barW, 4);
         ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
@@ -2883,7 +2991,7 @@ function handleTap(clientX, clientY){
       spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '🔒 Expand map first', '#e63946');
       return;
     }
-    if(!isTileBuildable(gx, gy, null, selectedBuildType === 'BARRICADE')) return;
+    if(!isTileBuildable(gx, gy, null, selectedBuildType)) return;
     const cost = CONFIG.TOWERS[selectedBuildType].baseCost;
     if(gold < cost) return;
     const t = acquireActive(towerPool);
@@ -2906,7 +3014,7 @@ function handleTap(clientX, clientY){
 
 function attemptMoveTower(gx, gy){
   if(gx === moveModeTower.gridX && gy === moveModeTower.gridY){ exitMoveMode(); return; }
-  if(!isTileBuildable(gx, gy, moveModeTower)) return; // invalid tile — stay in move mode, let them try again
+  if(!isTileBuildable(gx, gy, moveModeTower, moveModeTower.type)) return; // invalid tile — stay in move mode, let them try again
   moveModeTower.gridX = gx; moveModeTower.gridY = gy;
   moveModeTower.x = gx*TILE_SIZE + TILE_SIZE/2;
   moveModeTower.y = gy*TILE_SIZE + TILE_SIZE/2;
@@ -3295,6 +3403,14 @@ document.getElementById('inspShopShortcutBtn').addEventListener('pointerdown', (
   if(!selectedTower) return;
   openShopModal(selectedTower.type);
 });
+document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  showToast('STR: +5% damage/pt · DEX: +5% attack speed/pt · INT: +6 range/pt. Earn points by upgrading a tower — spend them here anytime.');
+});
+document.getElementById('inventoryInfoBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  showToast('Buy class-specific gear from the Shop and equip it here. 4 slots per tower — fill all 4 to awaken it as a Hero with a permanent bonus.');
+});
 
 // --- Settings modal (usable from the start screen or mid-game — not gated on gameState) ---
 function syncSettingsUI(){
@@ -3363,7 +3479,8 @@ document.getElementById('loadSaveInput').addEventListener('change', (e) => {
 });
 function getReadmeText(){
   return 'STICK TOWER DEFENSE\n' +
-'====================\n\n' +
+'====================\n' +
+'Version ' + GAME_VERSION + '\n\n' +
 'A self-contained, dependency-free browser tower defense game. Single index.html file, ' +
 'no build step, no external assets — everything is drawn procedurally on a Canvas.\n\n' +
 'HOW TO PLAY\n' +
@@ -3495,14 +3612,16 @@ function updateInspectPanel(){
     ? t.equippedItems.map(i => i.icon).join(' ')
     : 'No items';
 
-  document.getElementById('inspStatPoints').textContent = 'Points: ' + t.statPoints;
+  document.getElementById('inspStatPointsVal').textContent = t.statPoints;
   document.getElementById('inspStrVal').textContent = t.str;
   document.getElementById('inspDexVal').textContent = t.dex;
   document.getElementById('inspIntVal').textContent = t.int;
   const noPoints = t.statPoints <= 0;
-  document.getElementById('inspStrBtn').disabled = noPoints;
-  document.getElementById('inspDexBtn').disabled = noPoints;
-  document.getElementById('inspIntBtn').disabled = noPoints;
+  for(const id of ['inspStrBtn','inspDexBtn','inspIntBtn']){
+    const btn = document.getElementById(id);
+    btn.disabled = noPoints;
+    btn.classList.toggle('has-points', !noPoints);
+  }
 }
 
 inspUpgradeBtn.addEventListener('pointerdown', (e) => {
@@ -3712,6 +3831,8 @@ drawMap(mapCanvas.getContext('2d')); // rendered once here and re-baked on each 
 generateScenery();
 seedStartingBarricades();
 centerCameraOnActiveRegion();
+document.getElementById('versionText').textContent = GAME_VERSION;
+document.getElementById('aboutVersionText').textContent = GAME_VERSION;
 updateHUD();
 requestAnimationFrame(loop);
 </script>

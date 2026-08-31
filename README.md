@@ -1,5 +1,7 @@
 # Stick Tower Defense
 
+**Version 1.0.0**
+
 A free browser-based tower defense game with 8 unique stickman classes, an expanding spiral map, infinite waves, a hero item system, breakaway enemies that ambush your towers, path-blocking barricades, and full save/load. Single self-contained HTML file — no install, no build step, just open and play.
 
 **[Play it here](https://sauerninja.github.io/StickTD/)**
@@ -48,6 +50,10 @@ Video (graphics quality), Audio (mute), Game (18+ gore toggle, save/load), and A
 ## Save / Load
 
 Progress isn't auto-saved. Settings → Game → **Save Game** downloads a `.txt` file with a random seed and your full game state. **Load Save** on that same screen restores it — on this device or any other.
+
+## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## License
 
