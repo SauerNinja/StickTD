@@ -52,6 +52,19 @@
     text-align:center;z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s;}
   #unlock-toast.show{opacity:1;}
 
+  #killstreak-banner{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) scale(0.6);
+    font-size:clamp(24px,6vw,56px);font-weight:900;letter-spacing:2px;color:#ffd700;
+    text-shadow:0 0 12px rgba(255,140,0,0.9),0 0 28px rgba(255,60,0,0.7),3px 3px 0 #000;
+    z-index:15;opacity:0;pointer-events:none;transition:none;white-space:nowrap;}
+  #killstreak-banner.show{animation:killstreakPop 2.2s ease-out forwards;}
+  @keyframes killstreakPop{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(0.4);}
+    12%{opacity:1;transform:translate(-50%,-50%) scale(1.15);}
+    22%{transform:translate(-50%,-50%) scale(1);}
+    80%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.05);}
+  }
+
   /* Build dropdown — condensed rows anchored under the top-left Build button, not a full-screen modal */
   #tower-modal{position:absolute;inset:0;background:transparent;z-index:20;pointer-events:none;}
   #tower-modal.hidden{display:none;}
@@ -179,15 +192,16 @@
   #inspStatsRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
     margin-top:2px;padding-top:8px;border-top:1px solid rgba(241,196,15,0.3);}
   #inspStatPoints{font-weight:bold;color:var(--gold);margin-right:2px;}
-  .info-btn{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;
-    padding:0;line-height:1;margin-right:2px;flex-shrink:0;}
-  #inspStatsRow button.stat-btn{background:linear-gradient(180deg,rgba(0,0,0,0.35),rgba(0,0,0,0.15));
-    color:var(--paper);border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:6px 9px;
-    min-height:36px;cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 5px rgba(0,0,0,0.5);}
-  #inspStatsRow button.stat-btn:disabled{cursor:default;} /* stays normal color when disabled — no dimming */
+  .info-btn{-webkit-appearance:none;appearance:none;background:transparent;border:none;outline:none;
+    box-shadow:none;color:var(--gold);font-size:14px;cursor:pointer;padding:0;margin:0 2px 0 0;
+    line-height:1;flex-shrink:0;}
+  #inspStatsRow button.stat-btn{background:#3d5a66;color:#ffffff;font-weight:bold;
+    border:1px solid rgba(125,211,252,0.6);border-radius:6px;padding:6px 9px;
+    min-height:36px;cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);}
+  #inspStatsRow button.stat-btn:disabled{cursor:default;color:#ffffff;opacity:1;} /* overrides the general #inspect-panel button:disabled dimming — these must never fade */
   #inspStatsRow button.stat-btn .plus-hint{display:none;}
   #inspStatsRow button.stat-btn.has-points{border-color:#4caf50;
-    box-shadow:inset 0 2px 5px rgba(0,0,0,0.5), 0 0 10px 2px rgba(76,175,80,0.7);}
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.25), 0 0 10px 2px rgba(76,175,80,0.7);}
   #inspStatsRow button.stat-btn.has-points .plus-hint{display:inline;color:#4caf50;font-weight:bold;}
   #inspItemsLabel{font-weight:bold;color:var(--gold);}
   #inspItemsRow{flex-basis:100%;display:flex;align-items:center;gap:8px;
@@ -292,6 +306,7 @@
     </div>
 
     <div id="unlock-toast"><span id="unlockToastText"></span></div>
+    <div id="killstreak-banner"></div>
 
     <div id="tower-modal" class="hidden">
       <div id="tower-modal-inner">
@@ -1384,6 +1399,68 @@ function showMilestoneToast(wave){
   showToast('🏆 Survived to Wave ' + wave + '!');
 }
 
+// --- Kill streaks, stat gains from kills, and Legendary units ---
+const KILLSTREAK_TIERS = [
+  { count:10,  label:'KILLING SPREE' },
+  { count:20,  label:'DOMINATING' },
+  { count:30,  label:'MEGA KILL' },
+  { count:40,  label:'UNSTOPPABLE' },
+  { count:50,  label:'WICKED SICK' },
+  { count:60,  label:'MONSTER KILL' },
+  { count:70,  label:'GODLIKE' },
+  { count:80,  label:'HOLY SHIT!' },
+  { count:90,  label:'BEYOND GODLIKE' },
+  { count:100, label:'ASCENDED' }
+];
+function showKillstreakBanner(label){
+  const el = document.getElementById('killstreak-banner');
+  el.textContent = label;
+  el.classList.remove('show'); void el.offsetWidth; // restart animation if it's still showing
+  el.classList.add('show');
+  clearTimeout(showKillstreakBanner._t);
+  showKillstreakBanner._t = setTimeout(() => el.classList.remove('show'), 2200);
+  playSound('wave');
+}
+function checkLegendaryStatus(tower){
+  if(tower.isLegendary || tower.type === 'BARRICADE') return;
+  if(tower.str + tower.dex + tower.int < 100) return;
+  tower.isLegendary = true;
+  tower.maxHp = Math.round(tower.maxHp * 1.05);
+  tower.hp = tower.maxHp;
+  tower.shieldPct = Math.min(0.9, (tower.shieldPct||0) + 0.05);
+  tower.recomputeStats();
+  setTimeout(() => {
+    const name = prompt('🏆 This unit reached 100 total stats! Name it:', tower.def.name);
+    tower.legendaryName = (name && name.trim()) ? name.trim().slice(0,20) : tower.def.name;
+    showToast('👑 ' + tower.legendaryName + ' has become Legendary!');
+    updateInspectPanel();
+  }, 30);
+}
+const STREAK_TIMEOUT_MS = 1200; // tighter window — kills must be genuinely rapid to keep a streak alive
+function creditKill(tower, forStreak){
+  if(forStreak === undefined) forStreak = true;
+  tower.killCount++;
+  if(tower.killCount % 4 === 0){
+    tower.statPoints++;
+    spawnFloatingText(tower.x, tower.y - 36, '+1 STAT', '#4caf50');
+  }
+  if(!forStreak){ updateInspectPanel(); updateHUD(); return; } // e.g. splash kills beyond the first in one blast
+  if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
+    tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
+  }
+  tower.lastKillTime = gameTime;
+  tower.killStreak++;
+  while(tower.nextStreakTier < KILLSTREAK_TIERS.length && tower.killStreak >= KILLSTREAK_TIERS[tower.nextStreakTier].count){
+    const tier = KILLSTREAK_TIERS[tower.nextStreakTier];
+    tower.nextStreakTier++;
+    tower.statPoints++;
+    showKillstreakBanner(tier.label);
+  }
+  checkLegendaryStatus(tower);
+  updateInspectPanel();
+  updateHUD();
+}
+
 // --- Save / Load: a downloadable .txt file containing a random seed (cosmetic identifier) plus
 // the full serialized game state as JSON, restorable on this device or any other. ---
 function generateSaveSeed(){
@@ -1398,7 +1475,9 @@ function serializeGameState(){
     str: t.str, dex: t.dex, int: t.int, statPoints: t.statPoints,
     spec: t.spec || null,
     itemIds: t.equippedItems.map(i => i.id),
-    hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode
+    hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
+    killCount: t.killCount, killStreak: t.killStreak, nextStreakTier: t.nextStreakTier,
+    isLegendary: t.isLegendary, legendaryName: t.legendaryName
   }));
   const sceneryData = [...sceneryMap.entries()].map(([key, item]) => ({ key, item }));
   return {
@@ -1458,6 +1537,8 @@ function restoreGameState(state){
     if(td.hp !== undefined) t.hp = Math.min(td.hp, t.maxHp); // clamp protects against loading an older
     // save made before a type's maxHp scale changed (e.g. Barricade). maxHp itself is never restored
     // from save data — it's always fully determined by tower type in create().
+    t.killCount = td.killCount || 0; t.killStreak = td.killStreak || 0; t.nextStreakTier = td.nextStreakTier || 0;
+    t.isLegendary = !!td.isLegendary; t.legendaryName = td.legendaryName || '';
   }
 
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
@@ -1688,16 +1769,17 @@ class Enemy{
     this.breakawayDone = true; // won't try again this life — resumes its original path from here
   }
   reachEnd(){ this.active = false; loseLife(1); }
-  applyDamage(amount){
+  applyDamage(amount, sourceTower, forStreak){
     let dmg = amount;
     if(this.armor) dmg = Math.max(1, amount - this.armor);
     this.hp -= dmg;
     this.flashTimer = 120;
     spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 5 : 3);
-    if(this.hp <= 0) this.die();
+    if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
-  die(){
+  die(sourceTower, forStreak){
+    if(sourceTower && sourceTower.active) creditKill(sourceTower, forStreak);
     this.active = false;
     gold += this.bounty;
     const low = graphicsQuality === 'low';
@@ -1800,6 +1882,12 @@ class Tower{
     // enemy is actively blocked against it — rate-limited to at most 1 point per 2 seconds.
     this.maxHp = type === 'BARRICADE' ? 10 : (type === 'HAMMERMAN' ? 180 : 100);
     this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the 2s rate limit
+    this.killCount = 0;      // total kills — every 4th grants a free stat point
+    this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
+    this.lastKillTime = 0;
+    this.nextStreakTier = 0; // index into KILLSTREAK_TIERS, so each tier only fires once per streak
+    this.isLegendary = false;
+    this.legendaryName = '';
     this.hp = this.maxHp;
     this.shieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks
     this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
@@ -2001,6 +2089,7 @@ class Tower{
     if(this.hp <= 0 && this.disabledUntil <= gameTime){
       this.disabledUntil = gameTime + 4000;
       this.hp = Math.round(this.maxHp * 0.3); // recovers with partial HP once the disable ends
+      this.killStreak = 0; this.nextStreakTier = 0;
       spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
       playSound('lose');
       return true;
@@ -2017,6 +2106,7 @@ class Tower{
         if(this.hp <= 0 && this.disabledUntil <= gameTime){
           this.disabledUntil = gameTime + 4000;
           this.hp = Math.round(this.maxHp * 0.3);
+          this.killStreak = 0; this.nextStreakTier = 0;
         }
       }
     }
@@ -2068,6 +2158,7 @@ class Tower{
     p.slowDuration = this.slowDuration || 0;
     p.splashRadius = this.splashRadius || 0;
     p.isAxe = false;
+    p.sourceTower = this;
     p.color = this.type === 'MAGE' ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : '#f1c40f';
     playSound(this.type === 'BOMBER' ? 'sword' : 'bow');
   }
@@ -2116,7 +2207,7 @@ class Tower{
     p.damage = this.damage;
     p.angle = angle;
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0;
-    p.isAxe = true; p.spinAngle = 0;
+    p.isAxe = true; p.spinAngle = 0; p.sourceTower = this;
     p.color = '#9aa0a6';
     this.renderSwordAngle = angle;
     playSound('sword');
@@ -2204,6 +2295,7 @@ class Tower{
     damage = damage ?? this.damage;
     radius = radius ?? this.range;
     const lo = Math.min(prevA, currA), hi = Math.max(prevA, currA);
+    let streakClaimed = false;
     for(const e of nearby){
       if(hitSet.has(e.id)) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
@@ -2212,7 +2304,8 @@ class Tower{
       while(ang < lo - Math.PI) ang += Math.PI*2;
       while(ang > hi + Math.PI) ang -= Math.PI*2;
       if(ang >= lo && ang <= hi){
-        e.applyDamage(damage);
+        e.applyDamage(damage, this, !streakClaimed);
+        if(!e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
         if(stunMs) e.applyStun(stunMs);
         hitSet.add(e.id);
       }
@@ -2270,7 +2363,7 @@ class Tower{
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       lungeAmt = Math.sin(st*Math.PI) * 4; // small forward step, peaks mid-swing, settles back
     }
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, isLegendary: this.isLegendary };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -2285,6 +2378,18 @@ class Tower{
       ctx.strokeStyle = 'rgba(255,215,0,0.55)';
       ctx.lineWidth = 2;
       ctx.stroke();
+    }
+
+    if(this.killStreak > 0 && gameTime - this.lastKillTime <= STREAK_TIMEOUT_MS){
+      const pulse = Math.sin(performance.now()/150)*2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 24+pulse, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,235,59,0.75)';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(255,235,59,0.6)';
+      ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, 16);
@@ -2308,6 +2413,19 @@ class Tower{
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
       ctx.fillText('👑', this.x, this.y - 41*STICKMAN_SCALE*buildY);
+    }
+    if(this.isLegendary){
+      ctx.font = '15px serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
+      const trophyY = this.isHero ? this.y - 55*STICKMAN_SCALE*buildY : this.y - 41*STICKMAN_SCALE*buildY;
+      ctx.fillText('🏆', this.x, trophyY);
+      if(this.legendaryName){
+        ctx.font = 'bold 10px Verdana';
+        ctx.fillStyle = '#ffd700';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.legendaryName, this.x, this.y + 34*STICKMAN_SCALE);
+      }
     }
     if(this.hp < this.maxHp){
       const barW = 26, barY = this.y - 34;
@@ -2341,15 +2459,19 @@ class Projectile{
   }
   onImpact(hitEnemy){
     if(this.splashRadius > 0){
+      let streakClaimed = false;
       for(const e of enemyPool){
         if(!e.active) continue;
         const d = Math.hypot(e.x-this.x, e.y-this.y);
-        if(d <= this.splashRadius) e.applyDamage(this.damage);
+        if(d <= this.splashRadius){
+          e.applyDamage(this.damage, this.sourceTower, !streakClaimed);
+          if(e.hp <= 0 || !e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
+        }
       }
       spawnParticles(this.x, this.y, '#ffb347', 14);
       playSound('death');
     } else {
-      hitEnemy.applyDamage(this.damage);
+      hitEnemy.applyDamage(this.damage, this.sourceTower);
       if(this.slowFactor) hitEnemy.applySlow(this.slowFactor, this.slowDuration);
       spawnParticles(this.x, this.y, this.color || '#ffffff', 3);
     }
@@ -2540,6 +2662,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   const lunge = (extra && extra.lungeAmt) || 0;
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
   ctx.scale(STICKMAN_SCALE, STICKMAN_SCALE);
+  const legendaryScale = (extra && extra.isLegendary) ? 1.1 : 1;
+  if(legendaryScale !== 1) ctx.scale(legendaryScale, legendaryScale);
   ctx.scale(build.scaleX, build.scaleY);
   ctx.lineWidth = 3;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -2603,8 +2727,11 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.lineTo(quiverX + Math.sin(fan)*5, quiverY - 10 + Math.cos(fan)*2);
       ctx.stroke();
     }
-    // front (bow) arm extends nearly straight out toward the target
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen+5, skinMain, -0.08);
+    // front (bow) arm extends nearly straight out toward the target, and tenses/locks as the draw
+    // builds — it shouldn't sit frozen while only the drawing arm moves
+    const bowArmBend = -0.08 - drawAmt*0.10; // straightens slightly under tension
+    const bowArmLen = armLen + 5 + drawAmt*2; // tiny forward push as it braces against the pull
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, bowArmLen, skinMain, bowArmBend);
     const handX = hand.handX, handY = hand.handY;
     const bowTopX = handX + Math.cos(angle - Math.PI/2)*10;
     const bowTopY = handY + Math.sin(angle - Math.PI/2)*10;
@@ -3579,7 +3706,7 @@ function updateInspectPanel(){
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
   inspectPanel.classList.remove('hidden');
   const t = selectedTower;
-  inspName.textContent = t.def.name;
+  inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Two-Hander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
   inspLevel.textContent = 'Lv.' + t.level + specLabel + heroLabel;
@@ -3672,6 +3799,7 @@ document.getElementById('cancelMoveBtn').addEventListener('pointerdown', (e) => 
     if(!selectedTower) return;
     if(selectedTower.allocateStat(stat)){
       playSound('click');
+      checkLegendaryStatus(selectedTower);
       updateInspectPanel();
     }
   });
