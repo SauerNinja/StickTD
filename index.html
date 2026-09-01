@@ -53,9 +53,10 @@
   #unlock-toast.show{opacity:1;}
 
   #killstreak-banner{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) scale(0.6);
-    font-size:clamp(24px,6vw,56px);font-weight:900;letter-spacing:2px;color:#ffd700;
+    max-width:92%;text-align:center;
+    font-size:clamp(20px,5.5vw,56px);font-weight:900;letter-spacing:2px;color:#ffd700;
     text-shadow:0 0 12px rgba(255,140,0,0.9),0 0 28px rgba(255,60,0,0.7),3px 3px 0 #000;
-    z-index:15;opacity:0;pointer-events:none;transition:none;white-space:nowrap;}
+    z-index:15;opacity:0;pointer-events:none;transition:none;}
   #killstreak-banner.show{animation:killstreakPop 2.2s ease-out forwards;}
   @keyframes killstreakPop{
     0%{opacity:0;transform:translate(-50%,-50%) scale(0.4);}
@@ -619,11 +620,11 @@ const CONFIG = {
     },
     MAGE: {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 3,
-      blurb: 'Slows anything it hits — great for bunching up fast enemies.',
+      blurb: 'Slows anything it hits, and has a small chance to burn, freeze, or shock it too.',
       tiers: [
-        { range: 220, damage: 6,  cooldown: 700, projectileSpeed: 460, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 9,  cooldown: 620, projectileSpeed: 480, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 65 },
-        { range: 260, damage: 13, cooldown: 550, projectileSpeed: 500, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 95 }
+        { range: 220, damage: 6,  cooldown: 1080, projectileSpeed: 460, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 240, damage: 9,  cooldown: 960,  projectileSpeed: 480, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 65 },
+        { range: 260, damage: 13, cooldown: 840,  projectileSpeed: 500, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 95 }
       ]
     },
     BOMBER: {
@@ -660,24 +661,32 @@ const CONFIG = {
     BOSS:   { emoji:'👹', baseHp:2200,speed:30,  bounty:150,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
     TROLL:  { emoji:'🧌', baseHp:130, speed:65,  bounty:45, radius:18, armor:2, breakawayChance:0, breakDamage:0 },
     FIRE:   { emoji:'🔥', baseHp:55,  speed:90,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:9, statusOnTower:'BURN' },
-    ICE:    { emoji:'🧊', baseHp:60,  speed:75,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:7, statusOnTower:'ICE' }
+    ICE:    { emoji:'🧊', baseHp:60,  speed:75,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:7, statusOnTower:'ICE' },
+    SPLITTER: { emoji:'🦠', baseHp:70,  speed:60,  bounty:6,  radius:16, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
+    SPLITMINI:{ emoji:'🦠', baseHp:24,  speed:85,  bounty:2,  radius:10, armor:0, breakawayChance:0,    breakDamage:3 },
+    HEALER: { emoji:'💉', baseHp:85,  speed:55,  bounty:11, radius:16, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
+    SHIELDED: { emoji:'🛡️', baseHp:95,  speed:50,  bounty:10, radius:17, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
+    ZOMBIE: { emoji:'🧟', baseHp:150, speed:32,  bounty:9,  radius:19, armor:3, breakawayChance:0.02, breakDamage:8 },
+    WRAITH: { emoji:'👻', baseHp:38,  speed:130, bounty:8,  radius:14, armor:0, breakawayChance:0.04, breakDamage:5 },
+    SKELETON: { emoji:'🦴', baseHp:65,  speed:60,  bounty:10, radius:16, armor:0, breakawayChance:0.02, breakDamage:5, revives:true },
+    WOLF: { emoji:'🐺', baseHp:32,  speed:100, bounty:6,  radius:13, armor:0, breakawayChance:0.03, breakDamage:5, pack:true }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
     [{type:'GRUNT',count:6,spawnDelay:1100}],
     [{type:'GRUNT',count:5,spawnDelay:1000},{type:'TANK',count:1,spawnDelay:2000}],
     [{type:'SWARM',count:16,spawnDelay:220}],
-    [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250}],
-    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700}],
-    [{type:'RUNNER',count:10,spawnDelay:400}],
-    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'FIRE',count:2,spawnDelay:1200}],
-    [{type:'SWARM',count:20,spawnDelay:200},{type:'TANK',count:3,spawnDelay:1500}],
-    [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300}],
-    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'ICE',count:2,spawnDelay:1300}],
-    [{type:'TANK',count:8,spawnDelay:1100},{type:'FIRE',count:3,spawnDelay:1000}],
-    [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180},{type:'ICE',count:3,spawnDelay:1000}],
-    [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}],
-    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600}]
+    [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}],
+    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700},{type:'ZOMBIE',count:3,spawnDelay:1300},{type:'SKELETON',count:3,spawnDelay:1100}],
+    [{type:'RUNNER',count:10,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'WRAITH',count:3,spawnDelay:700}],
+    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'FIRE',count:2,spawnDelay:1200},{type:'WOLF',count:5,spawnDelay:500}],
+    [{type:'SWARM',count:20,spawnDelay:200},{type:'TANK',count:3,spawnDelay:1500},{type:'HEALER',count:2,spawnDelay:1300},{type:'SKELETON',count:4,spawnDelay:1000}],
+    [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300},{type:'SHIELDED',count:3,spawnDelay:1000}],
+    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'ICE',count:2,spawnDelay:1300},{type:'ZOMBIE',count:4,spawnDelay:1200}],
+    [{type:'TANK',count:8,spawnDelay:1100},{type:'FIRE',count:3,spawnDelay:1000},{type:'SPLITTER',count:4,spawnDelay:900},{type:'WOLF',count:6,spawnDelay:450}],
+    [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180},{type:'ICE',count:3,spawnDelay:1000},{type:'HEALER',count:3,spawnDelay:1100},{type:'WRAITH',count:4,spawnDelay:650}],
+    [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100},{type:'SHIELDED',count:4,spawnDelay:900},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:5,spawnDelay:900}],
+    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500}]
   ],
   SCENERY: {
     coverage: 0.16,          // fraction of buildable (non-path) tiles scattered with scenery at game start
@@ -1645,6 +1654,9 @@ class Enemy{
     this.slowMultiplier = 1;
     this.slowTimer = 0;
     this.stunnedUntil = 0;
+    this.burnUntil = 0;
+    this.burnTickTimer = 0;
+    this.lastBurnSource = null;
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
     this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
     this.bumpTime = 0;
@@ -1659,6 +1671,18 @@ class Enemy{
     this.statusOnTower = def.statusOnTower || null;
     this.isTroll = type === 'TROLL';
     this.trollSwingTimer = 4000 + Math.random()*2500;
+    this.splits = !!def.splits;
+    this.hasSplit = false; // guards against a split-of-a-split — SPLITMINI never has def.splits set, so this stays moot for them
+    this.healsAllies = !!def.healsAllies;
+    this.holyLifesteal = !!def.holyLifesteal;
+    this.healTickTimer = 0;
+    this.hasShield = !!def.hasShield;
+    this.shieldHp = this.hasShield ? 20 : 0;
+    this.shieldMaxHp = 20;
+    this.shieldRegenTimer = 0;
+    this.revives = !!def.revives;
+    this.hasRevived = false;
+    this.pack = !!def.pack;
     this.active = true;
   }
   applySlow(factor, duration){
@@ -1669,7 +1693,24 @@ class Enemy{
   applyStun(ms){
     this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms);
   }
+  applyBurn(ms, sourceTower){
+    this.burnUntil = Math.max(this.burnUntil, gameTime + ms);
+    if(sourceTower) this.lastBurnSource = sourceTower;
+  }
   update(dt){
+    if(this.burnUntil > gameTime){
+      this.burnTickTimer -= dt;
+      if(this.burnTickTimer <= 0){
+        this.burnTickTimer = 500;
+        const burnDmg = Math.max(1, Math.round(this.maxHp * 0.04));
+        this.hp -= burnDmg;
+        spawnFloatingText(this.x, this.y - this.radius - 6, burnDmg+'🔥', '#ff8844');
+        spawnParticles(this.x, this.y, '#ff6b35', 3);
+        if(this.hp <= 0){ this.die(this.lastBurnSource, false); return; }
+      }
+    }
+    if(this.healsAllies) this.updateHealAura(dt);
+    if(this.hasShield) this.updateShieldRegen(dt);
     if(this.pileBlocked){
       this.vx = 0; this.vy = 0;
       if(this.touchingBarricade) this.bumpTime += dt;
@@ -1687,7 +1728,19 @@ class Enemy{
       this.slowTimer -= dt;
       if(this.slowTimer <= 0){ this.slowTimer = 0; this.slowMultiplier = 1; }
     }
-    const effectiveSpeed = this.speed * this.slowMultiplier;
+    if(this.pack){
+      this.packCheckTimer = (this.packCheckTimer||0) - dt;
+      if(this.packCheckTimer <= 0){
+        this.packCheckTimer = 500;
+        let nearbyPack = 0;
+        for(const e of enemyPool){
+          if(e === this || !e.active || !e.pack) continue;
+          if(Math.hypot(e.x-this.x, e.y-this.y) <= 80) nearbyPack++;
+        }
+        this.packSpeedBonus = 1 + Math.min(0.5, nearbyPack*0.15); // up to +50% speed with packmates nearby
+      }
+    }
+    const effectiveSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
     const target = waypointsPx[this.pathIndex+1];
     if(!target){ this.reachEnd(); return; }
     const dx = target.x - this.x, dy = target.y - this.y;
@@ -1706,6 +1759,42 @@ class Enemy{
     // once eligible and a little into its walk, actually trigger the breakaway
     if(this.willBreakaway && !this.breakawayDone && this.traveled > 32){
       this.tryStartBreakaway();
+    }
+  }
+  updateHealAura(dt){
+    this.healTickTimer -= dt;
+    if(this.healTickTimer > 0) return;
+    this.healTickTimer = 1000;
+    let healedAny = false;
+    for(const e of enemyPool){
+      if(!e.active || e === this || e.hp >= e.maxHp) continue;
+      const d = Math.hypot(e.x-this.x, e.y-this.y);
+      if(d > 90) continue;
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp*0.06);
+      healedAny = true;
+    }
+    if(healedAny){
+      spawnParticles(this.x, this.y, '#7cfc7c', 3);
+    }
+  }
+  updateShieldRegen(dt){
+    if(this.shieldHp >= this.shieldMaxHp) return;
+    this.shieldRegenTimer -= dt;
+    if(this.shieldRegenTimer <= 0){
+      this.shieldRegenTimer = 300;
+      this.shieldHp = Math.min(this.shieldMaxHp, this.shieldHp + this.shieldMaxHp*0.08);
+    }
+  }
+  spawnSplitChildren(){
+    this.hasSplit = true;
+    for(let i=0; i<2; i++){
+      const child = acquireActive(enemyPool);
+      if(!child) break;
+      child.spawn('SPLITMINI', 1 + (waveIndex-1)*0.15);
+      child.x = this.x + (Math.random()*16-8);
+      child.y = this.y + (Math.random()*16-8);
+      child.pathIndex = this.pathIndex;
+      child.traveled = this.traveled;
     }
   }
   updateTroll(dt){
@@ -1760,6 +1849,12 @@ class Enemy{
       if(this.breakAttackTimer <= 0){
         this.breakAttackTimer = 800;
         const defeated = t.takeDamage(this.breakDamage, this.statusOnTower);
+        if(this.holyLifesteal){
+          const healed = Math.min(this.maxHp - this.hp, Math.round(this.breakDamage*0.5));
+          if(healed > 0) this.hp += healed;
+          spawnFloatingText(this.x, this.y - this.radius - 10, '✝️ +'+healed, '#ffe9a8');
+          spawnParticles(t.x, t.y, '#ffe9a8', 6);
+        }
         if(defeated) this.endBreakaway();
       }
     }
@@ -1772,6 +1867,18 @@ class Enemy{
   applyDamage(amount, sourceTower, forStreak){
     let dmg = amount;
     if(this.armor) dmg = Math.max(1, amount - this.armor);
+    if(this.hasShield && this.shieldHp > 0){
+      const absorbed = Math.min(this.shieldHp, dmg);
+      this.shieldHp -= absorbed;
+      dmg -= absorbed;
+      this.shieldRegenTimer = 3000; // getting hit delays the next regen tick
+      spawnParticles(this.x, this.y, '#7dd3fc', 4);
+      if(dmg <= 0){
+        this.flashTimer = 60;
+        if(absorbed > 0) spawnFloatingText(this.x, this.y - this.radius, 'BLOCKED', '#7dd3fc');
+        return; // shield fully absorbed this hit — no HP lost, no kill possible from it
+      }
+    }
     this.hp -= dmg;
     this.flashTimer = 120;
     spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
@@ -1779,6 +1886,16 @@ class Enemy{
     if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
   die(sourceTower, forStreak){
+    if(this.revives && !this.hasRevived){
+      this.hasRevived = true;
+      this.maxHp = Math.round(this.maxHp * 0.5); // permanently weaker second life
+      this.hp = this.maxHp;
+      spawnFloatingText(this.x, this.y - this.radius - 10, '💀 Reanimated!', '#c9a8ff');
+      spawnParticles(this.x, this.y, '#c9a8ff', 10);
+      playSound('wave');
+      return; // not actually dead yet — no bounty, no kill credit, skip normal death handling
+    }
+    if(this.splits && !this.hasSplit) this.spawnSplitChildren();
     if(sourceTower && sourceTower.active) creditKill(sourceTower, forStreak);
     this.active = false;
     gold += this.bounty;
@@ -1811,9 +1928,33 @@ class Enemy{
       ctx.fillStyle = 'rgba(125,211,252,0.35)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
     }
+    if(this.burnUntil > gameTime){
+      ctx.fillStyle = 'rgba(255,107,53,0.3)';
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+    }
     if(this.pileBlocked){
       ctx.fillStyle = 'rgba(230,57,70,0.3)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.1, 0, Math.PI*2); ctx.fill();
+    }
+    if(this.hasShield && this.shieldHp > 0){
+      ctx.strokeStyle = 'rgba(125,211,252,' + (0.4 + 0.5*(this.shieldHp/this.shieldMaxHp)) + ')';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.25, 0, Math.PI*2); ctx.stroke();
+    }
+    if(this.healsAllies){
+      const pulse = Math.sin(performance.now()/300)*2;
+      ctx.strokeStyle = 'rgba(124,252,124,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.15+pulse, 0, Math.PI*2); ctx.stroke();
+    }
+    if(this.pack && (this.packSpeedBonus||1) > 1.1){
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.2, 0, Math.PI*2); ctx.stroke();
+    }
+    if(this.revives && this.hasRevived){
+      ctx.font = '10px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('💀', this.x, this.y - this.radius - 6);
     }
     if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, this.radius*0.7);
     const speed = Math.hypot(this.vx, this.vy);
@@ -1882,6 +2023,7 @@ class Tower{
     // enemy is actively blocked against it — rate-limited to at most 1 point per 2 seconds.
     this.maxHp = type === 'BARRICADE' ? 10 : (type === 'HAMMERMAN' ? 180 : 100);
     this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the 2s rate limit
+    this.lastFireTime = -99999; // used for brief post-fire flourish animations (e.g. Mage's wand cast)
     this.killCount = 0;      // total kills — every 4th grants a free stat point
     this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
     this.lastKillTime = 0;
@@ -2111,7 +2253,8 @@ class Tower{
       }
     }
     if(this.type !== 'BARRICADE' && this.hp < this.maxHp && this.disabledUntil <= gameTime){
-      this.hp = Math.min(this.maxHp, this.hp + this.maxHp*0.01*dt/1000); // slow passive regen
+      const regenRate = this.isHero ? 0.03 : 0.01; // Heroes recover HP three times as fast
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp*regenRate*dt/1000);
     }
   }
 
@@ -2139,6 +2282,7 @@ class Tower{
     }
   }
   fireProjectile(){
+    this.lastFireTime = gameTime;
     const t = this.target;
     const dx = t.x-this.x, dy = t.y-this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
@@ -2358,12 +2502,18 @@ class Tower{
         ctx.stroke();
       }
     }
-    let lungeAmt = 0;
+    let lungeAmt = 0, swingProgress = 0;
     if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN')){
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       lungeAmt = Math.sin(st*Math.PI) * 4; // small forward step, peaks mid-swing, settles back
+      swingProgress = st;
     }
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, isLegendary: this.isLegendary };
+    let castProgress = 0;
+    if(this.type === 'MAGE'){
+      const sinceFired = gameTime - this.lastFireTime;
+      if(sinceFired < 350) castProgress = 1 - sinceFired/350;
+    }
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -2380,7 +2530,7 @@ class Tower{
       ctx.stroke();
     }
 
-    if(this.killStreak > 0 && gameTime - this.lastKillTime <= STREAK_TIMEOUT_MS){
+    if(this.nextStreakTier > 0 && gameTime - this.lastKillTime <= STREAK_TIMEOUT_MS){
       const pulse = Math.sin(performance.now()/150)*2;
       ctx.beginPath();
       ctx.arc(this.x, this.y, 24+pulse, 0, Math.PI*2);
@@ -2473,6 +2623,35 @@ class Projectile{
     } else {
       hitEnemy.applyDamage(this.damage, this.sourceTower);
       if(this.slowFactor) hitEnemy.applySlow(this.slowFactor, this.slowDuration);
+      if(this.sourceTower && this.sourceTower.type === 'MAGE' && hitEnemy.active && Math.random() < 0.15){
+        const roll = Math.random();
+        if(roll < 0.34){
+          hitEnemy.applyBurn(3000, this.sourceTower);
+          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🔥 Burning!', '#ff8844');
+        } else if(roll < 0.67){
+          hitEnemy.applySlow(0.85, 1500);
+          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🧊 Frozen!', '#7dd3fc');
+        } else {
+          hitEnemy.applyStun(700);
+          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '⚡ Shocked!', '#ffe14d');
+          const chainTarget = enemyPool.find(e => e.active && e !== hitEnemy && Math.hypot(e.x-hitEnemy.x, e.y-hitEnemy.y) <= 70);
+          if(chainTarget){
+            chainTarget.applyStun(400);
+            chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false);
+            spawnFloatingText(chainTarget.x, chainTarget.y - chainTarget.radius - 14, '⚡ Chained!', '#ffe14d');
+            if(graphicsQuality !== 'low'){
+              // sketch the arc as a short trail of particles along the line between the two —
+              // onImpact has no canvas context to draw a line directly, so this is the lightweight approach
+              const steps = 5;
+              for(let i=1; i<steps; i++){
+                const t = i/steps;
+                spawnParticles(hitEnemy.x + (chainTarget.x-hitEnemy.x)*t, hitEnemy.y + (chainTarget.y-hitEnemy.y)*t, '#ffe14d', 1);
+              }
+            }
+          }
+        }
+        spawnParticles(hitEnemy.x, hitEnemy.y, '#c9a8ff', 6);
+      }
       spawnParticles(this.x, this.y, this.color || '#ffffff', 3);
     }
   }
@@ -2702,13 +2881,15 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   const shoulderX = 0, shoulderY = -10, armLen = 13;
 
   if(type === 'SWORDSMAN'){
+    const swingT = extra.swingProgress || 0;
+    const dynamicBend = -0.3 + swingT*0.55; // cocked back at wind-up, extends through the strike
     if(isDual){
-      const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.5);
+      const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
       drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx);
-      const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, extra.angle2, armLen, skinMain, 0.5);
+      const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, extra.angle2, armLen, skinMain, 0.5 - swingT*0.55);
       drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx);
     } else {
-      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, dynamicBend);
       drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx);
       if(isTwoHander){
         // second hand gripping the same hilt for a two-handed stance
@@ -2718,6 +2899,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   } else if(type === 'ARCHER'){
     const drawAmt = extra.drawProgress || 0; // 0 = relaxed, 1 = fully drawn and about to loose
+    // two genuinely separate shoulders (front/back relative to facing), not one shared pivot —
+    // a bow is a two-handed grip and needs an actual left/right shoulder to read as one
+    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const shoulderOffset = 3.5;
+    const frontShoulderX = shoulderX + perpX*shoulderOffset, frontShoulderY = shoulderY + perpY*shoulderOffset;
+    const backShoulderX = shoulderX - perpX*shoulderOffset, backShoulderY = shoulderY - perpY*shoulderOffset;
     // quiver of arrows on the back — drawn first so the arms/bow sit in front of it
     const quiverX = -7, quiverY = -13;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2;
@@ -2731,7 +2918,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // builds — it shouldn't sit frozen while only the drawing arm moves
     const bowArmBend = -0.08 - drawAmt*0.10; // straightens slightly under tension
     const bowArmLen = armLen + 5 + drawAmt*2; // tiny forward push as it braces against the pull
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, bowArmLen, skinMain, bowArmBend);
+    const hand = drawArmAndHand(ctx, frontShoulderX, frontShoulderY, angle, bowArmLen, skinMain, bowArmBend);
     const handX = hand.handX, handY = hand.handY;
     const bowTopX = handX + Math.cos(angle - Math.PI/2)*10;
     const bowTopY = handY + Math.sin(angle - Math.PI/2)*10;
@@ -2753,10 +2940,10 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.moveTo(bowTopX,bowTopY);
     ctx.quadraticCurveTo(bowMidX,bowMidY,bowBotX,bowBotY);
     ctx.stroke();
-    // drawing arm: a real elbow-bent second arm (not a straight line), pulling back further
+    // drawing arm: a real elbow-bent second arm, from its own shoulder, pulling back further
     // as the shot charges — both arms now animate the same way for a matching silhouette
     const pullBack = 6 + drawAmt*15;
-    const backHand = drawArmAndHand(ctx, shoulderX, shoulderY, angle + Math.PI, pullBack, skinMain, 0.35);
+    const backHand = drawArmAndHand(ctx, backShoulderX, backShoulderY, angle + Math.PI, pullBack, skinMain, 0.35);
     const drawX = backHand.handX, drawY = backHand.handY;
     ctx.strokeStyle = 'rgba(245,240,230,0.8)';
     ctx.lineWidth = 1;
@@ -2780,14 +2967,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.fillStyle = skinMain;
     ctx.beginPath(); ctx.arc(drawX,drawY,1.8,0,Math.PI*2); ctx.fill();
   } else if(type === 'MAGE'){
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const cast = extra.castProgress || 0;
+    const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
     const tipX = handX + Math.cos(angle)*16, tipY = handY + Math.sin(angle)*16;
     const buttX = handX - Math.cos(angle)*7, buttY = handY - Math.sin(angle)*7;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
-    const pulse = 3 + Math.sin(performance.now()/220)*1;
+    const pulse = 3 + Math.sin(performance.now()/220)*1 + cast*3; // brief extra flash on cast
     const orbColor = level >= 3 ? '#a78bfa' : '#7dd3fc';
     if(!lowGfx){
       ctx.fillStyle = level >= 3 ? 'rgba(167,139,250,0.35)' : 'rgba(125,211,252,0.35)';
@@ -2822,7 +3011,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, angle, armLen, skinMain, 0.4);
     drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level);
   } else if(type === 'SPEARMAN'){
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
     const shaftLen = 34;
@@ -2840,7 +3030,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.closePath();
     ctx.fill();
   } else if(type === 'HAMMERMAN'){
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
     const haftLen = 18;
@@ -2908,6 +3099,13 @@ function generateProceduralWave(n){
   if(n >= 3) group.push({ type:'RUNNER', count: 4 + Math.floor(n*1.5), spawnDelay: Math.max(180, 380 - n*8) });
   if(n >= 1) group.push({ type:'FIRE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
   if(n >= 2) group.push({ type:'ICE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
+  if(n >= 2) group.push({ type:'SPLITTER', count: 2 + Math.floor(n/3), spawnDelay: Math.max(600, 1000 - n*8) });
+  if(n >= 3) group.push({ type:'HEALER', count: 1 + Math.floor(n/4), spawnDelay: Math.max(900, 1400 - n*10) });
+  if(n >= 4) group.push({ type:'SHIELDED', count: 2 + Math.floor(n/3), spawnDelay: Math.max(700, 1100 - n*8) });
+  if(n >= 1) group.push({ type:'ZOMBIE', count: 2 + Math.floor(n/3), spawnDelay: Math.max(700, 1200 - n*8) });
+  if(n >= 2) group.push({ type:'WRAITH', count: 2 + Math.floor(n/2), spawnDelay: Math.max(400, 700 - n*6) });
+  if(n >= 1) group.push({ type:'SKELETON', count: 2 + Math.floor(n/3), spawnDelay: Math.max(650, 1100 - n*8) });
+  if(n >= 1) group.push({ type:'WOLF', count: 3 + Math.floor(n*1.2), spawnDelay: Math.max(300, 550 - n*7) });
   if(n % 5 === 0) group.push({ type:'BOSS', count: 1 + Math.floor(n/15), spawnDelay: 0 });
   return group;
 }
