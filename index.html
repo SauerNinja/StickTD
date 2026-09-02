@@ -444,6 +444,7 @@
         <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 10 →</span> 🔱 Spearman</div>
         <div class="evo-row">🏹 Archer <span class="evo-arrow">→ STR 10 →</span> 🔫 Gatling</div>
         <div class="evo-row">🏹 Archer <span class="evo-arrow">→ DEX 10 →</span> 🎯 Blowdart</div>
+        <div class="evo-row">🎯 Blowdart <span class="evo-arrow">→ DEX 25 →</span> 🔫 Dual Squirt Gun</div>
         <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 10 →</span> 💣 Bomber</div>
         <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 10 →</span> ✝️ Cleric</div>
         <div class="evo-row">🚧 Barricade doesn't fight or evolve — it's a cheap, tough obstacle only.</div>
@@ -533,7 +534,8 @@ const JOB_COLORS = {
   BOMBER:    { main:'hsl(42,60%,78%)',  shade:'hsl(42,48%,58%)'  }, // amber/brown
   GATLING:   { main:'hsl(220,18%,80%)', shade:'hsl(220,22%,55%)' }, // desaturated steel gray-blue
   CLERIC:    { main:'hsl(48,70%,90%)',  shade:'hsl(48,45%,68%)'  }, // pale gold-white
-  BLOWDART:  { main:'hsl(95,45%,75%)',  shade:'hsl(95,38%,52%)'  }  // sickly poison green
+  BLOWDART:  { main:'hsl(95,45%,75%)',  shade:'hsl(95,38%,52%)'  }, // sickly poison green
+  SQUIRTGUN: { main:'hsl(105,70%,68%)', shade:'hsl(105,60%,42%)' }  // vivid acid green
 };
 const JOB_BUILD = {
   SWORDSMAN: { scaleX:1.00, scaleY:1.00 }, // average
@@ -545,7 +547,8 @@ const JOB_BUILD = {
   BOMBER:    { scaleX:1.20, scaleY:0.88 }, // stout, heavy-set
   GATLING:   { scaleX:1.12, scaleY:0.95 }, // bulky
   CLERIC:    { scaleX:0.92, scaleY:1.05 },  // upright, composed
-  BLOWDART:  { scaleX:0.88, scaleY:1.02 }   // lean and quick
+  BLOWDART:  { scaleX:0.88, scaleY:1.02 },  // lean and quick
+  SQUIRTGUN: { scaleX:0.86, scaleY:1.00 }   // even lighter, built for speed
 };
 // Flavor lines per class — tied to combat role/personality, not to any real-world region or ethnicity.
 const JOB_QUOTES = {
@@ -558,7 +561,8 @@ const JOB_QUOTES = {
   BOMBER:    ["Fire in the hole!", "Stand back — way back.", "Boom first, questions later."],
   GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum."],
   CLERIC:    ["None shall fall today.", "Be still, and be healed.", "The undead have no place here."],
-  BLOWDART:  ["One prick is all it takes.", "The poison does the rest.", "Fast hands, sharp aim."]
+  BLOWDART:  ["One prick is all it takes.", "The poison does the rest.", "Fast hands, sharp aim."],
+  SQUIRTGUN: ["Double the guns, double the burn.", "Acid doesn't miss twice.", "Wet work, my specialty."]
 };
 function randomJobQuote(type){
   const lines = JOB_QUOTES[type];
@@ -576,7 +580,7 @@ const HERO_BONUS_STAT = 5;
 const RANGE_CAPS = {
   MAGE: 420, ARCHER: 380, GATLING: 340, BOMBER: 320,
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140,
-  CLERIC: 200, BLOWDART: 240
+  CLERIC: 200, BLOWDART: 240, SQUIRTGUN: 260
 };
 // Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less —
 // tier 0 (points 1-5) at full value, tier 1 (6-10) at 85%, tier 2 (11-15) at 70%, and so on down
@@ -606,7 +610,7 @@ const EARLY_STAT_CAP_POINTS = 15; // points beyond this stop contributing to the
 // class-specific bonuses (Mage's INT damage, Archer's DEX damage, Blowdart's poison, etc).
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR',
-  ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER',
+  ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
 const PREFERRED_STAT_MULT = 1.25; // a tower's archetype-preferred stat is 25% more effective per point
@@ -619,13 +623,13 @@ const PREFERRED_STAT_MULT = 1.25; // a tower's archetype-preferred stat is 25% m
 // magic-aligned sibling. Barricade sits outside this tree entirely — it's a utility piece, not a
 // fighter with a stat identity.
 const EVOLUTIONS = {
-  SWORDSMAN: { str: 'HAMMERMAN', dex: 'AXEMAN', int: 'SPEARMAN' },
-  ARCHER: { str: 'GATLING', dex: 'BLOWDART', int: 'BOMBER' },
-  MAGE: { int: 'CLERIC' }
+  SWORDSMAN: { str: {target:'HAMMERMAN', threshold:10}, dex: {target:'AXEMAN', threshold:10}, int: {target:'SPEARMAN', threshold:10} },
+  ARCHER: { str: {target:'GATLING', threshold:10}, dex: {target:'BLOWDART', threshold:10}, int: {target:'BOMBER', threshold:10} },
+  MAGE: { int: {target:'CLERIC', threshold:10} },
+  BLOWDART: { dex: {target:'SQUIRTGUN', threshold:25} } // deeper DEX specialization — a second tier beyond the first evolution
 };
-const EVOLUTION_STAT_THRESHOLD = 10; // points needed in the relevant stat to trigger the evolution
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC']; // reachable only via evolution, never built directly
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN']; // reachable only via evolution, never built directly
 
 const SHOP_ITEMS = {
   SWORDSMAN: [
@@ -688,6 +692,12 @@ const SHOP_ITEMS = {
     { id:'BD_IRON', name:'Carved Blowpipe', icon:'🎋', str:0, dex:3, int:1, cost:75 },
     { id:'BD_GOLD', name:'Venomcraft Kit',  icon:'🧪', str:1, dex:6, int:3, cost:210 },
     { id:'BD_MASTER', name:'Masterwork Toxin', icon:'☠️', str:1, dex:8, int:4, cost:175, woodCost:8, stoneCost:15 }
+  ],
+  SQUIRTGUN: [
+    { id:'SG_WOOD', name:'Dollar Store Squirter', icon:'💧', str:0, dex:1, int:0, cost:0,   tier:'starter' },
+    { id:'SG_IRON', name:'Pressurized Nozzle',    icon:'💦', str:0, dex:4, int:1, cost:80 },
+    { id:'SG_GOLD', name:'Acid Reservoir',        icon:'🧫', str:1, dex:7, int:3, cost:220 },
+    { id:'SG_MASTER', name:'Masterwork Corrosive', icon:'🟢', str:1, dex:9, int:4, cost:180, woodCost:8, stoneCost:16 }
   ]
 };
 
@@ -819,6 +829,15 @@ const CONFIG = {
         { range: 155, damage: 8,  cooldown: 370, projectileSpeed: 420, poisonDamage: 3, poisonDuration: 3000 },
         { range: 170, damage: 12, cooldown: 315, projectileSpeed: 450, poisonDamage: 5, poisonDuration: 3000, upgradeCost: 65 },
         { range: 190, damage: 18, cooldown: 260, projectileSpeed: 480, poisonDamage: 8, poisonDuration: 3500, upgradeCost: 95 }
+      ]
+    },
+    SQUIRTGUN: {
+      name: 'Dual Squirt Gun', icon: '🔫', baseCost: 0, unlocksAfterWave: 0,
+      blurb: 'A Blowdart pushed to the DEX extreme — twin water pistols spraying corrosive green acid, firing even faster with a longer-lingering burn than the dart it evolved from.',
+      tiers: [
+        { range: 160, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
+        { range: 175, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 70 },
+        { range: 195, damage: 14, cooldown: 140, projectileSpeed: 520, poisonDamage: 10, poisonDuration: 4500, upgradeCost: 100 }
       ]
     }
   },
@@ -2430,9 +2449,9 @@ class Tower{
     const evoMap = EVOLUTIONS[this.type];
     if(!evoMap) return; // not a base class, or already evolved — evolution is one-way and terminal
     let targetType = null;
-    if(evoMap.str && this.str >= EVOLUTION_STAT_THRESHOLD) targetType = evoMap.str;
-    else if(evoMap.dex && this.dex >= EVOLUTION_STAT_THRESHOLD) targetType = evoMap.dex;
-    else if(evoMap.int && this.int >= EVOLUTION_STAT_THRESHOLD) targetType = evoMap.int;
+    if(evoMap.str && this.str >= evoMap.str.threshold) targetType = evoMap.str.target;
+    else if(evoMap.dex && this.dex >= evoMap.dex.threshold) targetType = evoMap.dex.target;
+    else if(evoMap.int && this.int >= evoMap.int.threshold) targetType = evoMap.int.target;
     if(targetType) this.evolveInto(targetType);
   }
   evolveInto(newType){
@@ -3213,9 +3232,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   ctx.lineWidth = 3;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  // head + torso: main skin tone
+  // head + torso: main skin tone — head radii are pre-compensated for the body's scaleX/scaleY so
+  // it renders as a true circle regardless of how stretched or squashed that class's proportions
+  // are (a squished-looking head was really just the body's non-uniform scale distorting a circle
+  // drawn in the same transformed space)
   ctx.strokeStyle = skinMain;
-  ctx.beginPath(); ctx.arc(0,-24,7,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0,-24, 7/build.scaleX, 7/build.scaleY, 0, 0, Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0,-17); ctx.lineTo(0,4); ctx.stroke();
   // equipped head-slot item, if any — drawn right on top of the head
   if(extra && extra.headItem === 'archer_hat'){
@@ -3252,7 +3274,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   }
   if(level >= 3){
     ctx.fillStyle = '#c7ccd1';
-    ctx.beginPath(); ctx.arc(0,-24,8,Math.PI,0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,-24, 8/build.scaleX, 8/build.scaleY, 0, Math.PI, 0); ctx.fill();
   }
 
   const shoulderX = 0, shoulderY = -10, armLen = 13;
@@ -3503,6 +3525,21 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     if(!lowGfx){
       ctx.fillStyle = 'rgba(124,181,24,0.4)';
       ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
+    }
+  } else if(type === 'SQUIRTGUN'){
+    // dual-wielded pistols, both hands actively aiming — no relaxed off-hand for a gunslinger stance
+    const gunAngle = extra.hasTarget ? angle : -Math.PI/2;
+    const idleAngle = Math.PI/2 - 0.7;
+    const hand1 = drawArmAndHand(ctx, shoulderX-4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 + 0.7), armLen*0.9, skinMain, -0.2);
+    const hand2 = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : idleAngle, armLen*0.9, skinMain, 0.2);
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 3;
+    for(const hand of [hand1, hand2]){
+      const tipX = hand.handX + Math.cos(gunAngle)*10*extra.weaponScale, tipY = hand.handY + Math.sin(gunAngle)*10*extra.weaponScale;
+      ctx.beginPath(); ctx.moveTo(hand.handX,hand.handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+      if(!lowGfx){
+        ctx.fillStyle = 'rgba(124,220,24,0.5)';
+        ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
+      }
     }
   }
 
