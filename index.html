@@ -139,6 +139,21 @@
   #about-expand-content{margin-top:10px;font-size:12px;line-height:1.6;opacity:0.9;}
   #about-expand-content.hidden{display:none;}
 
+  #help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
+    display:flex;align-items:center;justify-content:center;padding:16px;}
+  #help-modal.hidden{display:none;}
+  #help-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+    max-width:560px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
+    text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
+  #help-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
+  #help-modal-inner h3{color:var(--gold);font-size:clamp(13px,2.1vw,16px);margin:16px 0 6px;
+    border-bottom:1px solid rgba(241,196,15,0.35);padding-bottom:4px;}
+  #help-modal-inner h3:first-of-type{margin-top:10px;}
+  #help-modal-inner .evo-row{display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap;}
+  #help-modal-inner .evo-arrow{opacity:0.6;}
+  #help-modal-close{display:block;margin:14px auto 0;background:var(--gold);color:#3a2a00;
+    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;}
+
   #spec-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:21;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #spec-modal.hidden{display:none;}
@@ -296,16 +311,15 @@
       <button id="inspSellBtn">Sell <span id="inspSellValue"></span></button>
       <button id="inspTargetBtn">Target: <span id="inspTargetMode"></span></button>
       <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
+      <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works">❓</button>
       <button id="inspClose">✕</button>
       <div id="inspStatsRow">
-        <button class="info-btn" id="statsInfoBtn" title="Tap for how stats work">❓</button>
         <span id="inspStatPoints">STATS: <span id="inspStatPointsVal">0</span></span>
         <button id="inspStrBtn" class="stat-btn" title="Strength: +6% damage and +3% max HP per point">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
         <button id="inspDexBtn" class="stat-btn" title="Dexterity: +8% attack speed, better accuracy, and 🍀 luck (bonus gold per kill) per point">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
         <button id="inspIntBtn" class="stat-btn" title="Intelligence: +6 range per point">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
       </div>
       <div id="inspItemsRow">
-        <button class="info-btn" id="inventoryInfoBtn" title="Tap for how items work">❓</button>
         <span id="inspItemsLabel">INVENTORY</span>
         <span id="inspItemsSummary">No items</span>
         <button id="inspShopShortcutBtn">🛒 Items</button>
@@ -410,6 +424,52 @@
       </div>
     </div>
 
+    <div id="help-modal" class="hidden">
+      <div id="help-modal-inner">
+        <h2>❓ How Everything Works</h2>
+
+        <h3>💪 Stats</h3>
+        <p><b>STR:</b> +6% damage & +3% max HP per point.<br>
+        <b>DEX:</b> +8% attack speed, better accuracy, and 🍀 Luck (bonus gold per kill) per point.<br>
+        <b>INT:</b> +6 range per point.<br>
+        Every 5 points invested, the next 5 are worth progressively less — heavy investment in one stat is never worthless, just increasingly inefficient. Earn points by upgrading a tower, plus a little randomly on every level-up.</p>
+
+        <h3>⚔️ Archetypes</h3>
+        <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
+
+        <h3>✨ Evolution</h3>
+        <p>Only Swordsman, Archer, and Mage are built directly. Every other class is reached by investing 10+ points into a specific stat — a one-way transformation that keeps your accumulated stats.</p>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ STR 10 →</span> 🔨 Hammerman</div>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ DEX 10 →</span> 🪓 Axeman</div>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 10 →</span> 🔱 Spearman</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ STR 10 →</span> 🔫 Gatling</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ DEX 10 →</span> 🎯 Blowdart</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 10 →</span> 💣 Bomber</div>
+        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 10 →</span> ✝️ Cleric</div>
+        <div class="evo-row">🚧 Barricade doesn't fight or evolve — it's a cheap, tough obstacle only.</div>
+
+        <h3>🎒 Items & Heroes</h3>
+        <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 4 slots per tower — fill all 4 to awaken it as a Hero with a permanent bonus to every stat.</p>
+
+        <h3>🏆 100 Total Stats</h3>
+        <p>A tower that reaches 100 combined STR+DEX+INT becomes Legendary — you'll name it, and it permanently gains +10% size, +5% max HP, and +5% damage reduction.</p>
+
+        <h3>🔥 Status Effects</h3>
+        <p><b>Burn:</b> ticks 4% max HP damage every 0.5s. <b>Poison:</b> flat damage every 0.6s, strength set by the Blowdart that applied it. <b>Slow/Stun:</b> from Mage and Hammerman. <b>Shield:</b> absorbs a set amount of damage before HP is touched, regenerating over time when not hit.</p>
+
+        <h3>⚡ Kill Streaks</h3>
+        <p>Kills within 1.2 seconds of each other build a streak — the same tower has to keep landing hits fast, or it resets. Every 10 kills in a row unlocks a tier, from Killing Spree up to Ascended at 100, each granting a bonus stat point.</p>
+
+        <h3>💀 Downed Towers</h3>
+        <p>If a tower's HP hits 0, it's overrun and locked out of action for the next 2 full waves before recovering.</p>
+
+        <h3>🚧 Barricades & the Map</h3>
+        <p>Barricades can only be placed directly on the path, block enemies from passing, and only lose HP while something is actively pressed against them. The map starts small and expands ring by ring — one expansion per round at most, plus a free one every few waves.</p>
+
+        <button id="help-modal-close">Got it</button>
+      </div>
+    </div>
+
     <div id="start-screen">
       <h1>STICK TOWER DEFENSE</h1>
       <div id="versionTag">v<span id="versionText"></span></div>
@@ -444,6 +504,7 @@ let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resoluti
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
 const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
+const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose
 
 // Each job has a fixed color identity (not random) so you can tell towers apart by class at a
 // glance, plus a distinct body build — some classes read as taller/lankier, others shorter/stouter.
@@ -2183,7 +2244,7 @@ class Tower{
     this.level = 1;
     this.target = null;
     this.cooldownTimer = 0;
-    this.angle = -Math.PI/2;
+    this.angle = type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     this.renderSwordAngle = IDLE_WEAPON_ANGLE;
     this.targetMode = 'FIRST';
     this.totalSpent = CONFIG.TOWERS[type].baseCost;
@@ -2376,8 +2437,7 @@ class Tower{
   }
   evolveInto(newType){
     const oldName = this.def.name;
-    this.type = newType;
-    this.def = CONFIG.TOWERS[newType];
+    this.type = newType; // 'def' is a getter derived from this.type — no separate assignment needed or possible
     this.level = 1; // fresh tier progression as the new class
     this.equippedItems = []; // old class's items don't fit the new class's SHOP_ITEMS set
     this.isHero = false; // no items equipped anymore, so Hero status (which needs 4 slots filled) can't hold
@@ -2477,6 +2537,7 @@ class Tower{
     this.findTarget(nearby);
     if(this.target && !this.target.active) this.target = null;
     if(this.target) this.angle = Math.atan2(this.target.y-this.y, this.target.x-this.x);
+    else this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
@@ -2491,7 +2552,7 @@ class Tower{
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d < bestD){ bestD = d; target = e; }
     }
-    if(!target) return;
+    if(!target){ this.angle = IDLE_WEAPON_ANGLE; return; }
     this.angle = Math.atan2(target.y-this.y, target.x-this.x);
     if(Math.random() < this.missChance){
       spawnFloatingText(target.x, target.y - target.radius - 6, 'MISS', '#aaaaaa');
@@ -2802,7 +2863,8 @@ class Tower{
       if(sinceFired < 350) castProgress = 1 - sinceFired/350;
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null };
+    const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -3081,8 +3143,9 @@ function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   return { handX, handY };
 }
 
-function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx){
-  const bladeLen = big ? 30 : 22;
+function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, scale){
+  scale = scale || 1;
+  const bladeLen = (big ? 30 : 22) * scale;
   const bladeWidth = big ? 5 : 3.5;
   const tipX = handX + Math.cos(angle)*bladeLen;
   const tipY = handY + Math.sin(angle)*bladeLen;
@@ -3116,8 +3179,9 @@ function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx){
   ctx.beginPath(); ctx.arc(handX,handY, big?2.8:2.2, 0,Math.PI*2); ctx.fill();
 }
 
-function drawAxeHead(ctx, handX, handY, angle, level){
-  const haftLen = 14;
+function drawAxeHead(ctx, handX, handY, angle, level, scale){
+  scale = scale || 1;
+  const haftLen = 14 * scale;
   const tipX = handX + Math.cos(angle)*haftLen, tipY = handY + Math.sin(angle)*haftLen;
   ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
@@ -3198,12 +3262,26 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const dynamicBend = -0.3 + swingT*0.55; // cocked back at wind-up, extends through the strike
     if(isDual){
       const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
-      drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx);
+      drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx, extra.weaponScale);
       const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, extra.angle2, armLen, skinMain, 0.5 - swingT*0.55);
-      drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx);
+      drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, extra.weaponScale);
+    } else if(!extra.hasTarget){
+      // resting stance: both arms symmetric at 45°, sword held with the grip at the hand and the
+      // blade pointing straight up — independent of arm angle, like a real relaxed ready stance
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, Math.PI/2 - 0.7, armLen, skinMain, 0.15);
+      drawSwordBlade(ctx, hand.handX, hand.handY, -Math.PI/2, level, isTwoHander, lowGfx, extra.weaponScale);
+      if(isTwoHander){
+        ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(hand.handX,hand.handY); ctx.stroke();
+      }
     } else {
-      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, dynamicBend);
-      drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx);
+      // engaged: off-hand counterbalances opposite the weapon arm, tracking its actual swing angle
+      // rather than staying independently fixed — a rigid off-hand while the weapon swings toward
+      // wherever the enemy is looked disconnected and wrong
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+      const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, angle, armLen, skinMain, dynamicBend);
+      drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx, extra.weaponScale);
       if(isTwoHander){
         // second hand gripping the same hilt for a two-handed stance
         ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
@@ -3282,11 +3360,17 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   } else if(type === 'MAGE'){
     const cast = extra.castProgress || 0;
     const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, wandBend);
+    const staffAngle = extra.hasTarget ? angle : -Math.PI/2; // idle: held straight up; engaged: points at the target
+    if(!extra.hasTarget){
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    } else {
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    }
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
-    const tipX = handX + Math.cos(angle)*16, tipY = handY + Math.sin(angle)*16;
-    const buttX = handX - Math.cos(angle)*7, buttY = handY - Math.sin(angle)*7;
+    const tipX = handX + Math.cos(staffAngle)*16*extra.weaponScale, tipY = handY + Math.sin(staffAngle)*16*extra.weaponScale;
+    const buttX = handX - Math.cos(staffAngle)*7, buttY = handY - Math.sin(staffAngle)*7;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const pulse = 3 + Math.sin(performance.now()/220)*1 + cast*3; // brief extra flash on cast
@@ -3298,78 +3382,100 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.fillStyle = orbColor;
     ctx.beginPath(); ctx.arc(tipX,tipY,pulse+2,0,Math.PI*2); ctx.fill();
   } else if(type === 'BOMBER'){
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const bomberAngle = extra.hasTarget ? angle : -Math.PI/2;
+    if(!extra.hasTarget){
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    } else {
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    }
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
     // stubby mortar tube angled toward the target
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#5c5c5c';
     ctx.lineWidth = 6; ctx.lineCap = 'butt';
-    const tubeX = handX + Math.cos(angle)*14, tubeY = handY + Math.sin(angle)*14;
+    const tubeX = handX + Math.cos(bomberAngle)*14*extra.weaponScale, tubeY = handY + Math.sin(bomberAngle)*14*extra.weaponScale;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tubeX,tubeY); ctx.stroke();
     ctx.lineCap = 'round';
   } else if(type === 'GATLING'){
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain);
+    const gatlingAngle = extra.hasTarget ? angle : -Math.PI/2;
+    if(!extra.hasTarget){
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    } else {
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    }
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
     // twin parallel barrels
-    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const perpX = -Math.sin(gatlingAngle), perpY = Math.cos(gatlingAngle);
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
     ctx.lineWidth = 2.5;
     for(const side of [-1,1]){
       const bx = handX+perpX*3*side, by = handY+perpY*3*side;
-      const tx = bx+Math.cos(angle)*16, ty = by+Math.sin(angle)*16;
+      const tx = bx+Math.cos(gatlingAngle)*16*extra.weaponScale, ty = by+Math.sin(gatlingAngle)*16*extra.weaponScale;
       ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx,ty); ctx.stroke();
     }
   } else if(type === 'AXEMAN'){
     const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.4);
-    drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level);
+    drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level, extra.weaponScale);
     const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, angle, armLen, skinMain, 0.4);
-    drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level);
+    drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level, extra.weaponScale);
   } else if(type === 'SPEARMAN'){
     const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, spearBend);
+    const spearAngle = extra.hasTarget ? angle : -Math.PI/2; // idle: held straight up; engaged: thrusts at the target
+    if(!extra.hasTarget){
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    } else {
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    }
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
-    const shaftLen = 34;
-    const tipX = handX + Math.cos(angle)*shaftLen, tipY = handY + Math.sin(angle)*shaftLen;
-    const backX = handX - Math.cos(angle)*8, backY = handY - Math.sin(angle)*8;
+    const shaftLen = 34 * extra.weaponScale;
+    const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
+    const backX = handX - Math.cos(spearAngle)*8, backY = handY - Math.sin(spearAngle)*8;
     ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(backX,backY); ctx.lineTo(tipX,tipY); ctx.stroke();
     // small triangular spearhead
-    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const perpX = -Math.sin(spearAngle), perpY = Math.cos(spearAngle);
     ctx.fillStyle = level >= 3 ? '#bdeaff' : '#c7ccd1';
     ctx.beginPath();
     ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX - Math.cos(angle)*8 + perpX*3, tipY - Math.sin(angle)*8 + perpY*3);
-    ctx.lineTo(tipX - Math.cos(angle)*8 - perpX*3, tipY - Math.sin(angle)*8 - perpY*3);
+    ctx.lineTo(tipX - Math.cos(spearAngle)*8 + perpX*3, tipY - Math.sin(spearAngle)*8 + perpY*3);
+    ctx.lineTo(tipX - Math.cos(spearAngle)*8 - perpX*3, tipY - Math.sin(spearAngle)*8 - perpY*3);
     ctx.closePath();
     ctx.fill();
   } else if(type === 'HAMMERMAN'){
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, hammerBend);
+    const hammerAngle = extra.hasTarget ? angle : -Math.PI/2;
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
-    const haftLen = 18;
-    const tipX = handX + Math.cos(angle)*haftLen, tipY = handY + Math.sin(angle)*haftLen;
+    const haftLen = 18 * extra.weaponScale;
+    const tipX = handX + Math.cos(hammerAngle)*haftLen, tipY = handY + Math.sin(hammerAngle)*haftLen;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
-    const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+    const perpX = -Math.sin(hammerAngle), perpY = Math.cos(hammerAngle);
     const headLen = 10;
     ctx.fillStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
     ctx.beginPath();
-    ctx.moveTo(tipX + perpX*8 - Math.cos(angle)*headLen*0.3, tipY + perpY*8 - Math.sin(angle)*headLen*0.3);
-    ctx.lineTo(tipX + perpX*8 + Math.cos(angle)*headLen*0.7, tipY + perpY*8 + Math.sin(angle)*headLen*0.7);
-    ctx.lineTo(tipX - perpX*8 + Math.cos(angle)*headLen*0.7, tipY - perpY*8 + Math.sin(angle)*headLen*0.7);
-    ctx.lineTo(tipX - perpX*8 - Math.cos(angle)*headLen*0.3, tipY - perpY*8 - Math.sin(angle)*headLen*0.3);
+    ctx.moveTo(tipX + perpX*8 - Math.cos(hammerAngle)*headLen*0.3, tipY + perpY*8 - Math.sin(hammerAngle)*headLen*0.3);
+    ctx.lineTo(tipX + perpX*8 + Math.cos(hammerAngle)*headLen*0.7, tipY + perpY*8 + Math.sin(hammerAngle)*headLen*0.7);
+    ctx.lineTo(tipX - perpX*8 + Math.cos(hammerAngle)*headLen*0.7, tipY - perpY*8 + Math.sin(hammerAngle)*headLen*0.7);
+    ctx.lineTo(tipX - perpX*8 - Math.cos(hammerAngle)*headLen*0.3, tipY - perpY*8 - Math.sin(hammerAngle)*headLen*0.3);
     ctx.closePath();
     ctx.fill();
     // shield strapped to the off-hand — the tower's defining trait, shown explicitly rather than implied
-    const shieldX = -10, shieldY = -2;
+    const shieldArm = drawArmAndHand(ctx, shoulderX-4, shoulderY, extra.hasTarget ? IDLE_WEAPON_ANGLE : (Math.PI/2 + 0.7), armLen*0.6, skinMain, -0.2);
+    const shieldX = shieldArm.handX, shieldY = shieldArm.handY - 3;
     ctx.fillStyle = level >= 3 ? '#bdeaff' : '#9aa0a6';
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
   } else if(type === 'CLERIC'){
+    // off-hand: relaxed at the opposite side
+    drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
     // one arm raised in a blessing gesture, holding a small cross aloft
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, -Math.PI/2 - 0.3, armLen, skinMain, -0.4);
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, -Math.PI/2 - 0.3, armLen, skinMain, -0.4);
     const handX = hand.handX, handY = hand.handY;
     ctx.strokeStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
     ctx.lineWidth = 2.5;
@@ -3382,10 +3488,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.beginPath(); ctx.ellipse(0, -30, 7, 2.5, 0, 0, Math.PI*2); ctx.stroke();
     }
   } else if(type === 'BLOWDART'){
+    const dartAngle = extra.hasTarget ? angle : -Math.PI/2;
+    if(!extra.hasTarget){
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    } else {
+      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    }
     // a short pipe held up to the mouth, aimed at the target
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen*0.7, skinMain, -0.6);
+    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen*0.7, skinMain, -0.6);
     const handX = hand.handX, handY = hand.handY;
-    const tipX = handX + Math.cos(angle)*14, tipY = handY + Math.sin(angle)*14;
+    const tipX = handX + Math.cos(dartAngle)*14*extra.weaponScale, tipY = handY + Math.sin(dartAngle)*14*extra.weaponScale;
     ctx.strokeStyle = '#5a7a2a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
@@ -4176,11 +4288,14 @@ document.getElementById('inspShopShortcutBtn').addEventListener('pointerdown', (
 });
 document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  showToast('STR: +6% damage & +3% max HP/pt · DEX: +8% attack speed, accuracy & 🍀 luck (gold)/pt · INT: +6 range/pt. Warriors favor STR, Archers favor DEX, Mages favor INT — your favored stat is 25% more effective. Earn points by upgrading a tower — spend them here anytime.');
+  document.getElementById('help-modal').classList.remove('hidden');
 });
-document.getElementById('inventoryInfoBtn').addEventListener('pointerdown', (e) => {
+document.getElementById('help-modal-close').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  showToast('Buy class-specific gear from the Shop and equip it here. 4 slots per tower — fill all 4 to awaken it as a Hero with a permanent bonus.');
+  document.getElementById('help-modal').classList.add('hidden');
+});
+document.getElementById('help-modal').addEventListener('pointerdown', (e) => {
+  if(e.target.id === 'help-modal') document.getElementById('help-modal').classList.add('hidden'); // tap outside the card to dismiss
 });
 
 // --- Settings modal (usable from the start screen or mid-game — not gated on gameState) ---
