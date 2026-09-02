@@ -287,7 +287,7 @@
       <div class="hud-stat">❤️ <span id="livesVal">20</span></div>
       <div class="hud-stat">💰 <span id="goldVal">150</span></div>
       <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
-      <div class="hud-stat">Wave <span id="waveVal">0/15</span></div>
+      <div class="hud-stat">Wave <span id="waveVal">0/100</span></div>
       <div id="hud-controls">
         <button class="hud-btn" id="pauseBtn" aria-label="Pause">⏸</button>
         <button class="hud-btn" id="speedBtn" aria-label="Fast forward">1x</button>
@@ -304,6 +304,7 @@
         <span>❤️ <span id="inspHpVal">0</span>/<span id="inspMaxHpVal">0</span></span>
         <span>🛡️ <span id="inspDefVal">0%</span></span>
         <span>🎯 <span id="inspRangeVal">0</span></span>
+        <span>⚡ <span id="inspSpeedVal">0</span>/s</span>
         <span>🍀 <span id="inspLuckVal">+0%</span></span>
       </div>
       <button id="inspUpgradeBtn">Upgrade <span id="inspUpgradeCost"></span></button>
@@ -498,7 +499,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.0'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.21'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -874,7 +875,92 @@ const CONFIG = {
     [{type:'TANK',count:8,spawnDelay:1100},{type:'FIRE',count:3,spawnDelay:1000},{type:'SPLITTER',count:4,spawnDelay:900},{type:'WOLF',count:6,spawnDelay:450}],
     [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180},{type:'ICE',count:3,spawnDelay:1000},{type:'HEALER',count:3,spawnDelay:1100},{type:'WRAITH',count:4,spawnDelay:650}],
     [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100},{type:'SHIELDED',count:4,spawnDelay:900},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:5,spawnDelay:900}],
-    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500}]
+    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500}],
+    [{type:'TANK',count:10,spawnDelay:900},{type:'RUNNER',count:14,spawnDelay:280},{type:'ZOMBIE',count:6,spawnDelay:1000},{type:'FIRE',count:4,spawnDelay:900}],
+    [{type:'SWARM',count:26,spawnDelay:160},{type:'WOLF',count:10,spawnDelay:350},{type:'ICE',count:4,spawnDelay:900},{type:'SHIELDED',count:5,spawnDelay:800}],
+    [{type:'ZOMBIE',count:8,spawnDelay:900},{type:'WRAITH',count:6,spawnDelay:600},{type:'SKELETON',count:8,spawnDelay:800},{type:'HEALER',count:4,spawnDelay:1000}],
+    [{type:'TANK',count:8,spawnDelay:800},{type:'SHIELDED',count:6,spawnDelay:800},{type:'SPLITTER',count:6,spawnDelay:750},{type:'WRAITH',count:5,spawnDelay:550},{type:'RUNNER',count:14,spawnDelay:250}],
+    [{type:'BOSS',count:2,spawnDelay:0},{type:'GRUNT',count:18,spawnDelay:400},{type:'TANK',count:8,spawnDelay:800},{type:'SWARM',count:20,spawnDelay:180},{type:'WOLF',count:10,spawnDelay:350}],
+    [{type:'GRUNT',count:10,spawnDelay:540},{type:'SWARM',count:13,spawnDelay:197},{type:'FIRE',count:1,spawnDelay:1190}],  // 21
+    [{type:'GRUNT',count:4,spawnDelay:700},{type:'SPLITTER',count:2,spawnDelay:500},{type:'TROLL',count:1,spawnDelay:300},{type:'TANK',count:2,spawnDelay:250},{type:'RUNNER',count:7,spawnDelay:150}],  // 22: 🃏 TRICK WAVE
+    [{type:'TANK',count:4,spawnDelay:1970},{type:'SHIELDED',count:2,spawnDelay:1770}],  // 23: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:24,spawnDelay:750},{type:'ZOMBIE',count:10,spawnDelay:900},{type:'RUNNER',count:12,spawnDelay:650}],  // 24: ⛏️ GRIND
+    [{type:'SWARM',count:45,spawnDelay:140},{type:'WOLF',count:17,spawnDelay:280},{type:'RUNNER',count:10,spawnDelay:280}],  // 25: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:7,spawnDelay:1052},{type:'SKELETON',count:7,spawnDelay:952},{type:'WRAITH',count:5,spawnDelay:664}],  // 26: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:6,spawnDelay:944},{type:'ICE',count:6,spawnDelay:944},{type:'GRUNT',count:13,spawnDelay:658}],  // 27: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:24,spawnDelay:470},{type:'SWARM',count:34,spawnDelay:176},{type:'TANK',count:6,spawnDelay:1180},{type:'RUNNER',count:16,spawnDelay:316},{type:'FIRE',count:5,spawnDelay:1120},{type:'ICE',count:5,spawnDelay:1120},{type:'SPLITTER',count:4,spawnDelay:936},{type:'HEALER',count:3,spawnDelay:1320}],  // 28
+    [{type:'GRUNT',count:7,spawnDelay:700},{type:'SPLITTER',count:4,spawnDelay:500},{type:'TROLL',count:1,spawnDelay:300},{type:'TANK',count:4,spawnDelay:250},{type:'RUNNER',count:10,spawnDelay:150}],  // 29: 🃏 TRICK WAVE
+    [{type:'TANK',count:10,spawnDelay:1300},{type:'BOSS',count:1,spawnDelay:0}],  // 30: 👑 BOSS WAVE
+    [{type:'GRUNT',count:38,spawnDelay:750},{type:'ZOMBIE',count:17,spawnDelay:900},{type:'RUNNER',count:19,spawnDelay:650}],  // 31: ⛏️ GRIND
+    [{type:'SWARM',count:73,spawnDelay:126},{type:'WOLF',count:28,spawnDelay:252},{type:'RUNNER',count:14,spawnDelay:252}],  // 32: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:10,spawnDelay:996},{type:'SKELETON',count:10,spawnDelay:896},{type:'WRAITH',count:7,spawnDelay:622}],  // 33: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:888},{type:'ICE',count:10,spawnDelay:888},{type:'GRUNT',count:20,spawnDelay:616}],  // 34: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 35
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 36: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 37: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 38: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 39: 🐜 SWARM SURGE
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 40: 👑 BOSS WAVE
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 41: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 42
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 43: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 44: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 45: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 46: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 47: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 48: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 49
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 50: 👑 BOSS WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 51: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 52: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 53: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 54: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 55: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 56
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 57: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 58: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 59: ⛏️ GRIND
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 60: 👑 BOSS WAVE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 61: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 62: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 63
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 64: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 65: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 66: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 67: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 68: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 69: 🔥 AMBUSH TACTICS
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 70: 👑 BOSS WAVE
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 71: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 72: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 73: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 74: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 75: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 76: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 77
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 78: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 79: 🛡️ ELITE VANGUARD
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 80: 👑 BOSS WAVE
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 81: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 82: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 83: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 84
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 85: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 86: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 87: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 88: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 89: 🧟 UNDEAD UPRISING
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 90: 👑 BOSS WAVE
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 91
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 92: 🃏 TRICK WAVE
+    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 93: 🛡️ ELITE VANGUARD
+    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 94: ⛏️ GRIND
+    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 95: 🐜 SWARM SURGE
+    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 96: 🧟 UNDEAD UPRISING
+    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 97: 🔥 AMBUSH TACTICS
+    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 98
+    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 99: 🃏 TRICK WAVE
+    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 100: 👑 BOSS WAVE
   ],
   SCENERY: {
     coverage: 0.16,          // fraction of buildable (non-path) tiles scattered with scenery at game start
@@ -2036,7 +2122,7 @@ class Enemy{
     for(let i=0; i<2; i++){
       const child = acquireActive(enemyPool);
       if(!child) break;
-      child.spawn('SPLITMINI', 1 + (waveIndex-1)*0.15);
+      child.spawn('SPLITMINI', 1 + (waveIndex-1)*0.20);
       child.x = this.x + (Math.random()*16-8);
       child.y = this.y + (Math.random()*16-8);
       child.pathIndex = this.pathIndex;
@@ -2134,7 +2220,7 @@ class Enemy{
     } else {
       spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
-    spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 5 : 3);
+    spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 9 : 3, goreMode ? 260 : 0);
     if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
   die(sourceTower, forStreak){
@@ -2156,12 +2242,17 @@ class Enemy{
     if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     const low = graphicsQuality === 'low';
     if(goreMode){
-      spawnParticles(this.x, this.y, '#c0392b', low ? 10 : 22);  // main burst
-      spawnParticles(this.x, this.y, '#7a0f0f', low ? 4 : 10);   // darker pooling splatter, layered underneath
+      spawnParticles(this.x, this.y, '#c0392b', low ? 18 : 48, 260);   // main arterial burst
+      spawnParticles(this.x, this.y, '#7a0f0f', low ? 9 : 24, 260);    // darker pooling splatter, layered underneath
+      spawnParticles(this.x, this.y, '#ff2020', low ? 5 : 13, 340);    // bright high-velocity spray, arcs further and falls harder
+      spawnGibs(this.x, this.y, low ? 4 : 10);                         // chunky flying debris — distinct from the fine spray
+      spawnDecal(this.x, this.y, low ? 'rgba(122,15,15,0.6)' : 'rgba(122,15,15,0.75)');
       if(!low){
-        screenShakeUntil = gameTime + 130;
-        screenShakeMag = Math.max(screenShakeMag, 4);
+        spawnDecal(this.x + (Math.random()-0.5)*14, this.y + (Math.random()-0.5)*10, 'rgba(90,8,8,0.55)');
+        spawnDecal(this.x + (Math.random()-0.5)*24, this.y + (Math.random()-0.5)*16, 'rgba(140,20,20,0.5)'); // third stain, scattered wider — the pool spreads unevenly, not in a tidy ring
       }
+      screenShakeUntil = gameTime + (low ? 150 : 220);
+      screenShakeMag = Math.max(screenShakeMag, low ? 6 : 9);
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
@@ -2362,8 +2453,8 @@ class Tower{
     const strMult = 1 + diminishingStatValue(strEff, 0.06); // +6% damage/point, diminishing every 5 points
     const dexMult = 1 + diminishingStatValue(dexEff, 0.08); // +8% attack speed/point, diminishing every 5 points
     const intBonus = diminishingStatValue(intEff, 6); // +6 range/point, diminishing every 5 points
-    const intDamageMult = this.type === 'MAGE' ? (1 + diminishingStatValue(intEff, 0.05)) : 1; // Mage's damage also scales with INT — spell power, on top of the normal STR scaling
-    const dexDamageMult = this.type === 'ARCHER' ? (1 + diminishingStatValue(dexEff, 0.05)) : 1; // Archer's damage also scales with DEX — marksmanship, on top of the normal STR scaling
+    const intDamageMult = archetype === 'MAGE' ? (1 + diminishingStatValue(intEff, 0.05)) : 1; // Mage archetype's damage also scales with INT — spell power, on top of the normal STR scaling
+    const dexDamageMult = archetype === 'ARCHER' ? (1 + diminishingStatValue(dexEff, 0.05)) : 1; // Archer archetype's damage also scales with DEX — marksmanship, on top of the normal STR scaling
     this.damage = Math.round(this.baseDamage * strMult * intDamageMult * dexDamageMult);
     this.cooldown = Math.max(80, Math.round(this.baseCooldown / dexMult));
     if(this.type === 'CLERIC'){
@@ -2883,7 +2974,8 @@ class Tower{
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale };
+    const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -3081,7 +3173,36 @@ const projectilePool = Array.from({length: 150}, () => new Projectile());
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
 const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:0,color:'#fff',size:2}));
 let particleIndex = 0;
-function spawnParticles(x,y,color,count){
+const MAX_DECALS = 150;
+const decals = [];
+let decalIndex = 0;
+function spawnDecal(x, y, color){
+  const isBigPool = Math.random() < 0.2; // ~1 in 5 stains is dramatically larger — real variance, not uniform puddles
+  const sizeMult = isBigPool ? 2 + Math.random()*1.5 : 0.7 + Math.random()*0.6;
+  const blobCount = isBigPool ? (6 + Math.floor(Math.random()*5)) : (4 + Math.floor(Math.random()*4));
+  const decal = { x, y, color,
+    // overlapping offset circles instead of one plain circle — reads as a real messy splatter/pool
+    blobs: Array.from({length: blobCount}, () => ({
+      dx: (Math.random()-0.5)*18*sizeMult, dy: (Math.random()-0.5)*11*sizeMult, r: (3 + Math.random()*6)*sizeMult
+    }))
+  };
+  if(decals.length < MAX_DECALS){
+    decals.push(decal);
+  } else {
+    decals[decalIndex] = decal; // oldest stain gets overwritten once capped — stays performance-safe indefinitely
+    decalIndex = (decalIndex+1) % MAX_DECALS;
+  }
+}
+function drawDecals(ctx){
+  for(const d of decals){
+    ctx.fillStyle = d.color;
+    for(const b of d.blobs){
+      ctx.beginPath(); ctx.arc(d.x+b.dx, d.y+b.dy, b.r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+function spawnParticles(x,y,color,count,gravity){
+  gravity = gravity || 0;
   for(let i=0;i<count;i++){
     const p = particles[particleIndex];
     particleIndex = (particleIndex+1) % PARTICLE_COUNT;
@@ -3089,6 +3210,7 @@ function spawnParticles(x,y,color,count){
     const speed = 40 + Math.random()*90;
     p.active = true; p.x = x; p.y = y;
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
+    p.gravity = gravity; p.isGib = false;
     p.life = p.maxLife = 300 + Math.random()*250;
     p.color = color; p.size = 2 + Math.random()*2;
   }
@@ -3099,7 +3221,25 @@ function updateParticles(dt){
     p.life -= dt;
     if(p.life <= 0){ p.active = false; continue; }
     p.x += p.vx*dt/1000; p.y += p.vy*dt/1000;
+    if(p.gravity) p.vy += p.gravity*dt/1000; // directional drip/spray instead of a uniform radial burst
+    if(p.isGib) p.rot += p.rotSpeed*dt/1000; // tumbling as it flies
     p.vx *= 0.93; p.vy *= 0.93;
+  }
+}
+function spawnGibs(x, y, count){
+  // chunky tumbling debris, heavier and slower than the fine blood spray — distinctly brutal
+  for(let i=0;i<count;i++){
+    const p = particles[particleIndex];
+    particleIndex = (particleIndex+1) % PARTICLE_COUNT;
+    const angle = Math.random()*Math.PI*2;
+    const speed = 60 + Math.random()*110;
+    p.active = true; p.x = x; p.y = y;
+    p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed - 40; // slight upward pop before gravity takes over
+    p.gravity = 420;
+    p.isGib = true; p.rot = Math.random()*Math.PI*2; p.rotSpeed = (Math.random()-0.5)*10;
+    p.life = p.maxLife = 500 + Math.random()*350;
+    p.color = Math.random() < 0.5 ? '#7a0f0f' : '#3a0505';
+    p.size = 2.5 + Math.random()*3;
   }
 }
 function drawParticles(ctx){
@@ -3107,7 +3247,15 @@ function drawParticles(ctx){
     if(!p.active) continue;
     ctx.globalAlpha = Math.max(0, p.life/p.maxLife);
     ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+    if(p.isGib){
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillRect(-p.size, -p.size, p.size*2, p.size*2);
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -3146,6 +3294,15 @@ function drawFloatingTexts(ctx){
 // Two-segment arm (shoulder -> elbow -> hand) instead of one straight line — reads as an actual
 // held weapon pose rather than a rigid stick. `bend` rotates the upper-arm segment away from the
 // hand's final aim angle (radians); positive/negative gives the elbow a visible outward kink.
+// Weapon visual length is driven entirely by weaponScale (which itself comes from range/baseRange,
+// clamped by that class's RANGE_CAPS) — NOT by whether the tower is idle or actively swinging/firing.
+// Interpolates linearly between a per-class min (at weaponScale 1.0, no INT invested) and max (at
+// weaponScale 1.6, the range cap). Using the exact same formula for idle and engaged poses is what
+// keeps the weapon's size consistent instead of visibly changing when it swings.
+function weaponLenFromScale(minLen, maxLen, weaponScale){
+  const t = Math.max(0, Math.min(1, (weaponScale - 1) / 0.6));
+  return minLen + t * (maxLen - minLen);
+}
 function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   if(bend === undefined) bend = -0.3;
   const upperLen = armLen*0.52, foreLen = armLen*0.48;
@@ -3162,10 +3319,9 @@ function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   return { handX, handY };
 }
 
-function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, scale){
-  scale = scale || 1;
-  const bladeLen = (big ? 30 : 22) * scale;
-  const bladeWidth = big ? 5 : 3.5;
+function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, bladeLen, thickness){
+  thickness = thickness || 1;
+  const bladeWidth = (big ? 5 : 3.5) * thickness;
   const tipX = handX + Math.cos(angle)*bladeLen;
   const tipY = handY + Math.sin(angle)*bladeLen;
 
@@ -3181,12 +3337,12 @@ function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, scale){
   // small X-shaped crossguard mark partway up the blade near the hilt
   const guardT = 0.32;
   const gx = handX + (tipX-handX)*guardT, gy = handY + (tipY-handY)*guardT;
-  const guardSize = big ? 5 : 3.5;
+  const guardSize = (big ? 5 : 3.5) * thickness;
   ctx.save();
   ctx.translate(gx, gy);
   ctx.rotate(angle);
   ctx.strokeStyle = big ? '#e8b64a' : '#9aa0a6';
-  ctx.lineWidth = big ? 3 : 2.2;
+  ctx.lineWidth = (big ? 3 : 2.2) * thickness;
   ctx.beginPath();
   ctx.moveTo(-guardSize,-guardSize); ctx.lineTo(guardSize,guardSize);
   ctx.moveTo(-guardSize,guardSize); ctx.lineTo(guardSize,-guardSize);
@@ -3195,22 +3351,22 @@ function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, scale){
 
   // hilt pommel
   ctx.fillStyle = '#7a5230';
-  ctx.beginPath(); ctx.arc(handX,handY, big?2.8:2.2, 0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(handX,handY, (big?2.8:2.2)*thickness, 0,Math.PI*2); ctx.fill();
 }
 
-function drawAxeHead(ctx, handX, handY, angle, level, scale){
-  scale = scale || 1;
-  const haftLen = 14 * scale;
+function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
+  thickness = thickness || 1;
   const tipX = handX + Math.cos(angle)*haftLen, tipY = handY + Math.sin(angle)*haftLen;
-  ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5;
+  ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*thickness;
   ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
   const perpX = -Math.sin(angle), perpY = Math.cos(angle);
+  const headSize = 7*thickness;
   ctx.fillStyle = level >= 3 ? '#bdeaff' : '#9aa0a6';
   ctx.beginPath();
-  ctx.moveTo(tipX + perpX*7, tipY + perpY*7);
-  ctx.lineTo(tipX + Math.cos(angle)*6, tipY + Math.sin(angle)*6);
-  ctx.lineTo(tipX - perpX*7, tipY - perpY*7);
-  ctx.lineTo(tipX - Math.cos(angle)*3, tipY - Math.sin(angle)*3);
+  ctx.moveTo(tipX + perpX*headSize, tipY + perpY*headSize);
+  ctx.lineTo(tipX + Math.cos(angle)*6*thickness, tipY + Math.sin(angle)*6*thickness);
+  ctx.lineTo(tipX - perpX*headSize, tipY - perpY*headSize);
+  ctx.lineTo(tipX - Math.cos(angle)*3*thickness, tipY - Math.sin(angle)*3*thickness);
   ctx.closePath();
   ctx.fill();
 }
@@ -3260,50 +3416,35 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   const isDual = type === 'SWORDSMAN' && extra && extra.spec === 'DUAL' && extra.angle2 != null;
   const isTwoHander = type === 'SWORDSMAN' && extra && extra.spec === 'TWOHANDER';
 
-  // off-hand resting pose — skipped for dual (both hands hold swords), two-hander, and Axeman (always a two-handed grip)
-  if(!isDual && !isTwoHander && type !== 'AXEMAN'){
-    ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(-10,-2); ctx.stroke();
-  }
-
-  if(level >= 2){
-    ctx.save();
-    ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(0,2); ctx.stroke();
-    ctx.restore();
-  }
-  if(level >= 3){
-    ctx.fillStyle = '#c7ccd1';
-    ctx.beginPath(); ctx.ellipse(0,-24, 8/build.scaleX, 8/build.scaleY, 0, Math.PI, 0); ctx.fill();
-  }
-
-  const shoulderX = 0, shoulderY = -10, armLen = 13;
+  const shoulderX = 0, shoulderY = -13, armLen = 13;
 
   if(type === 'SWORDSMAN'){
     const swingT = extra.swingProgress || 0;
     const dynamicBend = -0.3 + swingT*0.55; // cocked back at wind-up, extends through the strike
+    const swordLen = weaponLenFromScale(isTwoHander ? 17 : 15, isTwoHander ? 24 : 23, extra.weaponScale);
     if(isDual){
-      const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
-      drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx, extra.weaponScale);
-      const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, extra.angle2, armLen, skinMain, 0.5 - swingT*0.55);
-      drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, extra.weaponScale);
+      const hand1 = drawArmAndHand(ctx, shoulderX-1.5, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
+      drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx, swordLen, extra.weaponThickness);
+      const hand2 = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.angle2, armLen, skinMain, 0.5 - swingT*0.55);
+      drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, swordLen, extra.weaponThickness);
     } else if(!extra.hasTarget){
-      // resting stance: both arms symmetric at 45°, sword held with the grip at the hand and the
-      // blade pointing straight up — independent of arm angle, like a real relaxed ready stance
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-      const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, Math.PI/2 - 0.7, armLen, skinMain, 0.15);
-      drawSwordBlade(ctx, hand.handX, hand.handY, -Math.PI/2, level, isTwoHander, lowGfx, extra.weaponScale);
+      // resting stance: both arms symmetric at 45°, sword held upright — tilted 55° from vertical
+      // (verified to clear the head at the current bigger max sizes) rather than pointing straight
+      // up, which wouldn't leave enough room for the larger blade
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, Math.PI/2 - 0.7, armLen, skinMain, 0.15);
+      drawSwordBlade(ctx, hand.handX, hand.handY, -Math.PI/2 + 0.96, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
       if(isTwoHander){
         ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(hand.handX,hand.handY); ctx.stroke();
       }
     } else {
-      // engaged: off-hand counterbalances opposite the weapon arm, tracking its actual swing angle
-      // rather than staying independently fixed — a rigid off-hand while the weapon swings toward
-      // wherever the enemy is looked disconnected and wrong
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
-      const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, angle, armLen, skinMain, dynamicBend);
-      drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx, extra.weaponScale);
+      // engaged: off-hand fixed at its natural resting direction — tracking the weapon's actual
+      // swing angle could send it crossing across the body or swinging up into the air depending
+      // on which way the enemy is, so it stays put and lets the elbow bend carry any reactive motion
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, angle, armLen, skinMain, dynamicBend);
+      drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
       if(isTwoHander){
         // second hand gripping the same hilt for a two-handed stance
         ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
@@ -3315,7 +3456,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // two genuinely separate shoulders (front/back relative to facing), not one shared pivot —
     // a bow is a two-handed grip and needs an actual left/right shoulder to read as one
     const perpX = -Math.sin(angle), perpY = Math.cos(angle);
-    const shoulderOffset = 3.5;
+    const shoulderOffset = 1.8;
     const frontShoulderX = shoulderX + perpX*shoulderOffset, frontShoulderY = shoulderY + perpY*shoulderOffset;
     const backShoulderX = shoulderX - perpX*shoulderOffset, backShoulderY = shoulderY - perpY*shoulderOffset;
     // quiver of arrows on the back — drawn first so the arms/bow sit in front of it
@@ -3353,11 +3494,26 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.moveTo(bowTopX,bowTopY);
     ctx.quadraticCurveTo(bowMidX,bowMidY,bowBotX,bowBotY);
     ctx.stroke();
-    // drawing arm: a real elbow-bent second arm, from its own shoulder, pulling back further
-    // as the shot charges — both arms now animate the same way for a matching silhouette
+    // drawing arm: manual geometry instead of generic fixed-segment IK, which collapses into a
+    // cramped overlapping mess when the hand is pulled in close to the shoulder (exactly what
+    // happens early in the draw, when pullBack is small) — the string hand slides back from the
+    // bow grip along the aim axis, and the elbow droops slightly below the shoulder-to-hand line.
+    // A fixed downward droop (rather than perpendicular-to-aim) keeps this natural at every facing
+    // direction — the previous perpendicular approach compounded with the back shoulder's own
+    // offset to stack the elbow well above the shoulder specifically when facing left or right.
     const pullBack = 6 + drawAmt*15;
-    const backHand = drawArmAndHand(ctx, backShoulderX, backShoulderY, angle + Math.PI, pullBack, skinMain, 0.35);
-    const drawX = backHand.handX, drawY = backHand.handY;
+    const drawX = handX - Math.cos(angle)*pullBack;
+    const drawY = handY - Math.sin(angle)*pullBack;
+    const elbowMidX = (backShoulderX + drawX) / 2;
+    const elbowMidY = (backShoulderY + drawY) / 2;
+    const elbowX = elbowMidX;
+    const elbowY = elbowMidY + 4;
+    ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(backShoulderX, backShoulderY);
+    ctx.lineTo(elbowX, elbowY);
+    ctx.lineTo(drawX, drawY);
+    ctx.stroke();
     ctx.strokeStyle = 'rgba(245,240,230,0.8)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -3367,7 +3523,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     if(drawAmt > 0.05){
       ctx.save();
       ctx.globalAlpha = Math.min(1, drawAmt*1.3);
-      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(drawX,drawY); ctx.lineTo(handX,handY); ctx.stroke();
       ctx.strokeStyle = '#c7ccd1'; ctx.lineWidth = 1;
       const fx = handX + Math.cos(angle)*4, fy = handY + Math.sin(angle)*4;
@@ -3382,18 +3538,22 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   } else if(type === 'MAGE'){
     const cast = extra.castProgress || 0;
     const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
-    const staffAngle = extra.hasTarget ? angle : -Math.PI/2; // idle: held straight up; engaged: points at the target
+    const staffAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: points at the target
     if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     } else {
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+      // fixed at its natural resting direction — tracking the weapon's actual swing angle could
+      // send it crossing across the body or swinging up into the air depending on which way the
+      // enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, wandBend);
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
-    const tipX = handX + Math.cos(staffAngle)*16*extra.weaponScale, tipY = handY + Math.sin(staffAngle)*16*extra.weaponScale;
+    const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
+    const tipX = handX + Math.cos(staffAngle)*staffLen, tipY = handY + Math.sin(staffAngle)*staffLen;
     const buttX = handX - Math.cos(staffAngle)*7, buttY = handY - Math.sin(staffAngle)*7;
-    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const pulse = 3 + Math.sin(performance.now()/220)*1 + cast*3; // brief extra flash on cast
     const orbColor = level >= 3 ? '#a78bfa' : '#7dd3fc';
@@ -3404,58 +3564,70 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.fillStyle = orbColor;
     ctx.beginPath(); ctx.arc(tipX,tipY,pulse+2,0,Math.PI*2); ctx.fill();
   } else if(type === 'BOMBER'){
-    const bomberAngle = extra.hasTarget ? angle : -Math.PI/2;
+    const bomberAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
     if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     } else {
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+      // fixed at its natural resting direction — tracking the weapon's actual swing angle could
+      // send it crossing across the body or swinging up into the air depending on which way the
+      // enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
     // stubby mortar tube angled toward the target
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#5c5c5c';
-    ctx.lineWidth = 6; ctx.lineCap = 'butt';
-    const tubeX = handX + Math.cos(bomberAngle)*14*extra.weaponScale, tubeY = handY + Math.sin(bomberAngle)*14*extra.weaponScale;
+    ctx.lineWidth = 6*extra.weaponThickness; ctx.lineCap = 'butt';
+    const tubeLen = weaponLenFromScale(12, 19, extra.weaponScale);
+    const tubeX = handX + Math.cos(bomberAngle)*tubeLen, tubeY = handY + Math.sin(bomberAngle)*tubeLen;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tubeX,tubeY); ctx.stroke();
     ctx.lineCap = 'round';
   } else if(type === 'GATLING'){
-    const gatlingAngle = extra.hasTarget ? angle : -Math.PI/2;
+    const gatlingAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
     if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     } else {
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+      // fixed at its natural resting direction — tracking the weapon's actual swing angle could
+      // send it crossing across the body or swinging up into the air depending on which way the
+      // enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
     // twin parallel barrels
     const perpX = -Math.sin(gatlingAngle), perpY = Math.cos(gatlingAngle);
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.5*extra.weaponThickness;
     for(const side of [-1,1]){
       const bx = handX+perpX*3*side, by = handY+perpY*3*side;
-      const tx = bx+Math.cos(gatlingAngle)*16*extra.weaponScale, ty = by+Math.sin(gatlingAngle)*16*extra.weaponScale;
+      const barrelLen = weaponLenFromScale(14, 22, extra.weaponScale);
+      const tx = bx+Math.cos(gatlingAngle)*barrelLen, ty = by+Math.sin(gatlingAngle)*barrelLen;
       ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx,ty); ctx.stroke();
     }
   } else if(type === 'AXEMAN'){
-    const hand1 = drawArmAndHand(ctx, shoulderX-3, shoulderY, angle, armLen, skinMain, -0.4);
-    drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level, extra.weaponScale);
-    const hand2 = drawArmAndHand(ctx, shoulderX+3, shoulderY, angle, armLen, skinMain, 0.4);
-    drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level, extra.weaponScale);
+    const axeLen = weaponLenFromScale(15, 24, extra.weaponScale);
+    const hand1 = drawArmAndHand(ctx, shoulderX-1.5, shoulderY, angle, armLen, skinMain, -0.4);
+    drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level, axeLen, extra.weaponThickness);
+    const hand2 = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, angle, armLen, skinMain, 0.4);
+    drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level, axeLen, extra.weaponThickness);
   } else if(type === 'SPEARMAN'){
     const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const spearAngle = extra.hasTarget ? angle : -Math.PI/2; // idle: held straight up; engaged: thrusts at the target
+    const spearAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: thrusts at the target
     if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     } else {
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+      // fixed at its natural resting direction — tracking the weapon's actual swing angle could
+      // send it crossing across the body or swinging up into the air depending on which way the
+      // enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+      drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, spearBend);
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
-    const shaftLen = 34 * extra.weaponScale;
+    const shaftLen = weaponLenFromScale(15, 24, extra.weaponScale);
     const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
     const backX = handX - Math.cos(spearAngle)*8, backY = handY - Math.sin(spearAngle)*8;
-    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(backX,backY); ctx.lineTo(tipX,tipY); ctx.stroke();
     // small triangular spearhead
     const perpX = -Math.sin(spearAngle), perpY = Math.cos(spearAngle);
@@ -3468,16 +3640,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.fill();
   } else if(type === 'HAMMERMAN'){
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const hammerAngle = extra.hasTarget ? angle : -Math.PI/2;
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, hammerBend);
+    const hammerAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
-    const haftLen = 18 * extra.weaponScale;
+    const haftLen = weaponLenFromScale(14, 22, extra.weaponScale);
     const tipX = handX + Math.cos(hammerAngle)*haftLen, tipY = handY + Math.sin(hammerAngle)*haftLen;
-    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 3*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const perpX = -Math.sin(hammerAngle), perpY = Math.cos(hammerAngle);
-    const headLen = 10;
+    const headLen = 10 * extra.weaponThickness;
     ctx.fillStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
     ctx.beginPath();
     ctx.moveTo(tipX + perpX*8 - Math.cos(hammerAngle)*headLen*0.3, tipY + perpY*8 - Math.sin(hammerAngle)*headLen*0.3);
@@ -3487,17 +3659,19 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.closePath();
     ctx.fill();
     // shield strapped to the off-hand — the tower's defining trait, shown explicitly rather than implied
-    const shieldArm = drawArmAndHand(ctx, shoulderX-4, shoulderY, extra.hasTarget ? IDLE_WEAPON_ANGLE : (Math.PI/2 + 0.7), armLen*0.6, skinMain, -0.2);
+    const shieldArm = drawArmAndHand(ctx, shoulderX-1.5, shoulderY, extra.hasTarget ? IDLE_WEAPON_ANGLE : (Math.PI/2 + 0.7), armLen*0.6, skinMain, -0.2);
     const shieldX = shieldArm.handX, shieldY = shieldArm.handY - 3;
     ctx.fillStyle = level >= 3 ? '#bdeaff' : '#9aa0a6';
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
   } else if(type === 'CLERIC'){
-    // off-hand: relaxed at the opposite side
-    drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
+    // off-hand: relaxed at the opposite side, clamped so it never swings up into the air
+    // off-hand: relaxed at the opposite side, fixed at its natural resting direction — not tracking
+    // the aim angle, since that could send it crossing across the body or swinging up into the air
+    drawArmAndHand(ctx, shoulderX-1.5, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     // one arm raised in a blessing gesture, holding a small cross aloft
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, -Math.PI/2 - 0.3, armLen, skinMain, -0.4);
+    const hand = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, -Math.PI/2 - 0.3, armLen, skinMain, -0.4);
     const handX = hand.handX, handY = hand.handY;
     ctx.strokeStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
     ctx.lineWidth = 2.5;
@@ -3510,16 +3684,15 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.beginPath(); ctx.ellipse(0, -30, 7, 2.5, 0, 0, Math.PI*2); ctx.stroke();
     }
   } else if(type === 'BLOWDART'){
-    const dartAngle = extra.hasTarget ? angle : -Math.PI/2;
-    if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    } else {
-      drawArmAndHand(ctx, shoulderX-4, shoulderY, angle + Math.PI, armLen, skinMain, -0.15);
-    }
-    // a short pipe held up to the mouth, aimed at the target
-    const hand = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen*0.7, skinMain, -0.6);
+    // simple left/right facing flip instead of tracking a continuous angle — one arm fixed at the
+    // mouth, mirrored depending on which side he's shooting toward, per the reference sketch
+    const faceSign = Math.cos(extra.hasTarget ? angle : 0) >= 0 ? 1 : -1;
+    drawArmAndHand(ctx, shoulderX - 4*faceSign, shoulderY, Math.PI/2 + 0.7*faceSign, armLen*0.85, skinMain, -0.15);
+    const mouthAngle = faceSign > 0 ? -0.9 : Math.PI + 0.9;
+    const hand = drawArmAndHand(ctx, shoulderX + 4*faceSign, shoulderY, mouthAngle, armLen*0.7, skinMain, -0.5*faceSign);
     const handX = hand.handX, handY = hand.handY;
-    const tipX = handX + Math.cos(dartAngle)*14*extra.weaponScale, tipY = handY + Math.sin(dartAngle)*14*extra.weaponScale;
+    const pipeAngle = faceSign > 0 ? -0.15 : Math.PI + 0.15;
+    const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
     ctx.strokeStyle = '#5a7a2a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
@@ -3528,19 +3701,39 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   } else if(type === 'SQUIRTGUN'){
     // dual-wielded pistols, both hands actively aiming — no relaxed off-hand for a gunslinger stance
-    const gunAngle = extra.hasTarget ? angle : -Math.PI/2;
-    const idleAngle = Math.PI/2 - 0.7;
-    const hand1 = drawArmAndHand(ctx, shoulderX-4, shoulderY, extra.hasTarget ? angle : (Math.PI/2 + 0.7), armLen*0.9, skinMain, -0.2);
-    const hand2 = drawArmAndHand(ctx, shoulderX+4, shoulderY, extra.hasTarget ? angle : idleAngle, armLen*0.9, skinMain, 0.2);
-    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 3;
+    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const hand1 = drawArmAndHand(ctx, shoulderX-1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 + 0.7), armLen*0.9, skinMain, -0.2);
+    const hand2 = drawArmAndHand(ctx, shoulderX+1.5, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen*0.9, skinMain, 0.2);
+    ctx.font = (14 * extra.weaponScale * (0.85 + extra.weaponThickness*0.15)) + 'px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
     for(const hand of [hand1, hand2]){
-      const tipX = hand.handX + Math.cos(gunAngle)*10*extra.weaponScale, tipY = hand.handY + Math.sin(gunAngle)*10*extra.weaponScale;
-      ctx.beginPath(); ctx.moveTo(hand.handX,hand.handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+      // pivot at the hand (the grip), glyph extends outward from there toward the aim direction
+      ctx.save();
+      ctx.translate(hand.handX, hand.handY);
+      ctx.rotate(gunAngle);
+      ctx.fillText('🔫', 0, 0);
+      ctx.restore();
       if(!lowGfx){
+        const gunLen = weaponLenFromScale(11, 17, extra.weaponScale);
+      const tipX = hand.handX + Math.cos(gunAngle)*gunLen, tipY = hand.handY + Math.sin(gunAngle)*gunLen;
         ctx.fillStyle = 'rgba(124,220,24,0.5)';
         ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
       }
     }
+  }
+
+  // armor decorations drawn last, on top of the arms — so arm lines never cross over and obscure
+  // the chest plate or helmet, which looked wrong when armor was drawn first
+  if(level >= 2){
+    ctx.save();
+    ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(0,2); ctx.stroke();
+    ctx.restore();
+  }
+  if(level >= 3){
+    ctx.fillStyle = '#c7ccd1';
+    ctx.beginPath(); ctx.ellipse(0,-24, 8/build.scaleX, 8/build.scaleY, 0, Math.PI, 0); ctx.fill();
   }
 
   ctx.restore();
@@ -3575,10 +3768,12 @@ function queryNearby(hash, x, y, range){
 /* =========================================================
    WAVES
    ========================================================= */
-// Waves beyond the hand-authored 15 are generated procedurally — the game never hard-stops.
+// Waves beyond the hand-authored 20 are generated procedurally — the game never hard-stops.
 // Enemy HP already scales indefinitely with waveIndex (see spawnEnemy), so difficulty keeps
 // climbing naturally; this just keeps composition/pacing varied as waves keep coming.
 const WAVE_TYPE_NAMES = ['', '🐜 SWARM SURGE', '🛡️ ELITE VANGUARD', '🧟 UNDEAD UPRISING', '🔥 AMBUSH TACTICS', '💪 SIEGE ASSAULT'];
+// hand-authored waves 21-100 also carry a type label, shown as a toast the same way procedural waves are
+const CURATED_WAVE_LABELS = {22:'🃏 TRICK WAVE', 23:'🛡️ ELITE VANGUARD', 24:'⛏️ GRIND', 25:'🐜 SWARM SURGE', 26:'🧟 UNDEAD UPRISING', 27:'🔥 AMBUSH TACTICS', 29:'🃏 TRICK WAVE', 30:'👑 BOSS WAVE', 31:'⛏️ GRIND', 32:'🐜 SWARM SURGE', 33:'🧟 UNDEAD UPRISING', 34:'🔥 AMBUSH TACTICS', 36:'🃏 TRICK WAVE', 37:'🛡️ ELITE VANGUARD', 38:'⛏️ GRIND', 39:'🐜 SWARM SURGE', 40:'👑 BOSS WAVE', 41:'🔥 AMBUSH TACTICS', 43:'🃏 TRICK WAVE', 44:'🛡️ ELITE VANGUARD', 45:'⛏️ GRIND', 46:'🐜 SWARM SURGE', 47:'🧟 UNDEAD UPRISING', 48:'🔥 AMBUSH TACTICS', 50:'👑 BOSS WAVE', 51:'🛡️ ELITE VANGUARD', 52:'⛏️ GRIND', 53:'🐜 SWARM SURGE', 54:'🧟 UNDEAD UPRISING', 55:'🔥 AMBUSH TACTICS', 57:'🃏 TRICK WAVE', 58:'🛡️ ELITE VANGUARD', 59:'⛏️ GRIND', 60:'👑 BOSS WAVE', 61:'🧟 UNDEAD UPRISING', 62:'🔥 AMBUSH TACTICS', 64:'🃏 TRICK WAVE', 65:'🛡️ ELITE VANGUARD', 66:'⛏️ GRIND', 67:'🐜 SWARM SURGE', 68:'🧟 UNDEAD UPRISING', 69:'🔥 AMBUSH TACTICS', 70:'👑 BOSS WAVE', 71:'🃏 TRICK WAVE', 72:'🛡️ ELITE VANGUARD', 73:'⛏️ GRIND', 74:'🐜 SWARM SURGE', 75:'🧟 UNDEAD UPRISING', 76:'🔥 AMBUSH TACTICS', 78:'🃏 TRICK WAVE', 79:'🛡️ ELITE VANGUARD', 80:'👑 BOSS WAVE', 81:'🐜 SWARM SURGE', 82:'🧟 UNDEAD UPRISING', 83:'🔥 AMBUSH TACTICS', 85:'🃏 TRICK WAVE', 86:'🛡️ ELITE VANGUARD', 87:'⛏️ GRIND', 88:'🐜 SWARM SURGE', 89:'🧟 UNDEAD UPRISING', 90:'👑 BOSS WAVE', 92:'🃏 TRICK WAVE', 93:'🛡️ ELITE VANGUARD', 94:'⛏️ GRIND', 95:'🐜 SWARM SURGE', 96:'🧟 UNDEAD UPRISING', 97:'🔥 AMBUSH TACTICS', 99:'🃏 TRICK WAVE', 100:'👑 BOSS WAVE'};
 function generateStandardWave(n){
   const group = [];
   group.push({ type:'GRUNT', count: 8 + n*2, spawnDelay: Math.max(250, 550 - n*10) });
@@ -3633,6 +3828,25 @@ function generateBossRushWave(n){
   if(n >= 10) group.push({ type:'BOSS', count: 1 + Math.floor(n/20), spawnDelay: 0 });
   return group;
 }
+function generateTrickWave(n){
+  // looks like an easy opener, then springs a real threat partway through — punishes autopilot
+  return [
+    { type:'GRUNT', count: 4 + Math.floor(n/3), spawnDelay: 700 },
+    { type:'SPLITTER', count: 2 + Math.floor(n/4), spawnDelay: 500 },
+    { type:'TROLL', count: 1 + Math.floor(n/12), spawnDelay: 300 },
+    { type:'TANK', count: 2 + Math.floor(n/4), spawnDelay: 250 },
+    { type:'RUNNER', count: 6 + Math.floor(n/2), spawnDelay: 150 }
+  ];
+}
+function generateGrindWave(n){
+  // long, sustained, high total count — wide spacing rather than a fast burst, tests sustained
+  // DPS and economy over time rather than a reaction-check flood
+  return [
+    { type:'GRUNT', count: 16 + n*2, spawnDelay: 750 },
+    { type:'ZOMBIE', count: 6 + n, spawnDelay: 900 },
+    { type:'RUNNER', count: 8 + n, spawnDelay: 650 }
+  ];
+}
 function generateProceduralWave(n){
   const waveType = n % 6; // deterministic cycle — guarantees variety, never repeats back to back
   switch(waveType){
@@ -3655,6 +3869,8 @@ function startNextWave(){
   if(isProcedural){
     const typeName = WAVE_TYPE_NAMES[proceduralN % 6];
     if(typeName) showToast(typeName);
+  } else if(CURATED_WAVE_LABELS[waveIndex+1]){
+    showToast(CURATED_WAVE_LABELS[waveIndex+1]);
   }
   spawnQueue = [];
   for(const group of waveDef){
@@ -3675,7 +3891,7 @@ function startNextWave(){
 function spawnEnemy(type){
   const e = acquireActive(enemyPool);
   if(!e) return;
-  const hpMult = 1 + (waveIndex-1)*0.15;
+  const hpMult = 1 + (waveIndex-1)*0.20;
   const isBig = Math.random() < BIG_VARIANT_CHANCE;
   e.spawn(type, hpMult, isBig);
   if(isBig) spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
@@ -3756,6 +3972,7 @@ function render(ctx){
 
   ctx.drawImage(mapCanvas, 0, 0); // static map, pre-rendered once — see BOOT
   drawScenery(ctx);
+  drawDecals(ctx);
   drawBuildPreview(ctx);
   for(const e of enemyPool) if(e.active) e.draw(ctx);
   for(const t of towerPool) if(t.active) t.draw(ctx, t === selectedTower);
@@ -4392,6 +4609,7 @@ document.getElementById('settingsMuteToggle').addEventListener('change', (e) => 
 });
 document.getElementById('settingsGoreToggle').addEventListener('change', (e) => {
   goreMode = e.target.checked;
+  if(!goreMode){ decals.length = 0; decalIndex = 0; }
   const badge = document.getElementById('ratingBadge');
   const startCheckbox = document.getElementById('goreToggle');
   if(goreMode){
@@ -4523,11 +4741,13 @@ function updateInspectPanel(){
   const isMeleeMode = t.type === 'AXEMAN' ? t.axeMode === 'MELEE' : !!t.baseMeleeDamage;
   const atk = isMeleeMode ? (t.meleeDamage || t.damage) : t.damage;
   const rng = isMeleeMode ? (t.meleeRange || t.range) : t.range;
+  const cd = isMeleeMode ? (t.meleeCooldown || t.cooldown) : t.cooldown;
   document.getElementById('inspAtkVal').textContent = atk;
   document.getElementById('inspHpVal').textContent = Math.round(t.hp);
   document.getElementById('inspMaxHpVal').textContent = t.maxHp;
   document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100) + '%';
   document.getElementById('inspRangeVal').textContent = rng;
+  document.getElementById('inspSpeedVal').textContent = cd ? (1000/cd).toFixed(1) : '0';
   document.getElementById('inspLuckVal').textContent = '+' + Math.round(((t.goldMult||1)-1)*100) + '%';
   document.getElementById('inspIntBtn').title = t.type === 'MAGE'
     ? 'Intelligence: +6 range per point, and boosts spell damage too'
@@ -4703,6 +4923,7 @@ document.querySelectorAll('.quality-btn').forEach(btn => {
 
 document.getElementById('goreToggle').addEventListener('change', (e) => {
   goreMode = e.target.checked;
+  if(!goreMode){ decals.length = 0; decalIndex = 0; }
   const badge = document.getElementById('ratingBadge');
   if(goreMode){
     badge.textContent = '🟥 Rated Mature (Gore Enabled)';
@@ -4746,6 +4967,7 @@ function resetGame(){
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
   screenShakeUntil = 0; screenShakeMag = 0;
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
+  decals.length = 0; decalIndex = 0;
   moveCharges = 1;
   exitMoveMode();
   initRegionAndPath();

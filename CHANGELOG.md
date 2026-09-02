@@ -7,6 +7,243 @@ See `AGENTS.md` for the workflow this file follows.
 
 ## [Unreleased]
 
+## [1.0.21] - 2026-09-02
+
+- **Fixed the Archer's drawing-arm shoulder sitting almost on the neck** — verified with real
+  coordinates: the back shoulder was landing just 0.5 units below the head/neck boundary when
+  facing horizontally, from a shoulder offset (3.5) that was too large. Reduced to 1.8, which
+  pulls it to 2.2 units of clearance — over 4x more room — confirmed with the same math before
+  shipping, not just eyeballed.
+
+## [1.0.20] - 2026-09-02
+
+- **Armor now draws on top of arms instead of being crossed over by them** — the chest plate
+  (level 2+) and helmet (level 3+) were rendered before the arms, so arm lines cut across and
+  obscured them. Moved armor rendering to happen after everything else instead.
+- **Increased weapon size growth per INT investment** — first attempt at this actually made growth
+  *slower* (verified the mistake with real numbers before shipping it, then reverted). The
+  correct fix: increased the actual min/max size targets for all 8 classes by roughly 15-30%
+  rather than changing the growth curve itself. Confirmed with real numbers that the same amount
+  of INT investment now produces a visibly bigger weapon (e.g. Swordsman: 17.5 units old vs. 19.0
+  new, at the same realistic investment level) while the zero-INT baseline size didn't shrink.
+  Re-verified head clearance against every new max size — Swordsman and Two-Hander needed more
+  conservative caps (23/24 instead of an initially-planned 26/30) to stay clear.
+
+## [1.0.19] - 2026-09-02
+
+- **Restored upright weapons when idle/between rounds** — a couple versions ago these were
+  switched to hang downward to sidestep a head-clearance issue with the bigger weapon sizes, but
+  upright reads better and was the original design intent. Restored the 55°-tilted upright pose
+  and re-verified with real numbers (not assumed from before) that every class's current actual
+  max size still clears the head at this angle — all 7 confirmed clear, none needed further
+  adjustment.
+
+## [1.0.18] - 2026-09-02
+
+- **Fixed the Archer's drawing-arm elbow bending unnaturally upward when facing right (or left)**
+  — traced the exact cause: the back shoulder's own offset already sits above center when facing
+  horizontally, and the old perpendicular elbow-kick compounded in that same direction, stacking
+  the elbow well above the shoulder. Replaced the perpendicular kick with a fixed downward droop,
+  matching real archery form (the drawing elbow stays level or drops slightly, never rises).
+  Verified with real coordinates for the exact "facing right" case reported — the elbow now sits
+  below the shoulder instead of stacked above it, and this holds at every facing direction since
+  the droop no longer depends on aim angle at all.
+
+## [1.0.17] - 2026-09-02
+
+- **Fixed the off-hand crossing to the wrong side of the body while swinging** — last version's
+  vertical clamp only stopped it from swinging up into the air, but didn't stop the horizontal
+  case: when the weapon swings toward the left, its "exact opposite" angle points right, sending
+  the off-hand (anchored on the left shoulder) reaching all the way across the body. Confirmed
+  this with real angle math before touching code. Rather than patching the direction-tracking
+  approach a third time, replaced it entirely — the off-hand is now fixed at its natural resting
+  angle regardless of the weapon's swing direction, so there is no longer any possible angle where
+  it can cross the body or swing upward, verified by testing it against five different weapon
+  angles and confirming the output is now identical every time. Applied to all 6 classes that
+  shared the old pattern (Swordsman, Spearman, Mage, Bomber, Gatling, Cleric).
+
+## [1.0.16] - 2026-09-02
+
+- **Fixed the off-hand swinging up into the air while attacking** — it counterbalanced the exact
+  opposite of the weapon arm's swing angle, which is correct most of the time but points straight
+  up whenever the enemy being fought happens to be above the tower. Clamped so it reflects back
+  downward instead, keeping the same left/right lean without ever raising into the air. Verified
+  across five different swing scenarios (enemy above, below, left, right, diagonal) — the exact
+  "enemy above" case that broke before now stays correctly grounded. Applied to all 6 affected
+  classes (Swordsman, Spearman, Mage, Bomber, Gatling, Cleric).
+- **Fixed a color mismatch on the Archer** — the nocked arrow shown mid-draw was brown, but the
+  actual fired arrow projectile is yellow/gold. Matched them so the same arrow looks consistent
+  whether it's being drawn or already in flight.
+
+## [1.0.15] - 2026-09-02
+
+- **Weapons are noticeably bigger at base, and STR now makes them thicker** — added a new
+  `weaponThickness` stat (diminishing returns, capped at 1.8x) applied to blade width, crossguard
+  size, hilt size, and equivalent head/tip geometry across every weapon-holding class. INT still
+  controls length via the existing system, now with meaningfully larger min/max ranges per class
+  (e.g. Swordsman went from 9-12.5 to 14-24 units).
+- The bigger base sizes meant the old straight-up idle pose no longer had enough vertical
+  clearance below the head, so idle weapons across all affected classes now tilt 55° instead of
+  pointing straight up — verified with real numbers that every single class's new maximum size
+  stays clear of the head at this angle, not just guessed at.
+
+## [1.0.14] - 2026-09-02
+
+- **Fixed arms visually floating away from the torso** — every two-armed class positioned its
+  arms starting ±3 to ±4 units to either side of the torso's centerline, with nothing drawn to
+  bridge that gap, so arms read as disconnected from the body. Reduced to ±1.5 across all 15
+  affected call sites (still enough separation to distinguish left/right, but close enough to
+  read as actually attached).
+- **Fixed the Archer's drawing-arm elbow flaring the wrong way** — the elbow kick used a fixed
+  rotational formula independent of which side the back shoulder actually sits on, so depending
+  on which direction the Archer was facing, the elbow could bend toward the body instead of away
+  from it. Now kicks in the same direction the back shoulder is already offset, which is
+  guaranteed correct regardless of facing — verified across all four cardinal directions, not
+  just the one that happened to look right during testing.
+
+## [1.0.13] - 2026-09-02
+
+- **Found and removed the actual root cause of every "extra limb" report across this entire
+  session.** There was a leftover global block — drawn unconditionally, for every class except
+  Axeman and dual/two-hander Swordsman specs, completely outside the careful per-class off-hand
+  systems that were built afterward — that stamped a hardcoded extra arm-like line (0,-12) to
+  (-10,-2) on top of everything else, every single frame. Every class already had its own correct
+  off-hand logic; this was pure leftover dead code silently drawing a genuine extra limb on top of
+  it the whole time. Manually verified (not just scripted) that Swordsman, Mage, and Spearman each
+  render exactly the arms they should — no more, no less — with this block gone.
+
+## [1.0.12] - 2026-09-02
+
+- **Fixed weapon size changing when a tower swings/fires** — idle and engaged poses were computing
+  weapon length from two entirely different formulas (a short idle-safe base vs. the old full
+  combat length), so the weapon visibly grew or shrank depending on whether the tower had a
+  target. Replaced with a single shared function (`weaponLenFromScale`) that both states now call
+  identically — same length whether idle or mid-swing, only INT/range investment changes it.
+- Every weapon-holding class now has an explicit min length (at no INT invested) and max length
+  (at that class's own range cap), verified with real numbers: min is hit exactly at baseline,
+  max is hit exactly at the range cap, and the value never overshoots even against out-of-range
+  inputs. Applied to all 8 classes — Swordsman, Axeman, Spearman, Hammerman, Mage, Bomber,
+  Gatling, and Squirt Gun.
+
+## [1.0.11] - 2026-09-02
+
+- **Fixed weapon growth (INT/range investment) being completely invisible when idle** — a
+  regression from the head-overlap fix two versions ago. Proved it with real numbers: every
+  weaponScale from 1.0x to 1.6x was clamping to the exact same length, meaning INT investment had
+  zero visible effect on idle weapon size, for all 7 affected classes (Swordsman, Spearman,
+  Hammerman, Mage, Bomber, Gatling, Squirt Gun). The fix: idle poses now use their own shorter
+  base length sized to fit entirely within the safe head-clearance budget, so growth is visible
+  at every single step across the realistic range, while the clamp remains as a safety net only
+  for genuinely extreme edge cases (e.g. a maxed-out Two-Hander).
+- **Lowered the shoulder pivot slightly** (y=-15 → y=-13) — the previous "attach arms at the
+  body's edge" fix had overcorrected a bit too high.
+
+## [1.0.10] - 2026-09-02
+
+- **Random pool-size variance** — roughly 1 in 5 blood pools now come out dramatically bigger
+  (verified: up to 2.6x larger at the extreme, not just marginal noise), with more blobs and a
+  wider spread, so the ground doesn't fill up with uniform puddles.
+- Pushed overall gore further: more particles in every layer, more gib debris per kill (up to 10
+  at high graphics), and a third scattered stain per death for a genuinely messy, uneven pool
+  rather than a tidy ring around the kill point.
+
+## [1.0.9] - 2026-09-02
+
+- **Fixed Archer's drawing arm — the real cause of the recurring "extra limb" look.** The string
+  arm was using the same generic fixed-segment-ratio arm function as every other class, but that
+  function assumes a roughly full-length reach. Pulling it in close (as short as 6 units, early
+  in the draw animation) forced the upper arm and forearm into a cramped, overlapping fold that
+  read as an extra limb. Replaced with proper geometry for this specific case: the string hand
+  slides back from the bow grip along the aim axis exactly like a real draw motion, and the elbow
+  kicks out perpendicular to the shoulder-to-hand line so it stays clean at any pull distance.
+  Verified with real geometry math across the full draw cycle (0% to 100%) — both arm segments
+  stay a sane, non-degenerate length the entire time, no collapse at any point.
+
+## [1.0.8] - 2026-09-02
+
+- **Significantly escalated gore intensity** — main blood burst nearly doubled (22→42 particles),
+  added a third bright high-velocity spray layer, and a new tumbling "gib" debris system (chunky
+  rotating squares, distinct from the fine spray, with heavier physics). Pooling decals now spawn
+  two overlapping stains per death instead of one, each with more and larger splatter blobs.
+  Screen shake on kill increased and lasts longer. On-hit spray (not just kills) also boosted, so
+  every hit reads as visceral, not just the kill itself.
+- Fixed a real bug caught before shipping the above: the particle pool is reused in a circular
+  buffer, so a slot previously used for the new gib debris could leak its rotating-square render
+  mode into a later, unrelated particle spawn. Every regular particle spawn now explicitly resets
+  that flag.
+
+## [1.0.7] - 2026-09-02
+
+- **Extended curated waves from 20 to 100** — rather than hand-typing 80 one-off arrays (slow,
+  error-prone, hard to balance consistently), built on the existing procedural-wave formulas and
+  added two new archetypes: 🃏 Trick (opens deceptively weak, then springs Splitters/Trolls/Tanks
+  mid-wave) and ⛏️ Grind (a long, widely-spaced slog testing sustained DPS and economy rather than
+  burst reaction). Waves cycle through 7 archetypes with a dedicated 👑 Boss milestone every 10th
+  wave (30, 40, 50...100), all baked into real, concrete wave definitions rather than left to
+  run-time randomness.
+- Caught and fixed a real overflow bug during generation: the original count-scaling formulas,
+  uncapped, would have produced a 698-enemy wave by wave 98 — nearly 3x the enemy pool's actual
+  220-object capacity, meaning most of that wave would have silently failed to spawn. Capped the
+  scaling input so the worst-case wave (157 enemies) stays safely under the pool limit.
+- The wave-type toast (previously only shown for waves beyond the hand-authored range) now also
+  fires for these new curated waves, so the Trick/Grind/Boss distinction is visible in-game.
+
+## [1.0.6] - 2026-09-02
+
+- **Fixed idle weapons overshooting past the head** — a regression from raising the shoulder
+  pivot two versions ago (to fix arms attaching at the middle of the body): every class's idle
+  "weapon held straight up" pose never got re-checked against the new, higher shoulder position,
+  so the sword/staff/hammer/etc. tip was crossing up into the head — confirmed with actual
+  geometry math, not just a guess (blade tip landed inside the head's circle at every weapon
+  scale, even the base case). Added a shared clamp so any idle weapon's upward reach is capped
+  just below the head, applied to all 7 affected classes (Swordsman, Spearman, Hammerman, Mage,
+  Bomber, Gatling, Squirt Gun) from one shared function.
+
+## [1.0.5] - 2026-09-02
+
+- **Gravity on gore particles** — the blood burst on hit/death now arcs and falls instead of
+  spraying out in a flat radial pattern, reading as actual directional spray rather than a
+  generic particle puff. Every other particle use (gold pickups, sparkles, star effects) is
+  unaffected — gravity is opt-in per spawn.
+- **Persistent ground blood decals** — enemy deaths in gore mode now leave a permanent pooling
+  stain on the ground (a few overlapping irregular blobs, not a plain circle), capped at 150
+  active stains on a circular buffer so it stays performance-safe over a long session. Clears on
+  a new game and immediately when gore mode is turned off.
+
+## [1.0.4] - 2026-09-02
+
+- **Extended curated waves from 15 to 20** — 5 new hand-authored waves escalating through the full
+  enemy roster (heavier Tank/Zombie/Wraith combinations, denser Swarm/Wolf floods, an Undead
+  Uprising, and a Shielded/Splitter gauntlet), ending in a bigger 2-Boss finale at wave 20.
+  Procedural generation still takes over seamlessly past that, unchanged.
+- **Steeper per-wave HP scaling** — 20% growth per wave instead of 15%, so difficulty ramps up
+  meaningfully faster across the whole game, not just in the new waves.
+- Confirmed Barricades were already correctly restricted to path tiles only (this had been flagged
+  as possibly missing — checked the actual code and it was already implemented correctly).
+
+## [1.0.3] - 2026-09-02
+
+- **Fixed DEX/INT damage bonuses not applying to evolved classes** — the check was against a
+  tower's literal type (`'ARCHER'`, `'MAGE'`) rather than its archetype, so Blowdart, Squirt Gun,
+  Gatling, Bomber, and Cleric all silently lost their own archetype's primary damage scaling the
+  moment they evolved. Now checks archetype, so every class in a family keeps its stat scaling
+  through every evolution stage.
+- Added an Attack Speed stat (⚡, attacks/second) to the tower inspect panel — previously only
+  visible indirectly through cooldown timing, not shown as an actual number anywhere.
+- Squirt Gun now renders holding actual pistol emoji (🔫) instead of plain grey line-shapes.
+
+## [1.0.2] - 2026-09-02
+
+- **Fixed arms attaching at the middle of the body instead of the shoulder** — the shared shoulder
+  pivot every class's arms draw from was sitting roughly a third of the way down the torso rather
+  than at the top edge near the neck. One constant change fixes this for every class at once.
+- **Redesigned Blowdart's rendering** — replaced its continuous-angle arm/pipe rig (the same
+  fragile pattern that kept causing detached-looking limbs) with a simple left/right facing flip:
+  one arm fixed in a mouth-held pose, mirrored depending on which side it's shooting toward,
+  instead of tracking an arbitrary rotation angle.
+- Removed the static version line from README.md — it duplicated the in-game version display and
+  was easy to forget updating, causing it to silently drift out of sync.
+
 ## [1.0.1] - 2026-09-02
 
 Class identity overhaul: three starting towers with a full evolution tree, a real stat system
