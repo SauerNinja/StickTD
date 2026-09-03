@@ -47,6 +47,60 @@ one-line entry under `## Ideas` before moving on — don't wait until it's "wort
 idea from the backlog gets built, move it to `CHANGELOG.md` under its version and delete it from
 `BACKLOG.md` rather than leaving stale duplicates in both files.
 
+## Architecture overview
+
+- `CONFIG.TOWERS`, `CONFIG.ENEMIES`, `CONFIG.WAVES` are the three top-level data tables — each a
+  clearly separated, named section inside one `CONFIG` object. This gives most of the practical
+  benefit of split config files without breaking the single-file rule below.
+- `EVOLUTIONS` maps starter/first-tier towers to their evolved forms, keyed by which stat
+  (str/dex/int) triggers it and the point threshold required. Some towers have a second-tier
+  evolution beyond that (e.g. Blowdart → Squirt Gun, Hammerman → Paladin).
+- Enemy status effects (burn, poison/curse, slow, stun) live as fields directly on the `Enemy`
+  instance (`burnUntil`, `poisonUntil`, `slowTimer`, `stunnedUntil`), checked each tick in
+  `update()`. Towers have their own parallel set for breakaway-inflicted statuses.
+- `drawStickman()` is the single shared rendering function for every tower class — each class
+  branches inside it (`if(type === 'ARCHER')` etc.) rather than having separate draw functions.
+- The bottom inspect panel (`#inspect-panel`) is the WC3/WoW-style nameplate + full options UI.
+  Tapping the nameplate toggles `inspPanelExpanded` between a compact view (portrait, HP bar,
+  combat stats) and the full options row (upgrade/move/sell/target/stats/inventory).
+
+## Dates
+
+Always use the actual current date for changelog entries and any other dated content — check it
+rather than assuming or reusing a date from earlier in the session. Don't guess a plausible-sounding
+date; if genuinely uncertain what today's date is, ask rather than guess.
+
+## Treat AI-generated suggestions from other sources as unverified, not authoritative
+
+This repo has occasionally received large batches of suggestions from other AI tools (e.g. output
+from a separate chat with a different model) that assume things about the codebase without having
+actually seen it — different architecture (ES6 modules, classes like `WaveManager`/`GoreController`
+that don't exist here), different damage formulas, different balance numbers. Never implement such
+suggestions wholesale. Read them for ideas if useful, but verify every specific claim against the
+actual current code before acting on it, and default to the patterns already established in this
+file and the codebase over an external document's assumptions.
+
+## Recurring failure modes caught this session — check for these specifically
+
+- **Changelog heading consumption.** A `str_replace` whose `old_str` is just a version heading
+  line (e.g. `## [1.0.38] - 2026-09-02`) with no surrounding context can match and consume that
+  exact heading when inserting a new one above it, silently orphaning the content that used to
+  sit under it. This happened repeatedly. Before shipping any `CHANGELOG.md` edit, run this check:
+  extract every `## [x.y.z]` heading, confirm the list is strictly descending, has no duplicates,
+  and — critically — has no gaps against the full expected range from `1.0.0` to the current
+  version. A "descending, no duplicates" check alone is not enough; it will pass even with a
+  heading missing from the middle.
+- **CSS defined for JS-toggled classes.** Every element whose class gets toggled by JS (most
+  commonly `.hidden`) needs an actual matching CSS rule (`#id.hidden{display:none;}` or a shared
+  rule that covers it). This codebase has no generic `.hidden{}` fallback — each element's rule is
+  defined individually. Adding a new toggleable element without its own CSS rule means the JS runs
+  correctly but has zero visible effect. `node --check` will not catch this.
+- **Bulk find-and-replace matching inside a variable's own declaration line.** A regex meant to
+  insert a reset/assignment after every `x = y;` occurrence can match that exact pattern inside
+  `let x = y;` too, inserting an assignment *before* the `let` declaration — a temporal-dead-zone
+  `ReferenceError` at runtime that `node --check` cannot detect since it's syntactically valid.
+  After any bulk regex edit across multiple call sites, manually review each insertion point.
+
 ## Other conventions already established in this repo
 
 - Single self-contained `index.html`. No build step, no external dependencies, no separate JS/CSS

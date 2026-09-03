@@ -215,15 +215,36 @@
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
   #inspFullOptions.hidden{display:none;}
-  #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:8px;cursor:pointer;
+  #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:10px;cursor:pointer;
     padding:4px 6px;margin:-4px -6px 2px;border-radius:6px;user-select:none;-webkit-user-select:none;}
   #inspNameplate:active{background:rgba(241,196,15,0.15);}
-  #inspExpandChevron{margin-left:auto;color:var(--gold);font-weight:bold;font-size:1.1em;}
+  #inspPortraitFrame{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #3a2a18, #1a1008);
+    border:2px solid var(--gold);box-shadow:0 0 6px rgba(241,196,15,0.5), inset 0 0 4px rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;font-size:1.3em;}
+  #inspNameplateMid{flex:0 1 170px;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  #inspNameRow{display:flex;align-items:baseline;gap:6px;}
+  #inspHpBarTrack{position:relative;height:9px;border-radius:2px;background:rgba(0,0,0,0.6);
+    border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
+  #inspHpBarFill{height:100%;background:linear-gradient(180deg,#5fd35f,#2e9e2e);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);transition:width 0.2s ease;}
+  #inspHpBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:0.6em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
+  #inspEvoBarTrack{position:relative;height:6px;border-radius:2px;background:rgba(0,0,0,0.6);
+    border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
+  #inspEvoBarFill{height:100%;background:linear-gradient(180deg,#7dd3fc,#2a9fd6);transition:width 0.2s ease;}
+  #inspEvoBarTrack.hidden{display:none;}
+  #inspExpandChevron{flex:0 0 auto;width:32px;height:32px;border-radius:6px;
+    background:rgba(241,196,15,0.18);border:2px solid var(--gold);color:var(--gold);
+    font-size:1.3em;font-weight:bold;line-height:1;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;padding:0;}
+  #inspExpandChevron:active{background:rgba(241,196,15,0.35);}
   #inspect-panel button{background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);
     border-radius:6px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:inherit;}
   #inspect-panel button:disabled{opacity:0.4;cursor:default;}
   #inspect-panel button.hidden{display:none;}
-  #inspClose{margin-left:auto;background:var(--danger);}
+  #inspClose{position:absolute;top:6px;right:6px;width:22px;height:22px;padding:0;
+    font-size:0.75em;background:var(--danger);border-radius:50%;z-index:5;}
   #inspStatsRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
     margin-top:2px;padding-top:8px;border-top:1px solid rgba(241,196,15,0.3);}
   #inspCombatRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:12px;align-items:center;
@@ -304,9 +325,13 @@
 
     <div id="inspect-panel" class="hidden">
       <div id="inspNameplate">
-        <strong id="inspName">-</strong>
-        <span id="inspLevel">Lv.1</span>
-        <span id="inspExpandChevron">⌄</span>
+        <div id="inspPortraitFrame"><span id="inspPortraitFace">🙂</span></div>
+        <div id="inspNameplateMid">
+          <div id="inspNameRow"><strong id="inspName">-</strong><span id="inspLevel">Lv.1</span></div>
+          <div id="inspHpBarTrack"><div id="inspHpBarFill"></div><span id="inspHpBarText">0/0</span></div>
+          <div id="inspEvoBarTrack"><div id="inspEvoBarFill"></div></div>
+        </div>
+        <button id="inspExpandChevron">⌄</button>
       </div>
       <div id="inspCombatRow">
         <span>⚔️ <span id="inspAtkVal">0</span></span>
@@ -510,7 +535,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.41'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.45'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -2847,8 +2872,9 @@ class Tower{
       default: localReach = armLen + 10;
     }
     const muzzleOffset = localReach * STICKMAN_SCALE;
+    const shoulderYWorld = -13 * STICKMAN_SCALE; // every class's arm pivots from this fixed height, not ground level
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
-    const spawnY = this.y + Math.sin(angle)*muzzleOffset;
+    const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
     if(!p) return;
     p.active = true;
@@ -2906,8 +2932,9 @@ class Tower{
     const armLen = 13;
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const muzzleOffset = (armLen + weaponLenFromScale(15, 24, weaponScale)) * STICKMAN_SCALE;
+    const shoulderYWorld = -13 * STICKMAN_SCALE;
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
-    const spawnY = this.y + Math.sin(angle)*muzzleOffset;
+    const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
     if(!p) return;
     p.active = true;
@@ -3390,21 +3417,29 @@ function updateParticles(dt){
     p.vx *= 0.93; p.vy *= 0.93;
   }
 }
-function spawnBloodStream(x, y, angle, count){
+function bloodSizeRoll(){
+  // exponential distribution (mean=1): most rolls land small/normal, huge splatters are a long
+  // rare tail — floored at 0.6 so blood is never absent, capped at 4.5 so it never runs away
+  const roll = -Math.log(Math.max(0.0001, Math.random()));
+  return Math.min(4.5, 0.6 + roll * 0.7);
+}
+function spawnBloodStream(x, y, angle, count, sizeMult){
   // real flowing liquid streams — each particle renders as a connected line from its previous
   // position to its current one (a genuine trail, not a dash), arcing under gravity like an
   // actual jet of water rather than dust particles scattering radially
-  for(let i=0;i<count;i++){
+  sizeMult = sizeMult || bloodSizeRoll();
+  const scaledCount = Math.max(count, Math.round(count * Math.min(2.5, sizeMult)));
+  for(let i=0;i<scaledCount;i++){
     const p = particles[particleIndex];
     particleIndex = (particleIndex+1) % PARTICLE_COUNT;
     const jitter = angle + (Math.random()-0.5)*0.5;
-    const speed = 180 + Math.random()*160;
+    const speed = (180 + Math.random()*160) * Math.min(1.8, 0.7+sizeMult*0.3);
     p.active = true; p.x = x; p.y = y; p.prevX = x; p.prevY = y;
     p.vx = Math.cos(jitter)*speed; p.vy = Math.sin(jitter)*speed;
     p.gravity = 340; p.isGib = false; p.isStream = true;
-    p.life = p.maxLife = 380 + Math.random()*220;
+    p.life = p.maxLife = (380 + Math.random()*220) * Math.min(2.2, 0.7+sizeMult*0.4); // longer streams for bigger splatters
     p.color = Math.random() < 0.6 ? '#a01818' : '#7a0f0f';
-    p.size = 1.5 + Math.random()*1.5; // controls stream thickness
+    p.size = (1.5 + Math.random()*1.5) * Math.min(2, 0.8+sizeMult*0.25); // thicker for bigger splatters
   }
 }
 function spawnGibs(x, y, count){
@@ -5029,6 +5064,25 @@ function updateInspectPanel(){
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Two-Hander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
   inspLevel.textContent = 'Lv.' + t.level + specLabel + heroLabel;
+  document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
+  const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
+  document.getElementById('inspHpBarFill').style.width = hpPct + '%';
+  document.getElementById('inspHpBarText').textContent = Math.round(t.hp) + '/' + t.maxHp;
+  const evoTrack = document.getElementById('inspEvoBarTrack');
+  const evo = EVOLUTIONS[t.type];
+  if(evo){
+    let best = null;
+    for(const statKey in evo){
+      const cur = t[statKey] || 0;
+      const need = evo[statKey].threshold;
+      const pct = Math.min(1, cur/need);
+      if(!best || pct > best.pct) best = { pct };
+    }
+    evoTrack.classList.remove('hidden');
+    document.getElementById('inspEvoBarFill').style.width = Math.round(best.pct*100) + '%';
+  } else {
+    evoTrack.classList.add('hidden'); // no further evolution available for this class
+  }
 
   const isMeleeMode = t.type === 'AXEMAN' ? t.axeMode === 'MELEE' : !!t.baseMeleeDamage;
   const atk = isMeleeMode ? (t.meleeDamage || t.damage) : t.damage;

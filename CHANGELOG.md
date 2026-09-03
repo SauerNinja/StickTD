@@ -3,7 +3,59 @@
 All notable changes to Stick Tower Defense are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows [SemVer](https://semver.org/).
 
-See `AGENTS.md` for the workflow this file follows.
+See `AGENTS.md` for the workflow this file follows. See `BACKLOG.md` for ideas not yet built.
+
+## [1.0.45] - 2026-09-03
+
+- **Fixed projectiles spawning too low** — found the actual bug: the muzzle offset formula was
+  purely radial from the tower's ground-level base position, completely omitting the fixed
+  shoulder-height offset (`shoulderY = -13`) every class's arm/weapon pivots from before extending
+  outward along the aim angle. For the most common case — a roughly horizontal shot at a
+  similarly-positioned enemy — the old formula added zero vertical correction at all, so arrows
+  spawned from the tower's dead-center ground point instead of ~15 world units up at actual bow
+  height. Fixed both spawn sites (the main projectile function and Axeman's thrown axe) by adding
+  the same fixed shoulder baseline the render-time hand position already uses, verified with real
+  numbers before shipping rather than assumed correct from the formula alone.
+
+## [1.0.44] - 2026-09-03
+
+- **Fixed the close button overlapping the chevron** — moved `#inspClose` out of the flex flow
+  entirely and absolutely-positioned it to the panel's own top-right corner, so it can never
+  compete for space with the nameplate's chevron again.
+- **Condensed the HP bar to real WoW scale** — was stretching edge-to-edge across the whole panel
+  via `flex:1 1 auto`; capped the nameplate's middle column to a fixed 170px and shrank the bar
+  height, matching how compact real WoW unit frames actually are.
+- **Added an evolution-progress bar** — checked first and confirmed there's no actual numeric
+  EXP/kill-count system in this game at all; leveling is entirely gold-purchased tier upgrades.
+  Rather than fabricate a fake progress bar with no underlying data, built this against what's
+  actually real: progress toward the nearest stat-based evolution threshold, honestly hidden for
+  classes with no further evolution path (Spearman, Cleric, Squirt Gun, Paladin).
+- Logged "expand level cap to 10" and "build a real EXP system" as backlog items rather than
+  building them now — both are genuine content/balance projects (7 more tiers × 13 tower configs
+  for the level cap alone), not something to fold into a UI polish pass.
+
+## [1.0.43] - 2026-09-02
+
+- **Added exponential-rarity blood stream sizing** — on-hit streams were previously a fixed size
+  every time (count=3, no variance). Added an exponential-distribution size roll: verified with a
+  20,000-sample simulation that ~58% of hits produce small splatters, ~28% normal, ~10% big, and
+  only ~3.4% genuinely huge — a real long-tail rarity curve, not a flat random range. Floored at
+  0.6x so blood is never absent on any hit (confirmed the floor still produces ~88-95% of baseline
+  size, never zero), capped at 4.5x so the rare huge case stays dramatic without running away
+  (up to 2.2x longer, ~2x thicker, nearly 3x as many streams). Both existing call sites (on-hit
+  and on-death) get this automatically since the new parameter is optional and backward-compatible
+  — death streams now share the same rarity curve as a free consistency win.
+
+## [1.0.42] - 2026-09-02
+
+- **Rebuilt the nameplate to actually look like a WoW nameplate** — added a circular portrait
+  frame showing the tower's icon as its "face", a proper HP bar (fill + text overlay, green
+  gradient) instead of no health visual at all, and replaced the small inline chevron text with
+  a genuinely obvious bordered button (32x32, gold border, higher contrast). Verified every new
+  element has exactly one HTML definition and consistent JS references before shipping — full
+  syntax and HTML tag-balance checks both passed clean.
+- Confirmed the Cleric fixes from the prior message were already shipped (v1.0.40) rather than
+  redoing duplicate work — the uploaded screenshot and document were repeats of the same context.
 
 ## [1.0.41] - 2026-09-02
 
