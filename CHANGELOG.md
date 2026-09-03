@@ -1,5 +1,304 @@
 # Changelog
 
+## [1.0.72] - 2026-09-03
+- Inventory row now shows 4 bordered WC3/Dota-style item slots instead of a plain text summary
+  (icons joined by spaces, or "No items"). Used 4 slots specifically to match the actual
+  `MAX_ITEM_SLOTS`/Hero-awakening mechanic (filling all 4 makes a tower a Hero) rather than the
+  visually-iconic-but-mismatched 6-slot Dota inventory grid.
+  - Empty slots show a dim inset border; filled slots show the item's icon with a gold glow and
+    a tooltip with its name.
+  - Slots are clickable — tapping any of them (filled or empty) opens the Shop for that tower's
+    gear, same as the existing 🛒 Items button.
+
+## [1.0.71] - 2026-09-03
+- Added a small "TARGETING" header label above the enemy name in the target-of-target frame.
+- Widened the target frame (220px → 270px max-width) and enlarged its content — bigger portrait
+  (32px → 40px), slightly larger gaps — to fill the panel's height (which already matches the
+  player nameplate's height as of 1.0.65) instead of leaving empty top/bottom padding.
+- Fixed Troll being able to randomly appear as early as wave 1 — the 2% random-substitution roll
+  in `startNextWave()` wasn't checking whether Troll had actually been introduced yet, so it could
+  show up (with no explanatory popup) well before its official wave-22 debut. Now gated on
+  `seenEnemyTypes.has('TROLL')`, which the new-enemy-introduced system (1.0.59) already tracks.
+
+## [1.0.70] - 2026-09-03
+- Balance pass applying "shorter range = more damage, higher attack speed = less damage" as a
+  general design check across all towers. Extracted tier-1 range, damage-per-hit, and
+  attacks/second for every tower and sorted by range to find violations:
+  - **Bomber was the clear violator** — 2nd-longest range in the game (240) with higher per-hit
+    damage (26) than every short-range melee unit except Spearman. Trimmed its range ~12.5%
+    across all three tiers (240/260/280 → 210/228/246), damage left untouched — its high damage
+    is now earned by sitting mid-pack on range instead of near the top.
+  - Fast attackers already fit the pattern well and needed no changes: Gatling (7.14/s, 5 dmg),
+    Squirtgun (5.00/s, 6 dmg), and Blowdart (2.70/s, 8 dmg) all pair high attack speed with low
+    per-hit damage, exactly as intended.
+  - Slow, short-range hitters already fit too: Spearman (0.56/s, 40 dmg — README's own "slow but
+    hard-hitting") and the melee Warriors (Swordsman/Hammerman/Paladin) all trend toward more
+    damage as range drops.
+  - **Deliberately left Archer alone** despite having the single longest range (260) paired with
+    above-average damage (20) — its README-documented identity is explicitly built around this
+    exact trait ("slower arrows, real power behind each shot"). Treated as an intentional,
+    documented exception rather than an oversight to silently override.
+  - Also left Mage and Cleric's low damage-for-their-range as-is — both are utility casters
+    (slow/status, curse/heal) whose value was never meant to come from raw hit damage.
+
+## [1.0.69] - 2026-09-03
+- More splatter on impact: each hit's particle burst went from 9 → 14, its directional blood
+  stream from 3 → 4 particles, and hits now have a 30% chance of a directional castoff streak too
+  (previously impacts had no streak at all, only kills did).
+- Less reliance on ground pools at death, while keeping the particle/gib/stream burst as-is (the
+  part that was already liked): the main death pool now only appears 65% of the time (was
+  guaranteed), and when it does, uses a new `smallBias` decal mode that skips the big/massive pool
+  rolls entirely — verified numerically that this drops the average pool size from ~1.72x to
+  ~0.60x. The two chained "extra stain" pools that could previously stack up to 3 total decals per
+  kill (35% × up to 2 more) were removed outright; the occasional directional castoff streak (a
+  spatter line, not a filled pool) stays.
+
+## [1.0.68] - 2026-09-03
+- Fixed Blowdart's disconnected-looking arm: it had a second "steadying" off-hand anchored 4px
+  off the torso centerline (`shoulderX - 4*faceSign`), which visibly floated apart from the body
+  instead of reading as attached to it. Removed that off-hand entirely rather than patching its
+  anchor — matches the single-arm reference sketch provided.
+- The remaining arm now anchors at mouth height (just under the head, above the shoulder line)
+  instead of shoulder height, so the pipe reads as actually held up to the face in one continuous
+  gesture from head to tip, per the reference sketch.
+- Updated the dart's actual spawn point in `fireProjectile()` to match — it was still using the
+  universal shoulder-height pivot (-13) for every class; Blowdart now uses -21 (mouth height) so
+  the dart still leaves exactly from the visible pipe tip instead of drifting out of sync with the
+  new arm position.
+
+## [1.0.67] - 2026-09-03
+- Evolution hint now shows the target class's own icon and name in an "X Upgrade" format instead
+  of a generic 🔒 lock emoji — e.g. "🔫 Gatling Upgrade — 6 more STR" instead of
+  "🔒 6 more STR → Gatling".
+- All 26 gold-tier upgrade costs across every tower bumped ~35% (rounded to the nearest 5) — e.g.
+  Swordsman's three upgrades were 60/90/130/180, now 80/120/175/245. Ties into the same
+  "grinding is more consequential" pass from 1.0.63 — gold investment now demands more commitment.
+
+## [1.0.66] - 2026-09-03
+- Reorganized the expanded options into two explicit rows instead of relying on flex-wrap to
+  land buttons in a sensible place: Upgrade + Sell on top, Target + Move (+ Axeman's Mode toggle
+  when applicable) + ❓ below.
+- The evolution hint now sits inline on the same line as "STATS: N to spend" instead of its own
+  row below the stat buttons.
+- Split the ❓ help modal in two: the general one (now genuinely only about stickmen/hero towers —
+  leveling, stats, archetypes, evolution, items, Legendary status, kill streaks, downed towers)
+  no longer mentions Barricades at all. Barricade gets its own dedicated ❓ button and modal
+  (block-strength HP, map expansion) — only one of the two ❓ buttons is visible at a time,
+  swapped based on the selected tower's type.
+
+## [1.0.65] - 2026-09-03
+- Target-of-target frame now matches the inspect panel's actual rendered height (`min-height` set
+  dynamically off the panel's `getBoundingClientRect()`, same call that already positions it) so
+  the two plates read as one consistent set instead of the enemy plate looking noticeably shorter.
+
+## [1.0.64] - 2026-09-03
+- Attack speed on tower nameplates now uses ⏳ (hourglass) instead of ⚡. Walk speed on enemies
+  (the target-of-target frame and the new-enemy-introduced popup) now uses 👟 (shoe) instead of
+  ⚡ — distinguishes "how fast it attacks" from "how fast it moves" at a glance instead of both
+  sharing the same lightning-bolt icon. Other unrelated uses of ⚡ (Kill Streaks header, shock
+  status text, Masterwork gear icons) left as-is.
+
+## [1.0.63] - 2026-09-03
+- Starting lives raised from 20 to 30.
+- New buy-life button (the ❤️ HUD stat is now clickable): costs gold, exponentially more
+  expensive each purchase (`30 × 1.6^purchases` — 30, 48, 77, 123, 197...). Persisted across
+  save/load via `livesBought`.
+- All 18 enemies rebalanced to be slower but more dangerous: ~28% slower movement speed, ~22%
+  more HP, ~15% more bounty and break-damage. Easier to track and react to, but hit harder and
+  take longer to kill — same overall difficulty curve, different pacing.
+- Added a leisurely walking bob to every enemy, synced to actual distance traveled (not just
+  time) so it reads as a real gait rather than idle floating — was previously a totally static
+  sprite except for the existing speed-based stretch/squash.
+- Widened the archetype-preferred-stat payoff (`PREFERRED_STAT_MULT` 1.25 → 1.6): specialization
+  and consistent stat investment now matter substantially more, Dota-style — an under-leveled or
+  poorly-specialized tower falls meaningfully behind against the now-tankier enemy roster, instead
+  of staying roughly competitive regardless of investment.
+
+## [1.0.62] - 2026-09-03
+- Full balance audit across all 13 towers and 18 enemies, done with actual computed metrics
+  rather than eyeballing — extracted `CONFIG` and ran standalone Node scripts to compute:
+  - **Tower DPS-per-gold-cost** (tier-1, accounting for melee-vs-ranged hybrid modes correctly —
+    e.g. Axeman's dual-mode toggle was previously double-counted by summing both instead of
+    taking the active one — and poison as a flat DPS bonus at its fixed 600ms tick rate).
+  - **Tier-to-tier DPS growth ratios** for every tower (all towers scale ~1.5×-1.9× per tier
+    upgrade — already consistent, no changes needed here).
+  - **Enemy bounty-vs-threat ratio** (a composite of HP, armor, and speed) to find under/over
+    -rewarded enemies.
+  - Findings: most of the roster was already internally consistent. Two genuine outliers:
+    - **Hammerman** was clearly under-tuned relative to similarly-costed towers (0.248 DPS/gold
+      vs a 0.34-0.48 peer range) even accounting for its stun/shield/tank utility — damage bumped
+      ~15% across all three tiers (20/30/45 → 23/34/52), landing at 0.285 DPS/gold: still lower
+      than pure-damage classes (as its tank role should be), but no longer a stark outlier.
+    - **Zombie**'s bounty (9) was low for its threat level — comparable HP+armor profile to Tank
+      (150hp/9armor vs Tank's 220hp/6armor) but paid far less than Tank's 14 bounty. Bumped to 12.
+  - Deliberately did NOT touch: Bomber (low single-target DPS is offset by its 55-radius splash,
+    not captured by a per-target DPS metric), Mage/Cleric (their value is slow/status/curse/heal
+    utility, not raw hit damage — by design), or Troll (intentionally the highest bounty-per-threat
+    in the game, since its whole gimmick is a short kill window before it wanders off).
+
+## [1.0.61] - 2026-09-03
+- Reorganized the expanded stats section: was one cramped wrapping row (points counter, evolution
+  hint, and all three STR/DEX/INT buttons all jammed together, wrapping unevenly). Now it's three
+  clean stacked rows — a points-available header, an even 3-column STR/DEX/INT button grid, and
+  a highlighted evolution-hint callout box below it.
+- The evolution hint is now smarter about when to show a prediction: it only calls out a "most
+  likely" evolution when exactly one relevant stat is strictly ahead of the others. At the start
+  (all zero) or when two-plus stats are tied, it hides entirely instead of guessing — e.g.
+  investing the first point in DEX now shows "🔓 9 more DEX → Axeman" or similar, but a fresh
+  tower or an even 2/2/0 split shows nothing.
+
+## [1.0.60] - 2026-09-03
+- New WoW-style "target of target" frame: when the selected tower has an active target, a small
+  red-bordered frame appears just to the right of the inspect panel showing that enemy's emoji,
+  name, live HP bar, 🛡️ armor, and ⚡ speed. Only visible while the tower is actively targeting
+  something — hidden otherwise.
+  - Updates every rendered frame (not just on state-change events like the main panel) so the
+    HP bar tracks combat live.
+  - Positioned dynamically off the inspect panel's actual rendered width via
+    `getBoundingClientRect()` rather than a fixed CSS offset, since the panel's width varies with
+    its content.
+
+## [1.0.59] - 2026-09-03
+- Barricades no longer earn EXP or level up. They don't attack, so kill/killstreak XP never
+  applied to them anyway, but the round-survival XP grant was universal and silently leveling
+  them up regardless — fixed at the single `gainTowerExp()` funnel so every XP source respects it.
+- New "New Enemy!" popup at the start of any wave that introduces an enemy type the player hasn't
+  seen yet — same visual language as the wave-end summary popup, showing that enemy's emoji,
+  name, HP/speed/bounty, and a one-line note on its special behavior (e.g. Healer heals allies,
+  Skeleton revives once, Troll walks backward for a big bounty). Auto-fades after 5.5s.
+  - Tracks `seenEnemyTypes`, persisted in save files; older saves reconstruct it from wave history
+    on load so an in-progress run doesn't suddenly re-announce enemies already met.
+  - Verified against the wave data that this fires exactly once per new type across waves 1-15,
+    matching the one-new-enemy-per-wave pacing shipped in v1.0.52.
+
+## [1.0.58] - 2026-09-03
+- Speed button now cycles 1x → 2x → 3x → 5x → 10x → back to 1x (was capped at 3x).
+- Added a safety cap (90 physics ticks per rendered frame) to the main loop's fixed-timestep
+  catch-up, so a slow device running at 10x can't stall on one giant frame trying to fully catch
+  up — any leftover simulation time just rolls into the next frame instead.
+
+## [1.0.57] - 2026-09-03
+- Reverted the XP bar's height back to 9px (undoing the 1.0.53 thinning) — that wasn't the
+  actual complaint.
+- Shrunk the panel's overall max-width from 480px to 320px, so the HP/XP bar (which stretches to
+  fill available nameplate width) is shorter and the whole panel no longer runs most of the way
+  across the screen.
+
+## [1.0.56] - 2026-09-03
+- The 📜 scroll toggle button now glows green (same style as the STR/DEX/INT stat buttons) whenever
+  the selected tower has unspent stat points — visible even while the panel is collapsed, so
+  players notice there's something to spend without having to open the full options first.
+
+## [1.0.55] - 2026-09-03
+- Fixed projectiles spawning visibly lower than the weapon they're supposedly fired from.
+  `fireProjectile()` and `fireAxeThrow()` both used a flat shoulder-pivot height (`-13 *
+  STICKMAN_SCALE`) for every class, but `drawStickman()` also scales that pivot by each class's
+  own body proportions (`JOB_BUILD[type].scaleY`) and by the Legendary 1.1x size bump — neither of
+  which the spawn-point math accounted for. Tall/lean classes like Archer (scaleY 1.08) render
+  their weapon noticeably higher than the old flat pivot placed it, so their arrows spawned below
+  the bow. Both spawn functions now multiply in the same `bodyScaleY` and Legendary factor that
+  the renderer actually uses, so the muzzle position matches the visible weapon tip again.
+
+## [1.0.54] - 2026-09-03
+- New wave-end summary popup: shows total gold gained this wave, plus a per-class breakdown of
+  EXP earned, each row led by that exact tower type's own emoji (e.g. a Blowdart's row uses 🎯,
+  not the base Archer's 🏹) sorted highest-XP first. Auto-fades after 4.5s.
+  - Added per-wave XP tracking (`tower.waveXp`), reset when each new wave starts, accumulated
+    alongside the existing lifetime `xp` field inside `gainTowerExp()`.
+  - Added a `waveStartGold` snapshot taken at wave start so the popup can show gold gained
+    specifically during that wave (kills, bounty, and the end-of-wave gold bonus), not lifetime
+    totals.
+
+## [1.0.53] - 2026-09-03
+- XP bar shrunk (9px→6px height, smaller text) so it reads as a slim secondary bar under HP
+  rather than competing with it for visual weight.
+- Combat stats row (⚔️❤️🛡️🎯⚡🍀) switched from `justify-content:space-between` to centered
+  with a fixed 10px gap — the space-between was stretching gaps unevenly wide across the panel
+  width. Also pulled tighter against the nameplate above it.
+
+## [1.0.52] - 2026-09-03
+- Reworked the first 15 hand-authored waves so each one introduces at most one brand-new enemy
+  type instead of dumping several at once — previously wave 6 introduced Zombie and Skeleton
+  together, and wave 7 introduced Runner, Splitter, and Wraith all in the same wave. Verified with
+  a standalone script confirming exactly one new type per wave across waves 1-15 (wave 2 is a pure
+  Grunt ramp-up with no new type, by design).
+- True Dota-style stat gating: STR, DEX, and INT damage bonuses are now exclusive to their
+  matching archetype instead of all applying at once. Previously every tower got the same +6%
+  damage/point from STR regardless of class, with DEX/INT adding *extra* damage on top for
+  Archer/Mage types. Now damage comes only from the archetype's own preferred stat — STR for
+  Warriors, DEX for Archers, INT for Mages — matching the rate that STR previously had (+6%/point,
+  same diminishing-returns curve). STR's +3% max HP/point and DEX's attack-speed/luck bonuses
+  remain universal, since those were never framed as the "damage stat."
+  - This was already correctly wired for the archetype system (Blowdart, Gatling, Bomber, and
+    Squirtgun already counted as Archer-archetype via `CLASS_ARCHETYPE`; Cleric already counted as
+    Mage-archetype) — no changes needed there, just the damage formula itself.
+  - Updated the STR/DEX/INT button tooltips and the in-game "❓ How Everything Works" modal to
+    describe the new gating accurately, and made the tooltips archetype-aware (`CLASS_ARCHETYPE`
+    lookup) instead of checking the literal base type, so Blowdart/Gatling/Bomber/Squirtgun/Cleric
+    now show the correct damage-stat callout too — previously only the base Archer/Mage classes
+    got that tooltip text even though the mechanic already applied to their evolutions.
+
+## [1.0.51] - 2026-09-03
+- Blowdart's blowpipe now tracks the target continuously, same pattern as Mage's wand and
+  Squirtgun's pistols — it previously only flipped between two fixed left/right poses regardless
+  of the actual aim angle, so the pipe visibly wasn't pointing at what it was shooting. The
+  projectile's actual spawn point (`fireProjectile()`) was already angle-correct; only the visible
+  sprite was static. Draw geometry now matches the muzzle-offset formula exactly
+  (`armLen*0.7 + 14*weaponScale`) so the dart leaves right from the pipe's tip at any facing angle.
+
+## [1.0.50] - 2026-09-03
+- Nameplate HP/XP bar now stretches to fill the available width next to the portrait instead of
+  being capped at a fixed 170px, so it reads as noticeably longer/more prominent.
+- Combat stats row (⚔️❤️🛡️🎯⚡🍀) now spreads evenly across the panel's full width
+  (`justify-content:space-between`) to match the width of the nameplate row above it, instead of
+  clumping on the left with unused space on the right.
+- Tightened overall panel padding (10px→8px) and inter-element gap (8px→6px) for a more condensed
+  look, per feedback that the previous pass was still too roomy.
+
+## [1.0.49] - 2026-09-03
+- Full leveling system rework, replacing the old "gold-tier upgrade = level" mechanic with a
+  genuine Dota-style EXP system:
+  - Every tower now has its own EXP level (1-99), tracked separately from its gold-bought upgrade
+    tier. The nameplate's "Lv." now shows this EXP level.
+  - EXP is earned from kills (small, frequent), killstreak milestones (a bigger burst), gold-tier
+    upgrades (a flat training bonus), and — new — simply surviving to the end of a round, which
+    now grants EXP to every active tower on the board.
+  - Each level-up grants exactly 1 stat point, replacing the old flat "+4 points per gold-tier
+    upgrade" lump sum, so growth is smaller and much more frequent rather than arriving in big
+    chunks.
+  - The nameplate's second bar (previously "evolution progress," shown only for evolvable towers)
+    is now always visible and shows live XP progress toward the next level instead. Evolution
+    progress moved into a small italic hint line in the expanded stats panel
+    (e.g. "🔓 STR 7/10 → Hammerman").
+  - Added a distinct two-tone level-up chime.
+  - Updated the in-game "❓ How Everything Works" modal to explain the new leveling flow.
+  - Save/load updated to persist the new `xp`/`expLevel` fields; older saves default to level 1.
+  - Verified the leveling curve with a standalone 3-hour simulated-grind script (per the
+    game-critical-logic testing convention) — reaches level 99 in a plausible timeframe without
+    runaway growth or dead ends.
+
+## [1.0.48] - 2026-09-03
+- Reverted the bottom-left close button placement from 1.0.47 — that looked disconnected from
+  the nameplate. ❌ now sits inline in the nameplate row, directly to the right of the 📜 toggle,
+  same 28×28 square size as the toggle.
+- Capped the inspect panel's overall width (`max-width:min(480px, 100% - 16px)`) instead of
+  stretching it edge-to-edge across the screen — it was expanding much wider than the content
+  needed.
+
+## [1.0.47] - 2026-09-03
+- Inspect panel's ❌ close button now matches the 📜 toggle button's size and square shape (was a
+  much larger circular badge) and moved from an overlapping top-right corner to the bottom-left
+  of the panel, so it no longer visually competes with the nameplate/portrait area.
+
+## [1.0.46] - 2026-09-03
+- Nameplate toggle button now shows 📜 instead of the ⌄/⌃ text arrow — the arrow still had a
+  legible up/down state, so it's now conveyed with a CSS rotation on the scroll icon instead of
+  swapping glyphs.
+- Inspect panel's close button now shows ❌ instead of ✕, matching the emoji-forward icon style
+  used elsewhere in the panel (⚔️❤️🛡️🎯⚡🍀).
+- Condensed the nameplate row: smaller portrait, tighter gaps between the name/level line and the
+  HP/evolution bars, and a smaller close button so the emoji doesn't look oversized in its circle.
+
 All notable changes to Stick Tower Defense are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows [SemVer](https://semver.org/).
 

@@ -63,6 +63,22 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
 - The bottom inspect panel (`#inspect-panel`) is the WC3/WoW-style nameplate + full options UI.
   Tapping the nameplate toggles `inspPanelExpanded` between a compact view (portrait, HP bar,
   combat stats) and the full options row (upgrade/move/sell/target/stats/inventory).
+- `#inspTargetFrame` is a separate WoW-style "target of target" frame shown next to the inspect
+  panel whenever the selected tower has an active target. It's repositioned every rendered frame
+  via `getBoundingClientRect()` against `#inspect-panel`'s actual width, since the panel isn't a
+  fixed size. Updated in `render()`, not on state-change events, so its HP bar tracks combat live.
+- Leveling is a genuine EXP system (`gainTowerExp()`), separate from the gold-tier `level` field
+  used for Upgrade-button tiers. Every tower has `xp`/`expLevel` (1-99), fed by kills, killstreak
+  milestones, gold-tier upgrades, and round survival (granted to every active tower at wave-end).
+  Each level-up grants exactly 1 stat point. `CLASS_ARCHETYPE` gates which stat actually boosts
+  damage per class (STR→Warrior, DEX→Archer-style, INT→Mage — Dota-style, exclusive, not additive
+  across archetypes). Barricades are explicitly excluded from EXP in `gainTowerExp()` since they
+  don't fight.
+- Two toast-style popups reuse the same visual pattern: `showWaveSummary()` (gold + per-class XP,
+  at wave end) and `showNewEnemyToast()` (stats + a one-line ability note from `ENEMY_INFO`, the
+  first time a `CONFIG.WAVES` entry contains a type not yet in `seenEnemyTypes`, which is
+  persisted in save files). Both auto-fade via `setTimeout` and are independent DOM elements so
+  they can't clobber each other if triggered close together.
 
 ## Dates
 

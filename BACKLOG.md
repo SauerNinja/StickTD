@@ -5,6 +5,17 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
+- A batch of suggestions from a separate Gemini conversation assumed architecture that doesn't
+  match this repo (separate class files, a pure "STR only helps warriors" gate, poison rendered
+  non-green, only two targeting modes). Checked against actual code: poison/curse already
+  renders green (`#7cb518` floating text, `rgba(124,181,24,...)` tint), targeting already has
+  a `FIRST/CLOSEST/STRONGEST` cycle, a full EXP/level system shipped in v1.0.49, Blowdart's
+  pipe-tracking shipped in v1.0.51, true archetype-exclusive STR/DEX/INT damage gating shipped in
+  v1.0.52, wave-pacing (one new enemy type per wave, waves 1-15) also shipped in v1.0.52, and the
+  new-enemy-introduced popup shipped in v1.0.59. Genuinely open items from that batch, not yet
+  built: a `WEAKEST` targeting mode; Archer arrow spawn-point trig alignment to the bow across all
+  facing angles; Dual Squirt Gun hand anchor sitting on the muzzle instead of the grip.
+
 - Full WC3/WoW-style floating nametag overlay above every active tower (name, level, HP bar) —
   explicitly scoped out of the compact-panel work as a separate, larger feature. The bottom panel
   covers the same functionality today; this would be a genuine visual addition on top of it.
@@ -24,7 +35,3 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
   `tiers.length`, and every one of the 13 tower configs has exactly 3 tiers. Getting to 10 means
   adding 7 more tiers (range/damage/cooldown progression) to every tower and rebalancing gold
   costs and wave scaling to match — a real content/balance project, not a quick config edit.
-- There's no actual numeric EXP/kill-count system in the game — leveling is entirely gold-purchase
-  tier upgrades. The nameplate's second bar shows progress toward a stat-based evolution threshold
-  instead, since that's the closest real data that exists. A genuine EXP system (kills granting
-  XP, XP granting levels independent of gold) would be a different, bigger feature if wanted.

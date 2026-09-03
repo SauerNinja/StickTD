@@ -14,11 +14,13 @@ with the Web Audio API.
 ## How to play
 
 - Tap **Build**, pick a tower, then tap a hedge tile to place it.
-- Tap a placed tower to see its nameplate — a portrait, HP bar, and combat stats. Tap the
-  nameplate again (or the chevron) to expand into full options: upgrade, sell, move, buy it gear
-  from the **Shop**, cycle its targeting priority, or spend stat points.
-- Every tower earns STR, DEX, and INT points as it levels. Investing enough points into one stat
-  evolves the tower into a distinct new class — see the tree below.
+- Tap a placed tower to see its nameplate — a portrait, HP bar, an EXP bar, and combat stats. Tap
+  the nameplate again (or the scroll icon, which glows green when you have points to spend) to
+  expand into full options: upgrade, sell, move, buy it gear from the **Shop**, cycle its
+  targeting priority, or spend stat points.
+- Every tower has its own EXP level, up to 99, separate from its gold-bought upgrade tier — see
+  **Leveling** below. Investing enough points into one stat evolves the tower into a distinct new
+  class — see the tree below.
 - The map starts as a tiny 2x2 area and grows outward as you clear waves — some expansions are
   free milestones, others cost gold. Only one expansion can happen per round; extras queue for
   the next.
@@ -27,6 +29,8 @@ with the Web Audio API.
 - Waves continue indefinitely past 15 with procedurally scaling difficulty across 7 rotating
   wave archetypes — this is built to be a long-haul hero-building grind, not a 15-wave sprint.
 - Runs on desktop (mouse + scroll-to-zoom) and mobile (touch, pinch-to-zoom, drag-to-pan).
+- Speed up simulation from 1x up to 10x via the HUD speed button. When a tower is selected and
+  actively attacking, a red-bordered target frame shows what it's aiming at — HP, armor, and speed.
 
 ## Towers & evolutions
 
@@ -68,12 +72,28 @@ Burn, curse (poison-style DoT), slow, and stun all show a periodic reminder labe
 affected unit every 120 seconds, so long-running effects stay visible instead of only appearing
 the instant they're applied.
 
+## Leveling
+
+Every tower has its own EXP level (1-99), separate from its gold-bought upgrade tier. EXP comes
+from landing kills, killstreak milestones, spending gold to upgrade a tower's tier, and simply
+surviving to the end of a round. Each level-up grants exactly one stat point — small and frequent
+rather than big lump sums. Barricades don't fight, so they don't earn EXP.
+
+Stat damage bonuses are class-exclusive, Dota-style: STR only boosts damage for Warrior-archetype
+towers (Swordsman and its evolutions), DEX only for Archer-style towers (Archer, Gatling,
+Blowdart, Bomber, Dual Squirt Gun), and INT only for Mage-archetype towers (Mage, Cleric). STR's
+max-HP bonus and DEX's attack-speed/luck bonus stay universal across every class.
+
 ## Waves
 
 100 hand-authored waves, then infinite procedurally-generated ones cycling through 7 archetypes —
 Standard, Swarm Surge, Elite Vanguard, Undead Uprising, Ambush Tactics, Siege Assault (boss rush),
 and Stone Push (a heavily-armored crowd-control test). A Boss periodically spawns Grunt minions
 while active; an off-screen compass arrow points toward it when it's out of view.
+
+The first 15 waves each introduce at most one brand-new enemy type, with a popup explaining its
+HP, speed, bounty, and any special behavior the first time it appears. A summary popup at the end
+of every wave shows total gold gained and a per-class EXP breakdown.
 
 ## Items & Heroes
 
@@ -86,6 +106,12 @@ awakens into a **Hero**, with a permanent stat bonus and a visible crown.
 
 Gold from kills and wave clears. Wood and stone from clearing scattered trees and rocks (and rare
 treasure chests / relic drops) — spent on the priciest tier of shop gear.
+
+## Lives
+
+Start with 30. Tap the ❤️ HUD stat to buy an extra life with gold — each purchase costs
+substantially more than the last (exponential scaling), so it's a real emergency valve rather
+than a routine top-up.
 
 ## Settings
 

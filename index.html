@@ -37,6 +37,11 @@
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
   .hud-stat{display:flex;align-items:center;gap:6px;font-size:clamp(12px,2vw,18px);
     text-shadow:1px 1px 2px #000;pointer-events:auto;}
+  #buyLifeBtn{background:rgba(74,47,29,0.5);border:2px solid transparent;border-radius:6px;
+    padding:2px 6px;cursor:pointer;color:inherit;font:inherit;}
+  #buyLifeBtn:not(:disabled):active{background:rgba(230,57,70,0.4);}
+  #buyLifeBtn:disabled{cursor:default;opacity:0.6;}
+  #buyLifeCost{font-size:0.75em;color:#ffe066;}
   #hud-controls{display:flex;gap:6px;pointer-events:auto;}
   .hud-btn{background:rgba(74,47,29,0.85);color:var(--paper);border:2px solid var(--gold);
     border-radius:6px;min-width:40px;min-height:40px;font-size:clamp(13px,2vw,16px);
@@ -70,6 +75,26 @@
     text-shadow:0 0 12px rgba(255,140,0,0.9),0 0 28px rgba(255,60,0,0.7),3px 3px 0 #000;
     z-index:15;opacity:0;pointer-events:none;transition:none;}
   #killstreak-banner.show{animation:killstreakPop 2.2s ease-out forwards;}
+  #wave-summary-toast{position:absolute;top:76px;left:50%;transform:translateX(-50%) translateY(-8px);
+    max-width:min(280px,88%);background:rgba(30,20,10,0.95);border:2px solid var(--gold);border-radius:8px;
+    padding:10px 16px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:center;
+    z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s ease,transform 0.3s ease;}
+  #wave-summary-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #waveSummaryTitle{font-weight:bold;color:var(--gold);margin-bottom:4px;}
+  #waveSummaryGold{color:#ffe066;font-weight:bold;margin-bottom:4px;}
+  #waveSummaryXpList{display:flex;flex-direction:column;gap:2px;}
+  .wave-summary-xp-row{display:flex;justify-content:space-between;gap:10px;color:#bdeaff;}
+  #new-enemy-toast{position:absolute;top:150px;left:50%;transform:translateX(-50%) translateY(-8px);
+    max-width:min(300px,88%);background:rgba(30,20,10,0.95);border:2px solid #e63946;border-radius:8px;
+    padding:10px 16px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:center;
+    z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s ease,transform 0.3s ease;}
+  #new-enemy-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  #newEnemyTitle{font-weight:bold;color:#ff8a80;margin-bottom:4px;}
+  .new-enemy-row{margin-top:4px;padding-top:4px;border-top:1px solid rgba(230,57,70,0.3);}
+  .new-enemy-row:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .new-enemy-head{font-weight:bold;color:#ffe066;}
+  .new-enemy-stats{font-size:0.85em;color:#bdeaff;margin:2px 0;}
+  .new-enemy-desc{font-size:0.85em;color:var(--paper);font-style:italic;}
   @keyframes killstreakPop{
     0%{opacity:0;transform:translate(-50%,-50%) scale(0.4);}
     12%{opacity:1;transform:translate(-50%,-50%) scale(1.15);}
@@ -153,6 +178,15 @@
   #help-modal-inner .evo-arrow{opacity:0.6;}
   #help-modal-close{display:block;margin:14px auto 0;background:var(--gold);color:#3a2a00;
     border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;}
+  #barricade-help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
+    display:flex;align-items:center;justify-content:center;padding:16px;}
+  #barricade-help-modal.hidden{display:none;}
+  #barricade-help-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+    max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
+    text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
+  #barricade-help-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
+  #barricade-help-modal-close{display:block;margin:14px auto 0;background:var(--gold);color:#3a2a00;
+    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;}
 
   #spec-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:21;
     display:flex;align-items:center;justify-content:center;padding:16px;}
@@ -209,47 +243,80 @@
     font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
   #zoom-controls button:active{background:rgba(107,69,48,0.95);}
 
-  #inspect-panel{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(30,20,10,0.95);
-    border:2px solid var(--gold);border-radius:8px;padding:10px;color:var(--paper);z-index:6;
-    display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:clamp(11px,1.8vw,14px);}
+  #inspect-panel{position:absolute;bottom:8px;left:8px;right:auto;max-width:min(320px,calc(100% - 16px));
+    background:rgba(30,20,10,0.95);
+    border:2px solid var(--gold);border-radius:8px;padding:8px;color:var(--paper);z-index:6;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:clamp(11px,1.8vw,14px);}
+  #inspTargetFrame{position:absolute;bottom:8px;display:none;
+    background:rgba(30,20,10,0.95);border:2px solid #e63946;border-radius:8px;padding:8px;
+    color:var(--paper);z-index:6;gap:10px;align-items:center;font-size:clamp(11px,1.8vw,14px);
+    max-width:270px;}
+  #inspTargetFrame.show{display:flex;}
+  #targetPortraitFrame{flex:0 0 auto;width:40px;height:40px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #3a1414, #1a0808);
+    border:2px solid #e63946;box-shadow:0 0 6px rgba(230,57,70,0.5), inset 0 0 4px rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;font-size:1.4em;}
+  #targetInfoMid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;}
+  #targetHeaderLabel{font-size:0.7em;letter-spacing:0.5px;color:#ff8a80;opacity:0.85;font-weight:bold;}
+  #targetNameRow{color:#ff8a80;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #targetHpBarTrack{position:relative;height:9px;border-radius:2px;background:rgba(0,0,0,0.6);
+    border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
+  #targetHpBarFill{height:100%;background:linear-gradient(180deg,#ff6b6b,#c0392b);transition:width 0.2s ease;}
+  #targetHpBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:0.58em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
+  #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
   #inspect-panel.hidden{display:none;}
-  #inspFullOptions{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
+  .insp-opt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .insp-opt-row button:not(.info-btn){flex:1 1 0;min-width:0;}
   #inspFullOptions.hidden{display:none;}
-  #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:10px;cursor:pointer;
-    padding:4px 6px;margin:-4px -6px 2px;border-radius:6px;user-select:none;-webkit-user-select:none;}
+  #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:8px;cursor:pointer;
+    padding:2px 5px;margin:-3px -5px 0px;border-radius:6px;user-select:none;-webkit-user-select:none;}
   #inspNameplate:active{background:rgba(241,196,15,0.15);}
-  #inspPortraitFrame{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
+  #inspPortraitFrame{flex:0 0 auto;width:32px;height:32px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #3a2a18, #1a1008);
     border:2px solid var(--gold);box-shadow:0 0 6px rgba(241,196,15,0.5), inset 0 0 4px rgba(0,0,0,0.6);
-    display:flex;align-items:center;justify-content:center;font-size:1.3em;}
-  #inspNameplateMid{flex:0 1 170px;min-width:0;display:flex;flex-direction:column;gap:2px;}
-  #inspNameRow{display:flex;align-items:baseline;gap:6px;}
+    display:flex;align-items:center;justify-content:center;font-size:1.1em;}
+  #inspNameplateMid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  #inspNameRow{display:flex;align-items:baseline;gap:6px;line-height:1.1;}
   #inspHpBarTrack{position:relative;height:9px;border-radius:2px;background:rgba(0,0,0,0.6);
     border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
   #inspHpBarFill{height:100%;background:linear-gradient(180deg,#5fd35f,#2e9e2e);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);transition:width 0.2s ease;}
   #inspHpBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:0.6em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
-  #inspEvoBarTrack{position:relative;height:6px;border-radius:2px;background:rgba(0,0,0,0.6);
+  #inspEvoBarTrack{position:relative;height:9px;border-radius:2px;background:rgba(0,0,0,0.6);
     border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
-  #inspEvoBarFill{height:100%;background:linear-gradient(180deg,#7dd3fc,#2a9fd6);transition:width 0.2s ease;}
+  #inspEvoBarFill{height:100%;background:linear-gradient(180deg,#ffe066,#d4a017);transition:width 0.2s ease;}
+  #inspEvoBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:0.58em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
   #inspEvoBarTrack.hidden{display:none;}
-  #inspExpandChevron{flex:0 0 auto;width:32px;height:32px;border-radius:6px;
+  #inspExpandChevron{flex:0 0 auto;width:28px;height:28px;border-radius:6px;
     background:rgba(241,196,15,0.18);border:2px solid var(--gold);color:var(--gold);
-    font-size:1.3em;font-weight:bold;line-height:1;cursor:pointer;display:flex;
-    align-items:center;justify-content:center;padding:0;}
+    font-size:1.2em;font-weight:bold;line-height:1;cursor:pointer;display:flex;
+    align-items:center;justify-content:center;padding:0;transition:transform 0.2s ease;}
   #inspExpandChevron:active{background:rgba(241,196,15,0.35);}
+  #inspExpandChevron.has-points{border-color:#4caf50;box-shadow:0 0 10px 2px rgba(76,175,80,0.7);}
   #inspect-panel button{background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);
     border-radius:6px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:inherit;}
   #inspect-panel button:disabled{opacity:0.4;cursor:default;}
   #inspect-panel button.hidden{display:none;}
-  #inspClose{position:absolute;top:6px;right:6px;width:22px;height:22px;padding:0;
-    font-size:0.75em;background:var(--danger);border-radius:50%;z-index:5;}
-  #inspStatsRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  #inspClose{flex:0 0 auto;width:28px;height:28px;padding:0;
+    font-size:0.85em;line-height:28px;background:rgba(241,196,15,0.18);border:2px solid var(--gold);
+    border-radius:6px;color:var(--gold);
+    display:flex;align-items:center;justify-content:center;}
+  #inspClose:active{background:rgba(241,196,15,0.35);}
+  #inspStatsRow{flex-basis:100%;display:flex;flex-direction:column;gap:6px;
     margin-top:2px;padding-top:8px;border-top:1px solid rgba(241,196,15,0.3);}
-  #inspCombatRow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:12px;align-items:center;
-    font-size:clamp(11px,1.8vw,14px);color:var(--paper);margin:2px 0 4px;font-weight:bold;}
-  #inspStatPoints{font-weight:bold;color:var(--gold);margin-right:2px;}
+  #inspCombatRow{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:10px;align-items:center;
+    font-size:clamp(11px,1.8vw,14px);color:var(--paper);margin:0 0 2px;font-weight:bold;}
+  #inspStatHeaderRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  #inspStatPoints{font-weight:bold;color:var(--gold);}
+  #inspStatButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  #inspStatButtons button.stat-btn{width:100%;}
+  #inspEvoHint{flex:1 1 auto;font-size:0.85em;color:#bdeaff;background:rgba(125,211,252,0.12);
+    border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:3px 8px;}
+  #inspEvoHint.hidden{display:none;}
   .info-btn{-webkit-appearance:none;appearance:none;background:transparent;border:none;outline:none;
     box-shadow:none;color:var(--gold);font-size:14px;cursor:pointer;padding:0;margin:0 2px 0 0;
     line-height:1;flex-shrink:0;}
@@ -262,10 +329,17 @@
     box-shadow:inset 0 2px 4px rgba(0,0,0,0.25), 0 0 10px 2px rgba(76,175,80,0.7);}
   #inspStatsRow button.stat-btn.has-points .plus-hint{display:inline;color:#4caf50;font-weight:bold;}
   #inspItemsLabel{font-weight:bold;color:var(--gold);}
-  #inspItemsRow{flex-basis:100%;display:flex;align-items:center;gap:8px;
+  #inspItemsRow{flex-basis:100%;display:flex;flex-direction:column;gap:6px;
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
-  #inspItemsSummary{font-size:13px;}
+  #inspItemsHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   #inspShopShortcutBtn{background:var(--wood-light);border:1px solid var(--gold);}
+  #inspItemSlots{display:flex;gap:6px;}
+  .item-slot{flex:0 0 auto;width:34px;height:34px;border-radius:5px;
+    background:rgba(0,0,0,0.45);border:2px solid rgba(241,196,15,0.35);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6);
+    display:flex;align-items:center;justify-content:center;font-size:1.15em;cursor:pointer;}
+  .item-slot.filled{background:rgba(74,47,29,0.6);border-color:var(--gold);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,0.4), 0 0 6px rgba(241,196,15,0.35);}
 
   #move-mode-banner{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(30,20,10,0.95);
     border:2px solid #7dd3fc;border-radius:8px;padding:10px 14px;color:var(--paper);z-index:6;
@@ -311,7 +385,7 @@
       <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
       <button id="settingsBtn" class="hud-action-btn">⚙️</button>
       <button id="fullscreenBtn" class="hud-action-btn" title="Fullscreen">⛶</button>
-      <div class="hud-stat">❤️ <span id="livesVal">20</span></div>
+      <button id="buyLifeBtn" class="hud-stat" title="Buy a life — cost rises each time you buy">❤️ <span id="livesVal">30</span> <span id="buyLifeCost">+💰30</span></button>
       <div class="hud-stat">💰 <span id="goldVal">150</span></div>
       <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
       <div class="hud-stat">Wave <span id="waveVal">0/100</span></div>
@@ -329,37 +403,64 @@
         <div id="inspNameplateMid">
           <div id="inspNameRow"><strong id="inspName">-</strong><span id="inspLevel">Lv.1</span></div>
           <div id="inspHpBarTrack"><div id="inspHpBarFill"></div><span id="inspHpBarText">0/0</span></div>
-          <div id="inspEvoBarTrack"><div id="inspEvoBarFill"></div></div>
+          <div id="inspEvoBarTrack"><div id="inspEvoBarFill"></div><span id="inspEvoBarText"></span></div>
         </div>
-        <button id="inspExpandChevron">⌄</button>
+        <button id="inspExpandChevron">📜</button>
+        <button id="inspClose">❌</button>
       </div>
       <div id="inspCombatRow">
         <span>⚔️ <span id="inspAtkVal">0</span></span>
         <span>❤️ <span id="inspHpVal">0</span>/<span id="inspMaxHpVal">0</span></span>
         <span>🛡️ <span id="inspDefVal">0%</span></span>
         <span>🎯 <span id="inspRangeVal">0</span></span>
-        <span>⚡ <span id="inspSpeedVal">0</span>/s</span>
+        <span>⏳ <span id="inspSpeedVal">0</span>/s</span>
         <span>🍀 <span id="inspLuckVal">+0%</span></span>
       </div>
-      <button id="inspClose">✕</button>
       <div id="inspFullOptions" class="hidden">
-        <button id="inspUpgradeBtn">Upgrade <span id="inspUpgradeCost"></span></button>
-        <button id="inspMoveBtn">Move <span id="inspMoveCost"></span></button>
-        <button id="inspSellBtn">Sell <span id="inspSellValue"></span></button>
-        <button id="inspTargetBtn">Target: <span id="inspTargetMode"></span></button>
-        <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
-        <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works">❓</button>
+        <div class="insp-opt-row">
+          <button id="inspUpgradeBtn">Upgrade <span id="inspUpgradeCost"></span></button>
+          <button id="inspSellBtn">Sell <span id="inspSellValue"></span></button>
+        </div>
+        <div class="insp-opt-row">
+          <button id="inspTargetBtn">Target: <span id="inspTargetMode"></span></button>
+          <button id="inspMoveBtn">Move <span id="inspMoveCost"></span></button>
+          <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
+          <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works">❓</button>
+          <button class="info-btn hidden" id="barricadeInfoBtn" title="Tap for how barricades work">❓</button>
+        </div>
         <div id="inspStatsRow">
-          <span id="inspStatPoints">STATS: <span id="inspStatPointsVal">0</span></span>
-          <button id="inspStrBtn" class="stat-btn" title="Strength: +6% damage and +3% max HP per point">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
-          <button id="inspDexBtn" class="stat-btn" title="Dexterity: +8% attack speed, better accuracy, and 🍀 luck (bonus gold per kill) per point">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
-          <button id="inspIntBtn" class="stat-btn" title="Intelligence: +6 range per point">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
+          <div id="inspStatHeaderRow">
+            <div id="inspStatPoints">STATS: <span id="inspStatPointsVal">0</span> to spend</div>
+            <div id="inspEvoHint" class="hidden"></div>
+          </div>
+          <div id="inspStatButtons">
+            <button id="inspStrBtn" class="stat-btn" title="Strength">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
+            <button id="inspDexBtn" class="stat-btn" title="Dexterity">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
+            <button id="inspIntBtn" class="stat-btn" title="Intelligence">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
+          </div>
         </div>
         <div id="inspItemsRow">
-          <span id="inspItemsLabel">INVENTORY</span>
-          <span id="inspItemsSummary">No items</span>
-          <button id="inspShopShortcutBtn">🛒 Items</button>
+          <div id="inspItemsHeader">
+            <span id="inspItemsLabel">INVENTORY</span>
+            <button id="inspShopShortcutBtn">🛒 Items</button>
+          </div>
+          <div id="inspItemSlots">
+            <div class="item-slot" data-slot="0"></div>
+            <div class="item-slot" data-slot="1"></div>
+            <div class="item-slot" data-slot="2"></div>
+            <div class="item-slot" data-slot="3"></div>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <div id="inspTargetFrame">
+      <div id="targetPortraitFrame"><span id="targetPortraitFace">👹</span></div>
+      <div id="targetInfoMid">
+        <div id="targetHeaderLabel">TARGETING</div>
+        <div id="targetNameRow"><strong id="targetName">-</strong></div>
+        <div id="targetHpBarTrack"><div id="targetHpBarFill"></div><span id="targetHpBarText">0/0</span></div>
+        <div id="targetStatsRow"><span>🛡️ <span id="targetDefVal">0</span></span><span>👟 <span id="targetSpeedVal">0</span></span></div>
       </div>
     </div>
 
@@ -376,6 +477,15 @@
 
     <div id="unlock-toast"><span id="unlockToastText"></span></div>
     <div id="killstreak-banner"></div>
+    <div id="wave-summary-toast">
+      <div id="waveSummaryTitle">Wave <span id="waveSummaryNum">1</span> Complete!</div>
+      <div id="waveSummaryGold">💰 +<span id="waveSummaryGoldVal">0</span> Gold</div>
+      <div id="waveSummaryXpList"></div>
+    </div>
+    <div id="new-enemy-toast">
+      <div id="newEnemyTitle">🆕 New Enemy!</div>
+      <div id="newEnemyList"></div>
+    </div>
 
   </div>
 </div>
@@ -465,11 +575,21 @@
       <div id="help-modal-inner">
         <h2>❓ How Everything Works</h2>
 
+        <h3>⭐ Leveling</h3>
+        <p>Every tower has its own EXP level, up to 99 — separate from its gold-bought upgrade tier. Kills grant a little EXP, killstreaks grant a burst of it, upgrading with gold grants some too, and simply surviving to the end of a round grants EXP to every active tower. Each level-up hands out exactly 1 stat point — small and frequent rather than big lump sums.</p>
+
         <h3>💪 Stats</h3>
-        <p><b>STR:</b> +6% damage & +3% max HP per point.<br>
-        <b>DEX:</b> +8% attack speed, better accuracy, and 🍀 Luck (bonus gold per kill) per point.<br>
-        <b>INT:</b> +6 range per point.<br>
-        Every 5 points invested, the next 5 are worth progressively less — heavy investment in one stat is never worthless, just increasingly inefficient. Earn points by upgrading a tower, plus a little randomly on every level-up.</p>
+        <p><b>STR:</b> +3% max HP per point for everyone, plus +6% damage per point — but only for
+        <b>Warrior</b>-archetype towers. <br>
+        <b>DEX:</b> +8% attack speed, accuracy, and 🍀 Luck (bonus gold per kill) per point for
+        everyone, plus +6% damage per point — but only for <b>Archer</b>-style towers.<br>
+        <b>INT:</b> +6 range per point for everyone, plus +6% damage per point — but only for
+        <b>Mage</b>-archetype towers.<br>
+        Dota-style: each class only gets bonus damage from its own preferred stat, never from the
+        other two. Every 5 points invested, the next 5 are worth progressively less — heavy
+        investment in one stat is never worthless, just increasingly inefficient. Points come from
+        leveling up (see above), plus a little randomly whenever you spend gold to upgrade a
+        tower's tier.</p>
 
         <h3>⚔️ Archetypes</h3>
         <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
@@ -484,7 +604,6 @@
         <div class="evo-row">🎯 Blowdart <span class="evo-arrow">→ DEX 25 →</span> 🔫 Dual Squirt Gun</div>
         <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 10 →</span> 💣 Bomber</div>
         <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 10 →</span> ✝️ Cleric</div>
-        <div class="evo-row">🚧 Barricade doesn't fight or evolve — it's a cheap, tough obstacle only.</div>
 
         <h3>🎒 Items & Heroes</h3>
         <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 4 slots per tower — fill all 4 to awaken it as a Hero with a permanent bonus to every stat.</p>
@@ -501,10 +620,23 @@
         <h3>💀 Downed Towers</h3>
         <p>If a tower's HP hits 0, it's overrun and locked out of action for the next 2 full waves before recovering.</p>
 
-        <h3>🚧 Barricades & the Map</h3>
-        <p>Barricades can only be placed directly on the path, block enemies from passing, and only lose HP while something is actively pressed against them. The map starts small and expands ring by ring — one expansion per round at most, plus a free one every few waves.</p>
-
         <button id="help-modal-close">Got it</button>
+      </div>
+    </div>
+
+    <div id="barricade-help-modal" class="hidden">
+      <div id="barricade-help-modal-inner">
+        <h2>🚧 How Barricades Work</h2>
+        <p>Barricades don't attack, don't earn EXP, don't level up, and can't evolve — they're a
+        cheap, tough obstacle, not a fighter. Place one directly on the path and it physically
+        blocks enemies from passing.</p>
+        <p>A Barricade's HP is its literal block-strength (shown as a fraction, e.g. 7/10) — it
+        only loses HP while something is actively pressed against it, at most 1 point every 2
+        seconds, so a single Barricade can hold a chokepoint for a long time before breaking.</p>
+        <p>The map starts small and expands ring by ring as you clear waves — at most one
+        expansion per round, plus a free one every few waves. The path is regenerated (and
+        re-checked against your existing towers) every time the map expands.</p>
+        <button id="barricade-help-modal-close">Got it</button>
       </div>
     </div>
 
@@ -535,7 +667,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.45'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.72'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -648,12 +780,32 @@ const EARLY_STAT_CAP_POINTS = 15; // points beyond this stop contributing to the
 // stat — that stat is simply more effective per point invested for towers of that kind. This is a
 // broad multiplier on the stat's effective point count, layered underneath all the other
 // class-specific bonuses (Mage's INT damage, Archer's DEX damage, Blowdart's poison, etc).
+const ENEMY_INFO = {
+  GRUNT: { name:'Grunt', desc:'Basic all-rounder — no special tricks.' },
+  SWARM: { name:'Swarm', desc:'Fast and numerous, but very fragile.' },
+  TANK: { name:'Tank', desc:'Slow, but tough and armored.' },
+  RUNNER: { name:'Runner', desc:'Very fast, low HP — outruns most attack speeds.' },
+  BOSS: { name:'Boss', desc:'Massive HP and armor. Periodically spawns Grunt reinforcements while active.' },
+  TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
+  FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly.' },
+  ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly.' },
+  SPLITTER: { name:'Splitter', desc:'Splits into two smaller Splitmini on death.' },
+  SPLITMINI: { name:'Splitmini', desc:'A smaller fragment left behind by a Splitter.' },
+  HEALER: { name:'Healer', desc:'Heals nearby allies over time — kill it first.' },
+  SHIELDED: { name:'Shielded', desc:'Absorbs hits with a shield before taking real damage.' },
+  ZOMBIE: { name:'Zombie', desc:'Heavily armored undead — extra vulnerable to a Cleric\'s curse.' },
+  WRAITH: { name:'Wraith', desc:'Fast, armored undead.' },
+  SKELETON: { name:'Skeleton', desc:'Undead that revives once after being killed.' },
+  WOLF: { name:'Wolf', desc:'Hunts in a coordinated pack.' },
+  REAPER: { name:'Reaper', desc:'The heaviest-armored undead in the roster.' },
+  BOULDER: { name:'Boulder', desc:'Tanky, and splits on death like a heavier Splitter.' }
+};
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
-const PREFERRED_STAT_MULT = 1.25; // a tower's archetype-preferred stat is 25% more effective per point
+const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% more effective per point — Dota-style: specialization and consistent investment pay off substantially, so under-leveled towers fall meaningfully behind rather than staying roughly competitive
 
 // Only Swordsman, Archer, and Mage are directly buildable — every other fighting class is reached
 // by investing 10+ points into a specific stat on one of those three, a one-way transformation.
@@ -778,10 +930,10 @@ const CONFIG = {
       blurb: 'Melee sweep — hits everything in a cone in front of it. Picks a specialization at level 5.',
       tiers: [
         { range: 90,  damage: 18, cooldown: 780 },
-        { range: 100, damage: 28, cooldown: 700, upgradeCost: 60 },
-        { range: 115, damage: 42, cooldown: 620, upgradeCost: 90 },
-        { range: 125, damage: 58, cooldown: 570, upgradeCost: 130 },
-        { range: 135, damage: 78, cooldown: 520, upgradeCost: 180 }
+        { range: 100, damage: 28, cooldown: 700, upgradeCost: 80 },
+        { range: 115, damage: 42, cooldown: 620, upgradeCost: 120 },
+        { range: 125, damage: 58, cooldown: 570, upgradeCost: 175 },
+        { range: 135, damage: 78, cooldown: 520, upgradeCost: 245 }
       ]
     },
     ARCHER: {
@@ -789,8 +941,8 @@ const CONFIG = {
       blurb: 'Draws the bow fully before loosing — slower arrows, but real power behind every shot.',
       tiers: [
         { range: 260, damage: 20, cooldown: 740, drawTime: 510, projectileSpeed: 320 },
-        { range: 290, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 360, upgradeCost: 70 },
-        { range: 320, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 400, upgradeCost: 100 }
+        { range: 290, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 360, upgradeCost: 95 },
+        { range: 320, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 400, upgradeCost: 135 }
       ]
     },
     AXEMAN: {
@@ -798,8 +950,8 @@ const CONFIG = {
       blurb: 'Dual-wields hand axes. Manually toggle between a close swing and a ranged throw — one free switch per wave.',
       tiers: [
         { range: 180, meleeRange: 70, damage: 34, meleeDamage: 14, cooldown: 1400, meleeCooldown: 500, projectileSpeed: 320 },
-        { range: 200, meleeRange: 80, damage: 48, meleeDamage: 20, cooldown: 1250, meleeCooldown: 450, projectileSpeed: 340, upgradeCost: 75 },
-        { range: 225, meleeRange: 90, damage: 66, meleeDamage: 28, cooldown: 1100, meleeCooldown: 400, projectileSpeed: 360, upgradeCost: 110 }
+        { range: 200, meleeRange: 80, damage: 48, meleeDamage: 20, cooldown: 1250, meleeCooldown: 450, projectileSpeed: 340, upgradeCost: 100 },
+        { range: 225, meleeRange: 90, damage: 66, meleeDamage: 28, cooldown: 1100, meleeCooldown: 400, projectileSpeed: 360, upgradeCost: 150 }
       ]
     },
     SPEARMAN: {
@@ -807,17 +959,17 @@ const CONFIG = {
       blurb: 'A long, sweeping thrust with much greater reach than a sword — but very slow to wind up.',
       tiers: [
         { range: 150, damage: 40, cooldown: 1800 },
-        { range: 165, damage: 60, cooldown: 1650, upgradeCost: 80 },
-        { range: 180, damage: 85, cooldown: 1500, upgradeCost: 120 }
+        { range: 165, damage: 60, cooldown: 1650, upgradeCost: 110 },
+        { range: 180, damage: 85, cooldown: 1500, upgradeCost: 160 }
       ]
     },
     HAMMERMAN: {
       name: 'Hammerman', icon: '🔨', baseCost: 85, unlocksAfterWave: 4,
       blurb: 'Stuns whatever it hits. Carries a shield and extra HP — the tower to put in harm\'s way when a mob breaks off to attack.',
       tiers: [
-        { range: 95,  damage: 20, cooldown: 950, stunMs: 500 },
-        { range: 105, damage: 30, cooldown: 850, stunMs: 650, upgradeCost: 75 },
-        { range: 120, damage: 45, cooldown: 750, stunMs: 800, upgradeCost: 115 }
+        { range: 95,  damage: 23, cooldown: 950, stunMs: 500 },
+        { range: 105, damage: 34, cooldown: 850, stunMs: 650, upgradeCost: 100 },
+        { range: 120, damage: 52, cooldown: 750, stunMs: 800, upgradeCost: 155 }
       ]
     },
     PALADIN: {
@@ -825,8 +977,8 @@ const CONFIG = {
       blurb: 'A Hammerman pushed to the INT extreme — every hit deals holy pure damage, bypassing armor entirely, on top of the stun.',
       tiers: [
         { range: 100, damage: 24, cooldown: 1000, stunMs: 550 },
-        { range: 110, damage: 36, cooldown: 900,  stunMs: 700, upgradeCost: 85 },
-        { range: 125, damage: 54, cooldown: 800,  stunMs: 850, upgradeCost: 130 }
+        { range: 110, damage: 36, cooldown: 900,  stunMs: 700, upgradeCost: 115 },
+        { range: 125, damage: 54, cooldown: 800,  stunMs: 850, upgradeCost: 175 }
       ]
     },
     MAGE: {
@@ -834,17 +986,17 @@ const CONFIG = {
       blurb: 'Slows anything it hits, and has a small chance to burn, freeze, or shock it too.',
       tiers: [
         { range: 220, damage: 6,  cooldown: 1080, projectileSpeed: 460, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 9,  cooldown: 960,  projectileSpeed: 480, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 65 },
-        { range: 260, damage: 13, cooldown: 840,  projectileSpeed: 500, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 95 }
+        { range: 240, damage: 9,  cooldown: 960,  projectileSpeed: 480, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 260, damage: 13, cooldown: 840,  projectileSpeed: 500, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
     BOMBER: {
       name: 'Bomber', icon: '💣', baseCost: 90, unlocksAfterWave: 6,
       blurb: 'Lobs an explosive with splash damage — strong against groups.',
       tiers: [
-        { range: 240, damage: 26, cooldown: 1500, projectileSpeed: 260, splashRadius: 55 },
-        { range: 260, damage: 38, cooldown: 1350, projectileSpeed: 280, splashRadius: 65, upgradeCost: 80 },
-        { range: 280, damage: 54, cooldown: 1200, projectileSpeed: 300, splashRadius: 78, upgradeCost: 115 }
+        { range: 210, damage: 26, cooldown: 1500, projectileSpeed: 260, splashRadius: 55 },
+        { range: 228, damage: 38, cooldown: 1350, projectileSpeed: 280, splashRadius: 65, upgradeCost: 110 },
+        { range: 246, damage: 54, cooldown: 1200, projectileSpeed: 300, splashRadius: 78, upgradeCost: 155 }
       ]
     },
     GATLING: {
@@ -852,8 +1004,8 @@ const CONFIG = {
       blurb: 'Very fast, low damage per shot — shreds through swarms.',
       tiers: [
         { range: 200, damage: 5,  cooldown: 140, projectileSpeed: 560 },
-        { range: 220, damage: 7,  cooldown: 110, projectileSpeed: 600, upgradeCost: 75 },
-        { range: 240, damage: 10, cooldown: 90,  projectileSpeed: 640, upgradeCost: 110 }
+        { range: 220, damage: 7,  cooldown: 110, projectileSpeed: 600, upgradeCost: 100 },
+        { range: 240, damage: 10, cooldown: 90,  projectileSpeed: 640, upgradeCost: 150 }
       ]
     },
     BARRICADE: {
@@ -868,8 +1020,8 @@ const CONFIG = {
       blurb: "Once per wave, heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target. Curses the nearest enemy of any type with a lingering damage-over-time affliction, dealing 5x tick damage against undead.",
       tiers: [
         { range: 140, damage: 14, cooldown: 2500, healAmount: 25, curseDuration: 3000 },
-        { range: 155, damage: 20, cooldown: 2200, healAmount: 40, curseDuration: 3400, upgradeCost: 70 },
-        { range: 170, damage: 28, cooldown: 1900, healAmount: 60, curseDuration: 3800, upgradeCost: 110 }
+        { range: 155, damage: 20, cooldown: 2200, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
+        { range: 170, damage: 28, cooldown: 1900, healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
       ]
     },
     BLOWDART: {
@@ -877,8 +1029,8 @@ const CONFIG = {
       blurb: 'Short range and light hits, but fires roughly twice as fast as an Archer. Every dart is poisoned — the sting lingers and ticks damage over time, hitting harder with more Intelligence invested.',
       tiers: [
         { range: 155, damage: 8,  cooldown: 370, projectileSpeed: 420, poisonDamage: 3, poisonDuration: 3000 },
-        { range: 170, damage: 12, cooldown: 315, projectileSpeed: 450, poisonDamage: 5, poisonDuration: 3000, upgradeCost: 65 },
-        { range: 190, damage: 18, cooldown: 260, projectileSpeed: 480, poisonDamage: 8, poisonDuration: 3500, upgradeCost: 95 }
+        { range: 170, damage: 12, cooldown: 315, projectileSpeed: 450, poisonDamage: 5, poisonDuration: 3000, upgradeCost: 90 },
+        { range: 190, damage: 18, cooldown: 260, projectileSpeed: 480, poisonDamage: 8, poisonDuration: 3500, upgradeCost: 130 }
       ]
     },
     SQUIRTGUN: {
@@ -886,47 +1038,47 @@ const CONFIG = {
       blurb: 'A Blowdart pushed to the DEX extreme — twin water pistols spraying corrosive green acid, firing even faster with a longer-lingering burn than the dart it evolved from.',
       tiers: [
         { range: 160, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
-        { range: 175, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 70 },
-        { range: 195, damage: 14, cooldown: 140, projectileSpeed: 520, poisonDamage: 10, poisonDuration: 4500, upgradeCost: 100 }
+        { range: 175, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 95 },
+        { range: 195, damage: 14, cooldown: 140, projectileSpeed: 520, poisonDamage: 10, poisonDuration: 4500, upgradeCost: 135 }
       ]
     }
   },
   ENEMIES: {
-    GRUNT:  { emoji:'😡', baseHp:60,  speed:70,  bounty:5,  radius:16, armor:0, breakawayChance:0.02, breakDamage:6 },
-    SWARM:  { emoji:'🐜', baseHp:22,  speed:110, bounty:2,  radius:12, armor:0, breakawayChance:0.02, breakDamage:4 },
-    TANK:   { emoji:'🗿', baseHp:220, speed:38,  bounty:14, radius:20, armor:6, breakawayChance:0.02, breakDamage:10 },
-    RUNNER: { emoji:'🥷', baseHp:45,  speed:150, bounty:8,  radius:14, armor:0, breakawayChance:0.02, breakDamage:6 },
-    BOSS:   { emoji:'👹', baseHp:2200,speed:30,  bounty:150,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
-    TROLL:  { emoji:'🧌', baseHp:130, speed:65,  bounty:45, radius:18, armor:2, breakawayChance:0, breakDamage:0 },
-    FIRE:   { emoji:'🔥', baseHp:55,  speed:90,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:9, statusOnTower:'BURN' },
-    ICE:    { emoji:'🧊', baseHp:60,  speed:75,  bounty:9,  radius:15, armor:0, breakawayChance:0.6,  breakDamage:7, statusOnTower:'ICE' },
-    SPLITTER: { emoji:'🦠', baseHp:70,  speed:60,  bounty:6,  radius:16, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
-    SPLITMINI:{ emoji:'🦠', baseHp:24,  speed:85,  bounty:2,  radius:10, armor:0, breakawayChance:0,    breakDamage:3 },
-    HEALER: { emoji:'💉', baseHp:85,  speed:55,  bounty:11, radius:16, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
-    SHIELDED: { emoji:'🛡️', baseHp:95,  speed:50,  bounty:10, radius:17, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
-    ZOMBIE: { emoji:'🧟', baseHp:150, speed:32,  bounty:9,  radius:19, armor:9, breakawayChance:0.02, breakDamage:8, isUndead:true },
-    WRAITH: { emoji:'👻', baseHp:38,  speed:130, bounty:8,  radius:14, armor:4, breakawayChance:0.04, breakDamage:5, isUndead:true },
-    SKELETON: { emoji:'🦴', baseHp:65,  speed:60,  bounty:10, radius:16, armor:6, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
-    WOLF: { emoji:'🐺', baseHp:32,  speed:100, bounty:6,  radius:13, armor:0, breakawayChance:0.03, breakDamage:5, pack:true },
-    REAPER: { emoji:'💀', baseHp:180, speed:45, bounty:20, radius:18, armor:10, breakawayChance:0.02, breakDamage:8, isUndead:true },
-    BOULDER: { emoji:'🪨', baseHp:260, speed:35, bounty:16, radius:20, armor:5, breakawayChance:0.02, breakDamage:9, splits:true }
+    GRUNT:  { emoji:'😡', baseHp:73,  speed:50,  bounty:6,  radius:16, armor:0, breakawayChance:0.02, breakDamage:7 },
+    SWARM:  { emoji:'🐜', baseHp:27,  speed:79,  bounty:2,  radius:12, armor:0, breakawayChance:0.02, breakDamage:5 },
+    TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:20, armor:6, breakawayChance:0.02, breakDamage:12 },
+    RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:14, armor:0, breakawayChance:0.02, breakDamage:7 },
+    BOSS:   { emoji:'👹', baseHp:2684,speed:22,  bounty:173,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
+    TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:18, armor:2, breakawayChance:0, breakDamage:0 },
+    FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:15, armor:0, breakawayChance:0.6,  breakDamage:10, statusOnTower:'BURN' },
+    ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:15, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'ICE' },
+    SPLITTER: { emoji:'🦠', baseHp:85,  speed:43,  bounty:7,  radius:16, armor:0, breakawayChance:0.02, breakDamage:6, splits:true },
+    SPLITMINI:{ emoji:'🦠', baseHp:29,  speed:61,  bounty:2,  radius:10, armor:0, breakawayChance:0,    breakDamage:3 },
+    HEALER: { emoji:'💉', baseHp:104, speed:40,  bounty:13, radius:16, armor:0, breakawayChance:0.02, breakDamage:6, healsAllies:true, holyLifesteal:true },
+    SHIELDED: { emoji:'🛡️', baseHp:116, speed:36,  bounty:12, radius:17, armor:0, breakawayChance:0.02, breakDamage:7, hasShield:true },
+    ZOMBIE: { emoji:'🧟', baseHp:183, speed:23,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:9, isUndead:true },
+    WRAITH: { emoji:'👻', baseHp:46,  speed:94,  bounty:9,  radius:14, armor:4, breakawayChance:0.04, breakDamage:6, isUndead:true },
+    SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:16, armor:6, breakawayChance:0.02, breakDamage:6, revives:true, isUndead:true },
+    WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:13, armor:0, breakawayChance:0.03, breakDamage:6, pack:true },
+    REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:18, armor:10, breakawayChance:0.02, breakDamage:9, isUndead:true },
+    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:20, armor:5, breakawayChance:0.02, breakDamage:10, splits:true }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
     [{type:'GRUNT',count:6,spawnDelay:1100}],
-    [{type:'GRUNT',count:5,spawnDelay:1000},{type:'TANK',count:1,spawnDelay:2000}],
-    [{type:'SWARM',count:16,spawnDelay:220}],
-    [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}],
-    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700},{type:'ZOMBIE',count:3,spawnDelay:1300},{type:'SKELETON',count:3,spawnDelay:1100}],
-    [{type:'RUNNER',count:10,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'WRAITH',count:3,spawnDelay:700}],
-    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'FIRE',count:2,spawnDelay:1200},{type:'WOLF',count:5,spawnDelay:500}],
-    [{type:'SWARM',count:20,spawnDelay:200},{type:'TANK',count:3,spawnDelay:1500},{type:'HEALER',count:2,spawnDelay:1300},{type:'SKELETON',count:4,spawnDelay:1000}],
-    [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300},{type:'SHIELDED',count:3,spawnDelay:1000}],
-    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'ICE',count:2,spawnDelay:1300},{type:'ZOMBIE',count:4,spawnDelay:1200}],
-    [{type:'TANK',count:8,spawnDelay:1100},{type:'FIRE',count:3,spawnDelay:1000},{type:'SPLITTER',count:4,spawnDelay:900},{type:'WOLF',count:6,spawnDelay:450}],
-    [{type:'RUNNER',count:16,spawnDelay:280},{type:'SWARM',count:20,spawnDelay:180},{type:'ICE',count:3,spawnDelay:1000},{type:'HEALER',count:3,spawnDelay:1100},{type:'WRAITH',count:4,spawnDelay:650}],
-    [{type:'GRUNT',count:16,spawnDelay:400},{type:'TANK',count:6,spawnDelay:1000},{type:'RUNNER',count:12,spawnDelay:300},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100},{type:'SHIELDED',count:4,spawnDelay:900},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:5,spawnDelay:900}],
-    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500}],
+    [{type:'GRUNT',count:5,spawnDelay:1000},{type:'TANK',count:1,spawnDelay:2000}], // new: TANK
+    [{type:'GRUNT',count:6,spawnDelay:900},{type:'SWARM',count:10,spawnDelay:260}], // new: SWARM — eased in alongside Grunt instead of a bare wall of 16
+    [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}], // new: WOLF
+    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700},{type:'SWARM',count:8,spawnDelay:280},{type:'ZOMBIE',count:3,spawnDelay:1300}], // new: ZOMBIE only (was ZOMBIE+SKELETON together)
+    [{type:'GRUNT',count:8,spawnDelay:650},{type:'TANK',count:3,spawnDelay:1300},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:3,spawnDelay:1100}], // new: SKELETON
+    [{type:'GRUNT',count:10,spawnDelay:600},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:3,spawnDelay:1100},{type:'RUNNER',count:8,spawnDelay:400}], // new: RUNNER (was bundled with Splitter+Wraith)
+    [{type:'GRUNT',count:8,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'SKELETON',count:4,spawnDelay:1000},{type:'SPLITTER',count:3,spawnDelay:900}], // new: SPLITTER
+    [{type:'RUNNER',count:10,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'ZOMBIE',count:4,spawnDelay:1100},{type:'WRAITH',count:3,spawnDelay:700}], // new: WRAITH
+    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'WRAITH',count:3,spawnDelay:700},{type:'FIRE',count:2,spawnDelay:1200}], // new: FIRE
+    [{type:'SWARM',count:16,spawnDelay:220},{type:'TANK',count:3,spawnDelay:1500},{type:'SKELETON',count:4,spawnDelay:1000},{type:'HEALER',count:2,spawnDelay:1300}], // new: HEALER
+    [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300},{type:'HEALER',count:2,spawnDelay:1200},{type:'SHIELDED',count:3,spawnDelay:1000}], // new: SHIELDED
+    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'SHIELDED',count:3,spawnDelay:1000},{type:'ICE',count:2,spawnDelay:1300}], // new: ICE — the full basic roster is now introduced
+    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500},{type:'ZOMBIE',count:4,spawnDelay:1000},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}], // new: BOSS — the milestone finale
     [{type:'TANK',count:10,spawnDelay:900},{type:'RUNNER',count:14,spawnDelay:280},{type:'ZOMBIE',count:6,spawnDelay:1000},{type:'FIRE',count:4,spawnDelay:900}],
     [{type:'SWARM',count:26,spawnDelay:160},{type:'WOLF',count:10,spawnDelay:350},{type:'ICE',count:4,spawnDelay:900},{type:'SHIELDED',count:5,spawnDelay:800}],
     [{type:'ZOMBIE',count:8,spawnDelay:900},{type:'WRAITH',count:6,spawnDelay:600},{type:'SKELETON',count:8,spawnDelay:800},{type:'HEALER',count:4,spawnDelay:1000}],
@@ -1673,6 +1825,7 @@ class SoundEngine{
       case 'click': this.tone(600,0.05,'sine'); break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'lose':  this.tone(200,0.4,'sawtooth',50); break;
+      case 'levelup': this.tone(520,0.09,'sine',780); setTimeout(() => this.tone(780,0.14,'sine',1040), 70); break;
     }
   }
 }
@@ -1683,15 +1836,19 @@ function unlockAudio(){ audioEngine.unlock(); }
 /* =========================================================
    GAME STATE
    ========================================================= */
-let gold = 150, lives = 20;
+let gold = 150, lives = 30;
+let livesBought = 0; // count of lives purchased this run — drives the exponential buy-life cost curve
+function buyLifeCost(){ return Math.round(30 * Math.pow(1.6, livesBought)); }
 let wood = 0, stone = 0;
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
 let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
-let gameSpeed = 1; // 1x / 2x / 3x fast-forward, cycled via the HUD button
+let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let isMuted = false;
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
+let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
+let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let spawnQueue = [];
 let waveTimer = 0;
 let gameState = 'START';    // START | PLAYING | GAME_OVER | VICTORY
@@ -1732,6 +1889,46 @@ function showUnlockToast(types){
 }
 function showMilestoneToast(wave){
   showToast('🏆 Survived to Wave ' + wave + '!');
+}
+function showNewEnemyToast(types){
+  const el = document.getElementById('new-enemy-toast');
+  const list = document.getElementById('newEnemyList');
+  list.innerHTML = '';
+  for(const type of types){
+    const def = CONFIG.ENEMIES[type];
+    const info = ENEMY_INFO[type];
+    if(!def || !info) continue;
+    const row = document.createElement('div');
+    row.className = 'new-enemy-row';
+    row.innerHTML = '<div class="new-enemy-head">' + def.emoji + ' ' + info.name + '</div>' +
+      '<div class="new-enemy-stats">❤️' + def.baseHp + ' 👟' + def.speed + ' 💰' + def.bounty + '</div>' +
+      '<div class="new-enemy-desc">' + info.desc + '</div>';
+    list.appendChild(row);
+  }
+  el.classList.add('show');
+  clearTimeout(showNewEnemyToast._t);
+  showNewEnemyToast._t = setTimeout(() => el.classList.remove('show'), 5500);
+  playSound('wave');
+}
+function showWaveSummary(waveNum, goldGained, xpByType){
+  const el = document.getElementById('wave-summary-toast');
+  document.getElementById('waveSummaryNum').textContent = waveNum;
+  document.getElementById('waveSummaryGoldVal').textContent = goldGained;
+  const list = document.getElementById('waveSummaryXpList');
+  list.innerHTML = '';
+  // sort by XP gained, highest first, so the towers that did the most work lead the list
+  const rows = Object.entries(xpByType).sort((a,b) => b[1]-a[1]);
+  for(const [type, xp] of rows){
+    const def = CONFIG.TOWERS[type];
+    if(!def) continue;
+    const row = document.createElement('div');
+    row.className = 'wave-summary-xp-row';
+    row.innerHTML = '<span>' + def.icon + ' ' + def.name + '</span><span>+' + Math.round(xp) + ' XP</span>';
+    list.appendChild(row);
+  }
+  el.classList.add('show');
+  clearTimeout(showWaveSummary._t);
+  showWaveSummary._t = setTimeout(() => el.classList.remove('show'), 4500);
 }
 // Once per round (wave completion): every active Cleric heals one damaged tower, always picking
 // the lowest-HP-fraction target not already claimed by another Cleric this same round.
@@ -1793,13 +1990,30 @@ function checkLegendaryStatus(tower){
   }, 30);
 }
 const STREAK_TIMEOUT_MS = 1200; // tighter window — kills must be genuinely rapid to keep a streak alive
+const MAX_TOWER_LEVEL = 99; // Dota-style: high cap, each level is cheap and fast, deliberately smaller than the old "+4 per gold tier" lump sums
+function xpForNextLevel(level){ return Math.round(14 + level*5); } // XP required to advance FROM this level — grows gently so early levels fly by and late levels are a genuine grind
+function gainTowerExp(tower, amount){
+  if(!tower.active || tower.type === 'BARRICADE' || tower.expLevel >= MAX_TOWER_LEVEL || amount <= 0) return;
+  tower.xp += amount;
+  tower.waveXp = (tower.waveXp || 0) + amount;
+  let leveled = false;
+  while(tower.expLevel < MAX_TOWER_LEVEL && tower.xp >= xpForNextLevel(tower.expLevel)){
+    tower.xp -= xpForNextLevel(tower.expLevel);
+    tower.expLevel++;
+    tower.statPoints++; // one point per level — small and frequent instead of big lump sums
+    leveled = true;
+  }
+  if(tower.expLevel >= MAX_TOWER_LEVEL) tower.xp = 0;
+  if(leveled){
+    spawnFloatingText(tower.x, tower.y - 40, 'LEVEL ' + tower.expLevel + '!', '#ffd23f');
+    playSound('levelup');
+  }
+  if(selectedTower === tower) updateInspectPanel();
+}
 function creditKill(tower, forStreak){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
-  if(tower.killCount % 4 === 0){
-    tower.statPoints++;
-    spawnFloatingText(tower.x, tower.y - 36, '+1 STAT', '#4caf50');
-  }
+  gainTowerExp(tower, 3); // small, frequent XP per kill — replaces the old flat "+1 stat point every 4 kills"
   if(!forStreak){ updateInspectPanel(); updateHUD(); return; } // e.g. splash kills beyond the first in one blast
   if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
     tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
@@ -1809,7 +2023,7 @@ function creditKill(tower, forStreak){
   while(tower.nextStreakTier < KILLSTREAK_TIERS.length && tower.killStreak >= KILLSTREAK_TIERS[tower.nextStreakTier].count){
     const tier = KILLSTREAK_TIERS[tower.nextStreakTier];
     tower.nextStreakTier++;
-    tower.statPoints++;
+    gainTowerExp(tower, 12); // bigger XP burst for a killstreak milestone, still funneled through leveling rather than a direct stat point
     showKillstreakBanner(tier.label);
   }
   checkLegendaryStatus(tower);
@@ -1828,7 +2042,7 @@ function generateSaveSeed(){
 function serializeGameState(){
   const towersData = towerPool.filter(t => t.active).map(t => ({
     type: t.type, gridX: t.gridX, gridY: t.gridY, level: t.level,
-    str: t.str, dex: t.dex, int: t.int, statPoints: t.statPoints,
+    str: t.str, dex: t.dex, int: t.int, statPoints: t.statPoints, xp: t.xp, expLevel: t.expLevel,
     spec: t.spec || null,
     itemIds: t.equippedItems.map(i => i.id),
     hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
@@ -1838,9 +2052,9 @@ function serializeGameState(){
   const sceneryData = [...sceneryMap.entries()].map(([key, item]) => ({ key, item }));
   return {
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION,
-    gold, lives, waveIndex, wavesCompleted, wood, stone, moveCharges,
+    gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
-    goreMode, graphicsQuality,
+    goreMode, graphicsQuality, seenEnemyTypes: [...seenEnemyTypes],
     towers: towersData, scenery: sceneryData
   };
 }
@@ -1867,13 +2081,23 @@ function restoreGameState(state){
   for(const t of floatingTexts) t.active = false;
   sceneryMap.clear();
 
-  gold = state.gold; lives = state.lives; waveIndex = state.waveIndex;
+  gold = state.gold; lives = state.lives; livesBought = state.livesBought || 0; waveIndex = state.waveIndex;
   wavesCompleted = state.wavesCompleted; wood = state.wood; stone = state.stone;
   moveCharges = state.moveCharges; globalPassiveCounts = state.globalPassiveCounts || {};
   activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
   expansionLevel = state.expansionLevel || 0;
   if(state.goreMode !== undefined) goreMode = state.goreMode;
   if(state.graphicsQuality){ graphicsQuality = state.graphicsQuality; setupCanvas(); }
+  if(state.seenEnemyTypes){
+    seenEnemyTypes = new Set(state.seenEnemyTypes);
+  } else {
+    // older save from before this feature existed — reconstruct from every wave already passed,
+    // so an in-progress run doesn't suddenly re-announce enemies the player has long since met
+    seenEnemyTypes = new Set();
+    for(let i=0; i<state.waveIndex && i<CONFIG.WAVES.length; i++){
+      for(const group of CONFIG.WAVES[i]) seenEnemyTypes.add(group.type);
+    }
+  }
   rebuildPathCellsAndPx();
 
   for(const s of (state.scenery || [])) sceneryMap.set(s.key, s.item);
@@ -1885,6 +2109,7 @@ function restoreGameState(state){
     t.level = td.level;
     t.applyTierStats();
     t.str = td.str||0; t.dex = td.dex||0; t.int = td.int||0; t.statPoints = td.statPoints||0;
+    t.xp = td.xp||0; t.expLevel = td.expLevel||1;
     if(td.spec) t.spec = td.spec;
     if(td.targetMode) t.targetMode = td.targetMode;
     t.equippedItems = (td.itemIds||[]).map(id => (SHOP_ITEMS[td.type]||[]).find(i => i.id===id)).filter(Boolean);
@@ -2299,10 +2524,13 @@ class Enemy{
     } else {
       spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
-    spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 9 : 3, goreMode ? 260 : 0);
+    spawnParticles(this.x, this.y, goreMode ? '#a01818' : '#ffaa33', goreMode ? 14 : 3, goreMode ? 260 : 0);
     if(goreMode && sourceTower){
       const impactAngle = Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x);
-      spawnBloodStream(this.x, this.y, impactAngle, 3);
+      spawnBloodStream(this.x, this.y, impactAngle, 4);
+      if(Math.random() < 0.3){
+        spawnBloodCastoff(this.x, this.y, impactAngle, 'rgba(122,15,15,0.65)'); // occasional streak spatter, not a pool
+      }
     }
     if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
@@ -2336,16 +2564,12 @@ class Enemy{
       for(let s=0; s<streamCount; s++){
         spawnBloodStream(this.x, this.y, Math.random()*Math.PI*2, low ? 1 : 2);
       }
-      spawnDecal(this.x, this.y, low ? 'rgba(122,15,15,0.6)' : 'rgba(122,15,15,0.75)');
+      if(Math.random() < 0.65){
+        spawnDecal(this.x, this.y, low ? 'rgba(122,15,15,0.6)' : 'rgba(122,15,15,0.75)', true);
+      }
       if(!low && sourceTower && Math.random() < 0.4){
         const castoffAngle = Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x);
         spawnBloodCastoff(this.x, this.y, castoffAngle, 'rgba(122,15,15,0.7)');
-      }
-      if(!low && Math.random() < 0.35){
-        spawnDecal(this.x + (Math.random()-0.5)*14, this.y + (Math.random()-0.5)*10, 'rgba(90,8,8,0.55)');
-        if(Math.random() < 0.5){
-          spawnDecal(this.x + (Math.random()-0.5)*24, this.y + (Math.random()-0.5)*16, 'rgba(140,20,20,0.5)'); // third stain only on the messiest kills
-        }
       }
       if(this.type === 'BOSS'){
         screenShakeUntil = gameTime + (low ? 150 : 220);
@@ -2419,7 +2643,8 @@ class Enemy{
       }
     }
     ctx.save();
-    ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy)+0.5);
+    const walkBob = speed > 5 ? Math.sin(this.traveled/9) * Math.min(2.2, this.radius*0.13) : 0;
+    ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy+walkBob)+0.5);
     if(speed > 20){
       const angle = Math.atan2(this.vy, this.vx);
       const stretch = 1 + Math.min(0.25, speed/700);
@@ -2476,7 +2701,7 @@ class Tower{
     this.goldMult = 1; // 🍀 Luck — recalculated properly in recomputeStats() once DEX is known
     this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the 2s rate limit
     this.lastFireTime = -99999; // used for brief post-fire flourish animations (e.g. Mage's wand cast)
-    this.killCount = 0;      // total kills — every 4th grants a free stat point
+    this.killCount = 0;      // total kills — each one grants a small amount of EXP toward the tower's level
     this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
     this.lastKillTime = 0;
     this.nextStreakTier = 0; // index into KILLSTREAK_TIERS, so each tier only fires once per streak
@@ -2492,6 +2717,9 @@ class Tower{
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
     // WC3-hero-style distributable stats: STR = damage, DEX = attack speed, INT = range
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0;
+    this.xp = 0; this.expLevel = 1; // Dota-style EXP level, separate from the gold-tier `level` above —
+    // grants 1 stat point per level, up to MAX_TOWER_LEVEL. Fed by kills, killstreaks, and round survival.
+    this.waveXp = 0; // XP earned so far THIS wave only — reset each time a new wave starts, used for the wave-end summary popup
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
     this.equippedItems = []; this.isHero = false;
@@ -2550,12 +2778,17 @@ class Tower{
     const strEff = archetype === 'WARRIOR' ? totalStr * PREFERRED_STAT_MULT : totalStr;
     const dexEff = archetype === 'ARCHER' ? totalDex * PREFERRED_STAT_MULT : totalDex;
     const intEff = archetype === 'MAGE' ? totalInt * PREFERRED_STAT_MULT : totalInt;
-    const strMult = 1 + diminishingStatValue(strEff, 0.06); // +6% damage/point, diminishing every 5 points
-    const dexMult = 1 + diminishingStatValue(dexEff, 0.08); // +8% attack speed/point, diminishing every 5 points
-    const intBonus = diminishingStatValue(intEff, 6); // +6 range/point, diminishing every 5 points
-    const intDamageMult = archetype === 'MAGE' ? (1 + diminishingStatValue(intEff, 0.05)) : 1; // Mage archetype's damage also scales with INT — spell power, on top of the normal STR scaling
-    const dexDamageMult = archetype === 'ARCHER' ? (1 + diminishingStatValue(dexEff, 0.05)) : 1; // Archer archetype's damage also scales with DEX — marksmanship, on top of the normal STR scaling
-    this.damage = Math.round(this.baseDamage * strMult * intDamageMult * dexDamageMult);
+    const strMult = 1 + diminishingStatValue(strEff, 0.06); // +6%/point, diminishing every 5 points — WARRIOR archetype's primary damage stat
+    const dexMult = 1 + diminishingStatValue(dexEff, 0.08); // +8% attack speed/point, diminishing every 5 points — universal, every class benefits
+    const intBonus = diminishingStatValue(intEff, 6); // +6 range/point, diminishing every 5 points — universal
+    const dexDamageMult = 1 + diminishingStatValue(dexEff, 0.06); // ARCHER archetype's primary damage stat, same rate as STR's for warriors
+    const intDamageMult = 1 + diminishingStatValue(intEff, 0.06); // MAGE archetype's primary damage stat, same rate as STR's for warriors
+    // Dota-style gating: only the archetype's own preferred stat drives its damage. STR only
+    // powers Warrior damage, DEX only powers Archer-style damage, INT only powers Mage damage —
+    // no more universal STR-boosts-everyone's-damage fallback. HP still gets its own separate STR
+    // bonus below (strForHp), since that's a universal tankiness stat, not a damage stat.
+    const primaryDamageMult = archetype === 'WARRIOR' ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
+    this.damage = Math.round(this.baseDamage * primaryDamageMult);
     this.cooldown = Math.max(80, Math.round(this.baseCooldown / dexMult));
     if(this.type === 'CLERIC'){
       this.range = this.baseRange; // fixed smite-detection radius, not INT-scaled
@@ -2565,7 +2798,7 @@ class Tower{
       const cap = RANGE_CAPS[this.type];
       if(cap) this.range = Math.min(this.range, cap);
     }
-    if(this.baseMeleeDamage) this.meleeDamage = Math.round(this.baseMeleeDamage * strMult);
+    if(this.baseMeleeDamage) this.meleeDamage = Math.round(this.baseMeleeDamage * primaryDamageMult);
     if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange){
       this.meleeRange = Math.round(this.baseMeleeRange + intBonus);
@@ -2670,7 +2903,7 @@ class Tower{
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
-    this.statPoints += 4; // slightly more spendable points per level than before (was 3)
+    gainTowerExp(this, 25); // gold-tier upgrades still feed some XP (training from better gear), but no longer hand out a lump of stat points directly
     // random growth on level up: 0-2 in each stat, plus an extra 1-2 in the tower's favored stat
     this.str += Math.floor(Math.random()*3);
     this.dex += Math.floor(Math.random()*3);
@@ -2872,7 +3105,14 @@ class Tower{
       default: localReach = armLen + 10;
     }
     const muzzleOffset = localReach * STICKMAN_SCALE;
-    const shoulderYWorld = -13 * STICKMAN_SCALE; // every class's arm pivots from this fixed height, not ground level
+    // shoulder pivot height must match drawStickman's actual transform stack (STICKMAN_SCALE, the
+    // class's own body scaleY, and the Legendary 1.1x bump) — previously this used a flat -13
+    // regardless of class, so taller-built classes like Archer (scaleY 1.08) had their visible
+    // bow sit higher than where the arrow actually spawned, i.e. arrows spawned visibly low.
+    const bodyScaleY = (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
+    const legendaryScale = this.isLegendary ? 1.1 : 1;
+    const pivotBaseY = this.type === 'BLOWDART' ? -21 : -13; // Blowdart's arm now anchors at mouth height, not shoulder height — keep the spawn point in sync
+    const shoulderYWorld = pivotBaseY * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
@@ -2932,7 +3172,9 @@ class Tower{
     const armLen = 13;
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const muzzleOffset = (armLen + weaponLenFromScale(15, 24, weaponScale)) * STICKMAN_SCALE;
-    const shoulderYWorld = -13 * STICKMAN_SCALE;
+    const bodyScaleY = (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
+    const legendaryScale = this.isLegendary ? 1.1 : 1;
+    const shoulderYWorld = -13 * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
@@ -3323,21 +3565,21 @@ let particleIndex = 0;
 const MAX_DECALS = 150;
 const decals = [];
 let decalIndex = 0;
-function spawnDecal(x, y, color){
+function spawnDecal(x, y, color, smallBias){
   const roll = Math.random();
   let sizeMult, blobCount;
-  if(roll < 0.08){
+  if(!smallBias && roll < 0.08){
     // rare massive pool — genuinely dramatic, not just "a bit bigger"
     sizeMult = 4 + Math.random()*2.5;
     blobCount = 9 + Math.floor(Math.random()*6);
-  } else if(roll < 0.30){
+  } else if(!smallBias && roll < 0.30){
     // big pool — noticeably larger than average
     sizeMult = 2 + Math.random()*1.5;
     blobCount = 6 + Math.floor(Math.random()*5);
   } else {
-    // ordinary splatter
-    sizeMult = 0.7 + Math.random()*0.6;
-    blobCount = 4 + Math.floor(Math.random()*4);
+    // ordinary splatter — smallBias skips straight here, avoiding the big/massive pool rolls entirely
+    sizeMult = (0.7 + Math.random()*0.6) * (smallBias ? 0.6 : 1);
+    blobCount = (4 + Math.floor(Math.random()*4)) - (smallBias ? 1 : 0);
   }
   const decal = { x, y, color, spawnTime: gameTime, isLine: false,
     // overlapping offset circles instead of one plain circle — reads as a real messy splatter/pool
@@ -3939,20 +4181,22 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.beginPath(); ctx.ellipse(0, -30, 7, 2.5, 0, 0, Math.PI*2); ctx.stroke();
     }
   } else if(type === 'BLOWDART'){
-    // simple left/right facing flip instead of tracking a continuous angle — one arm fixed at the
-    // mouth, mirrored depending on which side he's shooting toward, per the reference sketch
-    const faceSign = Math.cos(extra.hasTarget ? angle : 0) >= 0 ? 1 : -1;
-    // small dart pouch on the hip, opposite the throwing hand
+    // Single arm, anchored at mouth height (not the shoulder) so the pipe reads as actually held
+    // up to the face in one continuous gesture — matches the reference sketch. Previously had a
+    // second "steadying" off-hand anchored 4px off the torso centerline, which visibly floated
+    // apart from the body; removed entirely rather than trying to patch its anchor point.
+    const mouthAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: rests up-right; engaged: tracks the target
+    const faceSign = Math.cos(mouthAngle) >= 0 ? 1 : -1; // only used to mirror the decorative dart pouch
+    // small dart pouch on the hip, opposite the blowing hand
     ctx.fillStyle = '#4a5a2a';
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-faceSign*6-2.5, -3, 5, 6, 1.5) : ctx.rect(-faceSign*6-2.5, -3, 5, 6);
     ctx.fill();
     ctx.strokeStyle = '#2f3a1a'; ctx.lineWidth = 1;
     ctx.stroke();
-    drawArmAndHand(ctx, shoulderX - 4*faceSign, shoulderY, Math.PI/2 + 0.7*faceSign, armLen*0.85, skinMain, -0.15);
-    const mouthAngle = faceSign > 0 ? -0.9 : Math.PI + 0.9;
-    const hand = drawArmAndHand(ctx, shoulderX + 4*faceSign, shoulderY, mouthAngle, armLen*0.7, skinMain, -0.5*faceSign);
+    const mouthX = 0, mouthY = -21; // just under the head circle, above the shoulder line — the "mouth"
+    const hand = drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3*faceSign);
     const handX = hand.handX, handY = hand.handY;
-    const pipeAngle = faceSign > 0 ? -0.15 : Math.PI + 0.15;
+    const pipeAngle = mouthAngle;
     const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
     ctx.strokeStyle = '#5a7a2a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
@@ -4158,6 +4402,14 @@ function startNextWave(){
   const isProcedural = waveIndex >= CONFIG.WAVES.length;
   const proceduralN = waveIndex - CONFIG.WAVES.length + 1;
   const waveDef = isProcedural ? generateProceduralWave(proceduralN) : CONFIG.WAVES[waveIndex];
+  const newTypes = [];
+  for(const group of waveDef){
+    if(!seenEnemyTypes.has(group.type)){
+      seenEnemyTypes.add(group.type);
+      newTypes.push(group.type);
+    }
+  }
+  if(newTypes.length) showNewEnemyToast(newTypes);
   if(isProcedural){
     const typeName = WAVE_TYPE_NAMES[proceduralN % 7];
     if(typeName) showToast(typeName);
@@ -4168,7 +4420,7 @@ function startNextWave(){
   for(const group of waveDef){
     for(let i=0;i<group.count;i++){
       let type = group.type;
-      if(type !== 'BOSS' && type !== 'TROLL' && Math.random() < 0.02) type = 'TROLL';
+      if(type !== 'BOSS' && type !== 'TROLL' && seenEnemyTypes.has('TROLL') && Math.random() < 0.02) type = 'TROLL';
       spawnQueue.push({ type, delay: i*group.spawnDelay });
     }
   }
@@ -4176,6 +4428,8 @@ function startNextWave(){
   waveTimer = 0;
   waveIndex++;
   waveState = 'SPAWNING';
+  waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
+  for(const t of towerPool) if(t.active) t.waveXp = 0;
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
   playSound('wave');
   updateHUD();
@@ -4225,6 +4479,8 @@ function update(dt){
     if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
+      const surviveXp = 6 + Math.floor(waveIndex * 0.6); // scales gently with how far the run has gone
+      for(const t of towerPool){ if(t.active) gainTowerExp(t, surviveXp); }
       processClericHealing();
       expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
@@ -4243,12 +4499,40 @@ function update(dt){
         showMilestoneToast(wavesCompleted);
       }
       gold += 10 + Math.floor(wavesCompleted/2); // scaling reward — keeps pace with infinite waves
+      const xpByType = {};
+      for(const t of towerPool){ if(t.active && t.waveXp > 0) xpByType[t.type] = (xpByType[t.type]||0) + t.waveXp; }
+      showWaveSummary(waveIndex, gold - waveStartGold, xpByType);
       updateHUD();
     }
   }
 }
 
+function updateTargetFrame(){
+  const frame = document.getElementById('inspTargetFrame');
+  const t = selectedTower;
+  const target = t && t.active ? t.target : null;
+  if(!target || !target.active){
+    frame.classList.remove('show');
+    return;
+  }
+  document.getElementById('targetPortraitFace').textContent = target.emoji;
+  const info = ENEMY_INFO[target.type];
+  document.getElementById('targetName').textContent = info ? info.name : target.type;
+  const hpPct = target.maxHp > 0 ? Math.max(0, Math.min(100, (target.hp/target.maxHp)*100)) : 0;
+  document.getElementById('targetHpBarFill').style.width = hpPct + '%';
+  document.getElementById('targetHpBarText').textContent = Math.round(target.hp) + '/' + target.maxHp;
+  document.getElementById('targetDefVal').textContent = target.armor;
+  document.getElementById('targetSpeedVal').textContent = Math.round(target.speed);
+  frame.classList.add('show');
+  // position it just to the right of the inspect panel, whose width varies with content —
+  // recomputed every call rather than fixed in CSS, since the panel isn't a fixed size
+  const panelRect = inspectPanel.getBoundingClientRect();
+  const containerRect = document.getElementById('canvas-frame').getBoundingClientRect();
+  frame.style.left = (panelRect.right - containerRect.left + 8) + 'px';
+  frame.style.minHeight = panelRect.height + 'px'; // match the nameplate panel's height so the two plates feel like one consistent UI set
+}
 function render(ctx){
+  updateTargetFrame();
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   ctx.save();
@@ -4309,9 +4593,12 @@ function loop(now){
   if(frameTime > 100) frameTime = 100;
   lastTime = now;
   accumulator += frameTime * gameSpeed;
-  while(accumulator >= FIXED_DT){
+  let ticksThisFrame = 0;
+  const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
+  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME){
     update(FIXED_DT);
     accumulator -= FIXED_DT;
+    ticksThisFrame++;
   }
   render(ctx);
 }
@@ -4587,6 +4874,9 @@ const inspClose = document.getElementById('inspClose');
 function updateHUD(){
   livesVal.textContent = lives;
   goldVal.textContent = gold;
+  const lifeCost = buyLifeCost();
+  document.getElementById('buyLifeCost').textContent = '+💰' + lifeCost;
+  document.getElementById('buyLifeBtn').disabled = gold < lifeCost;
   document.getElementById('woodVal').textContent = wood;
   document.getElementById('stoneVal').textContent = stone;
   document.getElementById('moveVal').textContent = moveCharges;
@@ -4865,6 +5155,13 @@ document.getElementById('inspShopShortcutBtn').addEventListener('pointerdown', (
   if(!selectedTower) return;
   openShopModal(selectedTower.type);
 });
+document.querySelectorAll('.item-slot').forEach(slot => {
+  slot.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    if(!selectedTower) return;
+    openShopModal(selectedTower.type);
+  });
+});
 document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   document.getElementById('help-modal').classList.remove('hidden');
@@ -4875,6 +5172,17 @@ document.getElementById('help-modal-close').addEventListener('pointerdown', (e) 
 });
 document.getElementById('help-modal').addEventListener('pointerdown', (e) => {
   if(e.target.id === 'help-modal') document.getElementById('help-modal').classList.add('hidden'); // tap outside the card to dismiss
+});
+document.getElementById('barricadeInfoBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  document.getElementById('barricade-help-modal').classList.remove('hidden');
+});
+document.getElementById('barricade-help-modal-close').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  document.getElementById('barricade-help-modal').classList.add('hidden');
+});
+document.getElementById('barricade-help-modal').addEventListener('pointerdown', (e) => {
+  if(e.target.id === 'barricade-help-modal') document.getElementById('barricade-help-modal').classList.add('hidden');
 });
 
 // --- Settings modal (usable from the start screen or mid-game — not gated on gameState) ---
@@ -5058,30 +5366,52 @@ function updateInspectPanel(){
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
   inspectPanel.classList.remove('hidden');
   document.getElementById('inspFullOptions').classList.toggle('hidden', !inspPanelExpanded);
-  document.getElementById('inspExpandChevron').textContent = inspPanelExpanded ? '⌃' : '⌄';
+  document.getElementById('inspExpandChevron').style.transform = inspPanelExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+  document.getElementById('inspExpandChevron').classList.toggle('has-points', selectedTower.statPoints > 0);
   const t = selectedTower;
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Two-Hander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
-  inspLevel.textContent = 'Lv.' + t.level + specLabel + heroLabel;
+  inspLevel.textContent = 'Lv.' + t.expLevel + specLabel + heroLabel;
   document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   document.getElementById('inspHpBarFill').style.width = hpPct + '%';
   document.getElementById('inspHpBarText').textContent = Math.round(t.hp) + '/' + t.maxHp;
   const evoTrack = document.getElementById('inspEvoBarTrack');
+  evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
+  if(t.expLevel >= MAX_TOWER_LEVEL){
+    document.getElementById('inspEvoBarFill').style.width = '100%';
+    document.getElementById('inspEvoBarText').textContent = 'MAX LEVEL';
+  } else {
+    const need = xpForNextLevel(t.expLevel);
+    document.getElementById('inspEvoBarFill').style.width = Math.round(Math.min(1, t.xp/need)*100) + '%';
+    document.getElementById('inspEvoBarText').textContent = Math.round(t.xp) + '/' + need + ' XP';
+  }
+  const evoHint = document.getElementById('inspEvoHint');
   const evo = EVOLUTIONS[t.type];
   if(evo){
-    let best = null;
-    for(const statKey in evo){
+    // only call out a "most likely" evolution when one branch-relevant stat is a clear, single
+    // leader — not at the start (all zero) and not when two-plus stats are tied, since neither
+    // case actually predicts which evolution the player is heading toward
+    const branchStats = Object.keys(evo);
+    const values = branchStats.map(k => t[k] || 0);
+    const maxVal = Math.max(...values);
+    const leaders = branchStats.filter(k => (t[k]||0) === maxVal);
+    if(maxVal > 0 && leaders.length === 1){
+      const statKey = leaders[0];
       const cur = t[statKey] || 0;
       const need = evo[statKey].threshold;
-      const pct = Math.min(1, cur/need);
-      if(!best || pct > best.pct) best = { pct };
+      const remaining = Math.max(0, need - cur);
+      const targetDef = CONFIG.TOWERS[evo[statKey].target];
+      evoHint.textContent = remaining > 0
+        ? (targetDef.icon + ' ' + targetDef.name + ' Upgrade — ' + remaining + ' more ' + statKey.toUpperCase())
+        : (targetDef.icon + ' ' + targetDef.name + ' Upgrade — ready to evolve!');
+      evoHint.classList.remove('hidden');
+    } else {
+      evoHint.classList.add('hidden');
     }
-    evoTrack.classList.remove('hidden');
-    document.getElementById('inspEvoBarFill').style.width = Math.round(best.pct*100) + '%';
   } else {
-    evoTrack.classList.add('hidden'); // no further evolution available for this class
+    evoHint.classList.add('hidden');
   }
 
   const isMeleeMode = t.type === 'AXEMAN' ? t.axeMode === 'MELEE' : !!t.baseMeleeDamage;
@@ -5095,11 +5425,15 @@ function updateInspectPanel(){
   document.getElementById('inspRangeVal').textContent = rng;
   document.getElementById('inspSpeedVal').textContent = cd ? (1000/cd).toFixed(1) : '0';
   document.getElementById('inspLuckVal').textContent = '+' + Math.round(((t.goldMult||1)-1)*100) + '%';
-  document.getElementById('inspIntBtn').title = t.type === 'MAGE'
-    ? 'Intelligence: +6 range per point, and boosts spell damage too'
+  const arch = CLASS_ARCHETYPE[t.type];
+  document.getElementById('inspStrBtn').title = arch === 'WARRIOR'
+    ? 'Strength: +6% damage and +3% max HP per point'
+    : 'Strength: +3% max HP per point (this class\'s damage stat is ' + (arch === 'ARCHER' ? 'DEX' : arch === 'MAGE' ? 'INT' : 'none') + ')';
+  document.getElementById('inspIntBtn').title = arch === 'MAGE'
+    ? 'Intelligence: +6 range and +6% damage per point'
     : 'Intelligence: +6 range per point';
-  document.getElementById('inspDexBtn').title = t.type === 'ARCHER'
-    ? 'Dexterity: +8% attack speed, accuracy, 🍀 luck, and boosts damage too'
+  document.getElementById('inspDexBtn').title = arch === 'ARCHER'
+    ? 'Dexterity: +8% attack speed, accuracy, 🍀 luck, and +6% damage per point'
     : 'Dexterity: +8% attack speed, accuracy, and 🍀 luck (bonus gold per kill) per point';
   if(t.canUpgrade()){
     const cost = t.nextUpgradeCost();
@@ -5126,9 +5460,22 @@ function updateInspectPanel(){
     axeBtn.classList.add('hidden');
   }
 
-  document.getElementById('inspItemsSummary').textContent = t.equippedItems.length
-    ? t.equippedItems.map(i => i.icon).join(' ')
-    : 'No items';
+  document.getElementById('statsInfoBtn').classList.toggle('hidden', t.type === 'BARRICADE');
+  document.getElementById('barricadeInfoBtn').classList.toggle('hidden', t.type !== 'BARRICADE');
+
+  const slots = document.querySelectorAll('.item-slot');
+  slots.forEach((slot, i) => {
+    const item = t.equippedItems[i];
+    if(item){
+      slot.textContent = item.icon;
+      slot.title = item.name;
+      slot.classList.add('filled');
+    } else {
+      slot.textContent = '';
+      slot.title = 'Empty slot';
+      slot.classList.remove('filled');
+    }
+  });
 
   document.getElementById('inspStatPointsVal').textContent = t.statPoints;
   document.getElementById('inspStrVal').textContent = t.str;
@@ -5225,11 +5572,26 @@ pauseBtn.addEventListener('pointerdown', (e) => {
   }
 });
 
+const buyLifeBtn = document.getElementById('buyLifeBtn');
+buyLifeBtn.addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  unlockAudio();
+  const cost = buyLifeCost();
+  if(gold < cost) return;
+  gold -= cost;
+  lives += 1;
+  livesBought++;
+  playSound('click');
+  showToast('❤️ +1 Life');
+  updateHUD();
+});
 const speedBtn = document.getElementById('speedBtn');
+const SPEED_LEVELS = [1, 2, 3, 5, 10];
 speedBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
-  gameSpeed = gameSpeed === 1 ? 2 : (gameSpeed === 2 ? 3 : 1);
+  const i = SPEED_LEVELS.indexOf(gameSpeed);
+  gameSpeed = SPEED_LEVELS[(i + 1) % SPEED_LEVELS.length];
   speedBtn.textContent = gameSpeed + 'x';
   speedBtn.classList.toggle('active', gameSpeed > 1);
 });
@@ -5313,7 +5675,7 @@ function endGame(){
 }
 
 function resetGame(){
-  gold = 150; lives = 20; waveIndex = 0; waveState = 'IDLE'; spawnQueue = [];
+  gold = 150; lives = 30; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; spawnQueue = []; seenEnemyTypes = new Set();
   wood = 0; stone = 0;
   globalPassiveCounts = {};
   selectedBuildType = null; selectedTower = null;
