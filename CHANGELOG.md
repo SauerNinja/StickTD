@@ -5,7 +5,196 @@ All notable changes to Stick Tower Defense are documented here. Format follows
 
 See `AGENTS.md` for the workflow this file follows.
 
-## [Unreleased]
+## [1.0.39] - 2026-09-02
+
+- **Fixed the compact/expand feature being completely non-functional** — while checking "anything
+  else" after the nameplate redesign, found that `#inspFullOptions` had zero matching CSS anywhere
+  in the file. Every other `.hidden` toggle in this codebase is defined per-element (there's no
+  shared generic rule), and this element never got its own — meaning the JS was correctly toggling
+  the class the whole time, but nothing told the browser what that class should actually do to
+  this element. The full options section had been showing unconditionally regardless of expand
+  state since the feature was built. Added the missing rule and reverified both the JS syntax and
+  full HTML tag balance before shipping.
+
+## [1.0.38] - 2026-09-02
+
+- **Redesigned the panel toggle to match real WC3 nameplate behavior** — removed the separate
+  "⌄ Options" button entirely. Tapping the nameplate itself (name + level) now toggles between
+  compact and full view, with just a small chevron indicating it's expandable, rather than a
+  labeled button explaining what to do. Added proper tap styling (active-state highlight, pointer
+  cursor) since no CSS existed for these elements before. Verified full HTML tag balance and
+  confirmed no dangling references to the removed button anywhere in the file before shipping.
+
+## [1.0.37] - 2026-09-02
+
+- **Tapping a tower now shows a compact view first, with a "⌄ Options" button to open the full
+  panel** — matches the requested WC3/WoW nameplate flow (tap the unit, get basic info, use a
+  button to expand into full options) without building a separate canvas-tracked floating overlay,
+  which would have needed real-time world-to-screen projection and carried genuine risk of
+  positioning edge cases. Reused the existing bottom panel instead: compact by default (name,
+  level, combat stats), full options (upgrade/move/sell/target/stats/inventory) collapsed behind
+  the button, resetting to compact every time a different tower is newly selected.
+- **Caught a genuinely dangerous bug before shipping this** — a bulk find-and-replace used to add
+  the reset logic across 10 call sites matched a substring inside the variable's own `let`
+  declaration line, inserting an assignment to `inspPanelExpanded` *before* its declaration. This
+  is a temporal-dead-zone violation that would have thrown a ReferenceError and crashed the
+  entire game on page load — and critically, `node --check` (syntax-only) does not catch this
+  class of bug at all, since the code is syntactically valid. Found it by manually reviewing every
+  insertion site rather than trusting the syntax check alone, then verified the fix with an actual
+  Node execution simulating the real declaration order, not just a re-run of `--check`.
+
+## [1.0.36] - 2026-09-02
+
+- **Fixed remaining projectile-spawn precision errors** — checked every class's muzzle offset
+  formula directly against its exact render geometry rather than trusting the earlier
+  approximations. Confirmed Mage, Bomber, Gatling, and Squirt Gun were already exact matches
+  (no change needed). Found two real, confirmed discrepancies: Blowdart's formula was missing the
+  weaponScale multiplier on the pipe length (9.7px error at max INT investment — nearly a third
+  of the correct offset), and Archer was missing the +2 draw-tension term the render math applies
+  at full draw (2.3px error). Also confirmed the bow's visual midpoint is exactly at the hand
+  position (bowTop/bowBot are both offset perpendicular from the hand, not from a further point),
+  so "spawns from the middle of the bow" was already structurally correct — the fix was in the
+  reach distance leading up to that point, not the concept.
+
+## [1.0.35] - 2026-09-02
+
+- **Added an upgrade-available glow** — a pulsing golden ring appears around any tower that's
+  below max level *and* currently affordable, visible directly on the map without needing to
+  select the tower first. Confirmed this didn't already exist anywhere in the codebase before
+  building it — no nametag or upgrade-indicator system was present at all.
+- **Note on scope**: full WC3/WoW-style floating nametags above every active tower (name, level,
+  HP bar, expandable panel) is a substantially larger feature — real-time world-to-screen
+  projection for potentially 20+ simultaneous towers, with a real risk of cluttering the screen.
+  Built the concrete, immediately useful piece (the glow) rather than the full overlay system in
+  the same pass; the existing bottom inspect panel already covers stats/leveling once a tower is
+  selected.
+
+## [1.0.34] - 2026-09-02
+
+- **Bomber and Gatling now have distinguishing gear** — audited every class and confirmed these
+  two (plus Spearman) were the only ones with zero accessory of any kind. Gave Bomber a shell
+  pouch on the hip and Gatling an ammo belt across the chest with cartridge marks (reused the
+  same geometry already verified clear of the head from the bandolier work). Left Spearman as-is
+  — a spear alone is a complete look and doesn't need added gear the way a gunner does.
+- **Confirmed no save/load gap from this session's visual work** — checked `serializeGameState()`
+  directly: weaponScale, weaponThickness, and decals are all computed fresh from stats (str/dex/
+  int/range) that were already being saved, not separate state that needed new persistence.
+
+## [1.0.33] - 2026-09-02
+
+- **Quiver gap widened slightly** — was still reading as a bit too attached to the body.
+- **Blowdart now has a hip pouch** instead of no back accessory at all — a small dart pouch on
+  the hip, opposite the throwing hand.
+- **Squirt Gun now has a bandolier** instead of no accessory — crossed straps across the torso
+  with cartridge dots, fitting a dual-gunner better than a quiver would. Verified the bandolier's
+  top point stays clear of the head before shipping.
+
+## [1.0.32] - 2026-09-02
+
+- **Blood decals now grow and settle over time instead of appearing instantly at full size** —
+  each stain tracks its own spawn time; blobs start small and expand to full size over 0.7
+  seconds (verified with the actual curve math), then the whole decal darkens/settles to 75%
+  opacity over the next few seconds and holds there permanently — a lasting stain, not a
+  vanishing effect.
+- **Added occasional directional cast-off streaks** — real blood spatter travels away from where
+  the strike came from, not radially outward like a splash. ~40% of kills (when the attacking
+  tower is known) now spawn a growing line decal along that actual attacker-to-target angle,
+  alongside the normal splatter.
+
+## [1.0.31] - 2026-09-02
+
+- **Quiver no longer merges into the body** — was touching the torso flush at x=0; given a small
+  gap plus a visible shoulder strap connecting it to the body, so it reads as worn on a strap
+  instead of fused into the silhouette.
+- **Blood puddles are only sometimes messy now, not every time** — the extra scattered decals were
+  guaranteed on every single kill. Made them probabilistic: verified the actual resulting split —
+  65% of kills leave one clean stain, ~35% get the messier multi-splatter look. Every kill still
+  leaves a mark, just not maximum chaos every time.
+
+## [1.0.30] - 2026-09-02
+
+- **Projectiles now spawn from the actual weapon tip instead of the tower's center** — confirmed
+  the bug: every arrow, bolt, staff blast, and mortar shell was spawning from `this.x, this.y`
+  regardless of where the weapon visually is. Fixed for all 6 ranged classes (Archer, Mage,
+  Bomber, Gatling, Blowdart, Squirt Gun) plus Axeman's thrown axe — found this was a second,
+  separate code path that would've been missed if only the main projectile function was checked.
+  The offset replicates the same local-space reach (arm length + weapon length) used when
+  rendering the stickman, converted to world-space, so it scales correctly with weaponScale (INT
+  investment) exactly like the visible weapon does — verified with real numbers across every
+  class and both ends of the INT range (20-40px offsets, growing correctly where the weapon
+  itself grows, fixed where it doesn't).
+
+## [1.0.29] - 2026-09-02
+
+- **Quiver rebuilt per spec** — replaced the abstract line-fan with an actual rectangular quiver
+  body (filled, outlined) with three arrow shafts and fletching sticking out the top, its inner
+  edge touching the torso directly instead of floating disconnected or being hidden behind it.
+  Also flipped the side logic — was on the same side as the facing direction, now correctly on
+  the opposite side (facing right → quiver on the left, and vice versa). Caught the fletching tips
+  poking 2 units into the head with the initial position before shipping, adjusted and reverified
+  clear.
+
+## [1.0.28] - 2026-09-02
+
+- **Added a rare "massive pool" tier to blood decals** — was previously a binary normal/big split
+  (80%/20%); now a three-tier system where ~70% stay ordinary, ~22% come out noticeably bigger,
+  and ~7% are genuinely massive splatters (up to 5x the size of a typical pool). Verified the
+  actual distribution and size ranges with a 5000-sample simulation before shipping, not just
+  eyeballed the probabilities.
+
+## [1.0.27] - 2026-09-02
+
+- **Actually fixed the quiver rendering in front of the body instead of behind it** — the previous
+  three attempts only adjusted its X/Y position, but the real bug was draw order: the quiver was
+  drawn *after* the torso, so it always rendered on top regardless of where it sat. Also, the
+  quiver was positioned far enough from center (±6 units) that the torso's own line never actually
+  overlapped it, so even correct draw order alone wouldn't have occluded anything — verified this
+  with the actual geometry before attempting a fix. Brought the quiver base in to ±2 units from
+  center and now explicitly redraw the torso on top of it with a deliberately widened stroke,
+  confirmed with real numbers to genuinely cover the quiver base this time.
+
+## [1.0.26] - 2026-09-02
+
+- **Screen shake now only triggers on Boss kills** — every single enemy death was shaking the
+  screen, which gets tiring fast during dense waves with dozens of kills. Regular kills keep all
+  the gore (streams, gibs, particles, decals) but stay visually calm; Bosses stay impactful.
+
+## [1.0.25] - 2026-09-02
+
+- **Real flowing blood streams with water physics** — new particle type that tracks its previous
+  position each tick and renders as a genuine connected line (not a dot or dash), tapering in
+  width as it loses momentum. Verified with actual physics math: the stream arcs downward under
+  gravity while decelerating, exactly like a real jet of liquid rather than scattered dust.
+  Directional on hit (uses the actual angle from attacker to target), radiating outward on death.
+- **Fixed the Archer's quiver still overlapping the head** — lowered it to back/shoulder-blade
+  height and shortened the arrow fan; verified the new top edge sits well below the head boundary
+  instead of extending past it.
+
+## [1.0.24] - 2026-09-02
+
+- **Gore now scales with the size of the kill** — a Swarm death is a smaller burst than a Tank or
+  Boss death, instead of every kill spawning an identical amount of gore regardless of how tough
+  the enemy was. Scales off the enemy's own maxHp, bounded between 0.7x and 1.8x so it stays
+  proportional without Bosses spawning an absurd particle count.
+- **Subtle idle breathing sway** — towers with no target now have a small vertical bob instead of
+  standing perfectly rigid. Each tower's phase is offset by its own position so a row of idle
+  towers doesn't all bob in unison.
+
+## [1.0.23] - 2026-09-02
+
+- **Fixed the Archer's quiver on the wrong side of the back** — flipped its position, and made it
+  dynamically mirror based on facing direction (was a fixed position regardless of which way the
+  Archer was aiming), so it stays correct whichever direction the tower faces, not just the one
+  snapshot it was reported in.
+
+## [1.0.22] - 2026-09-02
+
+- **All arms now connect at exactly one shared shoulder point** instead of two nearby-but-distinct
+  offset points (was ±1.5-4 units apart depending on class). Applied to all 26 occurrences across
+  every weapon-holding class.
+- **Chest plate redesigned as a tapered trapezoid** — narrow at the top, widening toward the
+  waist, instead of a uniform-width bar. Also moved its top edge from y=-16 down to y=-10, giving
+  7 units of real clearance from the neck (was reaching almost up to it).
 
 ## [1.0.21] - 2026-09-02
 

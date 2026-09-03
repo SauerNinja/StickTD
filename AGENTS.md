@@ -10,23 +10,22 @@ This file is for any AI agent (Claude Code or otherwise) making changes to this 
 Before making changes, check the live URL and/or pull the current repo state rather than assuming
 the version you have locally is current — this repo may be updated outside of any given session.
 
-## Versioning: do NOT bump without explicit instruction
+## Versioning: auto-bump one patch level per meaningful change
 
-`GAME_VERSION` in `index.html` must only change when the user explicitly asks for a version bump.
-Do not increment it automatically just because you shipped a feature, fix, or balance change —
-even a meaningful one. Treat version bumps as a deliberate, user-directed action, not a routine
-side effect of editing the game.
+`GAME_VERSION` in `index.html` increments by exactly one patch level (`x.y.Z` → `x.y.Z+1`) for
+each meaningful change shipped — a bug fix, feature, or balance change. Never jump more than one
+patch level in a single change, and never bump the minor or major version without explicit
+instruction. Purely cosmetic/no-op edits (typo fixes in comments, whitespace) don't need a bump.
 
 ## Required workflow: update the changelog
 
 Whenever you make a meaningful change to `index.html` — a new feature, a balance change, a bug fix,
 a rework of an existing system — you must:
 
-1. **Add an entry to `CHANGELOG.md`**, at the top (newest first). If the user has just directed a
-   version bump, use a new `## [x.y.z] - YYYY-MM-DD` heading. If not, add the entry under an
-   `## [Unreleased]` heading at the top instead — don't invent a version number yourself. When the
-   user does eventually ask for a bump, roll the accumulated `[Unreleased]` entries into the new
-   versioned heading at that point.
+1. **Add an entry to `CHANGELOG.md`**, at the top (newest first), under a new `## [x.y.z] -
+   YYYY-MM-DD` heading matching the version you just bumped to. Don't leave meaningful changes
+   sitting under `[Unreleased]` — since versioning is now automatic per change, each one gets its
+   own versioned heading immediately rather than waiting to be batched later.
 
 2. Each entry is a **bullet list**, and each bullet should say what changed **and why** — not just
    "fixed archer," but "fixed archer's cooldown being too fast for its draw animation to read
