@@ -5,6 +5,45 @@ All notable changes to Stick Tower Defense are documented here. Format follows
 
 See `AGENTS.md` for the workflow this file follows.
 
+## [1.0.41] - 2026-09-02
+
+- **Added periodic status-effect reminder labels** — burn, curse, slow, and stun on enemies (and
+  burn/slow on towers, from breakaway attacks) now surface floating text naming the active status
+  every 120 seconds, not just at the moment it's applied. Long-running effects were easy to lose
+  track of otherwise. Confirmed `spawnFloatingText`'s actual signature before wiring calls to it
+  rather than assuming.
+- **Process change**: added `BACKLOG.md` alongside `CHANGELOG.md`, and updated `AGENTS.md` to
+  capture ideas and suggestions as they come up mid-conversation, not just completed work.
+
+## [1.0.40] - 2026-09-02
+
+- **Fixed Cleric only ever attacking undead** — confirmed the exact bug: `if(!e.isUndead) continue`
+  skipped every non-undead enemy in target selection, meaning Cleric was effectively non-functional
+  whenever no undead were nearby. Now targets the nearest enemy of any type.
+- **Cleric is now a curse-DoT, not a single instant hit** — reused the existing poison/DoT
+  infrastructure (`applyPoison`) instead of a burst `applyDamage` call. Deals 5x tick damage
+  against undead specifically. Verified the actual tick math against the real 600ms poison tick
+  interval rather than assuming a fixed tick count — undead take up to 138 total damage at max
+  tier, normal enemies a real but modest 15-30.
+- **Fixed Cleric's damage dropping on evolution from Mage** — confirmed with real numbers: Mage's
+  max tier (13) was higher than Cleric's base tier (6), meaning a fully-upgraded Mage evolving into
+  Cleric was a straight downgrade. Rescaled Cleric to 14/20/28 — even its base tier now exceeds
+  Mage's fully-upgraded one.
+- **Fixed the idle pose holding a cross overhead permanently** — the raised casting-arm gesture
+  was unconditional every frame, idle or not. Now only raises toward the target while actively
+  casting; rests at a natural side position when idle, matching the pattern used by every other
+  class in the file.
+
+
+- **Fixed the compact/expand feature being completely non-functional** — while checking "anything
+  else" after the nameplate redesign, found that `#inspFullOptions` had zero matching CSS anywhere
+  in the file. Every other `.hidden` toggle in this codebase is defined per-element (there's no
+  shared generic rule), and this element never got its own — meaning the JS was correctly toggling
+  the class the whole time, but nothing told the browser what that class should actually do to
+  this element. The full options section had been showing unconditionally regardless of expand
+  state since the feature was built. Added the missing rule and reverified both the JS syntax and
+  full HTML tag balance before shipping.
+
 ## [1.0.39] - 2026-09-02
 
 - **Fixed the compact/expand feature being completely non-functional** — while checking "anything

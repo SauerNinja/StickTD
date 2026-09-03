@@ -510,7 +510,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.39'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.41'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -542,6 +542,7 @@ const JOB_COLORS = {
   AXEMAN:    { main:'hsl(28,70%,78%)',  shade:'hsl(28,55%,58%)'  }, // burnt orange
   SPEARMAN:  { main:'hsl(195,55%,80%)', shade:'hsl(195,42%,60%)' }, // cyan/teal
   HAMMERMAN: { main:'hsl(45,45%,75%)',  shade:'hsl(45,35%,52%)'  }, // dull bronze
+  PALADIN:   { main:'hsl(48,80%,82%)',  shade:'hsl(45,70%,55%)'  }, // radiant gold
   MAGE:      { main:'hsl(270,50%,82%)', shade:'hsl(270,38%,62%)' }, // violet
   BOMBER:    { main:'hsl(42,60%,78%)',  shade:'hsl(42,48%,58%)'  }, // amber/brown
   GATLING:   { main:'hsl(220,18%,80%)', shade:'hsl(220,22%,55%)' }, // desaturated steel gray-blue
@@ -555,6 +556,7 @@ const JOB_BUILD = {
   AXEMAN:    { scaleX:1.15, scaleY:0.90 }, // stout
   SPEARMAN:  { scaleX:0.86, scaleY:1.15 }, // tall and lanky
   HAMMERMAN: { scaleX:1.25, scaleY:0.85 }, // broadest and shortest — a wall of a man
+  PALADIN:   { scaleX:1.20, scaleY:0.90 }, // broad but a touch more upright than Hammerman
   MAGE:      { scaleX:0.85, scaleY:1.05 }, // slender
   BOMBER:    { scaleX:1.20, scaleY:0.88 }, // stout, heavy-set
   GATLING:   { scaleX:1.12, scaleY:0.95 }, // bulky
@@ -569,6 +571,7 @@ const JOB_QUOTES = {
   AXEMAN:    ["Close or far, I'm ready!", "Feel my swing!", "Two blades, one job."],
   SPEARMAN:  ["Keep your distance.", "Reach exceeds your grasp.", "Patience, then the strike."],
   HAMMERMAN: ["Nothing gets past this shield!", "Stand behind me.", "One good hit is all it takes."],
+  PALADIN: ["By holy light, be still.", "The undead have no refuge here.", "Faith is my shield."],
   MAGE:      ["Arcane forces, obey!", "The cold does the work for me.", "Knowledge is my weapon."],
   BOMBER:    ["Fire in the hole!", "Stand back — way back.", "Boom first, questions later."],
   GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum."],
@@ -591,7 +594,7 @@ const HERO_BONUS_STAT = 5;
 // melee weapons, reach determines the order: Spearman > Swordsman, Axeman > Hammerman.
 const RANGE_CAPS = {
   MAGE: 420, ARCHER: 380, GATLING: 340, BOMBER: 320,
-  SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140,
+  SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
   CLERIC: 200, BLOWDART: 240, SQUIRTGUN: 260
 };
 // Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less —
@@ -621,7 +624,7 @@ const EARLY_STAT_CAP_POINTS = 15; // points beyond this stop contributing to the
 // broad multiplier on the stat's effective point count, layered underneath all the other
 // class-specific bonuses (Mage's INT damage, Archer's DEX damage, Blowdart's poison, etc).
 const CLASS_ARCHETYPE = {
-  SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR',
+  SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
@@ -638,10 +641,11 @@ const EVOLUTIONS = {
   SWORDSMAN: { str: {target:'HAMMERMAN', threshold:10}, dex: {target:'AXEMAN', threshold:10}, int: {target:'SPEARMAN', threshold:10} },
   ARCHER: { str: {target:'GATLING', threshold:10}, dex: {target:'BLOWDART', threshold:10}, int: {target:'BOMBER', threshold:10} },
   MAGE: { int: {target:'CLERIC', threshold:10} },
-  BLOWDART: { dex: {target:'SQUIRTGUN', threshold:25} } // deeper DEX specialization — a second tier beyond the first evolution
+  BLOWDART: { dex: {target:'SQUIRTGUN', threshold:25} }, // deeper DEX specialization — a second tier beyond the first evolution
+  HAMMERMAN: { int: {target:'PALADIN', threshold:25} } // holy devotion — a second tier beyond the first evolution
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN']; // reachable only via evolution, never built directly
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN']; // reachable only via evolution, never built directly
 
 const SHOP_ITEMS = {
   SWORDSMAN: [
@@ -791,6 +795,15 @@ const CONFIG = {
         { range: 120, damage: 45, cooldown: 750, stunMs: 800, upgradeCost: 115 }
       ]
     },
+    PALADIN: {
+      name: 'Paladin', icon: '⚜️', baseCost: 0, unlocksAfterWave: 0,
+      blurb: 'A Hammerman pushed to the INT extreme — every hit deals holy pure damage, bypassing armor entirely, on top of the stun.',
+      tiers: [
+        { range: 100, damage: 24, cooldown: 1000, stunMs: 550 },
+        { range: 110, damage: 36, cooldown: 900,  stunMs: 700, upgradeCost: 85 },
+        { range: 125, damage: 54, cooldown: 800,  stunMs: 850, upgradeCost: 130 }
+      ]
+    },
     MAGE: {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
       blurb: 'Slows anything it hits, and has a small chance to burn, freeze, or shock it too.',
@@ -827,11 +840,11 @@ const CONFIG = {
     },
     CLERIC: {
       name: 'Cleric', icon: '✝️', baseCost: 75, unlocksAfterWave: 5,
-      blurb: "Doesn't fight normally. Once per wave, heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target. Also smites nearby undead with holy damage.",
+      blurb: "Once per wave, heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target. Curses the nearest enemy of any type with a lingering damage-over-time affliction, dealing 5x tick damage against undead.",
       tiers: [
-        { range: 140, damage: 6,  cooldown: 2500, healAmount: 25 },
-        { range: 155, damage: 9,  cooldown: 2200, healAmount: 40, upgradeCost: 70 },
-        { range: 170, damage: 13, cooldown: 1900, healAmount: 60, upgradeCost: 110 }
+        { range: 140, damage: 14, cooldown: 2500, healAmount: 25, curseDuration: 3000 },
+        { range: 155, damage: 20, cooldown: 2200, healAmount: 40, curseDuration: 3400, upgradeCost: 70 },
+        { range: 170, damage: 28, cooldown: 1900, healAmount: 60, curseDuration: 3800, upgradeCost: 110 }
       ]
     },
     BLOWDART: {
@@ -866,10 +879,12 @@ const CONFIG = {
     SPLITMINI:{ emoji:'🦠', baseHp:24,  speed:85,  bounty:2,  radius:10, armor:0, breakawayChance:0,    breakDamage:3 },
     HEALER: { emoji:'💉', baseHp:85,  speed:55,  bounty:11, radius:16, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
     SHIELDED: { emoji:'🛡️', baseHp:95,  speed:50,  bounty:10, radius:17, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
-    ZOMBIE: { emoji:'🧟', baseHp:150, speed:32,  bounty:9,  radius:19, armor:3, breakawayChance:0.02, breakDamage:8, isUndead:true },
-    WRAITH: { emoji:'👻', baseHp:38,  speed:130, bounty:8,  radius:14, armor:0, breakawayChance:0.04, breakDamage:5, isUndead:true },
-    SKELETON: { emoji:'🦴', baseHp:65,  speed:60,  bounty:10, radius:16, armor:0, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
-    WOLF: { emoji:'🐺', baseHp:32,  speed:100, bounty:6,  radius:13, armor:0, breakawayChance:0.03, breakDamage:5, pack:true }
+    ZOMBIE: { emoji:'🧟', baseHp:150, speed:32,  bounty:9,  radius:19, armor:9, breakawayChance:0.02, breakDamage:8, isUndead:true },
+    WRAITH: { emoji:'👻', baseHp:38,  speed:130, bounty:8,  radius:14, armor:4, breakawayChance:0.04, breakDamage:5, isUndead:true },
+    SKELETON: { emoji:'🦴', baseHp:65,  speed:60,  bounty:10, radius:16, armor:6, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
+    WOLF: { emoji:'🐺', baseHp:32,  speed:100, bounty:6,  radius:13, armor:0, breakawayChance:0.03, breakDamage:5, pack:true },
+    REAPER: { emoji:'💀', baseHp:180, speed:45, bounty:20, radius:18, armor:10, breakawayChance:0.02, breakDamage:8, isUndead:true },
+    BOULDER: { emoji:'🪨', baseHp:260, speed:35, bounty:16, radius:20, armor:5, breakawayChance:0.02, breakDamage:9, splits:true }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
@@ -1889,6 +1904,7 @@ function loadSaveFileText(text){
 const MIN_ZOOM = 0.6, MAX_ZOOM = 2.5;
 const camera = { x: 0, y: 0, zoom: 1 };
 let screenShakeUntil = 0, screenShakeMag = 0; // gore kills trigger a brief impact shake
+let hitStopUntil = 0; // brief physics freeze on Boss kills
 
 function clampCamera(){
   const contentW = WORLD_MAX_W * camera.zoom;
@@ -1982,6 +1998,7 @@ class Enemy{
     this.poisonTickTimer = 0;
     this.poisonDamagePerTick = 0;
     this.lastPoisonSource = null;
+    this.statusLabelTimer = 0; // periodic reminder text for active status effects
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
     this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
     this.bumpTime = 0;
@@ -2029,6 +2046,17 @@ class Enemy{
     if(sourceTower) this.lastPoisonSource = sourceTower;
   }
   update(dt){
+    // periodic reminder labels for active status effects — a slow/curse applied minutes ago is
+    // easy to lose track of, so surface what's actually affecting this unit every 120 seconds
+    this.statusLabelTimer -= dt;
+    if(this.statusLabelTimer <= 0){
+      this.statusLabelTimer = 120000;
+      let offset = 0;
+      if(this.burnUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🔥 BURNING', '#ff8844'); offset += 14; }
+      if(this.poisonUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '☠️ CURSED', '#7cb518'); offset += 14; }
+      if(this.slowTimer > 0){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🧊 SLOWED', '#7dd3fc'); offset += 14; }
+      if(this.stunnedUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '⭐ STUNNED', '#ffe066'); offset += 14; }
+    }
     if(this.burnUntil > gameTime){
       this.burnTickTimer -= dt;
       if(this.burnTickTimer <= 0){
@@ -2068,6 +2096,20 @@ class Enemy{
     }
     if(this.isBreakaway){ this.updateBreakaway(dt); return; }
     if(this.isTroll){ this.updateTroll(dt); return; }
+    if(this.type === 'BOSS'){
+      this.bossSpawnTimer = (this.bossSpawnTimer||3000) - dt;
+      if(this.bossSpawnTimer <= 0){
+        this.bossSpawnTimer = 3500 + Math.random()*1500;
+        const child = acquireActive(enemyPool);
+        if(child){
+          child.spawn('GRUNT', 1 + (waveIndex-1)*0.20);
+          child.x = this.x + (Math.random()*20-10);
+          child.y = this.y + (Math.random()*20-10);
+          child.pathIndex = this.pathIndex;
+          child.traveled = this.traveled;
+        }
+      }
+    }
     if(this.slowTimer > 0){
       this.slowTimer -= dt;
       if(this.slowTimer <= 0){ this.slowTimer = 0; this.slowMultiplier = 1; }
@@ -2283,6 +2325,7 @@ class Enemy{
       if(this.type === 'BOSS'){
         screenShakeUntil = gameTime + (low ? 150 : 220);
         screenShakeMag = Math.max(screenShakeMag, (low ? 6 : 9) * Math.min(1.4, goreScale));
+        hitStopUntil = gameTime + 40; // brief 40ms freeze-frame for impact weight
       }
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
@@ -2421,6 +2464,7 @@ class Tower{
     this.burnUntil = 0;       // FIRE breakaway status
     this.burnTickTimer = 0;
     this.iceSlowUntil = 0;    // ICE breakaway status — halves effective attack speed
+    this.statusLabelTimer = 0; // periodic reminder text for active status effects
     // WC3-hero-style distributable stats: STR = damage, DEX = attack speed, INT = range
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0;
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
@@ -2679,7 +2723,7 @@ class Tower{
     if(this.target && !this.target.active) this.target = null;
     if(this.target) this.angle = Math.atan2(this.target.y-this.y, this.target.x-this.x);
     else this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
-    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN') this.updateSwordsman(dt, nearby);
+    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
     else this.updateRanged();
@@ -2689,7 +2733,6 @@ class Tower{
     if(this.cooldownTimer > 0) return;
     let target = null, bestD = Infinity;
     for(const e of nearby){
-      if(!e.isUndead) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d < bestD){ bestD = d; target = e; }
     }
@@ -2698,7 +2741,14 @@ class Tower{
     if(Math.random() < this.missChance){
       spawnFloatingText(target.x, target.y - target.radius - 6, 'MISS', '#aaaaaa');
     } else {
-      target.applyDamage(this.damage, this, false, true); // isHoly=true — undead take the bonus here
+      // curse: a lingering DoT tick, not a single burst — 5x tick damage against undead specifically.
+      // "damage" is the total curse damage over its duration; convert to per-tick using the actual
+      // 600ms poison tick interval rather than assuming a fixed tick count
+      const curseDur = this.curseDuration || 3000;
+      const tickCount = Math.max(1, Math.round(curseDur / 600));
+      const perTick = this.damage / tickCount;
+      const curseTick = target.isUndead ? Math.round(perTick * 5) : Math.round(perTick);
+      target.applyPoison(curseTick, curseDur, this);
       spawnParticles(target.x, target.y, '#ffe9a8', 5);
     }
     this.cooldownTimer = this.cooldown;
@@ -2722,6 +2772,13 @@ class Tower{
     return false;
   }
   updateHealthStatus(dt){
+    this.statusLabelTimer -= dt;
+    if(this.statusLabelTimer <= 0){
+      this.statusLabelTimer = 120000;
+      let offset = 0;
+      if(this.burnUntil > gameTime){ spawnFloatingText(this.x, this.y - 40 - offset, '🔥 BURNING', '#ff8844'); offset += 14; }
+      if(this.iceSlowUntil > gameTime){ spawnFloatingText(this.x, this.y - 40 - offset, '🧊 SLOWED', '#7dd3fc'); offset += 14; }
+    }
     if(this.burnUntil > gameTime){
       this.burnTickTimer -= dt;
       if(this.burnTickTimer <= 0){
@@ -2894,7 +2951,7 @@ class Tower{
     if(this.isSwinging){
       const t = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       const currAngle = this.baseAngle + this.swingOffset(t);
-      this.checkConeHits(nearby, this.lastSwordAngle, currAngle, this.hitSet, undefined, undefined, this.stunMs);
+      this.checkConeHits(nearby, this.lastSwordAngle, currAngle, this.hitSet, undefined, undefined, this.stunMs, this.type === 'PALADIN');
       this.lastSwordAngle = currAngle;
       this.renderSwordAngle = currAngle;
       if(t >= 1) this.isSwinging = false;
@@ -2944,7 +3001,7 @@ class Tower{
   }
   // damage/radius default to this.damage/this.range (Swordsman, Spearman, Hammerman) but can be overridden
   // (Axeman's melee mode uses meleeDamage/meleeRange instead, since its own damage/range are its throw stats)
-  checkConeHits(nearby, prevA, currA, hitSet, damage, radius, stunMs){
+  checkConeHits(nearby, prevA, currA, hitSet, damage, radius, stunMs, isHoly){
     damage = damage ?? this.damage;
     radius = radius ?? this.range;
     const lo = Math.min(prevA, currA), hi = Math.max(prevA, currA);
@@ -2962,7 +3019,7 @@ class Tower{
           spawnFloatingText(e.x, e.y - e.radius - 6, 'MISS', '#aaaaaa');
           continue;
         }
-        e.applyDamage(damage, this, !streakClaimed);
+        e.applyDamage(damage, this, !streakClaimed, !!isHoly);
         if(!e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
         if(stunMs) e.applyStun(stunMs);
       }
@@ -3826,17 +3883,21 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
   } else if(type === 'CLERIC'){
-    // off-hand: relaxed at the opposite side, fixed at its natural resting direction — not tracking
-    // the aim angle, since that could send it crossing across the body or swinging up into the air
+    const isCasting = !!(extra && extra.hasTarget);
+    // off-hand: relaxed at the opposite side always
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    // one arm raised in a blessing gesture, holding a small cross aloft
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, -Math.PI/2 - 0.3, armLen, skinMain, -0.4);
-    const handX = hand.handX, handY = hand.handY;
-    ctx.strokeStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(handX, handY-7); ctx.lineTo(handX, handY+4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(handX-4, handY-2); ctx.lineTo(handX+4, handY-2); ctx.stroke();
-    // soft halo above the head
+    // casting arm: raised toward the target only while actively cursing something — rests down
+    // at a natural side position when idle instead of permanently holding the cross overhead
+    const castAngle = isCasting ? angle : (Math.PI/2 - 0.7);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, castAngle, armLen, skinMain, isCasting ? -0.3 : -0.15);
+    if(isCasting){
+      const handX = hand.handX, handY = hand.handY;
+      ctx.strokeStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(handX, handY-7); ctx.lineTo(handX, handY+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(handX-4, handY-2); ctx.lineTo(handX+4, handY-2); ctx.stroke();
+    }
+    // soft halo above the head — always present, independent of casting state
     if(!lowGfx){
       ctx.strokeStyle = 'rgba(255,233,168,0.5)';
       ctx.lineWidth = 1.5;
@@ -3954,7 +4015,7 @@ function queryNearby(hash, x, y, range){
 // Waves beyond the hand-authored 20 are generated procedurally — the game never hard-stops.
 // Enemy HP already scales indefinitely with waveIndex (see spawnEnemy), so difficulty keeps
 // climbing naturally; this just keeps composition/pacing varied as waves keep coming.
-const WAVE_TYPE_NAMES = ['', '🐜 SWARM SURGE', '🛡️ ELITE VANGUARD', '🧟 UNDEAD UPRISING', '🔥 AMBUSH TACTICS', '💪 SIEGE ASSAULT'];
+const WAVE_TYPE_NAMES = ['', '🐜 SWARM SURGE', '🛡️ ELITE VANGUARD', '🧟 UNDEAD UPRISING', '🔥 AMBUSH TACTICS', '💪 SIEGE ASSAULT', '🪨 STONE PUSH'];
 // hand-authored waves 21-100 also carry a type label, shown as a toast the same way procedural waves are
 const CURATED_WAVE_LABELS = {22:'🃏 TRICK WAVE', 23:'🛡️ ELITE VANGUARD', 24:'⛏️ GRIND', 25:'🐜 SWARM SURGE', 26:'🧟 UNDEAD UPRISING', 27:'🔥 AMBUSH TACTICS', 29:'🃏 TRICK WAVE', 30:'👑 BOSS WAVE', 31:'⛏️ GRIND', 32:'🐜 SWARM SURGE', 33:'🧟 UNDEAD UPRISING', 34:'🔥 AMBUSH TACTICS', 36:'🃏 TRICK WAVE', 37:'🛡️ ELITE VANGUARD', 38:'⛏️ GRIND', 39:'🐜 SWARM SURGE', 40:'👑 BOSS WAVE', 41:'🔥 AMBUSH TACTICS', 43:'🃏 TRICK WAVE', 44:'🛡️ ELITE VANGUARD', 45:'⛏️ GRIND', 46:'🐜 SWARM SURGE', 47:'🧟 UNDEAD UPRISING', 48:'🔥 AMBUSH TACTICS', 50:'👑 BOSS WAVE', 51:'🛡️ ELITE VANGUARD', 52:'⛏️ GRIND', 53:'🐜 SWARM SURGE', 54:'🧟 UNDEAD UPRISING', 55:'🔥 AMBUSH TACTICS', 57:'🃏 TRICK WAVE', 58:'🛡️ ELITE VANGUARD', 59:'⛏️ GRIND', 60:'👑 BOSS WAVE', 61:'🧟 UNDEAD UPRISING', 62:'🔥 AMBUSH TACTICS', 64:'🃏 TRICK WAVE', 65:'🛡️ ELITE VANGUARD', 66:'⛏️ GRIND', 67:'🐜 SWARM SURGE', 68:'🧟 UNDEAD UPRISING', 69:'🔥 AMBUSH TACTICS', 70:'👑 BOSS WAVE', 71:'🃏 TRICK WAVE', 72:'🛡️ ELITE VANGUARD', 73:'⛏️ GRIND', 74:'🐜 SWARM SURGE', 75:'🧟 UNDEAD UPRISING', 76:'🔥 AMBUSH TACTICS', 78:'🃏 TRICK WAVE', 79:'🛡️ ELITE VANGUARD', 80:'👑 BOSS WAVE', 81:'🐜 SWARM SURGE', 82:'🧟 UNDEAD UPRISING', 83:'🔥 AMBUSH TACTICS', 85:'🃏 TRICK WAVE', 86:'🛡️ ELITE VANGUARD', 87:'⛏️ GRIND', 88:'🐜 SWARM SURGE', 89:'🧟 UNDEAD UPRISING', 90:'👑 BOSS WAVE', 92:'🃏 TRICK WAVE', 93:'🛡️ ELITE VANGUARD', 94:'⛏️ GRIND', 95:'🐜 SWARM SURGE', 96:'🧟 UNDEAD UPRISING', 97:'🔥 AMBUSH TACTICS', 99:'🃏 TRICK WAVE', 100:'👑 BOSS WAVE'};
 function generateStandardWave(n){
@@ -3985,15 +4046,18 @@ function generateEliteWave(n){
     { type:'SHIELDED', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1800 - n*10) }
   ];
   if(n >= 4) group.push({ type:'ZOMBIE', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1800 - n*10) });
+  if(n >= 3) group.push({ type:'BOULDER', count: 1 + Math.floor(n/5), spawnDelay: Math.max(1400, 2200 - n*10) });
   return group;
 }
 function generateUndeadWave(n){
   // all-undead — a real test for a Cleric's holy smite
-  return [
+  const group = [
     { type:'ZOMBIE', count: 4 + Math.floor(n/2), spawnDelay: Math.max(700, 1100 - n*8) },
     { type:'SKELETON', count: 4 + Math.floor(n/2), spawnDelay: Math.max(600, 1000 - n*8) },
     { type:'WRAITH', count: 3 + Math.floor(n/3), spawnDelay: Math.max(400, 700 - n*6) }
   ];
+  if(n >= 3) group.push({ type:'REAPER', count: 1 + Math.floor(n/5), spawnDelay: Math.max(1000, 1500 - n*10) });
+  return group;
 }
 function generateAmbushWave(n){
   // heavy on breakaway-prone types — the threat is your towers, not just the path
@@ -4030,14 +4094,24 @@ function generateGrindWave(n){
     { type:'RUNNER', count: 8 + n, spawnDelay: 650 }
   ];
 }
+function generateVanguardWave(n){
+  // heavily armored push — tests splash/AoE more than Elite's single-target focus, since Boulder
+  // splits and Reaper's armor punishes anything that isn't holy or high-impact
+  return [
+    { type:'SHIELDED', count: 3 + Math.floor(n/3), spawnDelay: Math.max(900, 1400 - n*8) },
+    { type:'BOULDER', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1900 - n*10) },
+    { type:'REAPER', count: 1 + Math.floor(n/4), spawnDelay: Math.max(1300, 2000 - n*10) }
+  ];
+}
 function generateProceduralWave(n){
-  const waveType = n % 6; // deterministic cycle — guarantees variety, never repeats back to back
+  const waveType = n % 7; // deterministic cycle — guarantees variety, never repeats back to back
   switch(waveType){
     case 1: return generateSwarmWave(n);
     case 2: return generateEliteWave(n);
     case 3: return generateUndeadWave(n);
     case 4: return generateAmbushWave(n);
     case 5: return generateBossRushWave(n);
+    case 6: return generateVanguardWave(n);
     default: return generateStandardWave(n);
   }
 }
@@ -4050,7 +4124,7 @@ function startNextWave(){
   const proceduralN = waveIndex - CONFIG.WAVES.length + 1;
   const waveDef = isProcedural ? generateProceduralWave(proceduralN) : CONFIG.WAVES[waveIndex];
   if(isProcedural){
-    const typeName = WAVE_TYPE_NAMES[proceduralN % 6];
+    const typeName = WAVE_TYPE_NAMES[proceduralN % 7];
     if(typeName) showToast(typeName);
   } else if(CURATED_WAVE_LABELS[waveIndex+1]){
     showToast(CURATED_WAVE_LABELS[waveIndex+1]);
@@ -4093,6 +4167,7 @@ let lastTime = 0, accumulator = 0;
 
 function update(dt){
   gameTime += dt;
+  if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
   updateScenery(dt);
   if(waveState === 'SPAWNING'){
     waveTimer += dt;
@@ -4164,6 +4239,32 @@ function render(ctx){
   drawFloatingTexts(ctx);
 
   ctx.restore();
+  drawBossCompass(ctx);
+}
+function drawBossCompass(ctx){
+  const boss = enemyPool.find(e => e.active && e.type === 'BOSS');
+  if(!boss) return;
+  const screenX = boss.x*camera.zoom + camera.x;
+  const screenY = boss.y*camera.zoom + camera.y;
+  const margin = 40;
+  const onScreen = screenX >= margin && screenX <= CANVAS_W-margin && screenY >= margin && screenY <= CANVAS_H-margin;
+  if(onScreen) return;
+  const cx = CANVAS_W/2, cy = CANVAS_H/2;
+  const angle = Math.atan2(screenY-cy, screenX-cx);
+  // clamp the arrow position to the inner screen edge, in the actual direction of the boss
+  const maxX = CANVAS_W/2 - margin, maxY = CANVAS_H/2 - margin;
+  const scale = Math.min(Math.abs(maxX/Math.cos(angle)), Math.abs(maxY/Math.sin(angle)));
+  const arrowX = cx + Math.cos(angle)*scale, arrowY = cy + Math.sin(angle)*scale;
+  const pulse = 0.6 + Math.sin(gameTime/200)*0.3;
+  ctx.save();
+  ctx.translate(arrowX, arrowY);
+  ctx.rotate(angle);
+  ctx.fillStyle = `rgba(230,57,70,${pulse.toFixed(2)})`;
+  ctx.beginPath();
+  ctx.moveTo(12,0); ctx.lineTo(-6,-8); ctx.lineTo(-6,8); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('👔', arrowX - Math.cos(angle)*18, arrowY - Math.sin(angle)*18);
 }
 
 function loop(now){

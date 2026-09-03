@@ -35,6 +35,18 @@ a rework of an existing system — you must:
 3. Keep entries **user-facing and honest** — describe what actually changed in the game, not
    internal refactor details, unless the refactor itself is the point of the entry.
 
+## Ideas & backlog — capture as they come up, not just what's done
+
+`CHANGELOG.md` only records completed, shipped work. That's not enough — ideas, requests, and
+half-formed suggestions that come up mid-conversation but aren't acted on yet get lost the moment
+the session ends, forcing the person to re-explain them later.
+
+Keep a `BACKLOG.md` at the repo root for this. When the person floats an idea, mentions a feature
+they might want later, or a suggestion comes up that isn't being implemented right now, add a
+one-line entry under `## Ideas` before moving on — don't wait until it's "worth" recording. When an
+idea from the backlog gets built, move it to `CHANGELOG.md` under its version and delete it from
+`BACKLOG.md` rather than leaving stale duplicates in both files.
+
 ## Other conventions already established in this repo
 
 - Single self-contained `index.html`. No build step, no external dependencies, no separate JS/CSS
