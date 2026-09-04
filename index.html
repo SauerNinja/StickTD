@@ -693,7 +693,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.101'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.103'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -709,6 +709,17 @@ function jitterColorLightness(hslStr, amount){
   if(!m) return hslStr;
   const h = +m[1], s = +m[2], l = +m[3];
   const newL = Math.max(30, Math.min(92, l + (Math.random()*2-1)*amount));
+  return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
+}
+function darkerJitteredColor(hslStr, darkenBy, jitterAmount){
+  // same idea as jitterColorLightness, but deliberately shifted much darker first — that
+  // function's own 30-92 lightness floor exists to keep skin tones legible, which would
+  // prevent it from ever landing on a genuinely dark tone
+  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+  if(!m) return hslStr;
+  const h = +m[1], s = +m[2], l = +m[3];
+  const darkerL = Math.max(12, l - darkenBy);
+  const newL = Math.max(10, Math.min(55, darkerL + (Math.random()*2-1)*jitterAmount));
   return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
 }
 // Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of
@@ -1961,6 +1972,8 @@ let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a mo
 let showZoomControls = false; // on-screen +/-/reset buttons — off by default since pinch/scroll zoom already works; opt-in for anyone who prefers explicit buttons
 let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
+let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
+let realTimeFrozen = false; // true while waveState is IDLE (between waves) — blood shouldn't age at all during the rest period between rounds
 let isMuted = false;
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
@@ -2772,7 +2785,7 @@ class Enemy{
     const bountyGold = Math.round(this.bounty * bountyMult);
     gold += bountyGold;
     if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
-    const low = graphicsQuality === 'low';
+    const low = false; // blood intensity is controlled ONLY by the goreMode toggle, never by graphics quality — full gore shows at any graphics setting as long as gore is enabled
     // bigger, tougher enemies get a more dramatic burst — scales off their own maxHp relative to
     // a baseline Grunt, capped so Bosses don't spawn an absurd number of particles
     const goreScale = Math.min(1.8, Math.max(0.7, this.maxHp / 60));
@@ -3005,6 +3018,7 @@ class Tower{
     const jobColor = JOB_COLORS[type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
     this.skinMain = jitterColorLightness(jobColor.main, 8);
     this.skinShade = jitterColorLightness(jobColor.shade, 8);
+    this.faceColor = darkerJitteredColor(jobColor.main, 30, 10); // distinct darker fill for the head circle, randomized per tower like the body tones already are
     this.active = true;
     this.applyTierStats();
   }
@@ -3642,7 +3656,7 @@ class Tower{
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -3885,7 +3899,7 @@ const projectilePool = Array.from({length: 150}, () => new Projectile());
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
 const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:0,color:'#fff',size:2,friction:0.93,pooled:false}));
 let particleIndex = 0;
-const MAX_DECALS = 150;
+const MAX_DECALS = 500;
 const decals = [];
 const dripSites = []; // post-death "still bleeding" spots — a few real drops keep landing over the next ~2s instead of everything hitting the ground in one instant burst
 const MAX_DRIP_SITES = 24;
@@ -3957,7 +3971,7 @@ function spawnDecal(x, y, color, smallBias){
     sizeMult = (0.7 + Math.random()*0.6) * (smallBias ? 0.6 : 1);
     blobCount = (4 + Math.floor(Math.random()*4)) - (smallBias ? 1 : 0);
   }
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN, spawnTime: gameTime, isLine: false,
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isLine: false,
     // overlapping offset circles instead of one plain circle — reads as a real messy splatter/pool
     blobs: Array.from({length: blobCount}, () => ({
       dx: (Math.random()-0.5)*18*sizeMult, dy: (Math.random()-0.5)*11*sizeMult, r: (3 + Math.random()*6)*sizeMult
@@ -3970,7 +3984,7 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult){
   // blood spatter travels away from the striking point, not radially outward like a splash.
   // Streaks default to double the standard decal lifespan — they read as more distinct/lasting
   // marks than a soaked pool, and stay around noticeably longer as a result.
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2), spawnTime: gameTime, isLine: true,
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2)*decalLifespanVariance(), spawnTime: realTime, isLine: true,
     angle: impactAngle + (Math.random()-0.5)*0.3,
     maxLen: 14 + Math.random()*14,
     width: 2 + Math.random()*1.5
@@ -3983,7 +3997,7 @@ function spawnSatelliteDrops(x, y, color, count, biasAngle){
     const angle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*1.4 : Math.random()*Math.PI*2;
     const dist = 6 + Math.random()*16;
     const decal = { x: x + Math.cos(angle)*dist, y: y + Math.sin(angle)*dist,
-      color, rgb, lifespan: DECAL_LIFESPAN, spawnTime: gameTime, isDrop: true, angle,
+      color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isDrop: true, angle,
       len: 2 + Math.random()*2.5, width: 2 + Math.random()*2
     };
     pushDecal(decal);
@@ -3999,13 +4013,13 @@ function spawnSkinPeel(x, y, color){
     const r = (4 + Math.random()*5);
     points.push({ x: Math.cos(a)*r, y: Math.sin(a)*r*0.7 });
   }
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*1.3, spawnTime: gameTime, isPeel: true, points };
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*1.3*decalLifespanVariance(), spawnTime: realTime, isPeel: true, points };
   pushDecal(decal);
 }
 function spawnFootprint(x, y, color, angle){
   // small round smear left by a bloody foot — short-lived (a quarter of the standard lifespan)
   // since these are transient trail marks, not the wound itself
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*0.25, spawnTime: gameTime,
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*0.25, spawnTime: realTime,
     isDrop: true, angle: angle + (Math.random()-0.5)*0.6,
     len: 1.5 + Math.random()*1.5, width: 2.5 + Math.random()*1.5
   };
@@ -4054,10 +4068,16 @@ function pushDecal(decal){
   }
 }
 const DECAL_LIFESPAN = 300000; // 300s (5 min) — extended again from 180s. Real bloodstains persist for hours without cleanup; this keeps pushing toward that while the 85%-of-life fade-out (see drawDecals) still guarantees old stains eventually clear so the map doesn't become unplayably cluttered. The color-aging curve is fraction-based, so it stretches proportionally with this change automatically.
+function decalLifespanVariance(){
+  // every decal lasts strictly longer than the flat baseline (never below 1.15x), with high
+  // upside so some individual stains persist dramatically longer than others — real bloodstains
+  // don't all age identically depending on surface, airflow, and how much pooled
+  return 1.15 + Math.random()*1.85; // 1.15x to 3.0x
+}
 function drawDecals(ctx){
   for(let i = decals.length - 1; i >= 0; i--){
     const d = decals[i];
-    const age = gameTime - d.spawnTime;
+    const age = realTime - d.spawnTime;
     const lifespan = d.lifespan || DECAL_LIFESPAN;
     if(age >= lifespan){ decals.splice(i, 1); continue; } // actually expires now, not just capacity-recycled
     const growT = Math.min(1, age / 700); // grows from small to full size over 0.7s
@@ -4346,6 +4366,7 @@ function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
 function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinMain = (extra && extra.skinMain) || '#f5f0e6';
   const skinShade = (extra && extra.skinShade) || '#cfc8b8';
+  const faceColor = (extra && extra.faceColor) || 'hsl(110,40%,25%)';
   const lowGfx = !!(extra && extra.lowGfx);
   const build = JOB_BUILD[type] || { scaleX:1, scaleY:1 };
 
@@ -4372,7 +4393,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   // are (a squished-looking head was really just the body's non-uniform scale distorting a circle
   // drawn in the same transformed space)
   ctx.strokeStyle = skinMain;
-  ctx.beginPath(); ctx.ellipse(0,-24, 7/build.scaleX, 7/build.scaleY, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = faceColor;
+  ctx.beginPath(); ctx.ellipse(0,-24, 7/build.scaleX, 7/build.scaleY, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0,-17); ctx.lineTo(0,4); ctx.stroke();
   // equipped head-slot item, if any — drawn right on top of the head
   if(extra && extra.headItem === 'archer_hat'){
@@ -5199,6 +5221,8 @@ function loop(now){
   let frameTime = now - lastTime;
   if(frameTime > 100) frameTime = 100;
   lastTime = now;
+  realTimeFrozen = waveState === 'IDLE';
+  if(!realTimeFrozen) realTime += frameTime;
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame

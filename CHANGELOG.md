@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.0.103] - 2026-09-03
+- Blood decals now last longer with real per-decal variance instead of one flat duration: every
+  decal is guaranteed at least 15% longer than the previous baseline, and sometimes up to 3x
+  longer — a pool that used to always last exactly 300s now ranges 345s-900s, streaks range
+  690s-1800s (up to 30 min). Verified the distribution numerically across 10,000 samples before
+  shipping (min 1.15x, max 3.00x, average 2.08x). Footprint trail marks were deliberately left
+  without this variance — they're meant to stay short-lived, distinct from the actual wound stain.
+- Stickman faces now have a real fill instead of being hollow outlines — a darker, per-instance
+  randomized shade of that tower's own body color (same hue, same jitter mechanism already used
+  for skinMain/skinShade), giving every tower a genuinely distinct face color rather than a
+  transparent head. New `darkerJitteredColor()` helper, since the existing `jitterColorLightness()`
+  has a 30-92 lightness floor specifically to keep skin tones legible, which would have prevented
+  it from ever landing on a genuinely dark tone.
+
+## [1.0.102] - 2026-09-03
+- Fixed the actual bug behind blood fading faster at higher game speeds. Decals were aging
+  against `gameTime`, which advances proportionally faster the higher `gameSpeed` is set (more
+  simulation ticks run per real second) — so a decal with a fixed `gameTime` lifespan genuinely
+  reached that threshold sooner in real wall-clock time at 3x/10x. Added a separate `realTime`
+  clock that advances by actual unscaled elapsed milliseconds regardless of game speed; every
+  decal (blob pools, streaks, satellite drops, skin-peel, footprints) now ages against that
+  instead. Verified with a simulation: at identical 10 real seconds elapsed, `gameTime` was 10s/
+  30s/100s at 1x/3x/10x speed respectively, while `realTime` stayed exactly 10s in all three —
+  confirming decals now age identically no matter the speed setting.
+- Blood no longer ages at all during the rest period between waves (`waveState === 'IDLE'`) —
+  `realTime` is frozen during that window, so time spent deciding what to build next doesn't eat
+  into a stain's lifespan.
+- Decal capacity raised from 150 to 500 concurrent — "more max allowed blood."
+- Decoupled blood intensity from graphics quality entirely. The death-gore block was scaling
+  particle counts and skipping several effects (satellite drops, drip sites, castoff streaks)
+  whenever `graphicsQuality === 'low'`, on top of the goreMode toggle. Blood is now controlled
+  only by whether gore is enabled — full intensity gore shows at any graphics setting.
+
 ## [1.0.101] - 2026-09-03
 - Removed the arbitrary periodic "wounded" gushing — previously any enemy below 35% HP had a
   background timer independently re-rolling a chance to gush every ~1-2s, with no connection to

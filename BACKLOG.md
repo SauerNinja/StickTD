@@ -5,13 +5,46 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
-- **Walking blood forensics** — enemies that step through a blood decal should track bloody
-  footprints/smears as they keep walking, fading out over distance/time. Needs per-frame
-  proximity checks between every active enemy and nearby decals (spatial-hash-worthy at scale),
-  a footprint decal sub-type distinct from the existing splatter/drop/pool types, and a
-  fade/decay curve tuned separately from the settled-pool decals so footprints don't linger as
-  long as the wound itself. Genuinely its own rendering subsystem, not a quick addition to the
-  gore call sites like the drip-site system (shipped this session) was.
+- **Swordsman not attacking past a barricade** — reported multiple times with screenshots, but
+  every screenshot provided so far either showed no enemies in range, or enemies not actually
+  visible/confirmable as blocked-and-in-range. Traced the full targeting pipeline
+  (`findTarget()`, `checkConeHits()`, `queryNearby()`) and found no code that excludes
+  barricade-blocked enemies from being valid melee targets — structurally this should already
+  work. Needs a screenshot with real enemy monsters (not just a Barricade icon) clearly stacked
+  inside the range circle, ideally paired with the console/state at that moment, to actually
+  diagnose rather than re-guess at code that reads correctly on every pass so far.
+
+- **Enemy queue/pathing still clumping despite the v1.0.98 rework** — the multi-lane convergence
+  queue system was rebuilt and verified with two passing standalone simulations (5-enemy and
+  8-enemy convergence tests), but real gameplay screenshots since then still show enemies
+  stacking messily instead of forming a clean line. This means either the simulations don't
+  reflect a real-game edge case (e.g. actual path curvature, multiple adjacent Barricades, or
+  enemies of very different radii/speeds interacting in a way the simplified test didn't cover),
+  or there's a separate bug in how the queue system integrates with actual `Enemy` objects vs.
+  the plain test objects used in the simulation. Needs an actual debugging session against real
+  gameplay state, not another isolated simulation — the pattern so far has been "simulation
+  passes, real game still shows the bug," which means the simulation isn't modeling something
+  that matters.
+
+- **Spearman rework**: longer spear, and a new spin-attack that rotates 360° hitting everything
+  in its AoE (replacing or supplementing the current cone poke), with a longer cooldown to
+  balance the AoE upgrade. A real combat-mechanic and animation change, not a quick tweak.
+
+- **Three visual bugs reported together, not yet fixed**:
+  - Blowdart's pose only shows one arm holding the pipe to the mouth — should be two arms, one
+    bent supporting/steadying it.
+  - Z-order layering issue: a tower with an active "stats to spend" scroll indicator overhead can
+    render *behind* an adjacent tower above it on the grid, when it should render in front. Likely
+    needs a proper Y-sort across the whole tower draw pass rather than a one-off fix.
+  - Spearman's spear-tip graphic doesn't line up with the actual visual point of the weapon.
+
+- **Attack speed on EXP level-up** — reported that towers seem to gain attack speed just from
+  leveling up via EXP, when it should only increase from evolving into a new class or investing
+  DEX points directly. Traced `recomputeStats()`: cooldown scaling (`dexMult`) is driven by
+  `this.dex` (actual invested DEX points), not `expLevel`, so this shouldn't be happening
+  structurally — but gold-tier upgrades already grant small *random* stat growth (0-2 in each
+  stat) independent of EXP leveling, which could be the actual source if DEX happens to roll.
+  Worth verifying against actual play rather than guessing further.
 
 - **Druid class** — a full DEX-Mage evolution with three switchable combat forms, each a distinct
   AoE-vs-damage tradeoff: Wolf Paws (default; rapid double-swing melee, short range), Bear Paws
