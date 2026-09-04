@@ -1,5 +1,58 @@
 # Changelog
 
+## [1.0.104] - 2026-09-04
+- Fixed enemies bunching up, ghosting/stacking on top of each other, and hanging up or backtracking
+  on corners. This was four separate interacting bugs: (1) queue-slot snapping in
+  `updateBarricadesAndPileup()` moved an enemy's `x`/`y` to its new queue position but never
+  updated `traveled`/`pathIndex`, so the very next movement tick recomputed a target from the
+  stale, further-along waypoint and yanked the enemy straight back toward where it had just been
+  snapped from; (2) the waypoint-arrival check required landing within one exact frame's movement
+  of a corner, so a collision push of even a fraction of a pixel past the corner caused a full
+  reversal-and-retry loop while trailing enemies piled into the reversing unit; (3)
+  `resolveEnemyCollisions()` had no per-pair filter, so every overlapping pair got pushed apart
+  twice in the same frame (once when processed as A→B, again as B→A), and skipped separation
+  entirely whenever both units were queue-blocked — which is every unit in a queue, so physics
+  shut off exactly where crowding was worst; (4) the 70px queue-catchment radius was pure
+  Euclidean distance against a 64px-wide path grid, so enemies on parallel lanes of a spiral/
+  hairpin turn falsely detected each other as queued and snapped across tracks. Added a shared
+  `snapEnemyToTraveled()` helper that keeps position and path-progress state atomic, a path-
+  distance gate on the catchment check, an ID-ordered collision pass, a true non-overlap `minDist`,
+  and a gentle lateral nudge for chokepoint units instead of a full physics lockout.
+- Fixed enemies visually fading or disappearing when clustered/queued. The hit-flash effect was
+  painting a translucent white *fill* circle directly over the sprite on every hit; several
+  overlapping fills on a tight cluster taking simultaneous damage washed the emoji colors out
+  toward white, reading as faded or invisible units. Replaced it with a stroked ring outside the
+  sprite so the emoji itself is never painted over, and wrapped `Enemy.prototype.draw()` in a
+  strict `ctx.save()`/`ctx.restore()` pair with an explicit `globalAlpha` reset so no state can
+  leak between one enemy's draw call and the next.
+- Locked the bottom-left inspect panel's combat stats row to a single line at all viewport widths.
+  `#inspCombatRow` was wrapping to a second row inside the 320px panel because six stats at
+  `gap:10px`/`font-size:clamp(11px,1.8vw,14px)` needed ~380px but only had ~304px available,
+  which also inflated the placard's height. Switched to `flex-wrap:nowrap`, tightened the gap to
+  `clamp(2px,0.8vw,5px)`, and scaled the font down to `clamp(9px,1.3vw,11px)` with `line-height:1`.
+- Reworked stickman face color so it's a genuine subtle shade of the tower's own skin tone instead
+  of a near-black mask. The old `darkerJitteredColor()` had a hard 55% lightness ceiling, which
+  crushed light/pastel body colors (e.g. Archer's pale green) down to a muddy near-black head.
+  Removed that ceiling and tied `faceColor` directly to each tower's own rolled `skinMain` instead
+  of the class's flat base color.
+- Every tower class now rolls genuinely distinct, wide-range individual skin tones (not just a
+  small ±8% wobble), and re-rolls its shade on upgrade and on evolution so leveling up and
+  evolving are visibly reflected in appearance. New shared `Tower.prototype.rollSkinTones()`
+  derives `skinMain`, `skinShade`, and `faceColor` from one shared per-tower lightness offset
+  (±22%) so all three layers stay tonally coherent instead of three independently-randomized
+  colors; applies to all classes, not just Archer.
+- Extended forensic blood realism and field lifespan. `MAX_DECALS` raised from 500 to 2000 and
+  `DECAL_LIFESPAN` raised from 300s (5 min) to 1800s (30 min) — in long, high-wave games old
+  stains were being capacity-recycled or expiring well before their timer, which read as blood
+  simply not lasting. Seriously wounded enemies (below 40% HP) now drip continuously as they
+  travel, not just at the instant of a specific hit — fast-moving wounded units trail an elongated
+  teardrop behind their direction of travel, stationary/queued ones pool in place. Enemies pressed
+  against a barricade while bleeding now leave a directional contact-transfer wipe smear on the
+  barricade itself, distinct from the general splatter beneath them. Aged blood pools (roughly
+  2+ minutes into their life) now render a darkened, oxidized outer rim with a slightly lighter,
+  flatter interior — a skeletonization/drying-ring effect — so long-lived stains visibly read as
+  older rather than staying visually identical for their whole lifespan.
+
 ## [1.0.103] - 2026-09-03
 - Blood decals now last longer with real per-decal variance instead of one flat duration: every
   decal is guaranteed at least 15% longer than the previous baseline, and sometimes up to 3x

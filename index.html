@@ -324,8 +324,10 @@
   #inspClose:active{background:rgba(241,196,15,0.35);}
   #inspStatsRow{flex-basis:100%;display:flex;flex-direction:column;gap:6px;
     margin-top:2px;padding-top:8px;border-top:1px solid rgba(241,196,15,0.3);}
-  #inspCombatRow{flex-basis:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:10px;align-items:center;
-    font-size:clamp(11px,1.8vw,14px);color:var(--paper);margin:0 0 2px;font-weight:bold;}
+  #inspCombatRow{flex-basis:100%;display:flex;flex-wrap:nowrap;white-space:nowrap;justify-content:space-between;
+    gap:clamp(2px,0.8vw,5px);align-items:center;font-size:clamp(9px,1.3vw,11px);line-height:1;color:var(--paper);
+    margin:0 0 2px;font-weight:bold;overflow:hidden;}
+  #inspCombatRow>span{display:inline-flex;align-items:center;gap:1px;white-space:nowrap;flex-shrink:0;}
   #inspStatHeaderRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
   #inspStatPoints{font-weight:bold;color:var(--gold);}
   #inspStatButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
@@ -693,7 +695,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.103'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.104'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -712,16 +714,29 @@ function jitterColorLightness(hslStr, amount){
   return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
 }
 function darkerJitteredColor(hslStr, darkenBy, jitterAmount){
-  // same idea as jitterColorLightness, but deliberately shifted much darker first — that
-  // function's own 30-92 lightness floor exists to keep skin tones legible, which would
-  // prevent it from ever landing on a genuinely dark tone
+  // same idea as jitterColorLightness, but shifted darker first — used for the face fill, which
+  // wants to read as a subtle shade of the skin tone rather than a near-black mask. No hard upper
+  // lightness ceiling here (unlike the old 55% cap) so light/pastel body colors (e.g. Archer's
+  // pale green) keep their natural tint instead of collapsing to muddy near-black.
   const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
   if(!m) return hslStr;
   const h = +m[1], s = +m[2], l = +m[3];
-  const darkerL = Math.max(12, l - darkenBy);
-  const newL = Math.max(10, Math.min(55, darkerL + (Math.random()*2-1)*jitterAmount));
+  const darkerL = l - darkenBy;
+  const newL = Math.max(10, Math.min(85, darkerL + (Math.random()*2-1)*jitterAmount));
   return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
 }
+// Explicit-lightness variant used by Tower.rollSkinTones() — same hue/saturation parsing as
+// jitterColorLightness()/darkerJitteredColor(), but takes an absolute target lightness (already
+// computed by the caller) instead of jittering around the source color's own baseline. Lets
+// skinMain/skinShade/faceColor all be driven off one shared per-tower toneOffset so the three
+// layers stay tonally coherent instead of rolling independent randomness against each other.
+function colorAtLightness(hslStr, lightness){
+  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+  if(!m) return hslStr;
+  const h = +m[1], s = +m[2];
+  return 'hsl(' + h + ',' + s + '%,' + Math.round(lightness) + '%)';
+}
+function clampNum(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 // Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of
 // the most expensive Canvas2D operations). Only called when graphicsQuality is 'high'.
 function drawGroundShadow(ctx, x, y, radiusX){
@@ -1555,6 +1570,17 @@ function updateBarricadesAndPileup(){
       barricade.hp = Math.max(0, barricade.hp - 1);
       spawnFloatingText(barricade.x, barricade.y - 24, '-1', '#e63946');
       spawnParticles(barricade.x, barricade.y, '#8a5a2b', 4);
+      // barricade contact transfer smear — a lateral wipe/swipe stain directly on the barricade
+      // tile, distinct from the generic radial splatter beneath the enemy, matching real forensic
+      // contact-transfer patterns left when a bleeding body is pressed and dragged against a
+      // surface rather than freely spattering onto it
+      if(goreMode && e.hp < e.maxHp){
+        const bio = getBloodProfile(e.type);
+        if(!bio.isDust){
+          const wipeAngle = Math.atan2(e.y - barricade.y, e.x - barricade.x) + Math.PI/2 + (Math.random()-0.5)*0.5;
+          spawnBloodCastoff(barricade.x + (Math.random()-0.5)*10, barricade.y + (Math.random()-0.5)*10, wipeAngle, hexToRgba(bio.dark, 0.6), 4);
+        }
+      }
       if(barricade.hp <= 0){
         barricade.active = false; // broken — traffic resumes
         spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
@@ -1563,9 +1589,14 @@ function updateBarricadesAndPileup(){
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
-  const QUEUE_SPACING = 20; // enemies queued behind a blocked one never render on top of each other
+  const QUEUE_SPACING = 26; // enemies queued behind a blocked one never render on top of each other
   const QUEUE_CATCHMENT = 70; // physical radius around an already-blocked enemy that pulls others into the same queue — handles multiple lanes converging on one chokepoint, which the old strict-adjacency check missed
-  for(const e of active){ e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; } // fixed pre-snap position — catchment checks always use this, never the post-snap teleported position, or the chain breaks beyond one hop
+  // path-position gate for QUEUE_CATCHMENT: 64px path tiles mean parallel lanes on a spiral/hairpin
+  // turn can sit well within the 70px catchment radius while being on a totally different segment
+  // of track — without this, an enemy rounding a corner falsely detects a blocked unit on an
+  // adjacent, unrelated lane and snaps sideways across tracks to "join" that queue
+  const MAX_TRAVELED_GAP_FOR_CATCHMENT = 110;
+  for(const e of active){ e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; e.origTraveled = e.traveled; } // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
   const claimedSlots = new Set();
   for(const e of active) if(e.pileBlocked && e.queueSlotDist === undefined) claimedSlots.add(Math.round(e.traveled)); // enemies already directly touching a barricade occupy their own traveled position
   for(let i=0; i<active.length; i++){
@@ -1579,6 +1610,7 @@ function updateBarricadesAndPileup(){
       // so this needs only one forward pass, no repeated convergence loop
       const ahead = active[j];
       if(!ahead.pileBlocked) continue;
+      if(Math.abs(ahead.origTraveled - behind.origTraveled) > MAX_TRAVELED_GAP_FOR_CATCHMENT) continue; // reject cross-lane false catchment
       const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
       if(d < QUEUE_CATCHMENT && d < bestDist){ bestDist = d; bestAhead = ahead; }
     }
@@ -1592,9 +1624,7 @@ function updateBarricadesAndPileup(){
       // a spot regardless of which anchor each one happened to attach to
       while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= QUEUE_SPACING;
       claimedSlots.add(slotDist);
-      behind.queueSlotDist = slotDist;
-      const pos = getPositionAtTraveled(slotDist);
-      behind.x = pos.x; behind.y = pos.y;
+      snapEnemyToTraveled(behind, slotDist);
     }
   }
   // any enemy still unblocked just gets the lightweight anti-overlap check against whoever is
@@ -1605,10 +1635,29 @@ function updateBarricadesAndPileup(){
     const gap = ahead.traveled - behind.traveled;
     if(gap >= 0 && gap < QUEUE_SPACING){
       const slotDist = Math.max(0, ahead.traveled - QUEUE_SPACING);
-      const pos = getPositionAtTraveled(slotDist);
-      behind.x = pos.x; behind.y = pos.y;
+      snapEnemyToTraveled(behind, slotDist);
     }
   }
+}
+// Snaps an enemy's rendered position AND its path-progress state (traveled + pathIndex) together,
+// atomically. Previously only x/y were snapped here, leaving `traveled` and `pathIndex` pointing at
+// the enemy's old, further-along position — on the very next Enemy.prototype.update() tick,
+// movement integration recomputed a target from the stale pathIndex and immediately pulled the
+// enemy back toward it, fighting the snap and producing the backtrack-then-clump/corner-hangup
+// behavior. Recomputing pathIndex here from the same waypointsPx walk getPositionAtTraveled()
+// already does keeps both values consistent with the new position on every snap.
+function snapEnemyToTraveled(e, slotDist){
+  const pos = getPositionAtTraveled(slotDist);
+  e.x = pos.x; e.y = pos.y;
+  e.traveled = slotDist;
+  let acc = 0, idx = 0;
+  for(let i=0; i<waypointsPx.length-1; i++){
+    const a = waypointsPx[i], b = waypointsPx[i+1];
+    const segLen = Math.hypot(b.x-a.x, b.y-a.y);
+    if(acc+segLen >= slotDist){ idx = i; break; }
+    acc += segLen; idx = i+1;
+  }
+  e.pathIndex = idx;
 }
 
 function isTileBuildable(gx, gy, ignoreTower, forType){
@@ -2510,6 +2559,27 @@ class Enemy{
       if(this.slowTimer > 0){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🧊 SLOWED', '#7dd3fc'); offset += 14; }
       if(this.stunnedUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '⭐ STUNNED', '#ffe066'); offset += 14; }
     }
+    // Ongoing arterial dripping for seriously wounded units — the existing dripSites system only
+    // fires a short burst right after a specific hit lands; this is a separate, continuous background
+    // drip while the unit stays below 40% HP, so a badly hurt enemy keeps visibly bleeding as it
+    // walks rather than only bleeding at the instant of impact.
+    if(goreMode && this.hp > 0 && this.hp < this.maxHp * 0.4 && !getBloodProfile(this.type).isDust){
+      this.arterialDripTimer = (this.arterialDripTimer||0) - dt;
+      if(this.arterialDripTimer <= 0){
+        this.arterialDripTimer = 900 + Math.random()*700;
+        const bio = getBloodProfile(this.type);
+        const speedNow = Math.hypot(this.vx, this.vy);
+        if(speedNow > 15){
+          // fast-moving wounded units leave an elongated teardrop pointing back along their travel
+          // vector, matching how a moving drip source actually trails behind the wound
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 1, Math.atan2(-this.vy, -this.vx));
+        } else {
+          // stationary/slow wounded units (queued at a barricade) pool directly beneath them —
+          // concentric small satellite rings around a fixed point instead of one long streak
+          spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.6), 1);
+        }
+      }
+    }
     if(this.burnUntil > gameTime){
       this.burnTickTimer -= dt;
       if(this.burnTickTimer <= 0){
@@ -2586,7 +2656,13 @@ class Enemy{
     const dist = Math.hypot(dx,dy) || 0.0001;
     const moveDist = effectiveSpeed * dt / 1000;
     this.vx = dx/dist*effectiveSpeed; this.vy = dy/dist*effectiveSpeed;
-    if(dist <= moveDist){
+    // corner-overshoot fix: a strict `dist <= moveDist` occasionally lets a collision push land the
+    // enemy a fraction of a pixel PAST the waypoint on a fast frame, so `dist` never satisfies the
+    // check again — dx/dy then point backward at the waypoint just passed, and the unit visibly
+    // backtracks into oncoming traffic before it's allowed to turn the corner. A small forgiving
+    // margin (6px, well under one tile) treats "close enough" as arrived without materially
+    // changing normal pathing.
+    if(dist <= Math.max(moveDist, 6)){
       this.x = target.x; this.y = target.y;
       this.pathIndex++;
       this.traveled += dist;
@@ -2848,6 +2924,8 @@ class Enemy{
     updateHUD();
   }
   draw(ctx){
+    ctx.save();
+    ctx.globalAlpha = 1.0; // strictly bracket every enemy draw pass so no leftover alpha/composite state from a previous draw call (this enemy or another) can wash this one out
     if(this.isBig){
       const pulse = Math.sin(performance.now()/150)*2;
       const r = this.radius + 7 + pulse;
@@ -2936,15 +3014,23 @@ class Enemy{
       ctx.restore();
     }
     if(this.flashTimer > 0){
-      ctx.fillStyle = 'rgba(255,255,255,' + (0.55*(this.flashTimer/120)).toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*0.9, 0, Math.PI*2); ctx.fill();
+      // was a translucent white FILL circle drawn directly over the emoji — on clustered/queued
+      // enemies taking repeated hits, several overlapping fills wash the colors out toward white,
+      // reading as "faded"/"invisible" units even though nothing was actually wrong with their HP
+      // or targeting. A stroked ring outside the sprite reads as a hit-flash without ever painting
+      // over the emoji itself.
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.85*(this.flashTimer/120)).toFixed(2) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.08, 0, Math.PI*2); ctx.stroke();
     }
+    ctx.globalAlpha = 1.0; // guard against any alpha left set by a preceding draw call bleeding into the next enemy/decal pass
 
     const barW = this.radius*1.8;
     ctx.fillStyle = '#3a1a1a';
     ctx.fillRect(this.x-barW/2, this.y-this.radius-12, barW, 5);
     ctx.fillStyle = (this.hp/this.maxHp) > 0.4 ? '#4caf50' : '#e63946';
     ctx.fillRect(this.x-barW/2, this.y-this.radius-12, barW*Math.max(0,this.hp/this.maxHp), 5);
+    ctx.restore();
   }
 }
 
@@ -3015,14 +3101,29 @@ class Tower{
     this.baseAngle2 = 0;
     this.swingStart2 = 0;
     this.renderSwordAngle2 = IDLE_WEAPON_ANGLE;
-    const jobColor = JOB_COLORS[type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
-    this.skinMain = jitterColorLightness(jobColor.main, 8);
-    this.skinShade = jitterColorLightness(jobColor.shade, 8);
-    this.faceColor = darkerJitteredColor(jobColor.main, 30, 10); // distinct darker fill for the head circle, randomized per tower like the body tones already are
+    this.rollSkinTones();
     this.active = true;
     this.applyTierStats();
   }
   get def(){ return CONFIG.TOWERS[this.type]; }
+  // Universal per-tower coloring, called on create(), upgrade(), and evolveInto() — every class
+  // gets a genuinely distinct personal shade (not just an ~8% wobble) while staying within its
+  // archetype hue, and re-rolling on upgrade/evolution visibly shows growth/change. skinMain,
+  // skinShade, and faceColor are all derived from one shared toneOffset so the body, shading, and
+  // face read as one coherent figure instead of three independently-randomized colors.
+  rollSkinTones(){
+    const jobColor = JOB_COLORS[this.type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
+    const mainM = jobColor.main.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+    const shadeM = jobColor.shade.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
+    const mainL = mainM ? +mainM[3] : 70;
+    const shadeL = shadeM ? +shadeM[3] : 50;
+    const toneOffset = (Math.random()*2 - 1) * 22; // -22% to +22% — wide enough that towers of the same class are clearly distinguishable at a glance
+    const newMainL = clampNum(mainL + toneOffset, 35, 88);
+    const newShadeL = clampNum(shadeL + toneOffset, 20, 75); // keeps roughly the same ~18-20% contrast against skinMain across the whole offset range
+    this.skinMain = colorAtLightness(jobColor.main, newMainL);
+    this.skinShade = colorAtLightness(jobColor.shade, newShadeL);
+    this.faceColor = colorAtLightness(jobColor.main, clampNum(newMainL - (8 + Math.random()*2), 25, 80)); // 8-10% darker than this tower's own skinMain, not the class base — stays a subtle shade rather than a dark mask
+  }
   applyTierStats(){
     this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Gunalinder) must not inherit a stale value from whatever this tower was before evolving
     Object.assign(this, this.def.tiers[this.level-1]);
@@ -3168,6 +3269,7 @@ class Tower{
     this.equippedItems = []; // old class's items don't fit the new class's SHOP_ITEMS set
     this.isHero = false; // no items equipped anymore, so Hero status (which needs all slots filled) can't hold
     this.baseMaxHp = newType === 'BARRICADE' ? 10 : (newType === 'HAMMERMAN' ? 180 : 100);
+    this.rollSkinTones(); // fresh shade fitting the new class's own hue, not a carried-over old-class tone
     this.applyTierStats(); // re-initializes damage/range/cooldown/etc from the new class's tier-1 data, then calls recomputeStats()
     this.hp = this.maxHp; // full heal on transformation
     spawnFloatingText(this.x, this.y - 40, '✨ Evolved!', '#ffd700');
@@ -3194,6 +3296,7 @@ class Tower{
     const archetype = CLASS_ARCHETYPE[this.type];
     const favoredStat = archetype === 'WARRIOR' ? 'str' : archetype === 'ARCHER' ? 'dex' : archetype === 'MAGE' ? 'int' : null;
     if(favoredStat) this[favoredStat] += 1 + Math.floor(Math.random()*2);
+    this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
     this.applyTierStats();
     this.checkEvolution();
     playSound('click');
@@ -3899,7 +4002,7 @@ const projectilePool = Array.from({length: 150}, () => new Projectile());
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
 const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:0,color:'#fff',size:2,friction:0.93,pooled:false}));
 let particleIndex = 0;
-const MAX_DECALS = 500;
+const MAX_DECALS = 2000;
 const decals = [];
 const dripSites = []; // post-death "still bleeding" spots — a few real drops keep landing over the next ~2s instead of everything hitting the ground in one instant burst
 const MAX_DRIP_SITES = 24;
@@ -4067,7 +4170,7 @@ function pushDecal(decal){
     decalIndex = (decalIndex+1) % MAX_DECALS;
   }
 }
-const DECAL_LIFESPAN = 300000; // 300s (5 min) — extended again from 180s. Real bloodstains persist for hours without cleanup; this keeps pushing toward that while the 85%-of-life fade-out (see drawDecals) still guarantees old stains eventually clear so the map doesn't become unplayably cluttered. The color-aging curve is fraction-based, so it stretches proportionally with this change automatically.
+const DECAL_LIFESPAN = 1800000; // 1800s (30 min) — extended from 300s (5 min). High-wave games run long enough that old stains were being overwritten/expiring well before their timer, which read as blood "not lasting." Real bloodstains persist for hours without cleanup; this keeps pushing toward that while the 85%-of-life fade-out (see drawDecals) still guarantees old stains eventually clear so the map doesn't become unplayably cluttered. The color-aging curve is fraction-based, so it stretches proportionally with this change automatically.
 function decalLifespanVariance(){
   // every decal lasts strictly longer than the flat baseline (never below 1.15x), with high
   // upside so some individual stains persist dramatically longer than others — real bloodstains
@@ -4151,6 +4254,26 @@ function drawDecals(ctx){
         ctx.ellipse(d.x+biggest.dx*growT - biggest.r*growT*0.25, d.y+biggest.dy*growT - biggest.r*growT*0.3,
           biggest.r*growT*0.35, biggest.r*growT*0.2, -0.5, 0, Math.PI*2);
         ctx.fill();
+      }
+      // Skeletonization / oxidation ring: real bloodstain perimeters coagulate and dry first
+      // (ring formation within ~60-90s), leaving a darker, oxidized rim around a slightly recessed,
+      // flatter, lighter interior. Modeled here as beginning once a pool is genuinely aged (past
+      // 2 minutes of real life, matched to the 5-hour-compressed aging curve above already settling
+      // into its dried color by 40% of life) and intensifying gradually, so long-lived pools from
+      // the extended DECAL_LIFESPAN visibly read as older than fresh ones instead of all looking
+      // identical once past the initial color transition.
+      const skeletonT = lifeT > (120000/lifespan) ? Math.min(1, (lifeT - 120000/lifespan) / 0.35) : 0;
+      if(skeletonT > 0 && d.blobs.length){
+        const rimColor = 'rgba(' + Math.round(r*0.55) + ',' + Math.round(g*0.55) + ',' + Math.round(b*0.55) + ',' + (alpha*0.7*skeletonT).toFixed(2) + ')';
+        const coreColor = 'rgba(' + Math.round(r*1.12) + ',' + Math.round(g*1.05) + ',' + Math.round(b*1.05) + ',' + (alpha*0.5*skeletonT).toFixed(2) + ')';
+        ctx.strokeStyle = rimColor;
+        ctx.fillStyle = coreColor;
+        for(const b2 of d.blobs){
+          const bx = d.x+b2.dx*growT, by = d.y+b2.dy*growT, br = b2.r*growT;
+          ctx.lineWidth = Math.max(1, br*0.28);
+          ctx.beginPath(); ctx.arc(bx, by, br*0.86, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(bx, by, br*0.62, 0, Math.PI*2); ctx.fill();
+        }
       }
     }
   }
@@ -4842,10 +4965,11 @@ function resolveEnemyCollisions(){
     if(!e.active) continue;
     const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
     for(const other of nearby){
-      if(other === e || !other.active) continue;
+      if(!other.active) continue;
+      if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
       const dx = e.x - other.x, dy = e.y - other.y;
       const dist = Math.hypot(dx,dy) || 0.0001;
-      const minDist = (e.radius + other.radius) * 0.82; // a little overlap is fine, matching the existing visual style — this only stops genuine pass-through
+      const minDist = e.radius + other.radius + 2; // strict non-overlap (was 0.82x, deliberately allowing 18% visual overlap that read as sprite stacking/"invisible" units)
       if(dist >= minDist) continue;
       const overlap = minDist - dist;
       const pushX = dx/dist, pushY = dy/dist;
@@ -4858,8 +4982,17 @@ function resolveEnemyCollisions(){
         e.x += pushX*overlap; e.y += pushY*overlap;
       } else if(!otherFrozen){
         other.x -= pushX*overlap; other.y -= pushY*overlap;
+      } else {
+        // both blocked at a chokepoint (e.g. queued behind a barricade) — the old code skipped
+        // separation entirely here, which is exactly the case every queued unit hits, so physics
+        // shut off right where crowding is worst. A gentle lateral-only nudge (perpendicular to the
+        // push vector, small magnitude) keeps queued units from visually fusing without fighting
+        // the queue-slot system's own positioning.
+        const lateralX = -pushY, lateralY = pushX;
+        const nudge = Math.min(overlap, 1.5) * 0.5;
+        e.x += lateralX*nudge; e.y += lateralY*nudge;
+        other.x -= lateralX*nudge; other.y -= lateralY*nudge;
       }
-      // if both are frozen, neither moves — an exceedingly rare simultaneous-freeze edge case
     }
   }
 }
