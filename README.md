@@ -50,6 +50,8 @@ investing stat points into an existing tower.
 | 🔫 Gatling | *(Archer → STR)* Very fast, low damage per shot — shreds swarms |
 | 🎯 Blowdart | *(Archer → DEX)* Short range, fast fire rate, every dart poisons |
 | 💣 Bomber | *(Archer → INT)* Splash damage against groups |
+| 🔫 Gunalinder | *(Bomber → INT, 2nd tier)* Trades splash for precision — fires all six chambers of a revolver in a rapid burst, then a long reload |
+| 🎯 Sniper | *(Gunalinder → INT, 3rd tier)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
 | 🔫 Dual Squirt Gun | *(Blowdart → DEX, 2nd tier)* Dual-wielded, deeper DEX specialization |
 | ✝️ Cleric | *(Mage → INT)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
 
@@ -109,7 +111,7 @@ treasure chests / relic drops) — spent on the priciest tier of shop gear.
 
 ## Lives
 
-Start with 30. Tap the ❤️ HUD stat to buy an extra life with gold — each purchase costs
+Start with 100. Buy an extra life with gold from the **Shop** — each purchase costs
 substantially more than the last (exponential scaling), so it's a real emergency valve rather
 than a routine top-up.
 

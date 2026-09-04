@@ -1,5 +1,415 @@
 # Changelog
 
+## [1.0.101] - 2026-09-03
+- Removed the arbitrary periodic "wounded" gushing — previously any enemy below 35% HP had a
+  background timer independently re-rolling a chance to gush every ~1-2s, with no connection to
+  any specific attack. Dripping is now tied directly to the hit that caused it: `startDripSite()`
+  takes a `severity` param (the hit's damage as a fraction of the target's max HP) and scales drop
+  count proportionally — 1 drop for a graze up to 8 for a near-fatal blow, and hits below an 8%
+  severity threshold don't start a drip at all. Verified the scaling numerically across a range of
+  hit sizes before shipping. Applied to both the general on-hit case and the Archer puncture-wound
+  gush, which now also scales by the actual shot's damage instead of a fixed default.
+
+## [1.0.100] - 2026-09-03
+- Non-lethal hits now have a real chance (40%) to leave a lasting mark on the ground, not just
+  transient particles. Every on-hit gore branch already spawned particles/streams on every hit,
+  but all of that fades within about a second — without a persistent decal, blood only ever
+  visibly stuck around after the killing blow, which is exactly what was reported. New decal is
+  smaller/less frequent than the full death pool (uses the existing `smallBias` mode) so repeated
+  hits build up visible battle damage without outshining an actual kill. Applies uniformly across
+  every archetype branch (Warrior/Mage, Archer, Explosive) except dust/rock enemies, which never
+  leave blood decals.
+
+## [1.0.99] - 2026-09-03
+- Extended base decal lifespan again (180s → 300s / 5 min) — every decal type scales with this
+  since they're all multipliers of the base, so streaks now last up to 10 minutes.
+- Added a wet-sheen glisten highlight to fresh pools — real blood is glossy/reflective when wet
+  and goes matte as it dries, which the existing color-darkening curve alone didn't capture. A
+  soft white highlight on the pool's largest blob fades out smoothly over the first ~15s of life
+  (verified numerically: 0.35 alpha at spawn → 0 by 15s), giving fresh wounds a genuinely wet look
+  distinct from the reddish-brown oxidizing stage that follows.
+
+## [1.0.98] - 2026-09-03
+- Fixed enemies piling up messily instead of forming a clean single-file "conga line" queue at a
+  chokepoint (e.g. behind a Barricade). Root cause: the old queue system only chained a line
+  through enemies that were *strictly adjacent* in traveled-order — on an early-game wide-open
+  map, enemies approaching from different lateral positions with similar-but-not-adjacent traveled
+  values fell through that check entirely and were left to fight for space via the generic
+  collision-push system instead, producing the jumbled scatter.
+  - Rewrote the queue assignment as a single forward pass with a real spatial catchment radius
+    (70px) around any already-blocked enemy, so multiple lanes converging on one chokepoint all
+    get pulled into the same queue regardless of traveled-adjacency.
+  - Caught and fixed two real bugs while building this, both found via standalone simulation
+    before shipping (per the game-critical-logic testing convention): (1) an early version
+    overwrote `traveled` itself when snapping an enemy into its slot, which could create ties with
+    another enemy's original traveled value and break the "genuinely ahead" ordering check; fixed
+    by tracking slot position in a separate `queueSlotDist` field, never touching `traveled`.
+    (2) even after that fix, two enemies that were each individually closer (by original position)
+    to the very front of the line than to each other could still independently compute the exact
+    same slot — fixed with explicit slot-collision tracking that walks an enemy further back in
+    fixed increments until it finds a genuinely free spot.
+  - Verified with two simulations before shipping: a 5-enemy multi-lane convergence, and an 8
+    -enemy stress test with fully randomized scattered starting positions — both produced a clean
+    line with zero overlapping slots.
+
+## [1.0.97] - 2026-09-03
+- Mage's projectile now visually reads as a magic missile instead of a generic arrow — a glowing
+  white-hot orb core with a soft colored outer glow and a fading energy trail behind it, instead
+  of the shared line-and-barbs shape every other physical projectile uses.
+- Mage's projectile speed reverted back up to high-velocity (520-580, was 320-360 from an earlier
+  "slower but higher impact" pass) per explicit correction — fast-traveling and hard-hitting
+  rather than slow and hard-hitting. Damage stayed at its earlier boosted values. The heavier
+  on-hit blood splatter for Mage specifically (18 vs 14 particles, 7 vs 4 streams, 55% vs 30%
+  castoff chance, shipped in 1.0.87) was already in place and confirmed still intact.
+
+## [1.0.96] - 2026-09-03
+- Reworked camera-follow's pan math to remove a coupling bug: target X/Y were being recomputed
+  every frame using the *currently animating* zoom, and since both position and zoom shared the
+  same easing curve, the target itself was a moving point rather than a fixed one — mathematically
+  this makes camera.x/y follow a quadratic path (there's a `zoom(t) * eased(t)` term, which is
+  quadratic in `t`) instead of a straight line, which can produce a "wrong direction, then
+  corrects" motion depending on the tower's position and zoom delta. Target X/Y/zoom are now all
+  computed once at pan start and interpolated independently — verified with a simulation that the
+  tower's distance to true center now shrinks on every single step with no exceptions, which is
+  mathematically guaranteed by this construction regardless of tower position or zoom delta.
+  (My reproduction of the *old* code's exact failure case wasn't conclusive in every scenario I
+  tried, so I won't overclaim I nailed the precise prior mechanism — but the new version is
+  provably immune to this class of bug either way, which is the property that actually matters.)
+- Cut the wait-before-panning from 600ms to 150ms — was reported as pausing too long before
+  starting.
+
+## [1.0.95] - 2026-09-03
+- Fixed embedded arrows not actually moving with the enemy body. The body itself is drawn with a
+  knockback-bump offset (`bumpDx/bumpDy`, from pressing against a Barricade) plus a constant
+  walk-bob while moving, but the embedded-arrow rendering only ever used the raw `this.x, this.y`
+  — never those same offsets. The arrows were visually lagging behind the body's normal bob motion
+  the entire time it walked, which is very likely what looked like a collision/overlap glitch in
+  the reported screenshot (an arrow rendering slightly detached from its own enemy can look like
+  two separate overlapping things). Arrows now use the identical adjusted position the body uses.
+- Also moved the arrow's anchor point from a small random offset clustered near center (up to
+  ±0.35 radius) to the body's actual edge (0.85 radius, at a random angle around it) — reads as a
+  real puncture wound at the surface instead of something floating near the middle of the sprite.
+- Reviewed `resolveEnemyCollisions()` for gaps while investigating — it applies uniformly to every
+  active enemy (including breakaway ones), no exclusion holes found; the arrow desync above is the
+  most likely actual cause of what was reported as a collision issue.
+
+## [1.0.94] - 2026-09-03
+- Doubled the base decal lifespan again (90s → 180s) — real bloodstains persist for hours without
+  cleanup, and fading this fast was undercutting that. Every decal type scales with this: pools
+  now last 180s, streaks (already 2x the base) go to 360s, skin-peel patches to 234s, footprint
+  trails stay quick at 45s. The color-aging curve (bright red → reddish-brown → dried) is
+  fraction-based, so it automatically stretches proportionally with the longer lifespan rather
+  than needing to be recalibrated separately.
+
+## [1.0.93] - 2026-09-03
+- Changed the overhead "unspent stat points available" indicator from a glowing 💀 skull to a
+  glowing 📜 scroll, matching the same icon already used for the in-panel expand toggle. Confirmed
+  the click-to-open-straight-to-stats behavior (tapping a tower with points auto-expands to the
+  stats section instead of landing collapsed) was already in place and untouched by this change.
+
+## [1.0.92] - 2026-09-03
+- Camera pan/follow now centers on each tower's true visual midpoint, not its raw draw anchor.
+  `drawStickman()` translates to `(tower.x, tower.y)` at foot level, not the sprite's visual
+  center — the local sprite actually spans roughly head-top (-31) to feet (+20), so its true
+  midpoint sits noticeably above the anchor point. Centering purely on `tower.y` left the
+  character sitting visibly below true screen center. New `towerVisualCenterY()` helper accounts
+  for this, plus each class's own body `scaleY` (same per-class-proportions pattern already used
+  for the projectile-spawn muzzle-alignment fix). Verified with a standalone simulation for both
+  a lean class (Archer) and a squat one (Hammerman) that the visual midpoint — not just the
+  anchor — lands exactly on screen center in both cases.
+
+## [1.0.91] - 2026-09-03
+- Fixed camera-follow zooming out unexpectedly. The 1.0.89 "fixed distance" change made the pan
+  always target exactly 1.3x zoom regardless of the current zoom level — if the player had
+  already zoomed in further than that before selecting a tower, the follow would pull the camera
+  back OUT to 1.3x, which read as a random wrong-direction zoom. Restored the "never zoom out"
+  guarantee: the pan now targets `Math.max(currentZoom, 1.3)` — guarantees at least that close-up
+  distance when zoomed out further, but leaves the zoom alone if already closer than that.
+  Verified all three cases (zoomed out, at the recommended distance, zoomed in further) with a
+  standalone check before shipping.
+
+## [1.0.90] - 2026-09-03
+- New universal, shared-item drop system, Dota-style: opened treasure chests now have an 8% chance
+  to drop a 🌿 Sturdy Branch (+1 STR/DEX/INT, works on any tower — not class-specific gear) as a
+  physical item sitting on the map. Drag it onto whichever tower should hold it to equip; it stays
+  put if you release it somewhere else, so a failed drop just leaves it available to try again.
+  - Implemented real pointer drag-and-drop: ground-item hit-testing on pointerdown takes priority
+    over the normal camera-pan drag, item position tracks the cursor in world-space during the
+    drag, and release checks for a tower under the drop point.
+  - Reuses the existing `buyItem()` equip path (cost 0, so no gold is charged) — respects the
+    same 6-slot cap and Hero-awakening check every other item already does.
+  - **Scope note**: this adds a new universal item alongside the existing per-class Shop gear
+    system (13 classes × 4 tiers) rather than replacing it — removing that entire established,
+    balanced system is a much bigger decision than adding a new item type, so it wasn't done
+    without confirming that's actually wanted first.
+
+## [1.0.89] - 2026-09-03
+- Camera pan-to-unit reworked: total sequence cut from 9s (3s wait + 6s pan) to 2s (0.6s wait +
+  1.4s pan) — the old duration felt far too slow. Switched from a razor-edge exponential ease-in
+  (where ~90% of the motion was crammed into the final instant, making it look like nothing was
+  happening for most of the sequence) to a smooth ease-in-out cubic, so movement is visible
+  throughout instead of a long dead pause followed by a snap.
+- Zoom now always pans to the fixed 1.3x recommended distance regardless of the current zoom
+  level, instead of only zooming in when already more zoomed out than that.
+- Re-verified with a standalone simulation that the tower's screen position still lands exactly
+  on true center at completion under the new timing/curve.
+
+## [1.0.88] - 2026-09-03
+- Fixed the actual bug behind camera pan-to-unit never centering: `clampCamera()` bounds the
+  camera against the full theoretical `WORLD_MAX_W/H` (the largest the map could ever expand to),
+  not the currently revealed play area. Early in a run, the active region sits near one corner of
+  that theoretical space, so centering on a tower there required a camera position the clamp was
+  silently overriding back to its restrictive bounds every single frame — the pan was fighting
+  itself the whole time. Intentional camera-follow now skips that clamp entirely, since it's a
+  deliberate move, not a manual pan that needs edge protection. Verified with a standalone
+  simulation that the tower's screen position now lands exactly on true center at pan completion.
+- Added the requested "pan to a recommended distance" — the camera now also eases zoom toward a
+  comfortable 1.3x close-up alongside the position pan (only zooms in if already more zoomed out
+  than that, never zooms out), animating together with the position pan rather than as a separate
+  step.
+- Also shipping forensic gore work built last session that got left unversioned:
+  - Real forensic bloodstain-aging timeline, calibrated so one round represents ~5 real-world
+    hours: bright oxyhemoglobin red holds for the first ~10 equivalent minutes, transitions
+    through a reddish-brown oxidizing stage, and settles to the fully-dried true color by ~2
+    equivalent hours — a genuine two-stage color transition instead of one flat lerp. Verified the
+    curve numerically at real-world-hour checkpoints before shipping.
+  - Badly-wounded-but-still-alive enemies (below 35% HP) now periodically gush a little blood
+    while moving, not just on the hit that wounded them — a real wound keeps bleeding.
+
+## [1.0.87] - 2026-09-03
+- Streaks (cast-off decals) now last 2x as long as blob pools/drops instead of sharing one
+  universal lifespan — they were called out as a favorite effect and were fading at the same rate
+  as everything else.
+- New walking-blood system: any enemy standing on or near still-fresh blood (spawned within the
+  last 4s) picks it up on its feet and leaves a trail of small, quick-fading footprint marks as it
+  walks away — each print fainter than the last until it runs dry (verified the decay curve
+  numerically: 0.46 → 0.37 → 0.28 → 0.18 → 0.09 → 0 over 6 steps). This was the explicitly
+  requested effect that didn't exist yet.
+- Weapon-specific forensic differentiation:
+  - **Archer**: arrows now physically embed and stay stuck in the enemy (small angled shaft +
+    arrowhead rendered on the body, capped at 4 so a heavily-hit enemy doesn't turn into a
+    pincushion), and each hit starts an ongoing gush (a drip site) on top of the normal splatter —
+    a real puncture wound bleeds continuously, not just once.
+  - **Mage**: projectiles now travel noticeably slower (320-360 vs. the old 460-500) but hit
+    harder (damage raised ~20-25% per tier to compensate) — a heavier, more deliberate bolt.
+    Mage hits also spawn significantly more streaks (18 particles/7 streams vs. 14/4 for a
+    standard melee hit, castoff chance nearly doubled to 55%) and elemental procs (burn/freeze)
+    now leave a new "skin peeling" decal — a jagged blistered patch with a pale raw-tissue
+    highlight, visually distinct from a normal blood pool since it's elemental damage, not a
+    physical wound.
+  - Melee (Warrior/generic) kept as the existing castoff-sweep baseline that Archer/Mage now
+    build on top of.
+
+## [1.0.86] - 2026-09-03
+- Camera pan-to-unit: selecting or placing a tower now waits 3s, then pans the camera to center on
+  it over 6s using a strong exponential ease-in — barely moves for the first few seconds, then
+  rapidly accelerates to arrival (verified numerically: only ~3% of the pan distance covered at
+  the 3s mark of the pan itself, 50% covered by 90% through it). Camera then continuously tracks
+  the tower while it stays selected. Cancels cleanly on manual drag, pinch/scroll zoom, or
+  deselection — wired into all 6 deselection points in the code individually.
+- Blood decal lifecycle reworked: decals previously never actually expired, only got recycled by
+  capacity (150-decal cap, oldest overwritten). Now they have a real 90-second lifespan (doubled
+  from a 45s baseline) — bright red at spawn, shifting to the enemy's true biology color over the
+  first 20% of life, holding steady, then fading to fully transparent over the final 15% so old
+  stains clear out instead of accumulating indefinitely. Verified the full color/alpha curve
+  numerically across the lifespan before shipping.
+- Wired the previously-declared-but-unused `bio.viscous` flag (from the biology profiles shipped
+  in 1.0.76) into real friction physics: insect hemolymph and coagulated undead blood now
+  genuinely travel less far than thin standard blood (0.88 friction vs 0.93), a real fluid-density
+  difference instead of a flag that did nothing.
+- ⚖️ Target and 🔀 Move button icons.
+- Zoom-controls Settings toggle (Settings → Game), off by default since pinch/scroll zoom already
+  works without the on-screen buttons — persisted in saves.
+- Real enemy-enemy collision resolution, replacing the previous system which only checked the one
+  enemy directly ahead in path order and explicitly excluded stunned/frozen enemies from collision
+  entirely — meaning a frozen enemy wasn't an obstacle at all and everyone walked straight through
+  it. `resolveEnemyCollisions()` now does genuine circle-circle collision against every nearby
+  enemy (reusing the existing spatial hash), including frozen ones as real static obstacles that
+  can't be pushed and can't be walked through — verified both the normal-pair and frozen-pair
+  cases with a standalone simulation before shipping.
+  - Caught a real bug while wiring this in: an early edit's `str_replace` matched and consumed
+    `buildEnemyHash()`'s own function-signature line while inserting the new collision function
+    above it — the exact "heading consumption" failure pattern `AGENTS.md` already warns about,
+    just in code instead of the changelog. Caught immediately by the mandatory `node --check`
+    pass and fixed before continuing.
+
+## [1.0.85] - 2026-09-03
+- Target and Move buttons now show ⚖️ and 🔀 icons.
+- Added a Settings → Game toggle for the on-screen zoom +/-/reset buttons, off by default (pinch
+  and scroll-to-zoom already work without them) — opt-in for anyone who prefers explicit buttons.
+  Persisted in save files.
+- General enemy anti-overlap: previously the path-queue system only kicked in when an enemy was
+  actively blocked (a Barricade, or queued behind one). A fast enemy (Runner) catching up to a
+  slow one ahead of it (Tank) on the open path had nothing stopping it from visually overlapping
+  or passing through. Extended `updateBarricadesAndPileup()`'s spacing check to apply generally,
+  not just to blocked chains — enemies now hold a minimum trailing distance from whatever's ahead
+  of them regardless of whether anything is actually blocking, without touching the existing
+  blocked-queue snap logic's behavior.
+- Post-death drip sites: kills now spawn a few extra blood drops over the next ~1-2.5 seconds
+  after the initial splatter, instead of everything landing in one instant burst. Capped pool
+  (24 concurrent drip sites, oldest cut short past that) to stay performance-safe.
+- Logged two large requested features to `BACKLOG.md` with real scoping rather than rushing them:
+  walking-blood forensics (footprint decals as enemies track through spatter) and a full three-form
+  Druid class (Wolf/Bear/Squid AoE tradeoffs, mode-switch UI, once-per-round gate) — both need new
+  subsystems beyond what a quick config addition can cover.
+
+## [1.0.84] - 2026-09-03
+- New deep INT evolution chain for Archer's Bomber branch: Bomber → Gunalinder (INT 25, 2nd tier)
+  → Sniper (INT 40, 3rd tier) — the deepest single-stat investment of any class in the game.
+  - **Gunalinder**: a revolver that fires all 6 chambers in a rapid burst (90ms between shots)
+    before a long reload, implemented as a real state machine in `updateRanged()` rather than a
+    reskin of the existing single-shot firing loop. Caught and fixed a bug in my own first draft
+    of this logic, where the very first shot incorrectly jumped straight to the full reload
+    cooldown instead of starting the burst — verified the corrected timing with a standalone
+    simulation (6 shots in the first 450ms, clean 1700ms gap before the next burst).
+  - **Sniper**: 420 base range (cap 520) — confirmed via the DPS/range table used in the 1.0.70
+    balance pass that this is genuinely the longest range of any tower, ahead of Mage's previous
+    420 cap.
+  - Caught a real stale-field bug while wiring this up: `applyTierStats()` uses `Object.assign()`,
+    which never clears fields absent from a new tier. Without an explicit reset, a tower evolving
+    *away* from Gunalinder would keep its old `burstCount` and incorrectly keep firing in bursts.
+  - Full gear tiers, colors, body proportions, flavor quotes, and custom `drawStickman()` poses
+    (two-handed revolver grip; extended rifle barrel with a scope glint) for both classes. README
+    and the in-game help modal's evolution tree updated to match.
+
+## [1.0.83] - 2026-09-03
+- Towers with unspent stat points now show a glowing green 💀 above their head on the map (gentle
+  pulsing glow via `shadowBlur`, not a hard flash), stacking above the Hero crown/Legendary trophy
+  if the tower has those too. Excludes Barricades, which never earn stat points.
+- Tapping a tower on the map now auto-expands the inspect panel straight to full options if it has
+  points to spend, instead of always landing on the collapsed view and requiring a second tap on
+  the 📜 scroll toggle.
+
+## [1.0.82] - 2026-09-03
+- Added individual satellite blood drops — a new decal type (`isDrop`, small elongated teardrops
+  each oriented along their own travel angle) scattered near a splatter, matching the real
+  bloodstain-pattern-analysis phenomenon where a main spatter breaks into smaller individual
+  droplets around its edges rather than being one uniform blob. Biased toward the impact
+  direction on hits (angled scatter), fully radial around the pool on deaths. Gated off low
+  graphics for the death case to stay perf-conscious, same as the other death-only decal effects.
+
+## [1.0.81] - 2026-09-03
+- Fixed target frame overflowing off the right edge on mobile — confirmed via an actual mobile
+  screenshot (this had been logged in `BACKLOG.md` as unconfirmed since all prior sizing feedback
+  came from desktop screenshots; now verified real). On viewports under 600px wide,
+  `updateTargetFrame()` now stacks it above the inspect panel instead of to its right, and clamps
+  its max-width to the available space either way so it can't run off-screen in either layout.
+
+## [1.0.80] - 2026-09-03
+- Two more forensic-accuracy passes on top of the archetype/biology work from 1.0.76:
+  - **Real mist cone, not radial.** Archer-hit "mist" was still using the generic fully-radial
+    `spawnParticles()` — its own code comment claimed a "tight cone along impactAngle" but nothing
+    actually constrained the angle. Added real cone support (`coneAngle`/`coneSpread` params) and
+    wired mist to a genuine ~46° cone. Verified numerically: 1000 simulated spawns, max deviation
+    from the impact angle came out to exactly 0.400 rad (~23°), matching the intended half-cone.
+  - **Per-particle friction + ground pooling.** Every particle previously decayed velocity at the
+    same universal 0.93/frame regardless of type, so mist behaved identically to heavy splatter.
+    Mist now uses 0.80 friction — decelerates hard into a dense cluster (2.5 units/s left after
+    ~333ms vs. 51.5 for normal splatter, verified with a standalone simulation) instead of
+    spreading like every other particle. Blood particles that settle (velocity < 6) now leave a
+    tiny permanent ground stain via the existing capped decal system instead of just fading
+    invisibly mid-air — real droplets land and soak in.
+  - Guarded against a real bug from the shared particle-pool architecture: `spawnGibs()` and
+    `spawnBloodStream()` pull from the same recycled `particles` array as `spawnParticles()`, so a
+    slot's leftover `friction`/`canPool` state from a previous spawn could bleed into the next
+    unrelated particle type. Both functions now explicitly reset those fields.
+
+## [1.0.79] - 2026-09-03
+- Non-explosive deaths no longer use a full omnidirectional particle burst — that was reading as
+  an "explosion" regardless of what actually killed the enemy, since the same ~90-100-particle
+  radial spray fired for every death. Only genuinely explosive kills (Bomber) keep that burst now;
+  every other kill gets a modest ambient splatter plus a tight arterial "gush" of a few large
+  streams weighted toward the direction of the last hit — a directional collapse instead of a pop.
+  Also cut gib (chunky flying debris) count down to 1-2 for ordinary kills instead of 4-10, since
+  visible chunks flying read as "explosion" more than fine spray does.
+  - Verified the actual particle-count reduction numerically before shipping: a Grunt-tier
+    ordinary kill went from 101 particles to 30 (~70% cut); a Boss-tier one from 181 to 53.
+
+## [1.0.78] - 2026-09-03
+- Condensed the top HUD stats: ❤️ Lives and 💰 Gold now sit on one row, 🔀 move-charges and Wave
+  count on a row below that, instead of all four spread across a single horizontal line. Saves
+  meaningful horizontal space next to the Build/Shop/Settings buttons and Next Wave button.
+
+## [1.0.77] - 2026-09-03
+- Starting lives raised from 30 to 100 (HUD default, initial state, and new-game reset all
+  updated together).
+- Caught and fixed a stale README instruction while updating this: it still said "Tap the ❤️ HUD
+  stat to buy an extra life," but buy-life moved into the Shop modal back in v1.0.73 — the HUD
+  heart is just a readout now. Updated the wording to point at the Shop instead.
+
+## [1.0.76] - 2026-09-03
+- Gore now branches on both weapon archetype and enemy biology instead of one universal red
+  particle burst everywhere:
+  - **Weapon archetype** (`resolveGoreArchetype()`): Archer-type towers produce tight,
+    high-velocity forward-spatter mist along the impact angle; Bomber (explosive despite being
+    ARCHER-archetype for stats) produces a 360° burst with no directional constraint; everything
+    else (Warrior/Mage) gets the medium-velocity castoff sweep, weighted toward the impact angle
+    but not fully constrained to it.
+  - **Enemy biology** (`getBloodProfile()`, keyed off properties the game already tracks —
+    `isUndead`, and type for Swarm/Splitter/Boulder): insects (Swarm, Splitter, Splitmini) bleed
+    cyan-green hemolymph; undead (anything with `isUndead: true`) bleed near-black coagulated
+    blood and skip the bright high-velocity arterial-spray layer entirely (real coagulated blood
+    oozes, it doesn't spurt); Boulder produces gray/brown rock dust with no liquid streams and no
+    pooling decal at all, since it isn't blood.
+  - Extended `spawnBloodStream()` to accept optional bright/dark color overrides (previously
+    hardcoded to standard red regardless of what was hit) and added a `hexToRgba()` helper so
+    decal/castoff alpha transparency still works with biology colors instead of only literal red.
+  - Caught and fixed a self-inflicted bug during this edit: an early `str_replace` accidentally
+    deleted `spawnDecal()`'s own function-signature line while inserting the two new helper
+    functions above it — caught immediately by the mandatory `node --check` pass before
+    continuing, per the verification workflow in `AGENTS.md`.
+
+## [1.0.75] - 2026-09-03
+- Target-of-target frame now hides entirely while the inspect panel is expanded (full options
+  open) instead of stretching to match the panel's height — it reappears once the panel is
+  collapsed. Solves the negative-space complaint more directly than resizing it ever would.
+- Removed the redundant "🛒 Items" button — the inventory slots themselves have been clickable to
+  open the Shop since 1.0.72, so the separate button was dead weight.
+- Inventory expanded from 4 slots to a true 6-slot Dota-style grid — `MAX_ITEM_SLOTS` bumped to 6
+  (the actual game mechanic, not just the visual), Hero-awakening threshold updated to match
+  (fill all 6 to become a Hero, was 4), help modal and stale code comments updated accordingly.
+  Inter-tower drag-and-drop item throwing between slots logged to `BACKLOG.md` as its own
+  follow-up — real pointer-drag and cross-tower hit-testing is a distinct feature from the slot
+  display itself.
+
+## [1.0.74] - 2026-09-03
+- Audited every suggestion from the Gemini "chapter" documents against the actual current code:
+  - **Shipped**: New Enemy toast polish — each enemy's emoji is now 2.6em with a hardware-accelerated
+    (`transform`-only) waddle keyframe, a ✕ close button in the top-right clears the pending
+    timeout and dismisses early, and the auto-hide timer went from 5500ms to 6600ms (+20%).
+  - **Already existed, no change needed**: `EVOLUTIONS`/`CLASS_ARCHETYPE` gating, wave-pacing,
+    the new-enemy-introduced popup itself, and archetype-exclusive STR/DEX/INT damage — all from
+    earlier versions this same session, re-verified still correct.
+  - **Explicitly contradicts a later, real instruction — not applied**: widening
+    `#inspect-panel` to 360px (a Gemini-draft fix for stat-row wrapping) directly conflicts with
+    the actual person's explicit request earlier this session to shrink it from 480px to 320px.
+    Removing `#inspTargetFrame`'s `minHeight` and shrink-wrapping it also directly contradicts the
+    actual person's explicit request to make it match the main panel's height. Both left as-is.
+  - **Genuinely missing, but too large for a single pass — logged to `BACKLOG.md` instead**:
+    forensic-realism gore rewrite (directional spatter by weapon archetype, per-enemy blood
+    biology/color, pooling to a static layer), mobile-viewport stacking for the target frame.
+
+## [1.0.73] - 2026-09-03
+- Buy Life moved out of the main HUD and into the Shop modal as a dedicated row below the header
+  (❤️ Lives counter + Buy Life button, same exponential cost curve as before) — the HUD now shows
+  lives as a plain readout again, matching the original request that it not clutter the main
+  screen.
+- Removed the redundant HUD mute button (🔊/🔇 in the top-right controls). Mute already lived in
+  Settings → Audio; having it duplicated in the main HUD wasn't necessary.
+- New STR-based "taunt" mechanic: breakaway targeting (`findNearestActiveTower`, used by Fire/Ice
+  breakaway attacks and Troll's swing) is now weighted by both proximity and each candidate
+  tower's STR investment, not pure nearest-distance. A tower with 20 STR is roughly 2.24x more
+  likely to draw aggro than an identical-distance 0-STR tower — works for any archetype, so a
+  heavily-STR Mage can out-taunt a low-STR Warrior, per request. Verified the weighting
+  numerically before shipping.
+- Logged several larger requested features to `BACKLOG.md` rather than rushing them: a STR-Mage
+  evolution chain (Rogue Sorcerer → Crazy Wizard → Necromancer with an HP-percentage sacrifice
+  AoE), Swordsman cleave diminishing returns past 5 targets, a restructured branching Warrior
+  evolution net (Axeman → "Knight Errant" → Berserker; Hammerman gaining DEX branching into a
+  dual-wield path), a forensic-realism gore rewrite, a Dota-style item-drop/merchant economy, and
+  a wobbling Dwarf Builder NPC with more pronounced post-wave-3 scenery scaling. Each is
+  well-specified but large enough to deserve its own focused pass rather than a rushed bundle.
+
 ## [1.0.72] - 2026-09-03
 - Inventory row now shows 4 bordered WC3/Dota-style item slots instead of a plain text summary
   (icons joined by spaces, or "No items"). Used 4 slots specifically to match the actual

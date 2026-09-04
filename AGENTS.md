@@ -16,6 +16,8 @@ the version you have locally is current — this repo may be updated outside of 
 each meaningful change shipped — a bug fix, feature, or balance change. Never jump more than one
 patch level in a single change, and never bump the minor or major version without explicit
 instruction. Purely cosmetic/no-op edits (typo fixes in comments, whitespace) don't need a bump.
+The patch number (`Z`) is not capped at 99 — it can go as high as needed (`1.0.100`, `1.0.250`,
+etc.). Only bump the minor version (`Y`, e.g. `1.0.x` → `1.1.0`) when explicitly instructed to.
 
 ## Required workflow: update the changelog
 
