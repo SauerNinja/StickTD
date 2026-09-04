@@ -1,5 +1,279 @@
 # Changelog
 
+## [1.0.122] - 2026-09-04
+- Three real bloodstain-pattern-analysis (BPA) principles added to the blood system, not just more
+  volume:
+  - **Distance-based droplet shape** — `spawnSatelliteDrops()` now ties a droplet's elongation and
+    width to how far it actually landed from the source. A droplet that travels further strikes at
+    a shallower angle and carries less mass, so it stretches into a longer, more directional
+    teardrop while getting narrower; near-origin drops stay rounder and squatter. Previously length
+    and width were independent random rolls with no relationship to the distance the drop itself
+    landed at.
+  - **Archetype-aware pool elongation** — `spawnDecal()` now varies aspect ratio by attacker
+    archetype instead of a single random range for everything: a high-velocity piercing hit
+    (Archer) strikes at a shallow angle and drags into a long, directional stain; an omnidirectional
+    blast (explosive) has no single strike vector and pools closer to circular; ordinary melee/magic
+    hits fall in between. Reflects the real BPA relationship between impact angle and stain shape.
+  - **Bleeding cessation taper** — the bleed DOT no longer spurts at constant full intensity and
+    then cuts off dead the instant it expires. Spurt particle count, and the chance of a fresh
+    satellite drop/decal/drip trail on each tick, now taper down as the wound approaches its own
+    natural end (down to roughly a third of peak intensity right before it closes), matching how
+    real bleeding actually winds down rather than stopping abruptly.
+
+## [1.0.121] - 2026-09-04
+- Removed the decal grow-in animation entirely. Every blood decal (pools, streaks, drip trails,
+  droplets, skin peels) previously animated from small to full size over a short window after
+  spawning — even shortened to 180ms in the last pass, this was still a visible fade/expand effect,
+  not how real blood spatter behaves: an impact deposits blood at full extent in that instant, it
+  doesn't grow into shape afterward. `growT` (the animation's 0-1 progress value used throughout
+  `drawDecals()`) is now a fixed 1, so every decal renders at its full, final size on the exact
+  frame it's created. This is a straightforward accuracy fix, not a tuning pass — no more grow
+  animation, at any duration, for any decal type.
+
+## [1.0.120] - 2026-09-04
+- Fixed blood pools ballooning into one huge, unreadable solid mass instead of distinct forensic
+  splatter. The 1.0.118 pass that fixed repetitive shapes also left `spawnDecal()`'s size tiers far
+  too large (rare pools up to 6.5x size with up to 15 blobs) and, combined with 1.0.118 removing
+  `smallBias` from the death-pool call (needed so deaths could roll bigger than hits, but with no
+  upper guardrail), several nearby deaths could each independently roll a massive pool and merge
+  into a single dominating blob — exactly what the screenshots showed. Size tiers are now capped
+  much lower across the board (max ~2.6x instead of ~6.5x, max 9 blobs instead of 15, smaller blob
+  radii), and the extra streak/drip-trail/satellite-drop frequency added in 1.0.116 is dialed back
+  down (fewer decals per hit and per death) so the forensic shape variety from 1.0.118 stays
+  readable as distinct splatters instead of solid coverage.
+- Fixed blood appearing to keep "blooming" after the enemy that caused it was already gone. Every
+  decal grows from small to full size over a fixed animation window — this was 700ms, which on the
+  now-much-larger pools was long enough to visibly notice a puddle still expanding well after the
+  corpse had already vanished (the enemy is removed instantly; the pool's own grow-in animation
+  isn't), reading as delayed/out-of-nowhere blood even though it was triggered at the correct
+  instant. Shortened to 180ms — still a soft appearance, not an instant pop, but fast enough that
+  it no longer visibly outlives the death that caused it.
+
+## [1.0.119] - 2026-09-04
+- Fixed drip trails and cast-off streaks reading as oversized. The size widening in 1.0.118 (aimed
+  at breaking up repetitive shapes) overshot on raw size along with it — `spawnDripTrail()` length
+  pulled back from 12-38px to 7-20px and width from 1.6-3.2px to 1-2px; `spawnBloodCastoff()`
+  length pulled back from 9-35px to 8-24px and width from 1.3-4.5px to 1-2.6px. Shape variety
+  (random orientation, angle jitter) from 1.0.118 is untouched — only the raw dimensions were
+  too big.
+- Fixed footprints becoming noticeably rarer. `updateWalkingBlood()`'s wet-feet pickup check only
+  scanned the most recent 40 decals (within the last 4 seconds) for something nearby to step in —
+  with several more streaks/drips now spawned per hit and per death, those 40 most-recent decals
+  could easily all belong to a fight happening somewhere else on the map within a couple of
+  seconds, so an enemy standing right next to an actual puddle would still find nothing fresh
+  enough to pick up. Widened the scan to the most recent 220 decals and the freshness window to 7
+  seconds. Footprints themselves are also sized up slightly and drawn at higher opacity (0.55x ->
+  0.7x of the fade factor) so they read clearly against the larger splatters/streaks around them
+  instead of getting visually lost.
+
+## [1.0.118] - 2026-09-04
+- Fixed blood splatters looking repetitive/patterned instead of forensically unique per hit.
+  `spawnDecal()` (the main pooling splatter) previously jittered its blobs inside the exact same
+  fixed rectangular envelope every time — same aspect ratio, same orientation, independent uniform
+  jitter — just rescaled by size, so any two same-size splatters looked like the same shape moved
+  around. It now gives every decal its own randomized identity: a random orientation (loosely
+  following the actual impact angle when the caller has one, otherwise fully random), a random
+  aspect ratio (independent elongation and narrowness per decal, so some splatters end up nearly
+  round and others a long smear), and blobs placed with a center-weighted polar distribution
+  instead of rectangular jitter — a dense core with scattered outliers, the way a real bloodstain
+  actually forms, plus mostly small flecks with occasional bigger merged blobs rather than every
+  blob drawing from one narrow radius band. Also fixed the death-pool decal call incorrectly
+  passing `smallBias=true`, which forced literally every kill's pool into the same narrow size
+  band and skipped the big/massive pool rolls entirely — every death looked the same size, which
+  was a large part of the repetitive look. Cast-off streak (`spawnBloodCastoff`) angle/length/
+  width jitter ranges were also widened, since the previous narrow bands (±0.15 rad, 14-28px,
+  2-3.5px) made every streak read as the same shape too.
+
+## [1.0.117] - 2026-09-04
+- Fixed blood appearing to spawn out of nowhere several seconds after an enemy had already died.
+  `startDripSite()` (used for both a heavy mid-combat wound and the killing blow) scheduled a
+  delayed trickle of up to 8 drops landing over the following ~2-5 seconds at a fixed world
+  position — but that schedule was completely decoupled from the enemy itself (it only stored x,y,
+  not a reference to the unit), so it kept firing regardless of whether the enemy was still alive,
+  already dead, or long gone. A killing blow's own drip burst could keep adding new blood at that
+  spot for several seconds after the body was already gone, which is exactly the "blood coming from
+  nowhere" a few seconds post-death. `startDripSite()` now fires its entire burst immediately, at
+  the actual instant of the hit or the instant of death — same total amount of blood (still
+  proportional to how heavy the hit was), just with zero delay, so blood now only ever appears at a
+  real moment of impact or death, never afterward. The separate ongoing low-HP passive drip and the
+  bleed DOT tick are unaffected by this — both are already gated on the enemy still being alive
+  (`hp > 0`) each frame, so they've always stopped the instant an enemy actually dies.
+
+## [1.0.116] - 2026-09-04
+- More blood streaks, and more realistic-looking blood overall. Added a new decal type,
+  `spawnDripTrail()` — a gently curved running drip with a small pooled bead at the tip, rendered
+  with a quadratic curve rather than a straight line, distinct from the existing straight cast-off
+  streak (which reads as the initial spatter at the moment of impact, not what blood does a beat
+  after landing). Wired it into hits, deaths, the ongoing low-HP passive drip, and the bleed DOT
+  tick, so running drips show up throughout combat, not just at the killing blow. Also increased
+  streak frequency generally: hit-time cast-off chance raised (30-55% -> 50-75%), plus a chance at a
+  second off-angle streak per hit since real spatter rarely lands as one clean line; satellite drop
+  chance on hit raised from 50% to 65%; death now spawns a 2-3 streak fan around the strike
+  direction instead of a single 40%-chance streak, 2-3 drip trails off the death pool at varying
+  angles, and more satellite drops (3-6, up from 2-4).
+
+## [1.0.115] - 2026-09-04
+- Pants (skinShade) lightness range widened and shifted up — was a uniform 18-85 (mean ~51), which
+  landed in the visually dark/muddy zone often enough that it read as "pants are always dark," even
+  though the roll itself was already uniform random. Several classes' pants base hue is fairly
+  saturated (deep red, violet, etc.), which reads darker to the eye than the same lightness number
+  would on a lighter hue. Now rolls uniformly across 28-92 (mean ~60) — still a wide 64-point spread
+  so genuinely dark pants remain a real possibility, just no longer dominating the distribution.
+
+## [1.0.114] - 2026-09-04
+- Fixed fast units trying to walk past a slower unit directly ahead of them on the same single-file
+  path — there's no lane to pass in, so every frame the faster unit kept computing its own full
+  speed and shoving into the slower unit's back, which the collision passes then had to keep
+  fighting right back. That push-and-correct cycle every frame is what read as jittery bumping
+  whenever a fast type (Runner, Wraith, Swarm) caught up to a slow one (Tank, Zombie, Boulder).
+  `updateBarricadesAndPileup()` now computes a `followSpeedCap` for each enemy once something is
+  genuinely close ahead of it (near actual contact distance, not just anywhere on the same path),
+  set to that leading unit's own current effective speed — 0 if the leader is stopped/frozen. Enemy
+  movement now clamps to that cap when it's lower than the unit's own speed, so a fast unit
+  naturally slows to match the pace of whatever's directly in front of it instead of trying to
+  overtake. Units with nothing close ahead are completely unaffected and move at full speed.
+
+## [1.0.113] - 2026-09-04
+- Rebalanced damage growth so the primary stat (STR for Warriors, DEX for Archers, INT for Mages)
+  is the dominant lever for how hard a tower hits, instead of gold-tier level-ups alone. Every
+  class's raw tier table has a large built-in damage jump from tier 1 to its max tier (e.g.
+  Swordsman goes 18 -> 78, a 4.3x increase) that previously carried through in full and then got
+  the primary-stat multiplier applied on top of it — so most of a tower's total damage growth came
+  from spending gold on levels, and investing stat points barely moved the needle by comparison.
+  `Tower.prototype.applyTierStats()` now anchors to tier 1's own damage and only lets 45% of the
+  growth above that baseline carry through before the stat multiplier applies. Leveling up still
+  feels rewarding — more range, faster cooldown, unlocked mechanics, and a real but smaller damage
+  bump — but the primary stat is now what actually drives a tower's damage ceiling. Applies
+  universally from one place, covering every tower's ranged/primary damage and (for Axeman) its
+  separate melee-swing damage the same way.
+
+## [1.0.112] - 2026-09-04
+- Fixed multiple enemy types dumping onto the spawn tile at the exact same moment, a direct cause
+  of on-path bunching. Each wave definition can have several concurrent enemy-type groups (some
+  curated waves have 6-8), and every group's first unit starts at delay 0 — so a wave with, say,
+  Grunt/Swarm/Tank/Fire groups all beginning at once spawned all four on the same tick, stacked on
+  the same tile, before pathing had any chance to spread them out. The previous per-group spacing
+  only staggered spawns within one type's own group and did nothing to prevent this cross-group
+  overlap. The fully merged, sorted spawn queue now gets a pass enforcing a hard 350ms minimum gap
+  between every individual spawn regardless of which group it came from — any spawn that would land
+  too close to the one before it gets pushed later in time instead.
+
+## [1.0.111] - 2026-09-04
+- Fixed skin and pants tone not actually being independent of the class's preset color — Mage in
+  particular kept landing with light pants nearly every time. The previous roll applied a random
+  offset ON TOP of each class's own fixed base lightness (e.g. Mage's preset pants tone happens to
+  sit fairly light), so the result was still statistically anchored to that preset instead of being
+  genuinely free. `Tower.prototype.rollSkinTones()` now rolls skin and pants lightness as two fully
+  independent uniform-random values across a wide fixed range each, completely ignoring the class's
+  own preset lightness — every class can now land anywhere from notably dark to notably light on
+  either layer, with no bias toward its preset tone. `faceColor` remains the one deliberate
+  exception: it's always derived as 8-10% darker than that specific tower's own rolled skin, so the
+  face still reliably reads as a shade of the head/body rather than an unrelated random color.
+
+## [1.0.110] - 2026-09-04
+- Increased the gap between individual enemy spawns by 2 seconds, to give the pathing/collision
+  system noticeably more room to settle each new arrival before the next one shows up. Applied as
+  `group.spawnDelay + 2000` at the single point where every wave's spawn queue gets built, so it
+  covers every hand-authored wave (1-100+) and every procedurally generated wave uniformly, rather
+  than needing to edit each wave definition's individual spawnDelay value by hand.
+
+## [1.0.109] - 2026-09-04
+- Fixed the main remaining source of jittery enemy pathing and enemies bumping into each other.
+  `updateBarricadesAndPileup()` had a second, separate "anti-overlap" pass — independent from the
+  actual barricade-queue logic — that teleport-snapped any enemy whose raw path-distance
+  (`traveled`) to the one ahead of it fell under the queue spacing, with **no spatial (x,y) check
+  at all**. That condition is true for essentially every normally marching column of enemies on
+  every single frame (that's what a marching column is), so it was fighting ordinary forward
+  movement continuously — snap back, move forward, snap back again, every frame, for most of the
+  enemies on screen at once. It could also misfire across entirely separate lanes, since two
+  enemies can land on a similar `traveled` value while being physically far apart on a looping or
+  spiral path. Removed it entirely: `resolveSweptEnemyCollisions()` and `resolveEnemyCollisions()`
+  (run later the same frame, after movement) already enforce spacing correctly using each enemy's
+  real physical position, which is the right layer for this and doesn't have either problem. The
+  genuine barricade-queue snapping (enemies actually touching or chained behind a blocked
+  barricade) is untouched and still works as before.
+
+## [1.0.108] - 2026-09-04
+- Fixed barricades (and several other glyph overlays) occasionally rendering "ghosted"/partially
+  see-through, the same underlying bug as the enemy transparency fix in 1.0.107 but in a different
+  spot: `ctx.fillText('🚧', ...)` for barricades never set `fillStyle` immediately before drawing,
+  so it inherited whatever translucent color the previous draw call left behind — most often a
+  fading blood decal (`drawDecals()` runs before towers every frame and sets `fillStyle` to a
+  partial-alpha rgba as part of its own fade-out). Audited every other emoji/icon `fillText` call
+  in the renderer for the same missing-fillStyle gap and fixed each one: the enemy revive skull
+  icon, the tower crown/trophy/scroll overlays, the disabled-tower dizzy icon, and the scenery
+  (trees/rocks/chests) glyphs, which are the first thing drawn each frame and were therefore the
+  most exposed to inheriting stale state left over from the end of the previous frame.
+
+## [1.0.107] - 2026-09-04
+- Fixed enemies rendering fully transparent. The status-aura circles drawn just before the enemy's
+  emoji sprite (slow/burn/poison/pileBlocked rings) each set `ctx.fillStyle` to a translucent rgba
+  color and never reset it afterward — `ctx.globalAlpha` being forced back to 1.0 doesn't help here,
+  since a color string's own alpha channel is independent of `globalAlpha`. On rendering paths where
+  the emoji glyph honors `fillStyle` as a tint, the enemy sprite itself was inheriting whatever
+  translucent aura color had been drawn last (most commonly the pileBlocked ring, which fires
+  constantly for any queued unit) — that's what actually produced "all enemies transparent," not a
+  compositing/alpha leak. `fillStyle` is now forced to a fully opaque color immediately before the
+  glyph is drawn, regardless of what aura rings drew before it.
+- Fixed fast-moving enemies occasionally walking straight through each other instead of colliding.
+  The existing collision system only ever compares each enemy's position at the start and end of a
+  frame — two enemies moving toward each other fast enough can start a frame apart, fully cross
+  paths, and end the frame apart again on the other side without their positions ever actually
+  coinciding at either checkpoint, so the check never sees an overlap at all. Added
+  `resolveSweptEnemyCollisions()`, which runs before the regular collision pass and checks each
+  pair's closest approach along their actual movement segment for the frame (a swept circle-vs-
+  circle test), not just the two endpoints — catching and correcting the tunnel-through case the
+  endpoint-only check structurally cannot see.
+
+## [1.0.106] - 2026-09-04
+- Further fixed enemies bunching up and getting stuck on each other. Three remaining issues after
+  the previous pass: (1) the queue spacing behind a blocked enemy was a flat 26px regardless of
+  enemy size, but `resolveEnemyCollisions()`'s own non-overlap distance is `radius*2+2` — for
+  anything bigger than a Swarm (radius 12), that's already wider than 26px, so a freshly-snapped
+  queue slot was immediately flagged as "overlapping" again on the very next collision pass,
+  fighting itself every frame and reading as jittery/stuck. Queue spacing is now derived per-enemy
+  from its own radius with margin over the collision system's own minimum distance, so a queue
+  snap is never immediately re-flagged. (2) A single collision-resolution pass per frame isn't
+  enough to settle a genuine cluster of 3+ enemies converging at once — resolving pair A/B could
+  immediately re-overlap pair B/C, so dense crowds only fully settled over several visible frames.
+  `resolveEnemyCollisions()` now runs 3 relaxation passes per frame (rebuilding the spatial hash
+  each time) so crowds actually settle within the frame instead of visibly fighting it out over
+  time. (3) Separation between two moving, unblocked enemies was purely radial, which shoves units
+  rounding a corner sideways off the path centerline and into walls — a direct cause of corner
+  hang-ups. Pushes between moving enemies are now biased toward their own direction of travel
+  (damping the cross-path component to 45%) so overlap gets resolved mostly by units sliding past
+  each other along the path, not by getting shoved off it.
+- Added a genuine bleeding damage-over-time effect. Sufficiently heavy hits (>15% of the target's
+  max HP) now open an actual wound — a ticking DOT (strongest application wins, doesn't stack)
+  that, on top of the existing low-HP passive drip, actively sprays fresh blood, drops satellite
+  droplets, and occasionally lays down a new pooling decal on every tick while it's active. Shows
+  a periodic "🩸 BLEEDING" reminder label the same way Burning/Cursed already do.
+- Blood color now varies per individual enemy, not just per species. Previously every enemy of a
+  given type (and every hit on it) drew from one exact flat palette. Each enemy now rolls its own
+  blood tint once at spawn (a per-instance hue/lightness jitter on top of its species' base
+  palette) and keeps it consistent across every hit and its eventual death — so two Grunts
+  standing side by side can now visibly bleed slightly different, individually-distinct shades of
+  red, the same way their skin tones already vary.
+
+## [1.0.105] - 2026-09-04
+- Towers of the same class now vary in height and weight, not just color. New
+  `Tower.prototype.rollBuild()` rolls an independent ±14% height jitter and ±14% weight/breadth
+  jitter around that class's own baseline `JOB_BUILD` proportions, so two Mages (for example) can
+  genuinely read as a taller/leaner one and a shorter/stockier one instead of both sharing one
+  fixed silhouette. Rolled once at `create()` and re-rolled at `evolveInto()` (new class, new
+  physique); intentionally NOT re-rolled on `upgrade()` — leveling up is the same individual
+  getting stronger, not growing a different body. All internal spawn-point/label-height math that
+  previously read the flat per-class `JOB_BUILD` scale (projectile muzzle offsets, the crown/
+  trophy/stat-point icon height, camera-follow centering) now reads each tower's own rolled
+  `buildScaleX`/`buildScaleY` instead, so those stay visually anchored to the actual (now varied)
+  sprite instead of an average class silhouette.
+- Pants/lower-body tone now varies independently of skin tone instead of tracking it at a fixed
+  contrast. Previously `skinShade` (the legs) was darkened by the exact same offset as `skinMain`
+  (the body/head), so within a class every tower's pants were always the same relative shade as
+  its skin. `Tower.prototype.rollSkinTones()` now rolls a separate ±28% offset for `skinShade`,
+  so it's now common to see, e.g., a darker-skinned Mage with lighter pants and a lighter-skinned
+  Mage with darker pants — real per-tower variety instead of one tone driving both layers.
+
 ## [1.0.104] - 2026-09-04
 - Fixed enemies bunching up, ghosting/stacking on top of each other, and hanging up or backtracking
   on corners. This was four separate interacting bugs: (1) queue-slot snapping in

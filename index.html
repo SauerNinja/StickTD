@@ -695,7 +695,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.104'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.122'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1575,7 +1575,7 @@ function updateBarricadesAndPileup(){
       // contact-transfer patterns left when a bleeding body is pressed and dragged against a
       // surface rather than freely spattering onto it
       if(goreMode && e.hp < e.maxHp){
-        const bio = getBloodProfile(e.type);
+        const bio = e.bloodProfile || getBloodProfile(e.type);
         if(!bio.isDust){
           const wipeAngle = Math.atan2(e.y - barricade.y, e.x - barricade.x) + Math.PI/2 + (Math.random()-0.5)*0.5;
           spawnBloodCastoff(barricade.x + (Math.random()-0.5)*10, barricade.y + (Math.random()-0.5)*10, wipeAngle, hexToRgba(bio.dark, 0.6), 4);
@@ -1589,7 +1589,13 @@ function updateBarricadesAndPileup(){
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
-  const QUEUE_SPACING = 26; // enemies queued behind a blocked one never render on top of each other
+  // Enemies vary a lot in radius (SWARM 12 up to BOSS 30) — a flat spacing constant was either too
+  // tight for big units (immediately re-triggering resolveEnemyCollisions' overlap check every
+  // single frame right after being snapped, which read as jittery/"stuck" queued units fighting
+  // their own queue slot) or too loose for small ones. Deriving spacing from the actual enemy's own
+  // radius, with enough margin over resolveEnemyCollisions' minDist (radius sum + 2) that a fresh
+  // queue snap is never immediately flagged as overlapping, removes that fight entirely.
+  const queueGap = e => Math.max(e.radius * 2 + 10, 26);
   const QUEUE_CATCHMENT = 70; // physical radius around an already-blocked enemy that pulls others into the same queue — handles multiple lanes converging on one chokepoint, which the old strict-adjacency check missed
   // path-position gate for QUEUE_CATCHMENT: 64px path tiles mean parallel lanes on a spiral/hairpin
   // turn can sit well within the 70px catchment radius while being on a totally different segment
@@ -1616,26 +1622,43 @@ function updateBarricadesAndPileup(){
     }
     if(bestAhead){
       behind.pileBlocked = true;
+      const spacing = queueGap(behind);
       const aheadSlot = bestAhead.queueSlotDist !== undefined ? bestAhead.queueSlotDist : bestAhead.traveled;
-      let slotDist = Math.max(0, Math.round(aheadSlot) - QUEUE_SPACING);
+      let slotDist = Math.max(0, Math.round(aheadSlot) - spacing);
       // two enemies can independently pick the same nearest-neighbor anchor (e.g. both closer to
       // the very front of the line than to each other) and land on an identical slot — walk
       // further back until a genuinely free one is found, guaranteeing no two enemies ever share
       // a spot regardless of which anchor each one happened to attach to
-      while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= QUEUE_SPACING;
+      while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= spacing;
       claimedSlots.add(slotDist);
       snapEnemyToTraveled(behind, slotDist);
     }
   }
-  // any enemy still unblocked just gets the lightweight anti-overlap check against whoever is
-  // immediately ahead of it in the sorted order, same as before
+  // Enemies not caught up in an actual barricade queue are left alone here — resolveEnemyCollisions()
+  // and resolveSweptEnemyCollisions() (run later this same frame, after movement) already enforce
+  // spacing between them using real physical (x,y) distance. A previous version of this function also
+  // teleport-snapped any enemy whose raw path-distance ("traveled") to the one ahead of it fell under
+  // the queue spacing, with no spatial check at all — which is true for essentially every normally
+  // marching column of enemies on every single frame (that's what a column IS), so it was fighting
+  // ordinary forward movement continuously and was the main source of jittery pathing. It could also
+  // misfire entirely across separate lanes, since two enemies can have similar `traveled` while being
+  // physically far apart on a looping/spiral path. Removed — the physics-based collision passes below
+  // are the correct place for this and don't have either problem.
+
+  // Speed-following: a faster unit directly behind a slower one on the same single-file path
+  // shouldn't keep trying to walk faster than the unit ahead of it — there's no lane to pass in, so
+  // every frame it would just ram into the slower unit's back at full speed, and
+  // resolveEnemyCollisions() would have to keep fighting that push right back, which is exactly what
+  // read as jittery bumping. Only kicks in once something is genuinely close ahead (near actual
+  // contact distance) — far-apart units on the same path are unaffected and move at full speed.
+  for(const e of active) e.followSpeedCap = undefined;
+  const FOLLOW_PROXIMITY_BUFFER = 14; // how far ahead of "just touching" this starts capping speed
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
-    if(behind.pileBlocked) continue;
-    const gap = ahead.traveled - behind.traveled;
-    if(gap >= 0 && gap < QUEUE_SPACING){
-      const slotDist = Math.max(0, ahead.traveled - QUEUE_SPACING);
-      snapEnemyToTraveled(behind, slotDist);
+    const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
+    if(d <= ahead.radius + behind.radius + FOLLOW_PROXIMITY_BUFFER){
+      const aheadFrozen = ahead.pileBlocked || ahead.stunnedUntil > gameTime;
+      behind.followSpeedCap = aheadFrozen ? 0 : ahead.speed * ahead.slowMultiplier * (ahead.packSpeedBonus||1);
     }
   }
 }
@@ -1847,6 +1870,7 @@ function drawScenery(ctx){
     }
     ctx.font = Math.round(size) + 'px serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff'; // scenery is the first thing drawn each frame — must never inherit leftover fillStyle from the previous frame's last draw call
     const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
     ctx.fillText(emoji, item.x, item.y + 2);
 
@@ -2356,8 +2380,9 @@ function cancelCameraFollow(){
 function towerVisualCenterY(t){
   // local sprite span is roughly head-top (-31) to feet (+20) before scaling, so the visual
   // midpoint sits at local y ≈ -5.5 relative to the foot-level anchor drawStickman actually
-  // translates to. Scaled by the same STICKMAN_SCALE + per-class body scaleY the renderer uses.
-  const buildScaleY = (JOB_BUILD[t.type] && JOB_BUILD[t.type].scaleY) || 1;
+  // translates to. Scaled by the same STICKMAN_SCALE + this tower's own rolled build.scaleY
+  // (not the flat per-class JOB_BUILD value — every tower has its own height variance now).
+  const buildScaleY = t.buildScaleY || (JOB_BUILD[t.type] && JOB_BUILD[t.type].scaleY) || 1;
   return t.y + (-5.5) * STICKMAN_SCALE * buildScaleY;
 }
 function updateCameraFollow(){
@@ -2500,6 +2525,12 @@ class Enemy{
     this.poisonTickTimer = 0;
     this.poisonDamagePerTick = 0;
     this.lastPoisonSource = null;
+    this.bleedUntil = 0;         // open-wound bleeding DOT — triggered by sufficiently heavy hits, independent of the passive low-HP drip
+    this.bleedStartedAt = 0;     // reference point for the cessation taper — spurt intensity winds down as the wound approaches bleedUntil instead of cutting off abruptly at full strength
+    this.bleedTickTimer = 0;
+    this.bleedDamagePerTick = 0;
+    this.lastBleedSource = null;
+    this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
     this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
@@ -2547,7 +2578,19 @@ class Enemy{
     this.poisonDamagePerTick = Math.max(this.poisonDamagePerTick||0, damagePerTick); // strongest poison wins, doesn't stack
     if(sourceTower) this.lastPoisonSource = sourceTower;
   }
+  applyBleed(damagePerTick, ms, sourceTower){
+    const isNewOrStronger = damagePerTick >= (this.bleedDamagePerTick||0);
+    this.bleedUntil = Math.max(this.bleedUntil, gameTime + ms);
+    if(isNewOrStronger) this.bleedStartedAt = gameTime; // reference point for the cessation taper in the tick handler — only reset when this application actually takes over, so a weaker re-application riding on an existing wound doesn't reset the clock
+    this.bleedDamagePerTick = Math.max(this.bleedDamagePerTick||0, damagePerTick); // strongest bleed wins, doesn't stack
+    if(sourceTower) this.lastBleedSource = sourceTower;
+  }
   update(dt){
+    // captured before anything this tick moves this enemy — used by resolveSweptEnemyCollisions()
+    // to catch fast movers that fully cross paths within one frame (their positions never actually
+    // coincide at any frame boundary, so the ordinary end-of-frame collision check never sees an
+    // overlap and the two visibly walk straight through one another)
+    this.prevX = this.x; this.prevY = this.y;
     // periodic reminder labels for active status effects — a slow/curse applied minutes ago is
     // easy to lose track of, so surface what's actually affecting this unit every 120 seconds
     this.statusLabelTimer -= dt;
@@ -2556,18 +2599,20 @@ class Enemy{
       let offset = 0;
       if(this.burnUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🔥 BURNING', '#ff8844'); offset += 14; }
       if(this.poisonUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '☠️ CURSED', '#7cb518'); offset += 14; }
+      if(this.bleedUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🩸 BLEEDING', '#e63946'); offset += 14; }
       if(this.slowTimer > 0){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🧊 SLOWED', '#7dd3fc'); offset += 14; }
       if(this.stunnedUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '⭐ STUNNED', '#ffe066'); offset += 14; }
     }
-    // Ongoing arterial dripping for seriously wounded units — the existing dripSites system only
-    // fires a short burst right after a specific hit lands; this is a separate, continuous background
-    // drip while the unit stays below 40% HP, so a badly hurt enemy keeps visibly bleeding as it
-    // walks rather than only bleeding at the instant of impact.
-    if(goreMode && this.hp > 0 && this.hp < this.maxHp * 0.4 && !getBloodProfile(this.type).isDust){
+    // Ongoing arterial dripping for seriously wounded units — startDripSite() (used for the
+    // per-hit and per-death burst) fires instantly and is done; this is a separate, continuous
+    // background drip while the unit stays below 40% HP and is still alive, so a badly hurt enemy
+    // keeps visibly bleeding as it walks rather than only bleeding at the instant of impact. Gated
+    // on this.hp > 0, so it stops the instant the enemy actually dies — never fires post-mortem.
+    if(goreMode && this.hp > 0 && this.hp < this.maxHp * 0.4 && !(this.bloodProfile || getBloodProfile(this.type)).isDust){
       this.arterialDripTimer = (this.arterialDripTimer||0) - dt;
       if(this.arterialDripTimer <= 0){
         this.arterialDripTimer = 900 + Math.random()*700;
-        const bio = getBloodProfile(this.type);
+        const bio = this.bloodProfile || getBloodProfile(this.type);
         const speedNow = Math.hypot(this.vx, this.vy);
         if(speedNow > 15){
           // fast-moving wounded units leave an elongated teardrop pointing back along their travel
@@ -2577,6 +2622,7 @@ class Enemy{
           // stationary/slow wounded units (queued at a barricade) pool directly beneath them —
           // concentric small satellite rings around a fixed point instead of one long streak
           spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.6), 1);
+          if(Math.random() < 0.4) spawnDripTrail(this.x + (Math.random()-0.5)*6, this.y, hexToRgba(bio.dark, 0.55)); // standing still long enough for it to actually run down, not just splash beneath
         }
       }
     }
@@ -2603,6 +2649,35 @@ class Enemy{
       }
     } else {
       this.poisonDamagePerTick = 0; // expired — a fresh application starts clean rather than keeping a stale strength
+    }
+    if(this.bleedUntil > gameTime){
+      this.bleedTickTimer -= dt;
+      if(this.bleedTickTimer <= 0){
+        this.bleedTickTimer = 700;
+        const bleedDmg = Math.max(1, Math.round(this.bleedDamagePerTick));
+        this.hp -= bleedDmg;
+        spawnFloatingText(this.x, this.y - this.radius - 6, bleedDmg+'🩸', '#e63946');
+        // the bleed tick is what makes an open wound visually read as still-active — richer and
+        // more varied than the passive low-HP drip: a fresh spray burst, an occasional new pooling
+        // decal, and a satellite drop, all using this individual enemy's own cached blood tint.
+        // Real bleeding doesn't spurt at constant intensity and then stop dead — it tapers off as
+        // the wound naturally closes. `cessation` scales from 1 (just opened) down toward a floor
+        // as the wound approaches its own end, so the last couple of ticks are visibly weaker
+        // instead of matching the very first tick then cutting off abruptly.
+        const totalDuration = Math.max(1, this.bleedUntil - this.bleedStartedAt);
+        const remainingFrac = clampNum((this.bleedUntil - gameTime) / totalDuration, 0, 1);
+        const cessation = 0.35 + remainingFrac*0.65; // never fully silent until it actually ends, but visibly weaker near the end
+        if(goreMode && !this.bloodProfile.isDust){
+          const bio = this.bloodProfile;
+          spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*cessation)), 160, 0.9, true);
+          if(Math.random() < cessation) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), 1);
+          if(Math.random() < 0.3*cessation) spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.55), true);
+          if(Math.random() < 0.3*cessation) spawnDripTrail(this.x + (Math.random()-0.5)*6, this.y, hexToRgba(bio.dark, 0.55));
+        }
+        if(this.hp <= 0){ this.die(this.lastBleedSource, false); return; }
+      }
+    } else {
+      this.bleedDamagePerTick = 0; // expired — a fresh wound starts clean rather than keeping a stale strength
     }
     if(this.healsAllies) this.updateHealAura(dt);
     if(this.hasShield) this.updateShieldRegen(dt);
@@ -2649,7 +2724,13 @@ class Enemy{
         this.packSpeedBonus = 1 + Math.min(0.5, nearbyPack*0.15); // up to +50% speed with packmates nearby
       }
     }
-    const effectiveSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
+    let effectiveSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
+    // Don't try to walk faster than whatever's directly ahead of us on this single-file path — set
+    // by updateBarricadesAndPileup() earlier this frame, only when something is genuinely close
+    // ahead. Without this, a fast unit right behind a slow one kept computing its own full speed
+    // every frame and shoving into the slow unit's back, which the collision passes then had to
+    // keep fighting right back — that push-and-correct cycle is what read as jittery bumping.
+    if(this.followSpeedCap !== undefined && this.followSpeedCap < effectiveSpeed) effectiveSpeed = this.followSpeedCap;
     const target = waypointsPx[this.pathIndex+1];
     if(!target){ this.reachEnd(); return; }
     const dx = target.x - this.x, dy = target.y - this.y;
@@ -2804,7 +2885,7 @@ class Enemy{
       spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
     if(goreMode){
-      const bio = getBloodProfile(this.type);
+      const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
       const impactAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
@@ -2824,20 +2905,36 @@ class Enemy{
         const isMageHit = sourceTower && sourceTower.type === 'MAGE';
         spawnParticles(this.x, this.y, bio.bright, isMageHit ? 18 : 14, 260, viscFriction, true);
         spawnBloodStream(this.x, this.y, impactAngle, isMageHit ? 7 : 4, undefined, bio.bright, bio.dark);
-        if(Math.random() < (isMageHit ? 0.55 : 0.3)) spawnBloodCastoff(this.x, this.y, impactAngle, hexToRgba(bio.dark, 0.65));
-        if(!bio.isDust && Math.random() < 0.5) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 1 + Math.floor(Math.random()*2), impactAngle);
+        if(Math.random() < (isMageHit ? 0.5 : 0.3)) spawnBloodCastoff(this.x, this.y, impactAngle, hexToRgba(bio.dark, 0.65));
+        if(!bio.isDust && Math.random() < 0.4) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 1 + Math.floor(Math.random()*2), impactAngle);
       }
       // a real lasting mark on the ground for a non-lethal hit too, not just the killing blow —
       // the particles above all fade within ~1s, so without this, blood only ever visibly stuck
       // around after a kill. Smaller/less frequent than the death pool so it doesn't outshine it.
-      if(!bio.isDust && this.hp > 0 && Math.random() < 0.4){
-        spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.5), true);
+      // Kept deliberately infrequent — every hit adding a mark is what turns a fight into one solid
+      // red mass instead of readable individual splatters.
+      if(!bio.isDust && this.hp > 0 && Math.random() < 0.3){
+        spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.5), true, impactAngle, arch);
       }
       // ongoing drip tied directly to THIS hit's severity, not a background "wounded" timer —
       // a graze barely drips, a heavy blow relative to the target's max HP keeps bleeding longer
       const severity = dmg / this.maxHp;
       if(!bio.isDust && this.hp > 0 && severity > 0.08){
         startDripSite(this.x, this.y, hexToRgba(bio.dark, 0.65), severity);
+      }
+      // a meaningfully heavy (but non-fatal) hit also leaves a running drip trail down from the
+      // wound, not just the radial droplets above — this is what makes a solid hit look like it
+      // actually broke skin rather than just splashing outward
+      if(!bio.isDust && this.hp > 0 && severity > 0.15 && Math.random() < 0.3){
+        spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.62));
+      }
+      // genuinely heavy hits open a real bleeding wound — a ticking damage-over-time effect, not
+      // just a one-off visual drip. Strongest application wins (doesn't stack into a burst), and
+      // while it's active the enemy keeps actively spraying/pooling fresh blood every tick (see
+      // the bleedUntil handling in update()), on top of whatever the low-HP passive drip is doing.
+      if(!bio.isDust && this.hp > 0 && severity > 0.15){
+        const bleedDmg = Math.max(1, Math.round(this.maxHp * 0.018));
+        this.applyBleed(bleedDmg, 5000 + severity*4000, sourceTower);
       }
     } else {
       spawnParticles(this.x, this.y, '#ffaa33', 3, 0);
@@ -2866,7 +2963,7 @@ class Enemy{
     // a baseline Grunt, capped so Bosses don't spawn an absurd number of particles
     const goreScale = Math.min(1.8, Math.max(0.7, this.maxHp / 60));
     if(goreMode){
-      const bio = getBloodProfile(this.type);
+      const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
       if(bio.isDust){
@@ -2900,16 +2997,27 @@ class Enemy{
           }
           spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale))); // minimal debris, not chunks flying everywhere
         }
-        if(Math.random() < 0.65){
-          spawnDecal(this.x, this.y, hexToRgba(bio.dark, low ? 0.6 : 0.75), true);
+        if(Math.random() < 0.55){
+          // this was passing smallBias=true, which forces every death pool into the same narrow
+          // "ordinary splatter" size band and skips the bigger-pool rolls entirely — meaning
+          // literally every death looked the same size. The death pool is the one place that
+          // should occasionally roll bigger — but spawnDecal's own size tiers are now capped much
+          // lower than they briefly were, so "bigger" stays readable instead of becoming one solid
+          // mass when several deaths land near each other.
+          spawnDecal(this.x, this.y, hexToRgba(bio.dark, low ? 0.6 : 0.75), false, impactAngle, arch);
         }
         if(!low){
           spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.75), 2 + Math.floor(Math.random()*3));
           startDripSite(this.x, this.y, hexToRgba(bio.dark, 0.7));
+          // a single running drip trail off the death pool — a body leaves one real trickle as it
+          // settles, not several fanned-out ones piling onto the same spot
+          if(Math.random() < 0.7){
+            spawnDripTrail(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*5, hexToRgba(bio.dark, 0.6));
+          }
         }
-        if(!low && sourceTower && arch !== 'EXPLOSIVE' && Math.random() < 0.4){
+        if(!low && sourceTower && arch !== 'EXPLOSIVE' && Math.random() < 0.5){
           const castoffAngle = Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x);
-          spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.7));
+          spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
         }
       }
       if(this.type === 'BOSS'){
@@ -2970,6 +3078,7 @@ class Enemy{
     }
     if(this.revives && this.hasRevived){
       ctx.font = '10px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle = '#ffffff'; // same missing-fillStyle bug as the main emoji fix below — this icon is drawn before that fix runs
       ctx.fillText('💀', this.x, this.y - this.radius - 6);
     }
     if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, this.radius*0.7);
@@ -2994,6 +3103,15 @@ class Enemy{
       const squash = 1/stretch;
       ctx.rotate(angle); ctx.scale(stretch, squash); ctx.rotate(-angle);
     }
+    // The status-aura circles just above (slow/burn/poison/pileBlocked) all set ctx.fillStyle to a
+    // translucent rgba color and never reset it — globalAlpha=1.0 at the top of this method doesn't
+    // help here since a color's own alpha channel is independent of globalAlpha. On any rendering
+    // path where the emoji glyph honors fillStyle as a tint (color-emoji support varies by platform/
+    // font), the enemy sprite itself was inheriting whatever translucent aura color was drawn last —
+    // this is what actually produced "all enemies transparent," not a global compositing leak.
+    // Forcing a fully opaque fillStyle immediately before the glyph draw fixes it regardless of how
+    // the platform's font handles color-emoji.
+    ctx.fillStyle = '#000000';
     ctx.font = Math.round(this.radius*2) + 'px serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(this.emoji, 0, 0);
@@ -3102,36 +3220,78 @@ class Tower{
     this.swingStart2 = 0;
     this.renderSwordAngle2 = IDLE_WEAPON_ANGLE;
     this.rollSkinTones();
+    this.rollBuild();
     this.active = true;
     this.applyTierStats();
   }
   get def(){ return CONFIG.TOWERS[this.type]; }
   // Universal per-tower coloring, called on create(), upgrade(), and evolveInto() — every class
   // gets a genuinely distinct personal shade (not just an ~8% wobble) while staying within its
-  // archetype hue, and re-rolling on upgrade/evolution visibly shows growth/change. skinMain,
-  // skinShade, and faceColor are all derived from one shared toneOffset so the body, shading, and
-  // face read as one coherent figure instead of three independently-randomized colors.
+  // archetype hue, and re-rolling on upgrade/evolution visibly shows growth/change. Skin and pants
+  // lightness are each rolled as a fully independent uniform random value across a wide fixed
+  // range — NOT an offset applied on top of the class's own preset base lightness. Offsetting from
+  // a fixed base (the previous approach) meant a class whose preset pants tone happened to sit
+  // light (e.g. Mage's shade color) would statistically keep landing light even after the roll,
+  // since the offset was centered on that preset — which is exactly what "Mage always has light
+  // pants" was. Rolling an absolute lightness instead makes every class's skin and pants equally
+  // likely to land anywhere across the full range, independent of each other and of the class.
+  // faceColor is the one deliberate exception — it's always derived as a bit darker than THIS
+  // tower's own rolled skin, never fully independent, so the face reliably reads as a subtle shade
+  // of the head/body rather than an unrelated random tone.
   rollSkinTones(){
     const jobColor = JOB_COLORS[this.type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
-    const mainM = jobColor.main.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
-    const shadeM = jobColor.shade.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
-    const mainL = mainM ? +mainM[3] : 70;
-    const shadeL = shadeM ? +shadeM[3] : 50;
-    const toneOffset = (Math.random()*2 - 1) * 22; // -22% to +22% — wide enough that towers of the same class are clearly distinguishable at a glance
-    const newMainL = clampNum(mainL + toneOffset, 35, 88);
-    const newShadeL = clampNum(shadeL + toneOffset, 20, 75); // keeps roughly the same ~18-20% contrast against skinMain across the whole offset range
-    this.skinMain = colorAtLightness(jobColor.main, newMainL);
-    this.skinShade = colorAtLightness(jobColor.shade, newShadeL);
-    this.faceColor = colorAtLightness(jobColor.main, clampNum(newMainL - (8 + Math.random()*2), 25, 80)); // 8-10% darker than this tower's own skinMain, not the class base — stays a subtle shade rather than a dark mask
+    const skinL = 35 + Math.random()*53;  // fully independent uniform roll, 35-88 — not anchored to this class's own preset skin lightness
+    // Pants lightness range widened and shifted up (was 18-85, mean ~51 — landed in the visually
+    // dark/muddy zone often enough that it read as "pants are always dark" even though the roll
+    // itself was uniform). Several classes' `shade` base hue is already fairly saturated (deep red,
+    // violet, etc.), which reads darker to the eye than the same lightness number would for a
+    // lighter hue — raising the floor keeps genuinely dark pants as a real possibility (still a
+    // wide 64-point spread) without them dominating the distribution the way the old lower floor did.
+    const pantsL = 28 + Math.random()*64; // fully independent uniform roll, 28-92 — not anchored to this class's own preset pants lightness, and not derived from skinL either
+    this.skinMain = colorAtLightness(jobColor.main, skinL);
+    this.skinShade = colorAtLightness(jobColor.shade, pantsL);
+    this.faceColor = colorAtLightness(jobColor.main, clampNum(skinL - (8 + Math.random()*2), 25, 80)); // always 8-10% darker than THIS tower's own skinMain — the one non-independent layer, by design
+  }
+  // Per-tower height/weight variance around the class's own baseline JOB_BUILD proportions —
+  // rolled independently on X (weight/breadth) and Y (height), so two towers of the same class
+  // genuinely differ in silhouette instead of all sharing one fixed stature. Rolled once at
+  // create() and re-rolled at evolveInto() (new class, new physique); NOT re-rolled on upgrade()
+  // — leveling up is the same individual getting stronger, not growing a new body.
+  rollBuild(){
+    const base = JOB_BUILD[this.type] || { scaleX:1, scaleY:1 };
+    const weightJitter = (Math.random()*2 - 1) * 0.14; // ±14% breadth/weight
+    const heightJitter = (Math.random()*2 - 1) * 0.14; // ±14% height, independent of weight so proportions genuinely vary, not just uniform scaling
+    this.buildScaleX = clampNum(base.scaleX * (1 + weightJitter), 0.65, 1.55);
+    this.buildScaleY = clampNum(base.scaleY * (1 + heightJitter), 0.70, 1.40);
   }
   applyTierStats(){
     this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Gunalinder) must not inherit a stale value from whatever this tower was before evolving
     Object.assign(this, this.def.tiers[this.level-1]);
-    // snapshot the tier's numbers as the "base" that STR/DEX/INT bonuses layer on top of
-    this.baseDamage = this.damage;
+    // snapshot the tier's numbers as the "base" that STR/DEX/INT bonuses layer on top of.
+    // Damage specifically is dampened here: the raw tier table's damage growth (tier 1 -> max tier)
+    // used to carry through in full, and compounding with recomputeStats()'s own primary-stat
+    // damage multiplier meant most of a tower's total damage growth came from spending gold on
+    // gold-tier levels alone — the primary stat (STR for Warriors, DEX for Archers, INT for Mages)
+    // barely moved the needle by comparison. Anchoring to tier 1's own damage and only letting a
+    // fraction of the growth ABOVE that baseline through keeps leveling up feeling rewarding (more
+    // range, faster cooldown, unlocked mechanics, and still some damage) while making the primary
+    // stat the dominant lever for how hard a tower actually hits, as intended.
+    const TIER_DAMAGE_GROWTH = 0.45; // only 45% of the raw tier-to-tier damage jump carries through
+    const tier1 = this.def.tiers[0];
+    if(this.damage !== undefined && tier1.damage !== undefined){
+      this.baseDamage = Math.round(tier1.damage + (this.damage - tier1.damage) * TIER_DAMAGE_GROWTH);
+      this.damage = this.baseDamage; // keep the raw field consistent before recomputeStats() reapplies the stat multiplier on top
+    } else {
+      this.baseDamage = this.damage;
+    }
     this.baseCooldown = this.cooldown;
     this.baseRange = this.range;
-    this.baseMeleeDamage = this.meleeDamage || 0;
+    if(this.meleeDamage !== undefined && tier1.meleeDamage !== undefined){
+      this.baseMeleeDamage = Math.round(tier1.meleeDamage + (this.meleeDamage - tier1.meleeDamage) * TIER_DAMAGE_GROWTH);
+      this.meleeDamage = this.baseMeleeDamage;
+    } else {
+      this.baseMeleeDamage = this.meleeDamage || 0;
+    }
     this.baseMeleeCooldown = this.meleeCooldown || 0;
     this.baseMeleeRange = this.meleeRange || 0;
     this.baseDrawTime = this.drawTime || 0;
@@ -3270,6 +3430,7 @@ class Tower{
     this.isHero = false; // no items equipped anymore, so Hero status (which needs all slots filled) can't hold
     this.baseMaxHp = newType === 'BARRICADE' ? 10 : (newType === 'HAMMERMAN' ? 180 : 100);
     this.rollSkinTones(); // fresh shade fitting the new class's own hue, not a carried-over old-class tone
+    this.rollBuild(); // fresh height/weight variance around the new class's own baseline proportions
     this.applyTierStats(); // re-initializes damage/range/cooldown/etc from the new class's tier-1 data, then calls recomputeStats()
     this.hp = this.maxHp; // full heal on transformation
     spawnFloatingText(this.x, this.y - 40, '✨ Evolved!', '#ffd700');
@@ -3503,7 +3664,7 @@ class Tower{
     // class's own body scaleY, and the Legendary 1.1x bump) — previously this used a flat -13
     // regardless of class, so taller-built classes like Archer (scaleY 1.08) had their visible
     // bow sit higher than where the arrow actually spawned, i.e. arrows spawned visibly low.
-    const bodyScaleY = (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
+    const bodyScaleY = this.buildScaleY || (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
     const legendaryScale = this.isLegendary ? 1.1 : 1;
     const pivotBaseY = this.type === 'BLOWDART' ? -21 : -13; // Blowdart's arm now anchors at mouth height, not shoulder height — keep the spawn point in sync
     const shoulderYWorld = pivotBaseY * STICKMAN_SCALE * bodyScaleY * legendaryScale;
@@ -3567,7 +3728,7 @@ class Tower{
     const armLen = 13;
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const muzzleOffset = (armLen + weaponLenFromScale(15, 24, weaponScale)) * STICKMAN_SCALE;
-    const bodyScaleY = (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
+    const bodyScaleY = this.buildScaleY || (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
     const legendaryScale = this.isLegendary ? 1.1 : 1;
     const shoulderYWorld = -13 * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
@@ -3698,6 +3859,14 @@ class Tower{
       }
       ctx.font = Math.round(28*STICKMAN_SCALE) + 'px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      // Same class of bug as the enemy emoji fix above: nothing here was setting fillStyle
+      // immediately before drawing the barricade glyph, so it inherited whatever translucent
+      // color the last thing drawn before it left behind — most often a fading blood decal
+      // (drawDecals() runs before towers every frame and sets fillStyle to a partial-alpha rgba
+      // for its fade-out), which is exactly what produced barricades occasionally rendering
+      // "ghosted"/partially see-through. Forcing an opaque fillStyle right here fixes it for good,
+      // regardless of what was drawn immediately beforehand.
+      ctx.fillStyle = '#ffffff';
       ctx.fillText('🚧', this.x, this.y);
       if(this.hp < this.maxHp && this.hp > 0){
         const frac = this.hp / this.maxHp;
@@ -3759,7 +3928,7 @@ class Tower{
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -3802,6 +3971,7 @@ class Tower{
       ctx.restore();
       ctx.font = '14px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
       ctx.fillText('💫', this.x, this.y - 30);
       if(this.disabledWavesLeft > 0){
         ctx.font = 'bold 10px Verdana';
@@ -3813,13 +3983,15 @@ class Tower{
     if(this.isHero){
       ctx.font = '13px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
+      ctx.fillStyle = '#ffd700'; // same missing-fillStyle class of bug as the enemy/barricade fixes — icon glyphs must never inherit a stale translucent color from whatever drew last
+      const buildY = this.buildScaleY || (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
       ctx.fillText('👑', this.x, this.y - 41*STICKMAN_SCALE*buildY);
     }
     if(this.isLegendary){
       ctx.font = '15px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
+      ctx.fillStyle = '#ffd700';
+      const buildY = this.buildScaleY || (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
       const trophyY = this.isHero ? this.y - 55*STICKMAN_SCALE*buildY : this.y - 41*STICKMAN_SCALE*buildY;
       ctx.fillText('🏆', this.x, trophyY);
       if(this.legendaryName){
@@ -3832,13 +4004,14 @@ class Tower{
     if(this.statPoints > 0 && this.type !== 'BARRICADE'){
       ctx.font = '14px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const buildY = (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
+      const buildY = this.buildScaleY || (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
       let scrollY = this.y - 41*STICKMAN_SCALE*buildY;
       if(this.isLegendary) scrollY -= 14*STICKMAN_SCALE;
       else if(this.isHero) scrollY -= 8*STICKMAN_SCALE;
       const pulse = 0.55 + 0.45*Math.sin(gameTime/220); // gentle glow pulse, not a hard flash
       ctx.save();
       ctx.shadowColor = '#4caf50'; ctx.shadowBlur = 8 + pulse*6;
+      ctx.fillStyle = '#ffffff';
       ctx.fillText('📜', this.x, scrollY);
       ctx.restore();
     }
@@ -3902,7 +4075,7 @@ class Projectile{
           const stickDist = hitEnemy.radius*0.85;
           hitEnemy.embeddedArrows.push({ dx: Math.cos(stickAngle)*stickDist, dy: Math.sin(stickAngle)*stickDist, angle: impactAngle });
         }
-        startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba(getBloodProfile(hitEnemy.type).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
+        startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
       }
       if(this.sourceTower && this.sourceTower.type === 'MAGE' && hitEnemy.active && Math.random() < 0.15){
         const roll = Math.random();
@@ -4004,24 +4177,18 @@ const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,
 let particleIndex = 0;
 const MAX_DECALS = 2000;
 const decals = [];
-const dripSites = []; // post-death "still bleeding" spots — a few real drops keep landing over the next ~2s instead of everything hitting the ground in one instant burst
-const MAX_DRIP_SITES = 24;
 function startDripSite(x, y, color, severity){
+  // Previously scheduled a delayed trickle of drops landing over the following ~2-5 seconds at
+  // this fixed world position — but since that queue was decoupled from the enemy (it only stored
+  // x,y), it kept firing whether the enemy was still alive, already dead, or long gone. That's
+  // exactly what made blood look like it was appearing out of nowhere several seconds after a kill.
+  // Now fires the entire burst immediately, at the actual moment of the hit or the moment of death
+  // — same total visual richness (still proportional to how heavy the hit was), just with zero
+  // delay, so blood only ever appears at a real instant of impact or death, never afterward.
   severity = severity === undefined ? 0.4 : Math.max(0, Math.min(1, severity)); // callers that don't pass severity (e.g. the Archer puncture-wound gush) keep their previous moderate default
-  if(dripSites.length >= MAX_DRIP_SITES) dripSites.shift(); // oldest drip gets cut short — stays performance-safe
-  const dropsLeft = 1 + Math.round(severity * 7); // bigger hit relative to the target's max HP = more drops, proportionally — from a single drop for a scratch up to 8 for a near-fatal blow
-  dripSites.push({ x, y, color, dropsLeft, nextDrop: 250 + Math.random()*300 });
-}
-function updateDripSites(dt){
-  for(let i = dripSites.length - 1; i >= 0; i--){
-    const d = dripSites[i];
-    d.nextDrop -= dt;
-    if(d.nextDrop <= 0){
-      d.dropsLeft--;
-      spawnSatelliteDrops(d.x + (Math.random()-0.5)*6, d.y + (Math.random()-0.5)*4, d.color, 1);
-      d.nextDrop = 300 + Math.random()*350;
-      if(d.dropsLeft <= 0) dripSites.splice(i, 1);
-    }
+  const dropCount = 1 + Math.round(severity * 7); // bigger hit relative to the target's max HP = more drops, proportionally — from a single drop for a scratch up to 8 for a near-fatal blow
+  for(let i=0; i<dropCount; i++){
+    spawnSatelliteDrops(x + (Math.random()-0.5)*10, y + (Math.random()-0.5)*7, color, 1);
   }
 }
 let decalIndex = 0;
@@ -4053,44 +4220,135 @@ function getBloodProfile(enemyType){
   }
   return { bright:'#c0392b', dark:'#7a0f0f', spray:'#ff2020', isDust:false, viscous:false }; // standard flesh
 }
+function hexToHsl(hex){
+  const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s; const l = (max+min)/2;
+  if(max === min){ h = 0; s = 0; }
+  else {
+    const d = max-min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    if(max === r) h = ((g-b)/d + (g<b?6:0));
+    else if(max === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  return { h, s: s*100, l: l*100 };
+}
+function hslToHex(h, s, l){
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2*l-1)) * s;
+  const x = c * (1 - Math.abs((h/60)%2 - 1));
+  const m = l - c/2;
+  let r,g,b;
+  if(h < 60){ r=c; g=x; b=0; } else if(h < 120){ r=x; g=c; b=0; } else if(h < 180){ r=0; g=c; b=x; }
+  else if(h < 240){ r=0; g=x; b=c; } else if(h < 300){ r=x; g=0; b=c; } else { r=c; g=0; b=x; }
+  const toHex = v => Math.round((v+m)*255).toString(16).padStart(2,'0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+function shiftHexColor(hex, hueShift, lightShift){
+  const hsl = hexToHsl(hex);
+  return hslToHex((hsl.h + hueShift + 360) % 360, hsl.s, clampNum(hsl.l + lightShift, 4, 96));
+}
+// Per-enemy blood color variation — same species, genuinely different individual blood shade
+// (a touch more crimson, a touch more brown-red, slightly brighter/darker) instead of every
+// single enemy of a type sharing one identical, flat palette. Rolled once at spawn and cached
+// on the enemy so a given unit's blood stays visually consistent across every hit it takes.
+function rollBloodProfile(enemyType){
+  const base = getBloodProfile(enemyType);
+  if(base.isDust) return base; // rock/debris has no biological variance to roll
+  const hueJitter = (Math.random()*2-1) * 9;
+  const lightJitter = (Math.random()*2-1) * 7;
+  return {
+    bright: shiftHexColor(base.bright, hueJitter, lightJitter),
+    dark: shiftHexColor(base.dark, hueJitter, lightJitter*0.8),
+    spray: shiftHexColor(base.spray, hueJitter, lightJitter),
+    isDust: false, viscous: base.viscous, noArterial: base.noArterial
+  };
+}
 function resolveGoreArchetype(sourceTower){
   if(!sourceTower || !sourceTower.active) return 'WARRIOR';
   if(sourceTower.type === 'BOMBER') return 'EXPLOSIVE'; // splash/explosive flavor despite being ARCHER-archetype for stats
   return CLASS_ARCHETYPE[sourceTower.type] || 'WARRIOR';
 }
-function spawnDecal(x, y, color, smallBias){
+function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
   const roll = Math.random();
   let sizeMult, blobCount;
-  if(!smallBias && roll < 0.08){
-    // rare massive pool — genuinely dramatic, not just "a bit bigger"
-    sizeMult = 4 + Math.random()*2.5;
-    blobCount = 9 + Math.floor(Math.random()*6);
-  } else if(!smallBias && roll < 0.30){
-    // big pool — noticeably larger than average
-    sizeMult = 2 + Math.random()*1.5;
-    blobCount = 6 + Math.floor(Math.random()*5);
+  if(!smallBias && roll < 0.04){
+    // rare bigger pool — noticeably larger, but capped well short of dominating the screen
+    sizeMult = 1.7 + Math.random()*0.9;
+    blobCount = 6 + Math.floor(Math.random()*3);
+  } else if(!smallBias && roll < 0.16){
+    // modest step up from ordinary
+    sizeMult = 1.15 + Math.random()*0.55;
+    blobCount = 4 + Math.floor(Math.random()*3);
   } else {
-    // ordinary splatter — smallBias skips straight here, avoiding the big/massive pool rolls entirely
-    sizeMult = (0.7 + Math.random()*0.6) * (smallBias ? 0.6 : 1);
-    blobCount = (4 + Math.floor(Math.random()*4)) - (smallBias ? 1 : 0);
+    // ordinary splatter — the vast majority of decals, smallBias shrinks it further
+    sizeMult = (0.55 + Math.random()*0.45) * (smallBias ? 0.6 : 1);
+    blobCount = (3 + Math.floor(Math.random()*3)) - (smallBias ? 1 : 0);
   }
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isLine: false,
-    // overlapping offset circles instead of one plain circle — reads as a real messy splatter/pool
-    blobs: Array.from({length: blobCount}, () => ({
-      dx: (Math.random()-0.5)*18*sizeMult, dy: (Math.random()-0.5)*11*sizeMult, r: (3 + Math.random()*6)*sizeMult
-    }))
-  };
+  // Per-decal shape identity — every splatter used to jitter blobs inside the exact same fixed
+  // 18x11 rectangular envelope, just rescaled, which is what made same-size splatters all read as
+  // the same pattern. Now each one gets its own random orientation (loosely following the actual
+  // impact angle when the caller has one, otherwise fully random), and blobs are placed with a
+  // center-weighted polar distribution instead of independent rectangular jitter — a dense core
+  // with scattered outliers, the way an actual bloodstain forms, rather than an evenly-spaced
+  // cloud of circles.
+  //
+  // Aspect ratio (how elongated vs. round the stain reads) is archetype-aware, reflecting real
+  // BPA's angle-of-impact relationship: a high-velocity piercing hit (arrow) strikes at a shallow
+  // angle and drags into a long, directional stain; an omnidirectional blast has no single strike
+  // vector and pools closer to circular; an ordinary melee/magic hit falls between the two.
+  const elong = archBias === 'ARCHER' ? { longMin:1.3, longSpan:1.5, shortMin:0.28, shortSpan:0.32 }
+              : archBias === 'EXPLOSIVE' ? { longMin:0.85, longSpan:0.35, shortMin:0.75, shortSpan:0.35 }
+              : { longMin:0.75, longSpan:1.15, shortMin:0.42, shortSpan:0.58 };
+  const orientAngle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*0.9 : Math.random()*Math.PI*2;
+  const stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
+  const stretchShort = elong.shortMin + Math.random()*elong.shortSpan; // narrowness across it — independent of stretchLong
+  const cosA = Math.cos(orientAngle), sinA = Math.sin(orientAngle);
+  const blobs = [];
+  for(let i=0; i<blobCount; i++){
+    const a = Math.random()*Math.PI*2;
+    const distT = Math.pow(Math.random(), 1.4); // center-weighted — most blobs land close in, a few scatter further out
+    const localX = Math.cos(a) * distT * 10 * stretchLong;
+    const localY = Math.sin(a) * distT * 10 * stretchShort;
+    const dx = (localX*cosA - localY*sinA) * sizeMult;
+    const dy = (localX*sinA + localY*cosA) * sizeMult;
+    // mostly small flecks with occasional slightly bigger blobs, instead of every blob drawing
+    // from the same band — kept modest so a handful of overlapping blobs never merges into one
+    // oversized solid mass
+    const r = (Math.random() < 0.2 ? 3.5 + Math.random()*3.5 : 1.5 + Math.random()*3) * sizeMult;
+    blobs.push({ dx, dy, r });
+  }
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isLine: false, blobs };
   pushDecal(decal);
 }
 function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult){
   // occasional directional cast-off streak, growing away from where the hit came from — real
   // blood spatter travels away from the striking point, not radially outward like a splash.
   // Streaks default to double the standard decal lifespan — they read as more distinct/lasting
-  // marks than a soaked pool, and stay around noticeably longer as a result.
+  // marks than a soaked pool, and stay around noticeably longer as a result. Angle jitter widened
+  // for variety, but length/width pulled back from an earlier pass that made streaks read as
+  // oversized — a cast-off streak should be a thin line, not a wide smear.
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2)*decalLifespanVariance(), spawnTime: realTime, isLine: true,
-    angle: impactAngle + (Math.random()-0.5)*0.3,
-    maxLen: 14 + Math.random()*14,
-    width: 2 + Math.random()*1.5
+    angle: impactAngle + (Math.random()-0.5)*0.7,
+    maxLen: 8 + Math.random()*16,
+    width: 1 + Math.random()*1.6
+  };
+  pushDecal(decal);
+}
+function spawnDripTrail(x, y, color, lifespanMult){
+  // A running drip down a surface — distinct from spawnBloodCastoff's straight directional streak
+  // (which reads as the initial spatter/cast-off at the moment of impact). This is what blood does
+  // a beat AFTER landing: gravity pulls it into a gently curved trail with a small pooled bead at
+  // the tip, rather than staying a perfectly straight line. Rendered as a quadratic curve so it
+  // reads as an actual wet trickle, not another copy of the impact streak. Kept deliberately small
+  // — a drip should read as a thin trickle, not another blob-sized mark.
+  const length = 7 + Math.random()*13;
+  const sway = (Math.random()-0.5)*6; // slight wobble as it runs, like real drips following surface texture rather than falling perfectly straight
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||1.6)*decalLifespanVariance(), spawnTime: realTime, isDripTrail: true,
+    length, sway,
+    width: 1 + Math.random()*1
   };
   pushDecal(decal);
 }
@@ -4099,9 +4357,17 @@ function spawnSatelliteDrops(x, y, color, count, biasAngle){
   for(let i=0; i<count; i++){
     const angle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*1.4 : Math.random()*Math.PI*2;
     const dist = 6 + Math.random()*16;
+    // Real BPA: a satellite droplet that travels further from the source strikes at a shallower
+    // angle and carries less mass, which stretches the stain into a longer, more directional
+    // teardrop while shrinking its width — near-origin drops read rounder and squatter, far-flung
+    // ones read as a longer streak with a sharper tail. distT (0 at the near edge of the scatter
+    // range, 1 at the far edge) drives both relationships together instead of len/width being
+    // independent random rolls with no relationship to how far the drop actually landed.
+    const distT = (dist - 6) / 16;
     const decal = { x: x + Math.cos(angle)*dist, y: y + Math.sin(angle)*dist,
       color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isDrop: true, angle,
-      len: 2 + Math.random()*2.5, width: 2 + Math.random()*2
+      len: (1.8 + Math.random()*1.4) + distT*2.8,
+      width: (2.4 + Math.random()*1.6) - distT*1.1
     };
     pushDecal(decal);
   }
@@ -4121,10 +4387,11 @@ function spawnSkinPeel(x, y, color){
 }
 function spawnFootprint(x, y, color, angle){
   // small round smear left by a bloody foot — short-lived (a quarter of the standard lifespan)
-  // since these are transient trail marks, not the wound itself
+  // since these are transient trail marks, not the wound itself. Sized up slightly from the
+  // original so they still read clearly next to the larger splatters/streaks around them.
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*0.25, spawnTime: realTime,
     isDrop: true, angle: angle + (Math.random()-0.5)*0.6,
-    len: 1.5 + Math.random()*1.5, width: 2.5 + Math.random()*1.5
+    len: 2 + Math.random()*2, width: 3 + Math.random()*2
   };
   pushDecal(decal);
 }
@@ -4142,7 +4409,7 @@ function updateWalkingBlood(dt){
         e.wetFeetSteps--;
         const fade = e.wetFeetSteps / (e.wetFeetStepsMax||5); // each successive print is fainter/smaller as the blood runs out
         const c = e.wetFeetRgb || {r:122,g:15,b:15};
-        spawnFootprint(e.x + (Math.random()-0.5)*6, e.y + e.radius*0.6, 'rgba('+c.r+','+c.g+','+c.b+','+(0.55*fade).toFixed(2)+')', Math.atan2(e.vy,e.vx));
+        spawnFootprint(e.x + (Math.random()-0.5)*6, e.y + e.radius*0.6, 'rgba('+c.r+','+c.g+','+c.b+','+(0.7*fade).toFixed(2)+')', Math.atan2(e.vy,e.vx));
       }
       continue;
     }
@@ -4150,9 +4417,14 @@ function updateWalkingBlood(dt){
     e.wetCheckTimer = (e.wetCheckTimer||0) - dt;
     if(e.wetCheckTimer > 0) continue;
     e.wetCheckTimer = 400 + Math.random()*200;
-    for(let i = decals.length-1; i >= Math.max(0, decals.length-40); i--){
+    // Window widened from the last 40 decals to the last 220, and freshness from 4s to 7s — with
+    // several more streaks/drips now spawned per hit and per death, the last 40 decals could be
+    // entirely someone else's blood clear across the map within a couple of seconds, so an enemy
+    // standing right next to a real puddle would still find nothing to step in. This made
+    // footprints noticeably rarer even though the underlying pickup logic never changed.
+    for(let i = decals.length-1; i >= Math.max(0, decals.length-220); i--){
       const d = decals[i];
-      if(gameTime - d.spawnTime > 4000) continue; // only fresh (still-wet) blood transfers
+      if(gameTime - d.spawnTime > 7000) continue; // only fresh (still-wet) blood transfers
       if(Math.hypot(d.x-e.x, d.y-e.y) < e.radius+10){
         e.wetFeetSteps = e.wetFeetStepsMax = 4 + Math.floor(Math.random()*3);
         e.wetFeetRgb = d.rgb;
@@ -4183,7 +4455,7 @@ function drawDecals(ctx){
     const age = realTime - d.spawnTime;
     const lifespan = d.lifespan || DECAL_LIFESPAN;
     if(age >= lifespan){ decals.splice(i, 1); continue; } // actually expires now, not just capacity-recycled
-    const growT = Math.min(1, age / 700); // grows from small to full size over 0.7s
+    const growT = 1; // no grow-in animation — real blood spatter appears instantaneously on impact, not as a fade/expand effect. A decal now renders at full size the exact frame it spawns.
     const lifeT = age / lifespan;
     // Real forensic bloodstain aging, compressed so one round ≈ 5 real-world hours: bright
     // oxyhemoglobin red holds for the first ~3.3% of life (≈10 minutes of the 5h scale — blood
@@ -4224,6 +4496,24 @@ function drawDecals(ctx){
       ctx.moveTo(d.x, d.y);
       ctx.lineTo(d.x + Math.cos(d.angle)*len, d.y + Math.sin(d.angle)*len);
       ctx.stroke();
+    } else if(d.isDripTrail){
+      // a running drip down a surface — gently curved rather than a straight line, with a small
+      // pooled bead at the tip once it's fully grown, like a drop about to fall. Distinct from
+      // isLine's straight cast-off streak: this is what the blood does a beat AFTER landing.
+      const len = d.length * growT;
+      const midX = d.x + d.sway, midY = d.y + len*0.55;
+      const endX = d.x + d.sway*0.4, endY = d.y + len;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = d.width * (0.55 + growT*0.45);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.quadraticCurveTo(midX, midY, endX, endY);
+      ctx.stroke();
+      if(growT > 0.85){
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(endX, endY, d.width*0.85, 0, Math.PI*2); ctx.fill();
+      }
     } else if(d.isDrop){
       // individual satellite droplet — a small elongated teardrop, real BPA main-spatter-plus-
       // smaller-scattered-drops pattern, oriented along its own travel direction
@@ -4491,7 +4781,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinShade = (extra && extra.skinShade) || '#cfc8b8';
   const faceColor = (extra && extra.faceColor) || 'hsl(110,40%,25%)';
   const lowGfx = !!(extra && extra.lowGfx);
-  const build = JOB_BUILD[type] || { scaleX:1, scaleY:1 };
+  const build = { scaleX: (extra && extra.buildScaleX) || (JOB_BUILD[type] && JOB_BUILD[type].scaleX) || 1,
+                   scaleY: (extra && extra.buildScaleY) || (JOB_BUILD[type] && JOB_BUILD[type].scaleY) || 1 };
 
   ctx.save();
   ctx.translate(Math.round(x)+0.5, Math.round(y)+0.5);
@@ -4956,42 +5247,113 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
    SPATIAL HASH
    ========================================================= */
 function cellKey(x,y){ return Math.floor(x/TILE_SIZE)+','+Math.floor(y/TILE_SIZE); }
-function resolveEnemyCollisions(){
-  // physical body-blocking: nothing can occupy the same space as anything else, including a
-  // frozen/stunned enemy standing still — those are now genuine static obstacles instead of
-  // being skipped entirely. Reuses the same spatial hash the tower-targeting queries use.
+// Discrete position-based collision (resolveEnemyCollisions, below) only ever compares positions
+// at the START and END of a frame. Two enemies moving fast enough toward each other can start the
+// frame apart, cross paths, and end the frame apart again on the OTHER side of each other without
+// their positions ever coinciding at either checkpoint — the standard pass never sees an overlap,
+// and the two visibly walk straight through one another. This checks each pair's closest approach
+// along their actual movement segment this frame (swept circle vs circle, via each enemy's prevX/
+// prevY captured at the top of update()) rather than just the two endpoints, and nudges them apart
+// along that closest-approach direction if a tunnel-through is detected.
+function resolveSweptEnemyCollisions(){
   const hash = buildEnemyHash();
   for(const e of enemyPool){
-    if(!e.active) continue;
-    const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
+    if(!e.active || e.prevX === undefined) continue;
+    const nearby = queryNearby(hash, e.x, e.y, e.radius*3 + 40);
     for(const other of nearby){
-      if(!other.active) continue;
-      if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
-      const dx = e.x - other.x, dy = e.y - other.y;
-      const dist = Math.hypot(dx,dy) || 0.0001;
-      const minDist = e.radius + other.radius + 2; // strict non-overlap (was 0.82x, deliberately allowing 18% visual overlap that read as sprite stacking/"invisible" units)
-      if(dist >= minDist) continue;
-      const overlap = minDist - dist;
-      const pushX = dx/dist, pushY = dy/dist;
+      if(!other.active || other.prevX === undefined) continue;
+      if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions
       const eFrozen = e.stunnedUntil > gameTime || e.pileBlocked;
       const otherFrozen = other.stunnedUntil > gameTime || other.pileBlocked;
-      if(!eFrozen && !otherFrozen){
-        e.x += pushX*overlap*0.5; e.y += pushY*overlap*0.5;
-        other.x -= pushX*overlap*0.5; other.y -= pushY*overlap*0.5;
-      } else if(!eFrozen){
-        e.x += pushX*overlap; e.y += pushY*overlap;
-      } else if(!otherFrozen){
-        other.x -= pushX*overlap; other.y -= pushY*overlap;
-      } else {
-        // both blocked at a chokepoint (e.g. queued behind a barricade) — the old code skipped
-        // separation entirely here, which is exactly the case every queued unit hits, so physics
-        // shut off right where crowding is worst. A gentle lateral-only nudge (perpendicular to the
-        // push vector, small magnitude) keeps queued units from visually fusing without fighting
-        // the queue-slot system's own positioning.
-        const lateralX = -pushY, lateralY = pushX;
-        const nudge = Math.min(overlap, 1.5) * 0.5;
-        e.x += lateralX*nudge; e.y += lateralY*nudge;
-        other.x -= lateralX*nudge; other.y -= lateralY*nudge;
+      if(eFrozen && otherFrozen) continue; // both stationary this frame — nothing to tunnel through, and the regular pass already covers this pair
+      const minDist = e.radius + other.radius + 2;
+      const px = e.prevX - other.prevX, py = e.prevY - other.prevY;
+      const vx = (e.x - e.prevX) - (other.x - other.prevX), vy = (e.y - e.prevY) - (other.y - other.prevY);
+      const vSq = vx*vx + vy*vy;
+      if(vSq < 0.01) continue; // negligible relative motion this frame — nothing could have tunneled
+      let t = -(px*vx + py*vy) / vSq;
+      t = Math.max(0, Math.min(1, t));
+      const closeX = px + vx*t, closeY = py + vy*t;
+      const closeDist = Math.hypot(closeX, closeY);
+      if(closeDist >= minDist) continue; // paths never actually came within collision range this frame
+      const dx = e.x - other.x, dy = e.y - other.y;
+      const dist = Math.hypot(dx,dy) || 0.0001;
+      if(dist >= minDist){
+        // still separated at frame's end despite crossing paths mid-frame — a genuine tunnel-through.
+        // Nudge both back apart along the closest-approach normal so the pair reads as a near-graze
+        // instead of a clean pass-through; the regular position-based pass handles anything still
+        // overlapping at the actual end-of-frame positions, so this only fires for the tunneling case.
+        const normX = closeDist > 0.0001 ? closeX/closeDist : 1, normY = closeDist > 0.0001 ? closeY/closeDist : 0;
+        const corr = (minDist - closeDist) * 0.5;
+        if(!eFrozen){ e.x += normX*corr; e.y += normY*corr; }
+        if(!otherFrozen){ other.x -= normX*corr; other.y -= normY*corr; }
+      }
+    }
+  }
+}
+function resolveEnemyCollisions(){
+  // physical body-blocking: nothing can occupy the same space as anything else, including a
+  // frozen/stunned enemy standing still — those are genuine static obstacles instead of being
+  // skipped entirely. Reuses the same spatial hash the tower-targeting queries use.
+  //
+  // A single position-based pass isn't enough to settle a genuinely dense cluster (3+ enemies
+  // converging at once) — pushing pair A/B apart can immediately re-overlap pair B/C, so a single
+  // pass through a crowd left residual overlaps that only fully resolved (or visibly "fought")
+  // over several subsequent frames, reading as jittery/stuck. Running a couple of extra relaxation
+  // passes the same frame lets a crowd actually settle within the frame instead of spreading that
+  // settling out visibly over time.
+  const PASSES = 3;
+  for(let pass = 0; pass < PASSES; pass++){
+    const hash = buildEnemyHash();
+    for(const e of enemyPool){
+      if(!e.active) continue;
+      const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
+      for(const other of nearby){
+        if(!other.active) continue;
+        if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
+        const dx = e.x - other.x, dy = e.y - other.y;
+        const dist = Math.hypot(dx,dy) || 0.0001;
+        const minDist = e.radius + other.radius + 2; // strict non-overlap (was 0.82x, deliberately allowing 18% visual overlap that read as sprite stacking/"invisible" units)
+        if(dist >= minDist) continue;
+        const overlap = minDist - dist;
+        let pushX = dx/dist, pushY = dy/dist;
+        const eFrozen = e.stunnedUntil > gameTime || e.pileBlocked;
+        const otherFrozen = other.stunnedUntil > gameTime || other.pileBlocked;
+        if(!eFrozen && !otherFrozen){
+          // Bias the separation toward each enemy's own direction of travel (their vx/vy, which
+          // already point at their next waypoint) rather than pushing purely radially. A pure
+          // radial push shoves units rounding a corner sideways off the path centerline and into
+          // walls, which is exactly what produced corner hang-ups — favoring the along-path
+          // component and damping the cross-path component keeps the same separation distance but
+          // resolves it mostly by units sliding forward/back past each other, not sideways.
+          const speedE = Math.hypot(e.vx, e.vy), speedO = Math.hypot(other.vx, other.vy);
+          if(speedE > 5 || speedO > 5){
+            const tanX = speedE > speedO ? e.vx/(speedE||1) : other.vx/(speedO||1);
+            const tanY = speedE > speedO ? e.vy/(speedE||1) : other.vy/(speedO||1);
+            const along = pushX*tanX + pushY*tanY; // component of the push already aligned with travel direction
+            const crossX = pushX - along*tanX, crossY = pushY - along*tanY; // perpendicular remainder
+            pushX = along*tanX + crossX*0.45;
+            pushY = along*tanY + crossY*0.45;
+            const norm = Math.hypot(pushX, pushY) || 1;
+            pushX /= norm; pushY /= norm;
+          }
+          e.x += pushX*overlap*0.5; e.y += pushY*overlap*0.5;
+          other.x -= pushX*overlap*0.5; other.y -= pushY*overlap*0.5;
+        } else if(!eFrozen){
+          e.x += pushX*overlap; e.y += pushY*overlap;
+        } else if(!otherFrozen){
+          other.x -= pushX*overlap; other.y -= pushY*overlap;
+        } else {
+          // both blocked at a chokepoint (e.g. queued behind a barricade) — the old code skipped
+          // separation entirely here, which is exactly the case every queued unit hits, so physics
+          // shut off right where crowding is worst. A gentle lateral-only nudge (perpendicular to the
+          // push vector, small magnitude) keeps queued units from visually fusing without fighting
+          // the queue-slot system's own positioning.
+          const lateralX = -pushY, lateralY = pushX;
+          const nudge = Math.min(overlap, 1.5) * 0.5;
+          e.x += lateralX*nudge; e.y += lateralY*nudge;
+          other.x -= lateralX*nudge; other.y -= lateralY*nudge;
+        }
       }
     }
   }
@@ -5148,14 +5510,36 @@ function startNextWave(){
     showToast(CURATED_WAVE_LABELS[waveIndex+1]);
   }
   spawnQueue = [];
+  // +2000ms added to every group's own per-unit spawn interval (not a flat one-time offset) — this
+  // applies uniformly to every curated wave (1-100+) and every procedurally generated wave, from
+  // this single point, rather than editing the ~80 individual hand-authored spawnDelay values.
+  // Spacing enemies out more on entry gives updateBarricadesAndPileup()/resolveEnemyCollisions()
+  // noticeably more room to settle each new arrival before the next one shows up, which is the
+  // direct lever for less on-path congestion and smoother pathing.
+  const SPAWN_DELAY_BONUS = 2000;
   for(const group of waveDef){
     for(let i=0;i<group.count;i++){
       let type = group.type;
       if(type !== 'BOSS' && type !== 'TROLL' && seenEnemyTypes.has('TROLL') && Math.random() < 0.02) type = 'TROLL';
-      spawnQueue.push({ type, delay: i*group.spawnDelay });
+      spawnQueue.push({ type, delay: i*(group.spawnDelay + SPAWN_DELAY_BONUS) });
     }
   }
   spawnQueue.sort((a,b) => a.delay - b.delay);
+  // The per-group spacing above only staggers spawns WITHIN one enemy type's own group — it does
+  // nothing to prevent multiple concurrent groups in the same wave from overlapping each other.
+  // Every group's very first unit starts at delay 0, so a wave with several groups running at once
+  // (common in later/curated waves — some have 6-8 groups) dumped that many different enemy types
+  // onto the same spawn tile on the exact same tick, before pathing/collision had any chance to
+  // spread them out. This walks the fully merged, already-sorted queue and pushes any spawn that
+  // would land too close to the one before it (regardless of which group either came from) forward
+  // in time, guaranteeing real separation between every single spawn in the wave, not just within
+  // a type.
+  const MIN_GLOBAL_SPAWN_GAP = 350;
+  let lastSpawnDelay = -Infinity;
+  for(const entry of spawnQueue){
+    if(entry.delay - lastSpawnDelay < MIN_GLOBAL_SPAWN_GAP) entry.delay = lastSpawnDelay + MIN_GLOBAL_SPAWN_GAP;
+    lastSpawnDelay = entry.delay;
+  }
   waveTimer = 0;
   waveIndex++;
   waveState = 'SPAWNING';
@@ -5199,12 +5583,12 @@ function update(dt){
 
   updateBarricadesAndPileup();
   for(const e of enemyPool) if(e.active) e.update(dt);
+  resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
   resolveEnemyCollisions();
   const enemyHash = buildEnemyHash();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHash);
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHash);
   updateParticles(dt);
-  updateDripSites(dt);
   updateWalkingBlood(dt);
   updateFloatingTexts(dt);
 
