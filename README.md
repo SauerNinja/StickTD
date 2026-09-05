@@ -119,7 +119,10 @@ Reaper is the heaviest-armored undead in the roster.
 
 Burn, curse (poison-style DoT), bleeding (see [Blood & gore](#blood--gore)), slow, and stun all
 show a periodic reminder label above an affected unit every 120 seconds, so long-running effects
-stay visible instead of only appearing the instant they're applied.
+stay visible instead of only appearing the instant they're applied. Each also gets a themed visual
+— drifting ice crystals for slow/freeze, flickering flames for burn, lightning bolts orbiting the
+head for stun — instead of a flat colored tint. A stun or slow correctly propagates backward
+through an entire queued line of enemies, not just to the one directly behind it.
 
 ## Blood & gore
 
@@ -128,29 +131,31 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
 
 - **Per-species blood profiles** — insects, undead, and rock/debris enemies each bleed a
   distinct color and texture (necrotic dark ooze for undead, acid-green hemolymph for insects,
-  dust for constructs), and every individual enemy of a species additionally rolls its own subtle
-  blood tint, so no two enemies bleed an identical, flat color.
-- **Directional spatter** — cast-off streaks and satellite droplets fly away from the actual
-  striking angle, not radially outward, and vary by attacker archetype (a tight forward cone for
-  Archer-style hits, a full radial burst for explosive damage, a directional gush for melee).
+  dust for constructs), and every individual enemy additionally rolls its own subtle blood tint,
+  so no two enemies bleed an identical, flat color.
+- **Weapon-specific wound identity** — melee produces a real laceration (a cut-line at the wound
+  plus a curved cast-off arc trailing away from it, matching how blood actually flies off a
+  swinging blade), Archer hits stay low-impact and puncture-like (minimal spray, mostly dripping),
+  and Mage hits are a fast, wide, high-energy burst with a touch of back-spatter toward the
+  source. Ground stains persist with distinct shape and size per archetype too — Archer pools are
+  small and elongated, Mage pools are the largest and roundest of the four.
 - **Running drip trails** — a gently curved, gravity-affected trickle with a small pooled bead at
   the tip, distinct from the initial impact streak — this is what blood does a beat *after*
   landing, not another copy of the impact spatter.
 - **Bleeding (DOT)** — a sufficiently heavy hit opens an actual wound: a ticking
-  damage-over-time effect that keeps the enemy actively bleeding (spray, drops, occasional new
-  pooling) for several seconds, on top of ambient low-HP dripping for anything below 40% HP.
+  damage-over-time effect that keeps the enemy actively bleeding (tapering off as the wound nears
+  its end, not cutting off at full intensity) on top of ambient low-HP dripping below 40% HP.
 - **Barricade contact-transfer smears** — an enemy pressed against a barricade while bleeding
   leaves a directional wipe stain on the barricade itself, not just a puddle beneath it.
-- **Walking blood / footprints** — an enemy that steps in fresh blood picks it up and leaves a
-  fading trail of footprints as it walks, running dry after a few steps.
+- **Walking blood / footprints** — an enemy that steps in fresh blood (including the edge of a
+  large pool, not just its exact center) picks it up and leaves a fading trail of footprints.
 - **Forensic aging** — a fresh stain is bright oxyhemoglobin red, passes through a reddish-brown
   oxidizing stage as it dries, and (once old enough) shows a darker, coagulated skeletonization
   ring around a lighter, flatter interior — real bloodstain-pattern-analysis aging, not a flat
-  color fade. Every stain lasts up to 30 minutes with individual per-decal variance, and the map
-  supports up to 2,000 concurrent stains before the oldest are recycled.
+  color fade. Every stain lasts up to 30 minutes with individual per-decal variance, and a local
+  saturation cap keeps a heavily-fought corridor from growing into one unbroken mass.
 - **Instant, not delayed** — every blood effect fires at the actual moment of the hit or the
-  moment of death. Nothing schedules a delayed trickle that could still be landing seconds after
-  an enemy is already gone.
+  moment of death, at full size immediately — no delayed trickle, no grow-in animation.
 
 ## Leveling
 
@@ -186,16 +191,21 @@ dumps them all onto the entrance at the exact same moment.
 
 Enemies path along the map's spiral in genuine single file: a faster unit won't try to overtake
 a slower one directly ahead of it (there's no lane to pass in), a queue naturally forms behind an
-active Barricade, and a swept collision check catches fast-moving units that would otherwise
-tunnel straight through each other within a single frame. Corner-turning uses a forgiving
-waypoint-arrival margin so units don't overshoot and backtrack into the units behind them.
+active Barricade with only one enemy actually engaging it at a time, and a swept collision check
+catches fast-moving units that would otherwise tunnel straight through each other within a single
+frame. Wave spawning pauses while a barricade queue is backed up rather than piling more enemies
+onto it, with a safety timeout so a jam can never permanently block progress. Corner-turning uses
+a forgiving waypoint-arrival margin so units don't overshoot and backtrack into the units behind
+them.
 
 ## Items & Heroes
 
-Every tower starts with a free class-specific item. Buy better gear per class from the Shop —
-Iron, Gold, and a top Masterwork tier that costs wood and stone alongside gold. Global passive
-upgrades apply to every tower you own, current and future. A tower with all 4 item slots filled
-awakens into a **Hero**, with a permanent stat bonus and a visible crown.
+Every tower starts with empty item slots — WC3/Dota-style, not a class-specific starter kit.
+Currently one shared item exists, usable by any tower regardless of class: the **Lucky Branch**
+🌿 (+1 STR/+1 DEX/+1 INT, gold + wood), buyable from the Shop for whichever tower you have
+selected. Items can also be dragged directly from one tower's inventory onto another to transfer
+them. Global passive upgrades apply to every tower you own, current and future. A tower with all
+6 item slots filled awakens into a **Hero**, with a permanent stat bonus and a visible crown.
 
 ## Resources
 

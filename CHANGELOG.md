@@ -1,5 +1,78 @@
 # Changelog
 
+## [1.0.137] - 2026-09-05
+- Made the BLADE (Swordsman/Axeman) slash pattern itself genuinely unique per hit, not just
+  randomized in shape:
+  - The cut-line's size now scales with how hard the hit actually was (using the same severity
+    value already driving hit-flinch) — a glancing graze leaves a thin nick, a heavy blow a bold,
+    unmistakable gash, instead of every blade hit drawing the identical size line regardless of
+    damage dealt.
+  - Axeman's dual axes now produce two independent, overlapping cast-off arcs from slightly
+    different angles (with a chance of a third, smaller one), instead of the exact same single-arc
+    effect Swordsman gets — dual-wielding finally reads as a genuinely different weapon rather
+    than reusing one-blade gore.
+  - Added a small per-hit color micro-jitter on top of each enemy's own fixed blood tint for the
+    cut-line and arc specifically — real blood shade varies slightly hit to hit (oxygenation,
+    thickness, freshness), not one flat tone reused for every slash a given enemy ever takes.
+
+## [1.0.136] - 2026-09-05
+- Found the actual reason melee blood kept reading as repetitive: every WARRIOR-archetype class —
+  Swordsman and Axeman (bladed), but also Hammerman/Paladin (blunt mace) and Spearman (thrusting
+  spear) — produced the exact identical cut-line-plus-cast-off-arc pattern regardless of what
+  weapon actually hit. Added `resolveWeaponSubtype()` and split the WARRIOR branch into three real
+  wound geometries: **BLADE** (Swordsman/Axeman) keeps the cut-line + cast-off arc; **BLUNT**
+  (Hammerman/Paladin) now produces genuine blunt-trauma impact spatter — an omnidirectional burst
+  with no single directional cut line, since a mace crushes rather than cuts; **PIERCE** (Spearman)
+  now produces a real puncture-and-gush along one line, closer to an arrow wound in geometry but
+  more violent, with no perpendicular cut-line and no swing arc since a thrust doesn't sweep
+  tangentially. The death-time cessation cast-off arc is now also gated to bladed weapons only —
+  a mace or spear doesn't carry blood on an edge the way a sword does.
+- Widened `spawnCastOffArc()`'s own randomness substantially — drop count (was a narrow 4-6, now
+  3-8), angular step, and a new overall per-call `scale` factor that varies the whole arc's reach
+  and tightness together, on top of the existing per-drop jitter. A full-force overhead swing and
+  a quick short jab no longer produce arcs that read as the same shape just repositioned.
+
+## [1.0.135] - 2026-09-05
+- Mage impacts are now unmistakably the most violent of the three archetypes, not just "more
+  particles than before." Added `spawnShockring()` — a brief expanding, fading ring at the point
+  of impact, reusing the existing particle pool (new `isRing` flag) so it costs nothing extra to
+  manage. Mage hits and kills now spawn this ring alongside a bigger, faster particle burst
+  (26/14 on hit, up from 22/10; 28/18 on a low-graphics-safe death burst, up from 22/14) and
+  slightly stronger back-spatter.
+- Archer impacts now follow the requested tradeoff exactly: less blood and a smaller immediate
+  burst (particle count cut further, from 5 to 4 on hit), but real forensic accuracy to how a
+  genuine high-velocity fine mist behaves — low friction (0.94, up from 0.85) means the spray that
+  does fly carries much more of its initial speed before settling, and a chance of one satellite
+  droplet flung 2.6x further than the normal scatter range. Less volume, more distance — the
+  opposite tradeoff from Mage's big-but-close burst. Applied the same "fewer particles, one
+  far-flung droplet" identity to Archer's death burst for consistency with the hit-time behavior.
+- Added a `distMult` parameter to `spawnSatelliteDrops()` so a specific caller (Archer's far-flung
+  mist droplet) can send a drop well beyond the normal scatter range without changing the default
+  behavior for every other caller.
+
+## [1.0.134] - 2026-09-05
+- Simplified the table-of-contents comment added in 1.0.133 — dropped the line numbers (which
+  drift as the file changes and were half the clutter) and the mixed prose/description format in
+  favor of a single clean line of section names to search for, matching the plain style of the
+  section headers themselves.
+
+## [1.0.133] - 2026-09-05
+- Code-quality pass with zero gameplay/behavior changes, focused purely on readability and
+  maintainability:
+  - Added a table-of-contents comment at the very top of the script listing every major section
+    (config, entity classes, wave system, main loop, UI wiring, etc.) with its approximate line
+    number, so navigating this large single-file codebase — by a human or an AI working on it — 
+    doesn't require scrolling blind or guessing which section a given system lives in.
+  - Extracted `isEnemyFrozen(e)` — the exact same "is this enemy currently unable to move" check
+    (blocked at a barricade OR stunned) was independently duplicated 5 times across 3 different
+    functions (`updateBarricadesAndPileup`, `resolveSweptEnemyCollisions`,
+    `resolveEnemyCollisions`). Centralized into one named helper with identical logic — this is a
+    pure DRY refactor with no behavior change, it just means there's one definition to update if
+    "frozen" ever needs to account for a new status effect in the future, instead of five.
+  - Deliberately did not touch performance-sensitive areas (e.g. the 3-pass collision relaxation's
+    per-pass spatial-hash rebuilds) where a naive optimization could subtly change collision
+    accuracy — safe correctness took priority over speculative speedups there.
+
 ## [1.0.132] - 2026-09-05
 - Sword slashes now produce a real cast-off ARC, not just a straight streak. Checked the
   bloodstain-pattern-analysis reference directly: real cast-off (blood thrown from a weapon during

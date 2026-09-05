@@ -690,9 +690,16 @@
 "use strict";
 
 /* =========================================================
+   TABLE OF CONTENTS — search for these section headers
+     CONFIG · MAP / PATH · SCENERY · OBJECT POOLS · AUDIO · GAME STATE · CAMERA
+     ENTITY CLASSES (Enemy, Tower, Projectile) · STICKMAN RENDERING · SPATIAL HASH
+     WAVES · MAIN LOOP · CANVAS / INPUT SETUP · UI WIRING · START / END SCREENS · BOOT
+   ========================================================= */
+
+/* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.132'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.137'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1628,7 +1635,7 @@ function updateBarricadesAndPileup(){
       // already set this same pass) already carries forward whatever it inherited from further
       // ahead — folding it in here lets a stun or slow cascade back through the entire queue, not
       // just to the immediate follower.
-      const aheadFrozen = ahead.pileBlocked || ahead.stunnedUntil > gameTime;
+      const aheadFrozen = isEnemyFrozen(ahead);
       const aheadOwnSpeed = ahead.speed * ahead.slowMultiplier * (ahead.packSpeedBonus||1);
       const aheadEffectiveSpeed = aheadFrozen ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
       behind.followSpeedCap = aheadEffectiveSpeed;
@@ -2895,44 +2902,91 @@ class Enemy{
       if(bio.isDust){
         spawnParticles(this.x, this.y, bio.bright, 8, 200); // rock chips, no liquid streams or pooling
       } else if(arch === 'ARCHER'){
-        // Low-impact puncture wound — an arrow makes a small, precise hole; it doesn't blast blood
-        // outward with force the way a blunt/magical hit does. A handful of low-speed particles
-        // right at the wound, and the wound mostly just drips rather than spraying outward, reads
-        // as a real puncture instead of a violent cone.
-        spawnParticles(this.x, this.y, bio.spray, 5, 90, 0.85, true, impactAngle, 0.5);
+        // Low-impact puncture wound, but forensically accurate to how a real high-velocity fine
+        // mist behaves: the wound itself produces little total volume (fewer particles than any
+        // other archetype, mostly just dripping), but the mist that DOES fly carries real residual
+        // velocity and low drag, so a couple of droplets travel a genuinely long way from the
+        // wound rather than landing right next to it. Less blood and less immediate damage-read,
+        // more distance — the opposite tradeoff from Mage's big-but-close burst.
+        spawnParticles(this.x, this.y, bio.spray, 4, 60, 0.94, true, impactAngle, 0.45);
         if(Math.random() < 0.7) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+        if(!bio.isDust && Math.random() < 0.55){
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.55), 1, impactAngle, 2.6); // one fine mist droplet flung well past the wound itself
+        }
       } else if(arch === 'MAGE'){
-        // High-energy magical impact — fast, wide, and immediate, reading as though the hit itself
-        // violently disrupted tissue rather than a controlled directional spray. High particle
-        // count, high speed, full radial spread instead of a narrow cone, plus an instant burst of
-        // satellite drops so the impact reads as dramatic on the very first hit, not something that
-        // only builds up after several.
-        spawnParticles(this.x, this.y, bio.bright, 22, 340, 0.9, true);
-        spawnParticles(this.x, this.y, bio.spray, 10, 380, 0.88, true);
-        if(!bio.isDust) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 3);
+        // High-energy magical impact — the most violent of the three by design, now unmistakably
+        // so: bigger and faster than before, plus an actual expanding shockwave ring at the point
+        // of impact so it reads as raw kinetic/magical force rather than just "more particles."
+        // Full radial spread instead of a narrow cone, plus an instant burst of satellite drops so
+        // the impact reads as dramatic on the very first hit, not something that only builds up
+        // after several.
+        spawnParticles(this.x, this.y, bio.bright, 26, 360, 0.88, true);
+        spawnParticles(this.x, this.y, bio.spray, 14, 400, 0.86, true);
+        if(!bio.isDust){
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 4);
+          spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.55), 22 + Math.random()*10);
+        }
         // Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical
         // blast) throw a fine mist BACK toward the source, not just forward through the target —
         // a distinct, well-documented BPA phenomenon investigators specifically look for to
         // determine where a shot came from. A small amount, lower speed than the forward spray, in
         // the opposite direction.
-        spawnParticles(this.x, this.y, bio.spray, 4, 140, 0.85, true, impactAngle + Math.PI, 0.6);
+        spawnParticles(this.x, this.y, bio.spray, 6, 160, 0.85, true, impactAngle + Math.PI, 0.6);
       } else if(arch === 'EXPLOSIVE'){
         // 360-degree vaporization — no directional constraint, mix bright + charred/dark
         spawnParticles(this.x, this.y, bio.bright, 10, 200, viscFriction, true);
         spawnParticles(this.x, this.y, bio.dark, 6, 200, viscFriction, true);
       } else {
-        // WARRIOR (bladed melee) — a real laceration at the wound itself: a bold cut-line right at
-        // the point of impact (still oriented across the strike direction, since a slash travels
-        // across the target rather than straight into it), PLUS a genuine cast-off arc — the blood
-        // that was already on the blade gets flung off tangentially during the swing, landing as a
-        // curved trail of individual drops away from the wound, not a second straight line.
-        const slashAngle = impactAngle + Math.PI/2 + (Math.random()-0.5)*0.5;
-        spawnParticles(this.x, this.y, bio.bright, 12, 200, viscFriction, true);
-        // sizeMult 1.8 — a real cut needs to read as a bold, unmistakable line on the ground, not
-        // just another generic streak the same size as everyone else's cast-offs
-        spawnBloodCastoff(this.x, this.y, slashAngle, hexToRgba(bio.dark, 0.7), undefined, 1.8);
-        spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(bio.dark, 0.65));
-        if(Math.random() < 0.4) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+        // WARRIOR archetype sub-branches by actual weapon geometry — previously every melee class
+        // (blade, blunt mace, thrusting spear alike) produced the identical cut-plus-arc pattern,
+        // which read as repetitive/samey regardless of what actually hit the target.
+        const weapon = resolveWeaponSubtype(sourceTower);
+        if(weapon === 'BLUNT'){
+          // Blunt trauma doesn't cut — it crushes, producing an omnidirectional "impact spatter"
+          // with no single directional cut line: a wider radial burst of particles and satellite
+          // drops scattered around the impact point rather than along one line.
+          spawnParticles(this.x, this.y, bio.bright, 16, 170, 0.9, true);
+          spawnParticles(this.x, this.y, bio.dark, 6, 170, 0.9, true);
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.65), 2 + Math.floor(Math.random()*2));
+          if(Math.random() < 0.3) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.55));
+        } else if(weapon === 'PIERCE'){
+          // A deep thrust punctures along one line, closer to an arrow wound in geometry but far
+          // more violent — a stronger forward gush and a real drip, no perpendicular cut-line and
+          // no swing arc since a thrust doesn't sweep tangentially the way a slash does.
+          spawnParticles(this.x, this.y, bio.bright, 10, 240, viscFriction, true, impactAngle, 0.7);
+          spawnBloodStream(this.x, this.y, impactAngle, 3, 1.2, bio.bright, bio.dark);
+          if(Math.random() < 0.6) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+        } else {
+          // BLADE (Swordsman/Axeman) — a real laceration at the wound itself: a bold cut-line
+          // right at the point of impact (still oriented across the strike direction, since a
+          // slash travels across the target rather than straight into it), PLUS a genuine
+          // cast-off arc — the blood already on the blade flung off tangentially during the
+          // swing, landing as a curved trail of drops away from the wound, not a second straight
+          // line. The cut-line's own size now scales with how hard the hit actually was — a
+          // glancing graze leaves a thin nick, a heavy blow a bold, unmistakable gash — instead of
+          // every blade hit drawing the exact same size line regardless of damage dealt.
+          const slashAngle = impactAngle + Math.PI/2 + (Math.random()-0.5)*0.5;
+          const cutSize = 1.1 + flinchSeverity*1.4; // ~1.1x for a graze, up to ~2.5x for a near-fatal blow
+          // small per-hit color micro-jitter on top of this enemy's own fixed blood tint — real
+          // blood shade varies slightly hit to hit even from the same wound (oxygenation,
+          // thickness, how fresh vs. already-drying), not just a single flat tone reused for every
+          // slash this enemy ever takes
+          const cutColor = shiftHexColor(bio.dark, (Math.random()-0.5)*8, (Math.random()-0.5)*6);
+          spawnParticles(this.x, this.y, bio.bright, 12, 200, viscFriction, true);
+          spawnBloodCastoff(this.x, this.y, slashAngle, hexToRgba(cutColor, 0.7), undefined, cutSize);
+          if(sourceTower && sourceTower.type === 'AXEMAN'){
+            // dual-wielded — two independent blades means two overlapping cast-off arcs from
+            // slightly different angles/timing, not one arc doubled up. Reads as a genuinely
+            // different weapon from Swordsman's single blade rather than the same effect twice.
+            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.3, hexToRgba(cutColor, 0.65));
+            if(Math.random() < 0.6){
+              spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.9, hexToRgba(bio.dark, 0.55), 3 + Math.floor(Math.random()*3));
+            }
+          } else {
+            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(cutColor, 0.65));
+          }
+          if(Math.random() < 0.4) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+        }
       }
       // a real lasting mark on the ground for a non-lethal hit too, not just the killing blow —
       // the particles above all fade within ~1s, so without this, blood only ever visibly stuck
@@ -3011,20 +3065,25 @@ class Enemy{
           }
         } else if(arch === 'ARCHER'){
           // low-impact even in death — a fatal arrow still doesn't cause a burst, just a body that's
-          // stopped moving with a real puncture wound: minimal ambient particles, no wide gush fan,
-          // leaning on drip trails instead to show it actually bled out rather than exploded
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 3 : 7)*goreScale), 110, 0.85, !low);
+          // stopped moving with a real puncture wound: minimal ambient particles (fewer than any
+          // other archetype), no wide gush fan, leaning on drip trails instead to show it actually
+          // bled out rather than exploded. A couple of far-flung mist droplets carry the same
+          // "less volume, more distance" identity through to the killing blow.
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 2 : 5)*goreScale), 90, 0.94, !low);
           if(!bio.noArterial){
             for(let d=0; d<Math.round(2*goreScale); d++){
               spawnDripTrail(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*6, hexToRgba(bio.dark, 0.6));
             }
+            if(!low) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.5), 1, impactAngle, 2.8);
           }
           spawnGibs(this.x, this.y, Math.max(1, Math.round(1*goreScale)));
         } else if(arch === 'MAGE'){
-          // a magical kill still reads as high-energy even at death — faster, wider particles than
-          // an ordinary collapse, short of a full explosive burst but noticeably more violent
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 10 : 22)*goreScale), 320, viscFriction, !low);
-          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 6 : 14)*goreScale), 360, viscFriction, !low);
+          // a magical kill reads as genuinely high-energy, not just "an ordinary collapse but more
+          // particles" — faster, wider particles than before plus a shockwave ring, short of a full
+          // explosive burst but unmistakably violent
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 12 : 28)*goreScale), 340, viscFriction, !low);
+          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 8 : 18)*goreScale), 380, viscFriction, !low);
+          if(!low) spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.6), 26 + Math.random()*12);
           spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale)));
         } else {
           // WARRIOR (bladed melee) death: a directional collapse, not a burst — modest ambient
@@ -3061,10 +3120,12 @@ class Enemy{
         }
         if(!low && sourceTower && arch !== 'EXPLOSIVE' && Math.random() < 0.5){
           const castoffAngle = Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x);
-          if(arch === 'WARRIOR'){
+          if(arch === 'WARRIOR' && resolveWeaponSubtype(sourceTower) === 'BLADE'){
             // the killing blow's blade still had blood on it from the fight — a real cast-off arc
             // (cessation cast-off, per BPA literature: the blade stops abruptly at the target while
-            // the blood already in flight keeps going), not a plain straight streak
+            // the blood already in flight keeps going), not a plain straight streak. Blunt/thrust
+            // weapons don't have a bladed edge carrying prior blood the same way, so they fall
+            // through to the plain streak instead.
             spawnCastOffArc(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
           } else {
             spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
@@ -4384,6 +4445,19 @@ function resolveGoreArchetype(sourceTower){
   if(sourceTower.type === 'BOMBER') return 'EXPLOSIVE'; // splash/explosive flavor despite being ARCHER-archetype for stats
   return CLASS_ARCHETYPE[sourceTower.type] || 'WARRIOR';
 }
+// Sub-classifies the WARRIOR archetype by actual weapon type — every melee class was previously
+// producing the exact same slash-cut-plus-cast-off-arc wound, even Hammerman/Paladin's blunt
+// mace and Spearman's thrusting spear, which shouldn't leave a bladed slash pattern at all. Real
+// wound geometry differs meaningfully by weapon: a blade drags across and leaves a linear cut with
+// tangential cast-off; a blunt weapon crushes rather than cuts, producing an omnidirectional
+// "impact spatter" with no single cut line; a thrust punctures deep along one line, closer to an
+// arrow wound in geometry but with a stronger, more violent gush.
+function resolveWeaponSubtype(sourceTower){
+  if(!sourceTower) return 'BLADE';
+  if(sourceTower.type === 'HAMMERMAN' || sourceTower.type === 'PALADIN') return 'BLUNT';
+  if(sourceTower.type === 'SPEARMAN') return 'PIERCE';
+  return 'BLADE'; // Swordsman, Axeman
+}
 function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
   const roll = Math.random();
   let sizeMult, blobCount;
@@ -4466,14 +4540,20 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
 // wound, each oriented tangent to its own point on the arc (the actual direction that specific
 // drop was flung), rather than one straight cast-off line.
 function spawnCastOffArc(x, y, baseAngle, color, count){
-  count = count || (4 + Math.floor(Math.random()*3));
+  // Ranges widened substantially (was a fairly narrow band: 4-6 drops, one dist/angle-step
+  // formula every time) — a full-force overhead swing and a quick short jab shouldn't leave an
+  // arc that reads as the same shape and size, just repositioned. `scale` varies the whole arc's
+  // reach and tightness together per call, on top of the existing per-drop randomness, so
+  // consecutive blade hits produce genuinely different-looking cast-off trails.
+  const scale = 0.65 + Math.random()*0.9;
+  count = count || (3 + Math.floor(Math.random()*6));
   const arcDir = Math.random() < 0.5 ? 1 : -1; // which way the blade swung — clockwise or counter-clockwise
-  const angularStep = (0.22 + Math.random()*0.12) * arcDir;
-  let dist = 8 + Math.random()*4;
+  const angularStep = (0.15 + Math.random()*0.32) * arcDir;
+  let dist = (6 + Math.random()*7) * scale;
   const rgb = parseColorToRgba(color);
   for(let i=0; i<count; i++){
     const angle = baseAngle + angularStep*i;
-    dist += (5 + Math.random()*3) * (0.7 + i*0.18); // accelerating spread further along the swing, matching how real cast-off trails spread out
+    dist += (4 + Math.random()*5) * scale * (0.6 + i*0.2); // accelerating spread further along the swing, matching how real cast-off trails spread out
     const px = x + Math.cos(angle)*dist;
     const py = y + Math.sin(angle)*dist;
     const travelAngle = angle + (Math.PI/2)*arcDir; // tangent to the arc at this point — the actual direction this specific drop was flung, not radially outward from the wound
@@ -4515,18 +4595,19 @@ function spawnDripTrail(x, y, color, lifespanMult){
   };
   pushDecal(decal);
 }
-function spawnSatelliteDrops(x, y, color, count, biasAngle){
+function spawnSatelliteDrops(x, y, color, count, biasAngle, distMult){
+  distMult = distMult || 1; // lets a specific caller (Archer's far-flung fine mist) send a droplet well beyond the normal scatter range without changing the default for everyone else
   const rgb = parseColorToRgba(color);
   for(let i=0; i<count; i++){
     const angle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*1.4 : Math.random()*Math.PI*2;
-    const dist = 6 + Math.random()*16;
+    const dist = (6 + Math.random()*16) * distMult;
     // Real BPA: a satellite droplet that travels further from the source strikes at a shallower
     // angle and carries less mass, which stretches the stain into a longer, more directional
     // teardrop while shrinking its width — near-origin drops read rounder and squatter, far-flung
     // ones read as a longer streak with a sharper tail. distT (0 at the near edge of the scatter
     // range, 1 at the far edge) drives both relationships together instead of len/width being
     // independent random rolls with no relationship to how far the drop actually landed.
-    const distT = (dist - 6) / 16;
+    const distT = (dist - 6*distMult) / (16*distMult);
     const decal = { x: x + Math.cos(angle)*dist, y: y + Math.sin(angle)*dist,
       color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isDrop: true, angle,
       len: (1.8 + Math.random()*1.4) + distT*2.8,
@@ -4774,11 +4855,24 @@ function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpr
     const speed = 40 + Math.random()*90;
     p.active = true; p.x = x; p.y = y;
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
-    p.gravity = gravity; p.isGib = false; p.isStream = false;
+    p.gravity = gravity; p.isGib = false; p.isStream = false; p.isRing = false;
     p.life = p.maxLife = 300 + Math.random()*250;
     p.color = color; p.size = 2 + Math.random()*2;
     p.friction = friction || 0.93; p.pooled = false; p.canPool = !!pools;
   }
+}
+// A brief expanding shockwave ring at the point of impact — used for genuinely high-energy hits
+// (Mage) to read as raw kinetic/magical force, distinct from "just more particles." Reuses the
+// same particle pool as everything else (isRing distinguishes it in drawParticles), so it costs
+// one pool slot and gets recycled the same way as any other particle.
+function spawnShockring(x, y, color, maxRadius){
+  const p = particles[particleIndex];
+  particleIndex = (particleIndex+1) % PARTICLE_COUNT;
+  p.active = true; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.gravity = 0;
+  p.isGib = false; p.isStream = false; p.isRing = true;
+  p.life = p.maxLife = 180 + Math.random()*60;
+  p.color = color; p.size = maxRadius || 26;
+  p.friction = 1; p.canPool = false; p.pooled = false;
 }
 function updateParticles(dt){
   for(const p of particles){
@@ -4815,7 +4909,7 @@ function spawnBloodStream(x, y, angle, count, sizeMult, brightColor, darkColor){
     const speed = (180 + Math.random()*160) * Math.min(1.8, 0.7+sizeMult*0.3);
     p.active = true; p.x = x; p.y = y; p.prevX = x; p.prevY = y;
     p.vx = Math.cos(jitter)*speed; p.vy = Math.sin(jitter)*speed;
-    p.gravity = 340; p.isGib = false; p.isStream = true;
+    p.gravity = 340; p.isGib = false; p.isStream = true; p.isRing = false;
     p.life = p.maxLife = (380 + Math.random()*220) * Math.min(2.2, 0.7+sizeMult*0.4); // longer streams for bigger splatters
     p.color = Math.random() < 0.6 ? (brightColor || '#a01818') : (darkColor || '#7a0f0f');
     p.size = (1.5 + Math.random()*1.5) * Math.min(2, 0.8+sizeMult*0.25); // thicker for bigger splatters
@@ -4832,7 +4926,7 @@ function spawnGibs(x, y, count){
     p.active = true; p.x = x; p.y = y;
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed - 40; // slight upward pop before gravity takes over
     p.gravity = 420;
-    p.isGib = true; p.isStream = false; p.rot = Math.random()*Math.PI*2; p.rotSpeed = (Math.random()-0.5)*10;
+    p.isGib = true; p.isStream = false; p.isRing = false; p.rot = Math.random()*Math.PI*2; p.rotSpeed = (Math.random()-0.5)*10;
     p.life = p.maxLife = 500 + Math.random()*350;
     p.color = Math.random() < 0.5 ? '#7a0f0f' : '#3a0505';
     p.size = 2.5 + Math.random()*3;
@@ -4855,6 +4949,11 @@ function drawParticles(ctx){
       ctx.lineCap = 'round';
       ctx.lineWidth = p.size * Math.max(0.3, p.life/p.maxLife); // tapers as the stream loses momentum
       ctx.beginPath(); ctx.moveTo(p.prevX, p.prevY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    } else if(p.isRing){
+      const t = 1 - p.life/p.maxLife; // 0 (just spawned) -> 1 (about to expire)
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 3 * (1-t); // thins out as it expands, like a real shockwave losing energy
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size*t, 0, Math.PI*2); ctx.stroke();
     } else {
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
     }
@@ -5444,6 +5543,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
    SPATIAL HASH
    ========================================================= */
 function cellKey(x,y){ return Math.floor(x/TILE_SIZE)+','+Math.floor(y/TILE_SIZE); }
+// Pulled out because the exact same "is this enemy currently unable to move" check (stunned OR
+// blocked at a barricade) was independently duplicated across updateBarricadesAndPileup(),
+// resolveSweptEnemyCollisions(), and resolveEnemyCollisions() — same logic, same meaning, three
+// separate copies. Centralizing it doesn't change what any of them do; it just means there's one
+// definition to update if the notion of "frozen" ever needs to account for a new status effect.
+function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
 // Discrete position-based collision (resolveEnemyCollisions, below) only ever compares positions
 // at the START and END of a frame. Two enemies moving fast enough toward each other can start the
 // frame apart, cross paths, and end the frame apart again on the OTHER side of each other without
@@ -5460,8 +5565,8 @@ function resolveSweptEnemyCollisions(){
     for(const other of nearby){
       if(!other.active || other.prevX === undefined) continue;
       if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions
-      const eFrozen = e.stunnedUntil > gameTime || e.pileBlocked;
-      const otherFrozen = other.stunnedUntil > gameTime || other.pileBlocked;
+      const eFrozen = isEnemyFrozen(e);
+      const otherFrozen = isEnemyFrozen(other);
       if(eFrozen && otherFrozen) continue; // both stationary this frame — nothing to tunnel through, and the regular pass already covers this pair
       const minDist = e.radius + other.radius + 2;
       const px = e.prevX - other.prevX, py = e.prevY - other.prevY;
@@ -5514,8 +5619,8 @@ function resolveEnemyCollisions(){
         if(dist >= minDist) continue;
         const overlap = minDist - dist;
         let pushX = dx/dist, pushY = dy/dist;
-        const eFrozen = e.stunnedUntil > gameTime || e.pileBlocked;
-        const otherFrozen = other.stunnedUntil > gameTime || other.pileBlocked;
+        const eFrozen = isEnemyFrozen(e);
+        const otherFrozen = isEnemyFrozen(other);
         if(!eFrozen && !otherFrozen){
           // Bias the separation toward each enemy's own direction of travel (their vx/vy, which
           // already point at their next waypoint) rather than pushing purely radially. A pure

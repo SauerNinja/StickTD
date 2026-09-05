@@ -119,7 +119,86 @@ file and the codebase over an external document's assumptions.
   `ReferenceError` at runtime that `node --check` cannot detect since it's syntactically valid.
   After any bulk regex edit across multiple call sites, manually review each insertion point.
 
-## Other conventions already established in this repo
+## Best practices — HTML5 markup
+
+Cross-checked against a general HTML5 reference (semantic elements, outlining, accessibility).
+Most of this is already followed; stated explicitly here so it stays that way as the UI grows:
+
+- Use the semantic element that actually matches the content's role (`<header>`, `<nav>`,
+  `<aside>`, `<section>`, `<meter>`, `<progress>`, `<details>`) rather than a generic `<div>` with
+  a class name doing the same job — already the convention in this codebase's UI overlays, keep it
+  that way for any new panel/control.
+- Keep a sane heading outline (one logical `<h1>` per page, nested headings inside `<section>`s
+  rather than skipping levels) if any new UI text content is added — this repo's overlays are
+  mostly icon/canvas-driven so this rarely comes up, but applies the moment prose content does.
+- Prefer a native element with built-in semantics/keyboard behavior (`<button>`, `<progress>`,
+  `<meter>`) over a styled `<div>` faking the same widget — free accessibility and keyboard
+  support that a fake widget doesn't get without extra ARIA work.
+- New interactive custom UI (shop cards, item slots) should stay reachable/operable via keyboard
+  where practical, not just pointer/touch events, even though this is primarily a touch-driven
+  mobile game.
+
+## Best practices — Canvas rendering (learned from real bugs this session)
+
+These are not style preferences — every one of them was the direct root cause of a real, shipped
+bug that took real debugging effort to trace. Treat them as required, not optional:
+
+- **Always set `fillStyle`/`strokeStyle` explicitly, immediately before the draw call that
+  depends on it — never assume it's still whatever you set earlier.** Canvas 2D context state
+  persists across draw calls and even across frames. Multiple "enemies/barricades render
+  transparent" bugs this session traced back to a glyph draw (`ctx.fillText(emoji, ...)`) that
+  never set its own `fillStyle`, silently inheriting a translucent color left behind by whatever
+  aura/effect happened to draw immediately before it that frame.
+- **Bracket any `ctx.save()` with a matching `ctx.restore()` in every code path**, including early
+  returns. An unmatched `save()`/`restore()` pair leaks transform/alpha/filter state into every
+  subsequent draw call for the rest of the frame (and into the *next* frame, since canvas state
+  isn't reset automatically between `requestAnimationFrame` calls).
+- **A discrete physical event (an impact, a death, a decal appearing) should render at full,
+  final size on the exact frame it happens — no grow-in/fade-in animation.** A grow animation on
+  something logically instantaneous decouples "when it visually finishes appearing" from "when it
+  actually happened," which reads as delayed/buggy even though the trigger fired at the correct
+  instant. This was traced and fixed twice this session (once by shortening the animation, which
+  wasn't enough; the actual fix was removing it entirely).
+- **Render-only cosmetic offsets (hit-flinch, bump wiggle) must live in `draw()`, never touch the
+  entity's real `x`/`y`.** Mutating the authoritative position for a purely visual effect risks
+  desyncing anything else that reads that position that same frame (pathing, collision, `traveled`
+  distance) — a bug that's hard to notice until it compounds over many frames.
+
+## Best practices — state management & derived flags
+
+- **A given piece of derived-per-frame state (e.g. "is this enemy currently blocked/frozen") gets
+  set by exactly one piece of code.** Splitting a flag's assignment across multiple loops or
+  conditions — even ones that look equivalent — is how the barricade double-occupancy bug
+  happened: one loop set `pileBlocked = true` for both the actual attacker and a bystander, and a
+  *separate* loop assumed anything already `pileBlocked` didn't need further handling, silently
+  stranding the bystander.
+- **When the same boolean expression is computed in more than one place, extract it into one
+  named function** (see `isEnemyFrozen()`), even if it's a one-liner. Beyond the obvious DRY
+  benefit, a named predicate is self-documenting and gives future changes exactly one place to
+  update instead of an unknown number of copies to find.
+- **A cascading effect (a status propagating backward through a queue, a value inherited from a
+  neighbor) must fold in whatever the neighbor *actually currently has*, not the neighbor's own
+  unmodified base value.** The stun/slow propagation bug this session was exactly this: unit B's
+  speed cap was computed from unit A's base speed instead of from whatever cap A itself had
+  already inherited, so the effect only ever traveled one hop before silently stopping.
+
+## Best practices — scale & aggregate effects
+
+- **When tuning a probability, frequency, or size, sanity-check the cumulative effect at realistic
+  scale (a full wave, many simultaneous hits, several seconds of continuous combat), not just one
+  isolated event.** Several regressions this session were "reasonable in isolation, way too much
+  in aggregate" — individually-modest blood decal sizes/frequencies compounding into a solid mass
+  once a real wave's worth of hits landed in the same corridor.
+- **Bound unbounded accumulation with a check tied to actual local density** (see
+  `isBloodAreaSaturated()`), not just a global array size cap. A global cap (`MAX_DECALS`) only
+  prevents unbounded memory growth — it does nothing to stop visual clustering in one specific
+  hot spot while plenty of capacity remains elsewhere.
+- **Any mechanic that can pause or block forward progress (spawn pausing on congestion, an enemy
+  queue waiting on a barricade) needs an explicit timeout/force-resume safety valve.** A condition
+  that's *usually* temporary must never be allowed to become a permanent soft-lock if the player's
+  situation (e.g. no gold left) means it can't naturally resolve on its own.
+
+
 
 - Single self-contained `index.html`. No build step, no external dependencies, no separate JS/CSS
   files. Keep it that way.
