@@ -1,5 +1,136 @@
 # Changelog
 
+## [1.0.144] - 2026-09-05
+- Reworked Mage into a rare, devastating-shot class instead of a moderate-frequency damage dealer:
+  cooldown increased exactly 5x across all three tiers (1080/960/840ms → 5400/4800/4200ms),
+  damage reduced 20% (7/11/16 → 6/9/13), and projectile speed roughly doubled again on top of the
+  earlier increase (660/700/740 → 1400/1500/1600 — by a wide margin the fastest projectile in the
+  game; a literal 10x as originally described would put it at 6600+, which would cross the whole
+  map in a fraction of a second and read as an invisible hitscan rather than a visible bolt, so
+  interpreted as "dramatically faster" rather than the literal multiplier).
+  **Balance note worth flagging directly**: a 5x longer cooldown combined with 20% less damage per
+  hit is roughly a ~84% reduction in sustained DPS compared to before, and a similarly large drop
+  in how often its slow debuff is actually applied to enemies. This is a deliberate, large role
+  shift — Mage becomes an occasional, spectacular set-piece hit rather than a steady contributor —
+  worth confirming that's the intended tradeoff in actual play, not just in the numbers.
+  - The impact itself was amplified further to match the new rarity: more particles (36/20, up
+    from 26/14), a guaranteed double shockwave ring (was a 40% chance for the second one), more
+    satellite drops (7-9, up from 5-6), and more/bolder radiating streaks (4-7, up from 2-4). Same
+    amplification applied to the death burst.
+
+## [1.0.143] - 2026-09-05
+- Cleaned up `updateBarricadesAndPileup()`, the pathing function that's had the most iteration
+  this session: merged two pairs of loops that each iterated the same `active` array separately
+  for no reason — computing `candidateBarricade` was its own pass right after building the
+  `active` list even though neither step depends on the other having finished for every enemy
+  first, and the same was true for the queue-position-reset pass and the claimed-slots pass right
+  after the sort. Reduced from 7 full passes over the active enemy list down to 5, purely by
+  combining genuinely independent, order-agnostic work — no behavior change, verified by the
+  original `queueSlotDist === undefined` check in the claimed-slots loop being tautologically true
+  in every case (since the very same merged loop had just set it), confirming the merge preserves
+  identical results.
+- Looked at two other real opportunities and deliberately left them alone rather than guess:
+  the spatial hash (`buildEnemyHash()`) gets rebuilt up to 5 times per frame across swept
+  collision, the 3-pass collision relaxation, and tower targeting — but each rebuild reflects a
+  genuinely different point in time where positions have already changed since the last one, so
+  collapsing any of them would mean resolving collisions against stale positions. Similarly,
+  `queryNearby()` allocates a fresh array on every call (called dozens of times per frame) — a
+  shared/reused buffer would cut that allocation pressure, but would require verifying zero
+  reentrancy across every caller (`findTarget`, `updateSwordsman`, `updateClericSmite`, and others)
+  to guarantee nothing reads a stale buffer mid-use, which wasn't verifiable with full confidence
+  in this pass. Both are real, specific leads for a future session with room to verify them
+  properly — flagged here rather than either ignored or guessed at.
+
+## [1.0.142] - 2026-09-05
+- Fixed Mage's long blood streaks reading as too thick. `spawnBloodCastoff()`'s `sizeMult`
+  parameter previously scaled length and width identically, so a "longer, bolder" streak got
+  proportionally thicker into more of a smear than a line. Width now scales at just over half the
+  rate of length (a dampened curve), so a long streak actually reads as long and thin, the way a
+  real cast-off streak should. Also pulled Mage's own streak `sizeMult` range down (1.8-2.6 →
+  1.4-2.0) on top of that general fix.
+- Fixed blood decals rendering on top of trees/rocks instead of underneath them. `drawScenery()`
+  was called before `drawDecals()` every frame; swapped the order — blood now sits on the ground
+  and scenery (a physically taller object) correctly occludes any stain directly behind it, instead
+  of stains appearing painted over tree canopies.
+- Removed the pulsing yellow "upgrade available" glow ring that rendered under every tower whose
+  next gold-tier upgrade the player could currently afford — redundant with the tower panel's own
+  scroll/upgrade indicator, and with enough affordable towers on screen at once it read as visual
+  clutter rather than useful signal.
+- Footprints now genuinely streak/smear rather than staying uniform round dots when an enemy has
+  just stepped through a large blood pool — the first few steps out of a big pile drag an
+  elongated mark that gradually shortens back to a normal print as the extra blood from that pile
+  runs out, instead of every footprint (big pile or small) looking the same shape.
+- On the reported bunching: the fixes already shipped this session (proportional follow-speed-cap
+  buffer, stronger tangent-bias separation, single-attacker-per-barricade, and the stall-watchdog
+  failsafe in 1.0.140 that forces any illegitimately-stuck enemy to keep progressing after 3
+  seconds) are all still in this build and confirmed present in the code. No new structural
+  pathing change went into this version specifically, since there's no new concrete lead beyond
+  what's already been tried — if a Swarm-heavy wave is still visibly clumping after 1.0.139/1.0.140,
+  the most useful next step would be pinpointing whether it's a hard stop (the stall watchdog
+  should catch that within ~3s) or just slow/congested movement through a genuine chokepoint
+  (which is closer to expected behavior than a bug).
+
+## [1.0.141] - 2026-09-05
+- Mage's projectile speed increased substantially: 520/550/580 across its three tiers, now
+  660/700/740 — now the fastest projectile in the game (previously Gatling's 560-640 was faster),
+  matching the "high impact, high energy" identity the blood effects have been building toward.
+- Added long, bold radiating blood streaks to Mage hits and kills — previously the Mage burst was
+  all particles, satellite drops, and shockwave rings, with no actual streak lines the way Warrior
+  gets. 2-4 bold cast-off streaks (sizeMult 1.8-2.6, longer than even Warrior's cut) now fan out
+  omnidirectionally from the impact point on every hit — omnidirectional rather than aligned to
+  one strike vector, since a magical blast has no swing direction the way a blade does. Kills spawn
+  3-5 of the same streaks for extra intensity on the killing blow.
+
+## [1.0.140] - 2026-09-05
+- Added a last-resort anti-bunching failsafe, independent of whatever the specific root cause of
+  any given stuck-cluster bug turns out to be — this session has found and fixed several genuine
+  contributing bugs to enemy clumping, but rather than continuing to chase the next possible edge
+  case one at a time, added a structural guarantee that bunching can never permanently block a
+  wave's progress at all, regardless of cause. `checkStallWatchdog()` tracks each enemy's actual
+  path progress (`traveled`) over rolling ~1-second windows. Every *legitimate* reason an enemy
+  stops advancing (queued at a barricade, stunned) is explicitly excluded up front and never
+  accumulates a strike. For everything else — an enemy that isn't supposed to be blocked at all
+  but has made essentially no forward progress for 3 consecutive seconds anyway — it gets a single
+  forced nudge directly toward its next waypoint, bypassing the normal collision-limited movement
+  just for that one correction, and the counter resets. This is invisible during ordinary play (it
+  only ever fires when something has already gone wrong elsewhere) and doesn't fix any specific
+  bug on its own, but it's a hard ceiling: no enemy can now be stuck in place for more than a few
+  seconds, no matter what future or undiscovered issue might otherwise cause it.
+
+## [1.0.139] - 2026-09-05
+- Found a likely real contributor to the "swarm cluster stuck in a column" issue reported with
+  screenshots of a Swarm wave. Two changes:
+  - The follow-speed-cap's trigger buffer (how close a unit needs to be to the one ahead before its
+    speed gets capped to match) was a flat 14px regardless of unit size. That's trivial for a
+    Tank/Boss, but over 1.5x a Swarm's entire diameter (radius 12) — meaning a dense cluster of
+    small, fast Swarm units was capping each other's speed far more eagerly than proportionally
+    reasonable, cascading a "slow down and wait" chain through an entire tightly-packed group even
+    when there was still plenty of physical room to keep moving. The buffer now scales with the
+    pair's own combined radius (capped at 14, so larger units are unaffected), which meaningfully
+    tightens the trigger range for small enemies specifically.
+  - Reduced the collision-separation tangent-bias's cross-path damping from 0.45 to 0.3 — dense
+    clusters of many identical-speed units (exactly what a big Swarm wave funneling through a
+    single-tile entrance produces) settle faster when separation leans further into sliding past
+    each other along the path instead of jostling side to side, which is what let a tightly-packed
+    group keep shoving each other without making net forward progress.
+  - This is a genuine improvement to a real contributing mechanism, but given how many angles this
+    class of bug has had, worth confirming against fresh gameplay before considering it fully
+    closed — please flag if a Swarm-heavy wave still visibly clumps after this.
+
+## [1.0.138] - 2026-09-05
+- Archer and Mage hits/kills now carry just as much visual presence as Warrior's slash, matching
+  the actual request rather than the earlier interpretation of "low-impact" as "visually sparse":
+  - The persistent ground-mark chance is now archetype-aware — Archer and Mage were leaving
+    visibly fewer lasting marks than Warrior even though each is just as intense in its own way,
+    so both now roll at 50% instead of the shared 30% (Warrior stays at 30%, since its cut-line +
+    arc are already a guaranteed, substantial mark every hit).
+  - Archer keeps its low-concentration puncture identity but the mist now scatters as 2-3 droplets
+    per hit instead of 1, plus an occasional short graze streak — less blood *concentration*, but
+    just as many visible marks, achieved through spread rather than volume. Same boost applied to
+    its death burst (more drip trails, more far-flung droplets).
+  - Mage gets more satellite drops per hit (5-6, up from 4) and death (4-6, new), plus a chance of
+    a second, tighter inner shockring on some hits for extra flourish.
+
 ## [1.0.137] - 2026-09-05
 - Made the BLADE (Swordsman/Axeman) slash pattern itself genuinely unique per hit, not just
   randomized in shape:

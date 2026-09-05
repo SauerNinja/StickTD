@@ -699,7 +699,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.137'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.144'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1007,11 +1007,11 @@ const CONFIG = {
     },
     MAGE: {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
-      blurb: 'Slows anything it hits, and has a small chance to burn, freeze, or shock it too.',
+      blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
       tiers: [
-        { range: 220, damage: 7,  cooldown: 1080, projectileSpeed: 520, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 11, cooldown: 960,  projectileSpeed: 550, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-        { range: 260, damage: 16, cooldown: 840,  projectileSpeed: 580, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+        { range: 220, damage: 6,  cooldown: 5400, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 240, damage: 9,  cooldown: 4800, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 260, damage: 13, cooldown: 4200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
     BOMBER: {
@@ -1509,10 +1509,8 @@ function updateBarricadesAndPileup(){
     if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime) continue;
     e.pileBlocked = false;
     e.touchingBarricade = false;
+    e.candidateBarricade = findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
     active.push(e);
-  }
-  for(const e of active){
-    e.candidateBarricade = findTouchingBarricade(e);
   }
   // Only the single front-most enemy touching a given barricade is its "attacker" — contact range
   // is generous enough (radius+14px) that two or three enemies squeezed together on a wide tile
@@ -1571,9 +1569,13 @@ function updateBarricadesAndPileup(){
   // of track — without this, an enemy rounding a corner falsely detects a blocked unit on an
   // adjacent, unrelated lane and snaps sideways across tracks to "join" that queue
   const MAX_TRAVELED_GAP_FOR_CATCHMENT = 110;
-  for(const e of active){ e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; e.origTraveled = e.traveled; } // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
   const claimedSlots = new Set();
-  for(const e of active) if(e.pileBlocked && e.queueSlotDist === undefined) claimedSlots.add(Math.round(e.traveled)); // enemies already directly touching a barricade occupy their own traveled position
+  for(const e of active){
+    // Both of these are independent per-enemy, order-agnostic operations — merged into one pass
+    // rather than two separate loops over the same freshly-sorted array right after each other.
+    e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; e.origTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
+    if(e.pileBlocked) claimedSlots.add(Math.round(e.traveled)); // enemies already directly touching a barricade occupy their own traveled position
+  }
   for(let i=0; i<active.length; i++){
     const behind = active[i];
     if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
@@ -1621,11 +1623,16 @@ function updateBarricadesAndPileup(){
   // read as jittery bumping. Only kicks in once something is genuinely close ahead (near actual
   // contact distance) — far-apart units on the same path are unaffected and move at full speed.
   for(const e of active) e.followSpeedCap = undefined;
-  const FOLLOW_PROXIMITY_BUFFER = 14; // how far ahead of "just touching" this starts capping speed
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
     const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
-    if(d <= ahead.radius + behind.radius + FOLLOW_PROXIMITY_BUFFER){
+    // Proportional to the pair's own size instead of a flat 14px — a flat buffer is trivial for a
+    // Tank/Boss but was over 1.5x a Swarm's entire diameter (radius 12), meaning dense clusters of
+    // small, fast enemies triggered the cap far too eagerly on units that still had plenty of
+    // room, cascading a "stop and wait" chain through an entire tightly-packed group even when
+    // nothing was actually blocking them. Capped at 14 so larger units keep the original buffer.
+    const proximityBuffer = Math.min(14, (ahead.radius + behind.radius) * 0.3);
+    if(d <= ahead.radius + behind.radius + proximityBuffer){
       // The cap must reflect what `ahead` is ACTUALLY limited to right now, not just its own base
       // speed/slow debuff — otherwise a stun or slow only propagated back one unit: if a stunned
       // unit froze the one directly behind it (via followSpeedCap = 0), a THIRD unit further back
@@ -1864,7 +1871,7 @@ function drawScenery(ctx){
     }
     ctx.font = Math.round(size) + 'px serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff'; // scenery is the first thing drawn each frame — must never inherit leftover fillStyle from the previous frame's last draw call
+    ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it (now blood decals, previously the last thing drawn in the prior frame)
     const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
     ctx.fillText(emoji, item.x, item.y + 2);
 
@@ -2528,6 +2535,9 @@ class Enemy{
     this.lastBleedSource = null;
     this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
+    this.stallWatchTraveled = 0; // last-resort anti-bunching failsafe — see checkStallWatchdog()
+    this.stallWatchTimer = 0;
+    this.stallStrikes = 0;
     this.flinchStart = 0; // hit-reaction nudge — render-only offset applied in draw(), never touches this.x/this.y itself, so it can't desync pathing/collision no matter how often it fires
     this.flinchAngle = 0;
     this.flinchMag = 0;
@@ -2903,28 +2913,40 @@ class Enemy{
         spawnParticles(this.x, this.y, bio.bright, 8, 200); // rock chips, no liquid streams or pooling
       } else if(arch === 'ARCHER'){
         // Low-impact puncture wound, but forensically accurate to how a real high-velocity fine
-        // mist behaves: the wound itself produces little total volume (fewer particles than any
-        // other archetype, mostly just dripping), but the mist that DOES fly carries real residual
-        // velocity and low drag, so a couple of droplets travel a genuinely long way from the
-        // wound rather than landing right next to it. Less blood and less immediate damage-read,
-        // more distance — the opposite tradeoff from Mage's big-but-close burst.
-        spawnParticles(this.x, this.y, bio.spray, 4, 60, 0.94, true, impactAngle, 0.45);
+        // mist behaves: the wound itself produces little total volume, but the mist that flies
+        // carries real residual velocity and low drag, scattering as several small droplets
+        // rather than a concentrated pool. That scatter is now generous enough to read with just
+        // as much visual presence as Warrior's slash or Mage's burst — many small far-flung marks
+        // instead of one, rather than genuinely looking sparser overall. Less concentrated blood,
+        // same amount of visible impact.
+        spawnParticles(this.x, this.y, bio.spray, 6, 60, 0.94, true, impactAngle, 0.5);
         if(Math.random() < 0.7) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
-        if(!bio.isDust && Math.random() < 0.55){
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.55), 1, impactAngle, 2.6); // one fine mist droplet flung well past the wound itself
+        if(!bio.isDust){
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.55), 2 + Math.floor(Math.random()*2), impactAngle, 2.4); // several fine mist droplets flung well past the wound, not just one
+          if(Math.random() < 0.4) spawnBloodCastoff(this.x, this.y, impactAngle, hexToRgba(bio.dark, 0.5), undefined, 0.8); // an occasional short, thin graze streak — small, but adds to the visible mark count
         }
       } else if(arch === 'MAGE'){
-        // High-energy magical impact — the most violent of the three by design, now unmistakably
-        // so: bigger and faster than before, plus an actual expanding shockwave ring at the point
-        // of impact so it reads as raw kinetic/magical force rather than just "more particles."
-        // Full radial spread instead of a narrow cone, plus an instant burst of satellite drops so
-        // the impact reads as dramatic on the very first hit, not something that only builds up
-        // after several.
-        spawnParticles(this.x, this.y, bio.bright, 26, 360, 0.88, true);
-        spawnParticles(this.x, this.y, bio.spray, 14, 400, 0.86, true);
+        // High-energy magical impact — now genuinely rare (5x longer between shots) and priced
+        // accordingly in spectacle: every hit is amplified further so the wait actually pays off,
+        // reading as a singular devastating event rather than routine damage output. Bigger and
+        // faster than before, plus a guaranteed double shockwave ring at the point of impact so it
+        // reads as raw kinetic/magical force rather than just "more particles." Full radial spread
+        // instead of a narrow cone, plus an instant burst of satellite drops so the impact reads as
+        // dramatic on the very first hit.
+        spawnParticles(this.x, this.y, bio.bright, 36, 380, 0.88, true);
+        spawnParticles(this.x, this.y, bio.spray, 20, 420, 0.86, true);
         if(!bio.isDust){
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 4);
-          spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.55), 22 + Math.random()*10);
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 7 + Math.floor(Math.random()*3));
+          spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.6), 32 + Math.random()*14);
+          spawnShockring(this.x, this.y, hexToRgba(bio.spray, 0.45), 20 + Math.random()*10); // now guaranteed, not a 40% chance — every shot is a rare, deliberate event
+          // Long radiating streaks, distinct from Warrior's single directional cut — a magical
+          // blast has no swing direction to align with, so several bold streaks fan out
+          // omnidirectionally from the impact point instead of one line along the strike vector.
+          const streakCount = 4 + Math.floor(Math.random()*4);
+          for(let s=0; s<streakCount; s++){
+            const streakAngle = Math.random()*Math.PI*2;
+            spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6 + Math.random()*0.15), undefined, 1.6 + Math.random()*0.7);
+          }
         }
         // Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical
         // blast) throw a fine mist BACK toward the source, not just forward through the target —
@@ -2990,10 +3012,15 @@ class Enemy{
       }
       // a real lasting mark on the ground for a non-lethal hit too, not just the killing blow —
       // the particles above all fade within ~1s, so without this, blood only ever visibly stuck
-      // around after a kill. Smaller/less frequent than the death pool so it doesn't outshine it.
-      // Kept deliberately infrequent — every hit adding a mark is what turns a fight into one solid
-      // red mass instead of readable individual splatters.
-      if(!bio.isDust && this.hp > 0 && Math.random() < 0.3){
+      // around after a kill. Kept deliberately infrequent overall so a fight doesn't turn into one
+      // solid red mass instead of readable individual splatters — but the chance is now
+      // archetype-aware: Archer and Mage hits were leaving visibly sparser marks than Warrior's
+      // slash even though each is just as intense in its own way (a fine puncture mist / a violent
+      // burst), so both get a higher chance of a lasting mark to match Warrior's visual presence,
+      // while spawnDecal's own archBias sizing still keeps each one shaped correctly for its
+      // archetype (Archer's small and elongated, Mage's large and round).
+      const markChance = (arch === 'ARCHER' || arch === 'MAGE') ? 0.5 : 0.3;
+      if(!bio.isDust && this.hp > 0 && Math.random() < markChance){
         spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.5), true, impactAngle, arch);
       }
       // ongoing drip tied directly to THIS hit's severity, not a background "wounded" timer —
@@ -3065,25 +3092,33 @@ class Enemy{
           }
         } else if(arch === 'ARCHER'){
           // low-impact even in death — a fatal arrow still doesn't cause a burst, just a body that's
-          // stopped moving with a real puncture wound: minimal ambient particles (fewer than any
-          // other archetype), no wide gush fan, leaning on drip trails instead to show it actually
-          // bled out rather than exploded. A couple of far-flung mist droplets carry the same
-          // "less volume, more distance" identity through to the killing blow.
+          // stopped moving with a real puncture wound. Volume stays low (fewer core particles than
+          // any other archetype), but the mark COUNT is generous — several drip trails and several
+          // far-flung mist droplets — so the kill still reads with real visual presence, matching
+          // Warrior/Mage's death-time impact, through spread rather than concentration.
           spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 2 : 5)*goreScale), 90, 0.94, !low);
           if(!bio.noArterial){
-            for(let d=0; d<Math.round(2*goreScale); d++){
-              spawnDripTrail(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*6, hexToRgba(bio.dark, 0.6));
+            for(let d=0; d<Math.round(3*goreScale); d++){
+              spawnDripTrail(this.x + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*7, hexToRgba(bio.dark, 0.6));
             }
-            if(!low) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.5), 1, impactAngle, 2.8);
+            if(!low) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.5), 2 + Math.floor(Math.random()*2), impactAngle, 2.6);
           }
           spawnGibs(this.x, this.y, Math.max(1, Math.round(1*goreScale)));
         } else if(arch === 'MAGE'){
-          // a magical kill reads as genuinely high-energy, not just "an ordinary collapse but more
-          // particles" — faster, wider particles than before plus a shockwave ring, short of a full
-          // explosive burst but unmistakably violent
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 12 : 28)*goreScale), 340, viscFriction, !low);
-          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 8 : 18)*goreScale), 380, viscFriction, !low);
-          if(!low) spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.6), 26 + Math.random()*12);
+          // a magical kill is now a genuinely rare, singular event (5x longer between shots than
+          // any other tower) — amplified to match: faster, wider particles, a guaranteed double
+          // shockwave ring, and more/bolder radiating streaks than an ordinary hit
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 16 : 36)*goreScale), 360, viscFriction, !low);
+          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 10 : 22)*goreScale), 400, viscFriction, !low);
+          if(!low){
+            spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.65), 34 + Math.random()*14);
+            spawnShockring(this.x, this.y, hexToRgba(bio.spray, 0.45), 22 + Math.random()*10);
+            spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 6 + Math.floor(Math.random()*4));
+            const streakCount = 5 + Math.floor(Math.random()*4);
+            for(let s=0; s<streakCount; s++){
+              spawnBloodCastoff(this.x, this.y, Math.random()*Math.PI*2, hexToRgba(bio.dark, 0.6), undefined, 1.7 + Math.random()*0.7);
+            }
+          }
           spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale)));
         } else {
           // WARRIOR (bladed melee) death: a directional collapse, not a burst — modest ambient
@@ -4040,15 +4075,9 @@ class Tower{
         ctx.stroke();
       }
     }
-    // upgrade-available glow — visible at a glance on the map, not just after selecting the tower
-    if(this.canUpgrade() && gold >= this.nextUpgradeCost()){
-      const pulse = 0.5 + Math.sin(gameTime/220)*0.3;
-      ctx.beginPath();
-      ctx.ellipse(this.x, this.y + 12, 15, 7, 0, 0, Math.PI*2);
-      ctx.strokeStyle = `rgba(255,210,0,${pulse.toFixed(2)})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+    // (upgrade-available indicator lives on the scroll icon in the tower's own panel — the
+    // separate pulsing glow ring that used to render here at every affordable-upgrade tower was
+    // redundant with it and has been removed)
     let lungeAmt = 0, swingProgress = 0;
     if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN')){
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
@@ -4573,10 +4602,14 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult){
   // caller (the Warrior slash wound, which needs to read clearly as an actual cut and not just
   // another generic streak) draw a bolder, longer line than the default.
   sizeMult = sizeMult || 1;
+  // width scales more gently than length (sqrt curve) — a "longer, bolder" streak should read as
+  // an elongated line, not get proportionally thicker into a smear. At sizeMult 2.6 (Mage's
+  // long radiating streaks) this keeps width reasonable while length still scales fully.
+  const widthMult = 1 + (sizeMult - 1) * 0.55;
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2)*decalLifespanVariance(), spawnTime: realTime, isLine: true,
     angle: impactAngle + (Math.random()-0.5)*0.7,
     maxLen: (8 + Math.random()*16) * sizeMult,
-    width: (1 + Math.random()*1.6) * sizeMult
+    width: (1 + Math.random()*1.6) * widthMult
   };
   pushDecal(decal);
 }
@@ -4629,13 +4662,16 @@ function spawnSkinPeel(x, y, color){
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*1.3*decalLifespanVariance(), spawnTime: realTime, isPeel: true, points };
   pushDecal(decal);
 }
-function spawnFootprint(x, y, color, angle){
+function spawnFootprint(x, y, color, angle, dragMult){
   // small round smear left by a bloody foot — short-lived (a quarter of the standard lifespan)
   // since these are transient trail marks, not the wound itself. Sized up slightly from the
   // original so they still read clearly next to the larger splatters/streaks around them.
+  // dragMult elongates it into a genuine drag-streak instead of a round dot — used right after
+  // stepping through a large pile, where a real foot would smear rather than leave a clean print.
+  dragMult = dragMult || 1;
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*0.25, spawnTime: realTime,
     isDrop: true, angle: angle + (Math.random()-0.5)*0.6,
-    len: 2 + Math.random()*2, width: 3 + Math.random()*2
+    len: (2 + Math.random()*2) * dragMult, width: 3 + Math.random()*2
   };
   pushDecal(decal);
 }
@@ -4653,7 +4689,12 @@ function updateWalkingBlood(dt){
         e.wetFeetSteps--;
         const fade = e.wetFeetSteps / (e.wetFeetStepsMax||5); // each successive print is fainter/smaller as the blood runs out
         const c = e.wetFeetRgb || {r:122,g:15,b:15};
-        spawnFootprint(e.x + (Math.random()-0.5)*6, e.y + e.radius*0.6, 'rgba('+c.r+','+c.g+','+c.b+','+(0.7*fade).toFixed(2)+')', Math.atan2(e.vy,e.vx));
+        // a real foot drags/smears rather than leaving a clean print right after stepping through
+        // a genuinely large pile — dragMult fades back to a normal round print (1x) as the extra
+        // sizeBonus steps get used up, so only the first few steps out of a big puddle actually
+        // streak.
+        const dragMult = 1 + Math.max(0, (e.wetFeetSteps - (e.wetFeetStepsMax - (e.wetFeetSizeBonus||0)))) * 0.5;
+        spawnFootprint(e.x + (Math.random()-0.5)*6, e.y + e.radius*0.6, 'rgba('+c.r+','+c.g+','+c.b+','+(0.7*fade).toFixed(2)+')', Math.atan2(e.vy,e.vx), dragMult);
       }
       continue;
     }
@@ -4679,6 +4720,7 @@ function updateWalkingBlood(dt){
         // run dry than a small splatter does
         const sizeBonus = Math.min(3, Math.floor((d.footprintRadius||0) / 12));
         e.wetFeetSteps = e.wetFeetStepsMax = 4 + Math.floor(Math.random()*3) + sizeBonus;
+        e.wetFeetSizeBonus = sizeBonus;
         e.wetFeetRgb = d.rgb;
         e.footTrailTimer = 0;
         break;
@@ -5549,6 +5591,46 @@ function cellKey(x,y){ return Math.floor(x/TILE_SIZE)+','+Math.floor(y/TILE_SIZE
 // separate copies. Centralizing it doesn't change what any of them do; it just means there's one
 // definition to update if the notion of "frozen" ever needs to account for a new status effect.
 function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
+// Last-resort anti-bunching failsafe, independent of whatever the specific root cause of a given
+// stuck-cluster bug turns out to be. Every legitimate reason an enemy stops advancing (queued at
+// a barricade, stunned) is excluded up front — this only watches for the illegitimate case: an
+// enemy that isn't supposed to be blocked at all, but has made essentially no forward progress for
+// several consecutive seconds anyway, which can only mean some other system (present or future)
+// has it genuinely deadlocked. After 3 consecutive ~1-second windows of near-zero `traveled`
+// progress, it gets a single forced nudge directly toward its next waypoint — bypassing the normal
+// collision-limited per-frame movement just for that one correction — and the counter resets.
+// Invisible in ordinary play; only ever fires when something has already gone wrong elsewhere.
+function checkStallWatchdog(dt){
+  for(const e of enemyPool){
+    if(!e.active || e.isBreakaway) continue;
+    if(isEnemyFrozen(e)){
+      // legitimately blocked — not a bug, don't accumulate strikes while this is true
+      e.stallWatchTimer = 0; e.stallStrikes = 0; e.stallWatchTraveled = e.traveled;
+      continue;
+    }
+    e.stallWatchTimer += dt;
+    if(e.stallWatchTimer < 1000) continue;
+    const progressed = e.traveled - e.stallWatchTraveled;
+    e.stallWatchTimer = 0;
+    e.stallWatchTraveled = e.traveled;
+    if(progressed < 3){
+      e.stallStrikes++;
+      if(e.stallStrikes >= 3){
+        const target = waypointsPx[e.pathIndex+1];
+        if(target){
+          const dx = target.x-e.x, dy = target.y-e.y;
+          const dist = Math.hypot(dx,dy) || 1;
+          const nudge = Math.min(dist, 24);
+          e.x += (dx/dist)*nudge; e.y += (dy/dist)*nudge;
+          e.traveled += nudge;
+        }
+        e.stallStrikes = 0;
+      }
+    } else {
+      e.stallStrikes = 0; // making real progress again
+    }
+  }
+}
 // Discrete position-based collision (resolveEnemyCollisions, below) only ever compares positions
 // at the START and END of a frame. Two enemies moving fast enough toward each other can start the
 // frame apart, cross paths, and end the frame apart again on the OTHER side of each other without
@@ -5634,8 +5716,13 @@ function resolveEnemyCollisions(){
             const tanY = speedE > speedO ? e.vy/(speedE||1) : other.vy/(speedO||1);
             const along = pushX*tanX + pushY*tanY; // component of the push already aligned with travel direction
             const crossX = pushX - along*tanX, crossY = pushY - along*tanY; // perpendicular remainder
-            pushX = along*tanX + crossX*0.45;
-            pushY = along*tanY + crossY*0.45;
+            // 0.3 (was 0.45) — dense clusters of many identical-speed units (a big Swarm wave
+            // funneling through a single-tile-wide entrance is the worst case) settle faster when
+            // separation leans further into sliding past each other along the path instead of
+            // jostling sideways, which is what let a tightly-packed group keep shoving each other
+            // without ever making net forward progress.
+            pushX = along*tanX + crossX*0.3;
+            pushY = along*tanY + crossY*0.3;
             const norm = Math.hypot(pushX, pushY) || 1;
             pushX /= norm; pushY /= norm;
           }
@@ -5895,6 +5982,7 @@ function update(dt){
   for(const e of enemyPool) if(e.active) e.update(dt);
   resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
   resolveEnemyCollisions();
+  checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
   const enemyHash = buildEnemyHash();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHash);
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHash);
@@ -5994,8 +6082,11 @@ function render(ctx){
   ctx.scale(camera.zoom, camera.zoom);
 
   ctx.drawImage(mapCanvas, 0, 0); // static map, pre-rendered once — see BOOT
-  drawScenery(ctx);
+  // Blood decals draw BEFORE scenery (trees/rocks) rather than after — blood sits flat on the
+  // ground, and a tree/rock is a physically taller object that should occlude any stain directly
+  // behind it, not have blood rendered on top of it. The previous order drew stains over trees.
   drawDecals(ctx);
+  drawScenery(ctx);
   drawBuildPreview(ctx);
   drawDeathAnims(ctx);
   for(const e of enemyPool) if(e.active) e.draw(ctx);
