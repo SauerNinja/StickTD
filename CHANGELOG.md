@@ -1,5 +1,193 @@
 # Changelog
 
+## [1.0.132] - 2026-09-05
+- Sword slashes now produce a real cast-off ARC, not just a straight streak. Checked the
+  bloodstain-pattern-analysis reference directly: real cast-off (blood thrown from a weapon during
+  a swing) travels tangentially to the arc of that swing and lands as a curved trail of individual
+  drops — "wide or narrow linear or slightly curved trails... with the more elongated bloodstains
+  most distant from the source," rounder near the origin and progressively more elongated further
+  along the arc as the impact angle gets more acute. Added `spawnCastOffArc()`, which places a fan
+  of individual teardrop stains along a curving path away from the wound, each oriented tangent to
+  its own point on the arc (the actual direction that specific drop was flung, not radially outward
+  from the wound) with increasing elongation further out — a real swing-arc pattern instead of one
+  straight line. Warrior melee hits now spawn the direct cut-line at the wound itself PLUS this
+  cast-off arc trailing away from it; the killing blow's death-time cast-off also switched from a
+  straight streak to the same arc (a cessation cast-off — the blade stops abruptly at the target
+  while blood already in flight keeps going, per the same reference).
+
+## [1.0.131] - 2026-09-05
+- Found the real reason Warrior/Archer/Mage blood still looked the same despite the archetype-
+  specific hit particles from 1.0.128: those particles fade within about a second, but the ground
+  decal — the thing that actually persists for up to 30 minutes and is what a player is really
+  comparing when they say two classes "look the same" — fell through to one shared shape profile
+  for both Warrior AND Mage, and had no size difference between any archetype at all. Now all four
+  archetypes have their own distinct pool shape AND size: Archer pools are long, narrow, and
+  noticeably smaller (a real puncture drags into a thin streak, not a wide pool); Mage pools are the
+  biggest and roundest of the four (a violent, omnidirectional high-energy impact); Explosive stays
+  round but mid-sized; Warrior keeps its original moderate directional smear. Also gave the Warrior
+  slash-wound cast-off line its own bold size multiplier (1.8x length/width) so it reads clearly as
+  an actual cut instead of just another same-size generic streak.
+
+## [1.0.130] - 2026-09-05
+- Simplified the Shop down to one unified view instead of switching between Items/Passives/
+  Inventory tabs — with only one item in the game (Lucky Branch) and three passives, tab-switching
+  was more navigation than the content actually needed. Removed the Inventory tab entirely (it just
+  listed every tower's equipped items, redundant with each tower's own panel) and now show equipped
+  items, the Lucky Branch purchase card, and the three passive upgrades together in one scrollable
+  list, with a section divider between items and passives. Current wood/stone is now shown right in
+  the shop note line instead of being tucked away in the removed Inventory tab.
+- Lucky Branch now also costs wood (15), not just gold — gives wood collected from clearing scenery
+  an actual use again now that it's not spent on the old per-class Masterwork gear tier.
+
+## [1.0.129] - 2026-09-05
+- Fixed enemies not reliably picking up footprints when walking through big blood puddles. The
+  wet-feet pickup check compared an enemy's distance to a pool decal's stored anchor point only —
+  but a big or massive pool's actual blobs can spread well beyond that anchor, so an enemy visibly
+  standing in the edge of a large puddle wasn't detected as being "in blood" unless it happened to
+  be near the exact center point. Each pool decal now records how far its own blobs actually reach
+  (`footprintRadius`), and the pickup check extends its range by that amount — matching what's
+  actually drawn on screen instead of just the stored coordinate. Stepping in a genuinely big pool
+  now also picks up a little more blood, taking a couple of extra steps to run dry than a small
+  splatter does.
+
+## [1.0.128] - 2026-09-05
+- Fixed embedded arrows appearing to stick out of a random side of the enemy (sometimes the middle,
+  sometimes the far side) regardless of where the shot actually came from. The embedding position
+  was a fully random angle around the enemy, unrelated to the arrow's real flight path. It now
+  anchors on the near side relative to the shot's travel direction (the side facing the shooter,
+  where the arrow struck first), with the arrow's own angle matching the real flight path so the
+  head visibly points inward and the shaft sticks out the correct entry side, with a little natural
+  lateral scatter so it's not the exact same spot every time.
+- Added themed status-effect visuals instead of every effect being a flat colored circle wash:
+  drifting ice-crystal icons around a slowed/frozen unit, flickering flame icons around a burning
+  one, and lightning bolts orbiting above a stunned one's head (stun previously had no dedicated
+  visual at all). The colored circle tint stays underneath as a base, with the icons on top making
+  what's actually affecting a unit readable at a glance.
+- Fixed stun/slow only propagating one unit back through a queue instead of cascading through the
+  whole line. A follower's speed cap was computed from the unit ahead's own base speed and slow
+  debuff, but not from whatever cap THAT unit had already inherited from further ahead — so a
+  stunned unit would correctly freeze the one directly behind it, but a third unit further back
+  only checked the second unit's own (unaffected) stun state and missed the inherited block
+  entirely. The cap now folds in whatever the unit ahead is already limited to, so a stun or slow
+  correctly cascades back through an entire queued line, not just to the immediate follower.
+- Extended the archetype-specific blood identity (melee slash / archer puncture / mage burst) from
+  hits to kills as well — previously only the EXPLOSIVE (Bomber) death burst was differentiated,
+  everything else shared one generic "ordinary death" burst regardless of what actually killed it.
+  Archer kills now stay low-impact even in death (minimal burst, drip trails instead of a wide
+  gush); Mage kills get a faster, wider, higher-energy burst than an ordinary collapse; Warrior
+  kills keep the existing directional-collapse-with-arterial-gush behavior.
+- Added back-spatter to Mage hits: a small amount of fine mist thrown back toward the source, not
+  just forward through the target — real high-velocity impacts do this, and it's specifically what
+  forensic investigators look for to determine where a shot came from, so it fits the "high-impact"
+  identity Mage hits are going for.
+
+## [1.0.127] - 2026-09-05
+- Fixed two units visibly overlapping/occupying the same space at a barricade, which was also the
+  real cause of what looked like enemies "jamming up on corners" near barricades. The 1.0.125 fix
+  that limits a barricade to one attacker at a time set `pileBlocked = true` for every enemy found
+  touching it — attacker and non-attacker alike — before deciding which one was the real attacker.
+  Since the queue-catchment pass (which assigns a real, non-overlapping resting slot) skips any
+  enemy that's already `pileBlocked`, the non-attacker "runner-up" enemy was marked blocked without
+  ever being given a slot, so it just sat wherever it already was — directly overlapping the
+  attacker. Now only the actual attacker gets `pileBlocked` set in that step; anyone else who was
+  also in contact range falls through to the queue-catchment pass and gets a proper slot behind the
+  attacker instead.
+- Impact blood is now genuinely distinct per weapon archetype instead of two of the three sharing
+  one generic branch:
+  - **Melee (Warrior)** now reads as an actual laceration: cast-off streaks are angled roughly
+    perpendicular to the strike direction (the cut line itself, since a slash travels across the
+    target rather than straight into it) and bleed along both directions of that line, with a
+    chance of a running drip down from the wound — a knife/blade wound, not a generic splash.
+  - **Archer** flipped from a high-velocity spray cone to a genuine low-impact puncture: a handful
+    of low-speed particles right at the wound and a strong chance of a slow drip, since an arrow
+    makes a small precise hole rather than blasting blood outward with force.
+  - **Mage** is now its own dedicated branch (previously grouped in with Warrior) — fast, wide, high
+    particle-count radial burst plus an instant cluster of satellite drops, reading as a violent,
+    high-energy magical impact rather than a controlled directional spray.
+- Reduced the flat per-spawn delay bonus from 2000ms down to 400ms. Wave spawning now also pauses
+  reactively whenever anything is actually queued at a barricade (1.0.125) and enforces a 350ms
+  global minimum gap between any two spawns regardless of congestion — with those two handling real
+  congestion control, unconditionally taxing every single spawn by a full 2 seconds was needlessly
+  slow when the lane was completely clear.
+- Added a safety valve against a permanent soft-lock: if a barricade jam holds continuously for 15
+  seconds — most critically if the player is out of gold and literally cannot afford anything that
+  would break it — wave spawning now force-resumes regardless of whether the jam actually cleared.
+  Without this, an unbreakable jam combined with an empty wallet could pause spawning forever,
+  preventing the wave (and the run) from ever finishing.
+
+## [1.0.126] - 2026-09-04
+- Reworked the item system to be WC3/Dota-style: one shared item pool for every tower instead of
+  14 separate class-specific gear lists. Replaced the entire `SHOP_ITEMS` structure (Wooden/Iron/
+  Gold/Masterwork tiers per class, ~50 individual items) with a single universal item — **Lucky
+  Branch** 🌿, +1 STR / +1 DEX / +1 INT — usable by any tower, any class, no restrictions. More
+  items can be added to this same shared list later without touching anything else. The pre-existing
+  rare "Sturdy Branch" scenery-clear drop was the same concept already (a universal +1/+1/+1 relic)
+  and is now unified with the shop item as the same object.
+- Towers no longer start with a free class-specific "starter" weapon — matching Dota/WC3, units
+  start with empty item slots and you equip everything yourself. Items also now carry through
+  evolution instead of being cleared (they're universal, so they still make sense on the new class).
+- Items can now be dragged directly from one tower to another, WC3/Dota-inventory style. Tapping a
+  filled item slot in a tower's panel picks the item up (removing it from that tower on the spot)
+  and hands control to the same drag-and-drop pipeline already used for picking up ground/relic
+  item drops — drag it over another tower on the map and release to equip it there instead, no gold
+  charged either way since this moves an already-owned item rather than buying one. Added a new
+  `Tower.prototype.receiveItem()` for this (and for ground pickups) that never touches gold/wood/
+  stone, since reusing `buyItem()` for a transfer would have incorrectly re-charged for an item the
+  player already paid for. Tapping an empty slot still opens the shop, same as before.
+- Shop UI simplified from 14 per-class tabs down to one shared Items tab (plus the existing
+  Passives and Inventory tabs) — any tower can buy directly from the same list once selected.
+
+## [1.0.125] - 2026-09-04
+- Fixed multiple enemies simultaneously "attacking" the same barricade at once. Contact range
+  (radius+14px) was generous enough that two or three enemies squeezed together on a wide tile
+  could all independently register as touching the same barricade, each playing the contact-bump
+  animation as if several were hitting it at the same time. `updateBarricadesAndPileup()` now picks
+  exactly one front-most enemy per barricade as the actual attacker (bump animation + damage tick);
+  everyone else in contact range is queued and frozen like normal, waiting their turn, instead of
+  also visibly attacking.
+- Wave spawning now pauses entirely while any enemy is queued/waiting at a barricade, instead of
+  continuing to add new enemies on top of an already-backed-up line. `waveTimer` itself freezes
+  while paused (not just the spawn check), so nothing becomes "overdue" and there's no burst of
+  catch-up spawns the instant the blockage clears — spawning just resumes exactly where it left off.
+- Fixed the last enemy of a wave sometimes getting visibly cut off mid death-animation. `die()`
+  sets the enemy inactive immediately but its squash-and-fade animation (added in 1.0.124) still
+  has up to ~220ms left to play; the wave-complete check only looked at whether any enemy was still
+  `active`, so on the very last kill of a wave it could trigger the wave-complete
+  popup/transition on the exact same frame the corpse's animation started. Wave completion now also
+  waits for any in-flight death animation to finish before triggering.
+
+## [1.0.124] - 2026-09-04
+- Added two missing pieces of core hit-feedback/death animation, both purely render-only additions
+  with zero interaction with pathing, collision, or targeting logic:
+  - **Hit-flinch reaction** — every hit now nudges the enemy sprite a small amount away from the
+    strike direction, decaying back to rest over ~130-220ms depending on how heavy the hit was
+    (a graze barely registers, a heavy blow visibly rocks the target back). This never touches
+    `this.x`/`this.y` (or `traveled`/`pathIndex`) — it's applied the same way the existing
+    barricade-bump wiggle already was, as an additive render-only offset in `draw()`, so it's
+    completely safe regardless of how often it fires and applies whether or not the gore toggle is
+    on, since it's core hit feedback rather than a gore effect.
+  - **Death animation** — enemies previously vanished the instant their HP hit 0. `die()` now
+    captures a lightweight, fully decoupled squash-and-fade snapshot (`spawnDeathAnim()`, tracked
+    entirely outside the `Enemy`/`enemyPool` system in its own small array) before deactivating the
+    enemy, so a kill now visibly settles over ~220ms instead of popping out of existence. Being
+    fully decoupled from the enemy object itself means it carries no risk of a "dying but still
+    targetable/collidable" state — the real enemy is gone immediately as before; the animation is
+    just a brief visual echo drawn on top.
+
+## [1.0.123] - 2026-09-04
+- Fixed blood corridors accumulating into an endless "spaghetti" of streaks along any lane that saw
+  sustained fighting (e.g. an Archer repeatedly hitting enemies walking down the same stretch of
+  path over a whole wave). Every accessory blood mark (cast-off streaks, drip trails, satellite
+  drops, footprints) had no upper bound on how many could stack in the same small area over time —
+  each individual hit was reasonably sized on its own, but a heavily-fought corridor just kept
+  layering more on indefinitely. Added a local saturation check in `pushDecal()` (the single choke
+  point every blood decal already passes through): once a spot already has ~10 accessory marks
+  within a 26px radius, further ones there are skipped instead of piling on. The main wound pool
+  decal (the one with a `blobs` array — one per hit/death) is exempt, so a fresh wound still always
+  gets its mark; only the smaller repeating accessory marks are capped. A real fought-over spot
+  still reads as visibly bloodied, it just stops growing new distinct streaks past a realistic
+  saturation point instead of accumulating without limit for the rest of the wave.
+
 ## [1.0.122] - 2026-09-04
 - Three real bloodstain-pattern-analysis (BPA) principles added to the blood system, not just more
   volume:

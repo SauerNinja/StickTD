@@ -230,13 +230,11 @@
   #shop-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
   #shopModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     width:36px;height:36px;min-width:36px;min-height:36px;cursor:pointer;font-size:16px;}
-  #shop-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
-  #shop-tabs button{background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
-    border-radius:6px;padding:6px 9px;font-size:16px;cursor:pointer;min-height:36px;}
-  #shop-tabs button.active{border-color:var(--gold);background:rgba(241,196,15,0.2);}
   #shop-selected-note{padding:6px 14px;font-size:11.5px;color:#bdeaff;opacity:0.9;}
   #shop-grid{overflow-y:auto;padding:12px;display:grid;
     grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+  .shop-section-divider{color:var(--gold);font-size:12px;font-weight:bold;padding:8px 2px 2px;
+    border-top:1px solid var(--wood-light);margin-top:4px;}
   .shop-item-card{position:relative;background:var(--wood-light);border:2px solid var(--wood);
     border-radius:8px;padding:10px;text-align:center;color:var(--paper);cursor:pointer;}
   .shop-item-card .icon{font-size:26px;}
@@ -531,7 +529,6 @@
           <span id="shopBuyLifeLabel">❤️ Lives: <span id="shopLivesVal">100</span></span>
           <button id="shopBuyLifeBtn" title="Cost rises each time you buy">Buy Life <span id="shopBuyLifeCost">+💰30</span></button>
         </div>
-        <div id="shop-tabs"></div>
         <div id="shop-selected-note"></div>
         <div id="shop-grid"></div>
       </div>
@@ -695,7 +692,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.122'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.132'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -739,6 +736,29 @@ function colorAtLightness(hslStr, lightness){
 function clampNum(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 // Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of
 // the most expensive Canvas2D operations). Only called when graphicsQuality is 'high'.
+// Small icon-based status effect overlay — frost crystals drifting around a slowed/frozen body,
+// flickering flames around a burning one, lightning bolts orbiting above a stunned one's head.
+// Themed per-effect instead of every status effect looking identical (a flat colored circle wash),
+// so what's actually affecting a unit reads at a glance instead of needing the floating text label.
+function drawStatusIcons(ctx, cx, cy, radius, emoji, count, periodMs, orbitAboveHead){
+  const t = performance.now();
+  ctx.font = Math.round(radius * (orbitAboveHead ? 0.85 : 0.55)) + 'px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000000'; // opaque baseline so the glyph never inherits a stray translucent fillStyle from whatever drew before it
+  for(let i=0; i<count; i++){
+    let x, y;
+    if(orbitAboveHead){
+      const phase = (t/periodMs) + (i*Math.PI*2/count);
+      x = cx + Math.cos(phase)*radius*1.3;
+      y = cy + Math.sin(phase)*radius*0.55; // flattened ellipse orbit — classic cartoon "stun stars" silhouette, lightning-themed here
+    } else {
+      const angle = i*(Math.PI*2/count) + t/900;
+      x = cx + Math.cos(angle)*radius*0.85;
+      y = cy + Math.sin(angle)*radius*0.85 + Math.sin(t/180 + i)*2; // gentle flicker bob, not a rigid fixed position
+    }
+    ctx.fillText(emoji, x, y);
+  }
+}
 function drawGroundShadow(ctx, x, y, radiusX){
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.beginPath();
@@ -885,87 +905,11 @@ const EVOLUTIONS = {
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into
 const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER']; // reachable only via evolution, never built directly
 
-const SHOP_ITEMS = {
-  SWORDSMAN: [
-    { id:'SW_WOOD', name:'Wooden Sword',   icon:'🥢', str:1, dex:0, int:0, cost:0,   tier:'starter' },
-    { id:'SW_IRON', name:'Iron Longsword', icon:'⚔️', str:3, dex:1, int:0, cost:80 },
-    { id:'SW_GOLD', name:'Blade of Kings', icon:'🗡️', str:6, dex:2, int:0, cost:220 },
-    { id:'SW_MASTER', name:'Masterwork Excalibur', icon:'🌟', str:8, dex:3, int:0, cost:180, woodCost:20, stoneCost:20 }
-  ],
-  ARCHER: [
-    { id:'AR_WOOD', name:'Wooden Bow',     icon:'🏹', str:0, dex:1, int:0, cost:0,   tier:'starter' },
-    { id:'AR_IRON', name:"Hunter's Bow",   icon:'🎯', str:1, dex:3, int:0, cost:80 },
-    { id:'AR_GOLD', name:'Eagle Eye Bow',  icon:'🦅', str:1, dex:5, int:2, cost:220 },
-    { id:'AR_MASTER', name:'Masterwork Longbow', icon:'🏆', str:1, dex:7, int:2, cost:180, woodCost:25, stoneCost:10 },
-    { id:'AR_HAT', name:"Archer's Hat", icon:'🎩', str:0, dex:6, int:0, cost:150, headItem:'archer_hat' }
-  ],
-  AXEMAN: [
-    { id:'AX_WOOD', name:'Wooden Hatchet',    icon:'🪵', str:1, dex:0, int:0, cost:0,   tier:'starter' },
-    { id:'AX_IRON', name:'Twin Iron Axes',    icon:'🪓', str:3, dex:2, int:0, cost:80 },
-    { id:'AX_GOLD', name:"Berserker's Fury",  icon:'💥', str:6, dex:4, int:0, cost:220 },
-    { id:'AX_MASTER', name:'Masterwork War Axes', icon:'⚡', str:8, dex:5, int:0, cost:180, woodCost:15, stoneCost:25 }
-  ],
-  SPEARMAN: [
-    { id:'SP_WOOD', name:'Wooden Spear', icon:'🥢', str:0, dex:0, int:1, cost:0,   tier:'starter' },
-    { id:'SP_IRON', name:'Long Iron Spear', icon:'🔱', str:2, dex:0, int:2, cost:80 },
-    { id:'SP_GOLD', name:'Dragon Lance', icon:'🐉', str:4, dex:0, int:5, cost:220 },
-    { id:'SP_MASTER', name:'Masterwork Halberd', icon:'🌟', str:5, dex:0, int:7, cost:180, woodCost:25, stoneCost:15 }
-  ],
-  HAMMERMAN: [
-    { id:'HM_WOOD', name:'Wooden Mallet', icon:'🥢', str:1, dex:0, int:0, cost:0,   tier:'starter' },
-    { id:'HM_IRON', name:'Iron Warhammer', icon:'🔨', str:3, dex:1, int:0, cost:80 },
-    { id:'HM_GOLD', name:"Champion's Maul", icon:'🛡️', str:6, dex:2, int:1, cost:220 },
-    { id:'HM_MASTER', name:'Masterwork Warhammer', icon:'⚡', str:8, dex:3, int:2, cost:180, woodCost:20, stoneCost:20 }
-  ],
-  MAGE: [
-    { id:'MG_WOOD', name:'Wooden Wand',   icon:'🪄', str:0, dex:0, int:1, cost:0,   tier:'starter' },
-    { id:'MG_IRON', name:'Crystal Staff', icon:'🔮', str:0, dex:1, int:3, cost:80 },
-    { id:'MG_GOLD', name:'Archmage Rod',  icon:'✨', str:2, dex:2, int:6, cost:220 },
-    { id:'MG_MASTER', name:'Masterwork Grimoire', icon:'📖', str:2, dex:3, int:8, cost:180, woodCost:10, stoneCost:20 }
-  ],
-  BOMBER: [
-    { id:'BM_WOOD', name:'Wooden Satchel',  icon:'🎒', str:1, dex:0, int:0, cost:0,   tier:'starter' },
-    { id:'BM_IRON', name:'Iron Grenades',   icon:'💣', str:3, dex:0, int:1, cost:80 },
-    { id:'BM_GOLD', name:'Volatile Compound', icon:'☠️', str:6, dex:0, int:3, cost:220 },
-    { id:'BM_MASTER', name:'Masterwork Cannon', icon:'💥', str:8, dex:0, int:4, cost:180, woodCost:15, stoneCost:25 }
-  ],
-  GATLING: [
-    { id:'GT_WOOD', name:'Wooden Crank',      icon:'⚙️', str:0, dex:1, int:0, cost:0,   tier:'starter' },
-    { id:'GT_IRON', name:'Oiled Gears',       icon:'🔧', str:1, dex:3, int:0, cost:80 },
-    { id:'GT_GOLD', name:'Overcharged Barrel',icon:'🔥', str:2, dex:6, int:1, cost:220 },
-    { id:'GT_MASTER', name:'Masterwork Minigun', icon:'🎇', str:3, dex:8, int:1, cost:180, woodCost:10, stoneCost:25 }
-  ],
-  CLERIC: [
-    { id:'CL_WOOD', name:'Wooden Cross',    icon:'🥢', str:0, dex:0, int:1, cost:0,   tier:'starter' },
-    { id:'CL_IRON', name:'Silver Chalice',  icon:'🏺', str:1, dex:0, int:3, cost:80 },
-    { id:'CL_GOLD', name:'Sacred Reliquary',icon:'📿', str:2, dex:1, int:6, cost:220 },
-    { id:'CL_MASTER', name:'Masterwork Vestments', icon:'✨', str:3, dex:1, int:8, cost:180, woodCost:10, stoneCost:20 }
-  ],
-  BLOWDART: [
-    { id:'BD_WOOD', name:'Hollow Reed',     icon:'🥢', str:0, dex:1, int:0, cost:0,   tier:'starter' },
-    { id:'BD_IRON', name:'Carved Blowpipe', icon:'🎋', str:0, dex:3, int:1, cost:75 },
-    { id:'BD_GOLD', name:'Venomcraft Kit',  icon:'🧪', str:1, dex:6, int:3, cost:210 },
-    { id:'BD_MASTER', name:'Masterwork Toxin', icon:'☠️', str:1, dex:8, int:4, cost:175, woodCost:8, stoneCost:15 }
-  ],
-  SQUIRTGUN: [
-    { id:'SG_WOOD', name:'Dollar Store Squirter', icon:'💧', str:0, dex:1, int:0, cost:0,   tier:'starter' },
-    { id:'SG_IRON', name:'Pressurized Nozzle',    icon:'💦', str:0, dex:4, int:1, cost:80 },
-    { id:'SG_GOLD', name:'Acid Reservoir',        icon:'🧫', str:1, dex:7, int:3, cost:220 },
-    { id:'SG_MASTER', name:'Masterwork Corrosive', icon:'🟢', str:1, dex:9, int:4, cost:180, woodCost:8, stoneCost:16 }
-  ],
-  GUNALINDER: [
-    { id:'GL_WOOD', name:'Rusty Revolver',    icon:'🔫', str:0, dex:1, int:1, cost:0,   tier:'starter' },
-    { id:'GL_IRON', name:'Speed-Loader Kit',  icon:'🔩', str:0, dex:4, int:2, cost:90 },
-    { id:'GL_GOLD', name:'Engraved Six-Shooter', icon:'🎰', str:1, dex:6, int:4, cost:230 },
-    { id:'GL_MASTER', name:'Masterwork Peacemaker', icon:'🌟', str:1, dex:8, int:6, cost:190, woodCost:10, stoneCost:20 }
-  ],
-  SNIPER: [
-    { id:'SN_WOOD', name:'Field Scope',       icon:'🔭', str:0, dex:0, int:2, cost:0,   tier:'starter' },
-    { id:'SN_IRON', name:'Reinforced Barrel', icon:'🎯', str:1, dex:2, int:5, cost:100 },
-    { id:'SN_GOLD', name:'Ghillie Kit',       icon:'🍃', str:1, dex:3, int:8, cost:250 },
-    { id:'SN_MASTER', name:'Masterwork Longshot', icon:'🏆', str:2, dex:4, int:10, cost:210, woodCost:12, stoneCost:22 }
-  ]
-};
+// All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
+// tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
+// (deliberately simple); more can be added to this list later without touching anything else.
+const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, cost:70, woodCost:15 };
+const UNIVERSAL_ITEMS = [ LUCKY_BRANCH ];
 
 const PASSIVE_UPGRADES = [
   { id:'GLOBAL_STR', name:"Warrior's Blessing", icon:'💪', stat:'str', baseCost:100, costGrowth:1.6 },
@@ -1561,8 +1505,26 @@ function updateBarricadesAndPileup(){
     active.push(e);
   }
   for(const e of active){
-    const barricade = findTouchingBarricade(e);
+    e.candidateBarricade = findTouchingBarricade(e);
+  }
+  // Only the single front-most enemy touching a given barricade is its "attacker" — contact range
+  // is generous enough (radius+14px) that two or three enemies squeezed together on a wide tile
+  // could all register as touching the same barricade at once, each independently playing the
+  // contact-bump animation and looking like several enemies were hitting it simultaneously. Real
+  // single-file contact means exactly one body is actually pressed against it; everyone else who
+  // happens to be in range is queued waiting their turn, not also attacking.
+  const attackerByBarricade = new Map();
+  for(const e of active){
+    const barricade = e.candidateBarricade;
     if(!barricade || barricade.hp <= 0) continue;
+    const current = attackerByBarricade.get(barricade);
+    if(!current || e.traveled > current.traveled) attackerByBarricade.set(barricade, e);
+  }
+  for(const e of active){
+    const barricade = e.candidateBarricade;
+    e.candidateBarricade = undefined;
+    if(!barricade || barricade.hp <= 0) continue;
+    if(attackerByBarricade.get(barricade) !== e) continue; // not the attacker — leave pileBlocked false here so the queue-catchment pass below finds this enemy and gives it a real, non-overlapping slot behind the attacker, instead of marking it blocked in-place and leaving it physically overlapping the attacker forever (the catchment pass skips anything already pileBlocked, assuming it already has a valid resting position)
     e.pileBlocked = true;
     e.touchingBarricade = true;
     if(gameTime - barricade.lastBarricadeHitAt >= 2000){
@@ -1657,10 +1619,35 @@ function updateBarricadesAndPileup(){
     const ahead = active[i-1], behind = active[i];
     const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
     if(d <= ahead.radius + behind.radius + FOLLOW_PROXIMITY_BUFFER){
+      // The cap must reflect what `ahead` is ACTUALLY limited to right now, not just its own base
+      // speed/slow debuff — otherwise a stun or slow only propagated back one unit: if a stunned
+      // unit froze the one directly behind it (via followSpeedCap = 0), a THIRD unit further back
+      // would only check that second unit's own stunnedUntil/pileBlocked (both false — it's not
+      // itself stunned, just capped) and miss the inherited block entirely, breaking the chain
+      // after a single hop. Since `active` is processed front-to-back, `ahead.followSpeedCap` (if
+      // already set this same pass) already carries forward whatever it inherited from further
+      // ahead — folding it in here lets a stun or slow cascade back through the entire queue, not
+      // just to the immediate follower.
       const aheadFrozen = ahead.pileBlocked || ahead.stunnedUntil > gameTime;
-      behind.followSpeedCap = aheadFrozen ? 0 : ahead.speed * ahead.slowMultiplier * (ahead.packSpeedBonus||1);
+      const aheadOwnSpeed = ahead.speed * ahead.slowMultiplier * (ahead.packSpeedBonus||1);
+      const aheadEffectiveSpeed = aheadFrozen ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
+      behind.followSpeedCap = aheadEffectiveSpeed;
     }
   }
+  const nowQueued = active.some(e => e.pileBlocked);
+  // Safety valve against a permanent soft-lock: if a barricade jam persists too long — most
+  // critically if the player is out of gold and simply can't afford anything that would break it —
+  // spawning must never stay paused forever, or the wave (and the whole run) can never finish.
+  // Once congestion has held continuously for 15s, spawning is force-resumed regardless of whether
+  // the jam actually cleared, guaranteeing forward progress is always possible no matter the
+  // player's economic state.
+  if(nowQueued){
+    if(!barricadeQueueStartedAt) barricadeQueueStartedAt = gameTime;
+  } else {
+    barricadeQueueStartedAt = 0;
+  }
+  const BARRICADE_QUEUE_TIMEOUT = 15000;
+  anyBarricadeQueued = nowQueued && (gameTime - barricadeQueueStartedAt < BARRICADE_QUEUE_TIMEOUT);
 }
 // Snaps an enemy's rendered position AND its path-progress state (traveled + pathIndex) together,
 // atomically. Previously only x/y were snapped here, leaving `traveled` and `pathIndex` pointing at
@@ -1823,7 +1810,7 @@ function updateScenery(dt){
         spawnParticles(item.x, item.y, '#ffd700', 12);
         playSound('wave');
         if(Math.random() < 0.08){
-          groundItems.push({ id: idCounter++, x: item.x, y: item.y - 4, itemDef: STURDY_BRANCH, spawnTime: gameTime });
+          groundItems.push({ id: idCounter++, x: item.x, y: item.y - 4, itemDef: LUCKY_BRANCH, spawnTime: gameTime });
           spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');
         }
       } else if(item.type === 'ITEM'){
@@ -2053,12 +2040,14 @@ let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let spawnQueue = [];
+let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
+let barricadeQueueStartedAt = 0; // when the current unbroken stretch of congestion began — drives the 15s force-resume safety valve so spawning can never pause permanently, even if the player has no way left to break the jam
 let waveTimer = 0;
 let gameState = 'START';    // START | PLAYING | GAME_OVER | VICTORY
 let selectedBuildType = null;
 // The only item in the game right now: a rare universal drop, works on any tower (Dota-style
 // shared item pool, not the old per-class shop gear), picked up by dragging it onto a tower.
-const STURDY_BRANCH = { id:'STURDY_BRANCH', name:'Sturdy Branch', icon:'🌿', str:1, dex:1, int:1, cost:0 };
+// LUCKY_BRANCH (defined earlier, alongside UNIVERSAL_ITEMS) doubles as this rare scenery-clear drop — same universal item either way it's obtained.
 let groundItems = []; // { id, x, y, itemDef, spawnTime } — dropped items sitting on the map, waiting to be dragged onto a tower
 let draggingGroundItem = null; // the ground item currently being dragged, or null
 let dragItemPos = { x:0, y:0 }; // current world-space position of the item while dragging, for rendering it under the cursor
@@ -2329,7 +2318,7 @@ function restoreGameState(state){
     t.xp = td.xp||0; t.expLevel = td.expLevel||1;
     if(td.spec) t.spec = td.spec;
     if(td.targetMode) t.targetMode = td.targetMode;
-    t.equippedItems = (td.itemIds||[]).map(id => (SHOP_ITEMS[td.type]||[]).find(i => i.id===id)).filter(Boolean);
+    t.equippedItems = (td.itemIds||[]).map(id => UNIVERSAL_ITEMS.find(i => i.id===id)).filter(Boolean);
     t.isLegendary = !!td.isLegendary; t.legendaryName = td.legendaryName || '';
     t.legendaryHpMult = t.isLegendary ? 1.05 : 1; // must be set before recomputeStats() so max HP includes it
     t.recomputeStats();
@@ -2532,6 +2521,10 @@ class Enemy{
     this.lastBleedSource = null;
     this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
+    this.flinchStart = 0; // hit-reaction nudge — render-only offset applied in draw(), never touches this.x/this.y itself, so it can't desync pathing/collision no matter how often it fires
+    this.flinchAngle = 0;
+    this.flinchMag = 0;
+    this.flinchDuration = 1;
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
     this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
     this.bumpTime = 0;
@@ -2879,6 +2872,16 @@ class Enemy{
     }
     this.hp -= dmg;
     this.flashTimer = 120;
+    // Hit-flinch: a small render-only nudge away from the strike direction, applied regardless of
+    // the gore toggle — this is core hit-feedback animation, not a gore effect. Never touches
+    // this.x/this.y (or traveled/pathIndex), so it carries zero risk of desyncing pathing or
+    // collision no matter how often it fires. Scales with how heavy the hit was relative to max
+    // HP, so a graze barely registers while a heavy blow visibly rocks the target back for a beat.
+    const flinchSeverity = clampNum(dmg / this.maxHp, 0, 1);
+    this.flinchAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
+    this.flinchMag = 1.5 + flinchSeverity*5;
+    this.flinchStart = realTime;
+    this.flinchDuration = 130 + flinchSeverity*90;
     if(holyBonus){
       spawnFloatingText(this.x, this.y - this.radius, '✨' + Math.round(dmg), '#ffe9a8');
     } else {
@@ -2892,21 +2895,44 @@ class Enemy{
       if(bio.isDust){
         spawnParticles(this.x, this.y, bio.bright, 8, 200); // rock chips, no liquid streams or pooling
       } else if(arch === 'ARCHER'){
-        // high-velocity forward spatter: tight ~46° cone along impactAngle, high friction so it
-        // decelerates hard and clusters densely just behind the target instead of dispersing
-        spawnParticles(this.x, this.y, bio.spray, 16, 220, 0.80, true, impactAngle, 0.8);
-        spawnBloodStream(this.x, this.y, impactAngle, 2, 0.6, bio.bright, bio.dark);
+        // Low-impact puncture wound — an arrow makes a small, precise hole; it doesn't blast blood
+        // outward with force the way a blunt/magical hit does. A handful of low-speed particles
+        // right at the wound, and the wound mostly just drips rather than spraying outward, reads
+        // as a real puncture instead of a violent cone.
+        spawnParticles(this.x, this.y, bio.spray, 5, 90, 0.85, true, impactAngle, 0.5);
+        if(Math.random() < 0.7) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+      } else if(arch === 'MAGE'){
+        // High-energy magical impact — fast, wide, and immediate, reading as though the hit itself
+        // violently disrupted tissue rather than a controlled directional spray. High particle
+        // count, high speed, full radial spread instead of a narrow cone, plus an instant burst of
+        // satellite drops so the impact reads as dramatic on the very first hit, not something that
+        // only builds up after several.
+        spawnParticles(this.x, this.y, bio.bright, 22, 340, 0.9, true);
+        spawnParticles(this.x, this.y, bio.spray, 10, 380, 0.88, true);
+        if(!bio.isDust) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 3);
+        // Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical
+        // blast) throw a fine mist BACK toward the source, not just forward through the target —
+        // a distinct, well-documented BPA phenomenon investigators specifically look for to
+        // determine where a shot came from. A small amount, lower speed than the forward spray, in
+        // the opposite direction.
+        spawnParticles(this.x, this.y, bio.spray, 4, 140, 0.85, true, impactAngle + Math.PI, 0.6);
       } else if(arch === 'EXPLOSIVE'){
         // 360-degree vaporization — no directional constraint, mix bright + charred/dark
         spawnParticles(this.x, this.y, bio.bright, 10, 200, viscFriction, true);
         spawnParticles(this.x, this.y, bio.dark, 6, 200, viscFriction, true);
       } else {
-        // WARRIOR/MAGE melee-equivalent: medium castoff sweep, still weighted toward impact angle
-        const isMageHit = sourceTower && sourceTower.type === 'MAGE';
-        spawnParticles(this.x, this.y, bio.bright, isMageHit ? 18 : 14, 260, viscFriction, true);
-        spawnBloodStream(this.x, this.y, impactAngle, isMageHit ? 7 : 4, undefined, bio.bright, bio.dark);
-        if(Math.random() < (isMageHit ? 0.5 : 0.3)) spawnBloodCastoff(this.x, this.y, impactAngle, hexToRgba(bio.dark, 0.65));
-        if(!bio.isDust && Math.random() < 0.4) spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 1 + Math.floor(Math.random()*2), impactAngle);
+        // WARRIOR (bladed melee) — a real laceration at the wound itself: a bold cut-line right at
+        // the point of impact (still oriented across the strike direction, since a slash travels
+        // across the target rather than straight into it), PLUS a genuine cast-off arc — the blood
+        // that was already on the blade gets flung off tangentially during the swing, landing as a
+        // curved trail of individual drops away from the wound, not a second straight line.
+        const slashAngle = impactAngle + Math.PI/2 + (Math.random()-0.5)*0.5;
+        spawnParticles(this.x, this.y, bio.bright, 12, 200, viscFriction, true);
+        // sizeMult 1.8 — a real cut needs to read as a bold, unmistakable line on the ground, not
+        // just another generic streak the same size as everyone else's cast-offs
+        spawnBloodCastoff(this.x, this.y, slashAngle, hexToRgba(bio.dark, 0.7), undefined, 1.8);
+        spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(bio.dark, 0.65));
+        if(Math.random() < 0.4) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
       }
       // a real lasting mark on the ground for a non-lethal hit too, not just the killing blow —
       // the particles above all fade within ~1s, so without this, blood only ever visibly stuck
@@ -2953,6 +2979,7 @@ class Enemy{
     }
     if(this.splits && !this.hasSplit) this.spawnSplitChildren();
     if(sourceTower && sourceTower.active) creditKill(sourceTower, forStreak);
+    spawnDeathAnim(this.x, this.y, this.emoji, this.radius); // brief squash-and-fade in place of an instant vanish
     this.active = false;
     const bountyMult = (sourceTower && sourceTower.active && sourceTower.goldMult) ? sourceTower.goldMult : 1;
     const bountyGold = Math.round(this.bounty * bountyMult);
@@ -2982,10 +3009,27 @@ class Enemy{
           for(let s=0; s<Math.round((low ? 3 : 6)*goreScale); s++){
             spawnBloodStream(this.x, this.y, Math.random()*Math.PI*2, low ? 1 : 2, undefined, bio.bright, bio.dark);
           }
+        } else if(arch === 'ARCHER'){
+          // low-impact even in death — a fatal arrow still doesn't cause a burst, just a body that's
+          // stopped moving with a real puncture wound: minimal ambient particles, no wide gush fan,
+          // leaning on drip trails instead to show it actually bled out rather than exploded
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 3 : 7)*goreScale), 110, 0.85, !low);
+          if(!bio.noArterial){
+            for(let d=0; d<Math.round(2*goreScale); d++){
+              spawnDripTrail(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*6, hexToRgba(bio.dark, 0.6));
+            }
+          }
+          spawnGibs(this.x, this.y, Math.max(1, Math.round(1*goreScale)));
+        } else if(arch === 'MAGE'){
+          // a magical kill still reads as high-energy even at death — faster, wider particles than
+          // an ordinary collapse, short of a full explosive burst but noticeably more violent
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 10 : 22)*goreScale), 320, viscFriction, !low);
+          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 6 : 14)*goreScale), 360, viscFriction, !low);
+          spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale)));
         } else {
-          // ordinary death: a directional collapse, not a burst — modest ambient splatter plus a
-          // tight arterial gush weighted toward the last hit, matching how bodies actually bleed
-          // out rather than exploding
+          // WARRIOR (bladed melee) death: a directional collapse, not a burst — modest ambient
+          // splatter plus a tight arterial gush weighted toward the last hit, matching how bodies
+          // actually bleed out rather than exploding
           spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 6 : 14)*goreScale), 220, viscFriction, !low);
           spawnParticles(this.x, this.y, bio.dark, Math.round((low ? 4 : 8)*goreScale), 220, viscFriction, !low);
           if(!bio.noArterial){
@@ -3017,7 +3061,14 @@ class Enemy{
         }
         if(!low && sourceTower && arch !== 'EXPLOSIVE' && Math.random() < 0.5){
           const castoffAngle = Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x);
-          spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
+          if(arch === 'WARRIOR'){
+            // the killing blow's blade still had blood on it from the fight — a real cast-off arc
+            // (cessation cast-off, per BPA literature: the blade stops abruptly at the target while
+            // the blood already in flight keeps going), not a plain straight streak
+            spawnCastOffArc(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
+          } else {
+            spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
+          }
         }
       }
       if(this.type === 'BOSS'){
@@ -3045,12 +3096,17 @@ class Enemy{
       ctx.strokeStyle = 'rgba(255,215,0,0.9)'; ctx.lineWidth = 2; ctx.stroke();
     }
     if(this.slowMultiplier < 1){
-      ctx.fillStyle = 'rgba(125,211,252,0.35)';
+      ctx.fillStyle = 'rgba(125,211,252,0.25)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      drawStatusIcons(ctx, this.x, this.y, this.radius, '❄️', 2, 500);
     }
     if(this.burnUntil > gameTime){
-      ctx.fillStyle = 'rgba(255,107,53,0.3)';
+      ctx.fillStyle = 'rgba(255,107,53,0.22)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      drawStatusIcons(ctx, this.x, this.y, this.radius, '🔥', 3, 260);
+    }
+    if(this.stunnedUntil > gameTime){
+      drawStatusIcons(ctx, this.x, this.y - this.radius*1.35, this.radius*0.75, '⚡', 3, 220, true);
     }
     if(this.poisonUntil > gameTime){
       ctx.fillStyle = 'rgba(124,181,24,0.3)';
@@ -3093,6 +3149,14 @@ class Enemy{
         bumpDx = (ddx/dlen)*bumpAmt;
         bumpDy = (ddy/dlen)*bumpAmt;
       }
+    }
+    // Hit-flinch render offset — decays from full magnitude down to 0 over flinchDuration. Purely
+    // additive to the barricade-bump offset above; both are render-only and can coexist.
+    const flinchElapsed = realTime - this.flinchStart;
+    if(flinchElapsed < this.flinchDuration){
+      const flinchT = 1 - flinchElapsed/this.flinchDuration;
+      bumpDx += Math.cos(this.flinchAngle) * this.flinchMag * flinchT;
+      bumpDy += Math.sin(this.flinchAngle) * this.flinchMag * flinchT;
     }
     ctx.save();
     const walkBob = speed > 5 ? Math.sin(this.traveled/9) * Math.min(2.2, this.radius*0.13) : 0;
@@ -3207,8 +3271,6 @@ class Tower{
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
     this.equippedItems = []; this.isHero = false;
-    const starterItem = (SHOP_ITEMS[type]||[]).find(i => i.tier === 'starter');
-    if(starterItem) this.equippedItems.push(starterItem);
     this.axeMode = 'MELEE'; // AXEMAN only: manual toggle, switchable once per wave
     this.axeSwitchesLeft = 1;
     this.spec = null; // SWORDSMAN only, chosen at level 5: 'TWOHANDER' | 'DUAL'
@@ -3381,6 +3443,17 @@ class Tower{
     this.checkHeroStatus();
     return true;
   }
+  // For an item the tower already owns some other way — picked up as a free scenery/chest drop, or
+  // dragged over from another tower's inventory — never charges gold/wood/stone. buyItem() is only
+  // for an actual shop purchase; reusing it here would incorrectly re-charge for an item that was
+  // already paid for once (or never cost anything in the first place).
+  receiveItem(def){
+    if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
+    this.equippedItems.push(def);
+    this.recomputeStats();
+    this.checkHeroStatus();
+    return true;
+  }
   unequipItem(index){
     const it = this.equippedItems[index];
     if(!it) return false;
@@ -3411,8 +3484,8 @@ class Tower{
     return true;
   }
   // Evolution: reaching 10+ in a stat that the tower's base class has mapped to an evolution
-  // transforms it into that class, one-way, keeping accumulated stats/items history but resetting
-  // level/tier progression and equipment (different classes have different SHOP_ITEMS sets).
+  // transforms it into that class, one-way, keeping accumulated stats and equipped items (items are
+  // universal now, so they carry straight across) while resetting level/tier progression.
   checkEvolution(){
     const evoMap = EVOLUTIONS[this.type];
     if(!evoMap) return; // not a base class, or already evolved — evolution is one-way and terminal
@@ -3426,8 +3499,9 @@ class Tower{
     const oldName = this.def.name;
     this.type = newType; // 'def' is a getter derived from this.type — no separate assignment needed or possible
     this.level = 1; // fresh tier progression as the new class
-    this.equippedItems = []; // old class's items don't fit the new class's SHOP_ITEMS set
-    this.isHero = false; // no items equipped anymore, so Hero status (which needs all slots filled) can't hold
+    // Items are universal now (see UNIVERSAL_ITEMS) — they work identically regardless of class, so
+    // they carry straight through evolution instead of being cleared. isHero (which only requires
+    // all slots filled, not any specific class's items) stays valid for the same reason.
     this.baseMaxHp = newType === 'BARRICADE' ? 10 : (newType === 'HAMMERMAN' ? 180 : 100);
     this.rollSkinTones(); // fresh shade fitting the new class's own hue, not a carried-over old-class tone
     this.rollBuild(); // fresh height/weight variance around the new class's own baseline proportions
@@ -4071,9 +4145,19 @@ class Projectile{
       if(this.poisonDamage > 0 && hitEnemy.active) hitEnemy.applyPoison(this.poisonDamage, this.poisonDuration, this.sourceTower);
       if(this.sourceTower && this.sourceTower.type === 'ARCHER' && hitEnemy.active && goreMode){
         if(hitEnemy.embeddedArrows.length < 4){ // capped so a heavily-hit enemy doesn't turn into a pincushion
-          const stickAngle = Math.random()*Math.PI*2;
+          // The shaft must stick out of the side the arrow actually entered from, with the head
+          // buried pointing further into the body along the real flight path — not a fully random
+          // position/angle around the enemy, which made arrows appear to be sticking out of the
+          // wrong side or straight through the middle regardless of where the shot actually came
+          // from. The embedding anchor sits on the NEAR side (opposite the direction of travel,
+          // since that's the side facing the shooter/where the arrow struck first), with the
+          // arrow's own angle matching the real flight path so the head visibly points inward.
           const stickDist = hitEnemy.radius*0.85;
-          hitEnemy.embeddedArrows.push({ dx: Math.cos(stickAngle)*stickDist, dy: Math.sin(stickAngle)*stickDist, angle: impactAngle });
+          const perp = impactAngle + Math.PI/2;
+          const lateralJitter = (Math.random()-0.5)*stickDist*0.5; // some natural scatter across the entry side, not perfectly on one exact line every time
+          const dx = -Math.cos(impactAngle)*stickDist + Math.cos(perp)*lateralJitter;
+          const dy = -Math.sin(impactAngle)*stickDist + Math.sin(perp)*lateralJitter;
+          hitEnemy.embeddedArrows.push({ dx, dy, angle: impactAngle + (Math.random()-0.5)*0.3 });
         }
         startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
       }
@@ -4177,6 +4261,35 @@ const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,
 let particleIndex = 0;
 const MAX_DECALS = 2000;
 const decals = [];
+const deathAnims = []; // lightweight, fully decoupled from Enemy/enemyPool — a corpse gets a brief
+// squash-and-fade animation instead of vanishing the instant hp hits 0. Deliberately NOT part of
+// the enemy object or its pooling/targeting/collision systems: it's a pure render-only overlay
+// captured at the moment of death, so it carries zero risk of a "dying but still targetable" bug
+// or any interaction with pathing/collision — it just draws on top for a moment, then disappears.
+function spawnDeathAnim(x, y, emoji, radius){
+  deathAnims.push({ x, y, emoji, radius, startTime: realTime, duration: 220 });
+}
+function updateDeathAnims(){
+  for(let i = deathAnims.length-1; i>=0; i--){
+    if(realTime - deathAnims[i].startTime > deathAnims[i].duration) deathAnims.splice(i, 1);
+  }
+}
+function drawDeathAnims(ctx){
+  for(const d of deathAnims){
+    const t = clampNum((realTime - d.startTime) / d.duration, 0, 1);
+    const scale = 1 - t*0.75; // squashes down rather than vanishing outright
+    const alpha = 1 - t;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(d.x, d.y);
+    ctx.scale(scale, scale*(1-t*0.3)); // slightly flatter as it settles, not just uniform shrink
+    ctx.font = Math.round(d.radius*2) + 'px serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(d.emoji, 0, 0);
+    ctx.restore();
+  }
+}
 function startDripSite(x, y, color, severity){
   // Previously scheduled a delayed trickle of drops landing over the following ~2-5 seconds at
   // this fixed world position — but since that queue was decoupled from the enemy (it only stored
@@ -4295,13 +4408,26 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
   // with scattered outliers, the way an actual bloodstain forms, rather than an evenly-spaced
   // cloud of circles.
   //
-  // Aspect ratio (how elongated vs. round the stain reads) is archetype-aware, reflecting real
-  // BPA's angle-of-impact relationship: a high-velocity piercing hit (arrow) strikes at a shallow
-  // angle and drags into a long, directional stain; an omnidirectional blast has no single strike
-  // vector and pools closer to circular; an ordinary melee/magic hit falls between the two.
+  // Aspect ratio (how elongated vs. round the stain reads) AND overall size are both
+  // archetype-aware — this is the mark that actually persists on the ground for the long haul
+  // (up to 30 minutes), so it's what a player is really judging when they say two classes' blood
+  // "looks the same." MAGE previously fell through to the exact same profile as the default
+  // (WARRIOR) case, so their ground stains were indistinguishable even though their hit-time
+  // particle bursts differed — now every one of the four archetypes has its own distinct shape AND
+  // size multiplier:
+  //   ARCHER    — long, narrow, SMALLER overall: a real puncture drags into a thin directional
+  //               streak rather than a wide pool, reflecting the low-impact identity.
+  //   MAGE      — round, LARGER overall: a violent, omnidirectional high-energy impact leaves the
+  //               biggest, roundest mark of the four, distinct from Explosive's mid-size round pool.
+  //   EXPLOSIVE — round, mid-size: no single strike vector, but not as dramatically oversized as
+  //               a point-blank magical burst.
+  //   WARRIOR   — the original moderate directional smear, elongated along the blade's cut.
   const elong = archBias === 'ARCHER' ? { longMin:1.3, longSpan:1.5, shortMin:0.28, shortSpan:0.32 }
+              : archBias === 'MAGE' ? { longMin:0.95, longSpan:0.45, shortMin:0.85, shortSpan:0.45 }
               : archBias === 'EXPLOSIVE' ? { longMin:0.85, longSpan:0.35, shortMin:0.75, shortSpan:0.35 }
               : { longMin:0.75, longSpan:1.15, shortMin:0.42, shortSpan:0.58 };
+  if(archBias === 'MAGE') sizeMult *= 1.4;
+  else if(archBias === 'ARCHER') sizeMult *= 0.65;
   const orientAngle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*0.9 : Math.random()*Math.PI*2;
   const stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
   const stretchShort = elong.shortMin + Math.random()*elong.shortSpan; // narrowness across it — independent of stretchLong
@@ -4320,20 +4446,57 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
     const r = (Math.random() < 0.2 ? 3.5 + Math.random()*3.5 : 1.5 + Math.random()*3) * sizeMult;
     blobs.push({ dx, dy, r });
   }
-  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isLine: false, blobs };
+  // How far this specific pool's blobs actually reach from its stored anchor point — needed
+  // because updateWalkingBlood()'s wet-feet pickup check compares distance to that anchor, and on
+  // a big/massive pool the visible splatter can extend well beyond it. Without this, an enemy
+  // visibly standing in the edge of a large puddle wouldn't be detected as being "in blood" at all
+  // unless it happened to be near the exact center point.
+  let footprintRadius = 0;
+  for(const b of blobs) footprintRadius = Math.max(footprintRadius, Math.hypot(b.dx, b.dy) + b.r);
+  const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isLine: false, blobs, footprintRadius };
   pushDecal(decal);
 }
-function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult){
+// Real cast-off, per bloodstain-pattern-analysis literature: blood thrown from a weapon during a
+// swing travels TANGENTIALLY to the arc of that swing and lands as a curved series of individual
+// drops, not a single straight streak. Drops nearest the origin of the swing strike closer to
+// perpendicular (rounder, more circular); drops further along the arc travel further and strike
+// at an increasingly acute angle, reading as progressively more elongated — "wide or narrow linear
+// or slightly curved trails... with the more elongated bloodstains most distant from the source."
+// Modeled here as a fan of individual teardrop stains following a curving path away from the
+// wound, each oriented tangent to its own point on the arc (the actual direction that specific
+// drop was flung), rather than one straight cast-off line.
+function spawnCastOffArc(x, y, baseAngle, color, count){
+  count = count || (4 + Math.floor(Math.random()*3));
+  const arcDir = Math.random() < 0.5 ? 1 : -1; // which way the blade swung — clockwise or counter-clockwise
+  const angularStep = (0.22 + Math.random()*0.12) * arcDir;
+  let dist = 8 + Math.random()*4;
+  const rgb = parseColorToRgba(color);
+  for(let i=0; i<count; i++){
+    const angle = baseAngle + angularStep*i;
+    dist += (5 + Math.random()*3) * (0.7 + i*0.18); // accelerating spread further along the swing, matching how real cast-off trails spread out
+    const px = x + Math.cos(angle)*dist;
+    const py = y + Math.sin(angle)*dist;
+    const travelAngle = angle + (Math.PI/2)*arcDir; // tangent to the arc at this point — the actual direction this specific drop was flung, not radially outward from the wound
+    const elongation = 1 + i*0.35; // rounder near the source, progressively more elongated further along the arc
+    const decal = { x: px, y: py, color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime,
+      isDrop: true, angle: travelAngle, len: (2 + Math.random()*1.5)*elongation, width: 2.2 + Math.random()*1.3 };
+    pushDecal(decal);
+  }
+}
+function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult){
   // occasional directional cast-off streak, growing away from where the hit came from — real
   // blood spatter travels away from the striking point, not radially outward like a splash.
   // Streaks default to double the standard decal lifespan — they read as more distinct/lasting
   // marks than a soaked pool, and stay around noticeably longer as a result. Angle jitter widened
   // for variety, but length/width pulled back from an earlier pass that made streaks read as
-  // oversized — a cast-off streak should be a thin line, not a wide smear.
+  // oversized — a cast-off streak should be a thin line, not a wide smear. sizeMult lets a specific
+  // caller (the Warrior slash wound, which needs to read clearly as an actual cut and not just
+  // another generic streak) draw a bolder, longer line than the default.
+  sizeMult = sizeMult || 1;
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2)*decalLifespanVariance(), spawnTime: realTime, isLine: true,
     angle: impactAngle + (Math.random()-0.5)*0.7,
-    maxLen: 8 + Math.random()*16,
-    width: 1 + Math.random()*1.6
+    maxLen: (8 + Math.random()*16) * sizeMult,
+    width: (1 + Math.random()*1.6) * sizeMult
   };
   pushDecal(decal);
 }
@@ -4425,8 +4588,16 @@ function updateWalkingBlood(dt){
     for(let i = decals.length-1; i >= Math.max(0, decals.length-220); i--){
       const d = decals[i];
       if(gameTime - d.spawnTime > 7000) continue; // only fresh (still-wet) blood transfers
-      if(Math.hypot(d.x-e.x, d.y-e.y) < e.radius+10){
-        e.wetFeetSteps = e.wetFeetStepsMax = 4 + Math.floor(Math.random()*3);
+      // For the main pool decal type, the visible splatter can extend well beyond its stored
+      // anchor point on a big/massive pool — comparing distance to just the anchor missed an
+      // enemy visibly standing in the edge of a large puddle unless it happened to be near the
+      // exact center. footprintRadius (how far this specific pool's blobs actually reach) extends
+      // the pickup range to match what's actually drawn on screen.
+      if(Math.hypot(d.x-e.x, d.y-e.y) < e.radius+10+(d.footprintRadius||0)){
+        // stepping in a genuinely big pool picks up more blood, so it takes a couple more steps to
+        // run dry than a small splatter does
+        const sizeBonus = Math.min(3, Math.floor((d.footprintRadius||0) / 12));
+        e.wetFeetSteps = e.wetFeetStepsMax = 4 + Math.floor(Math.random()*3) + sizeBonus;
         e.wetFeetRgb = d.rgb;
         e.footTrailTimer = 0;
         break;
@@ -4434,7 +4605,33 @@ function updateWalkingBlood(dt){
     }
   }
 }
+// Local saturation cap: once an area already has a lot of blood in it, further hits landing on
+// the same spot shouldn't keep layering distinct new streaks/drops on top indefinitely — real
+// combat corridors get "soaked" and additional wounds blend into existing stains rather than
+// spawning infinite new spaghetti-thin marks stacked over each other. Scans only the most recent
+// decals (cheap, bounded) rather than the whole array.
+const BLOOD_SATURATION_RADIUS = 26;
+const BLOOD_SATURATION_MAX = 10;
+function isBloodAreaSaturated(x, y){
+  let count = 0;
+  const scanFrom = Math.max(0, decals.length - 260);
+  for(let i = decals.length-1; i >= scanFrom; i--){
+    const d = decals[i];
+    const dx = d.x-x, dy = d.y-y;
+    if(dx > BLOOD_SATURATION_RADIUS || dx < -BLOOD_SATURATION_RADIUS || dy > BLOOD_SATURATION_RADIUS || dy < -BLOOD_SATURATION_RADIUS) continue; // cheap box reject before the real distance check
+    if(dx*dx + dy*dy < BLOOD_SATURATION_RADIUS*BLOOD_SATURATION_RADIUS){
+      count++;
+      if(count >= BLOOD_SATURATION_MAX) return true;
+    }
+  }
+  return false;
+}
 function pushDecal(decal){
+  // the main pool decal (isLine:false with a `blobs` array) is exempt — that's the one "this spot
+  // already has a wound" mark per hit/death, deliberately allowed to always land. The cap applies
+  // to the smaller accessory marks (streaks, drip trails, satellite drops, footprints) that
+  // otherwise keep accumulating without bound over a long fight in one corridor.
+  if(decal.blobs === undefined && isBloodAreaSaturated(decal.x, decal.y)) return;
   if(decals.length < MAX_DECALS){
     decals.push(decal);
   } else {
@@ -5510,13 +5707,14 @@ function startNextWave(){
     showToast(CURATED_WAVE_LABELS[waveIndex+1]);
   }
   spawnQueue = [];
-  // +2000ms added to every group's own per-unit spawn interval (not a flat one-time offset) — this
-  // applies uniformly to every curated wave (1-100+) and every procedurally generated wave, from
-  // this single point, rather than editing the ~80 individual hand-authored spawnDelay values.
-  // Spacing enemies out more on entry gives updateBarricadesAndPileup()/resolveEnemyCollisions()
-  // noticeably more room to settle each new arrival before the next one shows up, which is the
-  // direct lever for less on-path congestion and smoother pathing.
-  const SPAWN_DELAY_BONUS = 2000;
+  // A flat per-spawn delay bonus applied uniformly regardless of actual path congestion. Originally
+  // 2000ms — but wave spawning now also pauses reactively whenever anything is actually queued at a
+  // barricade (see anyBarricadeQueued), and there's a 350ms global minimum gap enforced below
+  // regardless of this value. With those two doing the real congestion control, keeping the full
+  // 2000ms flat tax on every single spawn was needlessly slow on a clear lane — enemies should be
+  // able to come in at a brisk pace when there's nothing backed up, and only get spaced out further
+  // when the reactive systems actually detect a jam.
+  const SPAWN_DELAY_BONUS = 400;
   for(const group of waveDef){
     for(let i=0;i<group.count;i++){
       let type = group.type;
@@ -5574,9 +5772,16 @@ function update(dt){
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
   updateScenery(dt);
   if(waveState === 'SPAWNING'){
-    waveTimer += dt;
-    while(spawnQueue.length && spawnQueue[0].delay <= waveTimer){
-      spawnEnemy(spawnQueue.shift().type);
+    // Spawning pauses entirely while any enemy is queued/waiting at a barricade — otherwise new
+    // enemies kept arriving on top of an already-backed-up line, growing the pile-up instead of
+    // letting it clear. waveTimer is frozen (not just the spawn check) while paused, so nothing
+    // becomes "overdue" and there's no burst of catch-up spawns once the blockage clears — time
+    // simply resumes exactly where it left off.
+    if(!anyBarricadeQueued){
+      waveTimer += dt;
+      while(spawnQueue.length && spawnQueue[0].delay <= waveTimer){
+        spawnEnemy(spawnQueue.shift().type);
+      }
     }
     if(!spawnQueue.length) waveState = 'ACTIVE';
   }
@@ -5589,12 +5794,18 @@ function update(dt){
   for(const t of towerPool) if(t.active) t.update(dt, enemyHash);
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHash);
   updateParticles(dt);
+  updateDeathAnims();
   updateWalkingBlood(dt);
   updateFloatingTexts(dt);
 
   if(waveState === 'ACTIVE'){
     const anyAlive = enemyPool.some(e => e.active);
-    if(!anyAlive){
+    // Also wait for any in-flight death animation to finish — die() sets active=false immediately
+    // but the squash-and-fade animation it kicks off (deathAnims) still has up to ~220ms left to
+    // play. Without this, the very last kill of a wave triggered the wave-complete
+    // popup/transition on the exact same frame the corpse started its animation, visibly cutting
+    // it off mid-play.
+    if(!anyAlive && deathAnims.length === 0){
       waveState = 'IDLE';
       wavesCompleted++;
       const surviveXp = 6 + Math.floor(waveIndex * 0.6); // scales gently with how far the run has gone
@@ -5681,6 +5892,7 @@ function render(ctx){
   drawScenery(ctx);
   drawDecals(ctx);
   drawBuildPreview(ctx);
+  drawDeathAnims(ctx);
   for(const e of enemyPool) if(e.active) e.draw(ctx);
   for(const t of towerPool) if(t.active) t.draw(ctx, t === selectedTower);
   for(const gi of groundItems){
@@ -6003,7 +6215,7 @@ function onPointerEnd(e){
   if(wasSinglePointer){
     if(draggingGroundItem){
       const target = towerPool.find(t => t.active && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
-      if(target && target.buyItem(draggingGroundItem.itemDef)){
+      if(target && target.receiveItem(draggingGroundItem.itemDef)){
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
         spawnFloatingText(target.x, target.y - 40, '🌿 Equipped!', '#8bc34a');
         playSound('click');
@@ -6153,100 +6365,35 @@ function closeTowerModal(){
   document.getElementById('tower-modal').classList.add('hidden');
 }
 
-let shopActiveTab = 'SWORDSMAN';
-function openShopModal(preferredTab){
-  if(preferredTab) shopActiveTab = preferredTab;
-  buildShopTabs();
+function openShopModal(){
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
 }
 function closeShopModal(){
   document.getElementById('shop-modal').classList.add('hidden');
 }
-function buildShopTabs(){
-  const tabs = document.getElementById('shop-tabs');
-  tabs.innerHTML = '';
-  for(const type of Object.keys(SHOP_ITEMS)){
-    const btn = document.createElement('button');
-    btn.textContent = CONFIG.TOWERS[type].icon;
-    btn.title = CONFIG.TOWERS[type].name;
-    btn.className = shopActiveTab === type ? 'active' : '';
-    btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); shopActiveTab = type; buildShopTabs(); buildShopGrid(); });
-    tabs.appendChild(btn);
-  }
-  const passiveBtn = document.createElement('button');
-  passiveBtn.textContent = '✨';
-  passiveBtn.title = 'Passive Bonuses';
-  passiveBtn.className = shopActiveTab === 'PASSIVES' ? 'active' : '';
-  passiveBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); shopActiveTab = 'PASSIVES'; buildShopTabs(); buildShopGrid(); });
-  tabs.appendChild(passiveBtn);
-  const invBtn = document.createElement('button');
-  invBtn.textContent = '🎒';
-  invBtn.title = 'Inventory';
-  invBtn.className = shopActiveTab === 'INVENTORY' ? 'active' : '';
-  invBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); shopActiveTab = 'INVENTORY'; buildShopTabs(); buildShopGrid(); });
-  tabs.appendChild(invBtn);
-}
 function buildShopGrid(){
   const grid = document.getElementById('shop-grid');
   const note = document.getElementById('shop-selected-note');
   grid.innerHTML = '';
 
-  if(shopActiveTab === 'INVENTORY'){
-    note.innerHTML = '🪵 ' + wood + ' wood &nbsp; 🪨 ' + stone + ' stone';
-    const roster = towerPool.filter(t => t.active && t.type !== 'BARRICADE');
-    if(!roster.length){
-      grid.innerHTML = '<p class="shop-empty-note">No towers placed yet.</p>';
-      return;
-    }
-    for(const t of roster){
-      const row = document.createElement('div');
-      row.className = 'shop-equipped-row';
-      row.style.gridColumn = '1/-1';
-      const itemIcons = t.equippedItems.length ? t.equippedItems.map(i => i.icon).join(' ') : '—';
-      row.innerHTML = '<span>' + CONFIG.TOWERS[t.type].icon + ' ' + t.def.name + ' Lv.' + t.level +
-        (t.isHero ? ' ⭐' : '') + '</span><span style="margin-left:auto;">' + itemIcons + '</span>';
-      grid.appendChild(row);
-    }
-    return;
-  }
+  // One unified view instead of switching between Items/Passives/Inventory tabs — with only one
+  // item in the game and three passives, tab-switching was more navigation than the content
+  // actually needed. Everything relevant is just shown together in one pass.
+  const towerSelected = !!(selectedTower && selectedTower.active);
+  note.innerHTML = (towerSelected
+    ? 'Buying for your selected ' + selectedTower.def.name + '.'
+    : 'Select any tower on the map to buy or manage its items.') +
+    ' &nbsp; 🪵' + wood + ' &nbsp; 🪨' + stone;
 
-  if(shopActiveTab === 'PASSIVES'){
-    note.textContent = 'Applies permanently to every tower you own, current and future.';
-    for(const def of PASSIVE_UPGRADES){
-      const cost = passiveCost(def);
-      const count = globalPassiveCounts[def.id] || 0;
-      const card = document.createElement('div');
-      card.className = 'shop-item-card' + (gold < cost ? ' disabled' : '');
-      card.innerHTML =
-        '<div class="icon">' + def.icon + '</div>' +
-        '<div class="name">' + def.name + '</div>' +
-        '<div class="stat-line">+1 ' + def.stat.toUpperCase() + ' (all) · owned x' + count + '</div>' +
-        '<div class="cost">💰' + cost + '</div>';
-      card.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        if(buyPassive(def.id)) buildShopGrid();
-      });
-      grid.appendChild(card);
-    }
-    return;
-  }
-
-  const type = shopActiveTab;
-  const matchingTowerSelected = selectedTower && selectedTower.active && selectedTower.type === type;
-  note.textContent = matchingTowerSelected
-    ? 'Buying for your selected ' + CONFIG.TOWERS[type].name + '.'
-    : 'Select a ' + CONFIG.TOWERS[type].name + ' on the map to buy gear for it.';
-
-  if(matchingTowerSelected && selectedTower.equippedItems.length){
+  if(towerSelected && selectedTower.equippedItems.length){
     selectedTower.equippedItems.forEach((it, idx) => {
       const row = document.createElement('div');
       row.className = 'shop-equipped-row';
       row.style.gridColumn = '1/-1';
       row.innerHTML = '<span>' + it.icon + ' ' + it.name + '</span>';
       const removeBtn = document.createElement('button');
-      removeBtn.textContent = it.tier === 'starter' ? 'Starter' : 'Remove';
-      if(it.tier === 'starter') removeBtn.disabled = true;
+      removeBtn.textContent = 'Remove';
       removeBtn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         if(selectedTower.unequipItem(idx)){ playSound('click'); updateHUD(); updateInspectPanel(); buildShopGrid(); }
@@ -6256,14 +6403,13 @@ function buildShopGrid(){
     });
   }
 
-  for(const def of SHOP_ITEMS[type]){
-    if(def.tier === 'starter') continue; // free starting gear, not purchasable
-    const alreadyOwned = matchingTowerSelected && selectedTower.equippedItems.some(i => i.id === def.id);
-    const full = matchingTowerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
+  for(const def of UNIVERSAL_ITEMS){
+    const alreadyOwned = towerSelected && selectedTower.equippedItems.some(i => i.id === def.id);
+    const full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
     const hasGold = gold >= def.cost;
     const hasWood = !def.woodCost || wood >= def.woodCost;
     const hasStone = !def.stoneCost || stone >= def.stoneCost;
-    const canBuy = matchingTowerSelected && !full && hasGold && hasWood && hasStone;
+    const canBuy = towerSelected && !full && hasGold && hasWood && hasStone;
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (canBuy ? '' : ' disabled') + (alreadyOwned ? ' owned' : '');
     let costLine = '💰' + def.cost;
@@ -6285,6 +6431,29 @@ function buildShopGrid(){
         }
       });
     }
+    grid.appendChild(card);
+  }
+
+  const passiveDivider = document.createElement('div');
+  passiveDivider.className = 'shop-section-divider';
+  passiveDivider.style.gridColumn = '1/-1';
+  passiveDivider.textContent = '✨ Passive Bonuses — applies permanently to every tower you own, current and future';
+  grid.appendChild(passiveDivider);
+
+  for(const def of PASSIVE_UPGRADES){
+    const cost = passiveCost(def);
+    const count = globalPassiveCounts[def.id] || 0;
+    const card = document.createElement('div');
+    card.className = 'shop-item-card' + (gold < cost ? ' disabled' : '');
+    card.innerHTML =
+      '<div class="icon">' + def.icon + '</div>' +
+      '<div class="name">' + def.name + '</div>' +
+      '<div class="stat-line">+1 ' + def.stat.toUpperCase() + ' (all) · owned x' + count + '</div>' +
+      '<div class="cost">💰' + cost + '</div>';
+    card.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if(buyPassive(def.id)) buildShopGrid();
+    });
     grid.appendChild(card);
   }
 }
@@ -6319,7 +6488,7 @@ document.getElementById('shopBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   if(gameState !== 'PLAYING') return;
   if(moveModeTower) exitMoveMode();
-  openShopModal(selectedTower ? selectedTower.type : null);
+  openShopModal();
 });
 document.getElementById('shopModalClose').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -6332,7 +6501,36 @@ document.querySelectorAll('.item-slot').forEach(slot => {
   slot.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     if(!selectedTower) return;
-    openShopModal(selectedTower.type);
+    const idx = +slot.dataset.slot;
+    const item = selectedTower.equippedItems[idx];
+    if(!item){
+      openShopModal();
+      return;
+    }
+    // WC3/Dota-style item drag: pick this item up off the tower and let the player drop it onto
+    // another tower to transfer it there. Reuses the exact same ground-item drag/drop pipeline
+    // already used for picking up relic drops — the item becomes a temporary ground item sitting
+    // at this tower's position for the duration of the drag, and canvas's own pointermove/pointerup
+    // handlers take it from here (including rendering it following the cursor and hit-testing the
+    // drop target). No gold is charged or refunded — this moves the item, it doesn't sell or buy it.
+    const sourceTower = selectedTower;
+    sourceTower.equippedItems.splice(idx, 1);
+    sourceTower.recomputeStats();
+    updateInspectPanel();
+    const groundItem = { id: idCounter++, x: sourceTower.x, y: sourceTower.y, itemDef: item, spawnTime: gameTime };
+    groundItems.push(groundItem);
+    draggingGroundItem = groundItem;
+    dragItemPos = { x: sourceTower.x, y: sourceTower.y };
+    // This pointer's session started on an HTML element, not the canvas, so it was never added to
+    // activePointers by canvas's own pointerdown listener — the existing pointermove/pointerup
+    // handlers require it to be there (they key off activePointers.get(e.pointerId) being truthy)
+    // to recognize this as the active drag pointer. Register it manually, exactly as canvas's own
+    // handler would have.
+    activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    dragPointerId = e.pointerId;
+    dragStartClient = { x: e.clientX, y: e.clientY };
+    isDragging = true;
+    canvas.setPointerCapture(e.pointerId);
   });
 });
 document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
