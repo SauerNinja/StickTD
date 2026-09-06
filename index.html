@@ -26,6 +26,7 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;background:#0d0d0d;overflow:hidden;
     touch-action:none;user-select:none;-webkit-user-select:none;
+    -webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-text-size-adjust:none;
     font-family:'Trebuchet MS',Verdana,sans-serif;}
   #game-wrapper{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
   #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;}
@@ -33,6 +34,7 @@
 
   #hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;flex-wrap:wrap;
     row-gap:6px;justify-content:space-between;padding:8px 12px;
+    max-width:900px;margin:0 auto;
     background:linear-gradient(180deg,rgba(74,47,29,0.92),rgba(74,47,29,0));
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
   .hud-stat{display:flex;align-items:center;gap:6px;font-size:clamp(12px,2vw,18px);
@@ -397,8 +399,8 @@
     <div id="hud-top">
       <button id="buildBtn" class="hud-action-btn">🏗️ Build</button>
       <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
-      <button id="settingsBtn" class="hud-action-btn">⚙️</button>
-      <button id="fullscreenBtn" class="hud-action-btn" title="Fullscreen">⛶</button>
+      <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
+      <button id="fullscreenBtn" class="hud-action-btn" title="Fullscreen" aria-label="Toggle fullscreen">⛶</button>
       <div id="hud-stats-stack">
         <div class="hud-stat-row">
           <div class="hud-stat">❤️ <span id="livesVal">100</span></div>
@@ -424,8 +426,8 @@
           <div id="inspHpBarTrack"><div id="inspHpBarFill"></div><span id="inspHpBarText">0/0</span></div>
           <div id="inspEvoBarTrack"><div id="inspEvoBarFill"></div><span id="inspEvoBarText"></span></div>
         </div>
-        <button id="inspExpandChevron">📜</button>
-        <button id="inspClose">❌</button>
+        <button id="inspExpandChevron" aria-label="Expand stats">📜</button>
+        <button id="inspClose" aria-label="Close">❌</button>
       </div>
       <div id="inspCombatRow">
         <span>⚔️ <span id="inspAtkVal">0</span></span>
@@ -444,8 +446,8 @@
           <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
           <button id="inspMoveBtn">🔀 Move <span id="inspMoveCost"></span></button>
           <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
-          <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works">❓</button>
-          <button class="info-btn hidden" id="barricadeInfoBtn" title="Tap for how barricades work">❓</button>
+          <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works" aria-label="How everything works">❓</button>
+          <button class="info-btn hidden" id="barricadeInfoBtn" title="Tap for how barricades work" aria-label="How barricades work">❓</button>
         </div>
         <div id="inspStatsRow">
           <div id="inspStatHeaderRow">
@@ -512,7 +514,7 @@
       <div id="tower-modal-inner">
         <div id="tower-modal-header">
           <h2>Build</h2>
-          <button id="towerModalClose">✕</button>
+          <button id="towerModalClose" aria-label="Close">✕</button>
         </div>
         <div id="build-resources">🪵 <span id="woodVal">0</span> &nbsp; 🪨 <span id="stoneVal">0</span></div>
         <div id="tower-modal-grid"></div>
@@ -523,7 +525,7 @@
       <div id="shop-modal-inner">
         <div id="shop-modal-header">
           <h2>Hero Shop</h2>
-          <button id="shopModalClose">✕</button>
+          <button id="shopModalClose" aria-label="Close">✕</button>
         </div>
         <div id="shop-buylife-row">
           <span id="shopBuyLifeLabel">❤️ Lives: <span id="shopLivesVal">100</span></span>
@@ -538,7 +540,7 @@
       <div id="settings-modal-inner">
         <div id="settings-modal-header">
           <h2>Settings</h2>
-          <button id="settingsModalClose">✕</button>
+          <button id="settingsModalClose" aria-label="Close">✕</button>
         </div>
         <div id="settings-tabs">
           <button class="settings-tab active" data-tab="video">🖥️ Video</button>
@@ -699,7 +701,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.151'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.160'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -710,37 +712,18 @@ const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed
 
 // Each job has a fixed color identity (not random) so you can tell towers apart by class at a
 // glance, plus a distinct body build — some classes read as taller/lankier, others shorter/stouter.
-function jitterColorLightness(hslStr, amount){
-  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
-  if(!m) return hslStr;
-  const h = +m[1], s = +m[2], l = +m[3];
-  const newL = Math.max(30, Math.min(92, l + (Math.random()*2-1)*amount));
-  return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
-}
-function darkerJitteredColor(hslStr, darkenBy, jitterAmount){
-  // same idea as jitterColorLightness, but shifted darker first — used for the face fill, which
-  // wants to read as a subtle shade of the skin tone rather than a near-black mask. No hard upper
-  // lightness ceiling here (unlike the old 55% cap) so light/pastel body colors (e.g. Archer's
-  // pale green) keep their natural tint instead of collapsing to muddy near-black.
-  const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
-  if(!m) return hslStr;
-  const h = +m[1], s = +m[2], l = +m[3];
-  const darkerL = l - darkenBy;
-  const newL = Math.max(10, Math.min(85, darkerL + (Math.random()*2-1)*jitterAmount));
-  return 'hsl(' + h + ',' + s + '%,' + Math.round(newL) + '%)';
-}
-// Explicit-lightness variant used by Tower.rollSkinTones() — same hue/saturation parsing as
-// jitterColorLightness()/darkerJitteredColor(), but takes an absolute target lightness (already
-// computed by the caller) instead of jittering around the source color's own baseline. Lets
-// skinMain/skinShade/faceColor all be driven off one shared per-tower toneOffset so the three
-// layers stay tonally coherent instead of rolling independent randomness against each other.
+// Explicit-lightness color helper used by Tower.rollSkinTones() — parses hue/saturation from an
+// hsl() string and re-renders it at a caller-supplied absolute lightness, rather than jittering
+// around the source color's own baseline. Lets skinMain/skinShade/faceColor all be driven off one
+// shared per-tower toneOffset so the three layers stay tonally coherent instead of rolling
+// independent randomness against each other.
 function colorAtLightness(hslStr, lightness){
   const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
   if(!m) return hslStr;
   const h = +m[1], s = +m[2];
   return 'hsl(' + h + ',' + s + '%,' + Math.round(lightness) + '%)';
 }
-function clampNum(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 // Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of
 // the most expensive Canvas2D operations). Only called when graphicsQuality is 'high'.
 // Small icon-based status effect overlay — frost crystals drifting around a slowed/frozen body,
@@ -1633,10 +1616,10 @@ function updateBarricadesAndPileup(){
     const ahead = active[i-1], behind = active[i];
     const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
     // Proportional to the pair's own size instead of a flat 14px — a flat buffer is trivial for a
-    // Tank/Boss but was over 1.5x a Swarm's entire diameter (radius 12), meaning dense clusters of
-    // small, fast enemies triggered the cap far too eagerly on units that still had plenty of
-    // room, cascading a "stop and wait" chain through an entire tightly-packed group even when
-    // nothing was actually blocking them. Capped at 14 so larger units keep the original buffer.
+    // Tank/Boss but is a huge fraction of a Swarm's entire diameter (radius 9), meaning dense
+    // clusters of small, fast enemies triggered the cap far too eagerly on units that still had
+    // plenty of room, cascading a "stop and wait" chain through an entire tightly-packed group even
+    // when nothing was actually blocking them. Capped at 14 so larger units keep the original buffer.
     const proximityBuffer = Math.min(14, (ahead.radius + behind.radius) * 0.3);
     if(d <= ahead.radius + behind.radius + proximityBuffer){
       // The cap must reflect what `ahead` is ACTUALLY limited to right now, not just its own base
@@ -2492,10 +2475,6 @@ function zoomAt(canvasX, canvasY, newZoom){
   camera.x = canvasX - worldX*camera.zoom;
   camera.y = canvasY - worldY*camera.zoom;
   clampCamera();
-}
-
-function resetCamera(){
-  camera.zoom = 1; camera.x = 0; camera.y = 0;
 }
 
 // Focuses the camera on the current active region — used at game start (and after restart) so the
@@ -3717,6 +3696,7 @@ class Tower{
       let score;
       if(this.targetMode === 'FIRST') score = e.traveled;
       else if(this.targetMode === 'STRONGEST') score = e.hp;
+      else if(this.targetMode === 'WEAKEST') score = -e.hp; // lowest HP wins — negated so the shared "higher score wins" comparison works the same way as every other mode
       else score = -d; // CLOSEST
       if(score > bestScore){ bestScore = score; best = e; }
     }
@@ -3726,6 +3706,7 @@ class Tower{
         let currentScore;
         if(this.targetMode === 'FIRST') currentScore = this.target.traveled;
         else if(this.targetMode === 'STRONGEST') currentScore = this.target.hp;
+        else if(this.targetMode === 'WEAKEST') currentScore = -this.target.hp;
         else currentScore = -d;
         const threshold = currentScore >= 0 ? currentScore*1.15 : currentScore*0.85;
         if(!best || best === this.target || bestScore <= threshold) return;
@@ -3749,13 +3730,16 @@ class Tower{
     // target means those two angles diverge, and the tower visibly aims one way while the
     // projectile flies another. Most noticeable on Mage now that shots are rare and dramatic
     // enough for a mismatch to actually be seen, but this affects every ranged class equally.
-    // recentlyEngaged gives a brief grace window after losing a target (e.g. it just died, or
-    // briefly stepped out of range) before falling back to the idle pose — without this, the
-    // engaged pose (arm/staff angle, which extra.hasTarget also drives) snapped back to idle on
-    // the very next target-less frame and immediately re-engaged the instant a new target showed
-    // up, which read as the whole attack animation visibly resetting every single time between
-    // kills, even though the underlying cooldown/charge was never actually reset.
-    const recentlyEngaged = (gameTime - (this.lastTargetTime||0)) < 500;
+    // recentlyEngaged used to be a short fixed grace window after losing a target, but with
+    // cooldowns now running several seconds (Mage especially, at 4.2-9.5s), real gaps between one
+    // target leaving range and the next arriving routinely exceeded that window — so the pose kept
+    // flickering back to idle mid-charge every time a target briefly cycled out, even though the
+    // tower was still actively counting down toward its next shot the whole time. The tower is
+    // genuinely "engaged" for its entire cooldown, not just while a specific target happens to be
+    // in range at this exact instant, so that's the real signal to use: stay engaged for as long as
+    // the cooldown is actively running, falling back to idle only once it's sitting fully charged
+    // with nothing to shoot at for a real stretch (the short window still covers that case).
+    const recentlyEngaged = this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500;
     if(this.target){
       const dx = this.target.x-this.x, dy = this.target.y-this.y;
       const dist = Math.hypot(dx,dy) || 0.0001;
@@ -3765,7 +3749,7 @@ class Tower{
       this.angle = Math.atan2(predY-this.y, predX-this.x);
     } else if(!recentlyEngaged){
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
-    } // else: keep whatever this.angle already was — don't snap to idle during the grace window
+    } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
     if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
@@ -4041,6 +4025,7 @@ class Tower{
       let score;
       if(this.targetMode === 'FIRST') score = e.traveled;
       else if(this.targetMode === 'STRONGEST') score = e.hp;
+      else if(this.targetMode === 'WEAKEST') score = -e.hp;
       else score = -d;
       if(score > bestScore){ bestScore = score; best = e; }
     }
@@ -4166,7 +4151,7 @@ class Tower{
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -4383,6 +4368,19 @@ class Projectile{
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.angle);
+      if(graphicsQuality === 'low'){
+        // Low graphics: skip the gradient allocation and shadowBlur entirely — same visual
+        // identity (a bright bolt with a core), just without the two most expensive parts. This
+        // matches the gating already used for the equivalent glow effect elsewhere (the
+        // hero-awakening item glow, a few hundred lines up) — this one was inconsistently
+        // ungated before.
+        ctx.strokeStyle = this.color || '#7dd3fc'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, 0); ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = this.color || '#7dd3fc';
+        ctx.globalAlpha = 0.55;
+      } else {
       // fading trail behind the missile — reads as a fast-moving bolt of energy, not an arrow
       const trailGrad = ctx.createLinearGradient(-14, 0, 0, 0);
       trailGrad.addColorStop(0, 'rgba(125,211,252,0)');
@@ -4396,6 +4394,7 @@ class Projectile{
       ctx.shadowBlur = 0;
       ctx.fillStyle = this.color || '#7dd3fc';
       ctx.globalAlpha = 0.55;
+      }
       ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
       return;
@@ -5984,7 +5983,16 @@ function generateVanguardWave(n){
   ];
 }
 function generateProceduralWave(n){
-  const waveType = n % 7; // deterministic cycle — guarantees variety, never repeats back to back
+  // Cycle widened from 7 to 9 — generateTrickWave() and generateGrindWave() were both fully
+  // implemented, using the exact same data format as every other working generator here, but were
+  // never actually wired into this rotation (confirmed zero call sites anywhere in the file before
+  // this fix). Purely additive: two more distinct wave flavors join the rotation, nothing existing
+  // is removed or altered. Honest note on the one real side effect — widening the modulo does shift
+  // which specific wave *number* lands on which flavor for waves generated after this change, since
+  // n % 9 gives different remainders than n % 7 did. That has no player-facing meaning attached to
+  // it (nothing tracks "wave 47 is always Elite type"), but it's a real change to the mapping, not
+  // just new content sitting alongside the old — recorded here rather than glossed over.
+  const waveType = n % 9; // deterministic cycle — guarantees variety, never repeats back to back
   switch(waveType){
     case 1: return generateSwarmWave(n);
     case 2: return generateEliteWave(n);
@@ -5992,6 +6000,8 @@ function generateProceduralWave(n){
     case 4: return generateAmbushWave(n);
     case 5: return generateBossRushWave(n);
     case 6: return generateVanguardWave(n);
+    case 7: return generateTrickWave(n);
+    case 8: return generateGrindWave(n);
     default: return generateStandardWave(n);
   }
 }
@@ -6065,7 +6075,7 @@ function startNextWave(){
   // collision-trigger range of each other at the same flat spacing that's plenty of room for a
   // bigger enemy. Re-checked AFTER the speed reassignment so this reflects whatever type actually
   // ended up in each slot, not the original pre-reassignment group. A radius near the ~16px
-  // average gets no extra gap; a Swarm at 12px gets a meaningfully wider one.
+  // average gets no extra gap; a Swarm at 9px gets a meaningfully wider one.
   let prevDelay = -Infinity;
   for(const entry of spawnQueue){
     const r = (CONFIG.ENEMIES[entry.type]||{}).radius || 16;
@@ -6172,23 +6182,43 @@ function update(dt){
   }
 }
 
+// Dirty-check state for updateTargetFrame() — was doing two getBoundingClientRect() layout
+// reads plus several unconditional DOM writes every single render frame (60fps), regardless of
+// whether the target, its stats, or the panel geometry had actually changed. text/HP-bar content
+// now only writes when the underlying values change; the expensive geometry recompute
+// (getBoundingClientRect + style writes) only runs when the frame just became visible or the
+// layout genuinely may have moved (resize).
+let targetFrameContentKey = '';
+let targetFrameWasVisible = false;
+let targetFrameLayoutDirty = true;
+window.addEventListener('resize', () => { targetFrameLayoutDirty = true; });
 function updateTargetFrame(){
   const frame = document.getElementById('inspTargetFrame');
   const t = selectedTower;
   const target = t && t.active ? t.target : null;
   if(!target || !target.active || inspPanelExpanded){
-    frame.classList.remove('show');
+    if(targetFrameWasVisible){ frame.classList.remove('show'); targetFrameWasVisible = false; }
     return;
   }
-  document.getElementById('targetPortraitFace').textContent = target.emoji;
-  const info = ENEMY_INFO[target.type];
-  document.getElementById('targetName').textContent = info ? info.name : target.type;
   const hpPct = target.maxHp > 0 ? Math.max(0, Math.min(100, (target.hp/target.maxHp)*100)) : 0;
-  document.getElementById('targetHpBarFill').style.width = hpPct + '%';
-  document.getElementById('targetHpBarText').textContent = Math.round(target.hp) + '/' + target.maxHp;
-  document.getElementById('targetDefVal').textContent = target.armor;
-  document.getElementById('targetSpeedVal').textContent = Math.round(target.speed);
-  frame.classList.add('show');
+  const contentKey = target.id + ':' + Math.round(hpPct) + ':' + Math.round(target.hp) + ':' + target.armor + ':' + Math.round(target.speed);
+  if(contentKey !== targetFrameContentKey){
+    targetFrameContentKey = contentKey;
+    document.getElementById('targetPortraitFace').textContent = target.emoji;
+    const info = ENEMY_INFO[target.type];
+    document.getElementById('targetName').textContent = info ? info.name : target.type;
+    document.getElementById('targetHpBarFill').style.width = hpPct + '%';
+    document.getElementById('targetHpBarText').textContent = Math.round(target.hp) + '/' + target.maxHp;
+    document.getElementById('targetDefVal').textContent = target.armor;
+    document.getElementById('targetSpeedVal').textContent = Math.round(target.speed);
+  }
+  if(!targetFrameWasVisible){
+    frame.classList.add('show');
+    targetFrameWasVisible = true;
+    targetFrameLayoutDirty = true; // just became visible — geometry may be stale from whenever it was last shown
+  }
+  if(!targetFrameLayoutDirty) return;
+  targetFrameLayoutDirty = false;
   const panelRect = inspectPanel.getBoundingClientRect();
   const containerRect = document.getElementById('canvas-frame').getBoundingClientRect();
   const isNarrow = window.innerWidth < 600;
@@ -6238,7 +6268,7 @@ function render(ctx){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = Math.sin(gameTime/300 + gi.id)*3;
     ctx.save();
-    ctx.shadowColor = '#8bc34a'; ctx.shadowBlur = 8;
+    if(graphicsQuality !== 'low'){ ctx.shadowColor = '#8bc34a'; ctx.shadowBlur = 8; } // ground items are few and short-lived, so this was low real impact, but matching the Low-graphics gate used everywhere else keeps the setting meaning the same thing consistently
     ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
@@ -6486,8 +6516,7 @@ canvas.addEventListener('pointerdown', (e) => {
     dragPointerId = e.pointerId;
     dragStartClient = {x:e.clientX, y:e.clientY};
     isDragging = false;
-    const raw = toRawCanvasCoords(e.clientX, e.clientY);
-    const worldX = (raw.x - camera.x)/camera.zoom, worldY = (raw.y - camera.y)/camera.zoom;
+    const { x: worldX, y: worldY } = toCanvasCoords(e);
     for(const gi of groundItems){
       if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
         draggingGroundItem = gi;
@@ -6516,8 +6545,7 @@ canvas.addEventListener('pointermove', (e) => {
     const dx = e.clientX - dragStartClient.x, dy = e.clientY - dragStartClient.y;
     if(!isDragging && Math.hypot(dx,dy) > DRAG_THRESHOLD) isDragging = true;
     if(draggingGroundItem){
-      const raw = toRawCanvasCoords(e.clientX, e.clientY);
-      dragItemPos = { x: (raw.x - camera.x)/camera.zoom, y: (raw.y - camera.y)/camera.zoom };
+      dragItemPos = toCanvasCoords(e);
     } else if(isDragging){
       const rect = canvas.getBoundingClientRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
@@ -6530,16 +6558,14 @@ canvas.addEventListener('pointermove', (e) => {
 
   // hover preview for build-placement / move-mode snap (mouse only; harmless if it fires mid-drag)
   if(gameState === 'PLAYING' && (selectedBuildType || moveModeTower) && e.pointerType !== 'touch'){
-    const raw = toRawCanvasCoords(e.clientX, e.clientY);
-    const worldX = (raw.x - camera.x)/camera.zoom, worldY = (raw.y - camera.y)/camera.zoom;
+    const { x: worldX, y: worldY } = toCanvasCoords(e);
     const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
     hoverCell = { gx, gy };
   }
 
   // scenery price-on-hover — works for mouse hover and for a touch drag (not a plain tap)
   if(gameState === 'PLAYING'){
-    const raw = toRawCanvasCoords(e.clientX, e.clientY);
-    const worldX = (raw.x - camera.x)/camera.zoom, worldY = (raw.y - camera.y)/camera.zoom;
+    const { x: worldX, y: worldY } = toCanvasCoords(e);
     const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
     const key = gx+','+gy;
     hoveredSceneryKey = sceneryMap.has(key) ? key : null;
@@ -7225,7 +7251,7 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
 inspTargetBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower) return;
-  const modes = ['FIRST','CLOSEST','STRONGEST'];
+  const modes = ['FIRST','CLOSEST','STRONGEST','WEAKEST'];
   const i = modes.indexOf(selectedTower.targetMode);
   selectedTower.targetMode = modes[(i+1)%modes.length];
   playSound('click');

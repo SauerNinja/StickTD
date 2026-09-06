@@ -29,6 +29,7 @@ with the Web Audio API.
 - [Save / Load](#save--load)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
+- [Code map](#code-map)
 - [Running locally](#running-locally)
 - [Contributing](#contributing)
 - [Version History](#version-history)
@@ -251,6 +252,47 @@ StickTD/
 ├── LICENSE            # MIT
 └── README.md          # this file
 ```
+
+## Code map
+
+Direct links into `index.html` on GitHub, jumping straight to where each system actually lives.
+Line numbers drift as the file changes — treat these as a starting point to search from rather
+than a permanently exact address, and if a link lands a little off, the section-header comment
+right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the line number itself.
+
+**Major sections**
+- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L700)
+- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1212)
+- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1434)
+- [Object pools](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1976)
+- [Audio synthesis](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1983)
+- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2046)
+- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2380)
+- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2500)
+- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5139)
+- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5699)
+- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5888)
+- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6095)
+- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6321)
+- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6593)
+- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7338)
+- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7424)
+
+**Specific systems people actually go looking for**
+- [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L932)
+- [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1069)
+- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1493)
+- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2502)
+- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3342)
+- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4249)
+- [`spawnDecal()` — blood/gore particle system starts here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4559)
+- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5221)
+- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5717)
+- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5756)
+- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6100)
+- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6225)
+- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6610)
+- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7090)
 
 ## Running locally
 

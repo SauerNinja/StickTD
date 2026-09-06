@@ -97,13 +97,13 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
   match this repo (separate class files, a pure "STR only helps warriors" gate, poison rendered
   non-green, only two targeting modes). Checked against actual code: poison/curse already
   renders green (`#7cb518` floating text, `rgba(124,181,24,...)` tint), targeting already has
-  a `FIRST/CLOSEST/STRONGEST` cycle, a full EXP/level system shipped in v1.0.49, Blowdart's
-  pipe-tracking shipped in v1.0.51, true archetype-exclusive STR/DEX/INT damage gating shipped in
-  v1.0.52, wave-pacing (one new enemy type per wave, waves 1-15) also shipped in v1.0.52, and the
-  new-enemy-introduced popup shipped in v1.0.59. Archer arrow spawn-point/embedding alignment
-  shipped this session (v1.0.128 — arrows now anchor on the actual entry side relative to the shot's
-  real flight path instead of a random position). Genuinely still open from that batch: a
-  `WEAKEST` targeting mode.
+  a `FIRST/CLOSEST/STRONGEST/WEAKEST` cycle (the last one shipped in v1.0.159), a full EXP/level
+  system shipped in v1.0.49, Blowdart's pipe-tracking shipped in v1.0.51, true archetype-exclusive
+  STR/DEX/INT damage gating shipped in v1.0.52, wave-pacing (one new enemy type per wave, waves
+  1-15) also shipped in v1.0.52, and the new-enemy-introduced popup shipped in v1.0.59. Archer
+  arrow spawn-point/embedding alignment shipped this session (v1.0.128 — arrows now anchor on the
+  actual entry side relative to the shot's real flight path instead of a random position).
+  Everything from that batch is now shipped.
 
 - Full WC3/WoW-style floating nametag overlay above every active tower (name, level, HP bar) —
   explicitly scoped out of the compact-panel work as a separate, larger feature. The bottom panel
@@ -157,4 +157,67 @@ in use correctly in this codebase. A few gaps and one piece of outdated advice w
   overhead between the main thread and a worker isn't free, and none of the current systems have
   been profiled as an actual bottleneck. Worth reaching for only if real profiling on a slow device
   shows a specific hot path worth moving, not as a speculative rewrite.
+
+## Cross-checked against externally-generated code reviews (2026-09-06)
+
+The user shared four long transcripts of a *different* AI tool (not given direct file access to this
+repo) analyzing "StickTD" and proposing changes, plus four general web-dev reference books (DOM
+Scripting, HTML & CSS, Idiosyncrasies of the HTML Parser, HTML5 Games 2nd ed). Every concrete,
+checkable claim was verified against the actual `index.html` before acting on it, rather than trusted
+at face value — worth recording both what held up and what didn't, since this kind of external
+review will likely happen again.
+
+**Confirmed real and fixed (v1.0.152)**: `updateTargetFrame()` ran unconditionally at the top of
+`render()` every frame and did two `getBoundingClientRect()` calls plus six unconditional DOM
+writes regardless of whether anything had changed — a genuine, verified layout-thrashing
+inefficiency. The specific line numbers cited by the external review (2162–2195) didn't match this
+file at all, but the *structural* claim was correct once checked against where the function actually
+lives and how it's actually called. Added a dirty-check (content-key comparison for text/HP-bar
+writes, a `resize`-driven flag for the expensive geometry recompute) with no visible behavior
+change.
+
+**Not acted on — speculative or already contradicted by the real code**: a large "combat log event
+bus" / `dispatchCombatFeedback()` rearchitecture modeled on WoW addon internals; splitting every
+status effect into a unified `activeAuras` array (a real idea worth having on file, but a big
+structural change, not verified as urgent — the current per-status fields work and this session
+already tracked down and fixed several real slow/stun-propagation bugs within that structure);
+claims about specific `Math.random()` call counts, file sizes, or exact function line ranges — none
+of these were independently verified and several were checked and found wrong; a seeded/
+separated gameplay-vs-visual RNG split (a real, valid idea for reproducibility, but no current bug
+depends on it); a full elemental-orb item system, WoW raid target markers, and a large emoji-icon
+status/item overhaul — these are new *feature* proposals, not code-quality findings, and belong
+in the Ideas section above if ever pursued deliberately rather than folded in under an "optimization"
+framing.
+
+**Declined outright as actively wrong for this project**: removing `user-scalable=no`/pinch-zoom
+restrictions or the global `user-select:none` "for accessibility" — these are deliberate touch-UX
+choices for a canvas game, not oversights, and undoing them would visibly hurt the mobile
+experience for a mobile-first project. Also declined: reorganizing into a deep module folder
+structure or introducing a build step — the single-file, zero-dependency constraint is intentional
+and explicit in `AGENTS.md`, not something an external review gets to override.
+
+The `queryNearby()` per-call array allocation and the multiple `buildEnemyHash()` rebuilds per
+frame were raised again here — both were already identified and evaluated in this same file back
+in the "Technical / architecture suggestions" section above, with the same conclusion: real leads,
+not verified as safe to change without more confidence than a text review alone can provide.
+
+## From HTML5 Games, 2nd Edition (Seidelin) — read directly, checked against real code
+
+- **Blend modes for magic/glow effects** (Ch. 6, canvas graphics) — `ctx.globalCompositeOperation`
+  (e.g. `'screen'` or `'lighter'`) is completely unused anywhere in this file. Every glow effect
+  currently relies on plain alpha blending (translucent fills/strokes layered on top of each
+  other). A blend mode would read as genuinely luminous — colors actually brightening where
+  layers overlap — instead of just semi-transparent, which is the more accurate look for the
+  Mage's shockring, Cleric's holy beam, and similar magical effects. This is a visual style choice,
+  not a bug, so it's recorded here rather than applied — worth a dedicated pass if the goal is
+  specifically "make the magic effects look more luminous," tested against a couple of the
+  existing glow effects before rolling it out further.
+- A large batch of other suggestions from this same source (Web Workers for collision hashing,
+  localStorage for settings, a unified aura/status system, decoupling `applyDamage()` into a
+  combat-log-style event dispatcher) all repeat ideas already evaluated elsewhere in this file
+  (see the "Technical / architecture suggestions" and "Cross-checked against externally-generated
+  code reviews" sections above) — not re-litigated here since the conclusions haven't changed:
+  real ideas, each with a specific reason they weren't applied blind (unverified as safe, a
+  stylistic preference framed as a bug, or a large rearchitecting with no specific broken behavior
+  driving it).
 

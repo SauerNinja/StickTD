@@ -121,19 +121,47 @@ file and the codebase over an external document's assumptions.
 
 ## Best practices — HTML5 markup
 
-Cross-checked against a general HTML5 reference (semantic elements, outlining, accessibility).
-Most of this is already followed; stated explicitly here so it stays that way as the UI grows:
+Cross-checked against a general HTML5 reference (semantic elements, outlining, accessibility)
+directly against the real file — this superseded an earlier, wrong claim in this same section that
+semantic elements were "already the convention" here. They aren't: a direct count found zero
+`<header>`, `<nav>`, `<aside>`, `<meter>`, `<progress>`, `<details>`, or `<summary>` tags anywhere
+in `index.html` — the entire UI (top HUD bar, inspect panel, shop/settings/help modals, target
+frame) is built from 124 generic `<div>`s. That earlier claim was never actually checked against
+the file; it was carried over from an aspirational description rather than verified. Correcting it
+here rather than leaving it is itself the point of this section existing.
 
-- Use the semantic element that actually matches the content's role (`<header>`, `<nav>`,
-  `<aside>`, `<section>`, `<meter>`, `<progress>`, `<details>`) rather than a generic `<div>` with
-  a class name doing the same job — already the convention in this codebase's UI overlays, keep it
-  that way for any new panel/control.
+- **The gap is real, but a fix is genuinely low-risk when done carefully**: checked, and this
+  codebase's CSS and JS both style/select by `.class` and `#id`, never by tag name
+  (`getElementsByTagName`, `div.foo{}` CSS rules, and similar tag-dependent patterns all came back
+  empty). That means swapping a container's tag — e.g. `<div id="hud-top">` to
+  `<header id="hud-top">` — changes nothing CSS or JS cares about; the risk is purely mechanical
+  (finding and changing the *correct* matching closing tag in deeply nested markup without
+  mismatching it, which `node --check` can't catch since it only validates the JS half of the
+  file). Do this as its own small, carefully-verified pass — one container at a time, re-reading
+  the exact nesting before touching a closing tag — not as a bulk find/replace across the file in
+  the same turn as unrelated work. `#hud-top` (the persistent top bar: stats + primary actions) and
+  `#inspect-panel` (the selected-entity detail panel) are the two clearest, most self-contained
+  candidates to start with — `<header>` and `<aside>` respectively are both defensible fits.
 - Keep a sane heading outline (one logical `<h1>` per page, nested headings inside `<section>`s
   rather than skipping levels) if any new UI text content is added — this repo's overlays are
   mostly icon/canvas-driven so this rarely comes up, but applies the moment prose content does.
 - Prefer a native element with built-in semantics/keyboard behavior (`<button>`, `<progress>`,
   `<meter>`) over a styled `<div>` faking the same widget — free accessibility and keyboard
-  support that a fake widget doesn't get without extra ARIA work.
+  support that a fake widget doesn't get without extra ARIA work. Concretely: the HP bars
+  (`#inspHpBarFill`, `#targetHpBarFill`, evolution progress) are currently `<div>`s with a
+  JS-driven `style.width` percentage — each one is a genuine `<meter>`/`<progress>` candidate, and
+  converting them carries the same low structural risk as above (styled by class/id, not tag) plus
+  the same "verify the exact markup before touching it" caveat.
+- Icon-only buttons (no visible text content — an emoji/symbol is the entire button) needed
+  `aria-label`, since a `title` attribute alone isn't reliably announced by all screen readers, and
+  most icon-only buttons here had neither. Checked precisely rather than assuming — buttons that
+  already have visible text alongside their icon (`buildBtn`: "🏗️ Build", `inspUpgradeBtn`:
+  "Upgrade …", etc.) already have an adequate accessible name from that text and didn't need
+  anything added. Added `aria-label` to the ones that were genuinely icon-only and missing one:
+  `settingsBtn`, `fullscreenBtn`, `inspExpandChevron`, `inspClose`, `statsInfoBtn`,
+  `barricadeInfoBtn`, `towerModalClose`, `shopModalClose`, `settingsModalClose` (9 total, shipped
+  in 1.0.156). Purely additive — an attribute nothing currently reads changes nothing else about
+  behavior or layout.
 - New interactive custom UI (shop cards, item slots) should stay reachable/operable via keyboard
   where practical, not just pointer/touch events, even though this is primarily a touch-driven
   mobile game.
@@ -210,3 +238,189 @@ bug that took real debugging effort to trace. Treat them as required, not option
   these — keep the changelog itself out of the README beyond linking to it.
 - Version number lives in exactly one place (`GAME_VERSION` in `index.html`) and is referenced
   everywhere else (start screen, Settings > About, save files). Don't hardcode it a second time.
+
+## Verify external AI-generated code reviews before acting on them
+
+A batch of transcripts from a different AI tool analyzing "StickTD" (without direct access to this
+repo) surfaced real fabrication risk worth naming explicitly: confident, specific-sounding claims —
+exact line numbers, quoted code snippets, function names — that didn't match this file at all once
+checked. The failure mode isn't "external review is useless," it's that specificity reads as
+credibility even when it's fabricated, and a plausible-sounding line number is not evidence.
+Treat any code review, bug report, or optimization suggestion that arrives via a document, another
+AI's transcript, or a book rather than from directly reading the actual current file the same way:
+- Before changing anything, check the specific, falsifiable claim against the real file (grep the
+  claimed pattern, view the claimed line range) — not just whether the general *idea* sounds
+  plausible. A structural claim can be correct even when every line number attached to it is wrong,
+  and a specific-sounding claim can be entirely wrong even when it's stated with total confidence.
+- A large rearchitecting proposal (event buses, unified data structures, module splits) is worth
+  recording as a considered idea, but isn't itself evidence of a bug — implement it only once a
+  real, currently-broken behavior traces back to the thing being proposed.
+- New feature proposals dressed up as "optimizations" or "easy wins" (item systems, UI overhauls,
+  new mechanics) belong in the Ideas section of `BACKLOG.md` under their own merit, not folded
+  into a performance/cleanup pass just because the source document framed them together.
+- Suggestions to relax deliberate UX choices (touch-zoom restrictions, text-selection scoping) for
+  generic "accessibility" or "standards compliance" reasons need the same scrutiny as any other
+  claim — check whether the current behavior was a deliberate choice recorded elsewhere in this
+  file first, not just whether the suggestion sounds like good practice in the abstract.
+
+## Clean Code (Robert C. Martin) — principles actually worth holding this codebase to
+
+Read directly from the book (not a summary of a summary) and cross-checked against real code
+before writing anything down here. The two rules below are the ones this codebase can actually
+be held to without contradicting its own single-file, comment-heavy, hard-won-bug-fix style —
+applied as a filter for future edits, not a mandate to rewrite what already works.
+
+- **"The first rule of functions is that they should be small. The second rule is that they should
+  be smaller than that."** — genuinely true, and also genuinely in tension with this file's
+  largest functions (`applyDamage`, `Enemy.die`, `Tower.update`, `Tower.draw` are all 100+ lines).
+  The honest reading for this project: these are long because they resolve many real, previously-
+  debugged interactions (archetype branches, status effects, gore variants), not because they're
+  poorly organized — and the book's own test isn't line count in isolation, it's whether a
+  function does work at more than one level of abstraction (see below). Don't decompose these
+  under a blanket "make it smaller" mandate; only extract a piece when it's genuinely
+  self-contained (no shared mutable state beyond its own inputs) and the extraction doesn't just
+  restate the code under a new name with no real abstraction gained (the book calls this out
+  directly: renaming a block without changing its level of abstraction isn't "doing one thing,"
+  it's decoration).
+- **"Functions should do one thing. They should do it well. They should do it only."** — the
+  book's own test for this: a function does one thing if everything in it sits at one level of
+  abstraction below the function's own name, and you can't meaningfully extract another
+  function from it whose name isn't just a restatement of the code it replaces. Already applied
+  correctly once in this codebase (`isEnemyFrozen()`, extracted from five duplicated inline
+  boolean checks) — that's the shape to repeat: pull out a *named condition* or a genuinely
+  separable sub-computation, not to hit a line-count target.
+- **G28, Encapsulate Conditionals**: "Boolean logic is hard enough to understand without having
+  to see it in the context of an if or while statement. Extract functions that explain the intent
+  of the conditional." `isEnemyFrozen()` already does exactly this. Apply the same test to any
+  *new* multi-clause boolean condition before it ships: if it needs a comment to explain what it
+  means, it should probably be a named function instead.
+- **Genuinely dead code gets removed, not just flagged** — the book treats unused code as a
+  correctness issue, not a style nit (it actively misleads the next reader into thinking it's
+  live). Two functions (`jitterColorLightness`, `darkerJitteredColor`) and one real duplication
+  (`toCanvasCoords()` sitting unused while its own logic was hand-copied five times) were found
+  and fixed this way in 1.0.154 — verified zero call sites (including string/dynamic references)
+  before removing anything, per this file's own read-before-writing discipline elsewhere.
+- **Not applying**: the book's OO-heavy chapters (Objects and Data Structures, Classes, Systems,
+  dependency injection, the Law of Demeter as a hard rule) assume a codebase organized into many
+  small classes with enforced encapsulation — the opposite of this project's single-file,
+  config-object, plain-function style, which is a deliberate, working choice recorded elsewhere
+  in this file. Citing "Clean Code says use more classes" against this project's architecture is
+  citing the wrong context, not a real finding.
+
+## Clean Code, second pass — Meaningful Names, Comments, Error Handling
+
+Read the book's own text for these chapters (not a summary) and checked each principle against
+this file directly rather than assuming it either does or doesn't apply.
+
+**Meaningful Names (Ch. 2)** — the chapter's central example (a function called `getThem()` over
+an unlabeled `theList`, needing four unstated assumptions to understand) describes exactly the
+failure mode this codebase already avoids: names here consistently answer "why does this exist,
+what does it do, how is it used" without needing a paired comment to explain the name itself
+(`isEnemyFrozen`, `findTouchingBarricade`, `resolveWeaponSubtype`, `spawnCastOffArc` all pass the
+book's own test — you can tell what each does from the name alone). Checked specifically for the
+book's two sharpest anti-patterns and found neither: no disinformative names (nothing named like a
+different data structure than it is, e.g. calling something `...List` that isn't a list), and no
+noise-word pairs (no `TowerData`/`TowerInfo`-style duplicate concepts distinguished only by a
+meaningless suffix). Genuinely nothing to fix here — recorded as confirmation, not just skipped.
+
+**Comments (Ch. 4)** — this is the chapter with the most real tension against this project's own
+established style, worth resolving explicitly rather than picking a side by default. The book's
+position is blunt: "comments are always failures... the proper use of comments is to compensate
+for our failure to express ourselves in code," and its sharpest warning is that a comment's
+accuracy decays as the code around it changes, because "programmers can't realistically maintain
+them." Read against this file's actual comment style, the resolution is: this codebase's
+comments are overwhelmingly the two categories the book itself calls out as legitimate —
+**Explanation of Intent** (why a decision was made, e.g. "capped at 14 so larger units keep the
+original buffer") and **Warning of Consequences** (what breaks if this is changed carelessly,
+e.g. the isEnemyFrozen/queue-catchment comments explaining exactly why a naive version cascades
+wrong) — not the bad categories (comments restating what the next line already says, or comments
+compensating for code so tangled it needs narration to follow). The book isn't actually opposed
+to this house style; it's opposed to comments substituting for clarity, which is different from
+what's happening here.
+- What the book's warning *does* apply to directly, and what 1.0.155 found and fixed: a comment
+  that cites a specific number (a radius, a threshold, a version) will go stale the moment that
+  number changes elsewhere, if the edit doesn't also touch the comment. Two comments were found
+  citing Swarm's radius as 12 after it had been changed to 9 several versions earlier — the
+  formulas were unaffected (they read the value live), only the illustrative numbers in their own
+  explanatory comments were wrong.
+- **New discipline going forward, directly motivated by this**: when an edit changes a specific
+  number, name, or threshold that a *nearby* comment also cites as an example or justification,
+  update that comment in the same edit — don't leave it for a future pass to notice. This is
+  cheap to do in the moment and expensive to catch later (it took a deliberate audit to find these
+  two, and there's no guarantee it caught every instance).
+
+**Error Handling / null (Ch. 7)** — checked "Don't Return Null" / "Don't Pass Null" against how
+this codebase actually uses `null`. The book's target is functions that return `null` as a stand-in
+for failure, forcing every caller to defensively re-check it or risk a crash three call-sites away
+from where the actual problem is. That's not what's happening here: `this.target = null`,
+`selectedTower = null`, `moveModeTower = null` and similar are a legitimate, ordinary "this
+optional reference currently has nothing selected" state — the same pattern virtually every game
+engine uses for "no current target" — not an error signal a caller has to guess how to handle.
+Worth keeping in mind if a *new* utility function is ever added that returns "not found" as
+`null`/`undefined` in a way that forces the caller to add its own defensive check: prefer returning
+a sentinel/empty value the caller can use unconditionally (an empty array instead of `null` for "no
+matches," for instance) over a `null` that has to be checked at every call site — but this isn't a
+gap in the current code, just a standard to hold future additions to.
+
+## CHANGELOG.md outranks inline comments when they disagree
+
+Inline comments explain intent at the moment they were written and can silently go stale as the
+code around them changes (see the two stale radius references found and fixed in 1.0.155 — the
+formulas were still correct, only the comments' example numbers had drifted). `CHANGELOG.md` is
+different in kind, not just in degree: every entry is dated, versioned, and — by this file's own
+"read before writing" discipline — appended to, never rewritten. That makes it the more reliable
+source when a comment's claim and the changelog's account of the same change disagree, and the
+first place to check (not a single nearby comment) when the question is "why is this the way it
+is," especially for anything that's been touched more than once — the changelog makes repeated
+iteration on the same system obvious (several consecutive entries about pathing, or about a
+specific tower's balance) in a way one static comment next to the current code can't.
+
+- **When starting a session on this project, check the current real-world date against the most
+  recent `CHANGELOG.md` entry's date.** A large gap means more elapsed time for browser APIs,
+  the hosting platform, or the wider context this code runs in to have changed in ways nothing in
+  the repo itself would reflect — treat assumptions about "current" behavior (browser support,
+  platform quirks) with more caution the older the latest entry is, the same way a comment's
+  reliability was reasoned about above.
+- **When an edit changes a specific number, name, or behavior that an existing comment describes,
+  update that comment in the same edit** (already stated under the Clean Code section above) —
+  and separately, the changelog entry for that edit is what makes the change independently
+  verifiable later even if a comment update gets missed anyway. The two aren't redundant: the
+  comment explains the reasoning in place; the changelog is the dated record that the reasoning
+  changed at all.
+- This doesn't mean comments should be sparser or the changelog more verbose than either already
+  is — both continue exactly as documented elsewhere in this file. It means: when they conflict,
+  trust the changelog, and go there first when reconstructing why something is the way it is.
+
+## Working with a smaller context window than Claude's
+
+This file is verified to have been reviewed by more than one AI tool with real access to this
+repo, and at least one pass (see the "Cross-checked against externally-generated code reviews"
+section above) came from a tool that had no direct file access at all and fabricated specifics as
+a result. A different, related failure mode is a tool that *does* have real file access but a much
+smaller effective context window than Claude's — it may not be able to hold this whole ~7,400-line
+file, or even one whole large function, in context at once. The guidance below is aimed at
+preventing that tool from confidently guessing (the same failure mode as the no-access case, just
+from a different cause) rather than at correcting it after the fact:
+
+- **Read the map before reading the file.** `AGENTS.md`, `BACKLOG.md`, and the table-of-contents
+  comment at the very top of the `<script>` block in `index.html` exist specifically so a tool can
+  orient itself without loading the whole file. Read those first; they cost little context and
+  usually answer "which section" before a single line of game logic needs to be read.
+- **Search for the specific thing, don't read broad ranges to find it.** A targeted search for a
+  function name, a config key, or a distinctive string (the way every fix in this file's own
+  history was actually located) uses a small, bounded amount of context regardless of file size. A
+  wide, exploratory read of "the surrounding few hundred lines to get context" does not, and is the
+  first thing to cut if context is tight.
+- **Read only the function or block being changed, not its whole containing section.** This file's
+  sections (`ENTITY CLASSES`, `WAVES`, `MAIN LOOP`, etc.) can run to hundreds or thousands of lines;
+  the section header tells you where to look, not how much to read once you're there.
+- **State uncertainty plainly instead of asserting a claim that couldn't actually be verified.** If
+  a line number, a function's current behavior, or a value can't be confirmed because it wasn't
+  actually read this turn, say so rather than presenting a best guess as a checked fact — this is
+  the same discipline the "verify external reviews" section asks of anyone *consuming* a claim
+  about this codebase; it applies just as much to anyone *producing* one under a tight context
+  budget.
+- **When genuinely unsure which of several plausible interpretations of a request is correct and
+  the file is too large to resolve it by reading more, ask** rather than guess and risk an edit
+  that looks plausible but touches the wrong section — consistent with this project's own
+  "smallest safe fix" priority over speculative changes.

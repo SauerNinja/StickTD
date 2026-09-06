@@ -1,5 +1,154 @@
 # Changelog
 
+## [1.0.160] - 2026-09-06
+- Fixed the top HUD bar spreading edge-to-edge on wide desktop screens. `#hud-top` used
+  `justify-content:space-between` with no width cap, which stretches its children across the full
+  viewport width — on a narrow mobile window there's little width to spread across so it looks
+  naturally clustered, but the exact same rule spreads far apart on a wide monitor. Added
+  `max-width:900px; margin:0 auto;` so the bar caps out at a fixed width and centers itself on wide
+  screens, bringing the two ends much closer together, while having zero effect on any viewport
+  already narrower than that (mobile is unaffected).
+- Traced and fixed the real cause of the Mage "resetting its attack" complaint. The cooldown timer
+  itself was never actually resetting on a target switch (confirmed: it decrements unconditionally
+  every frame regardless of target, and fires the instant a target is available with cooldown
+  expired) — but the visible arm/staff pose was. The grace window added in 1.0.149 was a fixed
+  500ms, and with cooldowns now running 4.2-9.5s (the Mage rebalance in 1.0.144), a real gap
+  between one target leaving its limited range and the next arriving routinely exceeds 500ms —
+  so the pose kept snapping back to idle mid-charge every time a target cycled out, even though the
+  actual charge was still counting down the whole time. That constant visual "reset" is what read
+  as the tower being stun-locked and never firing, even though it should have already been firing
+  correctly on whatever target happened to be in range once its cooldown expired. Fixed by tying
+  the engaged pose to the cooldown itself (`this.cooldownTimer > 0`) rather than only recent target
+  presence — the tower now visibly stays in its ready/charging stance for its entire cooldown,
+  falling back to a genuine idle pose only once fully charged with nothing to shoot at for a real
+  stretch. If enemies are still slipping through completely unhit after this, that would point to a
+  real range/cooldown balance question rather than a bug — worth reporting separately if so.
+
+## [1.0.159] - 2026-09-06
+- Implemented the `WEAKEST` targeting mode — flagged as open across at least three separate
+  `BACKLOG.md` entries going back several sessions, but never actually built. Added it consistently
+  everywhere the existing `FIRST`/`CLOSEST`/`STRONGEST` modes are handled: both scoring functions
+  (`findTarget()` and `findSecondaryTarget()`), scored as `-hp` so the shared "higher score wins"
+  comparison works identically to every other mode, and added to the mode-cycling button's list.
+  The UI label and save/load path both already just read/write the mode as a plain string with no
+  hardcoded list to update, so this needed no other changes to show up correctly or survive a save.
+
+## [1.0.158] - 2026-09-06
+- Wired two fully-built, previously-abandoned wave generators into the procedural wave rotation:
+  `generateTrickWave()` (looks like an easy opener, then springs a real threat partway through)
+  and `generateGrindWave()` (long, sustained, high-total-count — tests economy over time rather
+  than a reaction-check flood). Both were complete, used the exact same data format as every other
+  working generator, and had zero call sites anywhere in the file — confirmed before touching
+  anything. Widened the wave-variety cycle from `n % 7` to `n % 9` to include them. Purely
+  additive: two more distinct wave flavors, nothing existing removed or changed in what it does.
+  Honest note on the one real side effect: widening the modulo shifts which specific wave *number*
+  lands on which flavor going forward, since the remainder arithmetic changes — that has no
+  player-facing meaning attached to it (nothing tracks "wave 47 is always Elite type"), but it's a
+  real change to the mapping, not just new content sitting inertly alongside the old.
+- Removed `resetCamera()` — confirmed zero call sites anywhere in the file (same standard applied
+  to the two dead color-helper functions removed in 1.0.154). Removing genuinely unreachable code
+  changes zero behavior, since nothing was ever calling it.
+
+## [1.0.157] - 2026-09-06
+- Read HTML5 Games, 2nd Edition (Seidelin) Chapter 3 ("Going Mobile," p. 73, Listing 3-28)
+  directly and checked its exact mobile-browser-lockdown CSS recipe against this file's real
+  styles. Found a genuine, verified, purely-additive gap: `user-select:none` and
+  `-webkit-user-select:none` were already present, but the book's other three properties for the
+  same purpose were missing entirely — `-webkit-touch-callout:none` (suppresses the long-press
+  callout menu on tappable elements), `-webkit-tap-highlight-color:rgba(0,0,0,0)` (removes the
+  gray flash Android/older WebKit browsers show on tap), and `-webkit-text-size-adjust:none`
+  (stops the browser auto-resizing text on orientation change). All three added to the same
+  top-level `html,body` rule the existing properties were already on. Zero functional risk — these
+  only suppress default mobile-browser chrome behaviors that have no place in a touch game to
+  begin with, and don't affect layout, JS, or anything CSS/JS actually reads.
+- Also checked the same book's Chapter 6 canvas-graphics recommendations (state stack discipline,
+  curves, blend modes) against the real code: curve usage (`quadraticCurveTo`) and consistent
+  `lineCap:'round'` are already applied correctly (5 and 4 real usages respectively) — confirmed
+  rather than assumed. `ctx.globalCompositeOperation` (blend modes, e.g. `'screen'`/`'lighter'` for
+  a genuinely luminous glow instead of plain alpha blending on magic effects) is completely unused
+  anywhere in the file — a real, valid stylistic opportunity, recorded in `BACKLOG.md` rather than
+  applied here, since it's a visual style choice rather than a correctness fix.
+
+## [1.0.156] - 2026-09-06
+- Read HTML5 Mastery directly (not a summary) and found a real, significant, previously-unverified
+  gap: this project's own `AGENTS.md` claimed semantic HTML5 elements (`<header>`, `<nav>`,
+  `<aside>`, `<meter>`, `<progress>`, `<details>`) were "already the convention" in this codebase's
+  UI — a direct count found zero of any of them anywhere in `index.html`. The entire UI is 124
+  generic `<div>`s. That claim was inherited from an aspirational description early in this
+  project's history and never actually checked against the file — corrected in `AGENTS.md` now,
+  along with the real finding that a proper fix is genuinely low-risk (CSS/JS here style and select
+  by class/id, never by tag name) but deserves its own careful, one-container-at-a-time pass rather
+  than a bulk rename risked in the same turn as unrelated work, since a mismatched closing tag in
+  deeply nested markup wouldn't be caught by the JS syntax check this project already runs.
+- Shipped the one part of that finding that's unambiguously zero-risk this turn: added `aria-label`
+  to the 9 buttons in the file that are genuinely icon-only (no visible text content at all) and
+  didn't have one — `settingsBtn`, `fullscreenBtn`, `inspExpandChevron`, `inspClose`,
+  `statsInfoBtn`, `barricadeInfoBtn`, `towerModalClose`, `shopModalClose`, `settingsModalClose`.
+  Buttons that already have visible text alongside their icon (`buildBtn`: "🏗️ Build", etc.)
+  already had an adequate accessible name and needed nothing added.
+- Added a "Code map" section to `README.md`: direct GitHub links into specific lines of
+  `index.html` for every major section and several specific systems people actually go looking for
+  (`CONFIG.TOWERS`, `class Enemy`, `spawnDecal()`, the main loop, etc.), with an explicit caveat
+  that line numbers drift as the file changes and the section-header comment above a given spot is
+  the reliable anchor if a link lands slightly off.
+- Added two durable principles to `AGENTS.md`: `CHANGELOG.md` outranks inline comments when the
+  two disagree about why something is the way it is (comments can silently go stale as code
+  changes around them — directly motivated by the two stale comments found and fixed in 1.0.155;
+  the changelog is dated, versioned, and append-only by this project's own discipline, so it's the
+  more reliable record), plus explicit guidance for an AI agent working with a smaller effective
+  context window than Claude's (read the file's own navigation aids before reading code, search
+  for specifics instead of reading broad ranges, state uncertainty plainly instead of guessing).
+
+## [1.0.155] - 2026-09-06
+- Fixed two stale comments found via a direct audit against Clean Code's own warning ("the older
+  a comment is, and the farther away it is from the code it describes, the more likely it is to be
+  just plain wrong"): two comments near the follow-speed-cap buffer and radius-aware spawn spacing
+  still described Swarm's radius as 12px, left over from before the enemy size-tier redesign
+  changed it to 9px a few versions ago. The formulas themselves were never wrong (they read
+  `.radius` live off the enemy, so they auto-adjusted correctly) — only the illustrative numbers in
+  the comments explaining *why* the formula exists had gone stale. No behavior change, pure
+  documentation-accuracy fix.
+
+## [1.0.154] - 2026-09-06
+- Removed two confirmed-dead color helper functions (`jitterColorLightness()`,
+  `darkerJitteredColor()`) — verified zero call sites anywhere in the file (not even a stale
+  reference) before removing; superseded by `colorAtLightness()` when the tower skin-tone system
+  was reworked earlier this session, but the old functions were never cleaned up.
+- Found and fixed real, verified code duplication: `toCanvasCoords(e)` — a helper that converts a
+  pointer event to world-space coordinates — sat completely unused while its exact two-line
+  computation (`toRawCanvasCoords()` + camera pan/zoom adjustment) was manually copy-pasted at
+  five separate call sites across the pointer-drag, hover-preview, and scenery-hover-price
+  handlers. Consolidated all five onto the existing helper. Pure textual substitution with
+  identical runtime output at every site — verified each one computes exactly the same values as
+  what it replaced before making the change, not just that it looked equivalent.
+
+## [1.0.153] - 2026-09-06
+- Found and fixed a real, verified consistency gap while re-reading the Canvas 2D performance
+  chapters against the actual rendering code: `ctx.shadowBlur` (a genuinely expensive per-pixel
+  operation) is already correctly gated behind the Low-graphics setting in a couple of places, but
+  the Mage's magic-missile projectile render used both `shadowBlur` *and* a per-frame
+  `createLinearGradient()` allocation with no gate at all — Low graphics mode was silently not
+  saving anything on the one projectile type that actually used the expensive path. Added the same
+  gate used elsewhere: Low graphics now renders the missile with a flat stroke/fill (same silhouette,
+  no gradient allocation, no shadow blur). Applied the same gate to the ground-item glow for full
+  consistency (lower real impact there, since ground items are few and short-lived, but the setting
+  should mean the same thing everywhere it's checked).
+- Confirmed (rather than assumed) that `updateHUD()`/`refreshTrayUI()` are correctly event-driven
+  — called only from the ~23 real gameplay events that actually change gold/lives/wave/tray state,
+  never from the render loop — so no further action needed there; this matches the same
+  event-driven-not-polled principle that motivated the `updateTargetFrame()` fix in 1.0.152.
+
+## [1.0.152] - 2026-09-06
+- Fixed a real, verified performance issue: `updateTargetFrame()` ran unconditionally at the top of
+  `render()` (every single frame, 60fps) and did two `getBoundingClientRect()` calls (forcing
+  synchronous browser layout) plus six unconditional DOM text/style writes every time, regardless
+  of whether the target, its stats, or the panel's on-screen position had actually changed. Added a
+  dirty-check: text/HP-bar content now only writes to the DOM when the underlying values
+  (target identity, HP, armor, speed) actually change, and the expensive geometry recompute only
+  runs when the frame just became visible or the layout may genuinely have moved (window
+  resize) — not every frame regardless of state. No visible behavior change; the target nameplate
+  still updates in real time whenever its values do.
+
 ## [1.0.151] - 2026-09-06
 - Fixed the between-TYPE size hierarchy (ants smaller than Grunts, Tank/Boulder bigger than
   Grunts, etc.) being drowned out by the individual per-spawn size variance added in 1.0.150. That
