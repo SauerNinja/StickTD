@@ -1,5 +1,122 @@
 # Changelog
 
+## [1.0.151] - 2026-09-06
+- Fixed the between-TYPE size hierarchy (ants smaller than Grunts, Tank/Boulder bigger than
+  Grunts, etc.) being drowned out by the individual per-spawn size variance added in 1.0.150. That
+  variance (±20%) was wide enough to overlap between adjacent types — every type's base radius was
+  squeezed into a narrow 10-20px band except Boss, so a big Swarm (12×1.2=14.4) and a small Grunt
+  (16×0.8=12.8) could land at nearly the same rendered size, erasing the type-level distinction the
+  request was actually about. Two changes together fix it: widened the base radius values into
+  clear tiers (mini 8-9 / small 11-14 / standard 14-16 / big 19-23 / huge 34 for Boss), and
+  tightened individual variance from ±20% down to ±12% so it no longer crosses tier boundaries.
+  Checked the resulting ranges directly: Swarm's largest possible individual (10.1px) is now well
+  below Grunt's smallest (13.2px), and Tank's smallest (19.4px) is well above Grunt's largest
+  (16.8px) — the type hierarchy is now reliable, not just usually-true. The HP/bounty stat
+  correlation from 1.0.150 was rescaled to match the new, tighter variance range (still 0.9x-1.1x
+  HP / 0.93x-1.07x bounty end to end). No changes needed anywhere else — the radius-aware spawn
+  spacing and follow-speed-cap buffer formulas from earlier versions are written generically
+  relative to a reference size rather than hardcoded per type, so they scale correctly with the new
+  values automatically.
+
+## [1.0.150] - 2026-09-06
+- Added natural per-instance size variance to every enemy type. Radius (and therefore rendered
+  size, since the emoji font size already derives from `this.radius` directly) was previously a
+  fixed constant straight from `CONFIG.ENEMIES`, identical for every individual of a type — the
+  only size variation that existed at all was the rare 0.5% golden "Big" variant. Now every
+  ordinary spawn rolls 80%-120% of its type's base radius, so within one Swarm wave some ants
+  genuinely read smaller and some bigger, not just uniformly identical. A modest, fair stat
+  correlation goes with it — a smaller individual has proportionally less HP (0.85x-1.15x range)
+  and is worth slightly less bounty (0.9x-1.1x), so a smaller hitbox isn't a free lunch for
+  squeezing through congestion with no tradeoff. Skipped for the golden Big variant, which keeps
+  its own distinct, consistent 1.4x scale-up rather than layering two separate size systems.
+  Nothing else needed to change — all the pathing/collision code already reads `e.radius` live off
+  each enemy instance rather than a fixed per-type lookup, so per-instance variance drops in
+  cleanly on top of it.
+
+## [1.0.149] - 2026-09-06
+- Fixed the Mage attack pose (and every ranged tower's) visibly resetting to idle every time it
+  briefly lost a target — even between two kills a frame apart. `this.angle` and `extra.hasTarget`
+  (which drives the whole arm/staff pose, not just the aim direction) both snapped straight back to
+  idle the instant `this.target` became null, then re-engaged the moment a new target was found —
+  reading as the whole attack animation restarting constantly, even though the underlying cooldown/
+  charge (fixed in 1.0.146) was never actually reset. Added a 500ms grace window
+  (`recentlyEngaged`, anchored on `lastTargetTime`): losing a target now holds the last aim angle
+  and engaged pose for half a second before falling back to idle, so a brief gap between targets no
+  longer visibly resets the animation.
+- Added a second, independent lever against on-path bunching, on top of the speed-based type
+  reordering from 1.0.148: small, numerous enemy types (Swarm, Splitmini) still visibly bunch even
+  with the mixed-speed catch-up problem eliminated, because their tiny radius means many of them
+  physically fit within collision-trigger range of each other at the same flat spacing that's
+  plenty of room for something bigger. Added a radius-aware minimum spawn gap, applied after the
+  speed-based type reassignment so it reflects whichever type actually ended up in each slot — a
+  Swarm-sized enemy (12px radius) now gets a meaningfully wider gap from the spawn before it than a
+  standard 16-18px enemy does, while nothing changes for anything at or above that size.
+
+## [1.0.148] - 2026-09-06
+- Reordered wave spawn types by speed instead of leaving them in whatever order each curated/
+  procedural wave's groups happened to list them in. A slow unit (Tank, Boss) spawning ahead of a
+  faster one (Runner, Swarm) meant the faster unit inevitably caught up to it on the path and had
+  its own speed capped to match (`followSpeedCap`, added in 1.0.139) — a direct, entirely avoidable
+  contributor to visible on-path bunching, and one that happened on nearly every wave with mixed
+  unit types, exactly as reported. Fixed at the source: after a wave's spawn queue is fully built
+  and timed, the enemy *types* (not their delays/timing — every spawn still happens at the exact
+  same moment as before) are reassigned across the queue so speed strictly decreases from the
+  first spawn to the last. A fast unit now never spawns behind something slower in the first place,
+  so it never needs to catch up and get capped by it.
+
+## [1.0.147] - 2026-09-06
+- Widened scenery size variance — `minScale`/`maxScale` was 1.0-1.3 (only a 30% size range, and no
+  way to ever roll smaller than "normal"), which is why some pieces looked bigger than others but
+  none looked genuinely small. Now 0.6-1.6, so a real range of small saplings/pebbles up through
+  large old growth is possible. Clear cost/time still interpolate proportionally across the new
+  range automatically (a small 0.6-scale piece is now correctly cheaper/faster to clear too, not
+  just visually smaller).
+- Added a distinct tall/stretched tree variant (25% of trees, 1.15-1.5x) — a genuinely different
+  silhouette from just "a bigger tree," rolled independently of the normal size scale so a tree can
+  be small-and-tall, large-and-stretched, or any other combination. The stretch is anchored at the
+  tree's base rather than its center, so the trunk stays correctly planted at ground level while
+  only the canopy extends upward — scaling from the center instead would have sunk the trunk into
+  the ground as the tree got taller, which is the "correct layers" this was asking for.
+
+## [1.0.146] - 2026-09-06
+- Fixed a real aim mismatch on every ranged tower, most visible on Mage since its shots are now
+  rare enough for a miss-looking hit to actually be noticed: the visible weapon rotation
+  (`this.angle`) aimed straight at the target's *current* position, while the actual projectile
+  fired along a lead-predicted angle accounting for the target's velocity (`fireProjectile()`).
+  Against a moving target those two angles diverge, so the tower visibly aimed one way while the
+  shot flew another. Unified them — the weapon now rotates using the same lead-predicted angle the
+  shot will actually use, computed once per frame and reused directly in `fireProjectile()` instead
+  of being recalculated a second time (guaranteeing they can never drift apart again).
+- Added a real answer to "the charge should happen even if not targeting": Mage's cooldown was
+  already ticking down regardless of whether a target existed (that part was never actually
+  broken), but there was zero visual feedback of it — so during the new, much longer wait between
+  shots the tower looked idle/unresponsive right up until it suddenly fired. The staff-tip orb now
+  visibly grows and brightens continuously as the cooldown counts down (`chargeProgress`, driven
+  purely by `cooldownTimer`/`cooldown`, with no dependency on having a target), with a fast white
+  flicker in the final 15% before release. The long wait now reads as deliberate build-up instead
+  of looking broken — and this should also make the "high-impact blood barely shows up" complaint
+  resolve on its own, since it was really "the tower doesn't look like it's doing anything for 5-9
+  seconds," not that the (already-amplified) hit effects themselves were too weak.
+- Tightened the stall-watchdog failsafe added in 1.0.140 in response to continued reports of mixed-
+  unit-type corner pileups: checks twice as often (every 500ms instead of 1000ms) and intervenes
+  after ~1.5s of real stall instead of ~3s, with a stronger correction nudge (32px, up from 24) so
+  it actually clears a mixed-size pileup rather than just inching forward. The "no real progress"
+  threshold is now scaled to each enemy's own radius instead of a flat 3px, so a large Tank/Boss
+  crawling a few pixels isn't mistaken for a stall the way a tiny fast Swarm doing the same
+  genuinely would be.
+
+## [1.0.145] - 2026-09-05
+- Rebalanced Cleric (Mage's one evolution) to match Mage's new "high-impact, long-wait" identity
+  instead of firing at a moderate, steady rate — the longest cooldown of any tower now, exactly as
+  requested: cooldown roughly 5x (2500/2200/1900ms → 12500/11000/9500ms), damage 20% lower
+  (14/20/28 → 11/16/22).
+- Added a real visual match for the ability: Cleric's curse now manifests as an actual strike of
+  white-hot holy light descending vertically onto the target from directly overhead, with a bright
+  flash at the point of impact — not a plain colored particle puff like before. New
+  `spawnHolyBeam()` reuses the shared particle pool (same pattern as the Mage shockring) so it
+  costs one extra pool slot and fades on its own; only fires when the curse actually lands (not on
+  a miss). The undead 5x-tick-damage bonus is unchanged.
+
 ## [1.0.144] - 2026-09-05
 - Reworked Mage into a rare, devastating-shot class instead of a moderate-frequency damage dealer:
   cooldown increased exactly 5x across all three tiers (1080/960/840ms → 5400/4800/4200ms),

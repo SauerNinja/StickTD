@@ -699,7 +699,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.144'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.151'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1041,11 +1041,11 @@ const CONFIG = {
     },
     CLERIC: {
       name: 'Cleric', icon: '✝️', baseCost: 75, unlocksAfterWave: 5,
-      blurb: "Once per wave, heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target. Curses the nearest enemy of any type with a lingering damage-over-time affliction, dealing 5x tick damage against undead.",
+      blurb: "The longest cooldown of any tower — calls down a strike of white-hot holy light on its target, dealing 5x tick damage against undead. Once per wave, also heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target.",
       tiers: [
-        { range: 140, damage: 14, cooldown: 2500, healAmount: 25, curseDuration: 3000 },
-        { range: 155, damage: 20, cooldown: 2200, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
-        { range: 170, damage: 28, cooldown: 1900, healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
+        { range: 140, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
+        { range: 155, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
+        { range: 170, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
       ]
     },
     BLOWDART: {
@@ -1086,24 +1086,30 @@ const CONFIG = {
     }
   },
   ENEMIES: {
-    GRUNT:  { emoji:'😡', baseHp:73,  speed:50,  bounty:6,  radius:16, armor:0, breakawayChance:0.02, breakDamage:7 },
-    SWARM:  { emoji:'🐜', baseHp:27,  speed:79,  bounty:2,  radius:12, armor:0, breakawayChance:0.02, breakDamage:5 },
-    TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:20, armor:6, breakawayChance:0.02, breakDamage:12 },
-    RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:14, armor:0, breakawayChance:0.02, breakDamage:7 },
-    BOSS:   { emoji:'👹', baseHp:2684,speed:22,  bounty:173,radius:30, armor:8, breakawayChance:0,    breakDamage:0 },
-    TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:18, armor:2, breakawayChance:0, breakDamage:0 },
-    FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:15, armor:0, breakawayChance:0.6,  breakDamage:10, statusOnTower:'BURN' },
-    ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:15, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'ICE' },
-    SPLITTER: { emoji:'🦠', baseHp:85,  speed:43,  bounty:7,  radius:16, armor:0, breakawayChance:0.02, breakDamage:6, splits:true },
-    SPLITMINI:{ emoji:'🦠', baseHp:29,  speed:61,  bounty:2,  radius:10, armor:0, breakawayChance:0,    breakDamage:3 },
-    HEALER: { emoji:'💉', baseHp:104, speed:40,  bounty:13, radius:16, armor:0, breakawayChance:0.02, breakDamage:6, healsAllies:true, holyLifesteal:true },
-    SHIELDED: { emoji:'🛡️', baseHp:116, speed:36,  bounty:12, radius:17, armor:0, breakawayChance:0.02, breakDamage:7, hasShield:true },
+    // Radius widened into clear size tiers so the type-level hierarchy (ants smaller than Grunts,
+    // Tank/Boulder bigger than Grunts, etc.) reads reliably even with individual per-spawn size
+    // variance layered on top (see Enemy.spawn()) — mini(8-9) / small(11-14) / standard(14-16) /
+    // big(19-23) / huge(34, Boss). Previously everything but Boss was squeezed into a narrow
+    // 10-20 band, which the individual variance ended up overlapping across almost the whole
+    // roster.
+    GRUNT:  { emoji:'😡', baseHp:73,  speed:50,  bounty:6,  radius:15, armor:0, breakawayChance:0.02, breakDamage:7 },
+    SWARM:  { emoji:'🐜', baseHp:27,  speed:79,  bounty:2,  radius:9,  armor:0, breakawayChance:0.02, breakDamage:5 },
+    TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:12 },
+    RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:7 },
+    BOSS:   { emoji:'👹', baseHp:2684,speed:22,  bounty:173,radius:34, armor:8, breakawayChance:0,    breakDamage:0 },
+    TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
+    FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:10, statusOnTower:'BURN' },
+    ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'ICE' },
+    SPLITTER: { emoji:'🦠', baseHp:85,  speed:43,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:6, splits:true },
+    SPLITMINI:{ emoji:'🦠', baseHp:29,  speed:61,  bounty:2,  radius:8,  armor:0, breakawayChance:0,    breakDamage:3 },
+    HEALER: { emoji:'💉', baseHp:104, speed:40,  bounty:13, radius:15, armor:0, breakawayChance:0.02, breakDamage:6, healsAllies:true, holyLifesteal:true },
+    SHIELDED: { emoji:'🛡️', baseHp:116, speed:36,  bounty:12, radius:16, armor:0, breakawayChance:0.02, breakDamage:7, hasShield:true },
     ZOMBIE: { emoji:'🧟', baseHp:183, speed:23,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:9, isUndead:true },
-    WRAITH: { emoji:'👻', baseHp:46,  speed:94,  bounty:9,  radius:14, armor:4, breakawayChance:0.04, breakDamage:6, isUndead:true },
-    SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:16, armor:6, breakawayChance:0.02, breakDamage:6, revives:true, isUndead:true },
-    WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:13, armor:0, breakawayChance:0.03, breakDamage:6, pack:true },
-    REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:18, armor:10, breakawayChance:0.02, breakDamage:9, isUndead:true },
-    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:20, armor:5, breakawayChance:0.02, breakDamage:10, splits:true }
+    WRAITH: { emoji:'👻', baseHp:46,  speed:94,  bounty:9,  radius:12, armor:4, breakawayChance:0.04, breakDamage:6, isUndead:true },
+    SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:6, revives:true, isUndead:true },
+    WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:6, pack:true },
+    REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:9, isUndead:true },
+    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:10, splits:true }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
@@ -1209,7 +1215,7 @@ const CONFIG = {
   ],
   SCENERY: {
     coverage: 0.16,          // fraction of buildable (non-path) tiles scattered with scenery at game start
-    minScale: 1.0, maxScale: 1.3,   // 100%-130% size
+    minScale: 0.6, maxScale: 1.6,   // 60%-160% size — widened from 100-130%, which left no room for genuinely small saplings/pebbles and barely any for large ones
     minClearCost: 25, maxClearCost: 250, // gold cost interpolated across the scale range
     minClearMs: 1500, maxClearMs: 4000,  // time to clear, also interpolated by size
     baseResourceYield: 10,   // wood/stone granted at scale 1.0, scales up with size
@@ -1738,6 +1744,11 @@ function spawnScenery(gx, gy){
   sceneryMap.set(gx+','+gy, {
     gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2,
     type, isSuper, scale, clearCost, clearMs, goldYield,
+    // Some trees additionally stretch taller/thinner on top of the normal size variance — a
+    // distinct silhouette from just "a bigger tree," like a young growth reaching for light vs. a
+    // broad old one. Rolled independently of `scale` so a tree can be both small AND tall, or
+    // large AND stretched, rather than tallness just being another flavor of "bigger."
+    tallStretch: type === 'TREE' && Math.random() < 0.25 ? 1.15 + Math.random()*0.4 : 1,
     woodYield: type === 'TREE' ? baseYield : 0,
     stoneYield: type === 'ROCK' ? baseYield : 0,
     isClearing: false, clearStart: 0
@@ -1873,7 +1884,23 @@ function drawScenery(ctx){
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it (now blood decals, previously the last thing drawn in the prior frame)
     const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
-    ctx.fillText(emoji, item.x, item.y + 2);
+    const stretch = item.tallStretch || 1;
+    if(stretch !== 1){
+      // Non-uniform vertical-only scale, anchored at the tree's base (the bottom of its glyph,
+      // roughly item.y + size*0.5) rather than its center — stretching from the center would sink
+      // the trunk into the ground as the canopy grew upward. Anchoring at the base keeps the trunk
+      // correctly planted while only the canopy extends taller, which is what actually reads as
+      // "a taller tree" instead of "a distorted one".
+      const baseY = item.y + size*0.5;
+      ctx.save();
+      ctx.translate(item.x, baseY);
+      ctx.scale(1, stretch);
+      ctx.translate(-item.x, -baseY);
+      ctx.fillText(emoji, item.x, item.y + 2);
+      ctx.restore();
+    } else {
+      ctx.fillText(emoji, item.x, item.y + 2);
+    }
 
     if(item.isClearing){
       const progress = Math.min(1, (gameTime-item.clearStart)/item.clearMs);
@@ -2512,6 +2539,25 @@ class Enemy{
       this.radius = Math.round(this.radius * 1.4);
       this.bounty = Math.round(this.bounty * 1.4);
       this.speed = this.speed * 1.2;
+    } else {
+      // Natural per-instance size variance — even within one enemy type, individuals aren't
+      // identical: some ants are smaller, some bigger, not just the rare golden "Big" variant
+      // above. Tightened from an initial ±20% to ±12% — the wider range was overlapping enough
+      // between adjacent enemy TYPES (a big Swarm could match a small Grunt in pixel size) that it
+      // was drowning out the type-level size hierarchy (ants smaller than Grunts, Tank/Boulder
+      // bigger than Grunts) that the base radius values above are specifically designed to convey.
+      // A fair, modest stat correlation goes with it (a smaller individual is a bit weaker and
+      // worth a bit less; a bigger one a bit tougher and worth a bit more) rather than a pure
+      // cosmetic change, which would otherwise let a smaller hitbox squeeze through congestion
+      // with zero tradeoff.
+      const sizeRoll = 0.88 + Math.random()*0.24; // 88%-112% of the type's base radius
+      this.radius = Math.max(6, Math.round(this.radius * sizeRoll));
+      const sizeFrac = (sizeRoll - 0.88) / 0.24; // 0 (smallest) .. 1 (largest), normalized for the formulas below
+      const hpMult = 0.9 + sizeFrac*0.2;     // 0.9x at the small end, 1.1x at the large end
+      const bountyMult = 0.93 + sizeFrac*0.14; // 0.93x-1.07x — a gentler swing than HP
+      this.maxHp = Math.max(1, Math.round(this.maxHp * hpMult));
+      this.hp = this.maxHp;
+      this.bounty = Math.max(1, Math.round(this.bounty * bountyMult));
     }
     this.pathIndex = 0;
     this.x = waypointsPx[0].x; this.y = waypointsPx[0].y;
@@ -3367,6 +3413,7 @@ class Tower{
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
     this.equippedItems = []; this.isHero = false;
+    this.lastTargetTime = 0; // grace-period anchor so briefly losing a target doesn't instantly snap the attack pose back to idle — see update()
     this.axeMode = 'MELEE'; // AXEMAN only: manual toggle, switchable once per wave
     this.axeSwitchesLeft = 1;
     this.spec = null; // SWORDSMAN only, chosen at level 5: 'TWOHANDER' | 'DUAL'
@@ -3696,8 +3743,29 @@ class Tower{
     if(this.type === 'CLERIC'){ this.updateClericSmite(dt, nearby); return; }
     this.findTarget(nearby);
     if(this.target && !this.target.active) this.target = null;
-    if(this.target) this.angle = Math.atan2(this.target.y-this.y, this.target.x-this.x);
-    else this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
+    if(this.target) this.lastTargetTime = gameTime; // grace-period anchor — see recentlyEngaged below
+    // The visible weapon rotation must aim along the SAME lead-predicted line the shot actually
+    // travels (see fireProjectile()), not straight at the target's current position — a moving
+    // target means those two angles diverge, and the tower visibly aims one way while the
+    // projectile flies another. Most noticeable on Mage now that shots are rare and dramatic
+    // enough for a mismatch to actually be seen, but this affects every ranged class equally.
+    // recentlyEngaged gives a brief grace window after losing a target (e.g. it just died, or
+    // briefly stepped out of range) before falling back to the idle pose — without this, the
+    // engaged pose (arm/staff angle, which extra.hasTarget also drives) snapped back to idle on
+    // the very next target-less frame and immediately re-engaged the instant a new target showed
+    // up, which read as the whole attack animation visibly resetting every single time between
+    // kills, even though the underlying cooldown/charge was never actually reset.
+    const recentlyEngaged = (gameTime - (this.lastTargetTime||0)) < 500;
+    if(this.target){
+      const dx = this.target.x-this.x, dy = this.target.y-this.y;
+      const dist = Math.hypot(dx,dy) || 0.0001;
+      const timeToImpact = this.projectileSpeed ? dist / this.projectileSpeed : 0;
+      const predX = this.target.x + this.target.vx*timeToImpact;
+      const predY = this.target.y + this.target.vy*timeToImpact;
+      this.angle = Math.atan2(predY-this.y, predX-this.x);
+    } else if(!recentlyEngaged){
+      this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
+    } // else: keep whatever this.angle already was — don't snap to idle during the grace window
     if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
@@ -3724,7 +3792,7 @@ class Tower{
       const perTick = this.damage / tickCount;
       const curseTick = target.isUndead ? Math.round(perTick * 5) : Math.round(perTick);
       target.applyPoison(curseTick, curseDur, this);
-      spawnParticles(target.x, target.y, '#ffe9a8', 5);
+      spawnHolyBeam(target.x, target.y, '#fff3c4');
     }
     this.cooldownTimer = this.cooldown;
   }
@@ -3807,13 +3875,11 @@ class Tower{
   }
   fireProjectile(){
     this.lastFireTime = gameTime;
-    const t = this.target;
-    const dx = t.x-this.x, dy = t.y-this.y;
-    const dist = Math.hypot(dx,dy) || 0.0001;
-    const timeToImpact = dist / this.projectileSpeed;
-    const predX = t.x + t.vx*timeToImpact;
-    const predY = t.y + t.vy*timeToImpact;
-    const angle = Math.atan2(predY-this.y, predX-this.x);
+    // Reuse this.angle directly rather than recomputing the lead-predicted angle a second time —
+    // it was already computed with the exact same formula this same frame, in update(), right
+    // before updateRanged()/fireProjectile() were called synchronously off the back of it. Keeping
+    // one computation guarantees the projectile can never diverge from the weapon's visible aim.
+    const angle = this.angle;
     // muzzle offset: spawn from the actual weapon tip, not the tower's center — replicates the
     // same local-space reach (arm length + weapon length) used when rendering the stickman, so
     // this scales correctly with weaponScale (INT investment) exactly like the visible weapon does
@@ -4089,10 +4155,18 @@ class Tower{
       const sinceFired = gameTime - this.lastFireTime;
       if(sinceFired < 350) castProgress = 1 - sinceFired/350;
     }
+    // Continuous charge-up toward the next shot — 0 right after firing, approaching 1 as the
+    // (now much longer) cooldown nears its end. Computed purely from cooldownTimer/cooldown, with
+    // no dependency on having a target, so the tower visibly telegraphs that it's always building
+    // toward its next shot rather than looking idle/broken during the long wait between shots.
+    let chargeProgress = 0;
+    if(this.type === 'MAGE' && this.cooldown > 0){
+      chargeProgress = clampNum(1 - (this.cooldownTimer / this.cooldown), 0, 1);
+    }
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target, weaponScale, weaponThickness };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -4897,7 +4971,7 @@ function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpr
     const speed = 40 + Math.random()*90;
     p.active = true; p.x = x; p.y = y;
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
-    p.gravity = gravity; p.isGib = false; p.isStream = false; p.isRing = false;
+    p.gravity = gravity; p.isGib = false; p.isStream = false; p.isRing = false; p.isBeam = false;
     p.life = p.maxLife = 300 + Math.random()*250;
     p.color = color; p.size = 2 + Math.random()*2;
     p.friction = friction || 0.93; p.pooled = false; p.canPool = !!pools;
@@ -4911,10 +4985,25 @@ function spawnShockring(x, y, color, maxRadius){
   const p = particles[particleIndex];
   particleIndex = (particleIndex+1) % PARTICLE_COUNT;
   p.active = true; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.gravity = 0;
-  p.isGib = false; p.isStream = false; p.isRing = true;
+  p.isGib = false; p.isStream = false; p.isRing = true; p.isBeam = false;
   p.life = p.maxLife = 180 + Math.random()*60;
   p.color = color; p.size = maxRadius || 26;
   p.friction = 1; p.canPool = false; p.pooled = false;
+}
+// Cleric's curse strike — a brief, bright vertical beam of holy light descending onto the target
+// from directly overhead, with a small flash at the point of impact. Matches Mage's "high-impact,
+// long-wait" identity: since Cleric's cooldown is now similarly long, its one attack should read
+// as a deliberate, singular event rather than a plain colored particle puff. Reuses the shared
+// particle pool the same way spawnShockring does.
+function spawnHolyBeam(x, y, color){
+  const p = particles[particleIndex];
+  particleIndex = (particleIndex+1) % PARTICLE_COUNT;
+  p.active = true; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.gravity = 0;
+  p.isGib = false; p.isStream = false; p.isRing = false; p.isBeam = true;
+  p.life = p.maxLife = 400 + Math.random()*80;
+  p.color = color; p.size = 240; // how far above the target the beam extends
+  p.friction = 1; p.canPool = false; p.pooled = false;
+  spawnShockring(x, y, hexToRgba('#ffffff', 0.7), 20 + Math.random()*8); // landing flash where the beam actually strikes
 }
 function updateParticles(dt){
   for(const p of particles){
@@ -4951,7 +5040,7 @@ function spawnBloodStream(x, y, angle, count, sizeMult, brightColor, darkColor){
     const speed = (180 + Math.random()*160) * Math.min(1.8, 0.7+sizeMult*0.3);
     p.active = true; p.x = x; p.y = y; p.prevX = x; p.prevY = y;
     p.vx = Math.cos(jitter)*speed; p.vy = Math.sin(jitter)*speed;
-    p.gravity = 340; p.isGib = false; p.isStream = true; p.isRing = false;
+    p.gravity = 340; p.isGib = false; p.isStream = true; p.isRing = false; p.isBeam = false;
     p.life = p.maxLife = (380 + Math.random()*220) * Math.min(2.2, 0.7+sizeMult*0.4); // longer streams for bigger splatters
     p.color = Math.random() < 0.6 ? (brightColor || '#a01818') : (darkColor || '#7a0f0f');
     p.size = (1.5 + Math.random()*1.5) * Math.min(2, 0.8+sizeMult*0.25); // thicker for bigger splatters
@@ -4968,7 +5057,7 @@ function spawnGibs(x, y, count){
     p.active = true; p.x = x; p.y = y;
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed - 40; // slight upward pop before gravity takes over
     p.gravity = 420;
-    p.isGib = true; p.isStream = false; p.isRing = false; p.rot = Math.random()*Math.PI*2; p.rotSpeed = (Math.random()-0.5)*10;
+    p.isGib = true; p.isStream = false; p.isRing = false; p.isBeam = false; p.rot = Math.random()*Math.PI*2; p.rotSpeed = (Math.random()-0.5)*10;
     p.life = p.maxLife = 500 + Math.random()*350;
     p.color = Math.random() < 0.5 ? '#7a0f0f' : '#3a0505';
     p.size = 2.5 + Math.random()*3;
@@ -4996,6 +5085,26 @@ function drawParticles(ctx){
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 3 * (1-t); // thins out as it expands, like a real shockwave losing energy
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size*t, 0, Math.PI*2); ctx.stroke();
+    } else if(p.isBeam){
+      // A vertical shaft of light descending onto the target — narrow where it originates high
+      // above, flaring wider right at the point of impact. Fades quickly (bracketed by the outer
+      // save/restore so its custom gradient/alpha never leaks into the next particle drawn).
+      const fade = Math.max(0, p.life/p.maxLife);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, fade*1.4);
+      const grad = ctx.createLinearGradient(p.x, p.y-p.size, p.x, p.y);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.65, p.color);
+      grad.addColorStop(1, '#ffffff');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(p.x-3, p.y-p.size);
+      ctx.lineTo(p.x+3, p.y-p.size);
+      ctx.lineTo(p.x+15, p.y);
+      ctx.lineTo(p.x-15, p.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     } else {
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
     }
@@ -5320,13 +5429,23 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const pulse = 3 + Math.sin(performance.now()/220)*1 + cast*3; // brief extra flash on cast
+    const charge = extra.chargeProgress || 0;
     const orbColor = level >= 3 ? '#a78bfa' : '#7dd3fc';
     if(!lowGfx){
-      ctx.fillStyle = level >= 3 ? 'rgba(167,139,250,0.35)' : 'rgba(125,211,252,0.35)';
-      ctx.beginPath(); ctx.arc(tipX,tipY,pulse+5,0,Math.PI*2); ctx.fill();
+      // outer glow grows with charge — visibly builds toward the next shot the whole time,
+      // target or not, so the long wait between shots reads as deliberate anticipation rather
+      // than the tower looking idle/unresponsive
+      ctx.fillStyle = level >= 3 ? `rgba(167,139,250,${(0.25+charge*0.35).toFixed(2)})` : `rgba(125,211,252,${(0.25+charge*0.35).toFixed(2)})`;
+      ctx.beginPath(); ctx.arc(tipX,tipY,pulse+5+charge*7,0,Math.PI*2); ctx.fill();
     }
     ctx.fillStyle = orbColor;
-    ctx.beginPath(); ctx.arc(tipX,tipY,pulse+2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tipX,tipY,pulse+2+charge*3,0,Math.PI*2); ctx.fill();
+    if(charge > 0.85 && !lowGfx){
+      // final flicker right before release — small bright core flashing faster as it gets closer to firing
+      const flicker = 0.5 + 0.5*Math.sin(performance.now()/60);
+      ctx.fillStyle = `rgba(255,255,255,${(flicker*(charge-0.85)/0.15).toFixed(2)})`;
+      ctx.beginPath(); ctx.arc(tipX,tipY,pulse*0.6,0,Math.PI*2); ctx.fill();
+    }
   } else if(type === 'BOMBER'){
     // small pouch of spare shells on the hip — was the only class with zero distinguishing gear
     ctx.fillStyle = '#3a2a1a';
@@ -5609,18 +5728,18 @@ function checkStallWatchdog(dt){
       continue;
     }
     e.stallWatchTimer += dt;
-    if(e.stallWatchTimer < 1000) continue;
+    if(e.stallWatchTimer < 500) continue; // was 1000ms — checking twice as often catches a corner hang-up faster, especially in a mixed-size cluster where a stall can start and end within a couple of seconds
     const progressed = e.traveled - e.stallWatchTraveled;
     e.stallWatchTimer = 0;
     e.stallWatchTraveled = e.traveled;
-    if(progressed < 3){
+    if(progressed < e.radius*0.15){ // scaled to the enemy's own size rather than a flat 3px — a Boss/Tank crawling 3px in half a second might be genuinely fine, while a tiny fast Swarm doing the same is clearly stuck
       e.stallStrikes++;
-      if(e.stallStrikes >= 3){
+      if(e.stallStrikes >= 3){ // 3 strikes at 500ms = ~1.5s of real stall before intervening, down from ~3s
         const target = waypointsPx[e.pathIndex+1];
         if(target){
           const dx = target.x-e.x, dy = target.y-e.y;
           const dist = Math.hypot(dx,dy) || 1;
-          const nudge = Math.min(dist, 24);
+          const nudge = Math.min(dist, 32); // slightly stronger than before — enough to actually clear a mixed-size pileup at a corner, not just inch forward
           e.x += (dx/dist)*nudge; e.y += (dy/dist)*nudge;
           e.traveled += nudge;
         }
@@ -5929,6 +6048,30 @@ function startNextWave(){
   for(const entry of spawnQueue){
     if(entry.delay - lastSpawnDelay < MIN_GLOBAL_SPAWN_GAP) entry.delay = lastSpawnDelay + MIN_GLOBAL_SPAWN_GAP;
     lastSpawnDelay = entry.delay;
+  }
+  // Fastest units spawn first, slowest last — reassigns TYPES onto the already-finalized delay
+  // slots (every spawn still happens at exactly the same moment in time as before; only which
+  // enemy type occupies which slot changes). A slow unit spawning ahead of a faster one meant the
+  // faster one immediately caught up and had its own speed capped to match (see followSpeedCap in
+  // updateBarricadesAndPileup) — a direct, avoidable contributor to visible on-path bunching, since
+  // that catch-up-then-cap moment happens on nearly every wave with mixed unit types otherwise.
+  // Sorting speed-descending across the whole wave means a unit never needs to catch up to (and
+  // get capped by) something slower placed ahead of it in the first place.
+  const spawnTypesBySpeed = spawnQueue.map(e => e.type);
+  spawnTypesBySpeed.sort((a,b) => (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0));
+  for(let i=0; i<spawnQueue.length; i++) spawnQueue[i].type = spawnTypesBySpeed[i];
+  // Small, numerous enemy types (Swarm, Splitmini) still visibly bunch even with mixed-speed
+  // catch-up eliminated above — their tiny radius means many of them physically fit within
+  // collision-trigger range of each other at the same flat spacing that's plenty of room for a
+  // bigger enemy. Re-checked AFTER the speed reassignment so this reflects whatever type actually
+  // ended up in each slot, not the original pre-reassignment group. A radius near the ~16px
+  // average gets no extra gap; a Swarm at 12px gets a meaningfully wider one.
+  let prevDelay = -Infinity;
+  for(const entry of spawnQueue){
+    const r = (CONFIG.ENEMIES[entry.type]||{}).radius || 16;
+    const gap = MIN_GLOBAL_SPAWN_GAP + Math.max(0, (18-r)*45);
+    if(entry.delay - prevDelay < gap) entry.delay = prevDelay + gap;
+    prevDelay = entry.delay;
   }
   waveTimer = 0;
   waveIndex++;
