@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.0.161] - 2026-09-06
+- **Mage damage rebalanced — the tower was badly underpowered.** Base tier damage was 6/9/13,
+  which against its 5.4s/4.8s/4.2s cooldowns worked out to roughly 1-3 DPS — far below every other
+  tower (Archer alone runs 27-85 DPS across its tiers) and completely out of line with the Mage's
+  "rare, devastating shot" identity: it was rare, but not devastating. Raised to 85/145/225 damage
+  per hit (≈14x at tier 1), landing Mage's DPS in the same range as Archer's while it keeps its own
+  identity through the slow effect and now-larger impact visuals rather than through raw uptime.
+- **Moved the circular shockring gore effect from Mage to Warrior/BLUNT (Hammerman/Paladin).**
+  Forensically, a round/radial ring pattern is a blunt-trauma signature — a crushing weapon
+  compresses a genuinely round area of impact. A magical bolt or a blade has no such surface, so
+  giving Mage a ring read as generic "circular splash" rather than something specific to how the
+  hit actually happened. Mage's impact identity is now pure directional streak: cast-off-arc drop
+  fans (shared with Warrior's slash technique) bumped from 6-9 to 8-11 per hit, each one longer
+  (2.2-3.0 → 2.8-3.8 size multiplier), so the removed ring's visual weight is replaced by more/
+  longer radiating lines instead of a round shape. Warrior/BLUNT gained a modest shockring
+  (18-26px) alongside its existing radial particle burst, which is the one melee case where a ring
+  is the forensically correct read.
+- Gave every tower archetype its own attack sound instead of two shared generic tones. Previously
+  every ranged tower (Archer, Sniper, Gatling, Blowdart, Gunalinder, Squirtgun, Mage) fired the
+  same `'bow'` tone and every melee tower (Swordsman, Spearman, Hammerman, Paladin, Axeman) fired
+  the same `'sword'` tone; Cleric had no attack sound at all. Added 13 distinct synthesized sounds
+  dispatched by actual tower type (`swing_blade`, `swing_pierce`, `swing_blunt`, `swing_axe`/
+  `throw_axe`, `shot_archer`, `shot_sniper`, `shot_gatling`, `shot_blowdart`, `shot_gunalinder`,
+  `shot_squirtgun`, `shot_bomber`, `cast_mage`, `cast_cleric`), plus a separate `monster_swing` for
+  the Troll's tower-bash attack so it no longer borrows the Swordsman's sound.
+- Separated menu/UI sounds from combat sounds and from each other. Added `ui_open`/`ui_close`
+  (short up/down blips on the Build, Shop, and Settings modals — previously silent on open/close),
+  and `ui_buy` (a two-note purchase chime on Buy Life and tower Upgrade, previously either a
+  generic `click` or no sound). `click` is kept for lightweight taps (tabs, item slots, toggles).
+  Extended the synth engine's `noise()` helper to take a filter frequency/type so several of these
+  (e.g. Sniper's crack, Gunalinder's clack) layer filtered noise under a tone instead of every
+  sound being a single pure oscillator sweep.
+- Tightened the top HUD bar further and removed the fullscreen button. `justify-content:center`
+  with an explicit `column-gap` (added in 1.0.160) still consumed more horizontal space at narrow
+  widths than the old `space-between` did when there was no slack to spread, pushing "Next Wave"
+  onto a second row on mobile/minimized windows. Set `column-gap` to a tight `3px` by default and
+  only widen it to `clamp(6px,1.2vw,12px)` above a `640px` breakpoint, trimmed padding on all HUD
+  buttons, and removed the fullscreen button (markup, its `pointerdown`/`fullscreenchange`
+  listeners, and its CSS rule) entirely per direct request, freeing up enough width that
+  minimized/mobile keeps everything on one row again. Also added a `<meter>` for the lives gauge
+  and a `<progress>` bar for wave completion next to the existing HUD spans.
+
 ## [1.0.160] - 2026-09-06
 - Fixed the top HUD bar spreading edge-to-edge on wide desktop screens. `#hud-top` used
   `justify-content:space-between` with no width cap, which stretches its children across the full

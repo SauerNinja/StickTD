@@ -134,12 +134,16 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
   distinct color and texture (necrotic dark ooze for undead, acid-green hemolymph for insects,
   dust for constructs), and every individual enemy additionally rolls its own subtle blood tint,
   so no two enemies bleed an identical, flat color.
-- **Weapon-specific wound identity** — melee produces a real laceration (a cut-line at the wound
-  plus a curved cast-off arc trailing away from it, matching how blood actually flies off a
-  swinging blade), Archer hits stay low-impact and puncture-like (minimal spray, mostly dripping),
-  and Mage hits are a fast, wide, high-energy burst with a touch of back-spatter toward the
-  source. Ground stains persist with distinct shape and size per archetype too — Archer pools are
-  small and elongated, Mage pools are the largest and roundest of the four.
+- **Weapon-specific wound identity** — melee sub-branches by actual weapon geometry: a bladed cut
+  (cut-line plus a curved cast-off arc trailing away, matching how blood actually flies off a
+  swinging blade), a blunt crushing impact (wider radial spatter plus a circular shockring — the
+  one case where a round mark is forensically correct), or a piercing thrust (a strong forward
+  gush along one line, no perpendicular cut). Archer hits stay low-impact and puncture-like
+  (minimal spray, mostly dripping). Mage hits are a fast, wide, high-energy burst of long
+  radiating cast-off streaks with a touch of back-spatter toward the source — no ring, since a
+  magical bolt has no crushing surface to leave a round mark. Ground stains persist with distinct
+  shape and size per archetype too — Archer pools are small and elongated, Mage pools are the
+  largest of the four.
 - **Running drip trails** — a gently curved, gravity-affected trickle with a small pooled bead at
   the tip, distinct from the initial impact streak — this is what blood does a beat *after*
   landing, not another copy of the impact spatter.

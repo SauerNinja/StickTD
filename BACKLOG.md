@@ -208,7 +208,7 @@ not verified as safe to change without more confidence than a text review alone 
   currently relies on plain alpha blending (translucent fills/strokes layered on top of each
   other). A blend mode would read as genuinely luminous — colors actually brightening where
   layers overlap — instead of just semi-transparent, which is the more accurate look for the
-  Mage's shockring, Cleric's holy beam, and similar magical effects. This is a visual style choice,
+  Warrior/BLUNT's crushing-impact shockring, Cleric's holy beam, and similar glow effects. This is a visual style choice,
   not a bug, so it's recorded here rather than applied — worth a dedicated pass if the goal is
   specifically "make the magic effects look more luminous," tested against a couple of the
   existing glow effects before rolling it out further.

@@ -33,15 +33,24 @@
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
 
   #hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;flex-wrap:wrap;
-    row-gap:6px;justify-content:space-between;padding:8px 12px;
+    row-gap:5px;column-gap:3px;justify-content:center;padding:6px 8px;
     max-width:900px;margin:0 auto;
     background:linear-gradient(180deg,rgba(74,47,29,0.92),rgba(74,47,29,0));
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
-  .hud-stat{display:flex;align-items:center;gap:6px;font-size:clamp(12px,2vw,18px);
+  @media (min-width:640px){
+    #hud-top{column-gap:clamp(6px,1.2vw,12px);}
+  }
+  .hud-stat{display:flex;align-items:center;gap:5px;font-size:clamp(12px,2vw,18px);
     text-shadow:1px 1px 2px #000;pointer-events:auto;}
   #hud-stats-stack{display:flex;flex-direction:column;gap:2px;}
-  .hud-stat-row{display:flex;align-items:center;gap:10px;}
+  .hud-stat-row{display:flex;align-items:center;gap:8px;}
   .hud-stat-row .hud-stat{font-size:clamp(11px,1.6vw,15px);}
+  #livesMeter{width:40px;height:9px;vertical-align:middle;}
+  #waveProgress{width:40px;height:7px;vertical-align:middle;}
+  #livesMeter::-webkit-meter-bar{background:rgba(0,0,0,0.35);border-radius:4px;border:none;}
+  #livesMeter::-webkit-meter-optimum-value{background:#e63946;border-radius:4px;}
+  #waveProgress::-webkit-progress-bar{background:rgba(0,0,0,0.35);border-radius:4px;}
+  #waveProgress::-webkit-progress-value{background:var(--gold);border-radius:4px;}
   #shop-buylife-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:8px 10px;border-bottom:1px solid var(--wood-light);background:rgba(230,57,70,0.08);}
   #shopBuyLifeLabel{font-weight:bold;color:var(--paper);}
@@ -52,20 +61,21 @@
   #shopBuyLifeCost{font-size:0.85em;color:#ffe066;}
   #hud-controls{display:flex;gap:6px;pointer-events:auto;}
   .hud-btn{background:rgba(74,47,29,0.85);color:var(--paper);border:2px solid var(--gold);
-    border-radius:6px;min-width:40px;min-height:40px;font-size:clamp(13px,2vw,16px);
-    font-weight:bold;cursor:pointer;padding:4px 8px;}
+    border-radius:6px;min-width:36px;min-height:36px;font-size:clamp(13px,2vw,16px);
+    font-weight:bold;cursor:pointer;padding:4px 6px;}
   .hud-btn.active{background:var(--gold);color:#3a2a00;}
   #nextWaveBtn{pointer-events:auto;background:var(--gold);color:#3a2a00;border:none;
-    padding:8px 14px;border-radius:6px;font-weight:bold;font-size:clamp(12px,2vw,16px);
-    cursor:pointer;min-height:48px;min-width:48px;}
+    padding:6px 10px;border-radius:6px;font-weight:bold;font-size:clamp(12px,2vw,16px);
+    cursor:pointer;min-height:42px;min-width:42px;}
   #nextWaveBtn:disabled{background:#8a8a8a;color:#444;cursor:default;}
   .build-row.expand-row{background:rgba(58,117,51,0.35);box-shadow:inset 0 0 0 2px #7dd3fc;}
   .build-row.expand-row:active{background:rgba(58,117,51,0.55);}
   .build-row.expand-row.disabled{cursor:default;opacity:0.55;filter:grayscale(1);}
 
   .hud-action-btn{background:var(--gold);color:#3a2a00;border:none;border-radius:6px;
-    padding:8px 12px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:40px;
+    padding:7px 10px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:38px;
     pointer-events:auto;}
+  #settingsBtn.hud-action-btn{padding:8px 9px;min-width:40px;}
   .hud-action-btn.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
   .hud-action-btn.has-unlock{position:relative;}
   .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
@@ -400,15 +410,18 @@
       <button id="buildBtn" class="hud-action-btn">🏗️ Build</button>
       <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
-      <button id="fullscreenBtn" class="hud-action-btn" title="Fullscreen" aria-label="Toggle fullscreen">⛶</button>
       <div id="hud-stats-stack">
         <div class="hud-stat-row">
-          <div class="hud-stat">❤️ <span id="livesVal">100</span></div>
+          <div class="hud-stat">❤️ <span id="livesVal">100</span>
+            <meter id="livesMeter" min="0" max="100" low="20" high="60" optimum="100" value="100" aria-label="Lives remaining"></meter>
+          </div>
           <div class="hud-stat">💰 <span id="goldVal">150</span></div>
         </div>
         <div class="hud-stat-row">
           <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
-          <div class="hud-stat">Wave <span id="waveVal">0/100</span></div>
+          <div class="hud-stat">Wave <span id="waveVal">0/100</span>
+            <progress id="waveProgress" min="0" max="100" value="0" aria-label="Wave progress"></progress>
+          </div>
         </div>
       </div>
       <div id="hud-controls">
@@ -701,7 +714,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.160'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.161'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -992,9 +1005,9 @@ const CONFIG = {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
       blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
       tiers: [
-        { range: 220, damage: 6,  cooldown: 5400, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 9,  cooldown: 4800, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-        { range: 260, damage: 13, cooldown: 4200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+        { range: 220, damage: 85,  cooldown: 5400, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 240, damage: 145, cooldown: 4800, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 260, damage: 225, cooldown: 4200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
     BOMBER: {
@@ -2012,7 +2025,7 @@ class SoundEngine{
     osc.connect(gain); gain.connect(this.master);
     osc.start(t0); osc.stop(t0+duration);
   }
-  noise(duration){
+  noise(duration, filterFreq, filterType){
     if(!this.unlocked) return;
     const bufferSize = Math.floor(this.ctx.sampleRate*duration);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -2021,22 +2034,64 @@ class SoundEngine{
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     const filter = this.ctx.createBiquadFilter();
-    filter.type = 'lowpass'; filter.frequency.value = 1200;
+    filter.type = filterType || 'lowpass'; filter.frequency.value = filterFreq || 1200;
     src.connect(filter); filter.connect(this.master);
     src.start();
   }
   play(name){
     if(!this.unlocked) return;
     switch(name){
+      // ---- generic / legacy (still used for hit-flash, kills, waves, etc.) ----
       case 'sword': this.tone(180,0.12,'square',60); break;
       case 'bow':   this.tone(900,0.10,'sawtooth',150); break;
       case 'hit':   this.tone(300,0.06,'square',100); break;
       case 'death': this.noise(0.15); break;
       case 'wave':  this.tone(440,0.20,'sine',660); break;
-      case 'click': this.tone(600,0.05,'sine'); break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'lose':  this.tone(200,0.4,'sawtooth',50); break;
       case 'levelup': this.tone(520,0.09,'sine',780); setTimeout(() => this.tone(780,0.14,'sine',1040), 70); break;
+
+      // ---- per-class melee attacks ----
+      case 'swing_blade':  // Swordsman — crisp bladed slash: quick high-pass whoosh + a short metallic ring
+        this.noise(0.06, 2600, 'highpass');
+        this.tone(720, 0.05, 'triangle', 420);
+        break;
+      case 'swing_pierce': // Spearman — a fast thrust: sharp rising tone, no swing whoosh
+        this.tone(260, 0.07, 'sawtooth', 640);
+        break;
+      case 'swing_blunt':  // Hammerman/Paladin — heavy crushing impact: deep thud + muffled low noise
+        this.tone(90, 0.16, 'sine', 45);
+        this.noise(0.12, 300, 'lowpass');
+        break;
+      case 'swing_axe':    // Axeman melee — a heavier, chunkier chop than Swordsman's blade
+        this.noise(0.08, 1400, 'bandpass');
+        this.tone(200, 0.09, 'square', 90);
+        break;
+      case 'throw_axe':    // Axeman thrown mode — a whistling spin through the air
+        this.tone(500, 0.16, 'sine', 900);
+        break;
+      case 'monster_swing': // Troll's improvised club swing at a tower — deliberately crude/wooden
+        this.tone(110, 0.14, 'square', 70);
+        this.noise(0.1, 500, 'lowpass');
+        break;
+
+      // ---- per-class ranged/caster attacks ----
+      case 'shot_archer':  this.tone(1000, 0.08, 'sawtooth', 200); break; // classic string twang
+      case 'shot_sniper':  this.tone(1400, 0.05, 'sawtooth', 90); this.noise(0.05, 3000, 'highpass'); break; // sharp crack
+      case 'shot_gatling': this.tone(700, 0.04, 'square', 350); break; // short rapid-fire tick
+      case 'shot_blowdart':this.tone(1800, 0.05, 'sine', 1200); break; // soft high puff
+      case 'shot_gunalinder': this.noise(0.06, 900, 'bandpass'); this.tone(150, 0.05, 'square', 80); break; // mechanical clack
+      case 'shot_squirtgun': this.tone(600, 0.07, 'triangle', 300); this.noise(0.05, 1800, 'highpass'); break; // wet spray
+      case 'shot_bomber':   this.tone(120, 0.14, 'sine', 55); this.noise(0.14, 250, 'lowpass'); break; // heavy lob thud
+      case 'cast_mage':     this.tone(1200, 0.16, 'sine', 2000); this.tone(600, 0.16, 'triangle', 1400); break; // rising magical shimmer
+      case 'cast_cleric':   this.tone(880, 0.2, 'sine', 1320); setTimeout(() => this.tone(1320, 0.18, 'sine', 1760), 60); break; // holy chime
+
+      // ---- dedicated menu/UI sounds, distinct from combat ----
+      case 'click':    this.tone(600, 0.05, 'sine'); break; // minor UI tick — tabs, toggles, selections
+      case 'ui_open':   this.tone(500, 0.07, 'sine', 780); break; // modal opening — short upward blip
+      case 'ui_close':  this.tone(500, 0.07, 'sine', 320); break; // modal closing — short downward blip
+      case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000); setTimeout(() => this.tone(1000, 0.08, 'sine', 1300), 50); break; // purchase — cheerful two-note chime
+      case 'ui_deny':   this.tone(220, 0.1, 'square', 140); break; // blocked/disabled action — low buzz
     }
   }
 }
@@ -2841,7 +2896,7 @@ class Enemy{
         tower.takeDamage(12, null);
         spawnDebrisNear(tower.x, tower.y);
         spawnFloatingText(this.x, this.y - this.radius - 8, '🥢 Swing!', '#8a5a2b');
-        playSound('sword');
+        playSound('monster_swing');
       }
     }
     const target = waypointsPx[this.pathIndex-1];
@@ -2952,25 +3007,25 @@ class Enemy{
         }
       } else if(arch === 'MAGE'){
         // High-energy magical impact — now genuinely rare (5x longer between shots) and priced
-        // accordingly in spectacle: every hit is amplified further so the wait actually pays off,
-        // reading as a singular devastating event rather than routine damage output. Bigger and
-        // faster than before, plus a guaranteed double shockwave ring at the point of impact so it
-        // reads as raw kinetic/magical force rather than just "more particles." Full radial spread
-        // instead of a narrow cone, plus an instant burst of satellite drops so the impact reads as
-        // dramatic on the very first hit.
-        spawnParticles(this.x, this.y, bio.bright, 36, 380, 0.88, true);
-        spawnParticles(this.x, this.y, bio.spray, 20, 420, 0.86, true);
+        // accordingly in spectacle. Forensically, a circular/radial ring pattern is a blunt-trauma
+        // signature (see Warrior/BLUNT below) — a magical impact has no crushing surface, so its
+        // identity is pure directional streak: many bold, long, radiating cast-off lines rather
+        // than a round shockwave ring. Every hit is amplified so the long wait pays off, reading
+        // as a singular devastating event through streak density and length, not a circular burst.
+        spawnParticles(this.x, this.y, bio.bright, 46, 420, 0.88, true);
+        spawnParticles(this.x, this.y, bio.spray, 26, 460, 0.86, true);
         if(!bio.isDust){
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 7 + Math.floor(Math.random()*3));
-          spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.6), 32 + Math.random()*14);
-          spawnShockring(this.x, this.y, hexToRgba(bio.spray, 0.45), 20 + Math.random()*10); // now guaranteed, not a 40% chance — every shot is a rare, deliberate event
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 9 + Math.floor(Math.random()*4));
           // Long radiating streaks, distinct from Warrior's single directional cut — a magical
-          // blast has no swing direction to align with, so several bold streaks fan out
-          // omnidirectionally from the impact point instead of one line along the strike vector.
-          const streakCount = 4 + Math.floor(Math.random()*4);
+          // blast has no swing direction to align with, so several bold streak FANS (not single
+          // thin lines) burst outward omnidirectionally, each fan itself a small cluster of drops
+          // like Warrior's cast-off arc — so the total mark density clearly reads as bigger than
+          // a Warrior slash or Archer puncture, matching Mage's rare/high-impact identity.
+          const streakCount = 8 + Math.floor(Math.random()*4);
           for(let s=0; s<streakCount; s++){
             const streakAngle = Math.random()*Math.PI*2;
-            spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6 + Math.random()*0.15), undefined, 1.6 + Math.random()*0.7);
+            spawnCastOffArc(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.65 + Math.random()*0.15), 4 + Math.floor(Math.random()*3));
+            spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6 + Math.random()*0.15), undefined, 2.8 + Math.random()*1.0);
           }
         }
         // Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical
@@ -2978,7 +3033,7 @@ class Enemy{
         // a distinct, well-documented BPA phenomenon investigators specifically look for to
         // determine where a shot came from. A small amount, lower speed than the forward spray, in
         // the opposite direction.
-        spawnParticles(this.x, this.y, bio.spray, 6, 160, 0.85, true, impactAngle + Math.PI, 0.6);
+        spawnParticles(this.x, this.y, bio.spray, 8, 180, 0.85, true, impactAngle + Math.PI, 0.6);
       } else if(arch === 'EXPLOSIVE'){
         // 360-degree vaporization — no directional constraint, mix bright + charred/dark
         spawnParticles(this.x, this.y, bio.bright, 10, 200, viscFriction, true);
@@ -2991,10 +3046,13 @@ class Enemy{
         if(weapon === 'BLUNT'){
           // Blunt trauma doesn't cut — it crushes, producing an omnidirectional "impact spatter"
           // with no single directional cut line: a wider radial burst of particles and satellite
-          // drops scattered around the impact point rather than along one line.
+          // drops scattered around the impact point, PLUS a real circular shockring — a crushing
+          // blow genuinely does compress a round area of impact, which is the correct forensic
+          // home for a ring pattern (a cutting or magical wound has no such surface to ring).
           spawnParticles(this.x, this.y, bio.bright, 16, 170, 0.9, true);
           spawnParticles(this.x, this.y, bio.dark, 6, 170, 0.9, true);
           spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.65), 2 + Math.floor(Math.random()*2));
+          spawnShockring(this.x, this.y, hexToRgba(bio.dark, 0.5), 18 + Math.random()*8);
           if(Math.random() < 0.3) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.55));
         } else if(weapon === 'PIERCE'){
           // A deep thrust punctures along one line, closer to an arrow wound in geometry but far
@@ -3131,20 +3189,23 @@ class Enemy{
           spawnGibs(this.x, this.y, Math.max(1, Math.round(1*goreScale)));
         } else if(arch === 'MAGE'){
           // a magical kill is now a genuinely rare, singular event (5x longer between shots than
-          // any other tower) — amplified to match: faster, wider particles, a guaranteed double
-          // shockwave ring, and more/bolder radiating streaks than an ordinary hit
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 16 : 36)*goreScale), 360, viscFriction, !low);
-          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 10 : 22)*goreScale), 400, viscFriction, !low);
+          // any other tower) — amplified to match: faster, wider particles, and more/bolder
+          // radiating streaks than an ordinary hit. No shockring here — that circular/radial
+          // pattern is a blunt-trauma forensic signature (see Warrior/BLUNT), not a magical one;
+          // Mage's identity is pure directional streak, so the extra impact budget goes into
+          // streak count/length instead.
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 20 : 44)*goreScale), 400, viscFriction, !low);
+          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 12 : 26)*goreScale), 440, viscFriction, !low);
           if(!low){
-            spawnShockring(this.x, this.y, hexToRgba(bio.bright, 0.65), 34 + Math.random()*14);
-            spawnShockring(this.x, this.y, hexToRgba(bio.spray, 0.45), 22 + Math.random()*10);
-            spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 6 + Math.floor(Math.random()*4));
-            const streakCount = 5 + Math.floor(Math.random()*4);
+            spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 8 + Math.floor(Math.random()*4));
+            const streakCount = 9 + Math.floor(Math.random()*4);
             for(let s=0; s<streakCount; s++){
-              spawnBloodCastoff(this.x, this.y, Math.random()*Math.PI*2, hexToRgba(bio.dark, 0.6), undefined, 1.7 + Math.random()*0.7);
+              const streakAngle = Math.random()*Math.PI*2;
+              spawnCastOffArc(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.65), 4 + Math.floor(Math.random()*3));
+              spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6), undefined, 2.9 + Math.random()*1.0);
             }
           }
-          spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale)));
+          spawnGibs(this.x, this.y, Math.max(2, Math.round(3*goreScale)));
         } else {
           // WARRIOR (bladed melee) death: a directional collapse, not a burst — modest ambient
           // splatter plus a tight arterial gush weighted toward the last hit, matching how bodies
@@ -3777,6 +3838,7 @@ class Tower{
       const curseTick = target.isUndead ? Math.round(perTick * 5) : Math.round(perTick);
       target.applyPoison(curseTick, curseDur, this);
       spawnHolyBeam(target.x, target.y, '#fff3c4');
+      playSound('cast_cleric');
     }
     this.cooldownTimer = this.cooldown;
   }
@@ -3907,7 +3969,12 @@ class Tower{
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
     p.color = this.type === 'MAGE' ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : '#f1c40f';
-    playSound(this.type === 'BOMBER' ? 'sword' : 'bow');
+    const rangedSound = {
+      ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
+      BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
+      BOMBER: 'shot_bomber', MAGE: 'cast_mage'
+    }[this.type] || 'shot_archer';
+    playSound(rangedSound);
   }
 
   updateAxeman(dt, nearby){
@@ -3920,7 +3987,7 @@ class Tower{
         this.baseAngle = this.angle;
         this.lastSwordAngle = this.baseAngle - this.swingArc/2;
         this.cooldownTimer = this.meleeCooldown;
-        playSound('sword');
+        playSound('swing_axe');
       } else {
         this.fireAxeThrow();
         this.cooldownTimer = this.cooldown;
@@ -3965,7 +4032,7 @@ class Tower{
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this;
     p.color = '#9aa0a6';
     this.renderSwordAngle = angle;
-    playSound('sword');
+    playSound('throw_axe');
   }
 
   updateSwordsman(dt, nearby){
@@ -3977,7 +4044,10 @@ class Tower{
       this.baseAngle = this.angle;
       this.lastSwordAngle = this.baseAngle - this.swingArc/2;
       this.cooldownTimer = this.cooldown;
-      playSound('sword');
+      const meleeSound = this.type === 'SPEARMAN' ? 'swing_pierce'
+        : (this.type === 'HAMMERMAN' || this.type === 'PALADIN') ? 'swing_blunt'
+        : 'swing_blade';
+      playSound(meleeSound);
 
       if(hasDual){
         const secondary = this.findSecondaryTarget(nearby);
@@ -4602,7 +4672,7 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
               : archBias === 'MAGE' ? { longMin:0.95, longSpan:0.45, shortMin:0.85, shortSpan:0.45 }
               : archBias === 'EXPLOSIVE' ? { longMin:0.85, longSpan:0.35, shortMin:0.75, shortSpan:0.35 }
               : { longMin:0.75, longSpan:1.15, shortMin:0.42, shortSpan:0.58 };
-  if(archBias === 'MAGE') sizeMult *= 1.4;
+  if(archBias === 'MAGE') sizeMult *= 1.75;
   else if(archBias === 'ARCHER') sizeMult *= 0.65;
   const orientAngle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*0.9 : Math.random()*Math.PI*2;
   const stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
@@ -6625,6 +6695,15 @@ const inspClose = document.getElementById('inspClose');
 function updateHUD(){
   livesVal.textContent = lives;
   goldVal.textContent = gold;
+  const livesMeter = document.getElementById('livesMeter');
+  if(livesMeter){
+    const maxLives = 100 + livesBought;
+    livesMeter.max = maxLives;
+    livesMeter.low = Math.round(maxLives*0.2);
+    livesMeter.high = Math.round(maxLives*0.6);
+    livesMeter.optimum = maxLives;
+    livesMeter.value = lives;
+  }
   const lifeCost = buyLifeCost();
   const shopLivesVal = document.getElementById('shopLivesVal');
   if(shopLivesVal){
@@ -6638,6 +6717,17 @@ function updateHUD(){
   waveVal.textContent = waveIndex < CONFIG.WAVES.length
     ? waveIndex + '/' + CONFIG.WAVES.length
     : waveIndex + ' ∞';
+  const waveProgress = document.getElementById('waveProgress');
+  if(waveProgress){
+    if(waveIndex < CONFIG.WAVES.length){
+      waveProgress.max = CONFIG.WAVES.length;
+      waveProgress.value = waveIndex;
+      waveProgress.removeAttribute('data-indeterminate');
+    } else {
+      waveProgress.removeAttribute('value');
+      waveProgress.setAttribute('data-indeterminate', '1');
+    }
+  }
   nextWaveBtn.disabled = waveState !== 'IDLE';
 
   refreshTrayUI();
@@ -6725,17 +6815,21 @@ function openTowerModal(){
   document.getElementById('tower-modal').classList.remove('hidden');
   hasUnseenUnlock = false;
   refreshTrayUI();
+  playSound('ui_open');
 }
 function closeTowerModal(){
   document.getElementById('tower-modal').classList.add('hidden');
+  playSound('ui_close');
 }
 
 function openShopModal(){
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
+  playSound('ui_open');
 }
 function closeShopModal(){
   document.getElementById('shop-modal').classList.add('hidden');
+  playSound('ui_close');
 }
 function buildShopGrid(){
   const grid = document.getElementById('shop-grid');
@@ -6934,23 +7028,12 @@ document.getElementById('settingsBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   syncSettingsUI();
   document.getElementById('settings-modal').classList.remove('hidden');
-});
-document.getElementById('fullscreenBtn').addEventListener('pointerdown', (e) => {
-  e.stopPropagation();
-  const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-  if(!isFullscreen){
-    const el = document.documentElement;
-    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || (()=>{})).call(el);
-  } else {
-    (document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || (()=>{})).call(document);
-  }
-});
-document.addEventListener('fullscreenchange', () => {
-  document.getElementById('fullscreenBtn').textContent = (document.fullscreenElement) ? '⛝' : '⛶';
+  playSound('ui_open');
 });
 document.getElementById('settingsModalClose').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   document.getElementById('settings-modal').classList.add('hidden');
+  playSound('ui_close');
 });
 document.getElementById('settings-modal').addEventListener('pointerdown', (e) => {
   if(e.target.id === 'settings-modal') document.getElementById('settings-modal').classList.add('hidden');
@@ -7234,6 +7317,7 @@ inspUpgradeBtn.addEventListener('pointerdown', (e) => {
   if(!selectedTower) return;
   if(selectedTower.upgrade()){
     updateHUD(); updateInspectPanel();
+    playSound('ui_buy');
     if(selectedTower.type === 'SWORDSMAN' && selectedTower.level === 5 && !selectedTower.spec){
       openSwordSpecModal(selectedTower);
     }
@@ -7321,8 +7405,7 @@ shopBuyLifeBtn.addEventListener('pointerdown', (e) => {
   gold -= cost;
   lives += 1;
   livesBought++;
-  playSound('click');
-  showToast('❤️ +1 Life');
+  playSound('ui_buy');
   updateHUD();
 });
 const speedBtn = document.getElementById('speedBtn');
