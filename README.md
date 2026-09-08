@@ -268,8 +268,7 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L700)
 - [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1212)
 - [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1434)
-- [Object pools](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1976)
-- [Audio synthesis](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1983)
+- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2015)
 - [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2046)
 - [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2380)
 - [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2500)
@@ -282,21 +281,38 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7338)
 - [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7424)
 
-**Specific systems people actually go looking for**
+**Core gameplay systems**
 - [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L932)
 - [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1069)
+- [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L896)
 - [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1493)
 - [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2502)
 - [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3342)
-- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4249)
-- [`spawnDecal()` — blood/gore particle system starts here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4559)
+- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4249) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
+- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3342)
 - [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5221)
 - [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5717)
 - [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5756)
+- [`generateProceduralWave()` and its 9 named flavor generators (Swarm/Elite/Undead/Ambush/BossRush/Vanguard/Trick/Grind/Standard)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6765)
 - [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6100)
 - [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6225)
 - [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6610)
+- [`fitHudTopToOneLine()` — scales the whole top bar to fit narrow screens instead of wrapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7181)
 - [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7090)
+
+**Blood & gore system** (see [Blood & gore](#blood--gore) above for the player-facing description)
+- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5010)
+- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4995)
+- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5084)
+- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4559)
+- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5217)
+- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5335)
+- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5693)
+- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5304)
+- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5781)
+- [`spawnBoneDebris()` / `spawnSkullDrop()` — skeletal remains on death, permanent (never fade)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5282)
+- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5383)
+- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2196)
 
 ## Running locally
 

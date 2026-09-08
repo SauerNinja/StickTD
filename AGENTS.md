@@ -391,7 +391,48 @@ specific tower's balance) in a way one static comment next to the current code c
   is — both continue exactly as documented elsewhere in this file. It means: when they conflict,
   trust the changelog, and go there first when reconstructing why something is the way it is.
 
-## Working with a smaller context window than Claude's
+## Clean Code, third pass — Function Arguments
+
+The book's guidance: "the ideal number of arguments for a function is zero... any function with
+more than three (polyadic) needs very special justification." Checked against a real, current
+outlier in this file: `spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpread,
+sizeMin)` — ten positional arguments, several optional and easy to transpose by position (`pools`
+vs `coneAngle` are both easy to mix up at a call site without checking the signature). The book's
+own recommended fix for exactly this shape — many optional/flag-like arguments — is grouping
+related ones into a single object parameter, which most call sites could then pass positionally
+only for the few args they actually vary and rely on defaults for the rest. Recorded here as a
+genuine, honest tension (not yet fixed) rather than silently accepted: refactoring it now would
+touch every one of its ~30 call sites in one pass, which is exactly the kind of wide, ambient
+across-the-file change this project's own "smallest safe fix" discipline argues against doing
+opportunistically. Worth doing deliberately, as its own scoped pass, if this function grows a
+9th/10th parameter's worth of complexity again — not a reason to leave it entirely un-flagged now.
+
+## Navigating this file — the README Code Map is the front door
+
+Clean Code's "Newspaper Metaphor" (ch. 5): a well-organized source file reads like a newspaper —
+a headline and synopsis first, increasing detail as you read further down, and no single
+undifferentiated wall of text. This file already follows that in spirit via its
+`/* ===== SECTION NAME ===== */` header comments, but a section header only helps once you're
+already looking at the right *area* of a ~8,000+ line file — it doesn't help you find that area
+in the first place. That's what `README.md`'s **Code Map** section is for: treat it as the
+newspaper's actual table of contents, not supplementary documentation.
+
+- **Before grepping blind, check the Code Map first.** It links directly to GitHub line numbers
+  for every major system (towers, enemies, gore/blood, audio, waves, UI). Line numbers drift as
+  the file changes — the Code Map says this explicitly — so treat a link as a starting point to
+  search from (jump to that area, then find the nearest `/* ===== ... ===== */` header or the
+  named function you actually need), not a guaranteed exact address.
+- **When adding a genuinely new named system** (a new archetype, a new major function, a new
+  top-level concept — not a tweak to something that already has an entry), add or update its
+  Code Map entry in the same change, the same discipline already required for `CHANGELOG.md`.
+  An outdated map is worse than no map: it actively misdirects the next reader (human or AI)
+  with confidence instead of correctly saying "not indexed yet."
+- **The Code Map is a map, not a copy.** Entries should be one line — system name, a few words on
+  what it does, the link — not a restatement of what's already better explained by the code's own
+  comments once you get there. If an entry needs more than one line to be useful, that's a signal
+  the linked function itself needs a better name or a clearer header comment, not a longer map.
+
+
 
 This file is verified to have been reviewed by more than one AI tool with real access to this
 repo, and at least one pass (see the "Cross-checked against externally-generated code reviews"

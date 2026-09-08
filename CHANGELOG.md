@@ -1,5 +1,591 @@
 # Changelog
 
+## [1.0.202] - 2026-09-07
+- **Attack speed display now shows two decimals instead of one** (`inspSpeedVal`), so gradual
+  per-DEX-point increases (the underlying formula was already granular — +8%/point, diminishing
+  — only the display was coarse) are actually visible rather than rounding several consecutive
+  DEX points to the same displayed number.
+- **Added Snap Caster — a new DEX-triggered Mage evolution** (`dex: {target:'SNAPCASTER',
+  threshold:12}`), trading Mage's "rare and massive" identity for real firing frequency: cooldown
+  1650/1450/1250ms — a big jump down from Mage's 4860/4320/3780, but still clearly slower than
+  Archer's 740/630/520, matching "still slower than Archer" exactly. Damage scaled down to match
+  (78/118/168) and its own signature: chain lightning procs at 35% per hit (vs. base Mage's 15%)
+  and skewed heavily toward the shock+chain branch specifically rather than an even three-way
+  split with burn/freeze.
+- Wiring notes for future evolutions of this shape: `CLASS_ARCHETYPE.SNAPCASTER` is set to
+  `'ARCHER'` (DEX-scaled damage, matching the established precedent that an evolution's ongoing
+  stat-scaling archetype is independent of its trigger stat — Bomber is INT-triggered but stays
+  ARCHER-archetype the same way). Because `CLASS_ARCHETYPE` also feeds the gore-archetype fallback,
+  that would have given Snap Caster kills Archer's puncture-mark treatment despite still being
+  visually a magic bolt — added an explicit override in `resolveGoreArchetype()` (same shape as
+  the existing Bomber/Cleric overrides) so its kills correctly read as Mage's cone. Also extended
+  every exact `type === 'MAGE'` check needed for correct rendering/behavior: `isMagicMissile`/
+  projectile color, the staff-angle/charge-glow render logic, `drawStickman`'s pose branch, and
+  added `JOB_BUILD`/skin-color table entries (a distinct electric-yellow tint, not a reused violet)
+  so it doesn't just render as an undifferentiated Mage. Left Mage-specific target-lock hysteresis
+  and the ±40% damage-variance width as Mage-only — Snap Caster's cooldown is too fast to need the
+  anti-snap treatment, and its identity is speed/consistency, not variance.
+## [1.0.201] - 2026-09-07
+- **Fixed bones/skulls never actually being permanent — a real latent bug, not just a fade-timing
+  preference.** Their decal render branch used the shared `alpha` variable (which includes the
+  85%-lifespan fadeOut curve), but their `rgb` object never had an `.a` property, so
+  `alpha = rgb.a * fadeOut` evaluated to `NaN`. Canvas silently ignores an invalid `globalAlpha`
+  value, meaning bones/skulls were actually rendering at whatever opacity happened to be left over
+  from the previous draw call — undefined behavior, not a controlled fade. Fixed by hardcoding
+  `globalAlpha = 1` for this decal type explicitly, and added the missing `.a:1` to the underlying
+  rgb objects for correctness. They now render at full, consistent opacity for their entire
+  lifespan, never fading.
+- **Cleric's curse kills now get their own dedicated death treatment — a fine "evaporation" mist —
+  instead of silently falling through to the generic melee default.** Cleric isn't mapped in
+  `CLASS_ARCHETYPE` at all, so `resolveGoreArchetype()` was defaulting every Cleric-caused kill to
+  `'WARRIOR'`, giving a curse-dissolved undead the same cut-and-arc treatment as an actual sword
+  strike — despite Cleric never physically touching anything. New `'HOLY'` archetype, grounded in
+  BPA's own glossary definition of "Misting" (blood atomized to a fine spray by the application of
+  force) — here that force is the curse itself, not a weapon. Rendered as overwhelmingly fine mist
+  using the existing `sizeMin` fine-particle capability, almost no gibs, no directional cast-off at
+  all (nothing here has a swing or impact vector to align with), with a pale golden-white holy tint
+  mixed into the enemy's own blood color rather than replacing it — so a species' identity (still
+  green for undead/insects, still red for standard flesh) stays legible underneath the overlay.
+## [1.0.200] - 2026-09-07
+- **Full physics-book review: added inelastic map-edge bouncing and rotational damping for gibs,
+  closing a gap confirmed open since an early review.** Physics for JS Games ch.13 gives the real
+  formula for a non-perfectly-elastic wall bounce: the velocity component perpendicular to the wall
+  is scaled by a restitution factor (0-1) on impact rather than simply negated. Previously gibs had
+  zero boundary collision at all — confirmed months ago and left as a known gap since most marks are
+  placed by scripted formula rather than true flight. Fixed now specifically for gibs (the one
+  particle type with enough visual weight for a bounce to actually read): they bounce off the map
+  edge with a moderate 0.42 restitution factor instead of flying straight through it. Also added
+  rotational damping (`p.rotSpeed *= p.friction`, same coefficient already decaying linear
+  velocity) — previously a gib's tumble rate was constant forever, spinning at full speed even
+  once essentially stopped moving, which was physically inconsistent with its own decelerating
+  linear velocity right next to it.
+## [1.0.199] - 2026-09-07
+- **Map expansion now takes longer, per request.** `grantFreeExpansion()`'s cadence stretched from
+  every 3 waves to every 4 (~33% longer between extensions), keeping the same guaranteed early-game
+  unlocks (waves 1-4) so the opening still feels generous.
+- **Found and fixed a real balance bug while investigating wave pacing: waves 45-99 in the fixed
+  wave table were a repeating block with byte-identical enemy counts every ~7-wave cycle — zero
+  difficulty growth across more than half the fixed wave range.** Confirmed waves 1-44 scale
+  properly (counts genuinely increment wave to wave); the growth flatlines completely starting
+  exactly at wave 45. The wave-type cadences (Boss every 10, Trick every 7-offset-by-1, etc.)
+  overlap irregularly rather than forming one clean repeating unit, so hand-restructuring the raw
+  literal data risked scrambling which wave gets which flavor. Fixed safely instead: enemy counts
+  now scale smoothly with wave number for any wave in that flat range, applied at spawn-queue
+  build time rather than to the stored data — every wave's composition, flavor, and label stays
+  exactly as originally authored; only how many of each enemy actually spawn grows, from the
+  original count at wave 45 up to +65% by wave 99. Wave 100 (the actual milestone Boss finale) and
+  every wave before 45 are completely unaffected.
+## [1.0.198] - 2026-09-07
+- **Confirmed ants (SWARM) already have distinct blood** — `getBloodProfile()` already routed
+  SWARM/SPLITTER/SPLITMINI to a bright-green "insect hemolymph" palette, not standard flesh red.
+  No change needed there; verified before assuming it needed building.
+- **Zombies now bleed a distinct sickly green, separate from every other undead's shared dark
+  necrotic red.** Zombie is still flagged `isUndead` for Cleric-targeting/curse purposes — this is
+  purely a blood-color carve-out, checked before the generic isUndead fallback so Wraith, Skeleton,
+  and Reaper keep their existing coagulated dark-red look while Zombie gets its own genre-classic
+  ooze.
+- **Added Monarch (🦋) — the fastest enemy in the game at speed 112**, beating the previous fastest
+  (Wraith, 94). Low HP (33) and modest bounty (6), matching a fast-fragile role. Purple blood
+  (`bright:'#9b5fc0'`), its own distinct profile rather than borrowed from anything else in the
+  roster. Added to `generateSwarmWave()` — the "🐜 SWARM SURGE" wave type already emphasizes fast,
+  numerous, fragile enemies (Swarm, Wolf, Runner), so a fast fragile butterfly fits the existing
+  theme rather than needing a new wave category.
+## [1.0.197] - 2026-09-07
+- **Added a distinct visceral death sound (`gore_death`), separated out from the generic `death`
+  sound rather than modifying it directly.** Caught a real scoping issue before shipping: `death`
+  is a shared sound also used for barricades breaking and scenery (trees/rocks) being cleared —
+  making that one wetter/more visceral would have made a barricade sound like a splat too. New
+  case instead: layered noise body (the "splat"), a low falling tone underneath for weight, and a
+  brief bandpass crack on top for texture — scaled by `goreScale` (already driving the rest of the
+  death event), so a Boss's death sounds a bit heavier than a Grunt's. Wired into the actual enemy
+  `die()` call site in place of the old generic sound.
+- **Added a footstep-in-blood sound, grounded directly in a specific BPA passage (ch.5): "stepping
+  into a pool of blood can cause spatters on the inner aspects of footwear... blood is splashed
+  from one shoe to the other."** That's a real physical contact event the book treats as
+  significant, not a silent non-event — new `foot_squelch` fires the instant an enemy's foot first
+  contacts a fresh pool (the existing footprint-pickup trigger point), scaled a touch wetter for a
+  bigger puddle via the same size-bonus already driving how many steps the trail lasts.
+- Extended `AudioEngine.play()` and the `playSound()` wrapper to accept optional `worldX`/
+  `intensity` params, routed through the stereo panning and reverb-send infrastructure added in
+  1.0.192 — both new sounds use real spatial positioning, not dead-center like the untouched
+  legacy cases.
+## [1.0.196] - 2026-09-07
+- **Fixed Mage whiffing shots against moving targets — a real projectile-tunneling bug, not a
+  targeting/aim issue.** Traced it precisely rather than guess: the lead-prediction aim angle was
+  already correct (confirmed in 1.0.181's work — `fireProjectile()` reuses the exact same angle
+  computed in `update()`), and collision detection only ever tested the projectile's exact current
+  position each frame against nearby enemies. Mage's `projectileSpeed` is 1400-1600 units/sec — 2.5
+  to 4x every other tower in the game (Archer 320-400, Gatling 560-640, Bomber 260-300) — so at a
+  typical frame step it can move further in one tick than a target enemy's own radius, letting the
+  shot skip clean past a MOVING target between one position check and the next. A stationary target
+  doesn't have this problem, since the single-point check has a far better chance of landing inside
+  a radius that isn't also moving — matching exactly what was reported ("missed until the enemy
+  stopped"). Fixed with proper swept collision: new `pointSegmentDist2()` checks distance from each
+  candidate enemy to the LINE SEGMENT the projectile traveled this frame, not just its new endpoint,
+  and the enemy-search radius now widens to cover that whole segment length. Applies to every
+  projectile in the game, not just Mage's — any sufficiently fast shot was theoretically exposed to
+  the same tunneling risk, just far less noticeably at normal tower speeds.
+## [1.0.195] - 2026-09-07
+- **Fixed a real bug found while modularizing "the stone guy drops rocks": Boulder was splitting
+  into two 🦠 SPLITMINI microbes on death, complete with insect-green blood, instead of its own
+  rock fragments.** `spawnSplitChildren()` hardcoded `'SPLITMINI'` regardless of which enemy type
+  actually split — even though Boulder's own in-game description always said "splits on death like
+  a heavier Splitter," implying its own distinct fragment, not a borrowed one. Added a proper
+  `ROCKLET` enemy type (🪨, stats scaled from Boulder the same way SPLITMINI is scaled from
+  Splitter) and fixed `getBloodProfile()` so it's correctly classified as rock/dust rather than
+  falling through to standard flesh blood.
+- **Modularized the split-child dispatch — the actual "make it less spaghetti" ask.** Replaced the
+  hardcoded string with `SPLIT_CHILD_TYPE`, a single lookup table (`{ SPLITTER: 'SPLITMINI',
+  BOULDER: 'ROCKLET' }`) now living next to the enemy config tables where it belongs. Adding a
+  future splitting enemy is one new line in that table, not a new branch inside
+  `spawnSplitChildren()` itself — the function's own logic never needs to change again to support
+  a new split relationship. Confirmed no other code special-cases Boulder specifically (only the
+  blood-profile lookup did) — enemies render generically via their own `emoji`/`radius` fields, so
+  Rocklet needed no additional rendering hook to work correctly.
+## [1.0.194] - 2026-09-07
+- **Mage cooldown reduced 10% and damage increased 10%, all three tiers.** Cooldown:
+  5400/4800/4200ms → 4860/4320/3780ms. Damage: 170/290/450 → 187/319/495. Since the ±40% damage
+  variance is proportional, the min/max range scales with the new base automatically — no separate
+  variance change needed. Range, slow effects, and everything else about Mage is untouched.
+## [1.0.193] - 2026-09-07
+- **Added skeletal remains on death — bones and skull drops, two independent probability rolls.**
+  `spawnBoneDebris()`: 50% chance, 1-3 🦴 emoji scattered around the death point, each individually
+  sized 1/10 to 1/5 of the enemy's own diameter. `spawnSkullDrop()`: separate 25% chance, one 💀
+  sized at half the enemy's diameter. Neither is gated to a particular weapon or archetype — bones
+  are a property of the body, not of what killed it — but both skip dust/construct enemies
+  (`bio.isDust`), which have no skeleton to leave behind. Rendered as a new `isEmojiDrop` decal
+  type, deliberately kept OUT of the existing blood hemoglobin-oxidation color pipeline (bone
+  doesn't oxidize the way fresh blood does) — just a plain glyph that pops in on spawn and fades
+  with its own lifespan. Persist notably longer than blood (45 minutes vs. blood's ~30) via a fixed
+  `BONE_LIFESPAN`, since there's no forensic reason for bone fragments to fade on the same clock a
+  wet bloodstain does.
+## [1.0.192] - 2026-09-07
+- **Substantially upgraded combat sound — the forensics book has essentially nothing on acoustics
+  (checked directly rather than assume), so this is grounded in the physics book's kinetic-energy
+  framing and real Web Audio synthesis technique instead.**
+  - **Stereo panning**: new `panFor(worldX)` converts a hit's world position to a -1..1 pan value
+    relative to the camera's current view — a hit on the left of the screen now genuinely sounds
+    more in the left ear. Added as optional params to `tone()`/`noise()`; every existing call site
+    that doesn't pass one still plays dead-center exactly as before, zero risk to the ~60 existing
+    sound cases.
+  - **Synthesized reverb send**: a real `ConvolverNode` fed a procedurally-generated impulse
+    response (exponentially-decaying noise, same buffer-synthesis technique the existing `noise()`
+    already used — no external audio file), routed only to genuinely big moments (critical hits,
+    Mage) via an optional `reverbSend` param, so most sounds stay dry and punchy while the big hits
+    get real spatial weight.
+  - **Impact sound now scales with the same `hitPower`/`isCritical` roll already driving the blood
+    visuals** — previously combat sound was static per weapon type regardless of how hard a hit
+    actually landed, the one place the "sync numbers/visuals/audio to the same roll" pattern hadn't
+    reached. New `playImpactSound()`, distinct timbre per archetype reasoned from kinetic energy
+    (sharper/faster impacts get brighter high-frequency noise, heavier/slower ones get more
+    low-end) rather than just louder copies of one generic sound: Blade sharp/bright, Blunt
+    low/dull, Pierce thin/focused, Archer soft/understated (matching the same "modest external
+    signs despite real damage" forensic point behind its dark entry-wound mark), Mage layered
+    shimmer+weight scaling hardest of any archetype (matching its ±40% variance band), Explosive
+    a heavy low thud. Hooked into `applyDamage` at the exact point `decalArch`/`hitPower`/
+    `isCritical` are already computed — no new state needed.
+## [1.0.191] - 2026-09-07
+- **Fire-DOT now interacts with blood for the first time — a burning enemy's ground pools render
+  darkened and sooty instead of the normal fresh blood tone.** Scanned BPA's full chapter list for
+  unexplored material and found "Effects of Fire and Soot on Bloodstains" (ch.9): blood exposed to
+  active heat/soot appears distinctly darker than an ordinary stain, and the two are visually
+  sequenced differently at a real scene. Checked the existing burn-tick handler and confirmed it
+  had zero interaction with blood at all — a burning enemy bled the exact same bright color as a
+  non-burning one. New `bloodTintForFire(enemy, baseHex)` checks `burnUntil > gameTime` and swaps
+  in a sooty near-black (`#170d08`) in place of the enemy's normal blood-dark tone. Wired into all
+  three ground-pool decal call sites (bleed-tick, hit-time, death-time) — the most visually
+  prominent, persistent marks — rather than every single spawn call across the file, keeping the
+  change contained while still being clearly visible during an active burn.
+## [1.0.190] - 2026-09-07
+- **Void patterns implemented for Mage's streak cone — the first real gap-in-the-pattern effect
+  in the game, previously deferred twice for lacking safe access to nearby-enemy data.** BPA
+  ch.9-10: an absence of blood in an otherwise-sprayed area, caused by another body physically
+  blocking the spray at the instant of the hit. Root blocker resolved: `enemyHash` (the spatial
+  query structure used for tower targeting) was only ever a per-frame local inside the main loop,
+  inaccessible from deep inside `Enemy.prototype.applyDamage()`/`die()` without threading a new
+  parameter through every call site. Hoisted it to module scope instead (assigned fresh each frame,
+  same timing as before) — a much smaller, safer change than rewriting `applyDamage`'s signature.
+  Mage's streak loop now queries the small local neighborhood once per hit (not once per streak),
+  and any individual streak whose ray would pass within another active enemy's own radius before
+  reaching its landing distance is simply skipped — a real, physically-grounded gap rather than
+  every streak always drawing regardless of what's standing in the way. Scoped to Mage only for
+  now as a clean first implementation; extending to other archetypes is a small follow-up given the
+  core plumbing is now in place.
+## [1.0.189] - 2026-09-07
+- **Added a genuine dark "entry wound" mark for Archer, grounded in a specific book passage that
+  hadn't been mined yet.** BPA ch.2 ("Stab Wounds"/"Gunshot Wounds"): puncture wounds are deeper
+  than they measure on the surface, and "abdominal stab wounds, even fatal ones, rarely have
+  significant external bleeding" — the same section notes low/moderate-velocity penetrating wounds
+  (an arrow, nowhere near the >2000 ft/s "near amputation" threshold) bleed "quite modest[ly]"
+  externally despite real lethality. New `spawnPunctureMark()`: a small, dark near-black point
+  (`#1a0505`), deliberately understated rather than the bright arterial red used everywhere else —
+  the actual visible blood comes from the separate spray/satellite/drip/back-spatter layers around
+  it, matching the book's point that the entry point itself looks modest even when the wound is
+  serious. Replaces a call that had genuinely existed for a while (`spawnDecal(..., true)`,
+  reusing the standard colorful blob decal at high opacity) whose OWN comment already promised
+  "a small, concentrated dark mark right at the wound" — the code just never actually delivered
+  a distinct dark mark until now; this makes it match what it already claimed to do. Archer is now
+  the only archetype with this specific "dark pinprick + scattered pale halo" signature — Blade's
+  mark is a linear cut, Blunt's a round crush, Mage's a wide cone.
+## [1.0.188] - 2026-09-07
+- **Walking blood trail now actually appears while an enemy has an arrow-induced bleed status,
+  not just when it's below 40% HP.** Found the real gap: the ongoing drip system was gated
+  entirely on low HP — a freshly arrow-struck enemy at, say, 70% HP with an active bleed produced
+  no walking trail at all, even though it was genuinely bleeding. Widened the trigger to
+  `hp < 40% OR bleedUntil > gameTime`, so any bled enemy now leaves a trail regardless of overall
+  health. Also scatters a couple of extra, much finer flecks slightly off the main drip line while
+  moving — a person walking with an open wound doesn't drip in one perfectly straight thread, real
+  trails scatter a bit side to side with each step.
+- **Bleed is now cumulative — multiple arrows stuck in the same target add to the bleed rate
+  instead of just refreshing to whichever hit was strongest.** `applyBleed()` previously took
+  `Math.max()` of the new and existing damage-per-tick (explicitly "doesn't stack"); it now adds
+  them together, capped at 4 stacks (`bleedStackCount`) so a fast-firing Archer can't compound this
+  into an unbounded instant death spiral — a real body also only has so much blood pressure to lose
+  regardless of how many wounds are open. The cessation-taper clock (`bleedStartedAt`) only resets
+  on the very first arrow, so a second or third one stacking onto an existing wound doesn't restart
+  the taper from scratch. Stack count resets to 0 once the bleed fully expires.
+## [1.0.187] - 2026-09-07
+- **Added an animated "still bleeding" indicator — jumps out, wiggles, then fades over 2 seconds,
+  firing roughly every 20 seconds while an enemy's bleed status is active.** New `spawnBleedIcon()`,
+  distinct from the existing plain-text status reminder (`🩸 BLEEDING`, which still fires separately
+  every 120s) — this one is a genuinely animated 🩸 emoji: a quick overshoot-bounce scale-up in the
+  first 20% of its life, a decaying side-to-side wiggle through the middle, and a fade only in the
+  final 30%. Reuses the existing pooled `floatingTexts` array (a new `isIcon` flag distinguishes it
+  in `drawFloatingTexts`) rather than a separate system. Note: shares the same 100-slot pool as
+  every other floating combat number, so during a very dense wave with lots of simultaneous hits,
+  a bleed icon could occasionally get its pool slot recycled before its 2-second animation finishes
+  — the same trade-off every other floating text already has, not something unique to this feature.
+  The "tiny driblets" half of the request was already covered by the existing cardiac bleed-tick
+  system (1.0.164), which spawns small drip particles every 420-900ms while bleeding — no changes
+  needed there.
+## [1.0.186] - 2026-09-07
+- **Mage's base damage doubled across all three tiers**: 85→170, 145→290, 225→450. Since the ±40%
+  damage variance (1.0.182) is a proportional multiplier on top of base damage, doubling the base
+  automatically scales the min/max range with it — tier 1's roll is now 102-238 instead of 51-119,
+  still the same ±40% spread, just twice as powerful in both directions as requested. Cooldowns,
+  range, slow effects, and everything else about Mage are unchanged — this is purely a damage buff.
+- **Enhanced Mage's cast sound** to match the increased power — added a deep bass thump underneath
+  the existing two-tone rising shimmer (`cast_mage`), so a rarer, now much harder-hitting cast has
+  the low-end weight to match.
+## [1.0.185] - 2026-09-07
+- **Lowered the HUD-bar fit-to-screen floor from 0.55x to 0.4x.** Re-verified the full containment
+  chain (viewport meta tag, `#game-wrapper` → `#canvas-frame` → `#hud-top`) and found it structurally
+  sound — but the reported edge-clipping screenshots may have predated the 1.0.172/1.0.176 HUD
+  fixes, so this is a safety-net change rather than a confirmed root-cause fix. At the old 0.55
+  floor, if the bar's natural content was wide enough relative to a narrow screen, the mathematically
+  required scale could fall below what the floor allowed, and the floor would win — leaving genuine
+  overflow past the screen edge rather than a fully-fit bar. "Never clip" now takes priority over
+  "never shrink too small," since the reported problem was content sticking out past the edge, not
+  legibility.
+## [1.0.184] - 2026-09-07
+- **Fixed an unbounded size-stacking bug causing an occasional, forensically implausible giant
+  blood pool — confirmed from screenshots showing a single splat visibly dominating over a full
+  tile.** `spawnDecal`'s rare "bigger pool" tier (a ~4% chance, `sizeMult` 1.7-2.6x) was multiplying
+  on top of the archetype size multiplier with no combined cap — Mage's own multiplier is already
+  1.75x (the largest of any archetype), so a rare-tier roll landing on a Mage hit could reach
+  2.6*1.75 = 4.55x base size. Added a hard ceiling of 3.2x on the FINAL size after both multipliers
+  are applied, universally across every archetype — Mage's rare-tier pool is still the largest
+  possible splatter in the game (above any other archetype's own 2.6x rare-tier ceiling on its
+  own), it just can no longer compound unbounded when both the rare roll and the archetype
+  multiplier land at the same time.
+## [1.0.183] - 2026-09-07
+- **Blunt-trauma shockring is no longer a full 360° circle.** Confirmed it was already correctly
+  scaled by the min/max damage variance system (`hitPower`), but the ring itself was hardcoded to
+  `ctx.arc(..., 0, Math.PI*2)` — a complete circle biased equally in every direction, including
+  straight back toward the attacking tower. Real displaced blood from a blunt impact biases toward
+  the far side of the blow, not equally toward whatever struck it. `spawnShockring()` now takes an
+  optional `angle`/`arcSpan` pair: the arc is centered on `impactAngle` (the blow's actual direction
+  of travel) and spans roughly 205° for the primary ring, 145° for the smaller secondary echo —
+  more than a half circle so it doesn't look clipped, but genuinely biased away from the source
+  rather than a full ring. Omitting both parameters preserves the old full-circle behavior for any
+  future caller that doesn't pass them. Applied to all three existing call sites (hit-time primary
+  ring, hit-time secondary echo, and death-time ring).
+## [1.0.182] - 2026-09-07
+- **Fixed footprints essentially never appearing despite large, visible areas of blood on the
+  ground — a real bug, not a rarity tuning issue.** `spawnBloodCastoff` (the big dramatic radiating
+  lines dominating recent screenshots) anchors its decal at the impact point, but the visible line
+  reaches up to ~100px away for Mage's biggest streaks — yet it never set `footprintRadius`, so
+  `updateWalkingBlood`'s pickup check only looked within ~20-30px of that anchor. An enemy standing
+  at the far end of a long, clearly-visible streak registered as nowhere near any blood at all.
+  Added `footprintRadius` to `spawnBloodCastoff` (set to the line's own `maxLen`) and
+  `spawnDripTrail` (same anchor-vs-visual-extent issue, smaller scale), plus minor completeness
+  additions to `spawnCastOffArc`/`spawnSatelliteDrops`'s individual drop decals. This should now
+  apply to every blood type, matching what was asked — the pickup logic itself was never
+  weapon/archetype-specific, it just couldn't see past a decal's own anchor point before.
+- **Mage now has the widest damage variance band of any tower: ±40% (0.6x-1.4x), vs. ±20%
+  everywhere else.** Its rare, high-stakes shots should feel the most volatile — a real dud or a
+  real haymaker — matching its "rare, devastating shots" identity more than a tightly-banded roll
+  would. Still symmetric around 1.0 and still a fixed proportional band (scales identically at
+  every tier), so average DPS is unaffected — this only widens hit-to-hit spread specifically for
+  Mage. Updated the streak-count `dmgRollT` calculation (1.0.181's "1 to 4 lines" feature) to match
+  the new 0.6-1.4 range instead of the old hardcoded 0.8-1.2.
+## [1.0.181] - 2026-09-07 — HOTFIX
+- **Fixed a serious regression from 1.0.179: Mage could stop attacking entirely.** The previous fix
+  made Mage's `findTarget()` return early and skip re-evaluation completely as long as its current
+  target stayed `.active` and in range — an absolute lock with no path back to normal scanning. If
+  that very first lock ever landed on a target Mage structurally couldn't damage for any reason
+  (there's a known separate unresolved issue in this codebase about some towers failing to hit
+  targets behind barricades), Mage would stay stuck on that unreachable target forever, since
+  nothing could ever trigger a re-scan — the normal retargeting churn that used to accidentally
+  paper over this was exactly what got removed. Replaced the hard lock with a much wider hysteresis
+  margin instead (6.0x for positive-score modes, 0.35x for negative/CLOSEST, vs. 1.15x/0.85x for
+  every other tower) — the full scan-and-compare flow still runs every frame, so Mage can always
+  self-correct, it just takes a drastically better-scoring target to actually pull it away
+  mid-charge instead of a minor 15% edge. Every other tower's targeting is unchanged.
+## [1.0.180] - 2026-09-07
+- **Fixed the actual visual source of Mage's "resetting" cast — a pose snap, not a data reset.**
+  1.0.179 confirmed `chargeProgress`/`cooldownTimer` never reset on target loss/change. What DOES
+  reset: `staffAngle` (and the arm angle feeding it) switched between "aimed at target" and a
+  separate upright "idle" pose the instant `hasTarget` flipped false — which happens naturally once
+  Mage sits fully charged waiting for a target for more than 500ms (very common given its 4.2-5.4s
+  cooldown), or the moment a new target appears. The glowing charge orb is drawn at the staff's tip,
+  so that pose snap physically moved it to a different screen position each time — reading exactly
+  like the whole cast restarting even though the charge percentage itself never moved. Fixed at both
+  the data and render layer: `this.angle` no longer snaps to the idle pose for Mage specifically
+  (it now holds its last aimed direction indefinitely while waiting for a target), and the staff/arm
+  render now always points along `angle` unconditionally instead of branching on `hasTarget`. The
+  charge-up is now visually continuous regardless of target presence or changes, exactly as
+  requested. No other tower type's angle or pose logic is affected.
+## [1.0.179] - 2026-09-07
+- **Fixed Mage's attack visibly "resetting" mid-charge.** Traced the actual state first before
+  touching anything: `chargeProgress`/`cooldownTimer` were confirmed to have zero dependency on
+  target identity — they were never actually being reset. The real cause was `findTarget()`'s
+  standard 15% hysteresis margin being re-evaluated every frame for every tower, including Mage —
+  fine for towers that fire in under a second, but Mage's cooldown is 4.2-5.4s, by far the longest
+  charge window in the game. Over that stretch it's easy for a faster/closer enemy to edge out the
+  current target's score by more than 15% at some point, silently swapping `this.target` mid-charge
+  — and since the aim angle re-predicts toward whichever target is currently selected every frame,
+  that swap made the Mage's arm visibly snap to a totally different direction mid-cast, reading
+  exactly like the attack recalibrating from scratch. Mage now locks onto its target for the
+  entire charge-up once acquired, skipping the re-scan entirely as long as that target stays alive
+  and in range — only re-evaluating when it actually dies or leaves range, never because a
+  better-scoring target happened to wander by. Every other tower's targeting is unchanged.
+## [1.0.178] - 2026-09-07
+- **Archer now has real back-spatter, at both hit-time and death-time.** Checked the book's actual
+  attribution rather than assuming: BPA ch.7 ties forward+back spatter specifically to gunshot-type
+  high-velocity PENETRATION — which is Archer's real-world analog (an arrow/bolt puncture), not
+  Mage's magical blast. Mage got this treatment first, but Archer is the textbook case for it and
+  had none. Added a smaller, shorter-range burst fired back toward the tower on every Archer hit
+  and kill, matching the book's described asymmetry (back-spatter is markedly less voluminous than
+  the forward exit spray, not a mirrored burst in both directions).
+- **`spawnParticles()` gained an optional `sizeMin` parameter** (defaults to `undefined`, reproducing
+  the original 2-4px range exactly for every existing call site) so a caller can request genuinely
+  fine mist droplets instead of the standard size band.
+- **Added a universal death-time atomization mist layer**, using the new `sizeMin` parameter — a
+  distinct band of fine 0.5-1px particles radiating omnidirectionally on top of whatever
+  weapon-specific death burst already fired, scaled by the same `goreScale` (bigger enemies produce
+  more of it) as the rest of the death event. Every kill now has more visible "small particle"
+  texture regardless of which archetype or weapon actually landed the blow.
+## [1.0.177] - 2026-09-07
+- **Fixed cast-off streak width to genuinely follow a sqrt curve, matching what the code's own
+  comment always claimed but the formula never actually did.** `widthMult` was `1 + (sizeMult-1)*
+  0.55` — linear, not sqrt, so it barely flattened growth at high sizeMult. This is exactly why
+  Mage's radiating streaks (sizeMult 3.0-4.2, the largest in the game) read visibly bolder/thicker
+  than intended — BPA explicitly describes cast-off as "linear," i.e. a thin line regardless of
+  length. Changed to `1 + (Math.sqrt(sizeMult) - 1)`, a true sqrt relationship: Blade's existing
+  range (sizeMult 0.4-2.1) is barely affected, while Mage's long streaks get meaningfully thinner
+  without losing any length — only width flattens.
+## [1.0.176] - 2026-09-07
+- **Cleaned up inconsistent HUD button sizing from the 1.0.172 one-line fix.** Two separate root
+  causes: (1) none of the HUD buttons had `white-space:nowrap` or `flex-shrink:0`, so on top of the
+  intentional outer `transform:scale()` fit, the browser was ALSO independently flex-shrinking each
+  button below its own natural content width — "Next Wave ▶" has the longest text, so it was the
+  one that visibly wrapped into two lines, while shorter buttons just looked slightly squeezed
+  instead. Added `#hud-top > *{flex-shrink:0;white-space:nowrap;}` so every button keeps its
+  natural size and never wraps internally — the outer scale is now the ONLY thing responsible for
+  fitting the bar to the screen, instead of two competing sizing mechanisms fighting each other.
+  (2) `.hud-btn` (Pause/1x), `.hud-action-btn` (Build/Shop/gear), and `#nextWaveBtn` had three
+  different min-heights (36px/38px/42px) — unified all three to 38px for one consistent button
+  height across the whole bar.
+## [1.0.175] - 2026-09-07
+- **Added a discrete critical hit tier** — separate from the continuous `hitRoll`/`hitPower`
+  variance (1.0.168, 1.0.170): a 10% chance per hit of `isCritical`, giving hitPower/cutSize a flat
+  1.35x boost (mutually exclusive with the anomalous-minimal roll) and its own floating combat-text
+  treatment (💥 prefix, gold color) distinct from normal and holy-bonus damage numbers. Closes the
+  "maybe a crit" item that had been sitting open since it was first mentioned.
+- **Added the "wipe" pool-disturbance mechanic — BPA distinguishes this from the existing footprint
+  "swipe" system, and previously only swipe existed.** A swipe is a bloody object depositing new
+  marks on clean ground (the existing footprint trail, correctly modeled). A wipe is the opposite:
+  something passing through ALREADY-wet blood disturbs the stain itself. Layered into the existing
+  throttled `updateWalkingBlood` pickup-check loop (no new per-frame cost) — when a moving enemy
+  steps into a fresh pool decal, its blobs now nudge slightly along the enemy's direction of travel
+  and shrink a touch each time, so a pool a creep walks through visibly smears and thins in its
+  wake instead of sitting untouched forever.
+- **Added expirated blood as its own forensic mechanism (BPA ch.8)** — blood mixed with air from a
+  throat/chest wound, mechanically distinct from puncture/blunt/slash spatter and not tied to which
+  weapon delivered the killing blow (a sword, arrow, or mace can all plausibly catch the airway).
+  New `spawnExpiratedMist()`: a fine pale pink air-diluted mist plus a few faint near-static white
+  "bubble" specks. Fires as an occasional (15%) additive flourish layered on top of whatever
+  weapon-specific death gore already fired — never replaces it, gated off for dust/no-arterial
+  enemies and low-detail deaths.
+## [1.0.174] - 2026-09-07 — HOTFIX
+- **Fixed a boot-crashing regression from 1.0.172 that prevented the game from starting at all.**
+  `fitHudTopToOneLine()` referenced the outer `livesVal`/`goldVal`/`waveVal` consts, but was called
+  immediately at script load (`fitHudTopToOneLine(true)`, line ~6671) — well before those consts
+  are actually declared (line ~6922), throwing `ReferenceError: Cannot access 'livesVal' before
+  initialization` and halting the entire script. Fixed by having the function look elements up
+  directly via `document.getElementById()` instead of relying on the outer consts, which
+  decouples it from declaration order entirely regardless of where or when it's called. My error —
+  the 1.0.172 syntax check (`node --check`) caught malformed JS but couldn't catch a temporal-dead-
+  zone runtime error, since that only surfaces on actual execution, not static parsing.
+## [1.0.173] - 2026-09-07
+- **Added serum separation rings to pooled bloodstains — a real, distinct forensic detail (BPA
+  ch.9, "Clotting of Blood") that had been referenced from an external AI's fictional code review
+  but never actually verified or built.** Grepped the live file for "serum"/"clot" and confirmed
+  zero hits before implementing. As a real clot retracts, it squeezes out the remaining liquid
+  serum, which spreads slightly beyond the clot's own edge as a thin, translucent pale-yellow halo
+  — deliberately separate from the existing skeletonization rim (which darkens the stain's OWN
+  edge); serum sits just outside it. Windowed to the wet clot-retraction period only: onset within
+  the first couple minutes of real clotting, fully gone again by the point a stain reads as fully
+  dried (matched to the same 40%-of-life mark the existing color-aging curve settles at). Gated to
+  pools with genuinely sized blobs (`r > 2.5`) — real serum separation isn't visible on fine spatter
+  flecks, only larger pooled stains.
+- **Bleed-tick spurts now weaken as a creep's OVERALL blood volume drops, not just as the current
+  wound ages.** `beatIntensity` was previously scoped entirely to the individual wound's own
+  cessation taper — a creep already worn down to a sliver of HP by earlier hits still spurted at
+  full "just opened" strength from a freshly-reapplied bleed. New `hypoDamp = 0.4 + 0.6 *
+  (this.hp/this.maxHp)` factor floors at 0.4 (even a dying creep still visibly bleeds, just weakly,
+  never fully silent) and scales down toward that floor as overall HP drops — matching real
+  hypovolemic shock, where a body running low on blood simply has less pressure left to spurt with,
+  regardless of how fresh any one wound is. Closes a gap self-flagged during an earlier review pass.
+## [1.0.172] - 2026-09-07
+- **Top HUD bar (Build/Shop/gear, hearts/gold/wave stats, Pause/1x/Next Wave) no longer wraps onto
+  a second row on narrow mobile screens — it now always stays on one line, scaling the whole bar
+  down proportionally instead.** Previously `#hud-top` used `flex-wrap:wrap`, which caused Next
+  Wave and other controls to spill below the stat readouts on phone-width screens. Switched to
+  `flex-wrap:nowrap` and added `fitHudTopToOneLine()`, which measures the bar's natural unwrapped
+  width against the available screen width and applies a single `transform:scale()` to the whole
+  bar if it doesn't fit — every button keeps its exact proportions and icon/text relationship, just
+  smaller as a unit, floored at 0.55x so it never shrinks past legibility. Guarded with a cheap
+  fingerprint of just the gold/lives/wave text (the only things that could change the bar's natural
+  width mid-game) so the expensive re-measure only actually runs when that fingerprint changes or
+  on resize/orientationchange — not on every `updateHUD()` call, which fires on every kill/hit and
+  could be many times a second during a dense wave.
+## [1.0.171] - 2026-09-07
+- **Blade cast-off is now dampened on a tower's genuinely first-ever hit, grounded directly in a
+  cited forensic passage (BPA ch.8): "the initial blow generally does not produce sufficient
+  exposed blood on the weapon to produce cast-off bloodstains."** Cast-off specifically requires
+  blood already coating the weapon from a prior strike — it's distinct from the wound's own spatter,
+  which happens on hit one same as any other. Added `sourceTower.weaponBloodied`, tracked per-tower
+  (not per-enemy — a blade doesn't get wiped clean between victims mid-battle): the very first hit
+  any given Swordsman/Axeman lands, ever, produces a cast-off line/arc at ~22% normal size; every
+  hit after that (on any target) is full-strength, since the blade stays bloodied for the rest of
+  the fight. The wound-source particle spray is untouched by this — only the weapon-borne cast-off
+  line and arc are dampened, matching exactly what the cited mechanism actually claims.
+- **Added a small, uniform "anomalously minimal hit" chance (9%) across every archetype** — not
+  from a specific book formula, but consistent with its general point that real spatter volume
+  isn't perfectly predictable from force alone (skin elasticity, exact strike angle, and where a
+  blow lands all shift the outcome independent of raw force). `isAnomalousMinimal` multiplies
+  `hitPower` (and Blade's `cutSize`) down to ~35-40% on the rare hits it triggers — the visual
+  equivalent of a real solid strike that, for whatever reason, just didn't produce much visible
+  blood. Gives every archetype the "sometimes it's just smaller" variance previously only Blade had
+  a taste of via `hitRoll`'s ±18% band, without touching actual damage dealt.
+## [1.0.169] - 2026-09-07
+- **Masterwork pass: every weapon archetype now has a fully distinct ground-pool shape, not just a
+  distinct hit-time particle burst.** `spawnDecal`'s elongation table only ever branched on ARCHER/
+  MAGE/EXPLOSIVE — Blade, Blunt, and Pierce (all three "WARRIOR" sub-types) silently shared one
+  identical pool profile, even though their particle bursts had been differentiated for several
+  versions. Root cause: the `weapon` variable (BLADE/BLUNT/PIERCE) was declared inside a block that
+  went out of scope before reaching the decal call. Hoisted `weapon` to the top of the hit
+  resolution (computed once per hit, negligible cost) so it's available everywhere in the function,
+  and gave `spawnDecal` two new branches: BLUNT is now the roundest/widest of the three melee
+  weapons (matches its shockring/radial identity, `sizeMult *= 1.25`), PIERCE is now the narrowest/
+  most elongated (a deep thrust gushes along one tight line, `sizeMult *= 0.85`), and BLADE keeps
+  the original moderate directional-cut profile as the fallback default.
+- **Death blows now also sub-branch by weapon type — previously every melee kill collapsed
+  identically regardless of what actually killed it.** BLUNT deaths now get a radial burst plus
+  their own shockring (echoing the hit-time BLUNT identity instead of borrowing Blade's directional
+  gush streams) and slightly more gib debris. PIERCE deaths are now narrower and more forward-gush-
+  heavy (fewer ambient particles, a stronger tighter stream) than the ambient Blade collapse. Blade
+  keeps its existing directional-collapse treatment, now explicitly its own branch rather than the
+  only option. The death-time ground pool also now uses the correct weapon-specific shape from the
+  point above, instead of always falling back to the generic WARRIOR profile.
+- **EXPLOSIVE (Bomber) hit-time burst now scales with `hitPower`** — the last archetype still
+  firing a flat particle count regardless of hit severity, closing a gap flagged twice previously.
+## [1.0.168] - 2026-09-07
+- **Real per-hit damage variance added (±20% min/max roll), and it now directly drives the blood
+  system instead of blood staying on a purely cosmetic random roll.** Previously `hitRoll` (the
+  variable that adds "no two identical hits look the same" variety to blood) was a plain
+  `Math.random()` with zero connection to actual damage — now it IS the same roll that determines
+  how much damage the hit actually deals. `damageVariance = 0.8 + Math.random()*0.4`, applied to
+  the base damage before armor/shield mitigation, symmetric around 1.0 so average DPS over many
+  hits is completely unchanged (a Uniform 0.8-1.2 roll has a mean of exactly 1.0) — this adds
+  hit-to-hit spread, it does not shift overall tower balance up or down. Because it's a fixed
+  proportional band rather than an absolute bonus, it scales identically at every tower tier — a
+  level-99 Mage's roll is exactly as bounded as a level-1 Archer's, so blood intensity still can't
+  creep up with tower level, the original concern this whole system was built to avoid. Net effect:
+  a lucky high roll now deals visibly more damage on the floating combat text number AND produces a
+  visibly bigger, gorier splatter in the same hit — what the player sees numerically and visually
+  now agree with each other.
+## [1.0.167] - 2026-09-07
+- **Mage impacts now punch through in a wide forward cone instead of scattering omnidirectionally
+  or reusing the Swordsman's swing-arc geometry.** Both the hit-time and death-time Mage branches
+  previously called `spawnCastOffArc()` for their radiating streaks — but that function's math
+  (`arcDir`, `angularStep`, a tangent-angle offset) models blood flung tangentially off a *rotating
+  swinging weapon*, which is Swordsman/Axeman's physics, not a stationary bolt's. That's the actual
+  reason Mage could still read as "swordsman-flavored" even after 1.0.161 removed the shared
+  shockring — the streak shape itself was still swing-derived. Dropped `spawnCastOffArc` from both
+  Mage branches entirely; streaks are now straight `spawnBloodCastoff` spokes confined to a ~132°
+  cone (`mageConeWidth = 2.3`) centered on `impactAngle` — the bolt's actual direction of travel —
+  instead of scattered at fully random angles around the whole circle. The main particle bursts and
+  satellite drops are now cone-confined the same way (`spawnParticles`'s existing `coneAngle`/
+  `coneSpread` params, previously unused by Mage; `spawnSatelliteDrops`'s `biasAngle`).
+- **Mage's ground pool is now a wide directional splash oriented along the bolt's travel, not a
+  round blob.** `spawnDecal`'s MAGE elongation profile changed from near-round (`longMin:0.95,
+  shortMin:0.85`) to genuinely cone-shaped (`longMin:1.35, shortMin:0.6`) — stays the single
+  largest pool of the four archetypes (unchanged `sizeMult *= 1.75`), but now reads as a wide
+  forward splash instead of a big circle, giving Mage a shape distinct from both Archer's thin
+  narrow streak and Warrior's moderate cut-line smear.
+## [1.0.166] - 2026-09-07
+- **Every hit now gets a purely cosmetic, bounded ±18% random roll (`hitRoll`) applied on top of
+  the existing severity-based scaling (`hitPower`/`cutSize`), so two hits of identical damage no
+  longer produce visually identical blood.** This is intentionally separate from severity: `hitRoll`
+  is plain `Math.random()` with zero relationship to actual damage dealt, tower tier, or target HP
+  — it can never scale up with tower level the way a damage-based multiplier could, so a level-99
+  Mage's cosmetic variance is exactly as bounded as a level-1 Archer's. Actual damage values, DPS,
+  and combat balance are completely untouched by this — it only affects the visual size of
+  particle counts/cut-line length, never HP subtracted. Addresses "the blood looks too predictable/
+  the same pattern every time" without risking blood scaling out of control as towers level up.
+## [1.0.165] - 2026-09-07
+- **Swordsman's cast-off cut-line no longer draws at near-full size on a light graze.** `cutSize`
+  (the multiplier on the blade's cut-line/cast-off length) had a floor of `1.1` — meaning even the
+  weakest possible hit still drew the wound at ~110% of tuned base size, which is why every
+  Swordsman hit read as a heavy strike regardless of how little damage it actually dealt. Floor
+  dropped to `0.4` (a genuinely thin nick), ceiling trimmed from `2.5x` to `2.1x` for balance. Also
+  scaled the BLADE branch's general blood-spray particle count by hit severity (`hitPower`, see
+  below) — previously fixed at `12` regardless of how hard the hit landed, the one archetype branch
+  this scaling had been missed on in the prior pass.
+
+## [1.0.164] - 2026-09-07
+- **Arterial bleed-tick now pulses on a cardiac rhythm instead of firing on a flat 700ms metronome.**
+  A sine wave keyed to how long the wound's been open drives both tick spacing (420ms at the peak
+  of a beat, up to 900ms in the trough) and spurt size together — a strong beat means a bigger
+  spurt *and* a shorter wait until the next one, matching how real arterial bleeding surges and
+  eases rather than dripping at constant intensity. Persistent ground marks (decal, drip trail)
+  intentionally stay on the existing cessation taper rather than the beat — a permanent stain
+  flickering in size with a heartbeat would look wrong; only the momentary spray pulses.
+
+## [1.0.163] - 2026-09-07
+- **Blood pools now read as genuinely thicker/more viscous for insect and undead enemies, not just
+  slower-draining underfoot.** `spawnDecal()` gained an optional `viscous` parameter (defaults to
+  off — every untouched call site is unaffected), reusing the existing `bio.viscous` flag already
+  driving footprint friction. When set: blob count drops ~40% (fewer, chunkier clumps instead of a
+  wide scatter), the center-weighting exponent tightens from 1.4 to 2.4 (blobs cluster instead of
+  spreading), and the archetype's elongation blends halfway toward round (a viscous Mage hit still
+  reads rounder than a viscous Archer hit, just less extreme than either would with normal blood).
+  Threaded through the three call sites where `bio` was already in scope (hit-time mark, death-time
+  pool, bleed-tick decal).
+
+## [1.0.162] - 2026-09-07
+- **Mage, Archer, Warrior/BLUNT, and Warrior/PIERCE hit-time gore now scales with how hard the hit
+  actually was, not a fixed burst every time.** Only the BLADE cut-line previously scaled with hit
+  severity (`cutSize`) — every other archetype fired identical particle/satellite/streak counts on
+  a graze and a near-kill alike, which is the actual mechanism behind Mage in particular always
+  reading as "maxed out." New shared `hitPower` scalar (`0.55 + flinchSeverity*0.75`, so an average
+  hit still looks like the tuned baseline and only real extremes stand out) now multiplies: Archer's
+  spray/satellite counts, Mage's primary bursts/satellite count/streak count/back-spatter, BLUNT's
+  primary bursts/satellite count/shockring radius, and PIERCE's gush particle/stream counts.
+
 ## [1.0.161] - 2026-09-06
 - **Mage damage rebalanced — the tower was badly underpowered.** Base tier damage was 6/9/13,
   which against its 5.4s/4.8s/4.2s cooldowns worked out to roughly 1-3 DPS — far below every other

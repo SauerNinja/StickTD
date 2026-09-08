@@ -5,6 +5,19 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
+- **Tower UI still shows a single flat damage number, not a min-max range** — the ±20%
+  `damageVariance` (1.0.168) is real and live in combat, but no tooltip/stat panel tells the player
+  "this tower deals 72-108" instead of a flat "90." Asked, never answered.
+
+- **Substrate-dependent spine/rupture on rough terrain (dirt/path vs. stone/wood)** — no tile-type
+  lookup exists anywhere in the codebase currently (grepped for `getTileAt`/`tileType`/a grid array,
+  found nothing). Would need new coordinate→tile-type plumbing built from scratch, not just a
+  numbers tweak to existing decal code — scope this properly before attempting.
+
+- **Void patterns now built for Mage only (1.0.190)** — the `enemyHash` variable was identified and
+  hoisted to module scope to make this safe. Extending the same check to Archer/Blade/Blunt/Pierce's
+  own streak/satellite loops is a small, well-scoped follow-up now that the core plumbing exists.
+
 - **Swordsman not attacking past a barricade** — reported multiple times with screenshots, but
   every screenshot provided so far either showed no enemies in range, or enemies not actually
   visible/confirmable as blocked-and-in-range. Traced the full targeting pipeline

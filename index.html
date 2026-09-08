@@ -32,11 +32,18 @@
   #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;}
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
 
-  #hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;flex-wrap:wrap;
-    row-gap:5px;column-gap:3px;justify-content:center;padding:6px 8px;
-    max-width:900px;margin:0 auto;
+  #hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;flex-wrap:nowrap;
+    column-gap:3px;justify-content:center;padding:6px 8px;
+    max-width:900px;margin:0 auto;transform-origin:top center;
     background:linear-gradient(180deg,rgba(74,47,29,0.92),rgba(74,47,29,0));
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
+  /* Every direct child now keeps its natural content size and never wraps its own text — the sole
+     job of fitting everything to the screen belongs to fitHudTopToOneLine()'s single transform:
+     scale() on the whole bar. Previously these buttons had default flexbox flex-shrink:1 and
+     white-space:normal, so the browser ALSO independently squeezed individual buttons narrower
+     than their content — fighting the outer scale and causing exactly the "Next Wave wraps to two
+     lines while shorter buttons just look slightly squished" inconsistency. */
+  #hud-top > *{flex-shrink:0;white-space:nowrap;}
   @media (min-width:640px){
     #hud-top{column-gap:clamp(6px,1.2vw,12px);}
   }
@@ -61,12 +68,12 @@
   #shopBuyLifeCost{font-size:0.85em;color:#ffe066;}
   #hud-controls{display:flex;gap:6px;pointer-events:auto;}
   .hud-btn{background:rgba(74,47,29,0.85);color:var(--paper);border:2px solid var(--gold);
-    border-radius:6px;min-width:36px;min-height:36px;font-size:clamp(13px,2vw,16px);
+    border-radius:6px;min-width:36px;min-height:38px;font-size:clamp(13px,2vw,16px);
     font-weight:bold;cursor:pointer;padding:4px 6px;}
   .hud-btn.active{background:var(--gold);color:#3a2a00;}
   #nextWaveBtn{pointer-events:auto;background:var(--gold);color:#3a2a00;border:none;
     padding:6px 10px;border-radius:6px;font-weight:bold;font-size:clamp(12px,2vw,16px);
-    cursor:pointer;min-height:42px;min-width:42px;}
+    cursor:pointer;min-height:38px;min-width:42px;}
   #nextWaveBtn:disabled{background:#8a8a8a;color:#444;cursor:default;}
   .build-row.expand-row{background:rgba(58,117,51,0.35);box-shadow:inset 0 0 0 2px #7dd3fc;}
   .build-row.expand-row:active{background:rgba(58,117,51,0.55);}
@@ -714,7 +721,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.161'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.202'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -776,6 +783,7 @@ const JOB_COLORS = {
   HAMMERMAN: { main:'hsl(45,45%,75%)',  shade:'hsl(45,35%,52%)'  }, // dull bronze
   PALADIN:   { main:'hsl(48,80%,82%)',  shade:'hsl(45,70%,55%)'  }, // radiant gold
   MAGE:      { main:'hsl(270,50%,82%)', shade:'hsl(270,38%,62%)' }, // violet
+  SNAPCASTER:{ main:'hsl(48,75%,78%)',  shade:'hsl(48,55%,56%)' },  // electric yellow — visually distinct from full Mage's violet, matches its lightning identity
   BOMBER:    { main:'hsl(42,60%,78%)',  shade:'hsl(42,48%,58%)'  }, // amber/brown
   GATLING:   { main:'hsl(220,18%,80%)', shade:'hsl(220,22%,55%)' }, // desaturated steel gray-blue
   CLERIC:    { main:'hsl(48,70%,90%)',  shade:'hsl(48,45%,68%)'  }, // pale gold-white
@@ -792,6 +800,7 @@ const JOB_BUILD = {
   HAMMERMAN: { scaleX:1.25, scaleY:0.85 }, // broadest and shortest — a wall of a man
   PALADIN:   { scaleX:1.20, scaleY:0.90 }, // broad but a touch more upright than Hammerman
   MAGE:      { scaleX:0.85, scaleY:1.05 }, // slender
+  SNAPCASTER:{ scaleX:0.85, scaleY:1.02 }, // similarly slender, slightly less imposing than full Mage
   BOMBER:    { scaleX:1.20, scaleY:0.88 }, // stout, heavy-set
   GATLING:   { scaleX:1.12, scaleY:0.95 }, // bulky
   CLERIC:    { scaleX:0.92, scaleY:1.05 },  // upright, composed
@@ -879,12 +888,18 @@ const ENEMY_INFO = {
   SKELETON: { name:'Skeleton', desc:'Undead that revives once after being killed.' },
   WOLF: { name:'Wolf', desc:'Hunts in a coordinated pack.' },
   REAPER: { name:'Reaper', desc:'The heaviest-armored undead in the roster.' },
-  BOULDER: { name:'Boulder', desc:'Tanky, and splits on death like a heavier Splitter.' }
+  BOULDER: { name:'Boulder', desc:'Tanky, and splits on death like a heavier Splitter.' },
+  ROCKLET: { name:'Rocklet', desc:'A smaller rock fragment left behind by a Boulder.' },
+  MONARCH: { name:'Monarch', desc:'The fastest thing on the path — hard to hit, doesn\'t hit hard back.' }
 };
+// Which child type each splitting enemy leaves behind on death — the single source of truth
+// spawnSplitChildren() reads from, instead of a hardcoded type buried in that function. Adding a
+// new splitting enemy in the future is just one more line here, not a new branch in the method.
+const SPLIT_CHILD_TYPE = { SPLITTER: 'SPLITMINI', BOULDER: 'ROCKLET' };
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
-  GUNALINDER:'ARCHER', SNIPER:'ARCHER',
+  GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
 const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% more effective per point — Dota-style: specialization and consistent investment pay off substantially, so under-leveled towers fall meaningfully behind rather than staying roughly competitive
@@ -899,7 +914,7 @@ const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% mo
 const EVOLUTIONS = {
   SWORDSMAN: { str: {target:'HAMMERMAN', threshold:10}, dex: {target:'AXEMAN', threshold:10}, int: {target:'SPEARMAN', threshold:10} },
   ARCHER: { str: {target:'GATLING', threshold:10}, dex: {target:'BLOWDART', threshold:10}, int: {target:'BOMBER', threshold:10} },
-  MAGE: { int: {target:'CLERIC', threshold:10} },
+  MAGE: { int: {target:'CLERIC', threshold:10}, dex: {target:'SNAPCASTER', threshold:12} },
   BLOWDART: { dex: {target:'SQUIRTGUN', threshold:25} }, // deeper DEX specialization — a second tier beyond the first evolution
   HAMMERMAN: { int: {target:'PALADIN', threshold:25} }, // holy devotion — a second tier beyond the first evolution
   BOMBER: { int: {target:'GUNALINDER', threshold:25} }, // deeper INT specialization — trades splash for a rapid-fire revolver
@@ -1005,9 +1020,18 @@ const CONFIG = {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
       blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
       tiers: [
-        { range: 220, damage: 85,  cooldown: 5400, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 145, cooldown: 4800, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-        { range: 260, damage: 225, cooldown: 4200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+        { range: 220, damage: 187,  cooldown: 4860, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 240, damage: 319, cooldown: 4320, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 260, damage: 495, cooldown: 3780, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+      ]
+    },
+    SNAPCASTER: {
+      name: 'Snap Caster', icon: '⚡', baseCost: 95, unlocksAfterWave: 8,
+      blurb: "A DEX-focused Mage evolution — trades Mage's rare-and-massive identity for real firing frequency. Still meaningfully slower than an Archer, and hits for much less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
+      tiers: [
+        { range: 210, damage: 78,  cooldown: 1650, projectileSpeed: 1500, slowFactor: 0.25, slowDuration: 900 },
+        { range: 225, damage: 118, cooldown: 1450, projectileSpeed: 1600, slowFactor: 0.3,  slowDuration: 1000, upgradeCost: 100 },
+        { range: 240, damage: 168, cooldown: 1250, projectileSpeed: 1700, slowFactor: 0.35, slowDuration: 1100, upgradeCost: 145 }
       ]
     },
     BOMBER: {
@@ -1105,7 +1129,9 @@ const CONFIG = {
     SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:6, revives:true, isUndead:true },
     WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:6, pack:true },
     REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:9, isUndead:true },
-    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:10, splits:true }
+    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:10, splits:true },
+    ROCKLET: { emoji:'🪨', baseHp:108, speed:35, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:5 },
+    MONARCH: { emoji:'🦋', baseHp:33,  speed:112, bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:4 }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
@@ -2011,7 +2037,37 @@ class SoundEngine{
     this.master.connect(this.compressor);
     this.unlocked = true;
   }
-  tone(freq, duration, type, freqEnd){
+  // Lazily-built reverb send — a real ConvolverNode fed a procedurally-generated impulse response
+  // (exponentially-decaying noise, same buffer-synthesis technique already used in noise() below),
+  // not a pre-recorded file. Kept separate from the dry master path with its own small gain so
+  // most sounds stay dry/punchy; only genuinely weighty moments (crits, Mage casts) route through
+  // it via `reverbSend` on tone()/noise(), giving those specific hits real spatial depth instead of
+  // every sound in the game being flat and roomless.
+  initReverb(){
+    if(this.reverbNode) return;
+    const len = Math.floor(this.ctx.sampleRate * 0.9);
+    const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+    for(let ch=0; ch<2; ch++){
+      const data = buf.getChannelData(ch);
+      for(let i=0; i<len; i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.2);
+    }
+    this.reverbNode = this.ctx.createConvolver();
+    this.reverbNode.buffer = buf;
+    this.reverbGain = this.ctx.createGain();
+    this.reverbGain.gain.value = 0.35;
+    this.reverbNode.connect(this.reverbGain);
+    this.reverbGain.connect(this.compressor);
+  }
+  // Normalizes a world X coordinate to a -1..1 stereo pan value relative to the camera's current
+  // view — a hit on the left edge of the screen now genuinely sounds more in the left ear. Purely
+  // additive: every existing call site that doesn't pass a worldX still plays dead-center exactly
+  // as before.
+  panFor(worldX){
+    if(worldX === undefined || typeof camera === 'undefined') return 0;
+    const screenX = worldX*camera.zoom + camera.x;
+    return clampNum((screenX - CANVAS_W/2) / (CANVAS_W/2), -1, 1);
+  }
+  tone(freq, duration, type, freqEnd, pan, reverbSend){
     if(!this.unlocked) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -2022,10 +2078,18 @@ class SoundEngine{
     if(freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd*detune), t0+duration);
     gain.gain.setValueAtTime(0.4, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0+duration);
-    osc.connect(gain); gain.connect(this.master);
+    let node = gain;
+    if(pan){
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = pan;
+      gain.connect(panner);
+      node = panner;
+    }
+    osc.connect(gain); node.connect(this.master);
+    if(reverbSend){ this.initReverb(); node.connect(this.reverbGain); }
     osc.start(t0); osc.stop(t0+duration);
   }
-  noise(duration, filterFreq, filterType){
+  noise(duration, filterFreq, filterType, pan, reverbSend){
     if(!this.unlocked) return;
     const bufferSize = Math.floor(this.ctx.sampleRate*duration);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -2035,10 +2099,18 @@ class SoundEngine{
     src.buffer = buffer;
     const filter = this.ctx.createBiquadFilter();
     filter.type = filterType || 'lowpass'; filter.frequency.value = filterFreq || 1200;
-    src.connect(filter); filter.connect(this.master);
+    let node = filter;
+    if(pan){
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = pan;
+      filter.connect(panner);
+      node = panner;
+    }
+    src.connect(filter); node.connect(this.master);
+    if(reverbSend){ this.initReverb(); node.connect(this.reverbGain); }
     src.start();
   }
-  play(name){
+  play(name, worldX, intensity){
     if(!this.unlocked) return;
     switch(name){
       // ---- generic / legacy (still used for hit-flash, kills, waves, etc.) ----
@@ -2046,6 +2118,33 @@ class SoundEngine{
       case 'bow':   this.tone(900,0.10,'sawtooth',150); break;
       case 'hit':   this.tone(300,0.06,'square',100); break;
       case 'death': this.noise(0.15); break;
+      case 'gore_death': {
+        // A distinct sound specifically for an enemy's actual death, separated out from the
+        // shared generic 'death' case above — that one is also reused for barricades breaking and
+        // scenery (trees/rocks) being cleared, so making IT wetter/more visceral would have made a
+        // barricade sound like a splat too. Layered: a wet, slightly muffled noise body (the
+        // actual "splat"), a low falling tone underneath for finality/weight, and a very brief
+        // bandpass crack on top for texture — scales a touch wetter/heavier for a bigger kill via
+        // the same goreScale already driving the rest of the death event's visuals.
+        const panD = this.panFor(worldX);
+        const wetness = 1 + Math.min(1.2, (intensity||1) - 1)*0.4;
+        this.noise(0.13*wetness, 650, 'lowpass', panD);
+        this.tone(130, 0.15*wetness, 'sawtooth', 50, panD);
+        this.noise(0.045, 2400, 'bandpass', panD);
+        break;
+      }
+      case 'foot_squelch': {
+        // A foot's first contact with a fresh pool — BPA ch.5 specifically discusses stepping
+        // into a pool as a real physical contact event ("blood is splashed from one shoe to the
+        // other"), grounding this as worth its own distinct sound rather than silent like every
+        // other footstep. `intensity` here is the pool's own size bonus (0-3) — a bigger puddle
+        // sounds a touch wetter/heavier than a light scuff through a small splatter.
+        const panF = this.panFor(worldX);
+        const wet = 1 + (intensity||0)*0.35;
+        this.noise(0.055*wet, 850, 'lowpass', panF);
+        this.tone(210, 0.035, 'sine', 110, panF);
+        break;
+      }
       case 'wave':  this.tone(440,0.20,'sine',660); break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'lose':  this.tone(200,0.4,'sawtooth',50); break;
@@ -2083,7 +2182,7 @@ class SoundEngine{
       case 'shot_gunalinder': this.noise(0.06, 900, 'bandpass'); this.tone(150, 0.05, 'square', 80); break; // mechanical clack
       case 'shot_squirtgun': this.tone(600, 0.07, 'triangle', 300); this.noise(0.05, 1800, 'highpass'); break; // wet spray
       case 'shot_bomber':   this.tone(120, 0.14, 'sine', 55); this.noise(0.14, 250, 'lowpass'); break; // heavy lob thud
-      case 'cast_mage':     this.tone(1200, 0.16, 'sine', 2000); this.tone(600, 0.16, 'triangle', 1400); break; // rising magical shimmer
+      case 'cast_mage':     this.tone(1200, 0.16, 'sine', 2000); this.tone(600, 0.16, 'triangle', 1400); this.tone(90, 0.22, 'square', 900); break; // rising magical shimmer, now with a deep bass thump underneath — matches a rarer, harder-hitting cast
       case 'cast_cleric':   this.tone(880, 0.2, 'sine', 1320); setTimeout(() => this.tone(1320, 0.18, 'sine', 1760), 60); break; // holy chime
 
       // ---- dedicated menu/UI sounds, distinct from combat ----
@@ -2096,7 +2195,50 @@ class SoundEngine{
   }
 }
 const audioEngine = new SoundEngine();
-function playSound(name){ audioEngine.play(name); }
+function playSound(name, worldX, intensity){ audioEngine.play(name, worldX, intensity); }
+// Impact sound now scales with the SAME hitPower/isCritical roll already driving the blood visuals
+// (hitRoll/damageVariance) — previously combat sound was purely static per weapon type regardless
+// of how hard a hit actually landed, the one place the "sync numbers/visuals/audio to the same
+// roll" pattern hadn't reached yet. Distinct timbre per archetype, physically reasoned from the
+// same kinetic-energy framing used throughout (Physics for JS Games — energy scales with v²,
+// so sharper/higher-velocity impacts get brighter high-frequency noise content, heavier/slower
+// ones get more low-end weight) rather than just louder copies of one generic sound. `worldX`
+// feeds the new stereo panner so a hit's sound comes from roughly the right side of the screen.
+function playImpactSound(archOrWeapon, worldX, hitPower, isCritical){
+  if(!audioEngine.unlocked) return;
+  const hp = clampNum(hitPower || 1, 0.3, 2.2);
+  const pan = audioEngine.panFor(worldX);
+  const bigMoment = !!isCritical || hp > 1.4; // routes a reverb send for real weight only on genuinely big hits, not every routine tick
+  if(archOrWeapon === 'BLADE'){
+    // sharp, bright, short — a real cutting edge, higher-frequency noise content matching a
+    // thin, fast-moving contact surface
+    audioEngine.noise(0.05 + hp*0.02, 3200 + hp*800, 'highpass', pan, bigMoment);
+    audioEngine.tone(500 + hp*80, 0.05, 'sawtooth', 180, pan);
+  } else if(archOrWeapon === 'BLUNT'){
+    // low, dull, heavier — kinetic energy going into crushing/displacement rather than a clean cut
+    audioEngine.noise(0.09 + hp*0.03, 300 + hp*100, 'lowpass', pan, bigMoment);
+    audioEngine.tone(110 + hp*20, 0.1 + hp*0.03, 'square', 55, pan);
+  } else if(archOrWeapon === 'PIERCE'){
+    // thin, fast, focused — a narrow puncture concentrates force into a small contact area,
+    // reads as a tight high crack rather than a broad noisy impact
+    audioEngine.noise(0.04, 4200, 'highpass', pan, bigMoment);
+    audioEngine.tone(700 + hp*100, 0.04, 'triangle', 300, pan);
+  } else if(archOrWeapon === 'ARCHER'){
+    // soft, understated — matches the entry-wound forensic point (real puncture wounds show
+    // modest external signs despite real damage): a quiet thwack, not a dramatic crack
+    audioEngine.noise(0.04, 2200, 'bandpass', pan);
+    audioEngine.tone(340 + hp*40, 0.04, 'triangle', 200, pan);
+  } else if(archOrWeapon === 'MAGE'){
+    // layered — bright shimmer plus real low-end weight, scaling hardest of any archetype since
+    // Mage already has the widest damage variance band (±40%) in the game
+    audioEngine.tone(1400 + hp*200, 0.09, 'sine', 500, pan, bigMoment);
+    audioEngine.noise(0.08 + hp*0.04, 500 + hp*150, 'bandpass', pan, bigMoment);
+    audioEngine.tone(80 + hp*15, 0.12 + hp*0.04, 'square', 45, pan, bigMoment);
+  } else if(archOrWeapon === 'EXPLOSIVE'){
+    audioEngine.noise(0.12 + hp*0.05, 220 + hp*80, 'lowpass', pan, true);
+    audioEngine.tone(70 + hp*10, 0.14, 'square', 35, pan, true);
+  }
+}
 function unlockAudio(){ audioEngine.unlock(); }
 
 /* =========================================================
@@ -2669,10 +2811,15 @@ class Enemy{
     if(sourceTower) this.lastPoisonSource = sourceTower;
   }
   applyBleed(damagePerTick, ms, sourceTower){
-    const isNewOrStronger = damagePerTick >= (this.bleedDamagePerTick||0);
+    // Cumulative — multiple arrows stuck in the same target add to the total bleed rate instead of
+    // just refreshing to whichever hit was strongest. A real body with three arrows in it bleeds
+    // faster than one with a single arrow — capped at 4 stacks (bleedStackCount) so a fast-firing
+    // Archer can't compound this into an instant, unbounded death spiral; a real body also only
+    // has so much blood pressure to lose regardless of how many wounds are open.
+    this.bleedStackCount = Math.min(4, (this.bleedStackCount||0) + 1);
     this.bleedUntil = Math.max(this.bleedUntil, gameTime + ms);
-    if(isNewOrStronger) this.bleedStartedAt = gameTime; // reference point for the cessation taper in the tick handler — only reset when this application actually takes over, so a weaker re-application riding on an existing wound doesn't reset the clock
-    this.bleedDamagePerTick = Math.max(this.bleedDamagePerTick||0, damagePerTick); // strongest bleed wins, doesn't stack
+    if((this.bleedStackCount||0) <= 1) this.bleedStartedAt = gameTime; // reference point for the cessation taper — only reset on the FIRST arrow, so a second/third stacking on doesn't restart the clock
+    this.bleedDamagePerTick = (this.bleedDamagePerTick||0) + damagePerTick;
     if(sourceTower) this.lastBleedSource = sourceTower;
   }
   update(dt){
@@ -2693,12 +2840,24 @@ class Enemy{
       if(this.slowTimer > 0){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '🧊 SLOWED', '#7dd3fc'); offset += 14; }
       if(this.stunnedUntil > gameTime){ spawnFloatingText(this.x, this.y - this.radius - 14 - offset, '⭐ STUNNED', '#ffe066'); offset += 14; }
     }
-    // Ongoing arterial dripping for seriously wounded units — startDripSite() (used for the
-    // per-hit and per-death burst) fires instantly and is done; this is a separate, continuous
-    // background drip while the unit stays below 40% HP and is still alive, so a badly hurt enemy
-    // keeps visibly bleeding as it walks rather than only bleeding at the instant of impact. Gated
-    // on this.hp > 0, so it stops the instant the enemy actually dies — never fires post-mortem.
-    if(goreMode && this.hp > 0 && this.hp < this.maxHp * 0.4 && !(this.bloodProfile || getBloodProfile(this.type)).isDust){
+    // A much more frequent, more eye-catching reminder specifically for bleeding — a jump/wiggle/
+    // fade icon (spawnBleedIcon) rather than the plain text label above, since an open wound is
+    // the status effect most worth glancing at mid-fight. Separate timer from statusLabelTimer's
+    // 120s cadence — this fires roughly every 20 seconds while the bleed is active.
+    this.bleedIconTimer = (this.bleedIconTimer||20000) - dt;
+    if(this.bleedIconTimer <= 0){
+      this.bleedIconTimer = 20000;
+      if(this.bleedUntil > gameTime) spawnBleedIcon(this.x, this.y - this.radius - 16);
+    }
+    // Ongoing arterial dripping for wounded units — startDripSite() (used for the per-hit and
+    // per-death burst) fires instantly and is done; this is a separate, continuous background drip
+    // while the unit is either badly hurt OR actively bleeding from an arrow, so a wounded enemy
+    // keeps visibly bleeding as it walks rather than only bleeding at the instant of impact.
+    // Previously gated ONLY on low HP (<40%) — a freshly arrow-struck enemy at, say, 70% HP with an
+    // active bleed status produced no walking trail at all, even though it was genuinely bleeding.
+    // Now also fires for the whole duration of an active bleed, regardless of overall HP. Gated on
+    // this.hp > 0, so it stops the instant the enemy actually dies — never fires post-mortem.
+    if(goreMode && this.hp > 0 && (this.hp < this.maxHp * 0.4 || this.bleedUntil > gameTime) && !(this.bloodProfile || getBloodProfile(this.type)).isDust){
       this.arterialDripTimer = (this.arterialDripTimer||0) - dt;
       if(this.arterialDripTimer <= 0){
         this.arterialDripTimer = 900 + Math.random()*700;
@@ -2706,8 +2865,14 @@ class Enemy{
         const speedNow = Math.hypot(this.vx, this.vy);
         if(speedNow > 15){
           // fast-moving wounded units leave an elongated teardrop pointing back along their travel
-          // vector, matching how a moving drip source actually trails behind the wound
+          // vector, matching how a moving drip source actually trails behind the wound. Also
+          // scatters a couple of much finer flecks slightly off the direct line — a person walking
+          // with an open wound doesn't drip in one perfectly straight thread, real trails scatter
+          // a bit side to side with each step.
           spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 1, Math.atan2(-this.vy, -this.vx));
+          if(this.bleedUntil > gameTime){
+            spawnSatelliteDrops(this.x + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*10, hexToRgba(bio.dark, 0.5), 2, Math.atan2(-this.vy, -this.vx), 0.5);
+          }
         } else {
           // stationary/slow wounded units (queued at a barricade) pool directly beneath them —
           // concentric small satellite rings around a fixed point instead of one long streak
@@ -2743,7 +2908,6 @@ class Enemy{
     if(this.bleedUntil > gameTime){
       this.bleedTickTimer -= dt;
       if(this.bleedTickTimer <= 0){
-        this.bleedTickTimer = 700;
         const bleedDmg = Math.max(1, Math.round(this.bleedDamagePerTick));
         this.hp -= bleedDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, bleedDmg+'🩸', '#e63946');
@@ -2757,17 +2921,35 @@ class Enemy{
         const totalDuration = Math.max(1, this.bleedUntil - this.bleedStartedAt);
         const remainingFrac = clampNum((this.bleedUntil - gameTime) / totalDuration, 0, 1);
         const cessation = 0.35 + remainingFrac*0.65; // never fully silent until it actually ends, but visibly weaker near the end
+        // Cardiac pulsing: real arterial bleeding isn't a metronome — it surges with each heartbeat,
+        // not at constant intensity/timing. `pulse` rides a sine wave keyed to how long this wound
+        // has been open (not wall-clock time, so a fresh wound and an old one aren't in lockstep),
+        // and drives BOTH the next tick's spacing and its spurt size together — a strong beat means
+        // a bigger spurt AND a shorter wait until the next one, a weak beat means a smaller spurt and
+        // a longer gap, the way a real pulse alternately surges and eases rather than dripping evenly.
+        const pulse = 0.5 + 0.5*Math.sin((gameTime - this.bleedStartedAt) / 480 * Math.PI*2);
+        this.bleedTickTimer = 420 + (1-pulse)*480; // 420ms at the peak of a beat, up to 900ms in the trough
+        // Hypovolemic dampening: real bleeding weakens as TOTAL blood volume drops, not just as
+        // this individual wound ages — a creep already worn down to a sliver of HP by earlier hits
+        // should bleed visibly weaker than a fresh, healthy target even from an identically-timed
+        // wound. Previously `beatIntensity` was scoped entirely to this wound's own cessation
+        // taper, so a nearly-dead creep with a freshly-reapplied bleed still spurted at full
+        // "just opened" strength. `hypoDamp` floors at 0.4 rather than going to zero — even a
+        // dying creep still visibly bleeds, just weakly, not not-at-all.
+        const hypoDamp = 0.4 + 0.6 * clampNum(this.hp / this.maxHp, 0, 1);
+        const beatIntensity = cessation * (0.55 + pulse*0.75) * hypoDamp;
         if(goreMode && !this.bloodProfile.isDust){
           const bio = this.bloodProfile;
-          spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*cessation)), 160, 0.9, true);
-          if(Math.random() < cessation) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), 1);
-          if(Math.random() < 0.3*cessation) spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.55), true);
+          spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*beatIntensity)), 160, 0.9, true);
+          if(Math.random() < beatIntensity) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), 1);
+          if(Math.random() < 0.3*cessation) spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.55), true, undefined, undefined, bio.viscous);
           if(Math.random() < 0.3*cessation) spawnDripTrail(this.x + (Math.random()-0.5)*6, this.y, hexToRgba(bio.dark, 0.55));
         }
         if(this.hp <= 0){ this.die(this.lastBleedSource, false); return; }
       }
     } else {
       this.bleedDamagePerTick = 0; // expired — a fresh wound starts clean rather than keeping a stale strength
+      this.bleedStackCount = 0; // all arrows have finished bleeding out — the next one starts a fresh count
     }
     if(this.healsAllies) this.updateHealAura(dt);
     if(this.hasShield) this.updateShieldRegen(dt);
@@ -2873,10 +3055,18 @@ class Enemy{
   }
   spawnSplitChildren(){
     this.hasSplit = true;
+    // Which child type a splitting enemy leaves behind — previously hardcoded to always spawn
+    // 'SPLITMINI' regardless of what actually split, so a Boulder (a rock enemy) was spawning two
+    // 🦠 microbe SPLITMINIs on death, complete with insect-green blood — even though its own
+    // description always said "splits on death like a heavier Splitter," implying its own distinct
+    // fragment, not a borrowed one. A lookup table here means any future splitting enemy just adds
+    // one line rather than another hardcoded branch — this function's own logic never needs to
+    // change again to support a new split relationship.
+    const childType = SPLIT_CHILD_TYPE[this.type] || 'SPLITMINI';
     for(let i=0; i<2; i++){
       const child = acquireActive(enemyPool);
       if(!child) break;
-      child.spawn('SPLITMINI', 1 + (waveIndex-1)*0.20);
+      child.spawn(childType, 1 + (waveIndex-1)*0.20);
       child.x = this.x + (Math.random()*16-8);
       child.y = this.y + (Math.random()*16-8);
       child.pathIndex = this.pathIndex;
@@ -2951,7 +3141,21 @@ class Enemy{
   }
   reachEnd(){ this.active = false; loseLife(1); }
   applyDamage(amount, sourceTower, forStreak, isHoly){
-    let dmg = amount;
+    // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
+    // cosmetic overlay. Symmetric around 1.0, so average DPS over many hits lands exactly where
+    // each tower's tuned base numbers already put it — this only adds hit-to-hit spread, it never
+    // creeps overall damage up or down. Mage gets the widest band of any tower (±40%, vs. ±20%
+    // everywhere else) — its rare, high-stakes shots should feel the most volatile, swinging from
+    // a real dud to a real haymaker, matching its "rare, devastating shots" identity far more than
+    // a tightly-banded roll would. Still a fixed proportional band, so it scales identically at
+    // every tower tier regardless of type. This same roll drives the blood system directly (see
+    // hitRoll below) — an unusually strong roll deals visibly more damage on the floating combat
+    // text AND produces a visibly bigger, gorier splatter (and now, for Mage specifically, more
+    // radiating streak lines — see the MAGE branch's dmgRollT/streakCount), syncing what the
+    // player sees numerically with what they see visually.
+    const varianceHalfWidth = (sourceTower && sourceTower.type === 'MAGE') ? 0.4 : 0.2;
+    const damageVariance = (1 - varianceHalfWidth) + Math.random()*(varianceHalfWidth*2);
+    let dmg = Math.max(1, Math.round(amount * damageVariance));
     const holyBonus = (isHoly && this.isUndead);
     if(holyBonus) dmg = Math.round(dmg * 1.5);
     if(this.armor) dmg = Math.max(1, dmg - this.armor);
@@ -2975,12 +3179,26 @@ class Enemy{
     // collision no matter how often it fires. Scales with how heavy the hit was relative to max
     // HP, so a graze barely registers while a heavy blow visibly rocks the target back for a beat.
     const flinchSeverity = clampNum(dmg / this.maxHp, 0, 1);
+    // hitRoll now IS the real damage-variance roll from above, not a separate independent random
+    // draw — a lucky high roll deals more damage AND produces bigger blood, syncing the two
+    // systems as requested. Still bounded to the same ±20% band regardless of tower tier or target
+    // HP, so blood still can't runaway-scale with level; only now it's tied to something real
+    // instead of being purely decorative. flinchSeverity above is the separate "how hard did this
+    // land relative to max HP" layer — they're independent and multiply together in hitPower/cutSize.
+    const hitRoll = damageVariance;
+    // Discrete critical hit — separate from the continuous hitRoll/hitPower variance below: a
+    // positive-direction outlier with its own floating-text treatment, so combat has an actual
+    // standout "big moment" beyond the smooth scaling everything else already has. Computed here
+    // (before the gore/goreMode branch) so the crit text shows even with gore disabled.
+    const isCritical = Math.random() < 0.1;
     this.flinchAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
     this.flinchMag = 1.5 + flinchSeverity*5;
     this.flinchStart = realTime;
     this.flinchDuration = 130 + flinchSeverity*90;
     if(holyBonus){
       spawnFloatingText(this.x, this.y - this.radius, '✨' + Math.round(dmg), '#ffe9a8');
+    } else if(isCritical){
+      spawnFloatingText(this.x, this.y - this.radius, '💥' + Math.round(dmg), '#ffd23f');
     } else {
       spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
@@ -2989,6 +3207,27 @@ class Enemy{
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
       const impactAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
+      // How hard THIS hit was relative to the target's max HP, applied to hit-time particle counts.
+      // Previously only the BLADE cut-line scaled with hit strength (cutSize below) — Mage, Archer,
+      // Blunt, and Pierce all fired identical, fixed-size bursts whether the hit was a graze or a
+      // near-fatal blow, which is why Mage in particular always read as "maxed out" every single
+      // time. hitPower stays close to 1 at an average hit and only swings noticeably at the extremes,
+      // so a normal hit still looks like the tuned baseline — only real grazes and near-kills stand out.
+      // Occasional anomalously minimal hit — not from a specific book formula, but consistent with
+      // its general point that real spatter volume isn't perfectly predictable from force alone
+      // (skin elasticity, exact strike angle, and where a blow lands all shift the outcome
+      // independent of how hard it hit). A small, uniform chance across every archetype of a
+      // notably muted result — the visual equivalent of a real strike that, for whatever reason,
+      // just didn't produce much blood despite landing solidly.
+      const isAnomalousMinimal = !isCritical && Math.random() < 0.09;
+      const hitPower = (0.55 + flinchSeverity*0.75) * hitRoll * (isAnomalousMinimal ? 0.35 : isCritical ? 1.35 : 1);
+      // Resolved once per hit regardless of archetype (cheap — just reads sourceTower.type) so it's
+      // available both to the WARRIOR sub-branches below AND to the ground-pool decal call later in
+      // this function — previously `weapon` was declared inside the WARRIOR-only else block and
+      // went out of scope before reaching spawnDecal(), which is why Blade/Blunt/Pierce hits all
+      // shared one identical ground-pool shape even though their hit-time particle bursts already
+      // differed. Now the pool shape differs too — see spawnDecal's BLUNT/PIERCE branches.
+      const weapon = resolveWeaponSubtype(sourceTower);
       if(bio.isDust){
         spawnParticles(this.x, this.y, bio.bright, 8, 200); // rock chips, no liquid streams or pooling
       } else if(arch === 'ARCHER'){
@@ -2999,33 +3238,78 @@ class Enemy{
         // as much visual presence as Warrior's slash or Mage's burst — many small far-flung marks
         // instead of one, rather than genuinely looking sparser overall. Less concentrated blood,
         // same amount of visible impact.
-        spawnParticles(this.x, this.y, bio.spray, 6, 60, 0.94, true, impactAngle, 0.5);
+        spawnParticles(this.x, this.y, bio.spray, Math.max(2, Math.round(6*hitPower)), 60, 0.94, true, impactAngle, 0.5);
+        // Back-spatter — BPA ch.7 ties forward+back spatter specifically to gunshot-type
+        // high-velocity penetration, which is Archer's real-world analog far more than Mage's
+        // (Mage's blast got this treatment first, but a real arrow/bolt puncture is the actual
+        // textbook case for it). Real HVIS back-spatter is markedly less voluminous than the
+        // forward exit spray — lower count, shorter range, matching the asymmetry described in
+        // the book rather than a mirrored burst in both directions.
+        spawnParticles(this.x, this.y, bio.spray, Math.max(1, Math.round(2*hitPower)), 50, 0.92, true, impactAngle + Math.PI, 0.55);
         if(Math.random() < 0.7) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
         if(!bio.isDust){
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.55), 2 + Math.floor(Math.random()*2), impactAngle, 2.4); // several fine mist droplets flung well past the wound, not just one
+          // The entry point itself — now genuinely dark and minimal (spawnPunctureMark), not just
+          // the standard colorful blob decal at high opacity like before. A real high-velocity
+          // puncture (arrow, bolt) leaves a small, concentrated dark mark right at the wound,
+          // distinct from the pale scattered mist around it — per BPA ch.2, external bleeding at
+          // the entry point itself is typically modest even for a lethal hit. None of the other
+          // archetypes have this "dark pinprick center + scattered halo" signature — Blade's mark
+          // is a linear cut, Blunt's a round crush, Mage's a wide cone — only a real puncture wound
+          // produces a tiny, near-black point source that the spatter radiates from.
+          spawnPunctureMark(this.x, this.y);
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.55), Math.max(1, Math.round((2 + Math.floor(Math.random()*2))*hitPower)), impactAngle, 2.4); // several fine mist droplets flung well past the wound, not just one
           if(Math.random() < 0.4) spawnBloodCastoff(this.x, this.y, impactAngle, hexToRgba(bio.dark, 0.5), undefined, 0.8); // an occasional short, thin graze streak — small, but adds to the visible mark count
         }
       } else if(arch === 'MAGE'){
         // High-energy magical impact — now genuinely rare (5x longer between shots) and priced
         // accordingly in spectacle. Forensically, a circular/radial ring pattern is a blunt-trauma
         // signature (see Warrior/BLUNT below) — a magical impact has no crushing surface, so its
-        // identity is pure directional streak: many bold, long, radiating cast-off lines rather
-        // than a round shockwave ring. Every hit is amplified so the long wait pays off, reading
-        // as a singular devastating event through streak density and length, not a circular burst.
-        spawnParticles(this.x, this.y, bio.bright, 46, 420, 0.88, true);
-        spawnParticles(this.x, this.y, bio.spray, 26, 460, 0.86, true);
+        // identity is pure directional streak. Previously this used spawnCastOffArc for each
+        // streak — but that function's geometry (arcDir, angularStep, tangent-angle offset) models
+        // blood flung TANGENTIALLY off a rotating swinging weapon, which is exactly the Swordsman's
+        // physics, not a stationary magical bolt's. A bolt has no swing to be tangential to — it
+        // punches straight through the target and continues in its own direction of travel, so its
+        // identity is a wide forward CONE of straight radiating spokes (spawnBloodCastoff only, no
+        // curve), confined around impactAngle rather than scattered at fully random angles around
+        // the full circle. This also makes Mage visually distinct from Archer's cone (much
+        // narrower, much smaller, low-energy puncture mist) by being wide, bold, and energetic.
+        const mageConeWidth = 2.3; // ~132° — wide enough to read as a blast, not a pinpoint beam
+        spawnParticles(this.x, this.y, bio.bright, Math.round(46*hitPower), 420, 0.88, true, impactAngle, mageConeWidth);
+        spawnParticles(this.x, this.y, bio.spray, Math.round(26*hitPower), 460, 0.86, true, impactAngle, mageConeWidth);
         if(!bio.isDust){
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 9 + Math.floor(Math.random()*4));
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), Math.max(2, Math.round((9 + Math.floor(Math.random()*4))*hitPower)), impactAngle, 1.6);
           // Long radiating streaks, distinct from Warrior's single directional cut — a magical
-          // blast has no swing direction to align with, so several bold streak FANS (not single
-          // thin lines) burst outward omnidirectionally, each fan itself a small cluster of drops
-          // like Warrior's cast-off arc — so the total mark density clearly reads as bigger than
-          // a Warrior slash or Archer puncture, matching Mage's rare/high-impact identity.
-          const streakCount = 8 + Math.floor(Math.random()*4);
+          // blast has no swing direction to align with, so a handful of bold straight spokes burst
+          // outward across the forward cone (not a single thin line, and not curved like a swing).
+          // Line count is now directly quantized to where THIS hit's actual damage roll landed in
+          // its own min/max range (damageVariance, 0.8-1.2x) — a minimum-roll graze draws just 1
+          // bold line, a maximum-roll hit draws 4, with 2-3 in between. This replaces the previous
+          // continuous 3-19ish random fan: fewer, bolder, more legible lines that scale in a way
+          // the player can actually read hit-to-hit, directly tied to the same variance system
+          // driving the floating damage number, rather than an independent random count.
+          const dmgRollT = clampNum((damageVariance - 0.6) / 0.8, 0, 1); // 0 at Mage's min roll (0.6x), 1 at its max roll (1.4x) — matches the widened ±40% band above
+          const streakCount = 1 + Math.round(dmgRollT * 3);
+          // Void patterns (BPA ch.9-10): an absence of blood in an otherwise-sprayed area, caused
+          // by another body physically blocking the spray at the instant of the hit. Queries the
+          // small local neighborhood once per hit (not once per streak — cheap) via the module-scope
+          // enemyHash, then skips any individual streak whose ray would pass within another active
+          // enemy's own radius before reaching its landing distance. A real, physically-grounded
+          // gap in the pattern rather than every streak always drawing regardless of what's in the way.
+          const nearbyForVoid = enemyHash ? queryNearby(enemyHash, this.x, this.y, 70) : [];
           for(let s=0; s<streakCount; s++){
-            const streakAngle = Math.random()*Math.PI*2;
-            spawnCastOffArc(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.65 + Math.random()*0.15), 4 + Math.floor(Math.random()*3));
-            spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6 + Math.random()*0.15), undefined, 2.8 + Math.random()*1.0);
+            const streakAngle = impactAngle + (Math.random()-0.5)*mageConeWidth;
+            const streakLen = 20; // approximate reach a cast-off streak actually covers — matches spawnBloodCastoff's own maxLen ballpark at this sizeMult
+            let blocked = false;
+            for(const other of nearbyForVoid){
+              if(other === this || !other.active) continue;
+              const ox = other.x - this.x, oy = other.y - this.y;
+              const alongDist = ox*Math.cos(streakAngle) + oy*Math.sin(streakAngle); // projection onto the streak's own ray
+              if(alongDist <= 0 || alongDist > streakLen) continue; // behind the shooter or past where this streak actually lands
+              const perpDist = Math.abs(ox*Math.sin(streakAngle) - oy*Math.cos(streakAngle)); // perpendicular distance from the ray
+              if(perpDist < other.radius){ blocked = true; break; }
+            }
+            if(blocked) continue; // void — this specific streak's path was physically blocked, so it's simply not drawn
+            spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6 + Math.random()*0.15), undefined, 3.0 + Math.random()*1.2);
           }
         }
         // Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical
@@ -3033,34 +3317,59 @@ class Enemy{
         // a distinct, well-documented BPA phenomenon investigators specifically look for to
         // determine where a shot came from. A small amount, lower speed than the forward spray, in
         // the opposite direction.
-        spawnParticles(this.x, this.y, bio.spray, 8, 180, 0.85, true, impactAngle + Math.PI, 0.6);
+        spawnParticles(this.x, this.y, bio.spray, Math.max(2, Math.round(8*hitPower)), 180, 0.85, true, impactAngle + Math.PI, 0.6);
+        // A handful of small non-blood spark particles mixed into the burst — pale violet/energy
+        // tinted rather than any shade of bio.bright/bio.dark. Every other archetype's marks are
+        // built entirely from the enemy's own blood colors; this is the one purely chromatic
+        // signature that reads as "magic" at a glance even before the shape registers, and it's a
+        // color no blood profile in the game uses, so it can never accidentally blend in.
+        if(!bio.isDust) spawnParticles(this.x, this.y, '#c9a8ff', Math.max(2, Math.round(6*hitPower)), 300, 0.87, false, impactAngle, mageConeWidth);
       } else if(arch === 'EXPLOSIVE'){
-        // 360-degree vaporization — no directional constraint, mix bright + charred/dark
-        spawnParticles(this.x, this.y, bio.bright, 10, 200, viscFriction, true);
-        spawnParticles(this.x, this.y, bio.dark, 6, 200, viscFriction, true);
+        // 360-degree vaporization — no directional constraint, mix bright + charred/dark. Now
+        // scaled by hitPower like every other archetype (was the last one still firing a flat
+        // count regardless of hit severity).
+        spawnParticles(this.x, this.y, bio.bright, Math.round(10*hitPower), 200, viscFriction, true);
+        spawnParticles(this.x, this.y, bio.dark, Math.max(2, Math.round(6*hitPower)), 200, viscFriction, true);
+        // A pale gray ash/smoke puff mixed in — the one purely chromatic signature that isn't any
+        // shade of blood, the same way Mage's violet sparks aren't. Blunt's ring already reads as
+        // "blunt trauma"; without something non-blood in the mix, Explosive was otherwise just
+        // Blunt's radial burst with no ring, which is a weak distinction on its own.
+        spawnParticles(this.x, this.y, '#8a8a8a', Math.max(1, Math.round(5*hitPower)), 140, 0.9, false);
       } else {
         // WARRIOR archetype sub-branches by actual weapon geometry — previously every melee class
         // (blade, blunt mace, thrusting spear alike) produced the identical cut-plus-arc pattern,
         // which read as repetitive/samey regardless of what actually hit the target.
-        const weapon = resolveWeaponSubtype(sourceTower);
         if(weapon === 'BLUNT'){
           // Blunt trauma doesn't cut — it crushes, producing an omnidirectional "impact spatter"
           // with no single directional cut line: a wider radial burst of particles and satellite
           // drops scattered around the impact point, PLUS a real circular shockring — a crushing
           // blow genuinely does compress a round area of impact, which is the correct forensic
           // home for a ring pattern (a cutting or magical wound has no such surface to ring).
-          spawnParticles(this.x, this.y, bio.bright, 16, 170, 0.9, true);
-          spawnParticles(this.x, this.y, bio.dark, 6, 170, 0.9, true);
-          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.65), 2 + Math.floor(Math.random()*2));
-          spawnShockring(this.x, this.y, hexToRgba(bio.dark, 0.5), 18 + Math.random()*8);
+          spawnParticles(this.x, this.y, bio.bright, Math.round(16*hitPower), 170, 0.9, true);
+          spawnParticles(this.x, this.y, bio.dark, Math.max(2, Math.round(6*hitPower)), 170, 0.9, true);
+          spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.65), Math.max(1, Math.round((2 + Math.floor(Math.random()*2))*hitPower)));
+          spawnShockring(this.x, this.y, hexToRgba(bio.dark, 0.5), (18 + Math.random()*8) * (0.85 + hitPower*0.2), impactAngle, Math.PI*1.15); // a crushing blow compresses a visibly wider ring than a light glancing knock — biased toward the far side of impact, not a full circle back toward the source
+          // A genuinely heavy blow (real severity, not just a lucky cosmetic roll) cracks a second,
+          // tighter inner ring a beat inside the main one — a true crush has more than one visible
+          // compression front, where a light knock only ever produces the one. Gated on
+          // flinchSeverity specifically (not hitPower, which includes the cosmetic roll) so this
+          // stays tied to how much real damage landed, not just RNG — the signature a genuinely
+          // hard hit earns, distinct from Blade's escalating cut or Mage's escalating streak count.
+          if(flinchSeverity > 0.55) spawnShockring(this.x, this.y, hexToRgba(bio.dark, 0.4), (9 + Math.random()*4) * (0.9 + hitPower*0.15), impactAngle, Math.PI*0.8);
           if(Math.random() < 0.3) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.55));
         } else if(weapon === 'PIERCE'){
           // A deep thrust punctures along one line, closer to an arrow wound in geometry but far
           // more violent — a stronger forward gush and a real drip, no perpendicular cut-line and
           // no swing arc since a thrust doesn't sweep tangentially the way a slash does.
-          spawnParticles(this.x, this.y, bio.bright, 10, 240, viscFriction, true, impactAngle, 0.7);
-          spawnBloodStream(this.x, this.y, impactAngle, 3, 1.2, bio.bright, bio.dark);
+          spawnParticles(this.x, this.y, bio.bright, Math.max(2, Math.round(10*hitPower)), 240, viscFriction, true, impactAngle, 0.7);
+          spawnBloodStream(this.x, this.y, impactAngle, Math.max(1, Math.round(3*hitPower)), 1.2, bio.bright, bio.dark);
           if(Math.random() < 0.6) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+          // A deep thrust doesn't just wound at the point of contact — blood tracks back along the
+          // shaft as the spear is withdrawn, leaving a short trailing smear behind the entry point
+          // rather than only radiating forward. Placed a few pixels back along -impactAngle so it
+          // reads as a distinct "drag" mark, not just another forward spray — a signature none of
+          // the other archetypes have, since none of them involve a weapon being pulled back out.
+          spawnDripTrail(this.x - Math.cos(impactAngle)*7, this.y - Math.sin(impactAngle)*7, hexToRgba(bio.dark, 0.5));
         } else {
           // BLADE (Swordsman/Axeman) — a real laceration at the wound itself: a bold cut-line
           // right at the point of impact (still oriented across the strike direction, since a
@@ -3071,14 +3380,32 @@ class Enemy{
           // glancing graze leaves a thin nick, a heavy blow a bold, unmistakable gash — instead of
           // every blade hit drawing the exact same size line regardless of damage dealt.
           const slashAngle = impactAngle + Math.PI/2 + (Math.random()-0.5)*0.5;
-          const cutSize = 1.1 + flinchSeverity*1.4; // ~1.1x for a graze, up to ~2.5x for a near-fatal blow
+          // A real, cited forensic principle (BPA ch.8): "the initial blow generally does not
+          // produce sufficient exposed blood on the weapon to produce cast-off bloodstains" —
+          // cast-off specifically requires blood already coating the weapon from a PRIOR strike,
+          // distinct from the wound's own spatter (which happens on hit one same as any other).
+          // Tracked per-TOWER (`weaponBloodied`), not per-enemy — a blade doesn't get wiped clean
+          // between victims mid-battle, so once any Swordsman/Axeman lands its first hit on
+          // anything, its blade stays bloodied for the rest of the fight. The wound-source spray
+          // (spawnParticles just below) is untouched — only the weapon-borne cast-off line/arc is
+          // dampened, since that's the specific mechanism the book ties to a pre-bloodied weapon.
+          const firstBlood = sourceTower && !sourceTower.weaponBloodied;
+          if(sourceTower) sourceTower.weaponBloodied = true;
+          const bloodedMult = firstBlood ? 0.22 : 1;
+          // Floor raised from a bare "0.4" would still read as a full-size cut on every graze — the
+          // original 1.1 floor meant even the lightest scratch drew a cast-off line at ~110% of the
+          // tuned base size, which is why every Swordsman hit looked like a heavy strike regardless
+          // of how little damage it actually dealt. Floor dropped to 0.4 (a genuinely thin nick) so
+          // only hits with real relative severity earn the bold, unmistakable gash.
+          const cutSize = (0.4 + flinchSeverity*1.7) * hitRoll * bloodedMult * (isAnomalousMinimal ? 0.4 : isCritical ? 1.35 : 1); // ~0.4x for a graze, up to ~2.1x for a near-fatal blow, ±18% cosmetic roll on top so no two slashes are identical
           // small per-hit color micro-jitter on top of this enemy's own fixed blood tint — real
           // blood shade varies slightly hit to hit even from the same wound (oxygenation,
           // thickness, how fresh vs. already-drying), not just a single flat tone reused for every
           // slash this enemy ever takes
           const cutColor = shiftHexColor(bio.dark, (Math.random()-0.5)*8, (Math.random()-0.5)*6);
-          spawnParticles(this.x, this.y, bio.bright, 12, 200, viscFriction, true);
+          spawnParticles(this.x, this.y, bio.bright, Math.max(2, Math.round(12*hitPower)), 200, viscFriction, true);
           spawnBloodCastoff(this.x, this.y, slashAngle, hexToRgba(cutColor, 0.7), undefined, cutSize);
+          if(!firstBlood){
           if(sourceTower && sourceTower.type === 'AXEMAN'){
             // dual-wielded — two independent blades means two overlapping cast-off arcs from
             // slightly different angles/timing, not one arc doubled up. Reads as a genuinely
@@ -3090,7 +3417,17 @@ class Enemy{
           } else {
             spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(cutColor, 0.65));
           }
+          }
           if(Math.random() < 0.4) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
+          // A genuinely deep slash (real severity, not just a lucky cosmetic roll) can nick a
+          // vessel — one short, fast perpendicular spurt off the cut line itself, distinct from
+          // the tangential cast-off arc above (which is blood already on the blade, not from the
+          // wound). Gated on flinchSeverity so it's earned by real damage, giving Blade its own
+          // "how bad was it" tier the way Blunt's double-ring and Mage's streak count already do.
+          if(flinchSeverity > 0.6){
+            const spurtAngle = slashAngle + (Math.random()<0.5 ? Math.PI/2 : -Math.PI/2);
+            spawnBloodStream(this.x, this.y, spurtAngle, 1, 0.7, bio.bright, bio.dark);
+          }
         }
       }
       // a real lasting mark on the ground for a non-lethal hit too, not just the killing blow —
@@ -3102,9 +3439,13 @@ class Enemy{
       // burst), so both get a higher chance of a lasting mark to match Warrior's visual presence,
       // while spawnDecal's own archBias sizing still keeps each one shaped correctly for its
       // archetype (Archer's small and elongated, Mage's large and round).
+      // The ground pool's shape/size now matches whichever specific weapon caused it, not just the
+      // broad archetype — spawnDecal's own elong table differentiates BLADE/BLUNT/PIERCE (see there).
+      const decalArch = arch === 'WARRIOR' ? weapon : arch;
+      if(!bio.isDust) playImpactSound(decalArch, this.x, hitPower, isCritical);
       const markChance = (arch === 'ARCHER' || arch === 'MAGE') ? 0.5 : 0.3;
       if(!bio.isDust && this.hp > 0 && Math.random() < markChance){
-        spawnDecal(this.x, this.y, hexToRgba(bio.dark, 0.5), true, impactAngle, arch);
+        spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.5), true, impactAngle, decalArch, bio.viscous);
       }
       // ongoing drip tied directly to THIS hit's severity, not a background "wounded" timer —
       // a graze barely drips, a heavy blow relative to the target's max HP keeps bleeding longer
@@ -3164,7 +3505,25 @@ class Enemy{
         spawnGibs(this.x, this.y, Math.round((low ? 5 : 12)*goreScale));
       } else {
         const impactAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
-        if(arch === 'EXPLOSIVE'){
+        if(arch === 'HOLY'){
+          // Cleric's curse doesn't strike or cut — the enemy is consumed by an accumulating holy
+          // DoT, not a physical blow, so a normal wound-shaped burst never fit. BPA's own glossary
+          // defines "Misting" as blood atomized to a fine spray by the application of force — here
+          // that force is the curse itself dissolving the body rather than a weapon striking it, so
+          // the kill is rendered as overwhelmingly fine mist (using the same sizeMin fine-particle
+          // capability built for the universal death atomization layer, pushed much further) with
+          // almost no chunky gibs and no directional cast-off streaks at all — nothing here has a
+          // swing or an impact vector to align with. A pale golden-white tint (holy light) mixes
+          // into the enemy's own blood color rather than replacing it outright, so the species'
+          // identity (still greenish for undead/insects, still bright red for standard flesh) is
+          // still legible underneath the holy overlay.
+          const holyBright = shiftHexColor(bio.bright, 25, 22);
+          const holySpray = shiftHexColor(bio.spray, 25, 28);
+          spawnParticles(this.x, this.y, holyBright, Math.round((low ? 10 : 26)*goreScale), 90, 0.85, false, undefined, undefined, 0.5);
+          if(!bio.noArterial) spawnParticles(this.x, this.y, holySpray, Math.round((low ? 8 : 20)*goreScale), 60, 0.82, false, undefined, undefined, 0.4);
+          if(!low) spawnGibs(this.x, this.y, 1); // a single small fragment — mostly mist, not a burst
+          spawnHolyBeam(this.x, this.y, '#fff3c4');
+        } else if(arch === 'EXPLOSIVE'){
           // genuinely explosive kill — a real radial burst is earned here, not the default
           spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 18 : 48)*goreScale), 260, viscFriction, !low);
           spawnParticles(this.x, this.y, bio.dark, Math.round((low ? 9 : 24)*goreScale), 260, viscFriction, !low);
@@ -3180,6 +3539,7 @@ class Enemy{
           // far-flung mist droplets — so the kill still reads with real visual presence, matching
           // Warrior/Mage's death-time impact, through spread rather than concentration.
           spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 2 : 5)*goreScale), 90, 0.94, !low);
+          if(!low) spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(2*goreScale)), 80, 0.92, false, impactAngle + Math.PI, 0.55); // back-spatter, same asymmetric treatment as the hit-time branch above
           if(!bio.noArterial){
             for(let d=0; d<Math.round(3*goreScale); d++){
               spawnDripTrail(this.x + (Math.random()-0.5)*10, this.y + (Math.random()-0.5)*7, hexToRgba(bio.dark, 0.6));
@@ -3190,37 +3550,89 @@ class Enemy{
         } else if(arch === 'MAGE'){
           // a magical kill is now a genuinely rare, singular event (5x longer between shots than
           // any other tower) — amplified to match: faster, wider particles, and more/bolder
-          // radiating streaks than an ordinary hit. No shockring here — that circular/radial
-          // pattern is a blunt-trauma forensic signature (see Warrior/BLUNT), not a magical one;
-          // Mage's identity is pure directional streak, so the extra impact budget goes into
-          // streak count/length instead.
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 20 : 44)*goreScale), 400, viscFriction, !low);
-          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 12 : 26)*goreScale), 440, viscFriction, !low);
+          // radiating spokes than an ordinary hit. No shockring here — that circular/radial
+          // pattern is a blunt-trauma forensic signature (see Warrior/BLUNT), not a magical one.
+          // Same forward-cone-of-straight-spokes treatment as the hit-time branch above (no
+          // spawnCastOffArc — that's tangential swing-arc geometry that belongs to a swung weapon,
+          // not a bolt punching straight through), confined around impactAngle so a killing blow
+          // still reads as a directional blast, not an omnidirectional ring.
+          const mageConeWidth = 2.3;
+          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 20 : 44)*goreScale), 400, viscFriction, !low, impactAngle, mageConeWidth);
+          spawnParticles(this.x, this.y, bio.spray, Math.round((low ? 12 : 26)*goreScale), 440, viscFriction, !low, impactAngle, mageConeWidth);
           if(!low){
-            spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 8 + Math.floor(Math.random()*4));
-            const streakCount = 9 + Math.floor(Math.random()*4);
+            spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), 8 + Math.floor(Math.random()*4), impactAngle, 1.6);
+            const streakCount = 10 + Math.floor(Math.random()*4);
             for(let s=0; s<streakCount; s++){
-              const streakAngle = Math.random()*Math.PI*2;
-              spawnCastOffArc(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.65), 4 + Math.floor(Math.random()*3));
-              spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6), undefined, 2.9 + Math.random()*1.0);
+              const streakAngle = impactAngle + (Math.random()-0.5)*mageConeWidth;
+              spawnBloodCastoff(this.x, this.y, streakAngle, hexToRgba(bio.dark, 0.6), undefined, 3.1 + Math.random()*1.2);
             }
           }
           spawnGibs(this.x, this.y, Math.max(2, Math.round(3*goreScale)));
         } else {
-          // WARRIOR (bladed melee) death: a directional collapse, not a burst — modest ambient
-          // splatter plus a tight arterial gush weighted toward the last hit, matching how bodies
-          // actually bleed out rather than exploding
-          spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 6 : 14)*goreScale), 220, viscFriction, !low);
-          spawnParticles(this.x, this.y, bio.dark, Math.round((low ? 4 : 8)*goreScale), 220, viscFriction, !low);
-          if(!bio.noArterial){
-            const gushCount = Math.max(2, Math.round(3*goreScale));
-            for(let g=0; g<gushCount; g++){
-              const jitter = impactAngle + (Math.random()-0.5)*0.6;
-              spawnBloodStream(this.x, this.y, jitter, low ? 1 : 2, 1.6 + Math.random()*0.8, bio.bright, bio.dark);
+          // WARRIOR death now sub-branches by weapon type too, matching the hit-time
+          // differentiation above — previously every melee class collapsed identically regardless
+          // of whether a blade, a mace, or a spear actually killed it.
+          const weapon = resolveWeaponSubtype(sourceTower);
+          if(weapon === 'BLUNT'){
+            // Blunt death: no directional collapse — a final crushing blow spreads radially, with
+            // its own shockring echoing the hit-time BLUNT identity rather than borrowing Blade's
+            // directional gush streams.
+            spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 7 : 16)*goreScale), 210, viscFriction, !low);
+            spawnParticles(this.x, this.y, bio.dark, Math.round((low ? 5 : 9)*goreScale), 210, viscFriction, !low);
+            if(!low){
+              spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.65), 3 + Math.floor(Math.random()*2));
+              spawnShockring(this.x, this.y, hexToRgba(bio.dark, 0.5), 22 + Math.random()*9, impactAngle, Math.PI*1.15);
             }
+            spawnGibs(this.x, this.y, Math.max(2, Math.round(3*goreScale))); // a crushing kill scatters more debris than a clean cut
+          } else if(weapon === 'PIERCE'){
+            // Pierce death: a deep final thrust — narrower and more forward-gush-heavy than
+            // Blade's ambient collapse, with fewer stray particles and a stronger, tighter stream.
+            spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 4 : 9)*goreScale), 240, viscFriction, !low, impactAngle, 0.8);
+            if(!bio.noArterial){
+              const gushCount = Math.max(2, Math.round(4*goreScale));
+              for(let g=0; g<gushCount; g++){
+                spawnBloodStream(this.x, this.y, impactAngle + (Math.random()-0.5)*0.3, low ? 1 : 2, 1.9 + Math.random()*0.9, bio.bright, bio.dark);
+              }
+            }
+            spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale)));
+          } else {
+            // Blade death: a directional collapse, not a burst — modest ambient splatter plus a
+            // tight arterial gush weighted toward the last hit, matching how bodies actually bleed
+            // out rather than exploding
+            spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 6 : 14)*goreScale), 220, viscFriction, !low);
+            spawnParticles(this.x, this.y, bio.dark, Math.round((low ? 4 : 8)*goreScale), 220, viscFriction, !low);
+            if(!bio.noArterial){
+              const gushCount = Math.max(2, Math.round(3*goreScale));
+              for(let g=0; g<gushCount; g++){
+                const jitter = impactAngle + (Math.random()-0.5)*0.6;
+                spawnBloodStream(this.x, this.y, jitter, low ? 1 : 2, 1.6 + Math.random()*0.8, bio.bright, bio.dark);
+              }
+            }
+            spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale))); // minimal debris, not chunks flying everywhere
           }
-          spawnGibs(this.x, this.y, Math.max(1, Math.round(2*goreScale))); // minimal debris, not chunks flying everywhere
         }
+        // Expirated blood — a distinct forensic mechanism (BPA ch.8) from any of the weapon-specific
+        // branches above: blood mixed with air from a throat/chest wound, mechanically unrelated to
+        // HOW the killing blow was delivered (a sword, an arrow, a mace can all plausibly catch the
+        // airway). Layered additively on top of whatever weapon-specific death gore already fired —
+        // never replaces it — as an occasional extra flourish, not gated by weapon type.
+        if(!low && !bio.isDust && !bio.noArterial && Math.random() < 0.15){
+          spawnExpiratedMist(this.x, this.y);
+        }
+        // Death-time atomization mist — a universal fine-particle layer on top of whatever
+        // weapon-specific burst already fired, scaled the same way the rest of the death event is
+        // (goreScale, so bigger enemies still produce more of it). The existing per-archetype death
+        // particles are already sized 2-4px; this adds a distinct layer of genuinely fine mist
+        // (0.5-1px) radiating omnidirectionally, giving every death more visible "small particle"
+        // texture regardless of which weapon or archetype actually landed the killing blow.
+        if(!low && !bio.isDust){
+          spawnParticles(this.x, this.y, bio.spray, Math.max(3, Math.round(9*goreScale)), 130, 0.9, false, undefined, undefined, 0.5);
+        }
+        // Skeletal remains — two independent rolls, not gated to any particular weapon/archetype
+        // since bones are a property of the body, not of what killed it. Skipped for dust/
+        // construct enemies (bio.isDust) since those don't have a skeleton to leave behind.
+        if(!bio.isDust && Math.random() < 0.5) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.25) spawnSkullDrop(this.x, this.y, this.radius);
         if(Math.random() < 0.55){
           // this was passing smallBias=true, which forces every death pool into the same narrow
           // "ordinary splatter" size band and skips the bigger-pool rolls entirely — meaning
@@ -3228,7 +3640,8 @@ class Enemy{
           // should occasionally roll bigger — but spawnDecal's own size tiers are now capped much
           // lower than they briefly were, so "bigger" stays readable instead of becoming one solid
           // mass when several deaths land near each other.
-          spawnDecal(this.x, this.y, hexToRgba(bio.dark, low ? 0.6 : 0.75), false, impactAngle, arch);
+          const decalArch = arch === 'WARRIOR' ? resolveWeaponSubtype(sourceTower) : arch;
+          spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), low ? 0.6 : 0.75), false, impactAngle, decalArch, bio.viscous);
         }
         if(!low){
           spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.75), 2 + Math.floor(Math.random()*3));
@@ -3261,7 +3674,11 @@ class Enemy{
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
-    playSound('death');
+    // Distinct visceral death sound, separate from the generic 'death' still used for barricades/
+    // scenery — goreScale (already driving every other part of this death event's size) also
+    // scales how wet/heavy this specific sound reads, so a Boss's death sounds a bit weightier
+    // than a Grunt's.
+    playSound('gore_death', this.x, goreScale);
     updateHUD();
   }
   draw(ctx){
@@ -3749,6 +4166,18 @@ class Tower{
     return true;
   }
   findTarget(nearby){
+    // Mage gets a much wider hysteresis margin than other towers, but NOT an absolute lock — an
+    // earlier version of this fix returned early and skipped re-evaluation entirely as long as
+    // the current target stayed active and in range, with no path back to normal scanning. That
+    // meant if Mage's very first lock ever landed on a target it structurally couldn't damage for
+    // any reason, it would stay stuck on that unreachable target forever, since nothing could ever
+    // trigger a re-scan — a real regression (reported: Mage stopped attacking entirely). This
+    // version keeps the normal scan-and-compare flow running every frame (so it can always
+    // self-correct), just with Mage's threshold set high enough that only a drastically
+    // better-scoring target — not routine minor fluctuations — will actually pull it away
+    // mid-charge. Every other tower's 15% margin is unchanged.
+    const hysteresisMult = this.type === 'MAGE' ? 6.0 : 1.15;
+    const hysteresisMultNeg = this.type === 'MAGE' ? 0.35 : 0.85;
     const range = this.targetingRange;
     let best = null, bestScore = -Infinity;
     for(const e of nearby){
@@ -3769,7 +4198,7 @@ class Tower{
         else if(this.targetMode === 'STRONGEST') currentScore = this.target.hp;
         else if(this.targetMode === 'WEAKEST') currentScore = -this.target.hp;
         else currentScore = -d;
-        const threshold = currentScore >= 0 ? currentScore*1.15 : currentScore*0.85;
+        const threshold = currentScore >= 0 ? currentScore*hysteresisMult : currentScore*hysteresisMultNeg;
         if(!best || best === this.target || bestScore <= threshold) return;
       }
     }
@@ -3808,7 +4237,14 @@ class Tower{
       const predX = this.target.x + this.target.vx*timeToImpact;
       const predY = this.target.y + this.target.vy*timeToImpact;
       this.angle = Math.atan2(predY-this.y, predX-this.x);
-    } else if(!recentlyEngaged){
+    } else if(!recentlyEngaged && this.type !== 'MAGE'){
+      // Mage is deliberately excluded from ever snapping to the idle angle at all — with a
+      // 4.2-5.4s cooldown, it's common for it to sit fully charged with no target for well over
+      // the 500ms grace window, and snapping the staff to an upright idle pose in that state moved
+      // the glowing charge orb to a different screen position, reading as the whole cast
+      // restarting even though chargeProgress itself never moved. Mage's angle now simply holds
+      // its last aimed direction indefinitely until a real target appears — the render side
+      // (drawTowerBody) already always points the staff at `angle` unconditionally to match.
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
     if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN') this.updateSwordsman(dt, nearby);
@@ -3935,6 +4371,7 @@ class Tower{
     switch(this.type){
       case 'ARCHER': localReach = armLen + 5 + 2; break; // bowArmLen at full draw (drawAmt=1, since firing only happens then)
       case 'MAGE': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
+      case 'SNAPCASTER': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
       case 'BOMBER': localReach = armLen + weaponLenFromScale(12, 19, weaponScale); break;
       case 'GATLING': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
       case 'BLOWDART': localReach = armLen*0.7 + 14*weaponScale; break; // short pipe held near the mouth — matches the render formula exactly, which does scale the pipe length
@@ -3964,15 +4401,15 @@ class Tower{
     p.slowDuration = this.slowDuration || 0;
     p.splashRadius = this.splashRadius || 0;
     p.isAxe = false;
-    p.isMagicMissile = this.type === 'MAGE';
+    p.isMagicMissile = this.type === 'MAGE' || this.type === 'SNAPCASTER';
     p.sourceTower = this;
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
-    p.color = this.type === 'MAGE' ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : '#f1c40f';
+    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : '#f1c40f';
     const rangedSound = {
       ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
       BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
-      BOMBER: 'shot_bomber', MAGE: 'cast_mage'
+      BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage'
     }[this.type] || 'shot_archer';
     playSound(rangedSound);
   }
@@ -4206,7 +4643,7 @@ class Tower{
       swingProgress = st;
     }
     let castProgress = 0;
-    if(this.type === 'MAGE'){
+    if(this.type === 'MAGE' || this.type === 'SNAPCASTER'){
       const sinceFired = gameTime - this.lastFireTime;
       if(sinceFired < 350) castProgress = 1 - sinceFired/350;
     }
@@ -4215,7 +4652,7 @@ class Tower{
     // no dependency on having a target, so the tower visibly telegraphs that it's always building
     // toward its next shot rather than looking idle/broken during the long wait between shots.
     let chargeProgress = 0;
-    if(this.type === 'MAGE' && this.cooldown > 0){
+    if((this.type === 'MAGE' || this.type === 'SNAPCASTER') && this.cooldown > 0){
       chargeProgress = clampNum(1 - (this.cooldownTimer / this.cooldown), 0, 1);
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
@@ -4320,18 +4757,38 @@ class Tower{
   }
 }
 
+// Closest squared distance from point (px,py) to the line SEGMENT (ax,ay)-(bx,by) — used for swept
+// projectile collision below, since a fast-enough projectile (Mage's especially: 1400-1600/s, 2.5-4x
+// every other tower) can move further in a single frame than an enemy's own radius, letting it skip
+// straight past a moving target between one frame's position check and the next. Checking distance
+// to the whole segment the projectile traveled THIS frame, not just its new endpoint, catches that.
+function pointSegmentDist2(px,py, ax,ay, bx,by){
+  const abx=bx-ax, aby=by-ay;
+  const apx=px-ax, apy=py-ay;
+  const abLen2 = abx*abx+aby*aby;
+  let t = abLen2 > 0 ? (apx*abx+apy*aby)/abLen2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax+abx*t, cy = ay+aby*t;
+  const dx = px-cx, dy = py-cy;
+  return dx*dx+dy*dy;
+}
 class Projectile{
   constructor(){ this.active = false; }
   update(dt, enemyHash){
+    const prevX = this.x, prevY = this.y;
     this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     if(this.isAxe) this.spinAngle = (this.spinAngle||0) + dt*0.018;
     if(this.x < -20 || this.x > WORLD_MAX_W+20 || this.y < -20 || this.y > WORLD_MAX_H+20){
       this.active = false; return;
     }
-    const nearby = queryNearby(enemyHash, this.x, this.y, this.splashRadius || 24);
+    // Query radius widened to cover the WHOLE distance traveled this frame, not just a small area
+    // around the new endpoint — otherwise a target sitting near where the projectile USED to be
+    // (a frame ago) could fall outside the search entirely on a fast-moving shot.
+    const segLen = Math.hypot(this.x-prevX, this.y-prevY);
+    const nearby = queryNearby(enemyHash, this.x, this.y, (this.splashRadius || 24) + segLen);
     for(const e of nearby){
-      const d = Math.hypot(e.x-this.x, e.y-this.y);
-      if(d <= e.radius){
+      const d2 = pointSegmentDist2(e.x, e.y, prevX, prevY, this.x, this.y);
+      if(d2 <= e.radius*e.radius){
         this.onImpact(e);
         this.active = false;
         return;
@@ -4380,13 +4837,22 @@ class Projectile{
         }
         startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
       }
-      if(this.sourceTower && this.sourceTower.type === 'MAGE' && hitEnemy.active && Math.random() < 0.15){
+      if(this.sourceTower && (this.sourceTower.type === 'MAGE' || this.sourceTower.type === 'SNAPCASTER') && hitEnemy.active){
+        const isSnap = this.sourceTower.type === 'SNAPCASTER';
+        // Snap Caster's whole identity is "sometimes chain lightning" firing far more often than
+        // base Mage's occasional status roll, and skewed heavily toward the shock+chain branch
+        // specifically rather than an even three-way split with burn/freeze — that's the signature
+        // ability the evolution is named for, not an equal chance among three effects.
+        const procChance = isSnap ? 0.35 : 0.15;
+        const burnCut = isSnap ? 0.15 : 0.34;
+        const freezeCut = isSnap ? 0.30 : 0.67;
+        if(Math.random() < procChance){
         const roll = Math.random();
-        if(roll < 0.34){
+        if(roll < burnCut){
           hitEnemy.applyBurn(3000, this.sourceTower);
           spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🔥 Burning!', '#ff8844');
           if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(180,60,20,0.7)');
-        } else if(roll < 0.67){
+        } else if(roll < freezeCut){
           hitEnemy.applySlow(0.85, 1500);
           spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🧊 Frozen!', '#7dd3fc');
           if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(120,80,90,0.65)');
@@ -4410,6 +4876,7 @@ class Projectile{
           }
         }
         spawnParticles(hitEnemy.x, hitEnemy.y, '#c9a8ff', 6);
+        }
       }
       spawnParticles(this.x, this.y, this.color || '#ffffff', 3);
     }
@@ -4492,6 +4959,10 @@ const projectilePool = Array.from({length: 150}, () => new Projectile());
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
 const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:0,color:'#fff',size:2,friction:0.93,pooled:false}));
 let particleIndex = 0;
+// Hoisted to module scope (was a per-frame local inside the main loop) so gore code deep inside
+// Enemy.prototype.applyDamage()/die() can query nearby bodies without threading a new parameter
+// through every call site — used for void-pattern detection (see MAGE's streak loop below).
+let enemyHash = null;
 const MAX_DECALS = 2000;
 const decals = [];
 const deathAnims = []; // lightweight, fully decoupled from Enemy/enemyPool — a corpse gets a brief
@@ -4538,6 +5009,14 @@ function startDripSite(x, y, color, severity){
   }
 }
 let decalIndex = 0;
+// A ground pool laid down while the enemy is actively on fire renders sooty and darkened rather
+// than the normal fresh blood tone — BPA ch.9 ("Effects of Fire and Soot on Bloodstains"): blood
+// exposed to active heat/soot appears distinctly darker than an ordinary stain, and the two are
+// visually sequenced differently at a real scene. `enemy` may be undefined for callers that don't
+// have one handy — falls back to the normal color unchanged in that case.
+function bloodTintForFire(enemy, baseHex){
+  return (enemy && enemy.burnUntil > gameTime) ? '#170d08' : baseHex;
+}
 function hexToRgba(hex, alpha){
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
@@ -4557,11 +5036,23 @@ function getBloodProfile(enemyType){
   if(enemyType === 'SWARM' || enemyType === 'SPLITTER' || enemyType === 'SPLITMINI'){
     return { bright:'#8bc34a', dark:'#4a7c1f', spray:'#cddc39', isDust:false, viscous:true }; // insect hemolymph
   }
+  if(enemyType === 'ZOMBIE'){
+    // Classic zombie ooze — checked BEFORE the generic isUndead fallback below, since Zombie is
+    // still technically undead (Cleric's curse/curse-targeting logic doesn't change) but reads
+    // visually distinct from the other undead's dark necrotic red — a deliberate genre callback
+    // to sickly green zombie fluid rather than the shared "coagulated blood" look every other
+    // undead (Wraith, Skeleton, Reaper) uses.
+    return { bright:'#5a8f3a', dark:'#2e4d1a', spray:'#7fbf4a', isDust:false, viscous:true, noArterial:true };
+  }
+  if(enemyType === 'MONARCH'){
+    // Purple, per its own biology rather than borrowed from anything else in the roster
+    return { bright:'#9b5fc0', dark:'#5a2d78', spray:'#c084e0', isDust:false, viscous:false };
+  }
   const def = CONFIG.ENEMIES[enemyType];
   if(def && def.isUndead){
     return { bright:'#3a0a0a', dark:'#1a0303', spray:'#5a1515', isDust:false, viscous:true, noArterial:true }; // coagulated, necrotic — oozes, doesn't spurt
   }
-  if(enemyType === 'BOULDER'){
+  if(enemyType === 'BOULDER' || enemyType === 'ROCKLET'){
     return { bright:'#9e9e9e', dark:'#6d4c41', spray:'#bdbdbd', isDust:true }; // rock/debris, not blood at all
   }
   return { bright:'#c0392b', dark:'#7a0f0f', spray:'#ff2020', isDust:false, viscous:false }; // standard flesh
@@ -4615,6 +5106,8 @@ function rollBloodProfile(enemyType){
 function resolveGoreArchetype(sourceTower){
   if(!sourceTower || !sourceTower.active) return 'WARRIOR';
   if(sourceTower.type === 'BOMBER') return 'EXPLOSIVE'; // splash/explosive flavor despite being ARCHER-archetype for stats
+  if(sourceTower.type === 'CLERIC') return 'HOLY'; // was falling through to the generic 'WARRIOR' default (a melee cut-and-arc treatment) despite Cleric being neither melee nor physically striking anything — its curse kills deserve their own identity, not a borrowed one
+  if(sourceTower.type === 'SNAPCASTER') return 'MAGE'; // same override shape as Bomber/Cleric above — SnapCaster is ARCHER-archetype for DEX-based stat scaling, but it's still visually a magic bolt from a staff, not an arrow; its kills should read as Mage's cone, not Archer's puncture mark
   return CLASS_ARCHETYPE[sourceTower.type] || 'WARRIOR';
 }
 // Sub-classifies the WARRIOR archetype by actual weapon type — every melee class was previously
@@ -4630,7 +5123,7 @@ function resolveWeaponSubtype(sourceTower){
   if(sourceTower.type === 'SPEARMAN') return 'PIERCE';
   return 'BLADE'; // Swordsman, Axeman
 }
-function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
+function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous){
   const roll = Math.random();
   let sizeMult, blobCount;
   if(!smallBias && roll < 0.04){
@@ -4646,6 +5139,12 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
     sizeMult = (0.55 + Math.random()*0.45) * (smallBias ? 0.6 : 1);
     blobCount = (3 + Math.floor(Math.random()*3)) - (smallBias ? 1 : 0);
   }
+  // Viscosity (bio.viscous — insect hemolymph, coagulated undead blood) is a non-Newtonian,
+  // shear-thinning fluid: thicker at rest than standard flesh blood, so a viscous pool doesn't
+  // spread into as many separate scattered blobs — it holds together into fewer, tighter,
+  // rounder clumps instead. Reuses the same bio.viscous flag already wired into footprint drag
+  // friction; this just extends it to the pool's own shape.
+  if(viscous) blobCount = Math.max(2, Math.round(blobCount * 0.6));
   // Per-decal shape identity — every splatter used to jitter blobs inside the exact same fixed
   // 18x11 rectangular envelope, just rescaled, which is what made same-size splatters all read as
   // the same pattern. Now each one gets its own random orientation (loosely following the actual
@@ -4663,25 +5162,52 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias){
   // size multiplier:
   //   ARCHER    — long, narrow, SMALLER overall: a real puncture drags into a thin directional
   //               streak rather than a wide pool, reflecting the low-impact identity.
-  //   MAGE      — round, LARGER overall: a violent, omnidirectional high-energy impact leaves the
-  //               biggest, roundest mark of the four, distinct from Explosive's mid-size round pool.
+  //   MAGE      — wide directional CONE, LARGEST overall: a violent magical bolt punches straight
+  //               through the target and keeps going, splaying wide in the bolt's own direction of
+  //               travel rather than pooling round underfoot — distinct from a blade's narrow cut
+  //               (which tracks the swing) and from Archer's thin puncture streak (which is small
+  //               and doesn't fan wide) by being both the widest AND the biggest of the four.
   //   EXPLOSIVE — round, mid-size: no single strike vector, but not as dramatically oversized as
   //               a point-blank magical burst.
-  //   WARRIOR   — the original moderate directional smear, elongated along the blade's cut.
+  //   BLUNT     — the ROUNDEST and widest of the three melee weapons: a crushing blow has no
+  //               single cut line to track, matching the shockring/radial-spoke identity above.
+  //   PIERCE    — the most NARROW and elongated of the three melee weapons: a deep thrust gushes
+  //               along one tight line, distinct from Blade's wider directional cut smear.
+  //   BLADE (and the WARRIOR default fallback) — the original moderate directional smear,
+  //               elongated along the blade's cut — squarely between Blunt's round spread and
+  //               Pierce's narrow gush.
   const elong = archBias === 'ARCHER' ? { longMin:1.3, longSpan:1.5, shortMin:0.28, shortSpan:0.32 }
-              : archBias === 'MAGE' ? { longMin:0.95, longSpan:0.45, shortMin:0.85, shortSpan:0.45 }
+              : archBias === 'MAGE' ? { longMin:1.35, longSpan:0.75, shortMin:0.6, shortSpan:0.45 }
               : archBias === 'EXPLOSIVE' ? { longMin:0.85, longSpan:0.35, shortMin:0.75, shortSpan:0.35 }
+              : archBias === 'BLUNT' ? { longMin:0.55, longSpan:0.45, shortMin:0.62, shortSpan:0.48 }
+              : archBias === 'PIERCE' ? { longMin:1.15, longSpan:0.9, shortMin:0.32, shortSpan:0.35 }
               : { longMin:0.75, longSpan:1.15, shortMin:0.42, shortSpan:0.58 };
   if(archBias === 'MAGE') sizeMult *= 1.75;
   else if(archBias === 'ARCHER') sizeMult *= 0.65;
+  else if(archBias === 'BLUNT') sizeMult *= 1.25; // a crushing blow spreads wider underfoot
+  else if(archBias === 'PIERCE') sizeMult *= 0.85; // deep but narrow — not a wide pool
+  // Hard cap on the FINAL size after both multipliers — the rare "bigger pool" roll above (up to
+  // 2.6x on its own, a ~4% chance) was multiplying on top of the archetype multiplier with no
+  // combined limit, so a rare-tier roll landing on Mage (already the largest archetype at 1.75x)
+  // could reach 2.6*1.75 = 4.55x base size: a single pool visibly dominating over a full tile,
+  // which isn't forensically plausible for any real blood source regardless of how "rare" the roll
+  // was. 3.2x still keeps Mage's rare-tier pool the largest possible splatter in the game (above
+  // any other archetype's own 2.6x rare-tier ceiling), just no longer able to compound unbounded.
+  sizeMult = Math.min(sizeMult, 3.2);
   const orientAngle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*0.9 : Math.random()*Math.PI*2;
-  const stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
-  const stretchShort = elong.shortMin + Math.random()*elong.shortSpan; // narrowness across it — independent of stretchLong
+  let stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
+  let stretchShort = elong.shortMin + Math.random()*elong.shortSpan; // narrowness across it — independent of stretchLong
+  // A viscous fluid resists the surface-tension breakup that makes flesh blood splay into a wide,
+  // irregular splatter — it holds its shape and settles closer to round instead of elongating with
+  // the impact archetype the way thinner blood does. Blended halfway toward 1 (round) rather than
+  // fully overriding the archetype's elongation, so a viscous MAGE hit still reads as rounder than
+  // a viscous ARCHER hit, just less extreme than either would be with normal blood.
+  if(viscous){ stretchLong = stretchLong*0.5 + 0.5; stretchShort = stretchShort*0.5 + 0.5; }
   const cosA = Math.cos(orientAngle), sinA = Math.sin(orientAngle);
   const blobs = [];
   for(let i=0; i<blobCount; i++){
     const a = Math.random()*Math.PI*2;
-    const distT = Math.pow(Math.random(), 1.4); // center-weighted — most blobs land close in, a few scatter further out
+    const distT = Math.pow(Math.random(), viscous ? 2.4 : 1.4); // viscous pools hold their blobs tighter to the center — less scatter, thicker fluid doesn't fling as far even at rest
     const localX = Math.cos(a) * distT * 10 * stretchLong;
     const localY = Math.sin(a) * distT * 10 * stretchShort;
     const dx = (localX*cosA - localY*sinA) * sizeMult;
@@ -4731,7 +5257,7 @@ function spawnCastOffArc(x, y, baseAngle, color, count){
     const travelAngle = angle + (Math.PI/2)*arcDir; // tangent to the arc at this point — the actual direction this specific drop was flung, not radially outward from the wound
     const elongation = 1 + i*0.35; // rounder near the source, progressively more elongated further along the arc
     const decal = { x: px, y: py, color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime,
-      isDrop: true, angle: travelAngle, len: (2 + Math.random()*1.5)*elongation, width: 2.2 + Math.random()*1.3 };
+      isDrop: true, angle: travelAngle, len: (2 + Math.random()*1.5)*elongation, width: 2.2 + Math.random()*1.3, footprintRadius: (2 + Math.random()*1.5)*elongation };
     pushDecal(decal);
   }
 }
@@ -4745,14 +5271,71 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult){
   // caller (the Warrior slash wound, which needs to read clearly as an actual cut and not just
   // another generic streak) draw a bolder, longer line than the default.
   sizeMult = sizeMult || 1;
-  // width scales more gently than length (sqrt curve) — a "longer, bolder" streak should read as
-  // an elongated line, not get proportionally thicker into a smear. At sizeMult 2.6 (Mage's
-  // long radiating streaks) this keeps width reasonable while length still scales fully.
-  const widthMult = 1 + (sizeMult - 1) * 0.55;
+  // Width now scales on a genuine sqrt curve, not linear — the comment above always said "sqrt
+  // curve" but the formula itself was actually linear (1 + (sizeMult-1)*0.55), which barely
+  // flattens growth at high sizeMult. That mismatch is exactly why Mage's big radiating streaks
+  // (sizeMult 3.0-4.2, the largest in the game) read as visibly bolder/thicker than a real BPA
+  // cast-off pattern should — the book explicitly describes cast-off as "linear," i.e. a thin line,
+  // regardless of how long it is. A true sqrt relationship keeps Blade's already-reasonable range
+  // (sizeMult 0.4-2.1) nearly unchanged while meaningfully thinning Mage's long streaks without
+  // shortening them at all — length still scales fully with sizeMult, only width flattens.
+  const widthMult = 1 + (Math.sqrt(Math.max(0, sizeMult)) - 1);
+  const maxLen = (8 + Math.random()*16) * sizeMult;
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||2)*decalLifespanVariance(), spawnTime: realTime, isLine: true,
     angle: impactAngle + (Math.random()-0.5)*0.7,
-    maxLen: (8 + Math.random()*16) * sizeMult,
-    width: (1 + Math.random()*1.6) * widthMult
+    maxLen,
+    width: (1 + Math.random()*1.6) * widthMult,
+    // Footprint pickup (updateWalkingBlood) checks distance from this decal's own x/y anchor —
+    // but a cast-off LINE is anchored at the impact point while its visible length reaches up to
+    // ~100px away for Mage's biggest streaks. Without this, an enemy standing at the far end of a
+    // long, clearly-visible streak registered as nowhere near any blood at all, since the pickup
+    // radius defaulted to a bare ~20-30px around the origin. This was the actual reason footprints
+    // essentially never triggered despite large, dramatic streaks covering the ground — the streaks
+    // ARE there, the pickup detection just couldn't see past their own anchor point.
+    footprintRadius: maxLen
+  };
+  pushDecal(decal);
+}
+// Skeletal remains at a death site — 50%/25% independent rolls (spawnBoneDebris/spawnSkullDrop),
+// sized as a fraction of the enemy's own radius so bigger enemies leave bigger bones. Persist
+// notably longer than blood (bones don't oxidize/dry the way fresh blood does, so there's no
+// reason for them to fade on the same short clock) via a fixed extended lifespan rather than the
+// standard DECAL_LIFESPAN*variance blood decals use.
+const BONE_LIFESPAN = 2700000; // 45 minutes — meaningfully longer than a blood stain's own ~30
+function spawnBoneDebris(x, y, enemyRadius){
+  const count = 1 + Math.floor(Math.random()*3); // 1 to 3
+  for(let i=0; i<count; i++){
+    const sizeFrac = 0.1 + Math.random()*0.1; // 1/10 to 1/5 of the enemy's own radius
+    const scatterDist = Math.random()*enemyRadius*0.9;
+    const scatterAngle = Math.random()*Math.PI*2;
+    const decal = {
+      x: x + Math.cos(scatterAngle)*scatterDist, y: y + Math.sin(scatterAngle)*scatterDist,
+      color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: realTime,
+      isEmojiDrop: true, char: '🦴', size: Math.max(6, enemyRadius*sizeFrac*2), rot: Math.random()*Math.PI*2
+    };
+    pushDecal(decal);
+  }
+}
+function spawnSkullDrop(x, y, enemyRadius){
+  const decal = {
+    x: x + (Math.random()-0.5)*enemyRadius*0.5, y: y + (Math.random()-0.5)*enemyRadius*0.5,
+    color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: realTime,
+    isEmojiDrop: true, char: '💀', size: Math.max(10, enemyRadius), rot: (Math.random()-0.5)*0.6
+  };
+  pushDecal(decal);
+}
+function spawnPunctureMark(x, y){
+  // The entry wound itself — deliberately dark and small rather than the bright arterial red used
+  // everywhere else. BPA ch.2 ("Stab Wounds"): puncture wounds are deeper than they measure on the
+  // surface, and "abdominal stab wounds, even fatal ones, rarely have significant external
+  // bleeding" — the same section notes low/moderate-velocity penetrating wounds (which an arrow
+  // firmly is, nowhere near the >2000 ft/s threshold for "near amputation") bleed "quite modest[ly]"
+  // externally despite real lethality. This is the visible entry point; the actual blood the
+  // player sees comes from the separate spray/satellite/drip effects layered around it, not from
+  // this mark itself — matching the book's point that external appearance understates internal
+  // damage for this wound type specifically.
+  const decal = { x, y, color:'#1a0505', rgb:{r:26,g:5,b:5}, lifespan: DECAL_LIFESPAN*1.4*decalLifespanVariance(), spawnTime: realTime,
+    isPuncture: true, radius: 1.2 + Math.random()*0.8
   };
   pushDecal(decal);
 }
@@ -4767,7 +5350,8 @@ function spawnDripTrail(x, y, color, lifespanMult){
   const sway = (Math.random()-0.5)*6; // slight wobble as it runs, like real drips following surface texture rather than falling perfectly straight
   const decal = { x, y, color, rgb: parseColorToRgba(color), lifespan: DECAL_LIFESPAN*(lifespanMult||1.6)*decalLifespanVariance(), spawnTime: realTime, isDripTrail: true,
     length, sway,
-    width: 1 + Math.random()*1
+    width: 1 + Math.random()*1,
+    footprintRadius: length // same anchor-vs-visual-extent issue as spawnBloodCastoff, just smaller scale
   };
   pushDecal(decal);
 }
@@ -4787,7 +5371,8 @@ function spawnSatelliteDrops(x, y, color, count, biasAngle, distMult){
     const decal = { x: x + Math.cos(angle)*dist, y: y + Math.sin(angle)*dist,
       color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: realTime, isDrop: true, angle,
       len: (1.8 + Math.random()*1.4) + distT*2.8,
-      width: (2.4 + Math.random()*1.6) - distT*1.1
+      width: (2.4 + Math.random()*1.6) - distT*1.1,
+      footprintRadius: (1.8 + Math.random()*1.4) + distT*2.8
     };
     pushDecal(decal);
   }
@@ -4859,6 +5444,22 @@ function updateWalkingBlood(dt){
       // exact center. footprintRadius (how far this specific pool's blobs actually reach) extends
       // the pickup range to match what's actually drawn on screen.
       if(Math.hypot(d.x-e.x, d.y-e.y) < e.radius+10+(d.footprintRadius||0)){
+        // "Wipe" pattern (BPA ch.5/9) — distinct from the footprint pickup above, which is a
+        // SWIPE (a bloody object depositing new marks on clean ground). A wipe is the opposite
+        // mechanism: something passing THROUGH already-wet blood disturbs the existing stain
+        // itself. Previously nothing here ever mutated a decal's own stored shape — footprints
+        // only ever added new marks nearby. Only applies to the main pool decal type (has
+        // `blobs`) and only while the enemy is actually moving, nudging each blob slightly along
+        // the direction of travel and shrinking it a touch, so a pool a creep walks through
+        // visibly smears and thins in its wake rather than sitting untouched forever.
+        if(d.blobs && d.blobs.length && Math.hypot(e.vx,e.vy) > 5){
+          const moveAngle = Math.atan2(e.vy, e.vx);
+          const dragX = Math.cos(moveAngle)*1.4, dragY = Math.sin(moveAngle)*1.4;
+          for(const b of d.blobs){
+            b.dx += dragX; b.dy += dragY;
+            b.r = Math.max(0.6, b.r*0.985); // thins slightly each time it's disturbed — a pool can't be wiped away indefinitely
+          }
+        }
         // stepping in a genuinely big pool picks up more blood, so it takes a couple more steps to
         // run dry than a small splatter does
         const sizeBonus = Math.min(3, Math.floor((d.footprintRadius||0) / 12));
@@ -4866,6 +5467,13 @@ function updateWalkingBlood(dt){
         e.wetFeetSizeBonus = sizeBonus;
         e.wetFeetRgb = d.rgb;
         e.footTrailTimer = 0;
+        // A wet squelch at the moment of first contact — BPA ch.5 specifically discusses a foot
+        // stepping into a pool ("stepping into a pool of blood can cause spatters on the inner
+        // aspects of footwear... blood is splashed from one shoe to the other"), grounding this as
+        // a real physical contact event worth its own distinct sound, not silent like every other
+        // footstep. Scaled slightly by pool size so a big puddle sounds a bit wetter/heavier than
+        // a light scuff through a small splatter.
+        playSound('foot_squelch', e.x, sizeBonus);
         break;
       }
     }
@@ -4977,6 +5585,33 @@ function drawDecals(ctx){
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(endX, endY, d.width*0.85, 0, Math.PI*2); ctx.fill();
       }
+    } else if(d.isPuncture){
+      // The entry point itself, distinct from any spray — BPA ch.2: puncture/stab wounds are
+      // deeper than they measure on the surface and typically show LITTLE external bleeding at
+      // the wound itself (the visible blood comes from secondary drips/back-spatter, not the
+      // entry point). Small, dark, and minimal rather than colorful and dynamic — a deliberate
+      // visual contrast to Blade's bold slash or Blunt's crushing spread, reinforcing Archer's
+      // "quiet but lethal" identity: real damage, understated surface mark.
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.radius*growT, 0, Math.PI*2); ctx.fill();
+    } else if(d.isEmojiDrop){
+      // Bone/skull remains — deliberately NOT run through the blood hemoglobin-oxidation color
+      // pipeline above (bone doesn't oxidize like fresh blood does), AND never subject to the
+      // fadeOut curve either — bones are permanent scene debris, not a wound that should visually
+      // fade away. Previously used the shared `alpha` variable (which includes fadeOut), but that
+      // was actually a latent bug on top of the fade issue: these decals' rgb object never had an
+      // `.a` property, so `alpha = rgb.a * fadeOut` evaluated to NaN — an invalid globalAlpha value
+      // that Canvas silently ignores, meaning bones were rendering at whatever opacity happened to
+      // be left over from the previous draw call, not any intentional value. Hardcoded to a fixed
+      // full opacity now, correctly and explicitly.
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = Math.round(d.size*growT) + 'px serif';
+      ctx.translate(d.x, d.y);
+      ctx.rotate(d.rot);
+      ctx.fillText(d.char, 0, 0);
+      ctx.restore();
     } else if(d.isDrop){
       // individual satellite droplet — a small elongated teardrop, real BPA main-spatter-plus-
       // smaller-scattered-drops pattern, oriented along its own travel direction
@@ -5028,11 +5663,39 @@ function drawDecals(ctx){
           ctx.beginPath(); ctx.arc(bx, by, br*0.62, 0, Math.PI*2); ctx.fill();
         }
       }
+      // Serum separation ring — a real, distinct forensic detail (BPA ch.9, "Clotting of Blood"):
+      // as a blood clot retracts, it squeezes out the remaining liquid serum, which spreads
+      // slightly beyond the clot's own edge as a thin, translucent pale-yellow halo. This is
+      // deliberately separate from the skeletonization rim above (which darkens the stain's OWN
+      // edge) — serum sits just OUTSIDE it, and only during the wet clot-retraction window: onset
+      // within the first couple minutes of real clotting, gone again by the point the stain reads
+      // as fully dried (matched to the same 40%-of-life "fully dried" mark the color-aging curve
+      // above already settles at). Gated to genuinely sized pools — real serum separation isn't
+      // visible on fine spatter flecks, only larger pooled stains.
+      const serumT = lifeT > 0.02 && lifeT < 0.4
+        ? Math.min(1, (lifeT-0.02)/0.08) * Math.max(0, 1 - Math.max(0,(lifeT-0.25))/0.15)
+        : 0;
+      if(serumT > 0 && d.blobs.length){
+        const biggestBlob = d.blobs.reduce((a,b) => b.r > a.r ? b : a);
+        if(biggestBlob.r > 2.5){
+          ctx.strokeStyle = 'rgba(212,190,110,' + (serumT*0.28*alpha).toFixed(2) + ')';
+          for(const b3 of d.blobs){
+            if(b3.r < 2) continue; // skip tiny flecks — matches the real-world visibility threshold
+            const bx3 = d.x+b3.dx*growT, by3 = d.y+b3.dy*growT, br3 = b3.r*growT;
+            ctx.lineWidth = Math.max(1, br3*0.22);
+            ctx.beginPath(); ctx.arc(bx3, by3, br3*1.15, 0, Math.PI*2); ctx.stroke();
+          }
+        }
+      }
     }
   }
 }
-function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpread){
+function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpread,sizeMin){
   gravity = gravity || 0;
+  // Optional sizeMin lets a caller ask for genuinely fine mist droplets instead of the standard
+  // 2-4px baseline — added for the death-time atomization layer below. Omitted entirely (the
+  // overwhelming majority of existing call sites), it reproduces the original 2-4px range exactly.
+  const baseSize = sizeMin !== undefined ? sizeMin : 2;
   for(let i=0;i<count;i++){
     const p = particles[particleIndex];
     particleIndex = (particleIndex+1) % PARTICLE_COUNT;
@@ -5042,7 +5705,7 @@ function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpr
     p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
     p.gravity = gravity; p.isGib = false; p.isStream = false; p.isRing = false; p.isBeam = false;
     p.life = p.maxLife = 300 + Math.random()*250;
-    p.color = color; p.size = 2 + Math.random()*2;
+    p.color = color; p.size = baseSize + Math.random()*baseSize;
     p.friction = friction || 0.93; p.pooled = false; p.canPool = !!pools;
   }
 }
@@ -5050,13 +5713,20 @@ function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpr
 // (Mage) to read as raw kinetic/magical force, distinct from "just more particles." Reuses the
 // same particle pool as everything else (isRing distinguishes it in drawParticles), so it costs
 // one pool slot and gets recycled the same way as any other particle.
-function spawnShockring(x, y, color, maxRadius){
+function spawnShockring(x, y, color, maxRadius, angle, arcSpan){
   const p = particles[particleIndex];
   particleIndex = (particleIndex+1) % PARTICLE_COUNT;
   p.active = true; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.gravity = 0;
   p.isGib = false; p.isStream = false; p.isRing = true; p.isBeam = false;
   p.life = p.maxLife = 180 + Math.random()*60;
   p.color = color; p.size = maxRadius || 26;
+  // A full 360° ring was never forensically right for a directional strike — real displaced blood
+  // from a blunt impact biases toward the far side of the blow, not equally back toward whatever
+  // struck it. `angle` (the direction the blow traveled, i.e. impactAngle) centers the arc on the
+  // far hemisphere; `arcSpan` (radians) controls how much of the circle it covers. Omitting both
+  // preserves the old full-circle behavior for any caller that doesn't pass them.
+  p.ringAngle = angle;
+  p.ringArc = arcSpan;
   p.friction = 1; p.canPool = false; p.pooled = false;
 }
 // Cleric's curse strike — a brief, bright vertical beam of holy light descending onto the target
@@ -5082,7 +5752,22 @@ function updateParticles(dt){
     if(p.isStream){ p.prevX = p.x; p.prevY = p.y; } // track trail start for line rendering
     p.x += p.vx*dt/1000; p.y += p.vy*dt/1000;
     if(p.gravity) p.vy += p.gravity*dt/1000; // directional drip/spray instead of a uniform radial burst
-    if(p.isGib) p.rot += p.rotSpeed*dt/1000; // tumbling as it flies
+    if(p.isGib){
+      p.rot += p.rotSpeed*dt/1000; // tumbling as it flies
+      p.rotSpeed *= p.friction; // rotational damping — a tumbling object loses angular momentum to drag the same way it loses linear momentum; previously rotSpeed was constant forever, so a gib kept spinning at full speed even once essentially stopped moving
+      // Inelastic wall bounce off the map edge — Physics for JS Games ch.13: a real collision
+      // isn't perfectly elastic, so the velocity component perpendicular to the wall is scaled by
+      // a restitution factor (vfac, 0-1) on bounce rather than simply negated. A confirmed real gap
+      // from earlier review: gibs previously had zero boundary collision at all, flying straight
+      // through the map edge and out of bounds rather than interacting with it physically. Only
+      // applied to gibs — chunky debris are the one particle type with enough visual weight for a
+      // bounce to actually read; fine mist/streaks stay as they were.
+      const REST = 0.42; // moderate energy loss — a heavy chunk of debris doesn't bounce like a rubber ball, but isn't fully dead on impact either
+      if(p.x < 4 && p.vx < 0){ p.x = 4; p.vx *= -REST; }
+      else if(p.x > WORLD_MAX_W-4 && p.vx > 0){ p.x = WORLD_MAX_W-4; p.vx *= -REST; }
+      if(p.y < 4 && p.vy < 0){ p.y = 4; p.vy *= -REST; }
+      else if(p.y > WORLD_MAX_H-4 && p.vy > 0){ p.y = WORLD_MAX_H-4; p.vy *= -REST; }
+    }
     p.vx *= p.friction; p.vy *= p.friction;
     if(p.canPool && !p.pooled && !p.isGib && Math.hypot(p.vx,p.vy) < 6){
       p.pooled = true; // settled — leaves a tiny permanent stain instead of just fading out mid-air
@@ -5115,6 +5800,15 @@ function spawnBloodStream(x, y, angle, count, sizeMult, brightColor, darkColor){
     p.size = (1.5 + Math.random()*1.5) * Math.min(2, 0.8+sizeMult*0.25); // thicker for bigger splatters
     p.friction = 0.93; p.canPool = false; p.pooled = false;
   }
+}
+function spawnExpiratedMist(x, y){
+  // Expirated blood (BPA ch.8) — blood mixed with air from a mouth/throat/chest wound, mechanically
+  // distinct from puncture/blunt/slash spatter: a fine, pale, air-diluted mist rather than a
+  // solid-colored spray, sometimes showing faint bubbles where air got trapped in the fluid.
+  // Reuses spawnParticles rather than adding a new particle type/rendering path — two calls with
+  // different colors stand in for "fine bloody mist" and "a few visible air bubbles."
+  spawnParticles(x, y - 6, '#d99a9a', 10, 40, 0.9, false); // pale, air-diluted mist — lighter/pinker than normal blood, drifts rather than sprays hard
+  spawnParticles(x, y - 6, 'rgba(255,255,255,0.55)', 4, 8, 0.85, false); // a few faint bubble specks, barely falling, fading almost in place
 }
 function spawnGibs(x, y, count){
   // chunky tumbling debris, heavier and slower than the fine blood spray — distinctly brutal
@@ -5153,7 +5847,13 @@ function drawParticles(ctx){
       const t = 1 - p.life/p.maxLife; // 0 (just spawned) -> 1 (about to expire)
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 3 * (1-t); // thins out as it expands, like a real shockwave losing energy
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size*t, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath();
+      if(p.ringAngle !== undefined && p.ringArc !== undefined){
+        ctx.arc(p.x, p.y, p.size*t, p.ringAngle - p.ringArc/2, p.ringAngle + p.ringArc/2);
+      } else {
+        ctx.arc(p.x, p.y, p.size*t, 0, Math.PI*2);
+      }
+      ctx.stroke();
     } else if(p.isBeam){
       // A vertical shaft of light descending onto the target — narrow where it originates high
       // above, flaring wider right at the point of impact. Fades quickly (bracketed by the outer
@@ -5188,23 +5888,53 @@ function spawnFloatingText(x,y,text,color){
   textIndex = (textIndex+1) % TEXT_COUNT;
   t.active = true; t.x = x; t.y = y; t.text = text; t.color = color;
   t.life = t.maxLife = 550;
+  t.isIcon = false;
+}
+// A distinct "still bleeding" reminder — jumps out, wiggles, then fades over 2 seconds, unlike the
+// plain rise-and-fade of a normal floating combat number. Reuses the same pooled floatingTexts
+// array (isIcon distinguishes it in drawFloatingTexts) rather than a whole separate system.
+function spawnBleedIcon(x,y){
+  const t = floatingTexts[textIndex];
+  textIndex = (textIndex+1) % TEXT_COUNT;
+  t.active = true; t.x = x; t.y = y; t.text = '🩸'; t.color = '#e63946';
+  t.life = t.maxLife = 2000;
+  t.isIcon = true;
 }
 function updateFloatingTexts(dt){
   for(const t of floatingTexts){
     if(!t.active) continue;
     t.life -= dt;
     if(t.life <= 0){ t.active = false; continue; }
-    t.y -= 22*dt/1000;
+    if(!t.isIcon) t.y -= 22*dt/1000; // plain combat text drifts upward; icons stay put and animate in place instead
   }
 }
 function drawFloatingTexts(ctx){
-  ctx.font = 'bold 13px Verdana';
   ctx.textAlign = 'center';
   for(const t of floatingTexts){
     if(!t.active) continue;
-    ctx.globalAlpha = Math.max(0, t.life/t.maxLife);
-    ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y);
+    if(t.isIcon){
+      const p = 1 - t.life/t.maxLife; // 0 (just spawned) -> 1 (about to expire)
+      // Jump: a quick overshoot-bounce scale-up in the first 20% of the animation, settling to 1x.
+      // Wiggle: a decaying side-to-side rotation through the middle stretch, dying out by ~70%.
+      // Fade: only kicks in over the final 30%, so it reads clearly before disappearing.
+      const jumpT = Math.min(1, p/0.2);
+      const scale = jumpT < 1 ? jumpT*(2.7 - 1.7*jumpT) : 1; // simple overshoot-then-settle curve, no easing library needed
+      const wiggle = Math.sin(p*26) * 0.22 * Math.max(0, 1 - p/0.7);
+      const alpha = p < 0.7 ? 1 : Math.max(0, 1 - (p-0.7)/0.3);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(t.x, t.y);
+      ctx.rotate(wiggle);
+      ctx.scale(scale, scale);
+      ctx.font = '16px Verdana';
+      ctx.fillText(t.text, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.font = 'bold 13px Verdana';
+      ctx.globalAlpha = Math.max(0, t.life/t.maxLife);
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.text, t.x, t.y);
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -5477,19 +6207,21 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
     ctx.fillStyle = skinMain;
     ctx.beginPath(); ctx.arc(drawX,drawY,1.8,0,Math.PI*2); ctx.fill();
-  } else if(type === 'MAGE'){
+  } else if(type === 'MAGE' || type === 'SNAPCASTER'){
     const cast = extra.castProgress || 0;
     const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
-    const staffAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: points at the target
-    if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    } else {
-      // fixed at its natural resting direction — tracking the weapon's actual swing angle could
-      // send it crossing across the body or swinging up into the air depending on which way the
-      // enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
-      drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, wandBend);
+    // Staff/orb now always points along `angle` continuously, never snapping to a separate upright
+    // "idle" pose based on hasTarget. Previously staffAngle (and the arm angle feeding it) switched
+    // between "aimed at target" and idle the instant hasTarget flipped — which happens naturally
+    // once Mage sits fully charged waiting for a target for more than half a second, or the moment
+    // a new target appears. The charge glow itself never resets, but the pose snap physically
+    // moved the glowing orb to a different screen position each time, which read exactly like the
+    // whole cast restarting even though the charge percentage never actually moved. `angle` itself
+    // already holds a stable last-aimed value between targets (see update()'s recentlyEngaged
+    // grace window), so simply always using it here removes the snap entirely.
+    const staffAngle = angle;
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
     const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
@@ -5985,7 +6717,8 @@ function generateSwarmWave(n){
   return [
     { type:'SWARM', count: 25 + n*4, spawnDelay: Math.max(80, 150 - n*2) },
     { type:'WOLF', count: 10 + Math.floor(n*1.5), spawnDelay: Math.max(150, 300 - n*4) },
-    { type:'RUNNER', count: 8 + Math.floor(n/2), spawnDelay: Math.max(150, 300 - n*4) }
+    { type:'RUNNER', count: 8 + Math.floor(n/2), spawnDelay: Math.max(150, 300 - n*4) },
+    { type:'MONARCH', count: 6 + Math.floor(n/2), spawnDelay: Math.max(140, 260 - n*4) }
   ];
 }
 function generateEliteWave(n){
@@ -6098,6 +6831,20 @@ function startNextWave(){
     showToast(CURATED_WAVE_LABELS[waveIndex+1]);
   }
   spawnQueue = [];
+  // Waves 45-99 in the fixed CONFIG.WAVES table were a repeating ~7-wave block copy-pasted roughly
+  // 7 times over with byte-identical counts every repetition — zero difficulty growth across more
+  // than half the fixed wave range, discovered while reworking wave pacing. The wave-type cadences
+  // (Boss every 10, Trick every 7-offset-by-1, etc.) overlap irregularly rather than forming one
+  // clean repeating unit, so hand-restructuring the raw literal data risked scrambling which wave
+  // gets which flavor. Safer fix: scale enemy COUNT smoothly with wave number for any wave in that
+  // flat range, applied here at read-time rather than to the stored data — every wave's composition,
+  // flavor, and label stays exactly as authored; only how many of each enemy actually spawn grows.
+  // Wave 45 gets the original count, wave 99 gets +65%, wave 100 (the actual milestone finale) and
+  // everything before 45 are completely unaffected.
+  const plateauWave = waveIndex+1;
+  const plateauScale = (!isProcedural && plateauWave >= 45 && plateauWave < 100)
+    ? 1 + ((plateauWave-45)/54)*0.65
+    : 1;
   // A flat per-spawn delay bonus applied uniformly regardless of actual path congestion. Originally
   // 2000ms — but wave spawning now also pauses reactively whenever anything is actually queued at a
   // barricade (see anyBarricadeQueued), and there's a 350ms global minimum gap enforced below
@@ -6107,7 +6854,8 @@ function startNextWave(){
   // when the reactive systems actually detect a jam.
   const SPAWN_DELAY_BONUS = 400;
   for(const group of waveDef){
-    for(let i=0;i<group.count;i++){
+    const groupCount = Math.round(group.count * plateauScale);
+    for(let i=0;i<groupCount;i++){
       let type = group.type;
       if(type !== 'BOSS' && type !== 'TROLL' && seenEnemyTypes.has('TROLL') && Math.random() < 0.02) type = 'TROLL';
       spawnQueue.push({ type, delay: i*(group.spawnDelay + SPAWN_DELAY_BONUS) });
@@ -6206,9 +6954,10 @@ function update(dt){
   resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
   resolveEnemyCollisions();
   checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
-  const enemyHash = buildEnemyHash();
-  for(const t of towerPool) if(t.active) t.update(dt, enemyHash);
-  for(const p of projectilePool) if(p.active) p.update(dt, enemyHash);
+  const enemyHashLocal = buildEnemyHash();
+  enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
+  for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
+  for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
   updateParticles(dt);
   updateDeathAnims();
   updateWalkingBlood(dt);
@@ -6237,7 +6986,12 @@ function update(dt){
         queuedFreeExpansions--;
         expansionsUsedThisCycle++;
         performExpansion('🎁 Queued Expansion!', '#7dd3fc');
-      } else if(wavesCompleted <= 4 || wavesCompleted % 3 === 0){
+      } else if(wavesCompleted <= 4 || wavesCompleted % 4 === 0){
+        // Was every 3 waves — with a free expansion basically every other wave once early guarantees
+        // ran out, the map kept extending faster than most players could actually make use of the
+        // new space before the next one arrived. Stretched to every 4 waves, ~33% longer between
+        // extensions, while keeping the same guaranteed-early-game unlocks (wavesCompleted <= 4)
+        // so the opening waves still feel generous.
         grantFreeExpansion();
       }
       if(wavesCompleted % 10 === 0){
@@ -6429,6 +7183,49 @@ function setupCanvas(){
 }
 setupCanvas();
 window.addEventListener('resize', () => { setupCanvas(); clampCamera(); }); // re-clamp (not re-center) so pan/zoom stays valid without jarringly resetting the view mid-game
+
+// The HUD is now always a single row (flex-wrap:nowrap) — previously it wrapped onto a second row
+// on narrow phone screens, which caused Next Wave and other buttons to spill below the stat
+// readouts. Instead of wrapping, the whole bar is scaled DOWN as one unit to whatever fits the
+// screen width, so it always reads as one line, just smaller on narrow devices. transform:scale
+// is used rather than shrinking font-size/padding individually, since that would require separately
+// tuning every child element's minimum readable size — a single uniform scale keeps every button's
+// proportions and icon/text relationship identical at every screen width, just smaller as a whole.
+//
+// updateHUD() runs on every kill/hit during combat, potentially many times a second during a dense
+// wave — re-measuring scrollWidth (which forces a synchronous layout reflow) on every single call
+// would be a real performance cost during exactly the busy moments this game is otherwise careful
+// to stay smooth for. `hudFitSignature` is a cheap fingerprint of just the pieces of HUD text whose
+// LENGTH could plausibly change the bar's natural width (gold/lives/wave digit counts) — the
+// expensive measure-and-scale work only actually runs when that fingerprint changes, or when
+// force=true (resize/orientationchange, where content width may not have changed but the
+// available screen width has).
+let hudFitSignature = '';
+function fitHudTopToOneLine(force){
+  const hud = document.getElementById('hud-top');
+  if(!hud) return;
+  const sig = (document.getElementById('livesVal')?.textContent||'') + '|' + (document.getElementById('goldVal')?.textContent||'') + '|' + (document.getElementById('waveVal')?.textContent||'') + '|' + window.innerWidth;
+  if(!force && sig === hudFitSignature) return; // nothing that could affect natural width has changed — skip the reflow
+  hudFitSignature = sig;
+  hud.style.transform = 'scale(1)'; // reset before measuring, so scrollWidth reflects natural unscaled size
+  const naturalWidth = hud.scrollWidth;
+  const availableWidth = window.innerWidth - 12; // small side margin so it never touches the screen edges
+  if(naturalWidth > availableWidth){
+    // Floor of 0.55 keeps text/icons from shrinking past legibility on extremely narrow screens —
+    // below that, individual buttons should be redesigned rather than scaled further.
+    // Floor lowered from 0.55 to 0.4 — a screenshot showed the bar's edges still clipping past the
+    // screen on a narrow device. At 0.55, if the bar's natural content is wide enough relative to
+    // the screen, the required scale can mathematically fall below what the floor allows, and the
+    // floor wins — leaving genuine overflow rather than a fully-fit bar. "Never clip" now takes
+    // priority over "never get too small," since the reported problem was content sticking out
+    // past the screen edge, not text being hard to read.
+    const scale = Math.max(0.4, availableWidth / naturalWidth);
+    hud.style.transform = 'scale(' + scale.toFixed(3) + ')';
+  }
+}
+fitHudTopToOneLine(true);
+window.addEventListener('resize', () => fitHudTopToOneLine(true));
+window.addEventListener('orientationchange', () => fitHudTopToOneLine(true));
 
 // The HUD wraps across a variable number of rows depending on screen width, so its height isn't
 // fixed — a hardcoded offset for zoom-controls would inevitably collide with it on some devices
@@ -6694,8 +7491,7 @@ const inspClose = document.getElementById('inspClose');
 
 function updateHUD(){
   livesVal.textContent = lives;
-  goldVal.textContent = gold;
-  const livesMeter = document.getElementById('livesMeter');
+  goldVal.textContent = gold;  const livesMeter = document.getElementById('livesMeter');
   if(livesMeter){
     const maxLives = 100 + livesBought;
     livesMeter.max = maxLives;
@@ -6731,6 +7527,7 @@ function updateHUD(){
   nextWaveBtn.disabled = waveState !== 'IDLE';
 
   refreshTrayUI();
+  fitHudTopToOneLine(); // guarded internally — only re-measures when gold/lives/wave digit count actually changed
   positionZoomControls();
 }
 
@@ -7246,7 +8043,7 @@ function updateInspectPanel(){
   document.getElementById('inspMaxHpVal').textContent = t.maxHp;
   document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100) + '%';
   document.getElementById('inspRangeVal').textContent = rng;
-  document.getElementById('inspSpeedVal').textContent = cd ? (1000/cd).toFixed(1) : '0';
+  document.getElementById('inspSpeedVal').textContent = cd ? (1000/cd).toFixed(2) : '0';
   document.getElementById('inspLuckVal').textContent = '+' + Math.round(((t.goldMult||1)-1)*100) + '%';
   const arch = CLASS_ARCHETYPE[t.type];
   document.getElementById('inspStrBtn').title = arch === 'WARRIOR'
