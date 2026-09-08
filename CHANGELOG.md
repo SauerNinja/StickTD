@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.0.207] - 2026-09-08
+- **Replaced the oversized 321×321 favicon with a properly-sized 32×32 version, plus a
+  `shortcut icon` fallback.** The original data actually decoded to a valid PNG (verified
+  directly — proper signature, correct dimensions), so the underlying image was never corrupted;
+  321×321 is just unusually large for a favicon and some browsers are inconsistent about scaling
+  an oversized data-URI icon down cleanly. Standard favicon sizing plus a second `rel` for older
+  browser compatibility maximizes the chance it actually renders. Also worth noting for anyone
+  still not seeing it live: browsers cache favicons aggressively per-domain — a normal refresh
+  often isn't enough, and the live GitHub Pages site won't show it at all until this file is
+  actually uploaded there.
+## [1.0.206] - 2026-09-08
+- **Added real master-bus production processing — the last major lever for "produced" sound
+  quality that hadn't been touched.** Signal chain was `source → master gain → compressor →
+  destination`; now `source → master gain → 350 Hz boxiness cut → soft-clip saturation →
+  compressor → destination`.
+  - **Master EQ cut**: a gentle peaking filter at 350 Hz (Q 1.5, -4 dB). That band is where
+    overlapping mid-range content — impacts, most of this engine's oscillator/noise sounds —
+    accumulates into mud when several play at once; carving a shallow dip there gives sub-bass
+    punch and upper-mid transient clarity room to actually cut through instead of the mix
+    blurring into one crowded register.
+  - **Soft-clip saturation**: a real `WaveShaperNode` with a hyperbolic-tangent transfer curve
+    (`tanh(k·x)`, k=1.5) — the standard analog-style saturation curve. This is what makes a mix
+    feel glued and intentional rather than just loud: it rounds off peaks smoothly instead of
+    squaring them off the way hard digital clipping does, adding subtle warmth on the loudest
+    simultaneous moments (swarm deaths, explosions) without coloring quiet sounds.
+  - Both stages sit in the existing signal path everything already flows through (`this.master`),
+    so no other code needed to change — reverb, mute, and every `tone()`/`noise()` call
+    automatically pick up the new processing.
 ## [1.0.205] - 2026-09-08
 - **Web Audio clock scheduling replaces `setTimeout()` for all three multi-note sounds**
   (`levelup`, `cast_cleric`, `ui_buy`). `tone()` gained an optional `delay` parameter, scheduled
