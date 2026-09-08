@@ -2,8 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stick Tower Defense</title>
+<title>StickTD — Stick Tower Defense | Free Browser Tower Defense Game</title>
+<meta name="description" content="Play StickTD, a free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects. Created by SauerNinja (Setvin Noether).">
+<meta name="keywords" content="stick tower defense, StickTD, sauerninja, setvin noether, tower defense game, stickman tower defense, free browser game, html5 tower defense, endless wave tower defense">
+<meta name="author" content="SauerNinja (Setvin Noether)">
+<link rel="canonical" href="https://sauerninja.github.io/StickTD/">
+<!-- Open Graph / social share preview — replace og-image.png at this path in the repo root with
+     the actual share image; a data: URI here would not be fetchable by most social-media crawlers -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="StickTD — Stick Tower Defense">
+<meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
+<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<meta property="og:url" content="https://sauerninja.github.io/StickTD/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="StickTD — Stick Tower Defense">
+<meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
+<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUEAAAFBCAYAAADpDh0xAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAEPASURBVHhe7Z13f5Nnmrbzcd53d9+dmpns1J1NZrIzmbZJJmXSCQRXOhgwpleDce9VkmVLsmT1amNTAoROIJAQCKFXU/YTnO/vvGUT8sjYemRV6/rj+M2E2GrBh6/7avdz1YMLkEqq7CXY3leIjZ1zUd70AVZVvYXVm/6GdctfxJaCn2PH+z/Azn/+qyAIeUjl2/+K7W/9C7a++X+x+R//B5te/z/YmGae00or2YgEBUF4FiJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZGgIOQ1IkGRoCDkNSJBkaAg5DUiQZHgrKf6vR+i7qOfoWnuL9Ey/zdoK/gd2gtfRGfx79FV8jJ6FvwRhoWvwLjoLzAu+rP6567Sl9W/by96UX09v69p3i9R/9HPsPu9H2LXO/8v5nmE3EQkKBKc9VBg5mWvwrN+LiLbF2Pf7tU4VL8Bx1t24PPOOnxpbMWlfgOuDPTjG6sJX5ra8HlXHY63VuJQ/Ub19cM7FsO74RP0L39DPV7NBz+OeR4hNxEJigRnBYzMqt//EVo++TUMC/8E64o34Fo7B6EtpdhfvRrHWrbjbHcDvurtwCWLUQnv+qAdtz1u3PMH8DA0hMdDI3gUGca9QED9+XWnXX0dv/6CuRNf9DQqMe6vXoPw1oVwr50Da9mbKopsmf9b1Hzwk5jXJWQ/IkGRYE6z651/w+73fqCOu22Fv8PAyn9ipHIFTrbuUlHd/WAYj4ZG8L/De5PKXZ8fl239ON1Rg9FdZRhc8x46S36Pmg9+iqp3f6Bel/a1CtmJSFAkmLMw+uOx1LT4ryriO9G6Exd623HF3o+bbifuB4JKgI+HR2MkNlMehofV499yu9Tzfd3XjZNtuzC8Y4l6PQ0f/wd2/lNEmAuIBEWCOQcjv8a5v1QFDPvqf2L/7nKcN7aqYy2PtFphpYu7Ph8uWnqwv7oczooP0bPwT+p1spAiQsxeRIIiwZyCx8z6OS/AuvJtHKzbgCt2i5IPI7PHQ8mP+PTA538YGcb9YAiXbb042rQVtpX/ROPcX0g1OYsRCYoEc4Kqd/9dFR76lr2G4R3LcLK9GpdtZoyFwhmN/p4Fj8pX7VZ83lmLPZXL0LfsVTTP+5VEhFmISFAkmOVECx+Mplj1PVi3DtcGbXgYjsSIJxt5FBlRr/dAzVpYV76Jxo//Q72f2PcpZAqRoEgwq2EE2Dr/N6rd5Ux3Pa45bHigor/MHn3jZxQPQhHccA3idGcNQltK0Fb4onpf2vcqZAaRoEgwa2n4+AXVgxfYVIRT7btx1x/Ao8ieSUSTG9x0u3DO2IzwtoWqglz34fMiwyxAJCgSzFoMi/6C0aoyXBnow6Nw7srvadiMzSZtTqJ0FL2o+gq171tILyJBkWDWUT/n5+hb+qpqNfnG2ov7gQD+N2eOv1PDY/xYMIRvB8w42rQN1rK3VMFHqseZQyQoEswq2Pzcs+AVJUCOq6Uk98fHjIzgcXhPlNBwlOD4/5Lxf8evS4WA2dJzz+/HpzUV6Fn4Cuo+/Cl2SeU4I4gERYJZA6OhzuKX1PQHpzBYANHKY8YMjUYF5w/jkTuARy4fHg568NDuxsMBV/R/+c8uPx55gnjkCyspxjzODKHcWTn+1tarKt5837slP5gRRIIiwayAyw+a5v0Kgc1F+KKnQR0ZteJIlMehPUpmj1x+PLC7MdbvwFivDWNGC+4b+nC/x4z7Xb3jmHG/pw/3Df24b7REv87iUN+nxOgLRaUYSU50yGUNl/p7lPi7S1+WmeMMkBUS3O0oRSpREjQXYEPnxyLBrOTf0DTvF+hb/jrOdDfiQZiR1wwl8+TIO6IivgdWpxLevdZu3Klr1UdDO+62dCs5PrAMqsd7HBhK2lGZjdVfmdpVFbzm/R9LfjDNZIUEGaWlDHMBtvXOx6aeeVjb+hFWN7yHlbtEgtnCxBIE+6p3cKarTvXTzWgCZPy4y6PsgwEnxkwWFeHda+vB3eZO3G1oj5XcdNS3RUXY3Kke516nCWMmKx7YnOp5ZnpcZtvPHa8XpzqqMVj+vtpXKJMl6SMrJLixay5SCSPAdW0fqShwZd27KNv1pkgwS2BllIsGDtSsUVXghPsAKb/IiDr2PnR4MdY3gPtdJtxt7IhKTCu2GaKESBmaB9TzMceoCina16WD684Btei1f9lrKj0gR+P0kBUSXNP8IVLHB1jT9AFWN7yvBLii5h2U7XwTqzaKBLMBLkHlPr6LfT2qUKAVQ9xQgIGIyt/dZdSXIvk9gY9d36Yiy3vtRjzos6uocCbHY/4CYMU4tLVU5UelkTo9ZIUEl+5+CymjKsqSXW9i8a43sWjnG1i87TUsX/8XlC9/ERuLfoGtc36M7R/8QEgz1XNfgHH5q/i8u0EdB7VSiBceR1m0YFRGIfHomlIBaqBw77UbMGa24aHTGz0eJyhDivB42y4MVHyA6rn/EfOZCcln2/s/wJb3/h0b//lvWPfmv2DNG/8X5WnmuYLNf0c6Kdr4Vyys+BNWLH8JFQt+jU0FL2DLJz8T0kzj0j/Bvb0UV5wDiS0+HT8CKwH22tQRVSuodHK3pUtVlR+6fAnnCdk6c2XQin1Nm1C/+GVsmy9/N1PN5nnPY8PHP8GaD36Esnf+HUvf/jcsfutf08pz765+Genk/VUvY+7KP6B0xUtYsexFVCz9HdYvEdJNf2URjhsbccfvj5FBPFA0PILeN1lxt7krrdHfpKgqcle0imz3KEFrX3M8cD3Y2f4OdG3+CJVlr8R8bkJyWbv4t1hd+issnf9zFM/5Mea99wPMeff/pZXn/rrwN0gnry76Ld5a+jt8vOL3WLj6jyhb+2eU83gspIW1G/6OLZv+gUDHFlxxD+JBRH/UpCJAdyAaASbS9pIqmCds7sJ9oxUP3X7Vo6h97fHwrWcQgbZNaNg5F2vW/zXmMxSSx8qKV7Bk5R9QsOi3eL/gBfxjzo/x6oc/TCvP/efcnyCdvDT/Z/hz6S/xdtnv8cnGv2Jx5RtYvvufQppYVzsHNc2LcNjekdhYHKctxosgKv+nFVEWQDGz2fqRJxD7+uPgTiiEL1z96O3egLLqd2I+QyF5LNn5Jgo3/w/eW/0y/r7oN/h9wc9inJFqnnux8HmklILn8V/zn8fvPvkp/nOeVoJ/w+LKN7Gi+h2U1b2LVfXvqUry6kYhVVS1l8LdV4nzXmtCucBHwSGMWQdxr8MUI59s4W5jO+629qgmbdVYrVP2D4b24GYwgIClGptb5qOi6cOYz1FIHP6c8+ed3SIsmkYl+N/426Lf4CVKcN5PlC/oDfojxilJ5rk/LHgBKaX0Bfy++OfqyfjG+Ca/J8Gdb6Ks9h314VS0fIh17XOwvuNjrO8UUkF77yocdxtwPeSL+eGfDvbi8Rh8r6sXd9gGM4mAsob6NpUfVH2E4cTyg4dcHWg0LsO2roKYz1FIAP5cd3wcHZxojLbNLdn1Fgq3/A/eK/9OgvQEffFS8c/w+9KfK4fEeCWJPPenpb9EyljyS/xxyS/w8sL/wEvFP8d/FTw/qQT5YVS0fogNXXOxxfgJtprmY2tvgZBktvUWoH9gI74NuTGWQC7wkTekZn8ZZWW8EBIHzA9yuoTHd73RIPnc3we7fSvq+pbEfJZCIsxXP9scouDP+6qG91QLnVaC/zX/p0qALy94Af+9+BfKIzFuSSLP/aXs10gZK36NPy//tRIhbc7QdjIJ8sNY3z5HCXBHfyF2Woux0yYkk122EtQPLIHPXYU7kRAe6T0KD42qRQb31CRIduYCY6hvw70OIx46PHgcHIp9T9NwKeTEqKcZHfZV6vPTfqaCTqzFqLQUKRHy553RIPuJYyRY8LzyxR8X/wKvLP8V/rxiErckkef+tvq3SCV/XfkbvLLsVyoafLHwZ7ES5Bhd4/vqt8M2cwF2DZSoxQvabTTCzKhzLobBvRb7Ai0YG9ZZNWVPYGgY93utuJMrAhwnGg3a8Milv0hyMxLA50EzzO71qBlcGPOZCvp5slWqa66aJlu2+20UbXk1RoL0xZ+W/RJ/Wflr/G1VrFeSiUgwT2hwLoHDux3HgwY81ClBRlEPnF7c6zbjTn2saLIa9g+2GdTCBb29g2NDQ7gcdmLAvQV1g4tiPlNBPyJBkWDGaHIuQ8hXi/MhKx4N65MBFyOM9dvVXHCMZLKd8S00HOvTO1LH6jmjQY9nJ5oGl8V8poJ+RIIiwYzR7FyOvf4WXA67dOcDucOPUeDdpsyOxs2EMWO/KuzojQbvDIUQ8dah07lKjsRJQCQoEswYLc4VOBTowLWIT19/4NAIHg56oxXhLG2OjgdurX7Icbqgvqr43aEwRn2NMLrWolaOxDNGJCgSzBitzhU4GujB7UgQjyf5YZ+cUfxveBgP7c6cFiBRm2b67Xjs03d3yr2hCD71t6HPvUEkmAREgiLBjNHmLMOpYC/uD+loFWFV2B/GA4s95yWoVvRzlM6r7/6Ue0NDOBzohM0jxZFkIBIUCWYE5rI6XKtwNtSvrzIcGVWbYlhUyHkJcht1tzm6fFX7PqeAvzSOBwwY9GxH3eDimM9W0IdIUCSYEXiM63KVq8qwrnwgN0a7AmrqIuclyOWrHSZV5Il5n1MwNjSM00EzPN5dIsEkIBIUCWYE9gia3OvwVdimW4IPnT51jMx5CXIVf5tBtwQfDA2rXx5Bb7VIMAmIBEWCGaHZuQwW90ZcCNt1SZDtJA8Gveq6zDsN2T8rPCUcoWvpUfcfa9/nVHCjzNdhB4Z8dWgQCc4YkaBIMCOwPcbm3qx+mPVIUEWCDo/axpILCxOmgyN0eiXIHOql8CCGfQ0iwSQgEhQJZgQ2Slvcm3AhEQkOejFm6J8VkSArxHol+GA4GglGJBJMCiJBkWBGaBxcil7XenwV1nmpEgsjTh/GJCeIoK9GcoJJQCQoEswI7G/rTrQ6PH6XSM5LsLED9zsTqw6fCfbBK9XhpCASFAlmhJrBBehwrcQXoX59yxN4nwgXqfbNgmZpXsDU05dQn+DJoBEuzw6RYBIQCYoEM0abqwynQ2YV2Wh/0J8JJ0YCQ3hgHcx5Cd5r68FYrxWPffomRijBI4Fu2D1bZWIkCYgERYIZo9VZhhNBo1oIoP1Bn5LwCB7a3dHL1XO4QsyjsLp4ya9jbHB8dviQv10VlkSCM0ckKBLMGFyg8FmwCzcjfn15Qa7ScvnUAoKcWas/Cfc5Mjfo030XMX9p7Pc1o9e1ThYoJAGRoEgwY0T3CTarTcm68oKUoCeopkbutnTFyCVX4OjfY39EFXu0728quE8w5K1Fu3Ol7BNMAiJBkWDGaHQuRcC3WxVHHuqVoD+ijpK8tEgrl6yH/YFNnXjQ71BXhurZLM3P6VrEC5enUrUZaT9TQT8iQZFgxqh3LoHVsxmfBbr0bZIZv2+YVeL7bJrOsTtGJlpjmNfUI0DCfCAbpZkPlCgwOYgERYIZg/ksrtMa9tXrqxATddvcHoxZeOdwd04VSPh6H1gceKSzKkwYBR4NdMPkWisSTBIiQZFgRmF10+2pVNulHw3pOxKTh87oMgVGV1rZZCWcEunqVQ3S6ig8yXuaigshuxqX63StVr2W2s9T0I9IUCSYURjNDHi2qCOe7lYZ5gYDETwYcEWjQa1wspB7rT3RW+YCQ7qPwoR7BHndJhdQaD9LITFEgiLBjNPrXodjwR5cjXh13DUShau1VKXY0K8mMLTSyRp4XG9sV6/z4aBPd0WYsIJ+JNCJLtdq1MukSNIQCYoEM06nqxxhX63u3YIT8O5eRoP3urL4InZeuN7ShQd2V0LHYF5JyovX9/qapEE6yYgERYIZh5ewc8s0p0ceDukXhLp3xB/BmHUQd9sNuJNt+UEuT+0wqlG/R/5wQsdgpgq4bMLj3SkFkSQjEhQJZhxWiRudSzDib1LVz0RE+HhoFA/VBUw2tZ4qa+aKG9pUvlLlAf1h3RetE0aBV8IejPgaVepAJJhcRIIiwayAP9gOz1Yc4z3EQ/pbR8jj8Eg0IjTbopMkWdA2w/lmvp5HnkBCESDhMfhc0KIEyF8W2s9OmBkiQZFg1sC2D5+3CpfDLnWPhlYG0zIULZQ8dPkx1jegjsYZaZ1hXnL8CMzXodphQjr7IMdhjvRSaBCjvmZ1T7NEgclHJCgSzBr4A97tqlAXsrNvUCuEeOHR+JEvjPt9dtxrN6oNzmmLCserwOoI3G9XryORI7B6H8Oj6pfBkUAXrO7N6oY+7WcmzByRoEgwq+BmGb93N74I9idUKX4iELbOcL54wKUWl3JWN0ZYyYYzwbxLuNuMB3b3dwIcin198cApmmthHwLearQ4l0sUmCJEgiLBrILzxAZXhdouczMSSOxY/BTc0vLQ7lEbZ1RUyF7CZBdN6tvV4/Lx2QdI8T4ODquIVPt64oW/AFgM4Vx1r3u9CDCFiARFglnHxBQJ79GgCLWC0I2KCsMqOrvf3ZfcpmoV/XWqx3044MZjXzihRuinmTgGnwiaYHStVdt2tJ+RkDxEgiLBrKTdtVKtjz/N/OBQcEZHYyWWyAgeByLqekvKimus7pus6uh6r8Ogrr6829Tx7NwhW12aOtTXqYiv26z2AY71O/BgwK0eV+0GDPP4O7PXyp5Avm9epMQeSlmcmlpEgiLBrIWTEUFfNc6FrGqF1ExF+ITIqDqusq/wgcODMYsdYyaLEhsFxz5D3v/xPTqi4rtvsijx8YjNcb3HwcRmgJ8F7w+5GHbA590lSxLShEhQJJi18Fjc4Vyl2ma+CbtwX++6rangKi5Gh6E9SmSM4niUZTFD4Q094aEvFP0zNjsHItGv5/epokfyBEi+DNnUlpguV7ncJJcmRIIiwayGR0G2zYz6m/BVaEBVTJMWET4NK7hPV3Gf/PNoap5PAyNd9kdyasboXivtMGlEJCgSzHrqnYtVjnA0SRXjSdFKMI1MjMUd8LfCLJXgtCMSFAlmPZQCW2eM7nUI+WpUjjDR0bpJ0SM/PV87DYwwmQM8F7Jg2Neglkg0O5fFvH8htYgERYI5A3NkjAjDvjqcCfXh1lAwOVGhHrElIWLkzkTuBmRUyxxg2FurWmGkCpwZRIIiwZyCouBVnQ7PNnweNONGxB8jmbQwAxFSgPcjQzgRMKo2IN6zIjsCM4dIUCSYc7BthBHhoGcbDgU6cDE8mNzKcQphYedK2I3P/J1wenaopQgiwMwiEhQJ5jR97g1PLnBnhZW7COOu5ibhaBsPfD28UpSv71slwC4YXRVoGJQKcDYgEhQJ5jScqOCssctbiYP+dtVofHcoEiOipBOnPCeKH9+EnWoOmD2PJtc6NDmXolaqwFmBSFAkmPMwT8gtKxb3RnWH8fGgQd1ex8KD7vuM42UKCarIb2iPen4e1U8FTRjxNal56HbnSmmByTJEgiLBWQHFwsiKPYXdrnJ4PJU4FTCpdf16b7CLiykkSAHejYRV4SborUG3a406+lLWIsDsQyQoEpx1cNqi07UKNs8WBHzV2OdvwfGAQV1UxKZkCooNylp56WJcgqz0cuHB1bBHtbucCBiw39+CoLdaRX4UMl+PyC97EQmKBGc1FBAryRb3ZgS9tTjo78TZoEWNqF2P+FSxIkZw0/BoaARjkWF13OVM8xchCz4LdCLirYXdvUXdC8yoVJYf5AYiQZHgrIYRGFtQWEBpdZapzSwG11q1rp5H1TNBc/zV5HHuRMK4GHI8yfMZ3BXqcfn4fB5ejC4CzB1EgiLBvINi5KJStqkcDLTpPhqzQftUwKwanSk9OermNiJBkWBeEq0oL8OIv0Hl9bSim4qrYa+svZ9FiARFgnmJSFCYQCQoEsxLRILCBCJBkWBeMp0Ep+otFAnOLkSCIsG8ZDoJToVIcHYhEhQJ5iUxEoxzmQIjRJHg7EIkKBLMS2IkOInwnsW1sBdHAt2yCn+WIBIUCeYlbKBud5Zhr79JtwQ5KcKL4a3uTSLBWYBIUCSYl3DRQo+rXF1u9EjntZljQ0NqVphLUUWCuY9IUCSYl7Q6V6glB+eCFt1jc5wdvhsJIeStRYtzhYgwxxEJigTzDl7YxIuNTgRMuJngHSVcl3XI3642W9fLhuiEqXEuRK1rMRo9ZWjxlaPNvxat/jVo9q5CvXsZap2pv3pAJCgSzDu47MDvrVIbYB4M6csHTsDokZtouKaLUaX2OYT4qHMtRYt/Dax7GxE4asHe0z5EjjvgPtQD0/AOtPhWozrFkbZIUCSYN3CzC1dcOT3bcTJoxJ0Z3l3MNVy8M5ibZLhBRvt8wrNhlNcV2gjbvkaEjttw6NwoPr90El9d+QpfXD6DExcOY//nQQSO9KmvaQ+uQ62TEXfyhSgSFAnmDRQgNzzv97eqdVhPtsfE0R/4LG5EfDjgb0O/e6PkBuOER+D2wFp4Dxlw8sJnuHH3Hm7ff4g7Y49i+PbWdZy5dAKDn7ahybsKNSk4HosERYJ5A+/39Xh3qiWovLRdb0FkMniJEo/FYV+tXJ40DXWuJUpk9v0t2HvajzOXTuHyzSu4fX8Md8Yml+DNe/fw7a1rOHnxCILHrGgLrB2PCGMfP1FEgiLBWQ+PwSyGWDybcDJoUhultTJLlOilSiNqfT+LJM3OZTHPn++wuNHkXYmeyBbYD7Tg8LkRXLx+Cbfu34+R3rO4fvc2Tl86ButofdLzhCJBkeCsh9MhvOWNLS23IkElrViZTb00YTouh9341N+OHtcaORZraPCsgHmkGntOufHV1S9x9fYN3Lr37OhvMnhcvnjtIvaccqF3zy51pNY+T6KIBEWCsx5ukeYx+HSwV7W2aAWWDHjZ0tchB9yeHeO9g7GvI59g7o6V356hbarS++nZIZz79gvcuPfs/N90XLl1Aye//kzlB5OZGxQJigRnNYwCefPcsUAPbkUCSckDPgtWizmBYnZvUGN52teSXSxCjWMxahxLUONYOg7//+IZHzV5/GXfX2doA8LHbDj7zSlcu3s7Rmp6uXH3rjpGB4/0o9bJ1xn73IkgEhQJzmo6XeXweavUZewPUnUR+ziMMtl7yAuYmgaXZu+x2LEQtQOrUW/ZjMa+3WjqrUdzbyMa+6pQb9mEGnsZqpUMJ/neaaCcOoLrMHigHZ+d34vzV87h2u2buHX/QYzU9MIo8tKNywgetYgEZ4pIcPYzccucw7NNFUMYBWqllWwYZY4NDavlCv3uDWhxLo95XZmG0V7twEo09G9Fc28DWg3daOvpRVtPH1qMXUqI9ZZtSpLa7302C9XxtNVfrvJ1vs96ceT8fly9dQO3VOU3VmiJwEjw62uXEJBIcOaIBGc/FGCzczlG/c24OxTRvSlmJlyNeHEwEB2py7ZosHagDPUUoKl5XH5mJcAoZrQaTGg1dqPBsi3uY3E0/7cMtr2NOPTFCL6+dlG1ttzWUfiIh2t3buPc5XPwHjYmdZxOJCgSnJW0ucrg9e7C2VA/HqZRgIS5QfYOckEDRcy8pPb1ZYaFqLOtQZOpCa2Gnqfk9zSUYq86JtfYV6DaMdVrX6hmfE3DuxA8asPRLz/F19cv4sbdOzECSwaXb1zBp2eHYdlbL4WRmSISnN0wCuTC0xOh5PYExgtbbbie60igSxVJWJ3WvsaM4FiMestGtBoMmggwliZzHeps5er4HPM4gwvV2FuLbw36R2sxfMKJC1cvpEx+5Oa9+zj37Vl4D/WocbtkRtgiQZHgrII/HKwGB7y7cSXixcPhGbTExLly/1l8O9472OValQUtMwtRY1+ucoGtPaYY6WlpMteizrZ6vFr8/cdhPq4nsg3BIxYc/+owLt34RuXrbieh+DEZPFZfvHZJRYE94a1ocCW3IV0kKBKcNUQnQxbB5dmhFiTcH4rEiCmd8Fh8IWTHoGd75hcsOBahdmAVGvsq0RaHBBvNNaqA8rQEGf21B9bBuq8Bwydc+PziSTXSpqfpWS/X795RFWH2GXLcjq03Me9thogERYKzBs7tcn73cKATd4bCKe0JjBdOqDAatGR6Fb9jEepsFWg0Vz+pBk8Fc4LV9mVPcoJ87W2BCtj3t+LU18dU47JWWMmGEeA3Ny7j6FcH0DdSndQpkacRCYoEZw3cE8hiyFehAbUgQSukTMCWGRZJ9vgaxhcsJC+hrwdGdMwHsgVmagma0drTi4b+neO9gmx9ie7723PSg9MXT+DyrasqR6eVVrJgWw0jzONfH0b4+AD6RqvVwtV4q9V6EQmKBHOeaE/gYgx4tuJUsBc3EtwWnQomFixwZK/fvV7dcKd9/emABQ7VG/ikNUYrvwl6VeW40VKJBvcKdIY2wnGgDZ+eGcZXVy4kpen5WfCxefy9cO1rHPvyANyHDeiObElZBDiBSFAkmPMwD9jmXIlhXwNuR8KTLkjIJKwWXwl7cDjQgV73uowcizkWx3xgi7F9yspwq8GIFlMbWu1VqggxctKDs998jiu3b6Q0+iPX7tzCl1e+VJuljUM70OwrV+u3tO8l2YgERYI5DyczeAz+PGhWlyBpJZQNRHsHnfB5d2XkciYlQXP1+IRIrPwmaDf1osvaDcewFfs+D+Lc5S9w9c6tlBU/mPdjZfmrK+dx+Nwo/EfMMA0zCl2e8ghwApGgSDCnYY6tx12hRuN4H7BWPnEzw3aYeGDTNi9nYu8gN1xr30sqqbEvQxPH5KapDHeZ+9HvtuHQyaO4efd+0qc+vuOhaqm5fue2mjDhklXLaB3qXNqWnNQjEhQJ5jRdrnIEvNWq+JBwMSTF8puA+UEuWODlTLz4PW3RoGqPWYlmU9M0+cA+9NoGEdm7D2e+vIBb91KX/+PRmluluWTBdbALxsgONHtXp+8zeQqRoEgwJ2EEOLEn8FTQlNClSU+WqOqUIO8mSXQ9P9fxfxkaUL2MHc5VMe8rFfAozPaYZlPLlPlA0m/34PDx0/j68rWE9/5NBR+T94bwMqWDZ4fhONCOZt9qde2m9nWnC5GgSDAnoQC5xflIoFvl2xIREkfbHg/p/z62vbD/L5HIk+K9HQnhbLAfLk9lWiIfzgDXWzeqgodWelqsTh9OnP0Sl68zDxgrsZnAozUjwJNfH1G5v/bgetS5l6Yt9/csRIIiwZyC0qgfXKw2tBzyd6hjcCIbYigwVmxvJJBHpAA5CXIrEvruxjod8LmZv/ws0AWre7MqlGjfZzLhpEhD/za0GDtipKdlwB3Aua+/wfU7yasEM/fHDTBffHMGo6d9GPy0Hd3hLah3ZcdMtUhQJJhTsB+w21WOYV/9M+8LmQ5GjbeHgjgeMOJ8yKY7irwe9uJkwIRLYae6ulPv90/A2eKDfrbNrEfDkxvUFj618TmKalpWkxuJRUxchMCFqS3GzhjpPU27oR9OXxgXr1xP2lGY12levnlVtdkMnRhEZ2iT6j/UvsZMIhIUCeYM6sIkVxlG/U1PNkUnIqCx4WF8E3bC761S1Vq90dzVsBfHAgYVyXGBKvN82q+JBx6rGY1ymsTkXqveH6u4lBaPr6TOuh613Oai1loltvq+zrZWLUSYrj2mp88OX3gE31y9GSOzxHiIL6+ex4EzYQzsb0ZncIPaO5jMNVjJQCQoEswZWAmmuL4M23BvKBwjlXhhBMb5Ym5/HvU36j5OU4LMRbIqzYiUS1QTvcCJIj8fsiLsaUKzbRMa+7dHV96b61VLS1NvHRrNu9HQX4l6y1a1/r7OugF1tnVqNyCPurX2MrUhhgWQp/f/MXXAjS9NA1vQ3teBNuOz22MYBZoH3IiMfopvr8/kPpBo3u/SjW9x6uujGD4xCOveelX8yHTu71mIBEWCOQE3xLAhmje6cVO0ViZ6YBQ34N6iVlyN+BsSkiCjQO4sJF+E+nE7Eoz5unhhgeasxwtDrwHthmeLirDPr8XQhWZja1SQfbvQYNmCeus6tRKfkeTEZ8btyw2e5WgfrIbBYkWHsT/m8Z6WoM3lx75Dx3D1ZuJ7AZn/43IFLli1jNaiNYUzv8lCJCgSzHpanSvUOqrjQYNqhUl0UzSryIwCef8w21PanCtmJEHm8tpdK9VFTudCloSO5g+HRnElEMGnDje6jWxfmbqFJbrgwKQWo/JOEBY7WPVt7m1WlyWpCNJci6b+arTb62H2dcHo6EWnqR/tBu1jfV+CTn8Eh49/jmu37sbILR6Y+zv99XFEjtvRv7cOrb416tpN7X/PbEMkKBLMapqcy2DxbFJXZl6NeBK+IJ0FlCtht6oo97k3qgILlxnMVIIsaHB7De8y4RZrvW0zY5FRnHEHEbQ60Wl4dqSmG2Mvui39sLm9MFkHY/+9BkrQGxrB0VNn8e31W7h570FcxZGJqQ9ehcnoL3CkD53hzahNw8xvshAJigSzFua02Aqz39+iNsMkGgEyQmMV90TACKOrQvUYsgiRDAnycbjAod+9Efv9rbgW8eoS9b3ICA4PejHYN4COSeQ0E9qNfeg08Rhsifl3WihBT2gPDh07rVpklAjvjk0rQs79nr/8BULHBtA3sltNfUSXHmT3EfhpRIIiwazkuwjru0qwViDxQMFRgGxp8Xh2omH8PuBkSXCi2ZlHdkasPLIzIoz3aEwJHhr0wm5OvgT1QAn2O7zwBPcgPHIAIwc+w/7Dx5UUGR2ePPslznz5Nc5fvKymSS58+y3OX/4Kh7/Yp6I/w9B2NHnTMwGTbESCIsGsI3pPyGo1UcEFqTPZDMM84KWQQ42p8ea3iedItgTJxBjf6VCvan+JR4T3IyP4bNAHZ589oxKcDIqxx2xHn92DQX8YgeG9So6Hjp3CweNHMXJ0BOahRjTyDhXH0ugq/hn2NGYCkaBIMKugnBhVceUUZ2y5H1ArjniggCjPL4IW+L270eVa/b2tzqmQYLSPkYWSXWqi5HYcbTwPhkZxwRvCyIAruTnBJMGjdFevDYZ+O0xWJ/rsblgHfbA4PegbHESn1YDmvkbV1tPQV6nuNGYLj7q83U4hZr8MRYIiwayBd4RMVIJPBA0JN0MTNjBzfx8XrbISzFG77z9X8iU4QXSipUFFsWNDQ1O+B7bH3AwN43N3AF6LA1azDSaTBd1GCzqyUIqTwXX8LYZuNBvb0WRqVtd1NvTtRJ1lo+pjjF7bGfs5ZQsiQZFg1sA8IPvuPg/2qSUDWmHogaIa8tXD5Fo36b0eqZQgCyXNzmVPKsbTNVKzkHInvAeX/BF85vQiYKUMB9ATR0Eje5ho7+F6fmJUYmQfo+pfjLm6M3sQCYoEMw4boRkF2jybcSjQMS4OfWL6TiijuBLxPGlmpoy0z0dSKcHoe1qoJlJY2WZrz3Tvh/2CdyMj+DYQwXlfCKc9ARxz+VXleI/FDo/ZjL7eHvTZrLA5fepYarQ40GmyqNxdrJSyAbNa39XQv11NtGg/o2xBJCgSzDj1g0vQ7lyJA/62GbXCUGYshLCnkEdqFiq0zzVBqiUYfV+L1UzwiaBRva94Wme42utheBh3fH5cd7nwjd2Gk8YuDLfXw9JWCWtvK5yDA7AP2GG12dFnG4TZ5kSvzaX6ASlGzgB3mwdUe0ysmNJLi6FHjf/V2lfGfD7ZgkhQJJhxuBeQ25YvzmApAuHo2pchG9zeymnv8UiHBPnvWJG2ejarWeN4FrE+CA3h6qADBxsr4dy4CJ1L3kF90f9g1yevYOsnf8T24r+jask7aF5XAktrFfYNh3Ds6DGcPHMen504jX2HjiKy91PV88fdgIwUtWJKJzwWN/U2q9yg9vPJFkSCIsGMQRFxKULQV42L4UHcjaOaOhncAsMI8FzIipC3Rj0mj9ja59M+d6olOPE8FCHF/EXIgluT7S8cGsW9QAjf2u041dWEyM4KGJZ/gOp5f8T6t17Amtd/gtWv/lBR/vqPsfatn2Pb3D+gafUc2Fu2YY+7D8cO7ce5c+dx7sIlfH7+Ag4dP43gnn3o6RuIEVM6iUaC9RIJ6kQkmCfwuMr2FW5ZTvQITBg9ciSOK6l4BJ1OTCRdEpyArTODnm1qf6G275FH4KsOOz5tqET3kvew8e1fYM3rP34ivqn5EWqXvoXBtkqcOXkE127cVFMe3AnIfj4ej7ViSie84pPFEbUKbJLPJRsQCYoEM0Kba+WTy9K5ZXm6Y+KzYFPyt2GXakl5ViV4MtItQVa+O1yrnmqdiU7AUID3g2EVAXYvew+VH72Eitd/ivLXfjSJ8CZn0/u/RePKDzE0aMC5MyfVBUmc7Bg9eASG/ukl2N7XiY7BWjTZdqDBslWt7Yqu86pFc28Tmk2taiFri8Gg2mG03z8VbJeps66Lrvma5HPJBkSCIsG0QmlweQHzZBOVYK1k4oXivBr24EigCwZXBerjFCBJtwQJv5YVa44CsmLMCJZFkG9s/QjtWIMt7/76e0dfPWz+4D9hrFyOAyEnrt24hdNffKnG31gk0Yrp+5jRZm1Cq3896l3L1cQHoza2tVBe9ZbNaOjfgYa+KjSqHYfNaDa1ocXUHhWjsQutxh611Yb5v1ZDdMNNq7EbLaYO1Fu2jVeG4/+c0o1IUCSYVnhcZSWYhZDbM1iLxTzg2NAeHAp0qnt8m5ycCY59vmeRCQmSiV5Ifj+P8Hd9AQzvXo+W0jew9o3n1fFWK7h4qHjjeWyZ8yKsjRvx1flzOHz0OLzhPapKHCu+7wRIYTX2V6HWuWT8vZBFURmq9f4ch1um9hQqOdrLooK0rVULXinIiSWwzSYKknsOG9QRuN62AbXqGKzvM0o3IkGRYFppc5ap+dqzof6Ej8CEFySdCprhHJ8JZp+h9rmmIlMSJC3O5bB5tuCwrwPn7b0wl8/D1vd+i/LX4s0DTsJrP8Kaf/wU7esLcXCPD0ORCOzugBp5i5VfFDY1cx8h+/jiF1VUkpQjBRcVYgXqretRb92kIsd6tfm6XMlTCTXmMbILkaBIMK0Y3BU4HjColVNaucTLw+E9aiW93b0Vbc7Eqo6ZlOAEA45NGDXtRm3p33XlAKeCRRKPoQ4OmwVmm2vKNVo8vnIZa711iw4Jzj5EgiLBtMKjK5cL3JvB5USsJrMVhlEl84va54iHbJBgq3UputoXYWvRH1QkpxVaIlQveh2DbTthNnarKHCqaRIehXmMrbNtEAmKBEWC6YLLR5kL07aJxAN7AXlLXMRXpwoheo/AT5MNEqzuL8au1o+wvvA/kybB3Qtfx0DLDhi6OqYUYFSCPSqfx+OsSFAkKBJME5QgL0yfbqnAZHwTdmF/oBUG91q1pED72HrIBgnuthajsuMjrCtKogQX/QMD7btg6J7+onVWcJkPzOZpjnQgEhQJphXO0p4OmlVvoFYuz4KtJGylORhoV+v2n7UUQQ9ZIUF7CXb2zMX6hS+i/I3EWmO0VC15E9buavT0dMVITwvbW1jMyOZG5nQgEhQJphVujB7xRVfmxyMffg2XD5wKmuDwbJuRdJ4mGyRIqswF2Ljiv7HmnZ9h9WuxUtMDR+p2LX8LJmMNugzxSLBD3V8c3fcX+9ryBZGgSDCtcFTO5F6nJHJ/mmUJ/HfsJTwT7MOAZ4sqhGgfL1GyRYK7+4uwdcurWMe8YNyjcrFQgOve/QUqy99Fk2EHWg3tMdL7Plxz1Ybagey/FzjViARFgmmFxYxG5xK4vTvV8tRrEX/MJUqUH4sgnKrgGirOF7O3bqbCeZqskaCtGDua38em8j+j/O3nsfr1xHKDa95+HhtLX8LO7fPQYNyJFsPUOcFoe0xT3ucDiUhQJJgRuEbf6t6Mk0HT+K69aESo7gYZHlHzwBQNCyncN6j9/pmSLRKsdixAla0Y26rfRsWcX6D8zcRygxXvv4AtW17F7tYlamsLK79a8T1Ni7Fbtcdk83aXdCESFAlmBI7PtTrL0O/eBJ+3Sm2A4SgdCflqMOjdrsbLkh0BTpA1EmQ06ChVVeJNa/+CtXN/pTs3uObdn2P9ghexo/E91JrK1egaIz2t+L4vQW53qcr7oggRCYoEMw4bnrkElUUTkmgDtB6ySYKEBZIdze9h06pXUDHnlyh/+6cqz6cV3hNe+6GKGhkBbljwErZsfhVVpk9Qb92oojyOxGnF9zQUZbavvU8XIkGRYMahSCglyo8kSyxTkW0SrLaXYre1CDs752DbzjewvuR3WPPuz2LlN0756z9SUePmdX/FjoZ3UdVboB6Ds7u87EgrPS1NvU2ot24en++d5PXkESJBkWBeknUSHIeFkl09c7Gt6i1sXv9XbCz7IzYufxkblv4BG5b8HhuXvaz+bFP5K9i67TVUtn6Aqr7C6Pc7Fqp9gNFb32LF9zSN5lrU2tbmfXsMEQmKBPOSbJXg0+weKEFVXwF2GuahsnMOKts/xM7uj7Grd76S5ff/Ti5Ul5039McjQbPaD1hjL0O1Y2aTN7MBkaBIMC/JBQlWO0qVCCm8KksRqvoL1ZF5t61EHX1jv36h2vEXrQxPfiRu7TGp+4DrLVtRneWXoqcLkaBIMC/JCQnqxbEAddYK1SLDkbhYEXJ/YCcae+vUUlQRYBSRoEgwL5mVEmSRyb5MbYVp6q0djwgnjsbcIt2tBKnu/LBLQWQCkaBIMC+ZrRJkjq/GvlSJji0w7AXkuiz+b4Nlm4oAlQAlF/gEkaBIMC+ZtRJ8mvFLk2oGyqJ3fYj4JkUkKBLMS/JCgnxtFJ9j8bgAs/m1Zg6RoEgwL8kPCQrxIBIUCeYlIkFhApGgSDAvEQkKE4gERYJ5iUhQmEAkKBLMS0SCwgQiQZFgXjKZBB+F9mDM5cedfjtudplxvbUbNzqN6p/H3H48Du/B/w6N4mrYIxKcRYgERYJ5yRMJ+qISfBweUQK80d2LSzvr8MXKDThdshxnl5Xj4vbduNllwpjLh0ehYVwNu0WCswiRoEgwL5mQ4B5vPR6EIrjeYcSFrVU4W7YOp0tX4MT8RTj2cQmOf7IAp0qX4+yKClzYXImb3b246OjHZ4FOkeAsQSQoEsxLJiQYsVfhVt8ALmyqxMmiJTj6YSGOvD8/lg8KcKJwMb7eXIlzHc34zN2OXtc6keAsQCQoEsxLJiTo796Ar7ftxumFZTj60TMEOA4Fycjw2KZ1OGxtQK+jQiQ4CxAJigTzkjrHQrRbl8JTuwKnFpXh+NzSGOlNygcFOLJsOQ7XbUWvaSVqJnlsIbcQCYoE85L6gYXo6VkM76ZSfPbBJLKbisIFOLyqDObWxai1xz62kFuIBEWCeUlT3wIMVC3A0PJiHNErwY8KcbigBJaqEjSaS1HjiH18IXcQCYoE847agQVo7yqFv7wYBwqnzgM+i88+nA/3ukJ0tRSj1hb7HELuIBIUCeYdDf2lMDQVY2RBgf4ocEKCH8zH8MIC2LcWqcfTPoeQO4gERYJ5R2drCZwbirB/fkGM3PTw6bz5CKwsVFFlnUSDOYtIUCSYNzB3x6OwZWexiuIOzYkVm15GSgpgrilBi1H+fuQqIkGRYN5QZytFs7EE7rWFOPhx9EirlZpeGE36VxfC0FgiBZIcRSQoEswbmk2l6K0pRnhpYVIESBhNjhYXwLajWOUGa6RlJucQCYoE8wPHAnS0l8C/shD7C2eWC5wM75pCtHWVoM4qf09yDZGgSHDWw2MqozRGgXsLC3Doo1iJzZThRYWwbS+S3GAOIhIUCc56WAzp7CjB4MYiHE6BAAlzg8HlhehqLZG+wRxDJCgSnPXUW0ph21GEocUFqslZK7BkwBzj/oIC9FUVo6m3VB2/ta9DyE5EgiLBWQ1zdMzV+VYX4sAnsfJKJqw4eypYKS6WmeIcQiQoEpzVqIpwbTH2zGA6JF4OfxjtG3RsKUK9NZqL1L4eIfsQCYoEZzXdzSXwlheqo6pWWsmGR2K2zKgpks4SdQzXvh4h+xAJigRnJezXo4Q4HcI+vmRMh8TLntIC9bxt3ZIbzAVEgiLBWQlzga3dJXCvK1LHVK2oUsmBTwpUQ7ZMkeQGIkGR4KyEuUBrZREiSwoSmg5hFXlfYUF0yYLO72cbDkVo2x6tFMsUSXYjEhQJzjpUX2B7CYIrCnBgfqykpoMSYw6R0yWhZYUJ9xZyioQ5SckNZjciQZHg7MKxAE2mEpiri7C3KLG+QOYQ2epiqiuGbVsRDs6Zj88m+brpYG5wcFORikpjXqeQNYgERYKzCh49e5qK4a4oxKdzY8U0HTw6B1dEBdhsLFV5vaFFBfh0rv7qMvcNMpLkFEmdJfa1CtmBSFAkOKvgUdi+pUhFc3qjQNXi8tF8Fb019EVzeazwOjYVJdxnyLxi/65itPZIpThbEQmKBGcNzL2xP4/7/RLZF8jIMbykAObqYtQNRI/WXLzQ2VYC/6rChKrMfMxgWaFq2JZKcXYiEhQJzhpaDSXo31WktkYnErXtLS5QUWRHR8mTqG2i35B/vq8gOhWi/b6p4NfvK4jmBmXfYHYiEhQJzhp6mkoQWlaQ0Iwwo0YuWGDUV6/ZCcgIzlhXDP/KApXn037vdPBYzikSPrZcypR9iARFgjkPlxXw/l9LZTH2z4+2uGhFNBUUIKNA1/pCVcmdLFpr7SmBZed4xTmBKJOVYsfmIrR1SW4w2xAJigRzHi4r6G4tgaeiKCFBTURqzNtpo8AJagdK1TE5sjSxETzmBnlMNzSUqOKN9vGFzCESFAnmPJzKYJSVSAWX0mQRZYBboQ0lk0aBhEditszweYYTeZ4Poy0zfB7mLp/1PEL6EQmKBHMazgh3tZcgtLwQBxPI101EaMaGkmnvDmaBhHlHToLoLZAQFXGuivYgMnrVPr6QGUSCIsGchtFbX1U0V6eVTjxw/x/X7rd3Tp+rYzRIEXImmUdi3UfvD6J9g1zqwBym9vGFzCASFAnmNMaGYtXDdyCBKFBNh5RFJzrirdqqiZTG4oSr0JRnZGkhultKVEO29vGF9CMSFAnmJJQRj8L2rUUqutJ7POXXU2Ls3+Pj6GlkbmOleMcM+hGLClRukI3d00WfQuoRCYoEc5KJSQ7eHaKu0NQpo6cnOfTeB8IKMncVMgJN5PpOPndkcQHMNTJFkg2IBEWCOUlbTykGtiRYqWVfYFGBuoGOlzDpjcYoLkaPfH7mFBOLQqN9g6xsS8tMZhEJigRzD0f07hC2xLC9RSuZ6WD0xs0wjCRrbYn9d1W5wYZieNYktq2GsDeR1WbJDWYWkaBIMKegfFoMpbDuKMKBefo3xRC1528j+wL15QK/x3jfIO8Z5myw7krx+N5C99oiuYskw4gERYI5BXv5DPXF6gY5veNxhLJiHtHQUIz6OCvCz4JCZjQZXpbYTDGXtfI4zykS2T6dOUSCIsGcggUR54YijLIvUGf0NbEv0Lb9u32B2sfXS4uxFAPbitTyBb3RIL+eucGBrdHcZDJej6AfkaBIMGeYqAgHOR2SQC6Qwgkt5XRIcdKKEYzgeJ8J1/FTsHpFyL5BTruYdyfvNQn6EAmKBHOGtu5ofx4rslqZxANzgYlWhJ+JI7pcga9r/yf69w1Smvs/iU6RNPRFK88xzyGkFJGgSDA3cJTCVFusNj8fTKAayyiNd4ewQTnp+TdH9F4T5hrVFZ2TPP9UUJzhZdGb6Rp7k/zahGkRCYoEsx4eEzlry+3OHI/TWxGmZFiJ5V0hFGAqoq1WQyn6dherth29r48wxzm4sRgd7UmMUoW4EAmKBLMe5gINzdEZYb05N3Lo42hF2FSfurwbj8QtPSUIlCU2RcIc50hxAXqri1Fjl79r6UQkKBLMerjV2bmhECOliVWE2cfHrdDcOJOyKIuXMvWNV4oX6Y8GGa1ShJwi4UheqmQtxCISFAlmNXW2UnQ3F6tlBYludOacLjfF1Ayk9r8hexi7WorhWleY0GslzFtyprhRpkjShkhQJJi1MHfHijD7+lhwSOQoPLywEPatxSpnp338ZMPXy6M7213UXSc6o0Gyr3C+agRn9JuyqFX4HiJBkWDWwtxYb02xyrPp7QukMDlR4iuP7guc6XRI3DgWoLO1BIEVhdhfoL9SzHxi9C6SYpkpThMiQZFgdjK+qcW1IbowVW8UqDa1zItOh6glCWmMqjhF0rerGJEliRVyGPU6thSpJuxUVLKF7yMSFAlmJWyJ4fZl5sgSqbZyOoTVZE6HpHscjfJmcYMbZjgfrFeEjHqZx+yvkkpxOhAJigSzko7OElUpTWQ6hNLhdEj/rqJobm2Sx08pjuhRnptu2Paid9EDXz8LOiywNPayUix/91KJSFAkmH04SmGsL1YtMXpzgWRiHpfjcZkUCKvarrWJTZFQhNxOw8+Bi1e1jy0kD5GgSDCrYH8c+/m4WYUC1NtvR3lwPRWnS1SbSQZzas2mUphqilVUmkilmNuvvRWFkhtMMSJBkWBWwRYTzgj7VyZWVODR01NRpDY212X4bt8aR6k6jgdWFiR0Gx5zoWyZoUjZL6l9fCE5iARFgtmDIxoFuisKE7pHmAJkf17/rmI0mVMzI6wXFngslUUIL9Xf58iv58gfb8Tr6OBVALGPL8wckaBIMGtgFMhtLBw701tMIMy9cdcgq8rprgg/C0ZwFBjH/hLZNxjNDRbCsqs47ruRBX2IBEWCWQNlwVwgZ321MoiH4UWFsOxMz3RI3IzvGzTvLlL3HCeSG+RRmgsgmo0yRZIKRIIiwayA+TOKgsfGQzr3Bapj45zouBkrwrwXWPv4GWV8ioSvb2+hfsEzKmZ0zC04TaYse2+zAJGgSDDjMFKK3h0Svb5S75GRkhgtno+B7UVZ21zMm+lMddEpkkSiQUbHrvVF0aO+RINJRSQoEsw47INjPxzzeYkIgsdMz1re4VuctYKg6Jt6S9TrTET0jHTZOM7cYG2Wij5XEQmKBDOLI5oLVBXh4gSOih/OV03V5uqiaM5M+/hZBFd5ca8hb6Y7rHPV1sSR370uumFGWmaSh0hQJJhRKAbeI7wvwdVTjKqCywvQqi5Pyu7/RoxS2fjMlpdE7ikmkaWcKS5SjdjaxxcSQyQoEswYnA7hxUf2zePTITqPiIRRFW+Qy5XRMk6xMDfIo20ibUDMDbKRnNFzdZa0AeU6IkGRYMbgpUd9VYnlAilMfg+vqmR0lenpED20d5WoDTf7C2Lf13SoIlBRgdqzKNunk4NIUCSYGRwL0GQqgae8UN3Xq/1hnw41HfIJp0OK1OqqbC2ITAajVnN1sVrykEj0yxQAK+ldLSWolWhwxogERYIZgSIwNBarvXmJHgt9q6J39eaSAAmLGtw3SJElkgaY6Bvkqi7+ApAG6pkhEhQJZoTOtqgEEmkepjSGFhWit7ZY9d9pHzsncDAVUKT6G/VeyqQqxbw6YFUhGk2pv0BqtiMSFAmml/GFo8wF7inRf4McBfDp3AI1fcFlC7ncKvLkF0ECyyL4OQwviuYGc/YXQZYgEhQJphVKi5eUO9cXJbRQQB0FFxbCuqM4enfIJM+RK6gm8QZOkSSYEigsUBdJMSUgucHEEQmKBNOKKgrsLkZoWWJFgYNzC+DcUBS9RzjHf/A5L83ikHdN9DIp7XudDlUcmjcf/TvH9w1KbjAhRIIiwbTBAgb7ArkRhVGM9od6Ohg5sr+ut6ZE7QvUPn4uEm0TKkJouf7t099rE2orQZ0l9vGF6REJigTTBn/gOSPMPje9P/CE+wL9ZYXo6Jw9UY9qGO8qUdcBJFIpJkOLC2HbLneRJIpIUCSYFhgFdrWVYHBjUUJHPxJZWoi+3cVonkU/7Pxc2OZiHJ8i0VsoIgfmRZfJtnewUhz7HMLUiARFgmmBiXuuvVdFAJ0/6IyOGCW51xehrZsV4djHz3WYJuASidEElkjw8+HVnqwUy75B/YgERYJpgcc+z7poc/ARnUc+RkeUAyWaa43R8cK7SNg8zsvmEzkS87J51/rxqwVm6WeUKkSCIsGUw1xgW1cpAmX6Z4QJiyhcKKoqwrP0B5yXKDGnx3TB/k8KdF81enBu9K5lc83s/UWRKkSCIsGUw0puT3MJwkv1RzmUJkfEWFBpzIOjHmeKmTLQe8UAo2Xet8w7VkSC+hAJigRTDiVoaC5Wu/B0HYU/iB7z2BDcYizN+b7AeGBuMJHLpp5IsFIkqBeRoEgw5fD+EPax6W2Q5tdGJq6btOTH58/1WIam8WiQ+dNJPpfJYK6Vyyj6q0SCehEJigRTDnf9tfSUIrAy/pygWhIwZz4GNxepPrp8GgvjLLB7baHqp9R+Ls+C67WYc+XCVpGgPkSCIsGUw2MsiyOOzdyaEl/S/9N5BaoJmNdMMgrMpx9sflY9DcXwro4/ct5fUADb9ugvjNnSSJ4uRIIiwbRAERobSuCpKMK+omc3BVOQFCCLKAPb2Bc4e6ZD4oVRL2eKOU43vLBA3UcymQz5Z/y8KEBGgVykUN8vf0/1IhIUCaYHxwI09EWrxFwY8Kyb5ZgHYwTIhaHsnWN/Ycxj5QGMfFsNJePLJgomHaljaoF/zllsU22x+rzy7RdGMhAJigTTBoXGXjhGLEzg89Y1CpFRTHhZodoRyBlaLkvlZIiqBufxD3W9tRQthui8tX1rkZIdm6kJPzd+fmyJ4efJ2+fy9RfGTBEJigQzAlc/8TLyztYSlczv21Ws7sygJPOpCBIP/GXQ2BuNojkax4bozlaOyEn+LxmIBEWCGYHHPUYuLALwmMyjHP+/imbkB/v7jH9WbDViCw158llpv1bQjUhQJCgIeY1IUCQoCHmNSFAkKAh5jUhQJCgIeY1IUCQoCHmNSFAkKAh5jUhQJCgIeY1IUCQoCHmNSFAkKAh5jUhQJCgIeY1IUCQoCHmNSFAkKAh5jUhQJCgIeU02SvD/A1lXVp/+P46MAAAAAElFTkSuQmCC">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-B6H58BQ50N"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-B6H58BQ50N');
+</script>
 <script>
   // Diagnostic only: if anything throws before the game finishes booting, show it on screen
   // instead of leaving a silent blank page. Safe to remove once the mobile issue is found.
@@ -15,7 +39,12 @@
       (e.message || 'unknown error') + '\n' +
       'at ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + '\n\n' +
       (e.error && e.error.stack ? e.error.stack : '(no stack available)');
-    document.body.appendChild(box);
+    // This handler is installed inside <head>, ~400 lines before <body> is even parsed — an error
+    // thrown early enough in boot means document.body is still null at this point, and
+    // .appendChild would throw inside the handler meant to report the ORIGINAL error, silently
+    // swallowing both. Falls back to documentElement (<html>), which always exists once the parser
+    // has reached this <script> tag.
+    (document.body || document.documentElement).appendChild(box);
   });
 </script>
 <style>
@@ -405,6 +434,11 @@
   .quality-btn.selected{border-color:var(--gold);box-shadow:0 0 6px var(--gold);}
   .big-btn{margin-top:12px;background:var(--gold);color:#3a2a00;border:none;padding:14px 28px;
     border-radius:8px;font-size:clamp(14px,2.4vw,20px);font-weight:bold;cursor:pointer;min-height:48px;}
+  #intro-links-row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;}
+  .link-btn{background:rgba(74,47,29,0.75);color:var(--paper);border:1.5px solid var(--gold);
+    padding:7px 12px;border-radius:6px;font-size:clamp(11px,1.8vw,14px);font-weight:bold;
+    cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;}
+  .link-btn:hover{background:rgba(74,47,29,0.95);}
 
 </style>
 </head>
@@ -450,7 +484,7 @@
         <button id="inspClose" aria-label="Close">❌</button>
       </div>
       <div id="inspCombatRow">
-        <span>⚔️ <span id="inspAtkVal">0</span></span>
+        <span>⚔️ <span id="inspAtkVal">0</span> <span id="inspAtkRange" style="opacity:0.65;font-size:0.85em;"></span></span>
         <span>❤️ <span id="inspHpVal">0</span>/<span id="inspMaxHpVal">0</span></span>
         <span>🛡️ <span id="inspDefVal">0%</span></span>
         <span>🎯 <span id="inspRangeVal">0</span></span>
@@ -700,6 +734,14 @@
         <label id="goreLabel"><input type="checkbox" id="goreToggle" checked> I am 18+ — enable intense effects (🩸 Mature)</label>
       </div>
       <button class="big-btn" id="playBtn">▶ PLAY</button>
+      <div id="intro-links-row">
+        <button class="link-btn" id="changesBtn" title="See what's new">📋 Changes</button>
+        <button class="link-btn" id="shareXBtn" title="Share on X">𝕏 Share</button>
+        <button class="link-btn" id="shareRedditBtn" title="Share on Reddit">
+          <svg width="14" height="14" viewBox="0 0 20 20" style="vertical-align:-2px;margin-right:3px;"><circle cx="10" cy="10" r="9" fill="#FF4500"/><circle cx="10" cy="12" r="6" fill="#fff"/><circle cx="7.3" cy="12" r="1.15" fill="#FF4500"/><circle cx="12.7" cy="12" r="1.15" fill="#FF4500"/><path d="M7 14.3c1 .8 5 .8 6 0" stroke="#FF4500" stroke-width="0.9" fill="none" stroke-linecap="round"/><circle cx="14.3" cy="7.7" r="1.4" fill="#FF4500"/><path d="M10 8.5l0.8-4.3 3 .6" stroke="#FF4500" stroke-width="0.8" fill="none" stroke-linecap="round"/></svg>Share
+        </button>
+        <button class="link-btn" id="shareCopyBtn" title="Copy link">🔗 Copy Link</button>
+      </div>
     </div>
 
     <div id="end-screen" class="hidden">
@@ -709,6 +751,28 @@
     </div>
 
 <script>
+  (function(){
+    const GAME_URL = 'https://sauerninja.github.io/StickTD/';
+    const SHARE_TEXT = 'StickTD — a free browser stick tower defense game with forensically-detailed blood effects';
+    document.getElementById('changesBtn').addEventListener('click', function(){
+      window.open('https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md', '_blank', 'noopener');
+    });
+    document.getElementById('shareXBtn').addEventListener('click', function(){
+      window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(SHARE_TEXT) + '&url=' + encodeURIComponent(GAME_URL), '_blank', 'noopener');
+    });
+    document.getElementById('shareRedditBtn').addEventListener('click', function(){
+      window.open('https://www.reddit.com/submit?url=' + encodeURIComponent(GAME_URL) + '&title=' + encodeURIComponent(SHARE_TEXT), '_blank', 'noopener');
+    });
+    document.getElementById('shareCopyBtn').addEventListener('click', function(){
+      const btn = document.getElementById('shareCopyBtn');
+      const original = btn.textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(GAME_URL) : Promise.reject())
+        .then(function(){ btn.textContent = '✅ Copied!'; })
+        .catch(function(){ btn.textContent = GAME_URL; })
+        .finally(function(){ setTimeout(function(){ btn.textContent = original; }, 1800); });
+    });
+  })();
+</script>
 "use strict";
 
 /* =========================================================
@@ -721,7 +785,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.0.202'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.0.205'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -912,13 +976,19 @@ const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% mo
 // magic-aligned sibling. Barricade sits outside this tree entirely — it's a utility piece, not a
 // fighter with a stat identity.
 const EVOLUTIONS = {
-  SWORDSMAN: { str: {target:'HAMMERMAN', threshold:10}, dex: {target:'AXEMAN', threshold:10}, int: {target:'SPEARMAN', threshold:10} },
-  ARCHER: { str: {target:'GATLING', threshold:10}, dex: {target:'BLOWDART', threshold:10}, int: {target:'BOMBER', threshold:10} },
-  MAGE: { int: {target:'CLERIC', threshold:10}, dex: {target:'SNAPCASTER', threshold:12} },
-  BLOWDART: { dex: {target:'SQUIRTGUN', threshold:25} }, // deeper DEX specialization — a second tier beyond the first evolution
-  HAMMERMAN: { int: {target:'PALADIN', threshold:25} }, // holy devotion — a second tier beyond the first evolution
-  BOMBER: { int: {target:'GUNALINDER', threshold:25} }, // deeper INT specialization — trades splash for a rapid-fire revolver
-  GUNALINDER: { int: {target:'SNIPER', threshold:40} } // third tier — the deepest INT investment in the game, longest range as the payoff
+  // Rebalanced across the board — first-tier thresholds were all 10, a stat investment reached
+  // within the first few waves for essentially any actively-played tower, making the evolution
+  // choice feel automatic rather than a real build decision. Doubled to 20 (matching the explicit
+  // "need 20 dex" ask for Snap Caster, applied consistently to every first-tier evolution rather
+  // than singling one class out), with second- and third-tier thresholds scaled up proportionally
+  // to preserve the same relative gap between tiers.
+  SWORDSMAN: { str: {target:'HAMMERMAN', threshold:20}, dex: {target:'AXEMAN', threshold:20}, int: {target:'SPEARMAN', threshold:20} },
+  ARCHER: { str: {target:'GATLING', threshold:20}, dex: {target:'BLOWDART', threshold:20}, int: {target:'BOMBER', threshold:20} },
+  MAGE: { int: {target:'CLERIC', threshold:20}, dex: {target:'SNAPCASTER', threshold:20} },
+  BLOWDART: { dex: {target:'SQUIRTGUN', threshold:40} }, // deeper DEX specialization — a second tier beyond the first evolution
+  HAMMERMAN: { int: {target:'PALADIN', threshold:40} }, // holy devotion — a second tier beyond the first evolution
+  BOMBER: { int: {target:'GUNALINDER', threshold:40} }, // deeper INT specialization — trades splash for a rapid-fire revolver
+  GUNALINDER: { int: {target:'SNIPER', threshold:60} } // third tier — the deepest INT investment in the game, longest range as the payoff
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into
 const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER']; // reachable only via evolution, never built directly
@@ -1027,11 +1097,11 @@ const CONFIG = {
     },
     SNAPCASTER: {
       name: 'Snap Caster', icon: '⚡', baseCost: 95, unlocksAfterWave: 8,
-      blurb: "A DEX-focused Mage evolution — trades Mage's rare-and-massive identity for real firing frequency. Still meaningfully slower than an Archer, and hits for much less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
+      blurb: "A DEX-focused Mage evolution — dual-wields a second wand, casting a rapid two-bolt burst each cycle instead of a single blast. Still meaningfully slower than an Archer overall, and each individual bolt hits for less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
       tiers: [
-        { range: 210, damage: 78,  cooldown: 1650, projectileSpeed: 1500, slowFactor: 0.25, slowDuration: 900 },
-        { range: 225, damage: 118, cooldown: 1450, projectileSpeed: 1600, slowFactor: 0.3,  slowDuration: 1000, upgradeCost: 100 },
-        { range: 240, damage: 168, cooldown: 1250, projectileSpeed: 1700, slowFactor: 0.35, slowDuration: 1100, upgradeCost: 145 }
+        { range: 210, damage: 58,  cooldown: 1650, burstCount: 2, burstDelay: 190, projectileSpeed: 1500, slowFactor: 0.25, slowDuration: 900 },
+        { range: 225, damage: 88, cooldown: 1450, burstCount: 2, burstDelay: 170, projectileSpeed: 1600, slowFactor: 0.3,  slowDuration: 1000, upgradeCost: 100 },
+        { range: 240, damage: 126, cooldown: 1250, burstCount: 2, burstDelay: 150, projectileSpeed: 1700, slowFactor: 0.35, slowDuration: 1100, upgradeCost: 145 }
       ]
     },
     BOMBER: {
@@ -2024,7 +2094,30 @@ function acquireActive(pool){
    AUDIO
    ========================================================= */
 class SoundEngine{
-  constructor(){ this.unlocked=false; }
+  constructor(){
+    this.unlocked=false;
+    // Global voice budget — a real CPU/audio-thread safeguard, not a mix-quality nicety. Without
+    // this, a 40-enemy swarm death or a cluster of simultaneous splash-damage hits could each
+    // independently spawn their own full oscillator/buffer/filter graph with zero coordination,
+    // and the browser's audio thread has no built-in concept of "too many voices" — it will
+    // simply keep constructing nodes until something chokes. Tracked here as expiry timestamps
+    // rather than real node handles, since most call sites don't keep a reference to what they
+    // triggered — cheap to check, no call-site changes required anywhere else in the file.
+    this.activeVoiceExpiry = [];
+    this.MAX_VOICES = 28;
+  }
+  // Prunes expired entries and reports whether a new voice is allowed to start right now. Called
+  // from tone()/noise() themselves (the two lowest-level synthesis primitives everything in the
+  // game funnels through, including playImpactSound() which bypasses the play() dispatcher
+  // entirely) — so this protects the whole engine without needing per-call-site priority tagging,
+  // which would have meant touching dozens of scattered call sites for a first pass.
+  reserveVoiceSlot(duration){
+    const now = this.ctx.currentTime;
+    this.activeVoiceExpiry = this.activeVoiceExpiry.filter(t => t > now);
+    if(this.activeVoiceExpiry.length >= this.MAX_VOICES) return false; // budget full — this specific call silently produces no sound rather than piling on further
+    this.activeVoiceExpiry.push(now + duration);
+    return true;
+  }
   unlock(){
     if(this.unlocked) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2056,7 +2149,16 @@ class SoundEngine{
     this.reverbGain = this.ctx.createGain();
     this.reverbGain.gain.value = 0.35;
     this.reverbNode.connect(this.reverbGain);
-    this.reverbGain.connect(this.compressor);
+    // Two real bugs, both fixed here. (1) Every reverbSend call site connected the DRY source
+    // straight into reverbGain, completely bypassing reverbNode (the actual ConvolverNode) — the
+    // convolver had zero input, so nothing was ever actually being reverberated despite the
+    // impulse response existing and being generated correctly. (2) reverbGain connected directly
+    // to compressor, bypassing this.master entirely — since mute works by zeroing master.gain,
+    // any sound using reverbSend (critical hits, Mage, explosions) was inaudible to mute's dry
+    // path but NOT to this bypassed wet path, meaning reverbed sounds could still be faintly
+    // audible while "muted." Now reverbGain routes through master like every other sound, and the
+    // wet-send call sites (below) connect into reverbNode itself, not around it.
+    this.reverbGain.connect(this.master);
   }
   // Normalizes a world X coordinate to a -1..1 stereo pan value relative to the camera's current
   // view — a hit on the left edge of the screen now genuinely sounds more in the left ear. Purely
@@ -2067,13 +2169,20 @@ class SoundEngine{
     const screenX = worldX*camera.zoom + camera.x;
     return clampNum((screenX - CANVAS_W/2) / (CANVAS_W/2), -1, 1);
   }
-  tone(freq, duration, type, freqEnd, pan, reverbSend){
+  tone(freq, duration, type, freqEnd, pan, reverbSend, delay, force){
     if(!this.unlocked) return;
+    if(!force && !this.reserveVoiceSlot(duration)) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type || 'sine';
     const detune = 1 + (Math.random()-0.5)*0.12;
-    const t0 = this.ctx.currentTime;
+    // Optional `delay` (seconds) schedules this note against the actual audio hardware clock
+    // (audioCtx.currentTime) instead of a caller using JS setTimeout() to fire a second tone()
+    // call later — setTimeout is the wrong clock for tight audio timing, since it's subject to
+    // JS event-loop jitter/throttling (background tabs, heavy simulation frames, etc.), where
+    // audio automation scheduled up front is sample-accurate regardless of what the JS thread is
+    // doing in the meantime. Omitting delay behaves exactly as before (starts immediately).
+    const t0 = this.ctx.currentTime + (delay || 0);
     osc.frequency.setValueAtTime(freq*detune, t0);
     if(freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd*detune), t0+duration);
     gain.gain.setValueAtTime(0.4, t0);
@@ -2086,17 +2195,35 @@ class SoundEngine{
       node = panner;
     }
     osc.connect(gain); node.connect(this.master);
-    if(reverbSend){ this.initReverb(); node.connect(this.reverbGain); }
+    if(reverbSend){ this.initReverb(); node.connect(this.reverbNode); }
     osc.start(t0); osc.stop(t0+duration);
   }
   noise(duration, filterFreq, filterType, pan, reverbSend){
     if(!this.unlocked) return;
-    const bufferSize = Math.floor(this.ctx.sampleRate*duration);
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+    if(!this.reserveVoiceSlot(duration)) return;
+    // Previously allocated a brand-new AudioBuffer and filled it sample-by-sample with
+    // Math.random() on EVERY single call — noise() fires extremely often (gore, impacts,
+    // explosions, UI), so this was real repeated allocation/CPU work for something that doesn't
+    // need to be unique each time. One shared 2-second white-noise buffer is generated once,
+    // lazily, and each call just plays a random-offset slice of it — the actual audible noise
+    // still differs call to call (different random offset = different noise content), so this is
+    // a pure performance win with no audible behavior change. The original per-sample linear
+    // fade-out (baked directly into the old buffer's data) is replicated here via a GainNode
+    // envelope instead, since a shared buffer can't have a custom per-call fade baked into it.
+    if(!this.noiseBuffer){
+      const len = this.ctx.sampleRate * 2;
+      this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = this.noiseBuffer.getChannelData(0);
+      for(let i=0; i<len; i++) data[i] = Math.random()*2-1;
+    }
     const src = this.ctx.createBufferSource();
-    src.buffer = buffer;
+    src.buffer = this.noiseBuffer;
+    const maxOffset = Math.max(0, this.noiseBuffer.duration - duration - 0.01);
+    const offset = Math.random() * maxOffset;
+    const envelope = this.ctx.createGain();
+    const t0 = this.ctx.currentTime;
+    envelope.gain.setValueAtTime(1, t0);
+    envelope.gain.linearRampToValueAtTime(0, t0 + duration);
     const filter = this.ctx.createBiquadFilter();
     filter.type = filterType || 'lowpass'; filter.frequency.value = filterFreq || 1200;
     let node = filter;
@@ -2106,9 +2233,9 @@ class SoundEngine{
       filter.connect(panner);
       node = panner;
     }
-    src.connect(filter); node.connect(this.master);
-    if(reverbSend){ this.initReverb(); node.connect(this.reverbGain); }
-    src.start();
+    src.connect(envelope); envelope.connect(filter); node.connect(this.master);
+    if(reverbSend){ this.initReverb(); node.connect(this.reverbNode); }
+    src.start(t0, offset, duration);
   }
   play(name, worldX, intensity){
     if(!this.unlocked) return;
@@ -2145,10 +2272,10 @@ class SoundEngine{
         this.tone(210, 0.035, 'sine', 110, panF);
         break;
       }
-      case 'wave':  this.tone(440,0.20,'sine',660); break;
+      case 'wave':  this.tone(440,0.20,'sine',660,undefined,undefined,undefined,true); break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
-      case 'lose':  this.tone(200,0.4,'sawtooth',50); break;
-      case 'levelup': this.tone(520,0.09,'sine',780); setTimeout(() => this.tone(780,0.14,'sine',1040), 70); break;
+      case 'lose':  this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
+      case 'levelup': this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
 
       // ---- per-class melee attacks ----
       case 'swing_blade':  // Swordsman — crisp bladed slash: quick high-pass whoosh + a short metallic ring
@@ -2183,14 +2310,14 @@ class SoundEngine{
       case 'shot_squirtgun': this.tone(600, 0.07, 'triangle', 300); this.noise(0.05, 1800, 'highpass'); break; // wet spray
       case 'shot_bomber':   this.tone(120, 0.14, 'sine', 55); this.noise(0.14, 250, 'lowpass'); break; // heavy lob thud
       case 'cast_mage':     this.tone(1200, 0.16, 'sine', 2000); this.tone(600, 0.16, 'triangle', 1400); this.tone(90, 0.22, 'square', 900); break; // rising magical shimmer, now with a deep bass thump underneath — matches a rarer, harder-hitting cast
-      case 'cast_cleric':   this.tone(880, 0.2, 'sine', 1320); setTimeout(() => this.tone(1320, 0.18, 'sine', 1760), 60); break; // holy chime
+      case 'cast_cleric':   this.tone(880, 0.2, 'sine', 1320); this.tone(1320, 0.18, 'sine', 1760, 0, 0, 0.06); break; // holy chime
 
       // ---- dedicated menu/UI sounds, distinct from combat ----
       case 'click':    this.tone(600, 0.05, 'sine'); break; // minor UI tick — tabs, toggles, selections
       case 'ui_open':   this.tone(500, 0.07, 'sine', 780); break; // modal opening — short upward blip
       case 'ui_close':  this.tone(500, 0.07, 'sine', 320); break; // modal closing — short downward blip
-      case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000); setTimeout(() => this.tone(1000, 0.08, 'sine', 1300), 50); break; // purchase — cheerful two-note chime
-      case 'ui_deny':   this.tone(220, 0.1, 'square', 140); break; // blocked/disabled action — low buzz
+      case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true); break; // purchase — cheerful two-note chime
+      case 'ui_deny':   this.tone(220, 0.1, 'square', 140, undefined, undefined, undefined, true); break; // blocked/disabled action — low buzz
     }
   }
 }
@@ -2256,6 +2383,47 @@ let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-a
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
 let realTimeFrozen = false; // true while waveState is IDLE (between waves) — blood shouldn't age at all during the rest period between rounds
 let isMuted = false;
+// Lightweight UI-preference persistence — deliberately separate from the file-based full game
+// save system (serializeGameState/restoreGameState), which stays exactly as-is. This is only for
+// the three settings a returning player would otherwise have to re-toggle every single session:
+// graphics quality, mute, and the 18+ gore toggle. Wrapped in try/catch since localStorage can
+// throw in restrictive contexts (private browsing in some browsers, disabled storage) — a failure
+// here should never break the game, just silently skip persistence.
+const PREFS_KEY = 'sticktd:prefs:v1';
+function savePrefs(){
+  try{
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ graphicsQuality, goreMode, isMuted }));
+  }catch(e){ /* storage unavailable — game still works fine without persistence */ }
+}
+function loadPrefs(){
+  try{
+    const raw = localStorage.getItem(PREFS_KEY);
+    if(!raw) return;
+    const p = JSON.parse(raw);
+    if(p.graphicsQuality === 'high' || p.graphicsQuality === 'low') graphicsQuality = p.graphicsQuality;
+    if(typeof p.goreMode === 'boolean') goreMode = p.goreMode;
+    if(typeof p.isMuted === 'boolean') isMuted = p.isMuted;
+  }catch(e){ /* corrupted or unavailable — fall back to the existing defaults above */ }
+}
+loadPrefs();
+// Sync the actual DOM controls to whatever loadPrefs() just applied — the variables above are
+// updated, but the checkboxes/radio buttons/selected-class styling still default to their
+// hardcoded HTML state until told otherwise. Wrapped defensively since this runs before the rest
+// of boot; if any element genuinely doesn't exist yet, skip it rather than throw.
+(function syncPrefsToDOM(){
+  const gfxHigh = document.getElementById('gfxHighRadio');
+  const gfxLow = document.getElementById('gfxLowRadio');
+  if(gfxHigh && gfxLow){
+    (graphicsQuality === 'high' ? gfxHigh : gfxLow).checked = true;
+    document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === graphicsQuality));
+  }
+  const muteToggle = document.getElementById('settingsMuteToggle');
+  if(muteToggle) muteToggle.checked = isMuted;
+  const goreToggleStart = document.getElementById('goreToggle');
+  const goreToggleSettings = document.getElementById('settingsGoreToggle');
+  if(goreToggleStart) goreToggleStart.checked = goreMode;
+  if(goreToggleSettings) goreToggleSettings.checked = goreMode;
+})();
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
@@ -2438,7 +2606,7 @@ function gainTowerExp(tower, amount){
 function creditKill(tower, forStreak){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
-  gainTowerExp(tower, 3); // small, frequent XP per kill — replaces the old flat "+1 stat point every 4 kills"
+  gainTowerExp(tower, 4); // small, frequent XP per kill — bumped from 3, shifting more weight onto active kills vs. passive wave-survival XP below (evolution thresholds are the actual pacing lever now that they've doubled; this is a ratio rebalance between XP sources, not a pace change on its own)
   if(!forStreak){ updateInspectPanel(); updateHUD(); return; } // e.g. splash kills beyond the first in one blast
   if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
     tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
@@ -2448,7 +2616,7 @@ function creditKill(tower, forStreak){
   while(tower.nextStreakTier < KILLSTREAK_TIERS.length && tower.killStreak >= KILLSTREAK_TIERS[tower.nextStreakTier].count){
     const tier = KILLSTREAK_TIERS[tower.nextStreakTier];
     tower.nextStreakTier++;
-    gainTowerExp(tower, 12); // bigger XP burst for a killstreak milestone, still funneled through leveling rather than a direct stat point
+    gainTowerExp(tower, 14); // bigger XP burst for a killstreak milestone, still funneled through leveling rather than a direct stat point
     showKillstreakBanner(tier.label);
   }
   checkLegendaryStatus(tower);
@@ -3186,6 +3354,13 @@ class Enemy{
     // instead of being purely decorative. flinchSeverity above is the separate "how hard did this
     // land relative to max HP" layer — they're independent and multiply together in hitPower/cutSize.
     const hitRoll = damageVariance;
+    // Normalized 0-1 position of THIS hit's damage roll within its own min-max range — 0 at the
+    // guaranteed minimum, 1 at the guaranteed maximum, regardless of whether this tower uses the
+    // standard ±20% band or Mage's ±40% one. Ground-pool blood size now reads this directly
+    // (spawnDecal's dmgRollT param) so a min-roll hit visibly pools smaller and a max-roll hit
+    // visibly pools bigger — a real, requested ±30% swing tied to where the roll actually landed,
+    // not just severity or archetype.
+    const dmgRollT = clampNum((hitRoll - (1-varianceHalfWidth)) / (varianceHalfWidth*2), 0, 1);
     // Discrete critical hit — separate from the continuous hitRoll/hitPower variance below: a
     // positive-direction outlier with its own floating-text treatment, so combat has an actual
     // standout "big moment" beyond the smooth scaling everything else already has. Computed here
@@ -3405,17 +3580,24 @@ class Enemy{
           const cutColor = shiftHexColor(bio.dark, (Math.random()-0.5)*8, (Math.random()-0.5)*6);
           spawnParticles(this.x, this.y, bio.bright, Math.max(2, Math.round(12*hitPower)), 200, viscFriction, true);
           spawnBloodCastoff(this.x, this.y, slashAngle, hexToRgba(cutColor, 0.7), undefined, cutSize);
+          // "Air line" — a brief visible trace of the blade's actual swept path, geometrically
+          // identical (same slashAngle, same towerSwingDir handedness) to what drives the real
+          // cast-off blood below, so the pattern's angle is now directly verifiable against the
+          // swing that caused it rather than just implied.
+          if(sourceTower && graphicsQuality !== 'low'){
+            spawnSwingArcGuide(this.x, this.y, slashAngle, towerSwingDir(sourceTower), this.radius + 14);
+          }
           if(!firstBlood){
           if(sourceTower && sourceTower.type === 'AXEMAN'){
             // dual-wielded — two independent blades means two overlapping cast-off arcs from
             // slightly different angles/timing, not one arc doubled up. Reads as a genuinely
             // different weapon from Swordsman's single blade rather than the same effect twice.
-            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.3, hexToRgba(cutColor, 0.65));
+            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.3, hexToRgba(cutColor, 0.65), undefined, sourceTower ? towerSwingDir(sourceTower) : undefined);
             if(Math.random() < 0.6){
-              spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.9, hexToRgba(bio.dark, 0.55), 3 + Math.floor(Math.random()*3));
+              spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.9, hexToRgba(bio.dark, 0.55), 3 + Math.floor(Math.random()*3), sourceTower ? -towerSwingDir(sourceTower) : undefined);
             }
           } else {
-            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(cutColor, 0.65));
+            spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(cutColor, 0.65), undefined, sourceTower ? towerSwingDir(sourceTower) : undefined);
           }
           }
           if(Math.random() < 0.4) spawnDripTrail(this.x, this.y, hexToRgba(bio.dark, 0.6));
@@ -3445,7 +3627,7 @@ class Enemy{
       if(!bio.isDust) playImpactSound(decalArch, this.x, hitPower, isCritical);
       const markChance = (arch === 'ARCHER' || arch === 'MAGE') ? 0.5 : 0.3;
       if(!bio.isDust && this.hp > 0 && Math.random() < markChance){
-        spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.5), true, impactAngle, decalArch, bio.viscous);
+        spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.5), true, impactAngle, decalArch, bio.viscous, dmgRollT);
       }
       // ongoing drip tied directly to THIS hit's severity, not a background "wounded" timer —
       // a graze barely drips, a heavy blow relative to the target's max HP keeps bleeding longer
@@ -3660,7 +3842,7 @@ class Enemy{
             // the blood already in flight keeps going), not a plain straight streak. Blunt/thrust
             // weapons don't have a bladed edge carrying prior blood the same way, so they fall
             // through to the plain streak instead.
-            spawnCastOffArc(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
+            spawnCastOffArc(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6), undefined, sourceTower ? towerSwingDir(sourceTower) : undefined);
           } else {
             spawnBloodCastoff(this.x, this.y, castoffAngle, hexToRgba(bio.dark, 0.6));
           }
@@ -5123,7 +5305,7 @@ function resolveWeaponSubtype(sourceTower){
   if(sourceTower.type === 'SPEARMAN') return 'PIERCE';
   return 'BLADE'; // Swordsman, Axeman
 }
-function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous){
+function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous, dmgRollT){
   const roll = Math.random();
   let sizeMult, blobCount;
   if(!smallBias && roll < 0.04){
@@ -5194,6 +5376,12 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous){
   // was. 3.2x still keeps Mage's rare-tier pool the largest possible splatter in the game (above
   // any other archetype's own 2.6x rare-tier ceiling), just no longer able to compound unbounded.
   sizeMult = Math.min(sizeMult, 3.2);
+  // Requested ±30% swing tied directly to where THIS hit's damage roll landed in its own min-max
+  // range — a genuine min-roll hit pools 30% smaller, a genuine max-roll hit pools 30% bigger,
+  // independent of and on top of the archetype/rare-tier sizing above. Optional — callers that
+  // don't have per-hit roll context (death-time low-severity marks, the generic particle-settling
+  // stain) simply don't pass it and get the unscaled size, same as before this existed.
+  if(dmgRollT !== undefined) sizeMult *= 0.7 + dmgRollT*0.6;
   const orientAngle = biasAngle !== undefined ? biasAngle + (Math.random()-0.5)*0.9 : Math.random()*Math.PI*2;
   let stretchLong = elong.longMin + Math.random()*elong.longSpan;   // elongation along the main spatter axis
   let stretchShort = elong.shortMin + Math.random()*elong.shortSpan; // narrowness across it — independent of stretchLong
@@ -5237,7 +5425,16 @@ function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous){
 // Modeled here as a fan of individual teardrop stains following a curving path away from the
 // wound, each oriented tangent to its own point on the arc (the actual direction that specific
 // drop was flung), rather than one straight cast-off line.
-function spawnCastOffArc(x, y, baseAngle, color, count){
+// A real person swings a blade with a consistent dominant handedness, not a fresh coin-flip every
+// single hit — this was the actual bug behind cast-off arcs "going in a random circle": arcDir was
+// randomized inside spawnCastOffArc() itself on every call, disconnected from anything about the
+// tower's actual swing. Lazily assigned once per tower and reused forever after, so a given
+// Swordsman's cast-off consistently curves the same way, hit after hit, matching a real swing.
+function towerSwingDir(tower){
+  if(tower.swingHandedness === undefined) tower.swingHandedness = Math.random() < 0.5 ? 1 : -1;
+  return tower.swingHandedness;
+}
+function spawnCastOffArc(x, y, baseAngle, color, count, arcDir){
   // Ranges widened substantially (was a fairly narrow band: 4-6 drops, one dist/angle-step
   // formula every time) — a full-force overhead swing and a quick short jab shouldn't leave an
   // arc that reads as the same shape and size, just repositioned. `scale` varies the whole arc's
@@ -5245,7 +5442,7 @@ function spawnCastOffArc(x, y, baseAngle, color, count){
   // consecutive blade hits produce genuinely different-looking cast-off trails.
   const scale = 0.65 + Math.random()*0.9;
   count = count || (3 + Math.floor(Math.random()*6));
-  const arcDir = Math.random() < 0.5 ? 1 : -1; // which way the blade swung — clockwise or counter-clockwise
+  arcDir = arcDir !== undefined ? arcDir : (Math.random() < 0.5 ? 1 : -1); // fallback random only when a caller genuinely has no tower/handedness context to pass
   const angularStep = (0.15 + Math.random()*0.32) * arcDir;
   let dist = (6 + Math.random()*7) * scale;
   const rgb = parseColorToRgba(color);
@@ -5744,6 +5941,22 @@ function spawnHolyBeam(x, y, color){
   p.friction = 1; p.canPool = false; p.pooled = false;
   spawnShockring(x, y, hexToRgba('#ffffff', 0.7), 20 + Math.random()*8); // landing flash where the beam actually strikes
 }
+// The "air line" — a brief, thin ghost-trail arc tracing the blade's actual swept path through the
+// air at the moment of the swing, geometrically identical to the angle/handedness driving the real
+// cast-off blood (same baseAngle, same arcDir from towerSwingDir) — so the blood pattern's angle is
+// now directly, visibly verifiable against the swing that caused it, not just implied. Reuses the
+// shared particle pool (isSwingArc distinguishes it in drawParticles) the same way every other
+// lightweight effect here does.
+function spawnSwingArcGuide(x, y, baseAngle, arcDir, radius){
+  const p = particles[particleIndex];
+  particleIndex = (particleIndex+1) % PARTICLE_COUNT;
+  p.active = true; p.x = x; p.y = y; p.vx = 0; p.vy = 0; p.gravity = 0;
+  p.isGib = false; p.isStream = false; p.isRing = false; p.isBeam = false; p.isSwingArc = true;
+  p.life = p.maxLife = 260 + Math.random()*60; // quick — a real blade's swept path is only visible for an instant
+  p.color = '#ffffff';
+  p.friction = 1; p.canPool = false; p.pooled = false;
+  p.arcBaseAngle = baseAngle; p.arcDir = arcDir; p.arcRadius = radius || 26;
+}
 function updateParticles(dt){
   for(const p of particles){
     if(!p.active) continue;
@@ -5873,6 +6086,20 @@ function drawParticles(ctx){
       ctx.lineTo(p.x-15, p.y);
       ctx.closePath();
       ctx.fill();
+      ctx.restore();
+    } else if(p.isSwingArc){
+      // A thin, fading arc tracing the blade's actual swept path — spans ~140° in the swing
+      // direction (arcDir) around arcBaseAngle, matching exactly what spawnCastOffArc() used for
+      // the real blood, so the two are always geometrically consistent with each other.
+      const fade = Math.max(0, p.life/p.maxLife);
+      ctx.save();
+      ctx.globalAlpha = fade*0.55;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.4;
+      const span = 2.45; // ~140°
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.arcRadius, p.arcBaseAngle, p.arcBaseAngle + span*p.arcDir, p.arcDir < 0);
+      ctx.stroke();
       ctx.restore();
     } else {
       ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
@@ -6973,7 +7200,7 @@ function update(dt){
     if(!anyAlive && deathAnims.length === 0){
       waveState = 'IDLE';
       wavesCompleted++;
-      const surviveXp = 6 + Math.floor(waveIndex * 0.6); // scales gently with how far the run has gone
+      const surviveXp = 4 + Math.floor(waveIndex * 0.5); // trimmed from 6+0.6x — active kills (bumped above) now carry relatively more of a tower's total XP than passive wave-clear alone, per "more emphasis on collecting exp"
       for(const t of towerPool){ if(t.active) gainTowerExp(t, surviveXp); }
       processClericHealing();
       expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
@@ -7845,19 +8072,19 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
   });
 });
 document.getElementById('gfxHighRadio').addEventListener('change', () => {
-  graphicsQuality = 'high'; setupCanvas();
+  graphicsQuality = 'high'; setupCanvas(); savePrefs();
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'high'));
 });
 document.getElementById('gfxLowRadio').addEventListener('change', () => {
-  graphicsQuality = 'low'; setupCanvas();
+  graphicsQuality = 'low'; setupCanvas(); savePrefs();
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'low'));
 });
 document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
-  isMuted = e.target.checked;
+  isMuted = e.target.checked; savePrefs();
   if(audioEngine.master) audioEngine.master.gain.value = isMuted ? 0 : 0.5;
 });
 document.getElementById('settingsGoreToggle').addEventListener('change', (e) => {
-  goreMode = e.target.checked;
+  goreMode = e.target.checked; savePrefs();
   if(!goreMode){ decals.length = 0; decalIndex = 0; }
   const badge = document.getElementById('ratingBadge');
   const startCheckbox = document.getElementById('goreToggle');
@@ -8039,6 +8266,13 @@ function updateInspectPanel(){
   const rng = isMeleeMode ? (t.meleeRange || t.range) : t.range;
   const cd = isMeleeMode ? (t.meleeCooldown || t.cooldown) : t.cooldown;
   document.getElementById('inspAtkVal').textContent = atk;
+  // Min-max damage range, shown right alongside the flat number — previously only ever showed the
+  // base value with no indication that real ±20%/±40% variance (Mage-family) is applied every hit.
+  // Uses the exact same half-width the actual damage roll in applyDamage() uses, so this is a real
+  // number, not a cosmetic guess.
+  const dmgHalf = t.type === 'MAGE' ? 0.4 : 0.2; // must match applyDamage()'s varianceHalfWidth exactly — Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band
+  const dmgMinEl = document.getElementById('inspAtkRange');
+  if(dmgMinEl) dmgMinEl.textContent = '(' + Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf)) + ')';
   document.getElementById('inspHpVal').textContent = Math.round(t.hp);
   document.getElementById('inspMaxHpVal').textContent = t.maxHp;
   document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100) + '%';
@@ -8247,7 +8481,7 @@ document.querySelectorAll('.quality-btn').forEach(btn => {
 });
 
 document.getElementById('goreToggle').addEventListener('change', (e) => {
-  goreMode = e.target.checked;
+  goreMode = e.target.checked; savePrefs();
   if(!goreMode){ decals.length = 0; decalIndex = 0; }
   const badge = document.getElementById('ratingBadge');
   if(goreMode){

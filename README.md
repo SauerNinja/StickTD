@@ -5,7 +5,7 @@ distinct classes, an expanding spiral map, infinite waves, a hero item system, b
 that ambush your towers, path-blocking barricades, forensic-grade blood/gore effects, and full
 save/load. Single self-contained HTML file — no install, no build step, just open and play.
 
-**[Play it here](https://sauerninja.github.io/StickTD/)**
+**[Play it here](https://sauerninja.github.io/StickTD/)** · **[Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)**
 
 Zero dependencies: no external images, no external audio, nothing to install. Every stickman,
 weapon, and effect is drawn procedurally on an HTML5 Canvas, and every sound is synthesized live
@@ -130,6 +130,14 @@ through an entire queued line of enemies, not just to the one directly behind it
 An 18+ toggle in Settings → Game controls all of it — off by default. With it on, damage produces
 biologically-flavored, forensic-style bloodstain effects rather than a generic hit spark:
 
+- **Cast-off arc direction is now a fixed per-tower handedness, not a fresh random coin-flip on
+  every hit** — a real swordsman swings with a consistent dominant direction, and the blood now
+  matches. A brief "air line" also traces the blade's actual swept path at the moment of the
+  swing, geometrically identical to the angle driving the cast-off, so the blood pattern is
+  directly, visibly verifiable against the swing that caused it.
+- **Ground-pool size now reads directly from where a hit's damage roll landed in its own min-max
+  range** — a genuine minimum-roll hit pools ~30% smaller, a genuine maximum-roll hit ~30% bigger,
+  shown alongside the tower's min-max damage range in its stat panel.
 - **Per-species blood profiles** — insects, undead, and rock/debris enemies each bleed a
   distinct color and texture (necrotic dark ooze for undead, acid-green hemolymph for insects,
   dust for constructs), and every individual enemy additionally rolls its own subtle blood tint,
@@ -306,6 +314,8 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5084)
 - [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4559)
 - [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5217)
+- [`towerSwingDir()` — fixed per-tower swing handedness, so a Swordsman's cast-off arc always curves the same real direction instead of a fresh coin-flip every hit](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5241)
+- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5757)
 - [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5335)
 - [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5693)
 - [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5304)

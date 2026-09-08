@@ -5,6 +5,40 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
+- **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
+  `reserveVoiceSlot()` protects the engine from unbounded concurrent voices during swarm/explosion
+  moments, and critical UI/system sounds bypass it via the new `force` param. What's NOT built:
+  per-family priority tiers (combat feedback vs. standard impacts vs. ambient each with their own
+  sub-budget) and true voice-stealing (killing an already-playing low-priority voice early to make
+  room for a higher-priority one, with a fade-out to avoid clicks) — the current version only ever
+  refuses new low-priority sounds, never stops an already-started one. Worth a follow-up if the
+  flat cap ever proves too coarse in practice.
+- **Tower "sonic identity" formalization** — each tower archetype already has a distinct procedural
+  sound (bright/metallic Swordsman, low/heavy Hammerman, string-like Archer, etc.), but this lives
+  as ad hoc parameter choices scattered through `SoundEngine.play()`'s switch statement. Worth
+  extracting into named palettes (e.g. `AUDIO_PALETTES.METAL_BLADE`, `.BLUNT`, `.MAGIC`) that class
+  recipes combine with class-specific modifiers — makes adding a new evolution's sound safer and
+  more consistent than hand-tuning frequencies from scratch each time.
+- **Three-stage (pre-transient / transient / body-tail) sound envelopes for major attacks** — Mage
+  cast and heavy melee hits already layer multiple synthesized elements, but not on a consistent
+  staged timing model (a brief anticipation cue before the main transient, then a decaying body).
+  Worth prototyping on 2-3 sounds first (Mage cast, Hammerman swing) before generalizing — a real
+  design idea, not verified as needed everywhere.
+- **Input-action abstraction layer** (physical input → semantic action, e.g. `BUILD_OPEN`,
+  `PAUSE_TOGGLE`, `NEXT_WAVE`) — the current Pointer Events handling is solid, but game logic and
+  physical input are somewhat coupled in `handleTap()`. A thin dispatcher would let future input
+  methods (keyboard shortcuts, gamepad) reuse the same game commands rather than each needing its
+  own bespoke wiring. Not urgent — no current input method is blocked by this — but worth doing
+  before adding a second input scheme.
+- **Page Visibility handling** — no `visibilitychange` listener exists; the fixed-timestep loop's
+  frame-time clamp and tick cap already prevent a catastrophic catch-up spike, but tab-switch
+  behavior is implicit rather than an intentional design choice (auto-pause vs. catch-up-on-return).
+  Worth a deliberate decision, not a default.
+- **Save-schema version separate from `GAME_VERSION`** — saves currently stamp `gameVersion` but
+  have no independent `schemaVersion`. These answer different questions (which release produced
+  this vs. which serialized structure is this) and will matter once a save-format change actually
+  needs migration logic, which hasn't happened yet.
+
 - **Tower UI still shows a single flat damage number, not a min-max range** — the ±20%
   `damageVariance` (1.0.168) is real and live in combat, but no tooltip/stat panel tells the player
   "this tower deals 72-108" instead of a flat "90." Asked, never answered.

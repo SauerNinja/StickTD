@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.0.205] - 2026-09-08
+- **Web Audio clock scheduling replaces `setTimeout()` for all three multi-note sounds**
+  (`levelup`, `cast_cleric`, `ui_buy`). `tone()` gained an optional `delay` parameter, scheduled
+  against `audioCtx.currentTime` up front rather than firing a second `tone()` call from a JS
+  timer later — `setTimeout` is the wrong clock for tight audio timing, subject to JS event-loop
+  jitter/throttling (background tabs, heavy simulation frames) that the audio hardware clock isn't.
+- **Added a real global voice budget** — a genuine CPU/audio-thread safeguard, not a mix-quality
+  nicety. Previously nothing stopped a 40-enemy swarm death or a cluster of simultaneous
+  splash-damage hits from each independently spawning full oscillator/buffer/filter graphs with
+  zero coordination. New `reserveVoiceSlot()` tracks active-voice expiry timestamps and caps
+  concurrent voices at 28; wired directly into `tone()`/`noise()` themselves (the two lowest-level
+  primitives everything in the engine funnels through, including `playImpactSound()` which
+  bypasses the `play()` dispatcher entirely) — so this protects the whole engine without needing
+  per-call-site changes anywhere else in the file. Once the budget is full, a new sound call
+  simply produces no sound rather than piling on further voices.
+- **Critical UI/system sounds bypass the voice budget entirely** — new `force` parameter on
+  `tone()`, applied to `wave`, `lose`, `levelup`, `ui_buy`, and `ui_deny`. These should never be
+  silently dropped just because a chaotic battle moment happened to fill the budget with combat
+  noise; routine gameplay sounds (impacts, gore deaths, standard attacks) remain correctly
+  subject to the cap, which is exactly the category the budget is meant to manage.
+## [1.0.204] - 2026-09-08
+- **Fixed a real, confirmed audio graph bug: reverb was never actually reverberating anything.**
+  Verified against the live code (not assumed from external analysis): every `reverbSend` call
+  site connected the dry source straight into `reverbGain`, completely bypassing `reverbNode` (the
+  actual `ConvolverNode`) — the convolver had zero input the whole time, despite its impulse
+  response being generated correctly. Separately, `reverbGain` connected directly to `compressor`,
+  bypassing `this.master` entirely — since mute works by zeroing `master.gain`, any sound using
+  `reverbSend` (critical hits, Mage, explosions) could still be faintly audible while "muted."
+  Both fixed: the wet-send call sites in `tone()`/`noise()` now connect into `reverbNode` itself,
+  and `reverbGain` now routes through `master` like every other sound.
+- **Fixed a real early-boot fragility bug.** The diagnostic `window.error` handler is installed
+  inside `<head>`, ~400 lines before `<body>` is even parsed — an error thrown early enough in
+  boot meant `document.body` was still `null`, so the handler's own `.appendChild` would throw,
+  silently swallowing both the original error and the diagnostic meant to report it. Now falls
+  back to `document.documentElement` when `body` isn't available yet.
+- **`noise()` no longer allocates and fills a brand-new `AudioBuffer` on every single call.**
+  `noise()` fires extremely often (gore, impacts, explosions, UI) and was generating fresh
+  sample-by-sample white noise every time — real repeated allocation/CPU work for content that
+  doesn't need to be unique per call. Now generates one shared 2-second noise buffer once, lazily,
+  and each call plays a random-offset slice of it (still audibly different call to call — the
+  random offset changes, not the underlying data) with the original linear fade-out replicated via
+  a `GainNode` envelope instead of baked into per-call buffer data. No audible behavior change,
+  real performance win.
+- **Added lightweight `localStorage` persistence for UI preferences** — graphics quality, mute,
+  and the 18+ gore toggle now survive a page reload, separate from and without touching the
+  existing file-based full game save system. Wrapped in try/catch throughout since storage can
+  throw in restrictive contexts (private browsing, disabled storage) — persistence failing never
+  breaks the game, it just silently doesn't persist that session. All three real toggle handlers
+  (`gfxHighRadio`/`gfxLowRadio`/`settingsMuteToggle`/`settingsGoreToggle`/`goreToggle`) now save on
+  change, and the actual DOM controls (not just the JS variables) sync to loaded values at boot.
 ## [1.0.202] - 2026-09-07
 - **Attack speed display now shows two decimals instead of one** (`inspSpeedVal`), so gradual
   per-DEX-point increases (the underlying formula was already granular — +8%/point, diminishing

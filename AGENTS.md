@@ -407,6 +407,16 @@ across-the-file change this project's own "smallest safe fix" discipline argues 
 opportunistically. Worth doing deliberately, as its own scoped pass, if this function grows a
 9th/10th parameter's worth of complexity again — not a reason to leave it entirely un-flagged now.
 
+## The `<head>` block is a fixed external integration — don't casually reorder or trim it
+
+`index.html`'s `<head>` contains Google Analytics (`gtag.js`, measurement ID `G-B6H58BQ50N`) and a
+block of SEO meta tags (title, description, keywords, canonical, Open Graph, Twitter card) with
+specific, deliberate keyword choices (stick tower defense, StickTD, sauerninja, setvin noether).
+The GA measurement ID is tied to a live property — don't regenerate or swap it without being asked.
+The favicon is an inline base64 data URI (verified to work reliably); the OG/Twitter image tags
+point to `og-image.png` at the site root, which is a real file that needs to exist in the repo —
+a data URI there wouldn't be fetched by most social-media crawlers, unlike the favicon.
+
 ## Navigating this file — the README Code Map is the front door
 
 Clean Code's "Newspaper Metaphor" (ch. 5): a well-organized source file reads like a newspaper —
