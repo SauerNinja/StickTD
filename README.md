@@ -37,7 +37,8 @@ with the Web Audio API.
 
 ## How to play
 
-- Tap **Build**, pick a tower, then tap a hedge tile to place it.
+- Tap **Build**, pick a tower, then tap a hedge tile to place it. It shows a brief class-flavored
+  quip and plays a cute gibberish "spawn chatter" voice blip when placed.
 - Tap a placed tower to see its nameplate — a portrait, HP bar, an EXP bar, and combat stats. Tap
   the nameplate again (or the scroll icon, which glows green when you have points to spend) to
   expand into full options: upgrade, sell, move, buy it gear from the **Shop**, cycle its
@@ -50,11 +51,66 @@ with the Web Audio API.
   the next.
 - The path is a genuine spiral, regenerated (and re-checked against your existing towers) every
   time the map expands.
-- Waves continue indefinitely past 100 with procedurally scaling difficulty across 7 rotating
+- Waves continue indefinitely past 100 with procedurally scaling difficulty across 9 rotating
   wave archetypes — this is built to be a long-haul hero-building grind, not a sprint.
 - Runs on desktop (mouse + scroll-to-zoom) and mobile (touch, pinch-to-zoom, drag-to-pan).
 - Speed up simulation from 1x up to 10x via the HUD speed button. When a tower is selected and
   actively attacking, a red-bordered target frame shows what it's aiming at — HP, armor, and speed.
+
+### Stat icon legend
+
+Every icon used across the HUD, a tower's inspect panel, its target frame, and its stat buttons:
+
+**Top HUD bar**
+| Icon | Meaning |
+|---|---|
+| ❤️ | Lives remaining — reaching 0 ends the run |
+| 💰 | Gold — spent on building most towers, upgrading, expanding, and the Shop |
+| 🔀 | Free tower relocations left (earn 1 more every 2 waves, capped) |
+| 🏗️ Build / 🛒 Shop / ⚙️ | Open the build tray, item shop, or settings |
+| ⏸/▶ and 1x/2x/.../10x | Pause/resume and simulation speed |
+
+**Tower inspect panel — combat stats** (left to right: HP/armor first, then the damage cluster)
+| Icon | Meaning |
+|---|---|
+| ❤️ | Current / max HP |
+| 🛡️ | Armor — percentage damage reduction on incoming hits |
+| ⚔️ | Damage, shown as its real min-max range (the actual random roll band every hit uses) |
+| 💥 | Critical hits — shown as chance, then ⚔️ and the damage multiplier (e.g. "2.5% ⚔️1.20") |
+| ⏳ | Time per attack, in seconds — how long one full attack cycle takes, not a frequency |
+| 🥈 | Real DPS — average damage per hit (crit's expected-value contribution included) × attacks/second, discounted by the tower's own miss chance (burst-fire towers use their true full attack cycle, not just the reload cooldown) |
+| 🎯 | Range — attack radius in world units |
+| 🍀 | Luck — bonus % gold from this tower's kills |
+
+This row never wraps to a second line — if its content is too wide for the panel, it shrinks
+(with no minimum size) to always fit on one line instead.
+
+**Tower inspect panel — stat allocation**
+| Icon | Stat | What it does |
+|---|---|---|
+| 💪 | STR | +3% max HP per point for every class; additionally the sole source of damage for Warrior-archetype towers (Swordsman and its evolutions), on a curve built to keep scaling meaningfully into the late game |
+| 🏃 | DEX | Universal +3% attack speed, reduced miss chance, and 💥 crit chance per point for every class, regardless of archetype; additionally the sole source of damage for Archer-archetype towers |
+| 🧠 | INT | +6 range and 💥 crit damage multiplier per point for every class (Cleric uses it to boost heal amount instead of range); additionally the sole source of damage for Mage-archetype towers |
+
+Damage is strictly archetype-exclusive — only STR drives Warrior damage, only DEX drives Archer
+damage, only INT drives Mage damage, with no cross-class bonus. Miss chance itself has a different
+baseline per archetype on purpose (Mage misses the most at 22% starting out, Archer a moderate 14%,
+Warriors the least at 7%), but the DEX formula that reduces it from there is identical for every
+tower, with no exceptions. Critical hits work the same way: base 2.5% chance for 1.20x damage
+before any investment, with DEX raising the chance (capped 50%) and INT raising the multiplier
+(capped 3x) — a real damage effect now, applied before armor mitigation, not just a cosmetic
+floating-text color.
+
+**Tower strategy (the aura box)** — evolved/specialist towers (anything beyond base Swordsman/
+Archer/Mage) show a round glowing WC3-style icon next to their inventory slots. Tap it to open a
+one-line strategy note explaining that class's niche. Basic classes and Barricade don't have one —
+they don't have a specialized niche yet to explain.
+
+**Target frame** (shown when a selected tower is actively attacking something)
+| Icon | Meaning |
+|---|---|
+| 🛡️ | The target enemy's armor |
+| 👟 | The target enemy's movement speed |
 
 ## Towers & evolutions
 
@@ -136,12 +192,18 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
   swing, geometrically identical to the angle driving the cast-off, so the blood pattern is
   directly, visibly verifiable against the swing that caused it.
 - **Ground-pool size now reads directly from where a hit's damage roll landed in its own min-max
-  range** — a genuine minimum-roll hit pools ~30% smaller, a genuine maximum-roll hit ~30% bigger,
-  shown alongside the tower's min-max damage range in its stat panel.
-- **Per-species blood profiles** — insects, undead, and rock/debris enemies each bleed a
-  distinct color and texture (necrotic dark ooze for undead, acid-green hemolymph for insects,
-  dust for constructs), and every individual enemy additionally rolls its own subtle blood tint,
-  so no two enemies bleed an identical, flat color.
+  range, AND from the actual target's own body size** — a genuine minimum-roll hit pools ~30%
+  smaller, a genuine maximum-roll hit ~30% bigger, shown alongside the tower's min-max damage
+  range in its stat panel; independently, a tiny Swarm ant leaves a visibly smaller pool than a
+  Boss for the same weapon type, instead of every enemy producing an identically-sized pool
+  regardless of how big or small its own emoji actually is. The same size-blending applies to
+  death-burst particle counts, not just the pool.
+- **Per-species blood profiles** — insects (green hemolymph), undead (necrotic dark ooze), and
+  rock/stone-bodied enemies (Boulder, Rocklet, Tank — no blood at all, only dust and small 🪨
+  chip debris, 2-5 scattered on death and a 1-in-10 chance per non-lethal hit, each chip a fixed
+  1/10 of the enemy's own size) each bleed a distinct color and texture, and every individual
+  enemy additionally rolls its own subtle blood tint, so no two enemies bleed an identical, flat
+  color.
 - **Weapon-specific wound identity** — melee sub-branches by actual weapon geometry: a bladed cut
   (cut-line plus a curved cast-off arc trailing away, matching how blood actually flies off a
   swinging blade), a blunt crushing impact (wider radial spatter plus a circular shockring — the
@@ -175,22 +237,42 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
 Every tower has its own EXP level (1-99), separate from its gold-bought upgrade tier. EXP comes
 from landing kills, killstreak milestones, spending gold to upgrade a tower's tier, and simply
 surviving to the end of a round. Each level-up grants exactly one stat point — small and frequent
-rather than big lump sums. Barricades don't fight, so they don't earn EXP.
+rather than big lump sums — for the player to allocate manually via the STR/DEX/INT buttons.
+Barricades don't fight, so they don't earn EXP.
 
-Stat damage bonuses are class-exclusive, Dota-style: STR only boosts damage for Warrior-archetype
-towers (Swordsman and its evolutions), DEX only for Archer-style towers (Archer, Gatling,
-Blowdart, Bomber, Dual Squirt Gun), and INT only for Mage-archetype towers (Mage, Cleric). STR's
-max-HP bonus and DEX's attack-speed/luck bonus stay universal across every class. A tower's
-primary stat is the dominant driver of how hard it hits — gold-tier level-ups add real but
-comparatively modest raw damage, so investing in the right stat matters more than just buying
-levels.
+Stat damage bonuses are class-exclusive, Dota-style, with no exceptions: STR only boosts damage
+for Warrior-archetype towers (Swordsman and its evolutions), DEX only for Archer-style towers
+(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster), and INT
+only for Mage-archetype towers (Mage, Cleric). STR's max-HP bonus and DEX's attack-speed/luck/
+accuracy bonus stay universal across every class — DEX-based accuracy in particular scales via
+the exact same formula for every tower regardless of archetype, with no early-game caps for any
+class. A tower's primary stat is the dominant driver of how hard it hits, with Warriors using a
+separate, steeper damage curve from the other two archetypes specifically so heavy STR investment
+keeps compounding meaningfully into the deep endgame instead of flattening out.
+
+Spending gold to upgrade a tower's tier also grants random stat growth on top of its guaranteed
+tier stat bump: 3 independent rolls of 1-6 points each into a randomly chosen stat, plus a
+guaranteed extra 1-3 points into the tower's own favored/main stat. This is separate from — and
+in addition to — the 1 stat point every EXP level grants.
+
+Baseline (zero-DEX) miss chance differs by archetype on purpose: Mage misses the most (22%),
+Archer a moderate amount (14%), and Warriors (melee) the least (7%) — a deliberate hierarchy, not
+a bug, reflecting how forgiving each class's attack type is to land. All three converge toward a
+2% floor with enough DEX investment, since the accuracy formula itself is identical for everyone.
+
+The inspect panel shows each tower's real min-max damage range (no separate flat number
+alongside it) and its actual DPS — average damage per hit times attacks per second, discounted by
+the tower's own miss chance, with burst-fire towers (Gunalinder, Snap Caster) using their real
+full attack-cycle time rather than just the reload cooldown.
 
 ## Waves
 
-100 hand-authored waves, then infinite procedurally-generated ones cycling through 7 archetypes —
+100 hand-authored waves, then infinite procedurally-generated ones cycling through 9 archetypes —
 Standard, Swarm Surge, Elite Vanguard, Undead Uprising, Ambush Tactics, Siege Assault (boss rush),
-and Stone Push (a heavily-armored crowd-control test). A Boss periodically spawns Grunt minions
-while active; an off-screen compass arrow points toward it when it's out of view.
+Stone Push (a heavily-armored crowd-control test), Trick Rush (looks like an easy opener, then
+springs a real threat partway through), and The Grind (a long, sustained economy/DPS test rather
+than a fast burst). A Boss periodically spawns Grunt minions while active; an off-screen compass
+arrow points toward it when it's out of view.
 
 The first 15 waves each introduce at most one brand-new enemy type, with a popup explaining its
 HP, speed, bounty, and any special behavior the first time it appears. A summary popup at the end
@@ -222,8 +304,14 @@ them. Global passive upgrades apply to every tower you own, current and future. 
 
 ## Resources
 
-Gold from kills and wave clears. Wood and stone from clearing scattered trees and rocks (and rare
-treasure chests / relic drops) — spent on the priciest tier of shop gear.
+Gold from kills and wave clears — spent on most towers, upgrades, and expanding the map. Wood and
+stone from clearing scattered trees and rocks (rocks cost noticeably more gold to clear than an
+equivalently-sized tree), rare treasure chests, and relic drops — spent on the priciest tier of
+shop gear, and on **Barricades**, which cost wood + stone instead of gold (600🪵/300🪨 — a real
+investment, not a cheap early buy). Every 5 waves cleared banks one free-barricade charge (capped
+at 3), consumed automatically on your next Barricade build before any wood/stone is spent. Tank
+(🗿) drops stone instead of gold on death — the game's one enemy-side source of stone beyond
+clearing rocks yourself.
 
 ## Lives
 
@@ -302,6 +390,7 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5717)
 - [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5756)
 - [`generateProceduralWave()` and its 9 named flavor generators (Swarm/Elite/Undead/Ambush/BossRush/Vanguard/Trick/Grind/Standard)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6765)
+- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1323)
 - [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6100)
 - [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6225)
 - [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6610)

@@ -72,10 +72,82 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
 - Leveling is a genuine EXP system (`gainTowerExp()`), separate from the gold-tier `level` field
   used for Upgrade-button tiers. Every tower has `xp`/`expLevel` (1-99), fed by kills, killstreak
   milestones, gold-tier upgrades, and round survival (granted to every active tower at wave-end).
-  Each level-up grants exactly 1 stat point. `CLASS_ARCHETYPE` gates which stat actually boosts
-  damage per class (STR→Warrior, DEX→Archer-style, INT→Mage — Dota-style, exclusive, not additive
-  across archetypes). Barricades are explicitly excluded from EXP in `gainTowerExp()` since they
-  don't fight.
+  Each level-up grants exactly 1 stat point (spent manually via `allocateStat()`). `CLASS_ARCHETYPE`
+  gates which stat actually boosts damage per class (STR→Warrior, DEX→Archer-style, INT→Mage —
+  Dota-style, exclusive, not additive across archetypes). Barricades are explicitly excluded from
+  EXP in `gainTowerExp()` since they don't fight. Separately, `Tower.upgrade()` (the gold-tier
+  tier-up, not an EXP level) also grants automatic random stat growth on top of the guaranteed
+  tier stat bump: 3 rolls of 1-6 points each into a randomly chosen stat, plus a guaranteed 1-3
+  points into the tower's own favored/main stat — deliberately separate from and additive to the
+  EXP system's manual 1-point-per-level, not a replacement for it.
+- **Accuracy/damage/crit balance system** — `recomputeStats()` computes `missChance` from
+  `BASE_MISS_CHANCE_BY_ARCHETYPE` (Mage 22% / Archer 14% / Warrior 7% at zero DEX, an explicit
+  balance hierarchy, not a bug) minus `dexAccuracy` (`diminishingStatValue(dexEff, 0.007)`), floored
+  at 2%. This formula is now identical for every archetype with no exceptions — there used to be an
+  `EARLY_ACCURACY_CAP_TYPES` early-cap for casters/melee, removed per explicit balance direction.
+  Damage itself stays strictly archetype-exclusive as always (see the Leveling bullet above);
+  `missChance` is the one universal DEX effect that applies regardless of class. Warrior damage
+  specifically uses `warriorStrDamageMult()`, a separate curve from the shared
+  `diminishingStatValue()` (higher base rate, higher/slower-decaying late-game floor) so heavy STR
+  investment keeps compounding into the endgame instead of flattening out — every other stat effect
+  in the game still uses the shared curve unchanged. Critical hits (`critChance`/`critMult` on
+  every tower) are a real damage effect, not the old purely-cosmetic version: `critChance` (base
+  2.5%, DEX-scaled, capped 50%) and `critMult` (base 1.20x, INT-scaled, capped 3x), rolled in
+  `applyDamage()` before armor mitigation so a crit still gets partially reduced by armor like any
+  other hit. `DPS` in the inspect panel folds in the crit's expected-value contribution
+  (`critChance × (critMult-1)`) so it doesn't understate real average output. DEX's attack-speed
+  rate is 3%/point (not 8% — toned down since it could more than double attack speed at moderate
+  investment, far stronger than DEX's other universal effects). Ranged-tower lead-prediction aim is
+  capped by `MAX_LEAD_PREDICT_TIME` (0.35s) so a slow shot doesn't extrapolate a target's velocity
+  past a corner on this winding spiral path. `validateGameDefinitions()` runs once at boot and
+  cross-checks every data-driven table (`CONFIG.WAVES`/`TOWERS`/`ENEMIES`, `EVOLUTIONS`,
+  `SPLIT_CHILD_TYPE`, `CLASS_ARCHETYPE`, `FOOTSTEP_WEIGHT`, `JOB_QUOTES`, `TOWER_STRATEGY`,
+  starter/evolved type lists) for dangling references — extend it, don't bypass it, when adding a
+  new table with cross-references of its own.
+- **Spawn-quip and aura-box systems** — `JOB_QUOTES` (keyed by tower type, 5 lines each) feeds
+  `randomJobQuote()`, shown via `spawnTowerQuip()` (a 1800ms-life floating text, NOT the generic
+  550ms `spawnFloatingText()` — a real multi-word phrase needs real time to read) plus a
+  `spawn_chatter` gibberish voice blip, both triggered only at the actual build-tap placement
+  handler — NOT inside `Tower.create()`, which is also called during save/load restoration and
+  starting-barricade seeding, so putting the trigger there would fire every tower's quip
+  simultaneously on every load. `TOWER_STRATEGY` (keyed by `EVOLVED_TOWER_TYPES`, one icon + one
+  strategy line each) feeds the WC3-style aura box next to a tower's inventory slots — hidden for
+  Swordsman/Archer/Mage/Barricade, tap-to-toggle tooltip for everyone else.
+- **Inspect-panel dynamic-fit layout** — `#inspCombatRow` (the stat row) never wraps; instead
+  `fitStatRowToOneLine()` (same technique as the top HUD's `fitHudTopToOneLine()`) measures the
+  row's true `scrollWidth`, compares to `#inspect-panel`'s `clientWidth - 16` (its real padding),
+  and scales the row down via a left-anchored CSS transform — no floor on the shrink scale here
+  unlike the HUD version, since unreadable-at-extreme-late-game-values is an accepted trade-off but
+  wrapping is not. `fitNameplateToStatRow()` explicitly sets `#inspNameplateMid`'s width from that
+  exact same `clientWidth - 16` value, rather than trusting its `flex:1 1 auto` to independently
+  converge to the same right edge as the stat row through normal flexbox layout — deliberately
+  computing both rows from one shared source value so they can't disagree. Both run on every
+  `updateInspectPanel()` refresh and on resize/orientation change.
+- **Barricade economy** — Barricade is the one tower that costs wood + stone (`woodCost`/
+  `stoneCost` on its `CONFIG.TOWERS` entry, 600/300) instead of gold (`baseCost`, everyone else).
+  `canAffordTower(type)` is the one shared affordability check used by the build tray, the
+  tile-hover preview, and the real placement handler, so those three can never disagree about
+  whether a Barricade is affordable. `freeBarricadesLeft` (capped at `MAX_FREE_BARRICADES`) grants
+  one free charge every 5 waves cleared, consumed automatically before wood/stone are ever checked
+  — persists through save/load like `moveCharges` already does. Rocks cost more gold to clear than
+  trees (`CONFIG.SCENERY.rockClearCostMult`, applied on top of the existing size-based
+  `clearCost` formula in `spawnScenery()`). Tank (🗿) grants stone instead of gold on death — the
+  one enemy-side stone source beyond clearing rocks yourself.
+- **Gore/blood system** — `getBloodProfile(enemyType)` returns the per-species base palette
+  (color + `isDust`/`viscous`/`noArterial` flags); `rollBloodProfile()` wraps it with per-instance
+  hue/lightness jitter so no two enemies of the same type bleed an identical flat color.
+  `isDust:true` (rock/stone-bodied enemies — Boulder, Rocklet, Tank) disables blood entirely
+  everywhere it's checked (particles, decals, drip trails, bone/skull debris) in favor of dust
+  particles and `spawnRockChips()` — small 🪨 emoji-drop debris at a fixed 1/10 of the enemy's own
+  radius, 2-5 on death and a 1-in-10 chance per non-lethal hit. `bloodPoolSizeScale(enemyRadius)`
+  (relative to Grunt's radius as baseline, same convention as `goreScale`) scales ground-pool decal
+  size and blends into `goreScale` itself, so blood amount reflects the actual target's body size,
+  not just damage/HP. Ambient footsteps are a separate system: `FOOTSTEP_WEIGHT` classifies each
+  enemy type light/medium/heavy (or `null` — Wraith, deliberately silent), `footstepDist` is a fixed
+  stride LENGTH per step (not a wall-clock timer) so faster enemies step more often naturally, and
+  `SoundEngine`'s `lastFootstepAt` throttles actual playback to one every ~70ms engine-wide
+  regardless of how many enemies request one in the same frame — without that throttle, a large
+  swarm wave stacks into a wall of sound.
 - Two toast-style popups reuse the same visual pattern: `showWaveSummary()` (gold + per-class XP,
   at wave end) and `showNewEnemyToast()` (stats + a one-line ability note from `ENEMY_INFO`, the
   first time a `CONFIG.WAVES` entry contains a type not yet in `seenEnemyTypes`, which is

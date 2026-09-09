@@ -1,5 +1,410 @@
 # Changelog
 
+## [1.1.14] - 2026-09-08
+- **Crit multiplier now shows ⚔️ instead of a literal "x"** — e.g. "2.5% ⚔️1.20" instead of
+  "2.5% x1.20".
+- **Nameplate HP/XP bar area now dynamically extends to guarantee flush alignment with the stat
+  row**, instead of relying on `#inspNameplateMid`'s `flex:1 1 auto` to independently converge to
+  the same right edge through normal browser layout. New `fitNameplateToStatRow()` explicitly
+  computes `#inspNameplateMid`'s width from the exact same source value
+  `fitStatRowToOneLine()` already uses (`panel.clientWidth - 16`), so the scroll/close buttons and
+  the stat row's right edge are now driven by one shared calculation rather than two independent
+  layout systems that could each round slightly differently. Called on every panel refresh and on
+  resize/orientation change, same trigger points as the stat-row fit.
+## [1.1.13] - 2026-09-08
+- **Barricade cost raised from 6🪵/3🪨 to 600🪵/300🪨**, a substantial investment now rather than
+  a cheap early-game buy. Updated the (previously stale) "cheap obstacle" blurb text to match.
+- **Rocks now cost more gold to clear than trees** — new `rockClearCostMult` (1.6x), applied on
+  top of the existing size-based clear-cost formula so a rock is always pricier than an
+  equivalently-sized tree, not just at one particular size. Shows up automatically in the existing
+  on-scenery cost label (no separate UI work needed — it already renders `item.clearCost` live).
+## [1.1.12] - 2026-09-08
+- **Rebuilt the inspect panel's stat row to never wrap, using the same proven technique already
+  working for the top HUD bar instead of another manual padding/gap guess.** Previous attempts
+  (allowing `flex-wrap:wrap`, trimming button sizes/gaps) never actually fixed the underlying
+  problem and produced a messy two-line wrap under real content. New `fitStatRowToOneLine()` —
+  structurally identical to `fitHudTopToOneLine()` — measures the row's true natural width via
+  `scrollWidth`, compares it to the inspect panel's actual available inner width
+  (`clientWidth - 16px`, its real padding, not a guess), and scales the row down with a CSS
+  transform anchored at the left edge so its right edge lands exactly at the panel's inner right
+  boundary — the same boundary the nameplate's buttons already reach, so they're now
+  *structurally* guaranteed to align rather than depending on both rows happening to add up to
+  matching widths. `#inspCombatRow` itself switched from `flex-wrap:wrap` to `nowrap` — it now
+  physically cannot wrap to a second line.
+- **No floor on the shrink scale, per explicit instruction** — `fitHudTopToOneLine()` stops
+  shrinking at 0.4 so its buttons stay tappable, but this row is read-only text with more stats
+  than the HUD has buttons, so it's allowed to shrink indefinitely if content grows very wide late
+  game. Unreadable at extreme values is an accepted trade-off; wrapping to a second line is not.
+- Called on every `updateInspectPanel()` refresh (so it re-fits whenever stat text actually
+  changes — new tower selected, stat point spent, upgrade bought) and on resize/orientation
+  change, matching the HUD version's own trigger points.
+## [1.1.11] - 2026-09-08
+- **Barricade now costs wood + stone (6🪵/3🪨), not gold.** Updated the build tray, the tile-hover
+  affordability preview, and the actual placement handler together through one new shared
+  `canAffordTower()` helper, so all three can never disagree about whether a Barricade is
+  affordable. `baseCost` kept at 0 rather than removed from the config, since other code may
+  assume the field exists.
+- **New "free barricade" milestone**: every 5 waves cleared, banks one free-barricade charge (capped
+  at 3), consumed automatically on your next Barricade build before wood/stone are ever checked.
+  Chose every 5 waves as a defensible middle ground for "a bit more often, somewhere from every 3
+  to every 10 waves" — flagging that choice explicitly in case a different number was meant.
+  `freeBarricadesLeft` now persists through save/load alongside `moveCharges`.
+- **Tank (🗿) now drops stone instead of gold on death** — thematically fitting for a stone statue,
+  and gives the wood/stone economy a real income source beyond scenery clearing. Set to 14 stone
+  (roughly matching Tank's own 16 gold bounty), not the suggested 112 — that figure is ~7x Tank's
+  own bounty and ~11x a full scenery clear, which would let one Tank kill trivialize Barricade's
+  entire wood/stone cost. Flagging this adjustment explicitly rather than silently changing the
+  requested number.
+
+### Deliberately not attempted this pass: Barricade as a draggable inventory item
+The request to turn Barricade into an item — carried in a tower's inventory slot, dragged out onto
+a valid path tile within that tower's own attack range to place it, dragged back into any tower's
+inventory as long as it's currently within that tower's range — is a genuinely new mechanic, not a
+variation on anything that exists today. It would need: a new item-to-live-tower conversion system,
+new drag-drop interactions distinct from the existing item-transfer-between-towers drag (which
+moves items between inventories, never onto the map), and new range/tile validation layered on top
+of both. Given the size and risk of getting the edge cases wrong (multiple barricades in flight,
+save/load state for an item mid-transformation, interaction with the existing Build-menu placement
+flow), this needs its own focused pass rather than being folded into an already-large batch — noted
+here rather than attempted partially or silently dropped.
+
+## [1.1.10] - 2026-09-08
+- **Real critical-hit system, replacing the old purely-cosmetic one.** Previously "crits" were a
+  flat 10% chance that only changed the floating damage-text color — no actual damage effect.
+  Added real `critChance` (base 2.5%, scales with DEX, capped 50%) and `critMult` (base 1.20x,
+  scales with INT, capped 3x), computed in `recomputeStats()` exactly like DEX's other universal
+  effects (accuracy, attack speed, luck). The crit roll now happens before armor mitigation and
+  actually multiplies real damage. New 💥 stat in the inspect panel shows both chance and
+  multiplier. DPS now correctly folds in the crit's expected-value contribution instead of
+  understating real average output.
+- **New WC3-style "aura box"** next to the inventory slots — a round glowing icon, visible only
+  for evolved/specialist towers (Hammerman, Axeman, Spearman, Paladin, Blowdart, Gatling, Bomber,
+  Squirtgun, Gunalinder, Sniper, Snap Caster, Cleric), tap to open a strategy tooltip explaining
+  that class's niche. New `TOWER_STRATEGY` data table, one icon + one strategy line per class.
+- **Two real gaps found and fixed while building the above**: Snap Caster was missing from
+  `EVOLVED_TOWER_TYPES` (an evolution-only tower not marked as one), and `validateGameDefinitions()`
+  gained a `TOWER_STRATEGY` coverage check so a future missing entry can't silently render an
+  empty aura box.
+- **Inspect panel stat row reordered** — ❤️ HP and 🛡️ armor now come first, ahead of the damage
+  cluster (⚔️ damage, 💥 crit, ⏳ speed, 🥈 DPS), per feedback.
+- **⏳ now shows time per attack (seconds) instead of attacks per second** — reads directly as
+  "how long one attack takes" rather than a frequency the player has to mentally invert.
+- **DEX's attack-speed rate toned down from 8%/point to 3%/point.** At moderate investment the old
+  rate could more than double attack speed — far stronger than DEX's other universal effects
+  (accuracy, crit chance, luck), which all move gradually. Attack speed is now a genuinely
+  fractional DEX bonus like the rest, not a dominant one. Updated the three places that referenced
+  the old 8% figure (help modal, inline comment, stat tooltip).
+- **Nameplate header widened a pinch** — trimmed gaps and button sizes slightly (28px→26px,
+  8px→6px gaps) so the HP/XP bars get a bit more room and the scroll/close buttons sit closer to
+  flush with the stat row's right edge below, per feedback that they didn't line up.
+## [1.1.9] - 2026-09-08
+- **Spawn quips now last 1800ms instead of 550ms.** A tower's placement quip (`JOB_QUOTES`,
+  shown via `randomJobQuote()`) was using the generic `spawnFloatingText()`, whose life is a fixed
+  550ms shared with every other floating combat number — nowhere near enough time to actually
+  read a multi-word phrase before it faded. New `spawnTowerQuip()` reuses the same pooled
+  mechanism (same rise-and-fade behavior, correctly scales to any duration) with a 1800ms life
+  instead, specifically for this one use.
+- **More quote variety per class** — every tower type's `JOB_QUOTES` pool grew from 3 lines to
+  5, and **Snap Caster was found to have no entry at all** (spawning with a silently empty quip)
+  and now has 5 lines like everyone else.
+- **New cute "spawn chatter" voice sound** — a Sims-style gibberish blip, 3-5 quick
+  randomly-pitched syllables in a playful stutter, with a randomized base pitch each time so
+  different spawns sound like different (equally cute) little voices rather than one robotic
+  loop. Plays alongside the quip on every real tower placement.
+- **Extended `validateGameDefinitions()` with a `JOB_QUOTES` coverage check** — every non-
+  Barricade tower type must have an entry, catching exactly the kind of silent gap Snap Caster
+  had. Verified it actually works by deliberately removing an entry and confirming the validator
+  caught it with the exact tower name, before restoring it.
+- **Fixed the trigger site, not just the content** — `Tower.create()` is also called during
+  save/load restoration and starting-barricade seeding, not just real placements; the quip/sound
+  trigger was deliberately kept at the actual build-tap handler (where it already lived) rather
+  than moved into `create()` itself, which would have made every tower on a loaded save shout
+  its quip simultaneously the moment the save loads.
+## [1.1.8] - 2026-09-08
+- **Slightly increased bone and skull debris drop chance** on death — bone fragments 50% → 58%,
+  skull drops 25% → 32%, a modest bump per feedback, not a dramatic one.
+## [1.1.7] - 2026-09-08
+- **Grouped ⏳ attack speed and 🥈 DPS together with ⚔️ damage on the left of the inspect panel's
+  combat stat row**, per feedback — previously speed and DPS sat on opposite ends of the row
+  (order was damage, HP, armor, range, speed, luck, DPS). New order: damage, speed, DPS, HP,
+  armor, range, luck. Pure markup reorder — no stat calculations changed.
+- **Added a full stat-icon legend to the README's "How to play" section**, covering every symbol
+  used in the top HUD bar, the inspect panel's combat stats, the STR/DEX/INT stat buttons, and the
+  target-of-target frame. Also fixed a second, separate spot with the same stale "7 rotating wave
+  archetypes" claim already corrected elsewhere in the README (actually 9, including Trick Rush
+  and The Grind).
+## [1.1.6] - 2026-09-08
+- **Tank (🗿, "the stone guy") no longer bleeds — dust and 🪨 rock-chip debris instead.**
+  `getBloodProfile()` was only special-casing Boulder/Rocklet as rock/debris (`isDust:true`);
+  Tank fell through to the generic red "standard flesh" profile despite being a literal stone
+  statue. Added it to the same group. New `spawnRockChips()` function (modeled on the existing
+  bone-debris pattern) scatters small 🪨 emoji chips at a fixed 1/10 of the enemy's own radius —
+  2-5 on death, plus a 1-in-10 chance per non-lethal hit. Applies to Boulder/Rocklet too, not just
+  Tank, since they share the same rock material and `isDust` gate.
+- **Ants' green blood, verified already correct — no bug found.** Traced the full pipeline
+  end-to-end (`getBloodProfile` → `rollBloodProfile` → every `spawnParticles`/`spawnDecal` call
+  site in the hit/death handlers) before touching anything. Swarm's blood profile has always been
+  green (`#8bc34a`/`#4a7c1f`/`#cddc39`, "insect hemolymph"), and every call site correctly threads
+  `bio.bright`/`bio.dark`/`bio.spray` through with no hardcoded red anywhere. What likely read as
+  "wrong" is fixed below — every enemy's blood pool was the same size regardless of species, which
+  made a swarm of small ants look visually generic/uniform even with the right color.
+- **Blood amount now actually scales to the size of the enemy being targeted.** Previously ground-
+  pool decal size depended only on weapon archetype and the hit's damage roll — a tiny Swarm ant
+  and a Boss produced an identically-sized pool for the same weapon type. New
+  `bloodPoolSizeScale(enemyRadius)` (relative to Grunt's radius as baseline, same convention the
+  existing HP-based `goreScale` already uses) scales every ground-pool `spawnDecal()` call, and
+  `goreScale` itself now blends HP and radius together instead of HP alone, so death-burst particle
+  counts reflect actual body size too.
+- **Found and fixed a real, separate bug while updating the docs below**: `generateProceduralWave()`
+  cycles through 9 wave flavors (`n % 9`, including Trick and Grind — wired in during an earlier
+  fix), but `WAVE_TYPE_NAMES` only had 7 entries and the toast-label lookup still used `% 7` — so
+  Trick/Grind waves generated correctly but displayed the wrong name (whichever of Standard/Swarm
+  Surge the wrong modulus landed on instead). Added the two missing names and fixed the modulus.
+- **README/AGENTS.md updated** to reflect everything new since the last documentation pass: the
+  accuracy hierarchy and its removal of per-archetype caps, `warriorStrDamageMult()`'s late-game
+  scaling, the gold-tier-upgrade random stat growth formula (separate from EXP leveling), the DPS/
+  min-max-damage UI, `MAX_LEAD_PREDICT_TIME`, `validateGameDefinitions()`, the gore/blood system
+  (previously undocumented in AGENTS.md entirely), the ambient-footstep system, and the corrected
+  9-flavor wave rotation.
+## [1.1.5] - 2026-09-08
+- **Removed `EARLY_ACCURACY_CAP_TYPES` — DEX-based accuracy now scales identically for every
+  tower, with no exceptions.** Previously Mage, Cleric, Swordsman, Spearman, Axeman, and
+  Hammerman had their accuracy-from-DEX contribution capped at 15 effective points ("casters and
+  melee warriors aren't precision fighters"); Archer and the rest scaled uncapped. Per explicit
+  direction, that exception is gone — the exact same `diminishingStatValue()` accuracy formula now
+  applies to every archetype. Damage remains untouched and still strictly archetype-gated: only
+  STR drives Warrior damage, only DEX drives Archer damage, only INT drives Mage damage — DEX's
+  universal accuracy benefit was never a damage bonus for non-Archer classes and still isn't.
+- **Reworked gold-tier upgrade stat growth**: 3 independent rolls of 1-6 points each into a
+  randomly chosen stat (so a given upgrade might land on 1-3 different stats, or stack multiple
+  rolls onto the same one), plus a guaranteed extra 1-3 points into the tower's favored/main stat
+  specifically (STR for Warriors, DEX for Archers, INT for Mages). Replaces the previous flat
+  0-2-per-stat-plus-1-2-favored growth — average total growth per upgrade rises from ~4.5 points
+  to ~12.5, a real but contained bump since upgrades are gold-gated and limited to 2-4 total per
+  tower, not a per-EXP-level system (EXP leveling's separate "1 stat point to spend" per level is
+  unchanged).
+- **Menu button sound gaps fixed** — the "How Everything Works" help modal and the Barricade help
+  modal had no sound at all on open, close, or backdrop-tap-to-dismiss, unlike every other modal
+  in the game (Build/Shop/Settings all already played ui_open/ui_close). Also fixed: the Settings
+  modal's backdrop-tap-to-dismiss was silent even though its own ✕ button wasn't; the Video/Audio/
+  Game/About settings tabs had no sound at all when switching between them.
+- **New `stat_spend` sound — a distinct, warmer, more lingering chime specifically for allocating
+  a stat point**, replacing the plain generic `click` that action shared with every other minor UI
+  tap. A soft sine glide up a perfect fourth, plus a higher harmonic a third above staggered
+  slightly for shimmer, both sent to reverb for a smooth tail instead of a short dry blip.
+## [1.1.4] - 2026-09-08 — balance pass
+- **New baseline (zero-DEX) miss-chance hierarchy by archetype, per explicit balance direction:
+  Mage misses the most, Archer a moderate amount, melee (Warrior) the least.** Previously every
+  tower shared one flat 12% baseline regardless of class, only diverging once DEX was actually
+  invested. New `BASE_MISS_CHANCE_BY_ARCHETYPE`: Mage 22%, Archer 14%, Warrior 7% (Cleric already
+  maps to the Mage archetype, so it inherits Mage's tier automatically). None severe on their
+  own — verified numerically before shipping across a realistic DEX range: at 0 DEX the order is
+  exactly Mage 22% > Archer 14% > Warrior 7%; Archer (DEX is its preferred, uncapped stat) drops
+  fastest with investment, Warrior and Mage (both capped at 15 effective DEX for accuracy
+  specifically) floor out more slowly, with Mage settling around 13% even fully invested since
+  its own damage stat is INT, not DEX — matches "misses the most" as a standing identity, not
+  just a starting number.
+- **Swordsman and Archer's starting (tier 1 only) attack speed reduced, balanced against Mage's
+  relative pace.** Previously Swordsman's 780ms cooldown (1.28 attacks/sec) was about 6.2x Mage's
+  tier-1 rate, and Archer's real cycle (drawTime+cooldown, 1250ms, 0.8/s) was about 3.9x — too
+  extreme a gap at the very start. New tier-1 values: Swordsman cooldown 780ms → 1350ms (0.74/s,
+  ~3.6x Mage); Archer drawTime 510ms → 800ms and cooldown 740ms → 1150ms (cycle 1950ms, 0.51/s,
+  ~2.5x Mage) — drawTime and cooldown both scaled by the same proportion so the draw/reload split
+  stays the same shape, just slower overall. Tiers 2+ intentionally left untouched, so upgrading
+  now restores meaningfully more of the speed gap instead of starting from an already-fast
+  baseline — verified the new ratios numerically before shipping, not just eyeballed.
+## [1.1.3] - 2026-09-08
+- **Inspect panel: removed the redundant flat damage number, now shows only the min-max range.**
+  Previously showed both "33 (26-40)" — the flat base value next to its own variance range,
+  which just repeated information the range already conveys more precisely.
+- **Added a real DPS stat (🥈) to the inspect panel, for every tower type.** Computed as average
+  damage per hit (the variance band is symmetric, so the base damage value already is the
+  average) × attacks/second, discounted by the tower's actual `missChance` — the same "relative
+  accuracy" mechanic that drives every attack type already (a shot that physically connects but
+  rolls a miss due to low DEX-based accuracy deals zero damage, so it belongs in an "accurate" DPS
+  number). Burst-fire towers (Gunalinder, Snap Caster) get their real full-cycle time — the short
+  gaps between burst shots plus the long reload after — not just the reload cooldown alone, which
+  would have understated their real DPS. Deliberately scoped to guaranteed direct-hit damage only:
+  doesn't add incidental splash against extra targets, poison/burn DoT ticks, or Snap Caster's
+  chance-based chain lightning — all real bonuses, but situational on top of this baseline.
+  Verified against every tower/tier in `CONFIG.TOWERS` before shipping: no NaN, Infinity, or
+  negative results anywhere, including Barricade (which never attacks) and every burst-fire tier.
+- **`#inspCombatRow` changed from `nowrap`+`overflow:hidden` to `wrap`**, so adding the 7th stat
+  (DPS) can never clip/truncate a stat for any tower at any screen width — if the row can't fit
+  seven stats on one line, it now flows to a second line instead of cutting one off. The outer
+  `#inspect-panel` is already auto-height with its own `flex-wrap`, so a wrapped second line just
+  grows the panel naturally.
+## [1.1.2] - 2026-09-08
+- **Footsteps cut to a fifth as often and dropped to the quietest audible level**, per direct
+  feedback that even 1.1.1's throttle/gain fix was still too loud during a big ant swarm. Per-step
+  stride widened from 3.4x to 17x each enemy's radius (a fifth as many trigger attempts), and gain
+  dropped from 16-30% to 4-9% depending on weight class — a bare ambient texture now, not a sound
+  competing for attention. The 70ms engine-wide throttle from 1.1.1 is unchanged.
+- **Warrior (Swordsman/Hammerman/Axeman/Spearman/Paladin) STR damage buffed, with a real late-game
+  scaling fix** — feedback that Swordsman felt weak and didn't scale well into the endgame. Added
+  `warriorStrDamageMult()`, a dedicated curve used only for this one calculation (every other
+  stat-driven effect in the game — DEX accuracy/luck, INT range, HP, Archer/Mage damage — still
+  uses the shared `diminishingStatValue()` unchanged): base rate raised 6%/point → 8%/point, and
+  the actual late-game fix, the per-tier floor raised 25% → 40% with slower per-tier falloff (15%
+  → 12%), so heavy STR investment keeps compounding meaningfully instead of flattening to
+  near-linear growth past 25 points. Verified numerically before shipping: +17% damage at 10 STR,
+  growing to nearly +100% by 600 STR — unchanged at 0 STR, growing gap exactly where the "late
+  game" complaint was aimed at. Updated the two UI tooltips and the in-game help text that
+  hardcoded the old "+6% damage" figure for STR specifically (DEX/INT are still accurate at +6%
+  and untouched).
+- **Capped ranged-tower lead-prediction time (new `MAX_LEAD_PREDICT_TIME` = 0.35s)** — feedback:
+  "archers aiming totally off, not hitting many shots." Investigated the actual aim/fire code
+  first rather than guessing: found no double-miss-chance roll and no stale-angle bug (both ruled
+  out by reading the code directly), but did find that the lead-prediction formula extrapolated a
+  target's current velocity all the way out to the shot's full flight time — up to ~0.8s at
+  Archer's max range/min speed. This map's spiral path turns every 1-3 tiles, so a target
+  routinely changes direction well before a slow-arriving shot reaches the point it was
+  extrapolated to, and the arrow flies straight past the corner. Capping the extrapolation window
+  trades a little lead accuracy on long straight stretches for much more reliability near turns.
+  Applied to the one shared aiming formula used by every ranged tower's continuous aim, plus the
+  separate Axeman-throw prediction — benefits Archer specifically as reported, but the same root
+  cause affects every ranged class equally.
+
+## [1.1.1] - 2026-09-08 — MINOR VERSION BUMP (explicit instruction)
+- **Fixed the ant "army" problem — ambient footsteps were far too loud and too frequent during a
+  big Swarm wave.** Root cause: the 1.0.214 footstep sound used `noise()`'s untouched default
+  gain of 1 (the same loudness as a real combat impact) with no limit on how many could actually
+  play at once — a 40+ ant swarm meant dozens of concurrent identical noise bursts stacking into
+  a wall of sound. Two fixes: (1) `noise()` gained a real `gainMult` param, and footsteps now play
+  at 16-30% amplitude depending on weight class, well under combat volume; (2) a new engine-wide
+  throttle (`lastFootstepAt`) limits actual footstep playback to at most one every ~70ms
+  regardless of how many enemies request one in the same frame, collapsing a stampede into an
+  audible patter instead of a chorus. Also widened each enemy's per-step stride (2.2x → 3.4x its
+  radius) so fewer requests are wasted against the throttle to begin with. Removed the heavy-
+  footfall low-thump tone layer added in 1.0.214 — with per-weight gain now doing the differentiation
+  work, the extra tone wasn't earning its complexity.
+
+### Highlights of the 1.0.x range — what actually mattered most
+Every change has its own dated entry below; these are the ones worth calling out specifically:
+
+- **1.0.208 (the big one): a missing `<script>` opening tag had the entire ~7,800-line main game
+  program sitting outside any script element** — verified against the live repo's actual raw
+  bytes, not just a visual read, confirming it wasn't a snapshot-only artifact. The single highest-
+  impact fix in this range by a wide margin: everything else assumes the game runs at all.
+- **1.0.212: `validateGameDefinitions()`** — a boot-time check across every data-driven config
+  table (waves, towers, enemies, evolutions, splits, archetypes). Verified twice before shipping:
+  clean against real data, and confirmed to actually catch a deliberately introduced typo. The
+  most durable addition — it protects every future edit to those tables, not just a one-time fix.
+- **1.0.209/1.0.210: two real Web Audio correctness bugs** (delayed-sound voice-budget accounting;
+  `AudioContext` unable to resume once suspended) — both invisible in normal play, both the kind
+  of bug that only shows up as "audio randomly stops working" days later with no obvious cause.
+- **1.0.214/1.0.215/1.1.1: the audio "personality" pass** — staged pre-transient/transient/tail
+  envelopes on Mage cast and Hammerman swing, a full swing_blade redesign from user feedback,
+  per-type ambient footsteps (including a deliberately silent Wraith), a one-shot Boss/Troll
+  enrage growl, then this entry's fix once footsteps proved too aggressive in real play. The
+  through-line: every one of these was checked against actual gameplay feedback or actual data,
+  not shipped on first guess.
+- **1.0.211: `Tower.setGridPosition()`** — a small one, but the cleanest example of this range's
+  actual discipline: duplication was verified real (not assumed) before extracting it.
+
+## [1.0.215] - 2026-09-08
+- **New favicon: the actual stickman-with-sword character, centered, background removed.**
+  Replaced the previous data-URI favicon (a generic placeholder graphic) with a proper cutout of
+  the Swordsman sprite — segmented from a real gameplay screenshot by distance-matching against
+  the three background tile colors (dirt, and both green tiles), connected-component cleanup to
+  fill the sword-hand region and remove stray tile-grout line artifacts, then centered on a
+  transparent square canvas and downscaled to 32×32 with high-quality resampling. Both the
+  `rel="icon"` and `rel="shortcut icon"` data URIs updated together, plus the standalone
+  `favicon.png` asset in the repo root for consistency.
+- **Swordsman's swing sound redesigned — user feedback: previous version was "too high pitch and
+  quick," read as a "tink" rather than an actual blade slice.** Old `swing_blade` case was a
+  2600Hz highpass noise burst (0.06s) plus a 720Hz triangle spike (0.05s) — very short, very
+  high-pitched. New version: a wider, lower bandpass "whoosh" (1500Hz, 0.10s) standing in for the
+  blade actually cutting air, followed 20ms later by a lower, longer metallic ring (320Hz
+  triangle, 0.13s) so the ring reads as the cut landing rather than one simultaneous spike.
+- **Removed `case 'sword'` — dead code, verified zero call sites anywhere in the file.**
+  `playSound('sword')` is never actually called; Swordsman's real attack sound has always been
+  dispatched as `'swing_blade'` (see `updateSwordsman()`'s `meleeSound` selection). Found while
+  investigating the swing-sound feedback above — the case that actually needed fixing was
+  `swing_blade`, not the unreachable generic `'sword'` case sitting next to it.
+## [1.0.214] - 2026-09-08
+- **Ambient footstep sounds per enemy type.** Every enemy previously walked in total silence
+  (only stepping into a blood pool made any sound — see 'foot_squelch'). Added a lightweight
+  `footstep` sound keyed to actual distance walked (a fixed stride length per step, so faster
+  enemies naturally step more often with no separate timer needed), classified by a new
+  `FOOTSTEP_WEIGHT` lookup: light/skittery (Swarm, Runner, Monarch, Wolf, Splitmini, Rocklet),
+  heavy/thudding (Tank, Boss, Boulder, Zombie, Reaper, Troll), and medium (everything else, the
+  default). Wraith is deliberately silent — `null` weight disables footsteps entirely for a
+  distinct ghostly-glide identity rather than an oversight. Thinned to roughly the visible camera
+  area so an off-screen swarm doesn't spend voice budget on steps nobody can hear.
+- **One-shot "enrage" growl for Boss and Troll at low HP.** A new `enrage` sound cue (low
+  pitch-drop tone + noise) fires once per enemy the first time its HP drops below 30% —
+  telegraphs the state change through sound, not just a shrinking health bar. Checked before the
+  pileBlocked/stunned early-returns in `Enemy.update()` so it still fires even while an enemy is
+  queued at a barricade, since burn/poison/bleed can still be ticking its HP down during that time.
+- **Staged (pre-transient / transient / tail) attack envelopes**, prototyped on two attacks per
+  the existing BACKLOG note rather than rewritten everywhere at once: Hammerman/Paladin's
+  `swing_blunt` now has a barely-there anticipatory thump before the crushing impact, plus an
+  extended low tail after it; Mage/Snap Caster's `cast_mage` now has a faint shimmer anticipation
+  before the existing blast, plus an extended bass tail so the cast's weight lingers into the shot
+  instead of cutting off abruptly.
+- **Added optional `delay` support to `noise()`**, mirroring `tone()`'s existing parameter —
+  needed to schedule the new staged envelopes' follow-up noise bursts slightly after their initial
+  hit. Also fixes the same delay-vs-reservation-lifetime accounting `tone()` had before 1.0.209:
+  `noise()` now passes its own delay through to `reserveVoiceSlot()` too.
+- Extended `validateGameDefinitions()` (1.0.212) to also check every `FOOTSTEP_WEIGHT` key is a
+  real enemy type.
+## [1.0.213] - 2026-09-08
+- **Top HUD bar shrunk a touch to stop it crowding/clipping the screen edges.** A real-device
+  screenshot showed "Build" cut off on the left and "Next Wave" cut off on the right —
+  `fitHudTopToOneLine()` was computing its scale to exactly fill the available width, leaving zero
+  margin for sub-pixel/font-metric rendering variance between the measurement pass and the actual
+  paint. Added a flat 0.94 safety-margin multiplier on top of the existing fit-to-width
+  calculation, so the bar now sits with a small consistent gap from both edges instead of
+  computing right up to them.
+## [1.0.212] - 2026-09-08
+- **Added `validateGameDefinitions()`, a boot-time integrity check across every data-driven
+  table** (`CONFIG.WAVES`, `CONFIG.TOWERS`, `CONFIG.ENEMIES`, `EVOLUTIONS`, `SPLIT_CHILD_TYPE`,
+  `CLASS_ARCHETYPE`, `STARTER_TOWER_TYPES`, `EVOLVED_TOWER_TYPES`). None of these cross-references
+  get any static checking from JavaScript itself — a typo in a wave's enemy type or an evolution's
+  target tower previously became a silent `undefined` deep inside gameplay, often not surfacing
+  until whatever specific wave/evolution/split was actually reached. Now checked once at boot,
+  before anything else touches these tables; collects every problem found (not just the first) and
+  throws one descriptive error naming the exact table/key/value at fault, which the existing
+  `window.onerror` diagnostic already displays on-screen — no new error-reporting plumbing needed.
+  Verified against the real current tables (zero problems found, confirming no false positives)
+  and against a deliberately introduced typo (correctly caught and reported) before shipping.
+## [1.0.211] - 2026-09-08
+- **Extracted `Tower.setGridPosition(gridX, gridY)`** — the grid→world position conversion
+  (`x = gridX*TILE_SIZE + TILE_SIZE/2`, same for `y`) was duplicated verbatim in `create()` and
+  `attemptMoveTower()`. Not a bug today, but exactly the kind of duplicated-idea case this file's
+  own `isEnemyFrozen()` precedent argues for extracting — two independent copies of one invariant
+  is how they'd eventually drift if only one were ever updated. Pure refactor, no behavior change.
+## [1.0.210] - 2026-09-08
+- **`SoundEngine.unlock()` can now resume an existing suspended `AudioContext`.** Previously it
+  returned immediately once `this.unlocked` was `true`, with no path to `resume()` an
+  already-constructed context the browser had suspended (tab backgrounding, mobile audio
+  lifecycle policies) — a later user tap/gesture couldn't bring audio back for the rest of the
+  session. Now every call checks the existing context's `state` and resumes it if it isn't
+  `'running'`; only the very first call constructs a new context. Resume failures are caught and
+  ignored — the game stays fully playable with no audio rather than throwing.
+## [1.0.209] - 2026-09-08
+- **Fixed voice-budget reservation lifetime for delayed sounds.** `reserveVoiceSlot(duration)`
+  always reserved `now + duration`, but `tone()` can schedule a note at `currentTime + delay` and
+  stop it at `delay + duration` later (added in 1.0.205 for sample-accurate multi-note sequencing).
+  A delayed note's real end time was undercounted, so its voice-budget reservation could expire
+  while the oscillator was still scheduled or actively playing, silently letting the global voice
+  cap (1.0.205) undercount real load. `reserveVoiceSlot()` now takes an optional `delay` param and
+  `tone()` passes its own delay through, so reservation lifetime matches the actual scheduled
+  start/stop time.
+## [1.0.208] - 2026-09-08 — HOTFIX
+- **Fixed a missing `<script>` opening tag that left the entire main game program (everything from
+  `"use strict"` through the final `</script>`, ~7,800 lines) outside any script element.** The
+  share-button IIFE's own `<script>...</script>` block closed correctly, but the main program that
+  immediately follows it had no opening `<script>` tag of its own — only the trailing `</script>`
+  at the very end of the file, which (per the HTML parsing spec) is a stray end tag with nothing on
+  the stack to close once the parser isn't in script-data state. Verified directly against the raw
+  bytes of both the uploaded snapshot and the live `main` branch on GitHub (identical, confirming
+  this wasn't a snapshot-only artifact) by counting and diffing every `<script>`/`</script>` pair
+  rather than trusting a visual read. Fixed by adding the missing opening tag immediately after the
+  share-button script's closing tag. `node --check` on the extracted script body confirms the
+  program itself was always syntactically valid JavaScript — the defect was purely in the HTML
+  document structure around it, which a JS-only syntax check can never catch.
 ## [1.0.207] - 2026-09-08
 - **Replaced the oversized 321×321 favicon with a properly-sized 32×32 version, plus a
   `shortcut icon` fallback.** The original data actually decoded to a valid PNG (verified

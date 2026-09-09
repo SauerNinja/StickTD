@@ -5,6 +5,17 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
+- **Barricade as a draggable inventory item** — requested design: Barricade stops being a
+  Build-menu tower and becomes an item carried in a tower's inventory slot, dragged out onto a
+  valid path tile within that tower's own attack range to place it, and dragged back into any
+  tower's inventory as long as it's currently within that tower's range. A genuinely new mechanic,
+  not a variation on anything built today — would need a new item-to-live-tower conversion system,
+  new drag interactions distinct from the existing item-transfer-between-towers drag (which only
+  moves items between inventories, never onto the map), and new range/tile validation layered on
+  top of both. Deliberately not attempted alongside the wood/stone cost change and the free-
+  barricade milestone (both shipped, 1.1.11) — those were real, contained changes; this needs its
+  own focused pass given the size and edge-case risk (multiple barricades in flight, save/load
+  state for an item mid-transformation, interaction with the existing Build-menu placement flow).
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
   `reserveVoiceSlot()` protects the engine from unbounded concurrent voices during swarm/explosion
   moments, and critical UI/system sounds bypass it via the new `force` param. What's NOT built:
@@ -13,17 +24,32 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
   room for a higher-priority one, with a fade-out to avoid clicks) — the current version only ever
   refuses new low-priority sounds, never stops an already-started one. Worth a follow-up if the
   flat cap ever proves too coarse in practice.
+- **Distance-based audio mix** — sounds currently pan by camera-relative X (`panFor()`) but have
+  no distance attenuation or filtering; only worldX is passed to sound calls, not worldY, so true
+  2D distance isn't available without adding a Y param at every call site (a real change, not a
+  quick tweak). Would make close fights read as more "in your face" by contrast with quieter,
+  slightly low-passed distant combat.
+- **Mix ducking on important cues** — briefly and subtly duck combat audio under wave-start/
+  level-up/low-lives cues so they cut through a chaotic swarm fight instead of getting buried.
+  Scope carefully: the generic `'wave'` sound is reused for several different events (expansions,
+  chest pickups, milestones, not just wave start), so ducking needs its own more specific trigger
+  point, not a blanket hook on every `playSound('wave')` call.
+- **Minimal procedural adaptive music layer** — a sparse idle motif, a stinger on wave start, an
+  intensity layer during boss waves, resolving back to the motif on game over. A genuine feature/
+  design decision (not a polish tweak) — needs its own dedicated pass with mute/preference
+  handling and CPU profiling, not something to fold into an audio-polish batch.
 - **Tower "sonic identity" formalization** — each tower archetype already has a distinct procedural
   sound (bright/metallic Swordsman, low/heavy Hammerman, string-like Archer, etc.), but this lives
   as ad hoc parameter choices scattered through `SoundEngine.play()`'s switch statement. Worth
   extracting into named palettes (e.g. `AUDIO_PALETTES.METAL_BLADE`, `.BLUNT`, `.MAGIC`) that class
   recipes combine with class-specific modifiers — makes adding a new evolution's sound safer and
   more consistent than hand-tuning frequencies from scratch each time.
-- **Three-stage (pre-transient / transient / body-tail) sound envelopes for major attacks** — Mage
-  cast and heavy melee hits already layer multiple synthesized elements, but not on a consistent
-  staged timing model (a brief anticipation cue before the main transient, then a decaying body).
-  Worth prototyping on 2-3 sounds first (Mage cast, Hammerman swing) before generalizing — a real
-  design idea, not verified as needed everywhere.
+- **Three-stage (pre-transient / transient / body-tail) sound envelopes for major attacks —
+  prototyped on Mage cast and Hammerman/Paladin swing (1.0.214)**, exactly the 2-sound prototype
+  this entry originally called for. Not yet generalized further — worth extending to Bomber's
+  explosive lob and Sniper's shot (the other two "heavy, rare" hits) if the pattern reads well in
+  actual play, but not to every attack; light/fast attacks (Gatling, Blowdart) don't have the
+  weight to justify the extra scheduled layers.
 - **Input-action abstraction layer** (physical input → semantic action, e.g. `BUILD_OPEN`,
   `PAUSE_TOGGLE`, `NEXT_WAVE`) — the current Pointer Events handling is solid, but game logic and
   physical input are somewhat coupled in `handleTap()`. A thin dispatcher would let future input
@@ -38,10 +64,6 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
   have no independent `schemaVersion`. These answer different questions (which release produced
   this vs. which serialized structure is this) and will matter once a save-format change actually
   needs migration logic, which hasn't happened yet.
-
-- **Tower UI still shows a single flat damage number, not a min-max range** — the ±20%
-  `damageVariance` (1.0.168) is real and live in combat, but no tooltip/stat panel tells the player
-  "this tower deals 72-108" instead of a flat "90." Asked, never answered.
 
 - **Substrate-dependent spine/rupture on rough terrain (dirt/path vs. stone/wood)** — no tile-type
   lookup exists anywhere in the codebase currently (grepped for `getTileAt`/`tileType`/a grid array,
@@ -178,12 +200,6 @@ Reviewed against a couple of general HTML5 API reference books at the user's req
 what those cover (Canvas API basics, requestAnimationFrame, offscreen-canvas caching) is already
 in use correctly in this codebase. A few gaps and one piece of outdated advice worth flagging:
 
-- **No use of `localStorage` anywhere** — every UI preference (graphics quality, mute, the 18+
-  gore toggle) currently resets to default on every page load; there's no persistence at all
-  outside of an explicit downloaded save file. This is a good, low-risk quick win: keep full game
-  *state* saves exactly as they are (file-based, per the existing repo constraint), but use
-  `localStorage` separately for lightweight UI preferences only, so returning players don't have
-  to re-toggle settings every session. Small, additive, doesn't touch the save/load architecture.
 - **No Page Visibility API usage** — the fixed-timestep loop already has a sane defensive cap
   (`MAX_TICKS_PER_FRAME = 90`) so a backgrounded tab can't stall the game on one giant catch-up
   frame, but there's no explicit pause when the tab is hidden — time keeps advancing and the game
@@ -247,6 +263,43 @@ The `queryNearby()` per-call array allocation and the multiple `buildEnemyHash()
 frame were raised again here — both were already identified and evaluated in this same file back
 in the "Technical / architecture suggestions" section above, with the same conclusion: real leads,
 not verified as safe to change without more confidence than a text review alone can provide.
+
+## Cross-checked against a ChatGPT conversation about code-quality/modularity (2026-09-08)
+
+The user shared a long ChatGPT transcript (no direct repo access) proposing a large refactor
+program plus a list of specific "findings." Per this file's own standing rule, every checkable
+claim was verified against the actual current code before acting, not trusted at face value.
+
+**Confirmed real and fixed**: the missing `<script>` opening tag before the main program (see
+CHANGELOG 1.0.208 — verified directly against raw file bytes on the live `main` branch, not just
+the uploaded snapshot); the delayed-sound voice-reservation lifetime bug in `reserveVoiceSlot()`
+(1.0.209); `SoundEngine.unlock()`'s inability to resume an existing suspended `AudioContext`
+(1.0.210); the duplicated grid→world position math in `Tower.create()` and `attemptMoveTower()`,
+extracted into one `setGridPosition()` method (1.0.211); a boot-time `validateGameDefinitions()`
+check across every data-driven config table (1.0.212); two genuine gaps in `CHANGELOG.md`'s version sequence — `1.0.203` and `1.0.170` are
+both missing between their neighbors (not just the `1.0.203` one the transcript mentioned) — left
+as an open gap rather than fabricated, since there's no way to reconstruct what those entries
+actually said; two stale `BACKLOG.md` entries removed above (localStorage prefs shipped in
+1.0.204/1.0.207, tower UI already shows a min-max damage range) since both claimed a feature
+`index.html` had already shipped.
+
+**Checked and found already resolved or non-issues**: the 9-flavor procedural wave system (Swarm/
+Elite/Undead/Ambush/BossRush/Vanguard/Trick/Grind/Standard) and its name/label table are already
+consistent with each other and with the Code Map — no `% 7` vs `% 9` mismatch found anywhere in
+the current file, despite the transcript's specific claim.
+
+**Not acted on — large speculative architecture, not verified against a real current problem**:
+explicit finite-state-machine-style game-state transitions, a formal four-clock-domain policy,
+1x/3x/10x simulation-equivalence
+tests, a repo-wide single-file HTML integrity verifier script, audio priority tiers/mix buses, and
+listener-distance audio modeling. Each is a reasonable idea in isolation (the definitions validator
+especially is worth a dedicated follow-up pass), but implementing all of them in one
+sitting is exactly the kind of large, ambient, everything-at-once change this file's own "smallest
+safe fix" discipline argues against. Recorded here so the ideas aren't lost, not silently dropped.
+
+**Declined outright**: the transcript's own suggestion to add a continuous procedural adaptive
+music system — a real feature idea, not a code-quality finding, and a much bigger scope decision
+than this pass.
 
 ## From HTML5 Games, 2nd Edition (Seidelin) — read directly, checked against real code
 
