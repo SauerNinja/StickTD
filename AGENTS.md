@@ -107,7 +107,9 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
 - **Spawn-quip and aura-box systems** — `JOB_QUOTES` (keyed by tower type, 5 lines each) feeds
   `randomJobQuote()`, shown via `spawnTowerQuip()` (a 1800ms-life floating text, NOT the generic
   550ms `spawnFloatingText()` — a real multi-word phrase needs real time to read) plus a
-  `spawn_chatter` gibberish voice blip, both triggered only at the actual build-tap placement
+  `spawn_chatter` gibberish voice blip — two short phrase parts with a pitch step between them
+  (one higher, one lower, direction randomized) and a small pause in between, rather than one flat
+  continuous babble — both triggered only at the actual build-tap placement
   handler — NOT inside `Tower.create()`, which is also called during save/load restoration and
   starting-barricade seeding, so putting the trigger there would fire every tower's quip
   simultaneously on every load. `TOWER_STRATEGY` (keyed by `EVOLVED_TOWER_TYPES`, one icon + one
@@ -123,16 +125,24 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   converge to the same right edge as the stat row through normal flexbox layout — deliberately
   computing both rows from one shared source value so they can't disagree. Both run on every
   `updateInspectPanel()` refresh and on resize/orientation change.
-- **Barricade economy** — Barricade is the one tower that costs wood + stone (`woodCost`/
-  `stoneCost` on its `CONFIG.TOWERS` entry, 600/300) instead of gold (`baseCost`, everyone else).
-  `canAffordTower(type)` is the one shared affordability check used by the build tray, the
-  tile-hover preview, and the real placement handler, so those three can never disagree about
-  whether a Barricade is affordable. `freeBarricadesLeft` (capped at `MAX_FREE_BARRICADES`) grants
-  one free charge every 5 waves cleared, consumed automatically before wood/stone are ever checked
-  — persists through save/load like `moveCharges` already does. Rocks cost more gold to clear than
-  trees (`CONFIG.SCENERY.rockClearCostMult`, applied on top of the existing size-based
-  `clearCost` formula in `spawnScenery()`). Tank (🗿) grants stone instead of gold on death — the
-  one enemy-side stone source beyond clearing rocks yourself.
+- **Barricade economy** — Barricade is NOT a Build-menu tower (removed from `STARTER_TOWER_TYPES`,
+  1.1.15) — it's `BARRICADE_ITEM`, a Shop-purchased item (`UNIVERSAL_ITEMS`, 600🪵/300🪨) bought via
+  the normal `buyItem()` flow into a tower's inventory. Dragging it out of inventory has two valid
+  drop targets (`onPointerEnd()`): a tower (existing item-transfer behavior, stores it) or a valid
+  empty path tile (`isTileBuildable(gx, gy, null, 'BARRICADE')`, converts it into a real
+  `Tower.create('BARRICADE', ...)`, free since it was already paid for at purchase). A live
+  Barricade's "Store" button reverses this — deactivates it and drops a fresh ground item at its
+  position. `freeBarricadesLeft` (capped at `MAX_FREE_BARRICADES`) grants one free charge every 5
+  waves cleared, consumed in `buyItem()` before wood/stone are ever checked — persists through
+  save/load like `moveCharges` already does; this lives in `buyItem()` specifically because
+  Barricade purchases happen there now, not in the old Build-menu placement handler. `CONFIG.TOWERS
+  .BARRICADE` no longer carries `woodCost`/`stoneCost` — those fields moved to `BARRICADE_ITEM` and
+  were removed from the tower config as dead once nothing read them from there anymore.
+  `canAffordTower(type)` (build tray/hover/placement) is back to a plain gold check now that
+  Barricade doesn't go through it. Rocks cost more gold to clear than trees
+  (`CONFIG.SCENERY.rockClearCostMult`, applied on top of the existing size-based `clearCost`
+  formula in `spawnScenery()`). Tank (🗿) grants stone instead of gold on death — the one
+  enemy-side stone source beyond clearing rocks yourself.
 - **Gore/blood system** — `getBloodProfile(enemyType)` returns the per-species base palette
   (color + `isDust`/`viscous`/`noArterial` flags); `rollBloodProfile()` wraps it with per-instance
   hue/lightness jitter so no two enemies of the same type bleed an identical flat color.
@@ -142,7 +152,24 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   radius, 2-5 on death and a 1-in-10 chance per non-lethal hit. `bloodPoolSizeScale(enemyRadius)`
   (relative to Grunt's radius as baseline, same convention as `goreScale`) scales ground-pool decal
   size and blends into `goreScale` itself, so blood amount reflects the actual target's body size,
-  not just damage/HP. Ambient footsteps are a separate system: `FOOTSTEP_WEIGHT` classifies each
+  not just damage/HP. `drawDecals()` runs the array through an expiry pass, then TWO ordered draw
+  passes via the shared `drawOneDecal()` helper — blood/other decals first, then bone/skull/rock/
+  worm debris (`isEmojiDrop || isWorm`) on top — so that layering is now guaranteed regardless of
+  push order, not incidental to it (1.1.16 fix; previously one shared pass meant a bone pushed
+  before later blood could render underneath it). `spawnBoneDebris()`/`spawnSkullDrop()` roll
+  independently on death (78%/45%, `!bio.isDust` only) and never fade (fixed alpha, permanent
+  debris — `BONE_LIFESPAN` = 45 min). Worms are a separate, later mechanic layered on top of
+  skulls specifically: each round, the wave-completion handler first spawns a worm
+  (`spawnWormFromSkull()`) for any skull marked `wormPending` from the PREVIOUS round, then rolls a
+  fresh 10% chance for skulls not yet rolled (`!wormSpawned && !wormPending`) — the one-round delay
+  between roll and appearance is intentional, not a bug. A worm never fades either, but isn't
+  permanent like a bone: `WORM_LIFESPAN` = 2x `DECAL_LIFESPAN`, and instead of an alpha fade-out it
+  shrinks smoothly to nothing over its final 30% of life (`drawOneDecal()`'s `isWorm` branch).
+  Ground items sitting on the map (`groundItems`) bob and show a soft pulsing ring at every
+  graphics setting as a consistent "this is draggable" signal; while actively dragging one, a
+  👇🏻 indicator appears above whichever tower is currently the valid drop target, using the exact
+  same 26px hit-test radius the real drop logic in `onPointerEnd()` uses so the two can never
+  disagree. Ambient footsteps are a separate system: `FOOTSTEP_WEIGHT` classifies each
   enemy type light/medium/heavy (or `null` — Wraith, deliberately silent), `footstepDist` is a fixed
   stride LENGTH per step (not a wall-clock timer) so faster enemies step more often naturally, and
   `SoundEngine`'s `lastFootstepAt` throttles actual playback to one every ~70ms engine-wide
@@ -481,13 +508,28 @@ opportunistically. Worth doing deliberately, as its own scoped pass, if this fun
 
 ## The `<head>` block is a fixed external integration — don't casually reorder or trim it
 
-`index.html`'s `<head>` contains Google Analytics (`gtag.js`, measurement ID `G-B6H58BQ50N`) and a
-block of SEO meta tags (title, description, keywords, canonical, Open Graph, Twitter card) with
-specific, deliberate keyword choices (stick tower defense, StickTD, sauerninja, setvin noether).
-The GA measurement ID is tied to a live property — don't regenerate or swap it without being asked.
-The favicon is an inline base64 data URI (verified to work reliably); the OG/Twitter image tags
-point to `og-image.png` at the site root, which is a real file that needs to exist in the repo —
-a data URI there wouldn't be fetched by most social-media crawlers, unlike the favicon.
+`index.html`'s `<head>` contains Google Analytics (`gtag.js`, measurement ID `G-B6H58BQ50N`,
+gated behind Google Consent Mode v2 — see below) and a block of SEO meta tags (title, description,
+keywords, robots, canonical, Open Graph including site_name/locale, Twitter card, and a
+schema.org `VideoGame` JSON-LD block) with specific, deliberate keyword choices (stick tower
+defense, StickTD, sauerninja, setvin noether). The GA measurement ID is tied to a live property —
+don't regenerate or swap it without being asked. The favicon is an inline base64 data URI (verified
+to work reliably); the OG/Twitter image tags point to `og-image.png` at the site root, which is a
+real file that needs to exist in the repo — a data URI there wouldn't be fetched by most
+social-media crawlers, unlike the favicon.
+
+Analytics only actually collects once a visitor accepts the cookie-consent banner (top of
+`<body>`, fully self-contained — own markup/CSS/script, no dependency on the main game script).
+Accept-only by request — no Decline button; a visitor who never clicks Accept simply stays on the
+default-denied state, with no separate explicit "no" action available. `gtag('consent', 'default',
+...)` in `<head>` denies `analytics_storage` (and the ad-related signals, unused here but included
+for Consent Mode completeness) until the banner's Accept button calls `gtag('consent', 'update',
+{analytics_storage:'granted'})`; the choice is remembered in `localStorage`
+(`stickTD_consentChoice`) so the banner doesn't reappear on later visits. Order matters for Consent
+Mode — the default must be pushed before `gtag('config', ...)` runs, which is why it's the first
+`dataLayer` push in `<head>`, ahead of even `gtag('js', ...)`. The banner's text and button never
+wrap to a second line — `fitConsentBannerToOneLine()` (same scale-to-fit technique as
+`fitHudTopToOneLine()`/`fitStatRowToOneLine()`) shrinks the content to fit instead.
 
 ## Navigating this file — the README Code Map is the front door
 

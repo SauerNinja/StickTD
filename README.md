@@ -231,6 +231,13 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
   saturation cap keeps a heavily-fought corridor from growing into one unbroken mass.
 - **Instant, not delayed** — every blood effect fires at the actual moment of the hit or the
   moment of death, at full size immediately — no delayed trickle, no grow-in animation.
+- **Skeletal remains and the worms that eventually crawl out of them** — a death has a 78% chance
+  to scatter a few bone fragments and a 45% chance to leave a skull, both permanent (never fade)
+  and always rendered above blood, guaranteed by draw order rather than left to chance. Each round,
+  every skull on the map has a 1-in-10 chance to be marked for a worm — which doesn't actually
+  appear until the round *after* it's rolled — and each skull only ever grows one. A worm never
+  fades either, but it isn't permanent: it lives twice as long as a blood stain and shrinks
+  smoothly to nothing near the end of its life instead of fading out, like it's burrowing away.
 
 ## Leveling
 
@@ -296,10 +303,13 @@ them.
 ## Items & Heroes
 
 Every tower starts with empty item slots — WC3/Dota-style, not a class-specific starter kit.
-Currently one shared item exists, usable by any tower regardless of class: the **Lucky Branch**
-🌿 (+1 STR/+1 DEX/+1 INT, gold + wood), buyable from the Shop for whichever tower you have
-selected. Items can also be dragged directly from one tower's inventory onto another to transfer
-them. Global passive upgrades apply to every tower you own, current and future. A tower with all
+Two shared items exist, usable by any tower regardless of class: the **Lucky Branch** 🌿 (+1
+STR/+1 DEX/+1 INT, gold + wood), and the **Barricade** 🚧 item (see Resources below) — both
+buyable from the Shop for whichever tower you have selected. Items can be dragged directly from
+one tower's inventory onto another to transfer them, or dropped on the ground first. A ground
+item bobs gently with a soft pulsing ring around it at every graphics setting, and while you're
+actively dragging one, a 👇🏻 indicator appears above whichever tower is currently the valid drop
+target. Global passive upgrades apply to every tower you own, current and future. A tower with all
 6 item slots filled awakens into a **Hero**, with a permanent stat bonus and a visible crown.
 
 ## Resources
@@ -307,11 +317,13 @@ them. Global passive upgrades apply to every tower you own, current and future. 
 Gold from kills and wave clears — spent on most towers, upgrades, and expanding the map. Wood and
 stone from clearing scattered trees and rocks (rocks cost noticeably more gold to clear than an
 equivalently-sized tree), rare treasure chests, and relic drops — spent on the priciest tier of
-shop gear, and on **Barricades**, which cost wood + stone instead of gold (600🪵/300🪨 — a real
-investment, not a cheap early buy). Every 5 waves cleared banks one free-barricade charge (capped
-at 3), consumed automatically on your next Barricade build before any wood/stone is spent. Tank
-(🗿) drops stone instead of gold on death — the game's one enemy-side source of stone beyond
-clearing rocks yourself.
+shop gear, and on **Barricades**. Barricades aren't built from the Build menu — they're bought as
+an item from the Shop (600🪵/300🪨) into a tower's inventory, then dragged out onto a valid path
+tile to place them live, or onto any tower's inventory to store or move them; a live Barricade can
+be picked back up with its "Store" button. Every 5 waves cleared banks one free-barricade charge
+(capped at 3), consumed automatically on your next Barricade purchase before any wood/stone is
+spent. Tank (🗿) drops stone instead of gold on death — the game's one enemy-side source of stone
+beyond clearing rocks yourself.
 
 ## Lives
 
@@ -409,7 +421,7 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5693)
 - [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5304)
 - [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5781)
-- [`spawnBoneDebris()` / `spawnSkullDrop()` — skeletal remains on death, permanent (never fade)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5282)
+- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains on death (permanent, never fade) and the worms that eventually crawl out of skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5936)
 - [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5383)
 - [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2196)
 

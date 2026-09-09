@@ -5,17 +5,6 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Ideas
 
-- **Barricade as a draggable inventory item** — requested design: Barricade stops being a
-  Build-menu tower and becomes an item carried in a tower's inventory slot, dragged out onto a
-  valid path tile within that tower's own attack range to place it, and dragged back into any
-  tower's inventory as long as it's currently within that tower's range. A genuinely new mechanic,
-  not a variation on anything built today — would need a new item-to-live-tower conversion system,
-  new drag interactions distinct from the existing item-transfer-between-towers drag (which only
-  moves items between inventories, never onto the map), and new range/tile validation layered on
-  top of both. Deliberately not attempted alongside the wood/stone cost change and the free-
-  barricade milestone (both shipped, 1.1.11) — those were real, contained changes; this needs its
-  own focused pass given the size and edge-case risk (multiple barricades in flight, save/load
-  state for an item mid-transformation, interaction with the existing Build-menu placement flow).
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
   `reserveVoiceSlot()` protects the engine from unbounded concurrent voices during swarm/explosion
   moments, and critical UI/system sounds bypass it via the new `force` param. What's NOT built:

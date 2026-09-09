@@ -1,5 +1,112 @@
 # Changelog
 
+## [1.1.20] - 2026-09-08
+- Added a 🍪 cookie emoji to the left of the consent banner's Accept button text.
+## [1.1.19] - 2026-09-08
+- **Consent banner is now Accept-only** — removed the Decline button per request. Worth flagging
+  plainly: without a Decline action, there's no explicit "no" a visitor can click; not accepting
+  just leaves consent at its already-denied default rather than recording an active refusal. Not
+  legal advice, just noting the tradeoff since it's the opposite of what the Decline button was
+  originally there for.
+- **Banner text and button never wrap to a second line anymore** — new
+  `fitConsentBannerToOneLine()`, the same scale-to-fit technique already used for the top HUD bar
+  and the inspect panel's stat row: measures the content's true natural width, compares to the
+  banner's actual available width, and shrinks it with a left-anchored transform instead of
+  letting it wrap.
+## [1.1.18] - 2026-09-08
+- **Added the remaining common SEO tags**: `robots`, `og:site_name`, `og:locale`, and a
+  schema.org `VideoGame` JSON-LD structured-data block (the one addition with real SEO teeth left
+  — it's what lets search engines show rich results instead of a plain link). Purely additive,
+  nothing existing reordered or touched.
+- **New cookie-consent banner, wired to Google Consent Mode v2.** Analytics previously ran
+  completely unconditionally with no consent mechanism at all. Now: `gtag('consent', 'default',
+  ...)` in `<head>` denies `analytics_storage` by default (pushed before `gtag('config', ...)`,
+  since Consent Mode requires that ordering); a new banner at the top of `<body>` — fully
+  self-contained, its own markup/CSS/script, no dependency on the main game script — lets the
+  visitor Accept or Decline, calls `gtag('consent', 'update', ...)` accordingly, and remembers the
+  choice in `localStorage` so the banner doesn't reappear on later visits.
+- Verified before shipping: the new JSON-LD block is valid JSON (parsed and checked, not just
+  visually inspected), the new consent-banner script is independently syntax-valid, and the full
+  document's script-tag structure is still balanced — the project's own established boot-integrity
+  check, since a malformed `<script>` tag here was exactly the class of bug that caused the 1.0.208
+  hotfix.
+## [1.1.17] - 2026-09-08 — HOTFIX
+- **Fixed a boot-crashing bug from 1.1.16: `ReferenceError: Cannot access 'DECAL_LIFESPAN' before
+  initialization`.** The new worm feature added a top-level `const WORM_LIFESPAN = DECAL_LIFESPAN
+  * 2` right after `spawnSkullDrop()` (around line 5977), but `DECAL_LIFESPAN` itself isn't
+  declared until much later in the file (around line 6176) — a classic temporal-dead-zone
+  violation: top-level `const`/`let` statements execute in file order, so referencing one before
+  its own declaration line runs throws immediately, crashing the entire boot sequence. Fixed by
+  removing the standalone `WORM_LIFESPAN` constant and computing `DECAL_LIFESPAN * 2` inline
+  inside `spawnWormFromSkull()`'s function body instead — function bodies are only evaluated when
+  actually called, well after the whole script has finished parsing, so this is safe regardless of
+  where either constant is declared.
+- **Verified this class of bug doesn't exist anywhere else in the file**, not just at the one
+  reported site: ran the entire extracted script end-to-end in Node with stubbed DOM/browser APIs
+  (canvas, AudioContext, localStorage, etc.) rather than only checking the specific error reported.
+  It now executes fully with zero errors, confirming no other "used before declared" bug is
+  lurking elsewhere — this is a stronger check than `node --check`, which only validates syntax,
+  not execution-order correctness.
+## [1.1.16] - 2026-09-08
+- **Bones/skulls no longer depend on push order to render above blood — found and fixed the real
+  cause.** They were never actually fading (verified — already fixed opacity from an earlier
+  pass), but `drawDecals()` drew every decal type in one shared pass ordered purely by when each
+  was pushed to the array; a bone pushed before a later blood pool could end up rendered
+  underneath it, which likely read as "fading" even though it wasn't. Split into
+  `drawOneDecal()` (unchanged rendering logic) called in two ordered passes — blood/other decals
+  first, then bone/skull/rock/worm debris on top — so the layering is now guaranteed, not
+  incidental.
+- **Bone and skull drop chance increased again** — still felt low after the last bump. Bone 58% →
+  78%, skull 32% → 45%.
+- **New: worms crawl out of skulls.** Each round, every skull decal has a 1-in-10 chance to be
+  marked for a worm — but the worm doesn't actually appear until the round after it's rolled, a
+  one-round delay before it emerges. Each skull only ever grows one worm. Worms never fade (same
+  as bones), but unlike bones they're not permanent: they live twice as long as a blood stain
+  (`WORM_LIFESPAN` = 2x `DECAL_LIFESPAN`) and, instead of an alpha fade-out, shrink smoothly to
+  nothing over their final 30% of life — reads as burrowing away rather than a wound-style fade.
+## [1.1.15] - 2026-09-08
+- **Two-part spawn chatter** — the gibberish voice blip is now two short phrase parts (like two
+  words) with a pitch step between them (one part higher, one lower, direction randomized) and a
+  small pause in between, instead of one flat continuous babble. Reads more like actual speech
+  intonation.
+- **Barricade reworked into a Shop-purchased, draggable item — no longer a Build-menu tower.**
+  This was the feature explicitly deferred in 1.1.11 as needing its own focused pass; built now:
+  - Removed `BARRICADE` from `STARTER_TOWER_TYPES` — no longer appears in the Build tray at all.
+  - New `BARRICADE_ITEM` (600🪵/300🪨) added to the Shop, bought like any other item into the
+    selected tower's inventory via the existing `buyItem()` flow.
+  - Dragging a Barricade item out of inventory now has two valid drop targets instead of one:
+    drop it on a tower to store it (existing item-transfer behavior, now labeled "🚧 Stored!"),
+    or drop it on a valid empty path tile to place it live ("🚧 Placed!", a real
+    `Tower.create('BARRICADE', ...)`, free since it was already paid for at purchase). Missing
+    both leaves it sitting as a ground item, the same fallback every item drag already has.
+  - New "📦 Store (pick up)" button on a selected live Barricade — converts it back into a
+    draggable ground item instead of only being sellable (Sell still exists, still gives the
+    current 70%-of-`totalSpent` gold refund, which is 0 for Barricade since it was never bought
+    with gold — Store is the real way to reclaim value).
+  - **Rewired the free-barricade milestone (every 5 waves, 1.1.11) into the new Shop purchase
+    flow** — `buyItem()` now consumes a banked `freeBarricadesLeft` charge before checking
+    wood/stone, and the Shop card shows "🎁 FREE!" when one's available. This needed explicit
+    attention: moving Barricade out of the Build menu would have silently orphaned that milestone
+    otherwise, since it used to live in the Build-menu placement handler specifically.
+  - Cleaned up the now-dead Barricade branches in `canAffordTower()` and the Build-menu placement
+    handler, verified unreachable before removing (Barricade can never be `selectedBuildType`
+    anymore). Also removed `CONFIG.TOWERS.BARRICADE`'s now-redundant `woodCost`/`stoneCost`
+    fields, verified unused anywhere else — that cost now lives solely on `BARRICADE_ITEM`.
+  - Updated the Barricade blurb and its dedicated help modal, both of which still described the
+    old cheap/Build-menu flow.
+- **Ground items now read more clearly as draggable** — the existing gentle bob (it was already
+  there, just subtle) increased slightly, plus a new soft pulsing ring around every ground item,
+  visible at every graphics setting (not gated behind high graphics like the glow already was) —
+  a consistent, always-on "this can be picked up" signal.
+- **New 👇🏻 drop-target pointer** — while dragging an item, whichever tower is currently the
+  valid drop target shows a pointing-finger indicator above it, using the exact same 26px
+  hit-test radius the actual drop logic already uses, so what's shown always matches what would
+  really happen if released right now.
+- **Audio mastering, verified rather than rebuilt**: the master bus already had a real chain
+  (compressor, soft-clip saturation, a 350Hz "boxiness" EQ notch) from earlier work — confirmed
+  every sound in the game, including everything added this session (spawn chatter, stat-spend
+  chime, footsteps, crit-hit layers), correctly routes through `tone()`/`noise()` into that same
+  chain with no bypasses. Nothing needed changing there; this was a check, not a guess-and-fix.
 ## [1.1.14] - 2026-09-08
 - **Crit multiplier now shows ⚔️ instead of a literal "x"** — e.g. "2.5% ⚔️1.20" instead of
   "2.5% x1.20".
