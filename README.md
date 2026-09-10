@@ -340,9 +340,11 @@ than a routine top-up.
 
 ## Settings
 
-Video (graphics quality: Low / Medium / High, trading off shadows and particle-heavy effects for
+Video (graphics quality: Low / High, trading off shadows and particle-heavy effects for
 performance), Audio (mute), Game (18+ gore toggle, save/load), and About (in-app README
-viewer/downloader).
+viewer/downloader, plus **Download Debug Log** — one text file with live performance stats, full
+game/settings state, audio engine status, entity pool counts, and browser/device info, for
+attaching to a bug report).
 
 ## Save / Load
 

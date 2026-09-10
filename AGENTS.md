@@ -96,11 +96,14 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   `EARLY_ACCURACY_CAP_TYPES` early-cap for casters/melee, removed per explicit balance direction.
   Damage itself stays strictly archetype-exclusive as always (see the Leveling bullet above);
   `missChance` is the one universal DEX effect that applies regardless of class. `recomputeStats()`
-  also computes `hpStat` — a separate, deliberately much-slower-growing derived value on top of the
-  existing percentage-based `strHpMult` (fed by STR at 0.004/point, the smallest per-point rate
-  anywhere in the game, verified smaller than every other rate before picking it), converting to
-  flat bonus HP at a 10:1 ratio (23 HP stat = 230 bonus HP). Additive, not a replacement —
-  `strHpMult` is untouched. Warrior damage
+  also computes `hpStat` — a separate value on top of the existing percentage-based `strHpMult`
+  (untouched, additive not a replacement), converting to flat bonus HP at a 10:1 ratio (23 HP stat
+  = 230 bonus HP). Archetype-differentiated per explicit spec (1.1.37, rebalanced from the original
+  1.1.27 universal 0.004/point rate): `HP_STAT_BASE`/`HP_STAT_RATE` (keyed by `CLASS_ARCHETYPE`,
+  same pattern as `BASE_MISS_CHANCE_BY_ARCHETYPE`) give Warrior a 3-heart/30HP base growing
+  0.32/STR point, Archer 2-heart/20HP growing 0.25/point, Mage 1-heart/10HP growing 0.15/point —
+  verified those exact starting values numerically before shipping. Barricade (no
+  `CLASS_ARCHETYPE` entry) falls back to Mage's values. Warrior damage
   specifically uses `warriorStrDamageMult()`, a separate curve from the shared
   `diminishingStatValue()` (higher base rate, higher/slower-decaying late-game floor) so heavy STR
   investment keeps compounding into the endgame instead of flattening out — every other stat effect
@@ -159,12 +162,20 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   550ms `spawnFloatingText()` — a real multi-word phrase needs real time to read) plus a
   `spawn_chatter` gibberish voice blip — two short phrase parts with a pitch step between them
   (one higher, one lower, direction randomized) and a small pause in between, rather than one flat
-  continuous babble — both triggered only at the actual build-tap placement
-  handler — NOT inside `Tower.create()`, which is also called during save/load restoration and
-  starting-barricade seeding, so putting the trigger there would fire every tower's quip
-  simultaneously on every load. `TOWER_STRATEGY` (keyed by `EVOLVED_TOWER_TYPES`, one icon + one
-  strategy line each) feeds the WC3-style aura box next to a tower's inventory slots — hidden for
-  Swordsman/Archer/Mage/Barricade, tap-to-toggle tooltip for everyone else.
+  continuous babble — triggered at the actual build-tap placement handler — NOT inside
+  `Tower.create()`, which is also called during save/load restoration and starting-barricade
+  seeding, so putting the trigger there would fire every tower's quip simultaneously on every
+  load. `TOWER_STRATEGY` (keyed by `EVOLVED_TOWER_TYPES`, one icon + one strategy line each) feeds
+  the WC3-style aura box next to a tower's inventory slots — hidden for Swordsman/Archer/Mage/
+  Barricade, tap-to-toggle tooltip for everyone else. Voice register is archetype-distinct
+  (`CLASS_ARCHETYPE[t.type]` passed as `intensity`): Archer highest pitch, Warrior medium, Mage
+  lowest AND slowest (`tempoMult` stretches its syllable duration/gaps, not just pitch). A
+  separate `chatter_short` case — one shorter burst instead of `spawn_chatter`'s two — fires on
+  taking a hit (`Tower.takeDamage()`, throttled to 2.5s per tower via `lastHitChatterAt`, excluded
+  for Barricade since `CLASS_ARCHETYPE` has no entry for it) and on leveling up
+  (`gainTowerExp()`'s `leveled` branch, no extra throttle needed since level-ups are already
+  rate-limited by the XP curve). `pitchBias` shifts the burst within its register: negative for a
+  hit (startled), positive for a level-up (excited).
 - **Inspect-panel dynamic-fit layout** — `#inspCombatRow` (the stat row) never wraps; instead
   `fitStatRowToOneLine()` (same technique as the top HUD's `fitHudTopToOneLine()`) measures the
   row's true `scrollWidth`, compares to `#inspect-panel`'s `clientWidth - 16` (its real padding),
@@ -175,6 +186,35 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   converge to the same right edge as the stat row through normal flexbox layout — deliberately
   computing both rows from one shared source value so they can't disagree. Both run on every
   `updateInspectPanel()` refresh and on resize/orientation change.
+- **Performance: idle fast path, viewport culling, pan hot path, telemetry (1.1.32–1.1.35)** —
+  `update()` gates the collision/hash pipeline (`resolveSweptEnemyCollisions()`,
+  `resolveEnemyCollisions()`, `checkStallWatchdog()`, `buildEnemyHash()`) behind an
+  `anyActiveEnemies` check — verified each of those functions allocates fresh arrays/Maps/objects
+  every call regardless of enemy count before adding this gate; also verified (after a real
+  incident) that none of them set any module-level state other functions depend on — only local
+  variables or per-enemy instance properties. `updateBarricadesAndPileup()` is deliberately NOT
+  gated (1.1.35 hotfix) — it's the only place that recalculates `anyBarricadeQueued` (which gates
+  spawning, with its own 15s force-resume safety valve), and gating it caused a real, confirmed
+  permanent soft-lock: if the last enemy touching a barricade died while the flag was true, it
+  stayed stuck true forever, since nothing was left to recalculate it — spawning never resumed and
+  the function (including its safety valve) never ran again. `EMPTY_ENEMY_HASH` (a single
+  frozen `{}`) replaces a fresh allocation on idle frames; every reader of `enemyHash`
+  (`queryNearby()`, tower/projectile targeting, gore void-shadow checks) was individually checked
+  to confirm an empty hash degrades safely to "no targets found," not a crash. Deliberately gated
+  on actual enemy count, not `waveState`, to avoid any edge-case gap. Every other system — tower
+  updates, projectiles, particles, death animations, floating text, scenery timers — still runs
+  unconditionally every frame. `drawScenery()` and `drawDecals()` both compute visible world
+  bounds once per call (`camera.x/y/zoom`, `CANVAS_W/H`, a small tile margin) and skip offscreen
+  items before touching any Canvas state — verified zero culling existed in either before adding
+  this. The camera-pan pointermove handler skips the build-hover and scenery-hover checks entirely
+  once `isDragging` is true — verified both were calling `getBoundingClientRect()` a second time
+  (via `toCanvasCoords()`) on every single pointermove during an active drag. `perfStats` (always
+  on, negligible cost) tracks frame/update/render ms, ticks-per-frame with a running max, and
+  visible-vs-total scenery/decal counts — the instrumentation the original audit recommended doing
+  first, so further performance work has real numbers instead of code-reading inference. See
+  BACKLOG.md for the larger, deferred performance items (static scenery/decal caching,
+  spatial-hash allocation reduction) and the gore/
+  graphics-quality tension found but deliberately not changed.
 - **Barricade economy** — Barricade is NOT a Build-menu tower (removed from `STARTER_TOWER_TYPES`,
   1.1.15) — it's `BARRICADE_ITEM`, a Shop-purchased item (`UNIVERSAL_ITEMS`, 600🪵/300🪨) bought via
   the normal `buyItem()` flow into a tower's inventory. Dragging it out of inventory has two valid

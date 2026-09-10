@@ -1,5 +1,127 @@
 # Changelog
 
+## [1.1.37] - 2026-09-08 — HP stat rebalance: archetype-differentiated base + growth rate
+- **Replaced the single universal HP-stat rate (0.004/point, deliberately the hardest stat in the
+  game) with archetype-differentiated base values and growth rates, per explicit spec**: Warrior
+  starts at 3 "heart" (30 flat bonus HP) and grows 0.32/STR point; Archer starts at 2 (20 HP)
+  growing 0.25/point; Mage starts at 1 (10 HP) growing 0.15/point. New `HP_STAT_BASE`/`HP_STAT_RATE`
+  lookup tables keyed by `CLASS_ARCHETYPE`, same pattern as the existing per-archetype miss-chance
+  table. Barricade (no `CLASS_ARCHETYPE` entry) falls back to Mage's values, the lowest, since
+  it's not a fighting class.
+- **Verified the exact starting values numerically before shipping** — confirmed 30/20/10 bonus
+  HP at STR=0 for Warrior/Archer/Mage respectively, matching the spec precisely, not just
+  eyeballed from the formula.
+- This is a real, substantial, class-differentiated stat now rather than the previous
+  near-invisible version — still additive on top of the existing percentage-based `strHpMult`,
+  which is unchanged.
+## [1.1.36] - 2026-09-08
+- **HP-stat display precision increased from 2 to 3 decimal places** — verified the actual bug
+  before fixing it: at STR=1, `hpStat` correctly computes to `0.004`, but 2-decimal rounding
+  displayed it as literal `0`, making a correctly-working stat look broken. At STR=4-5 it rounded
+  to `0.02`, matching what was reported as "0.02 too low" — the real value was there, just hidden
+  by insufficient display precision, not a math error in the underlying calculation.
+- **Removed the "%" suffix from the defense/armor stat**, as requested.
+## [1.1.35] - 2026-09-08 — HOTFIX: permanent wave soft-lock from 1.1.32's idle fast path
+- **Fixed a real, confirmed permanent soft-lock introduced by 1.1.32's idle-simulation
+  optimization** — reported live with a screenshot: wave stuck at 1/100, nothing spawning, a
+  damaged barricade with a blood trail (an enemy had died there). Root cause: `anyBarricadeQueued`
+  (which gates whether spawning is allowed to continue, and normally has a 15-second force-resume
+  safety valve) is *only* ever recalculated inside `updateBarricadesAndPileup()` — which 1.1.32
+  gated behind an active-enemy check for performance. If the last enemy touching a barricade died
+  while the flag was `true`, it stayed stuck `true` forever: nothing left to recalculate it, which
+  blocked all future spawning, which meant no enemy could ever become active again, which meant
+  the function — including its own safety valve — never ran again either. A genuine deadlock, not
+  a rare edge case.
+- **Fix**: moved `updateBarricadesAndPileup()` back outside the active-enemy gate so it runs
+  every single frame unconditionally again, exactly as it did before 1.1.32 — this structurally
+  guarantees `anyBarricadeQueued` can never go stale, since it's recalculated fresh from live data
+  every frame regardless of enemy count. It's cheap even with zero enemies (an empty array/Map),
+  unlike the collision-resolution and hash-building work, which was the actual performance cost
+  and has no similar side effect — verified by scanning all three remaining gated functions
+  (`resolveSweptEnemyCollisions()`, `resolveEnemyCollisions()`, `checkStallWatchdog()`) for any
+  module-level state assignment before trusting they were safe to leave gated: all three only
+  touch local variables or per-enemy instance properties, nothing global.
+- The idle-frame performance win itself is preserved — the actually-expensive work (hash building,
+  collision resolution) still only runs when enemies exist.
+## [1.1.34] - 2026-09-08 — Download Debug Log
+- **New Settings > About button: "🪲 Download Debug Log (.txt)"** — one plain-text file covering
+  everything genuinely useful for debugging a report: timestamp + game version, live
+  `perfStats` (frame/update/render ms, ticks/frame, visible-vs-total scenery/decal counts), full
+  game state (wave, gold/wood/stone, lives, camera), current settings (graphics quality, gore,
+  mute), audio engine state (AudioContext state/sample rate, active voice count, impact
+  suppression counters), every entity pool's active-vs-capacity count, and browser/device info
+  (user agent, window/screen size, devicePixelRatio). Filename includes the version and an
+  ISO timestamp. Reuses the exact same Blob/download pattern already used for save files and the
+  README, rather than inventing a new one.
+- **Every referenced variable individually verified to exist** before trusting this — checked
+  `MAX_MOVE_CHARGES`, `MAX_FREE_BARRICADES`, `MAX_DECALS`, `dprValue`, `groundItems`,
+  `deathAnims`, `particles`, `floatingTexts`, and `decals` all by name against the real
+  declarations, not assumed from memory.
+- **Runtime-tested, not just syntax-checked**: extracted `generateDebugLog()` and executed it
+  against a fully stubbed environment covering every field it reads, confirming real, correctly
+  formatted output with no thrown errors before shipping.
+## [1.1.33] - 2026-09-08 — decal culling + performance telemetry
+- **Decal viewport culling** — same principle as 1.1.32's scenery culling, applied to
+  `drawDecals()`'s two ordered draw passes. Decals aren't tile-aligned like scenery, so this is a
+  plain bounds check per decal rather than a grid-cell lookup. Caught and fixed my own mistake
+  while building this: my first pass added a third full traversal of the decals array purely to
+  count visible ones for telemetry — exactly the kind of wasted work this whole effort is trying
+  to eliminate. Folded the counting into the two existing draw passes instead.
+- **New always-on performance telemetry** (`perfStats`, inspectable from the console) — frame ms,
+  update ms, render ms, ticks-per-frame (with a running max), and visible-vs-total counts for both
+  scenery and decals. This is the instrumentation step the original audit recommended doing
+  *first*; every remaining deferred performance item in BACKLOG.md now has a real number to check
+  before being attempted, instead of being inferred from reading code alone.
+- **Deliberately did not attempt static scenery/decal caching this round** — the single largest
+  remaining lever per the audit, but genuinely higher-risk than everything else shipped: cache
+  invalidation has to correctly handle scenery mid-clear, new spawns, map expansion, and blood
+  that's still actively aging/dripping. Viewport culling (1.1.32 + this version) already resolves
+  the loudest reported symptom — idle-panning cost scaling with total world size rather than
+  what's actually visible — at much lower risk. Logged in BACKLOG.md to revisit once `perfStats`
+  shows culling alone isn't sufficient.
+## [1.1.32] - 2026-09-08 — archetype voices, luck display, performance audit response
+- **New: towers now use their cute chatter voice beyond just placement.** Taking a hit (throttled
+  to at most once per 2.5s per tower — a tower hit repeatedly by breakaway enemies shouldn't
+  react to every single one) and leveling up (naturally rate-limited by the XP curve, no extra
+  throttling needed) each trigger a short reactive "word" — distinct from the full 2-part phrase
+  played on placement. New `chatter_short` sound case alongside the existing `spawn_chatter`.
+  Barricade explicitly excluded from the hit reaction — `CLASS_ARCHETYPE` has no entry for it
+  (verified before excluding it), and an inanimate obstacle shouldn't have a voice.
+- **Archetype-distinct voice registers, per spec**: Archer highest pitch, Warrior medium, Mage
+  lowest AND slowest to talk — a new `tempoMult` stretches Mage's syllable duration and gaps too,
+  not just its pitch, so it genuinely reads as a slower, more deliberate voice rather than just a
+  deeper one. Random variance still exists within each register, so same-class towers sound like
+  different individuals, not clones.
+- **Removed the luck stat's "+0%"** — hidden entirely when luck is actually 0% instead of always
+  showing a value that adds no information.
+- **Performance audit response** (external review, cross-checked against the real code before
+  acting on any of it — every claim below was independently verified by reading the actual
+  functions, not taken on faith): implemented the top three verified, safe findings —
+  - **Idle-simulation fast path**: the full enemy-collision pipeline (`updateBarricadesAndPileup()`,
+    swept + regular collision resolution, stall watchdog, hash building) previously ran every
+    single frame regardless of whether any enemies existed — each of those functions allocates
+    fresh arrays/Maps/objects even with zero active enemies, confirmed by reading them directly.
+    Now gated on an actual active-enemy check (not `waveState`, to avoid any edge-case gap); every
+    other system — tower cooldowns/targeting, projectiles, particles, death animations, floating
+    text, scenery timers — still runs unconditionally every frame, exactly as before.
+  - **Scenery viewport culling**: `drawScenery()` previously rendered every scenery item in the
+    world regardless of visibility — confirmed zero culling existed by reading the function. Now
+    computes visible world bounds once per call and skips offscreen items before any Canvas state
+    (font, fillStyle, transforms) is touched.
+  - **Camera-pan hot path**: verified a real double `getBoundingClientRect()` read per
+    pointermove during an active drag — the scenery-hover and build-hover checks ran
+    unconditionally even while panning, each independently re-querying canvas geometry for a
+    tooltip that's irrelevant while the camera is being actively dragged. Both now skip entirely
+    once a drag is confirmed.
+  - **Declined to silently change**: `const low = false` in the gore-intensity code has an
+    explicit comment stating gore intensity is deliberately decoupled from graphics quality — a
+    content-rating decision, not an oversight. Flagged in BACKLOG.md as a real tension worth an
+    explicit decision, not changed without being asked.
+  - **Deferred to BACKLOG.md**, in the audit's own recommended order: static scenery/decal
+    caching, decal viewport culling, spatial-hash allocation reduction, `MAX_TICKS_PER_FRAME`
+    instrumentation, and frame-timing telemetry — each is a larger, riskier change than the three
+    shipped here, and several of the audit's own remaining findings need real profiling evidence
+    before they're worth acting on further, not just static code reading.
 ## [1.1.30] - 2026-09-08
 - **Removed the redundant ❤️ current/max HP display from the compact stat row** — the HP bar
   directly above it already shows the exact same numbers (and, as of 1.1.29, toggles to a

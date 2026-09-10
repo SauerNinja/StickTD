@@ -596,13 +596,13 @@
       </div>
       <div id="inspCombatRow">
         <span>💗 <span id="inspHpStatVal"></span></span>
-        <span>🛡️ <span id="inspDefVal">0%</span></span>
+        <span>🛡️ <span id="inspDefVal">0</span></span>
         <span>⚔️ <span id="inspAtkVal"></span><span id="inspAtkRange"></span></span>
         <span>💥 <span id="inspCritVal">0%</span></span>
         <span>⏳ <span id="inspSpeedVal">0</span>s</span>
         <span>🥈 <span id="inspDpsVal">0</span></span>
         <span>🎯 <span id="inspRangeVal">0</span></span>
-        <span>🍀 <span id="inspLuckVal">+0%</span></span>
+        <span id="inspLuckRow">🍀 <span id="inspLuckVal">+0%</span></span>
       </div>
       <div id="inspFullOptions" class="hidden">
         <div class="insp-opt-row">
@@ -742,6 +742,7 @@
             <p>Stick Tower Defense — a self-contained, dependency-free browser tower defense game.</p>
             <p id="aboutVersionLine">Version <span id="aboutVersionText"></span></p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
+            <button id="downloadDebugLogBtn">🪲 Download Debug Log (.txt)</button>
             <button id="viewReadmeBtn">📄 View as page</button>
             <button id="expandAboutBtn">More info ▾</button>
             <div id="about-expand-content" class="hidden"></div>
@@ -909,7 +910,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.30'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.37'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1159,6 +1160,11 @@ const CLASS_ARCHETYPE = {
   GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
+// HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR
+// growth rate, per explicit spec: Warrior starts heaviest and grows fastest, Mage starts
+// lightest and grows slowest. Each "heart" is worth 10 flat bonus HP (hpStatBonus = hpStat * 10).
+const HP_STAT_BASE = { WARRIOR: 3, ARCHER: 2, MAGE: 1 }; // starting hearts at 0 STR — 30/20/10 flat bonus HP
+const HP_STAT_RATE = { WARRIOR: 0.32, ARCHER: 0.25, MAGE: 0.15 }; // additional hearts per STR point (before the shared diminishing-returns curve)
 const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% more effective per point — Dota-style: specialization and consistent investment pay off substantially, so under-leveled towers fall meaningfully behind rather than staying roughly competitive
 // Caps how far into the future a ranged tower's lead-prediction aim extrapolates a target's
 // CURRENT velocity. Without this, a tower at max range/min projectile speed (Archer: up to
@@ -2266,7 +2272,22 @@ function updateScenery(dt){
 }
 
 function drawScenery(ctx){
+  // Viewport culling — computed once per call, not per item, then a cheap numeric comparison
+  // rejects offscreen scenery before any Canvas state is touched. Verified before adding this:
+  // drawScenery() previously iterated and fully rendered every scenery item in the world
+  // regardless of whether it was ever visible on screen. Margin is generous (1.5 tiles) to cover
+  // the largest possible sprite (a tall-stretched tree can extend well above its base position)
+  // so nothing visibly pops in/out at the screen edge.
+  const cullMargin = TILE_SIZE * 1.5;
+  const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
+  const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
+  const viewTop = (0 - camera.y) / camera.zoom - cullMargin;
+  const viewBottom = (CANVAS_H - camera.y) / camera.zoom + cullMargin;
+  let visibleCount = 0;
+  const totalCount = sceneryMap.size;
   for(const [key, item] of sceneryMap){
+    if(item.x < viewLeft || item.x > viewRight || item.y < viewTop || item.y > viewBottom) continue;
+    visibleCount++;
     const size = TILE_SIZE * 0.72 * item.scale;
     if(item.isSuper){
       ctx.save();
@@ -2320,6 +2341,8 @@ function drawScenery(ctx){
       ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
     }
   }
+  perfStats.visibleScenery = visibleCount;
+  perfStats.totalScenery = totalCount;
 }
 
 function roundedRectPath(ctx,x,y,w,h,r){
@@ -2818,14 +2841,24 @@ class SoundEngine{
         this.tone(440, 0.18, 'sine', 550, undefined, true, undefined, true);
         this.tone(660, 0.22, 'sine', 720, 0, true, 0.03, true);
         break;
-      case 'spawn_chatter': { // a tower's spawn-time quip, "spoken" as a cute Simlish-style burst
-        // of gibberish rather than real speech — two short phrase parts (like two words), with a
-        // pitch step between them (one part higher, one lower, direction randomized) so it reads
-        // as actual speech intonation rather than one flat continuous babble. A random base pitch
-        // per call means different spawns sound like different (equally cute) little voices, not
-        // one robotic loop (1.1.15).
+      case 'spawn_chatter': { // a tower's spoken moment — spawn quip, taking a hit, leveling up —
+        // "spoken" as a cute Simlish-style burst of gibberish rather than real speech, with two
+        // short phrase parts (like two words) and a pitch step between them so it reads as actual
+        // speech intonation rather than one flat continuous babble. `intensity` carries the
+        // tower's archetype ('WARRIOR'/'ARCHER'/'MAGE') so each family has a genuinely distinct
+        // register: Archer highest pitch, Warrior medium, Mage lowest AND slowest to talk —
+        // `tempoMult` stretches Mage's syllable duration and gaps too, not just its pitch, so it
+        // genuinely reads as a slower, more deliberate voice (1.1.31, corrected 1.1.32).
         const panCh = this.panFor(worldX);
-        const basePitch = 560 + Math.random()*220; // playful, chipmunk-ish register
+        const registers = {
+          MAGE:    [280, 130], // lowest register
+          WARRIOR: [460, 160], // medium
+          ARCHER:  [640, 220]  // highest, quickest
+        };
+        const tempoMults = { MAGE: 1.6, WARRIOR: 1.0, ARCHER: 1.0 }; // Mage alone talks noticeably slower
+        const register = registers[intensity] || [460, 220]; // unrecognized/no archetype — a neutral middle register
+        const tempoMult = tempoMults[intensity] || 1.0;
+        const basePitch = register[0] + Math.random()*register[1];
         const partDirection = Math.random() < 0.5 ? 1 : -1; // which part is the higher one
         const partShift = 70 + Math.random()*90; // how far apart the two parts' registers sit
         const partSyllableCounts = [2 + Math.floor(Math.random()*2), 2 + Math.floor(Math.random()*2)]; // 2-3 each
@@ -2835,10 +2868,35 @@ class SoundEngine{
           for(let i = 0; i < partSyllableCounts[part]; i++){
             const startFreq = partPitch + (Math.random()-0.5)*100;
             const endFreq = startFreq + (Math.random() < 0.5 ? 1 : -1) * (60 + Math.random()*140);
-            this.tone(startFreq, 0.065, 'triangle', endFreq, panCh, true, tCh);
-            tCh += 0.055 + Math.random()*0.03;
+            this.tone(startFreq, 0.065*tempoMult, 'triangle', endFreq, panCh, true, tCh);
+            tCh += (0.055 + Math.random()*0.03) * tempoMult;
           }
-          tCh += 0.09; // a small gap between the two phrase parts, like a pause between two words
+          tCh += 0.09 * tempoMult; // a small gap between the two phrase parts, like a pause between two words
+        }
+        break;
+      }
+      case 'chatter_short': { // a quick reactive "word" — taking a hit or leveling up — distinct
+        // from spawn_chatter's full 2-part phrase: one short burst instead of two, so it reads as
+        // a brief reaction rather than a full quip. Same per-archetype register/tempo system.
+        // `pitchBias` (also carried via intensity, alongside the archetype — see the two call
+        // sites) shifts the whole burst up or down within that register: a hit reaction sits
+        // lower (a startled "oof"), a level-up sits higher (an excited "yes!") — same tower, same
+        // archetype range, genuinely different reaction (1.1.31, corrected 1.1.32).
+        const panSh = this.panFor(worldX);
+        const registersSh = { MAGE: [280, 130], WARRIOR: [460, 160], ARCHER: [640, 220] };
+        const tempoMultsSh = { MAGE: 1.6, WARRIOR: 1.0, ARCHER: 1.0 };
+        const archS = (intensity && intensity.archetype) || null;
+        const registerSh = registersSh[archS] || [460, 220];
+        const tempoMultSh = tempoMultsSh[archS] || 1.0;
+        const pitchBias = (intensity && intensity.pitchBias) || 0; // e.g. -40 for a hit reaction, +40 for a level-up
+        const basePitchSh = registerSh[0] + Math.random()*registerSh[1] + pitchBias;
+        const syllables = 1 + Math.floor(Math.random()*2); // 1-2 — noticeably shorter than spawn_chatter's 4-6
+        let tSh = 0;
+        for(let i = 0; i < syllables; i++){
+          const startFreq = basePitchSh + (Math.random()-0.5)*80;
+          const endFreq = startFreq + (Math.random() < 0.5 ? 1 : -1) * (50 + Math.random()*110);
+          this.tone(startFreq, 0.06*tempoMultSh, 'triangle', endFreq, panSh, true, tSh);
+          tSh += (0.05 + Math.random()*0.025) * tempoMultSh;
         }
         break;
       }
@@ -3180,6 +3238,7 @@ function gainTowerExp(tower, amount){
   if(leveled){
     spawnFloatingText(tower.x, tower.y - 40, 'LEVEL ' + tower.expLevel + '!', '#ffd23f');
     playSound('levelup');
+    playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: 40 }); // bright, excited — an upward reaction
   }
   if(selectedTower === tower) updateInspectPanel();
 }
@@ -4840,12 +4899,15 @@ class Tower{
 
     const strForHp = EARLY_HP_CAP_TYPES.includes(this.type) ? Math.min(strEff, EARLY_STAT_CAP_POINTS) : strEff;
     const strHpMult = 1 + diminishingStatValue(strForHp, 0.03); // +3% max HP/point, diminishing every 5 points
-    // "HP stat" — a separate, deliberately much slower-growing derived value on top of the
-    // percentage bonus above, not a replacement for it. Fed by tiny decimal increments from STR
-    // (0.004/point — smaller than any other per-point rate in the game, including DEX's own 0.007
-    // accuracy rate, verified before picking this number, specifically so this is the single
-    // hardest stat to grow). Converts to flat bonus HP at a 10:1 ratio: 23 HP stat = 230 bonus HP.
-    this.hpStat = diminishingStatValue(strForHp, 0.004);
+    // "HP stat" — a separate value on top of the percentage bonus above, not a replacement for it.
+    // Archetype-differentiated per explicit spec: Warrior starts at 3 "heart" (30 bonus HP) and
+    // grows 0.32/STR point, Archer starts at 2 (20 HP) growing 0.25/point, Mage starts at 1 (10 HP)
+    // growing 0.15/point — Barricade (no CLASS_ARCHETYPE entry) falls back to Mage's rate/base,
+    // the lowest, since it's not a fighting class. Converts to flat bonus HP at a 10:1 ratio:
+    // 23 HP stat = 230 bonus HP (1.1.27 spec, rebalanced 1.1.37).
+    const hpStatBase = HP_STAT_BASE[archetype] || HP_STAT_BASE.MAGE;
+    const hpStatRate = HP_STAT_RATE[archetype] || HP_STAT_RATE.MAGE;
+    this.hpStat = hpStatBase + diminishingStatValue(strForHp, hpStatRate);
     const hpStatBonus = Math.round(this.hpStat * 10);
     const newMaxHp = Math.round(this.baseMaxHp * strHpMult * this.legendaryHpMult) + hpStatBonus;
     const hpDelta = newMaxHp - this.maxHp;
@@ -5140,6 +5202,16 @@ class Tower{
     const reduced = Math.max(1, Math.round(amount * (1-this.shieldPct)));
     this.hp = Math.max(0, this.hp - reduced);
     spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
+    // Throttled hit-reaction chatter, not one per hit — a tower can be hit repeatedly in quick
+    // succession by multiple breakaway enemies, and reacting to every single one would be exactly
+    // the kind of event-spam this session already learned to avoid with footsteps/impact
+    // suppression. Low, gruff pitchBias — a startled reaction, distinct from level-up's bright one.
+    // Excluded for Barricade — an inanimate obstacle, not a stickman with a voice; CLASS_ARCHETYPE
+    // has no entry for it, so this would otherwise have silently fallen back to a generic voice.
+    if(this.type !== 'BARRICADE' && (!this.lastHitChatterAt || gameTime - this.lastHitChatterAt > 2500)){
+      this.lastHitChatterAt = gameTime;
+      playSound('chatter_short', this.x, { archetype: CLASS_ARCHETYPE[this.type], pitchBias: -40 });
+    }
     if(statusType === 'BURN') this.burnUntil = gameTime + 3000;
     if(statusType === 'ICE') this.iceSlowUntil = Math.max(this.iceSlowUntil, gameTime + 3000);
     if(this.hp <= 0 && this.disabledUntil <= gameTime){
@@ -6446,11 +6518,24 @@ function drawDecals(ctx){
     const lifespan = d.lifespan || DECAL_LIFESPAN;
     if(age >= lifespan) decals.splice(i, 1); // actually expires now, not just capacity-recycled
   }
+  // Viewport culling, same principle as drawScenery()'s — computed once per call, then a cheap
+  // numeric comparison rejects offscreen decals before any Canvas state is touched. Decals aren't
+  // tile-aligned like scenery, so this is a plain bounds check rather than a grid-cell lookup.
+  // Margin covers the largest blood pool's blob radius plus its glisten/skeletonization rings.
+  const cullMargin = TILE_SIZE * 1.2;
+  const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
+  const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
+  const viewTop = (0 - camera.y) / camera.zoom - cullMargin;
+  const viewBottom = (CANVAS_H - camera.y) / camera.zoom + cullMargin;
+  function visible(d){ return d.x >= viewLeft && d.x <= viewRight && d.y >= viewTop && d.y <= viewBottom; }
+  perfStats.totalDecals = decals.length;
+  let visibleDecalCount = 0;
   // Two ordered draw passes: blood/other decals first, then bone/skull/rock/worm debris on top —
   // guarantees the latter always renders above blood regardless of which was pushed to the array
   // first, instead of depending on push order like a single shared pass did before (1.1.16 fix).
-  for(const d of decals) if(!d.isEmojiDrop && !d.isWorm) drawOneDecal(ctx, d);
-  for(const d of decals) if(d.isEmojiDrop || d.isWorm) drawOneDecal(ctx, d);
+  for(const d of decals) if(!d.isEmojiDrop && !d.isWorm && visible(d)){ visibleDecalCount++; drawOneDecal(ctx, d); }
+  for(const d of decals) if((d.isEmojiDrop || d.isWorm) && visible(d)){ visibleDecalCount++; drawOneDecal(ctx, d); }
+  perfStats.visibleDecals = visibleDecalCount;
 }
 function drawOneDecal(ctx, d){
     const age = realTime - d.spawnTime;
@@ -7665,6 +7750,11 @@ function resolveEnemyCollisions(){
   }
 }
 
+// Reused on idle frames (zero active enemies) instead of allocating a fresh {} every frame for
+// something that would end up empty anyway — see the idle fast path in update(). Frozen so any
+// accidental write attempt throws immediately (strict mode) rather than silently corrupting
+// shared state across frames.
+const EMPTY_ENEMY_HASH = Object.freeze({});
 function buildEnemyHash(){
   const hash = {};
   for(const e of enemyPool){
@@ -7946,12 +8036,24 @@ function update(dt){
     if(!spawnQueue.length) waveState = 'ACTIVE';
   }
 
+  // updateBarricadesAndPileup() must run every frame regardless of active-enemy count — it's the
+  // ONLY place that recalculates anyBarricadeQueued (which gates whether spawning is allowed to
+  // continue) and its own 15s force-resume safety valve. Gating this behind an active-enemy check
+  // caused a real, confirmed permanent soft-lock: if the last enemy touching a barricade died
+  // while anyBarricadeQueued was true, the flag stayed stuck true forever (nothing left to
+  // recalculate it), which blocked all future spawning, which meant no enemies ever became active
+  // again, which meant this function — including its own safety valve — never ran again either.
+  // Cheap even with zero enemies (empty array/Map), unlike the collision/hash work below, which
+  // is the actual performance cost and safely stays gated (1.1.35 hotfix).
   updateBarricadesAndPileup();
-  for(const e of enemyPool) if(e.active) e.update(dt);
-  resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
-  resolveEnemyCollisions();
-  checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
-  const enemyHashLocal = buildEnemyHash();
+  const anyActiveEnemies = enemyPool.some(e => e.active);
+  if(anyActiveEnemies){
+    for(const e of enemyPool) if(e.active) e.update(dt);
+    resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
+    resolveEnemyCollisions();
+    checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
+  }
+  const enemyHashLocal = anyActiveEnemies ? buildEnemyHash() : EMPTY_ENEMY_HASH;
   enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
   for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
@@ -8177,9 +8279,17 @@ function drawBossCompass(ctx){
   ctx.fillText('👔', arrowX - Math.cos(angle)*18, arrowY - Math.sin(angle)*18);
 }
 
+// Lightweight, always-on performance telemetry — a few performance.now() calls per frame, not a
+// gated debug build, so real on-device numbers are available without a separate mode. This is the
+// instrumentation step the 1.1.32 performance audit recommended doing FIRST, before further
+// optimization work, so future claims can be measured rather than inferred from reading code.
+// Inspect via the browser console: `perfStats`.
+const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
+  visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0 };
 function loop(now){
   requestAnimationFrame(loop);
   if(gameState !== 'PLAYING'){ lastTime = now; return; }
+  const frameStart = performance.now();
   let frameTime = now - lastTime;
   if(frameTime > 100) frameTime = 100;
   lastTime = now;
@@ -8188,12 +8298,19 @@ function loop(now){
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
+  const updateStart = performance.now();
   while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME){
     update(FIXED_DT);
     accumulator -= FIXED_DT;
     ticksThisFrame++;
   }
+  perfStats.updateMs = performance.now() - updateStart;
+  const renderStart = performance.now();
   render(ctx);
+  perfStats.renderMs = performance.now() - renderStart;
+  perfStats.frameMs = performance.now() - frameStart;
+  perfStats.ticksThisFrame = ticksThisFrame;
+  if(ticksThisFrame > perfStats.maxTicksSeen) perfStats.maxTicksSeen = ticksThisFrame;
 }
 
 /* =========================================================
@@ -8411,7 +8528,7 @@ function handleTap(clientX, clientY){
     gold -= CONFIG.TOWERS[selectedBuildType].baseCost;
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
-    playSound('spawn_chatter', t.x);
+    playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type]);
     selectedBuildType = null;
     selectedTower = t;
     startCameraFollow(t);
@@ -8510,14 +8627,20 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   // hover preview for build-placement / move-mode snap (mouse only; harmless if it fires mid-drag)
-  if(gameState === 'PLAYING' && (selectedBuildType || moveModeTower) && e.pointerType !== 'touch'){
+  // — skipped entirely once a drag is confirmed (isDragging), since the hover preview is
+  // irrelevant while the camera is actively being panned and this avoids a second
+  // getBoundingClientRect() read (via toCanvasCoords) on every pointermove during a drag.
+  if(!isDragging && gameState === 'PLAYING' && (selectedBuildType || moveModeTower) && e.pointerType !== 'touch'){
     const { x: worldX, y: worldY } = toCanvasCoords(e);
     const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
     hoverCell = { gx, gy };
   }
 
-  // scenery price-on-hover — works for mouse hover and for a touch drag (not a plain tap)
-  if(gameState === 'PLAYING'){
+  // scenery price-on-hover — mouse hover only now. Previously also ran during an active touch
+  // drag ("works for mouse hover and for a touch drag"), which meant computing this on every
+  // single pointermove while panning the camera — a second getBoundingClientRect() read for a
+  // tooltip nobody can see while actively dragging. Skipped once isDragging is true.
+  if(!isDragging && gameState === 'PLAYING'){
     const { x: worldX, y: worldY } = toCanvasCoords(e);
     const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
     const key = gx+','+gy;
@@ -9049,6 +9172,81 @@ function getReadmeText(){
 '-------\n' +
 'MIT.\n';
 }
+// Everything genuinely useful for debugging a report, in one plain-text file — not JSON, since
+// this is meant to be pasted directly into a bug report or chat, not machine-parsed. Reads live
+// state at the moment the button is pressed; nothing here is cached/stale.
+function generateDebugLog(){
+  const now = new Date();
+  const activeCount = pool => pool.filter(x => x.active).length;
+  const ac = audioEngine;
+  let s = '';
+  s += 'STICKTD DEBUG LOG\n';
+  s += '==================\n';
+  s += 'Generated: ' + now.toISOString() + ' (' + now.toString() + ')\n';
+  s += 'Game version: ' + GAME_VERSION + '\n\n';
+
+  s += 'PERFORMANCE (perfStats)\n';
+  s += '------------------------\n';
+  s += 'Frame: ' + perfStats.frameMs.toFixed(2) + 'ms  Update: ' + perfStats.updateMs.toFixed(2) +
+    'ms  Render: ' + perfStats.renderMs.toFixed(2) + 'ms\n';
+  s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap 90)\n';
+  s += 'Scenery visible/total: ' + perfStats.visibleScenery + '/' + perfStats.totalScenery + '\n';
+  s += 'Decals visible/total: ' + perfStats.visibleDecals + '/' + perfStats.totalDecals + '\n\n';
+
+  s += 'GAME STATE\n';
+  s += '----------\n';
+  s += 'gameState: ' + gameState + '   waveState: ' + waveState + '\n';
+  s += 'Wave: ' + waveIndex + ' (completed: ' + wavesCompleted + ')   Speed: ' + gameSpeed + 'x\n';
+  s += 'Gold: ' + gold + '   Wood: ' + wood + '   Stone: ' + stone + '\n';
+  s += 'Lives: ' + lives + ' (bought: ' + livesBought + ')\n';
+  s += 'Move charges: ' + moveCharges + '/' + MAX_MOVE_CHARGES + '   Free barricades: ' + freeBarricadesLeft + '/' + MAX_FREE_BARRICADES + '\n';
+  s += 'Camera: x=' + camera.x.toFixed(1) + ' y=' + camera.y.toFixed(1) + ' zoom=' + camera.zoom.toFixed(3) + '\n\n';
+
+  s += 'SETTINGS\n';
+  s += '--------\n';
+  s += 'Graphics quality: ' + graphicsQuality + '   Gore mode: ' + goreMode + '   Muted: ' + isMuted + '\n';
+  s += 'DPR in use: ' + dprValue + '   Canvas: ' + CANVAS_W + 'x' + CANVAS_H + '\n\n';
+
+  s += 'AUDIO ENGINE\n';
+  s += '------------\n';
+  s += 'Unlocked: ' + ac.unlocked + '   AudioContext state: ' + (ac.ctx ? ac.ctx.state : 'n/a') +
+    '   Sample rate: ' + (ac.ctx ? ac.ctx.sampleRate : 'n/a') + '\n';
+  s += 'Active voices: ' + ac.activeVoiceExpiry.length + '/' + ac.MAX_VOICES + '\n';
+  s += 'Impact requested/played/suppressed: ' + ac.debugCounters.impactRequested + '/' +
+    ac.debugCounters.impactPlayed + '/' + ac.debugCounters.impactSuppressed + '\n';
+  s += 'Peak voices seen: ' + ac.debugCounters.peakVoices + '\n\n';
+
+  s += 'ENTITY POOLS (active/capacity)\n';
+  s += '-------------------------------\n';
+  s += 'Enemies: ' + activeCount(enemyPool) + '/' + enemyPool.length + '\n';
+  s += 'Towers: ' + activeCount(towerPool) + '/' + towerPool.length + '\n';
+  s += 'Projectiles: ' + activeCount(projectilePool) + '/' + projectilePool.length + '\n';
+  s += 'Particles: ' + activeCount(particles) + '/' + particles.length + '\n';
+  s += 'Floating texts: ' + activeCount(floatingTexts) + '/' + floatingTexts.length + '\n';
+  s += 'Death animations: ' + deathAnims.length + '\n';
+  s += 'Decals: ' + decals.length + ' (cap ' + MAX_DECALS + ')\n';
+  s += 'Scenery items: ' + sceneryMap.size + '\n';
+  s += 'Ground items: ' + groundItems.length + '\n\n';
+
+  s += 'BROWSER / DEVICE\n';
+  s += '----------------\n';
+  s += 'User agent: ' + navigator.userAgent + '\n';
+  s += 'Window: ' + window.innerWidth + 'x' + window.innerHeight + '   Screen: ' +
+    (window.screen ? window.screen.width + 'x' + window.screen.height : 'n/a') + '\n';
+  s += 'devicePixelRatio: ' + (window.devicePixelRatio || 1) + '\n';
+  s += 'Language: ' + navigator.language + '   Online: ' + navigator.onLine + '\n';
+
+  return s;
+}
+document.getElementById('downloadDebugLogBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  const blob = new Blob([generateDebugLog()], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  a.href = url; a.download = 'stickTD-debug-' + GAME_VERSION + '-' + stamp + '.txt'; a.click();
+  URL.revokeObjectURL(url);
+});
 document.getElementById('downloadReadmeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   const blob = new Blob([getReadmeText()], { type: 'text/plain' });
@@ -9166,11 +9364,13 @@ function updateInspectPanel(){
   const dmgHalf = t.type === 'MAGE' ? 0.4 : 0.2; // must match applyDamage()'s varianceHalfWidth exactly — Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band
   const dmgMinEl = document.getElementById('inspAtkRange');
   if(dmgMinEl) dmgMinEl.textContent = Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf));
-  document.getElementById('inspHpStatVal').textContent = Math.round((t.hpStat||0)*100)/100;
-  document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100) + '%';
+  document.getElementById('inspHpStatVal').textContent = Math.round((t.hpStat||0)*1000)/1000;
+  document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100);
   document.getElementById('inspRangeVal').textContent = rng;
   document.getElementById('inspSpeedVal').textContent = cd ? (cd/1000).toFixed(2) : '0';
-  document.getElementById('inspLuckVal').textContent = '+' + Math.round(((t.goldMult||1)-1)*100) + '%';
+  const luckPct = Math.round(((t.goldMult||1)-1)*100);
+  document.getElementById('inspLuckVal').textContent = '+' + luckPct + '%';
+  document.getElementById('inspLuckRow').classList.toggle('hidden', luckPct === 0);
   document.getElementById('inspCritVal').textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
   // Real single-target DPS — average damage per hit (the variance band above is symmetric, so
   // `atk` itself is already the average) times attacks/second, discounted by missChance: the same

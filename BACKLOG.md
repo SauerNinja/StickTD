@@ -3,6 +3,42 @@
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 
+## Performance — deferred items from the 1.1.31–1.1.33 audit passes
+
+Shipped: idle-simulation fast path (skips enemy-collision work when there are genuinely zero
+active enemies), scenery + decal viewport culling, removing a second `getBoundingClientRect()`
+read from the camera-pan hot path, and always-on frame/update/render/visible-count telemetry
+(`perfStats` in the console). Deferred, in roughly the order a future pass should tackle them —
+now that `perfStats` exists, these should be evaluated against real on-device numbers before
+being attempted, not from reading code alone:
+
+- **A real design tension found, not a bug — flagging rather than silently changing it.**
+  `const low = false;` in the gore-intensity code has an explicit comment: "blood intensity is
+  controlled ONLY by the goreMode toggle, never by graphics quality — full gore shows at any
+  graphics setting as long as gore is enabled." That's a deliberate content-rating decision (gore
+  is a maturity toggle, not a performance knob), not an oversight — but it does mean Low graphics
+  currently gets full gore density regardless. Worth an explicit decision: keep gore fully
+  decoupled from performance (current behavior), or let Low graphics reduce gore density too while
+  keeping the on/off toggle itself independent. Not changed without being asked.
+- **Static scenery/decal caching** — bake unchanging scenery and fully-dried blood into offscreen
+  canvas layers instead of redrawing every visible item every frame, with explicit cache
+  invalidation on clearing/spawning/map-expansion. Chunked (e.g. 256-512px world tiles) rather
+  than one world-sized canvas, given the real memory cost of `width × height × 4 bytes` per
+  full-world RGBA buffer — calculate that cost against `WORLD_MAX_W`/`WORLD_MAX_H` before building
+  it. Genuinely deferred rather than attempted alongside the safer culling wins: invalidation
+  correctness (scenery mid-clear, new spawns, map expansion, tallStretch variation, blood still
+  actively aging/dripping) carries real risk of visual bugs if rushed, and viewport culling alone
+  already resolves the loudest reported symptom (idle panning cost scaling with total world size
+  rather than what's actually on screen) with much lower risk. Worth revisiting once `perfStats`
+  shows culling alone isn't enough.
+- **Spatial-hash allocation churn** — `buildEnemyHash()`/`queryNearby()` allocate fresh
+  objects/arrays on every call during real combat (not just the idle case already fixed). Reusing
+  storage or switching to numeric cell keys would reduce GC pressure in dense waves — check
+  `perfStats.updateMs` during a dense wave first to see whether this is actually worth doing.
+- **`MAX_TICKS_PER_FRAME = 90`** — a very high catch-up ceiling for the fixed-timestep loop.
+  `perfStats.maxTicksSeen` now tracks this directly — check it after a long dense-wave session
+  before deciding whether the ceiling is ever actually approached on real devices.
+
 ## Audio mastery — deferred passes (reference: 5 uploaded game-audio books, treated as first-tier
 ## principles; current index.html as second-tier implementation authority — see AGENTS.md)
 
