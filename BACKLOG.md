@@ -3,6 +3,42 @@
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 
+## Audio mastery — deferred passes (reference: 5 uploaded game-audio books, treated as first-tier
+## principles; current index.html as second-tier implementation authority — see AGENTS.md)
+
+The reference material's own master prompt explicitly says "DO NOT IMPLEMENT EVERYTHING IN ONE
+PATCH" and lays out an 11-pass order. Pass A (audit) and Pass B (cheap wins: family-cooldown
+suppression, stable per-tower bias, 5x/10x secondary-layer thinning, debug counters, click-safety
+verification) shipped in 1.1.21. The remaining passes, in the reference document's own order, NOT
+attempted — each is a genuinely large, call-site-touching change that deserves its own dedicated,
+verified pass rather than being folded into an already-large session:
+
+- **Pass C — true 2D distance.** `panFor(worldX)` verified X-only (no Y at all) — confirmed by
+  reading the actual function, not assumed from the books. Adding real distance would mean
+  propagating world Y to `playSound()`, which has **61 call sites** (verified by count) — a much
+  larger, riskier change than the one-call-site fixes in Pass B. Needs: a listener tied to camera
+  world center, squared-distance early rejection before node construction (cull before
+  synthesizing, not after), and distance-based timbre/attenuation, not just gain.
+- **Pass D — voice intelligence.** Semantic priority tiers (VITAL/IMPORTANT/OPTIONAL) and
+  optional voice stealing, layered on top of the existing 28-voice cap and the new family
+  suppression from Pass B — not a replacement for either.
+- **Pass E — minimal bus architecture.** MASTER → COMBAT/GORE/AMBIENCE/UI, so shared processing
+  (EQ, ducking, limiting) happens once per bus instead of being re-applied per voice.
+- **Pass F — procedural impact model prototype.** Impulse + resonant response for 2 cases only
+  (blade/hard-target, hammer/heavy-target) per the reference document's explicit "start small,
+  compare against current sound in real combat, don't generalize if it's worse" guidance.
+- **Pass G — material response system**, reusing whatever authoritative material/biology
+  classification already exists in the gore system rather than inventing a parallel taxonomy.
+- **Pass H — forensic gore audio integration**, so the wet-sound layer agrees with the actual
+  visual gore mechanism (impact spatter vs. cast-off vs. passive pooling) instead of one generic
+  wet-hit sound regardless of mechanism, and stays silent for non-biological/fully-shielded hits.
+- **Pass I — heavy-attack polish** (Sniper, Bomber, boss) once the runtime foundation above is
+  stable.
+- **Pass J — creature/ambience sound**, only after the combat mix itself is settled.
+- **Pass K — whole-palette mastering pass**: audition every major class sound back-to-back for
+  consistent perceived loudness/timbre, a phone-speaker translation check, and a mono-compatibility
+  check — real listening tests, not something verifiable from source code alone.
+
 ## Ideas
 
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
@@ -18,11 +54,6 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
   2D distance isn't available without adding a Y param at every call site (a real change, not a
   quick tweak). Would make close fights read as more "in your face" by contrast with quieter,
   slightly low-passed distant combat.
-- **Mix ducking on important cues** — briefly and subtly duck combat audio under wave-start/
-  level-up/low-lives cues so they cut through a chaotic swarm fight instead of getting buried.
-  Scope carefully: the generic `'wave'` sound is reused for several different events (expansions,
-  chest pickups, milestones, not just wave start), so ducking needs its own more specific trigger
-  point, not a blanket hook on every `playSound('wave')` call.
 - **Minimal procedural adaptive music layer** — a sparse idle motif, a stinger on wave start, an
   intensity layer during boss waves, resolving back to the motif on game over. A genuine feature/
   design decision (not a polish tweak) — needs its own dedicated pass with mute/preference

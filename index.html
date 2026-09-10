@@ -373,7 +373,7 @@
   #inspNameplateMid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}
   #inspNameRow{display:flex;align-items:baseline;gap:6px;line-height:1.1;}
   #inspHpBarTrack{position:relative;height:9px;border-radius:2px;background:rgba(0,0,0,0.6);
-    border:1px solid rgba(0,0,0,0.8);overflow:hidden;}
+    border:1px solid rgba(0,0,0,0.8);overflow:hidden;cursor:pointer;}
   #inspHpBarFill{height:100%;background:linear-gradient(180deg,#5fd35f,#2e9e2e);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.3);transition:width 0.2s ease;}
   #inspHpBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -595,7 +595,7 @@
         <button id="inspClose" aria-label="Close">❌</button>
       </div>
       <div id="inspCombatRow">
-        <span>❤️ <span id="inspHpVal">0</span>/<span id="inspMaxHpVal">0</span></span>
+        <span>💗 <span id="inspHpStatVal"></span></span>
         <span>🛡️ <span id="inspDefVal">0%</span></span>
         <span>⚔️ <span id="inspAtkVal"></span><span id="inspAtkRange"></span></span>
         <span>💥 <span id="inspCritVal">0%</span></span>
@@ -909,7 +909,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.20'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.30'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -925,6 +925,10 @@ const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed
 // around the source color's own baseline. Lets skinMain/skinShade/faceColor all be driven off one
 // shared per-tower toneOffset so the three layers stay tonally coherent instead of rolling
 // independent randomness against each other.
+// Human hair-color variants — used for the STR mustache (see rollSkinTones()/drawStickman()).
+// Real hair colors, not arbitrary hues: black, dark brown, brown, blonde, ginger/red, gray/white,
+// auburn.
+const HAIR_COLORS = ['hsl(0,0%,8%)', 'hsl(25,35%,18%)', 'hsl(28,45%,32%)', 'hsl(45,55%,62%)', 'hsl(18,68%,42%)', 'hsl(0,0%,78%)', 'hsl(15,50%,30%)'];
 function colorAtLightness(hslStr, lightness){
   const m = hslStr.match(/hsl\((\d+),(\d+)%,(\d+)%\)/);
   if(!m) return hslStr;
@@ -1015,9 +1019,22 @@ const JOB_QUOTES = {
   SNIPER:    ["One shot. That's all I need.", "Nothing outruns this range.", "Patience is the real weapon.", "Target acquired.", "One breath, one shot."],
   SNAPCASTER:["The bolt finds its mark.", "Lightning at my command.", "Snap, and it's over.", "Precision and power.", "Watch the sparks fly."]
 };
+// Tiny "no immediate repeat" helper — pure uniform Math.random() can and does pick the same
+// index twice in a row, which reads as a bug/glitch for a spoken line even though it's
+// mathematically "random." Tracks the last index per history key so the same quip never plays
+// twice consecutively for the same tower type. Verified real gap: randomJobQuote() previously had
+// zero repeat protection (1.1.23 fix).
+const _noRepeatHistory = {};
+function randomNoRepeat(historyKey, length){
+  if(length <= 1) return 0;
+  let next;
+  do { next = Math.floor(Math.random() * length); } while(next === _noRepeatHistory[historyKey]);
+  _noRepeatHistory[historyKey] = next;
+  return next;
+}
 function randomJobQuote(type){
   const lines = JOB_QUOTES[type];
-  return lines ? lines[Math.floor(Math.random()*lines.length)] : '';
+  return lines ? lines[randomNoRepeat('quip_' + type, lines.length)] : '';
 }
 // WC3-style "aura box" content — one icon + one strategy line per evolved/specialist tower
 // (EVOLVED_TOWER_TYPES). Deliberately NOT covering Swordsman/Archer/Mage/Barricade — the aura box
@@ -2391,6 +2408,17 @@ class SoundEngine{
     // triggered — cheap to check, no call-site changes required anywhere else in the file.
     this.activeVoiceExpiry = [];
     this.MAX_VOICES = 28;
+    // Per-weapon-family cooldown for playImpactSound() — the family-level concurrency limit
+    // recommended before any complex voice-stealing system: at most one impact sound per weapon
+    // family (BLADE/BLUNT/PIERCE/ARCHER/MAGE/EXPLOSIVE) within a short window, so a dense swarm/
+    // Gatling fight doesn't stack many acoustically-identical impact voices at once. Crits and
+    // unusually hard hits always bypass this — an "important" event should never be silently
+    // dropped by a routine-event throttle (1.1.21).
+    this.lastFamilyPlayAt = {};
+    // Lightweight, always-on telemetry (near-zero cost — a few integer increments) rather than a
+    // gated debug build, so real usage data is available without a separate dev mode. Inspect via
+    // the browser console: `audioEngine.debugCounters`.
+    this.debugCounters = { impactRequested: 0, impactPlayed: 0, impactSuppressed: 0, peakVoices: 0 };
   }
   // Prunes expired entries and reports whether a new voice is allowed to start right now. Called
   // from tone()/noise() themselves (the two lowest-level synthesis primitives everything in the
@@ -2407,6 +2435,7 @@ class SoundEngine{
     this.activeVoiceExpiry = this.activeVoiceExpiry.filter(t => t > now);
     if(this.activeVoiceExpiry.length >= this.MAX_VOICES) return false; // budget full — this specific call silently produces no sound rather than piling on further
     this.activeVoiceExpiry.push(now + (delay || 0) + duration);
+    if(this.activeVoiceExpiry.length > this.debugCounters.peakVoices) this.debugCounters.peakVoices = this.activeVoiceExpiry.length;
     return true;
   }
   unlock(){
@@ -2498,13 +2527,43 @@ class SoundEngine{
     const screenX = worldX*camera.zoom + camera.x;
     return clampNum((screenX - CANVAS_W/2) / (CANVAS_W/2), -1, 1);
   }
-  tone(freq, duration, type, freqEnd, pan, reverbSend, delay, force){
+  // Briefly dips the whole master bus so a genuinely important moment (wave clear, level-up,
+  // losing a life, evolution) reads as more prominent against whatever combat clutter is playing
+  // at that instant — cheap, real ducking rather than just making the cue itself louder. Skips
+  // entirely while muted: there's no clutter to duck out of silence, and scheduling automation
+  // here while muted risked exactly the interaction bug found before building this — the mute
+  // toggle does a plain `gain.value =` assignment with no cancelScheduledValues(), so a duck
+  // recovery ramp queued while muted could un-mute the game later on its own. Always recovers
+  // toward the CURRENT baseline (reads isMuted live) rather than a hardcoded 0.5, so a mute that
+  // happens mid-duck is still respected once the recovery ramp completes.
+  duck(amountDb, durationSec){
+    if(!this.unlocked || typeof isMuted !== 'undefined' && isMuted) return;
+    const now = this.ctx.currentTime;
+    const baseline = 0.5;
+    const duckGain = baseline * Math.pow(10, amountDb / 20);
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setValueAtTime(this.master.gain.value, now);
+    this.master.gain.linearRampToValueAtTime(duckGain, now + 0.02);
+    this.master.gain.exponentialRampToValueAtTime(baseline, now + durationSec);
+  }
+  tone(freq, duration, type, freqEnd, pan, reverbSend, delay, force, stablePitch){
     if(!this.unlocked) return;
     if(!force && !this.reserveVoiceSlot(duration, delay)) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type || 'sine';
-    const detune = 1 + (Math.random()-0.5)*0.12;
+    // Optional `stablePitch` skips the random ±6% detune below — combat/gore sounds want it (real
+    // instances shouldn't sound like exact clones), but UI confirmation sounds should not: pitch
+    // randomization on button feedback can make the intended state ("did that work or not?") read
+    // as ambiguous rather than clear. Every UI case (click/ui_open/ui_close/ui_deny/ui_buy) passes
+    // this now (1.1.22 fix) — every other existing call site is unaffected, since this only
+    // changes behavior when explicitly opted into.
+    // Cent-based (logarithmic) detune, not linear — verified before changing this: the previous
+    // `1 + (Math.random()-0.5)*0.12` swing produced +100.9 cents up but -107.1 cents down for the
+    // same ±6% input range, since pitch perception is logarithmic and a linear percentage isn't
+    // symmetric around the center frequency. ±100 cents keeps roughly the same audible magnitude
+    // as before, now properly symmetric (1.1.23 fix).
+    const detune = stablePitch ? 1 : Math.pow(2, ((Math.random()-0.5)*200) / 1200);
     // Optional `delay` (seconds) schedules this note against the actual audio hardware clock
     // (audioCtx.currentTime) instead of a caller using JS setTimeout() to fire a second tone()
     // call later — setTimeout is the wrong clock for tight audio timing, since it's subject to
@@ -2609,8 +2668,49 @@ class SoundEngine{
       }
       case 'wave':  this.tone(440,0.20,'sine',660,undefined,undefined,undefined,true); break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
-      case 'lose':  this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
-      case 'levelup': this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
+      case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
+      case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
+      case 'evolution': // a tower transforming into a new class — one of the rarest, most exciting
+        // events in the game, previously reusing 'wave' (the same generic blip as a routine wave
+        // clear, expansion, or chest pickup). A real 3-note ascending fanfare, deliberately bigger
+        // than both 'wave' (one tone) and 'levelup' (two tones), with a sparkle harmonic and
+        // reverb for real weight. stablePitch since this is a state-confirmation cue that should
+        // read unambiguously as "evolution happened," not wobble (1.1.22). Ducks the master bus
+        // (1.1.24) so this genuinely rare moment gets real headroom against combat clutter. Root
+        // of a shared A-based ascending motif family — see 'hero' and 'legendary' below, which
+        // reuse and extend this same vocabulary rather than inventing disconnected new ones
+        // (1.1.25).
+        this.duck(-4, 0.4);
+        this.tone(440, 0.10, 'sine', 660, undefined, true, undefined, true, true);
+        this.tone(660, 0.12, 'sine', 880, 0, true, 0.08, true, true);
+        this.tone(880, 0.20, 'sine', 1320, 0, true, 0.16, true, true);
+        this.tone(1320, 0.16, 'sine', 1760, 0, true, 0.18, true, true); // sparkle harmonic, slightly overlapping the third note
+        break;
+      case 'hero': // a tower's 6th item slot fills, awakening it into a Hero — previously reused
+        // 'wave' (the same one-tone blip as a routine wave clear or chest pickup), despite being a
+        // genuine permanent milestone. Quick, bright 2-note "ding" on the same A-root language as
+        // 'evolution' — a lesser sibling of that motif family, not a disconnected new sound: this
+        // is the smaller of the game's two real achievement tiers, 'legendary' below is the bigger
+        // one (1.1.25).
+        this.duck(-2.5, 0.25);
+        this.tone(440, 0.08, 'sine', 660, undefined, true, undefined, true, true);
+        this.tone(660, 0.16, 'sine', 990, 0, true, 0.06, true, true);
+        break;
+      case 'legendary': // reaching 100 total stats — permanent, named by the player, and the
+        // single rarest, most significant milestone a tower can reach in the entire game. Reuses
+        // 'evolution's exact 4-note opening verbatim, then extends it further with a 5th rising
+        // note and a sustained "double-stop" (two notes held together) for a conclusive finish —
+        // recontextualizing the same shared motif into its grandest form, rather than building a
+        // disconnected new fanfare. The deepest duck in the game, since this is the rarest moment
+        // possible (1.1.25).
+        this.duck(-5, 0.6);
+        this.tone(440, 0.10, 'sine', 660, undefined, true, undefined, true, true);
+        this.tone(660, 0.10, 'sine', 880, 0, true, 0.07, true, true);
+        this.tone(880, 0.12, 'sine', 1320, 0, true, 0.14, true, true);
+        this.tone(1320, 0.14, 'sine', 1760, 0, true, 0.21, true, true);
+        this.tone(1760, 0.55, 'sine', undefined, 0, true, 0.28, true, true); // sustained double-stop, note 1
+        this.tone(2200, 0.55, 'sine', undefined, 0, true, 0.30, true, true); // sustained double-stop, note 2 — held together with the note above for the conclusive chord
+        break;
 
       // ---- per-class melee attacks ----
       case 'swing_blade': { // Swordsman — a real cutting blade slice, not a "tink". Previously a
@@ -2698,11 +2798,19 @@ class SoundEngine{
         break;
 
       // ---- dedicated menu/UI sounds, distinct from combat ----
-      case 'click':    this.tone(600, 0.05, 'sine'); break; // minor UI tick — tabs, toggles, selections
-      case 'ui_open':   this.tone(500, 0.07, 'sine', 780); break; // modal opening — short upward blip
-      case 'ui_close':  this.tone(500, 0.07, 'sine', 320); break; // modal closing — short downward blip
-      case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true); break; // purchase — cheerful two-note chime
-      case 'ui_deny':   this.tone(220, 0.1, 'square', 140, undefined, undefined, undefined, true); break; // blocked/disabled action — low buzz
+      // Every case below passes stablePitch=true to tone() — UI confirmation sounds shouldn't
+      // randomize pitch, since that can make the intended state ("did that work?") read as
+      // ambiguous rather than clear (1.1.22 fix; previously inherited tone()'s default ±6% random
+      // detune like every other sound in the game). Also verified the deny/confirm/open/close
+      // acoustic grammar while making this change: ui_buy is already bright/rising/sine, ui_deny
+      // already low/falling/buzzy-square, ui_open already expanding-upward, ui_close already
+      // contracting-downward — exactly the "confirm bright & up, deny dark & down" pattern the
+      // reference material recommends. Confirmed correct, not changed.
+      case 'click':    this.tone(600, 0.05, 'sine', undefined, undefined, undefined, undefined, undefined, true); break; // minor UI tick — tabs, toggles, selections
+      case 'ui_open':   this.tone(500, 0.07, 'sine', 780, undefined, undefined, undefined, undefined, true); break; // modal opening — short upward blip
+      case 'ui_close':  this.tone(500, 0.07, 'sine', 320, undefined, undefined, undefined, undefined, true); break; // modal closing — short downward blip
+      case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true, true); break; // purchase — cheerful two-note chime
+      case 'ui_deny':   this.tone(220, 0.1, 'square', 140, undefined, undefined, undefined, true, true); break; // blocked/disabled action — low buzz
       case 'stat_spend': // allocating a stat point — deliberately warmer and more lingering than
         // a plain 'click': a soft sine glide up a perfect fourth, with a higher, slightly delayed
         // harmonic a third above for shimmer, both sent to reverb for a smooth, satisfying tail
@@ -2747,36 +2855,79 @@ function playSound(name, worldX, intensity){ audioEngine.play(name, worldX, inte
 // so sharper/higher-velocity impacts get brighter high-frequency noise content, heavier/slower
 // ones get more low-end weight) rather than just louder copies of one generic sound. `worldX`
 // feeds the new stereo panner so a hit's sound comes from roughly the right side of the screen.
-function playImpactSound(archOrWeapon, worldX, hitPower, isCritical){
+// Cheap deterministic hash for stable per-tower audio bias — same tower always gets the same
+// small pitch/brightness offset (derived from its own persistent `id`, assigned once at creation),
+// so six Swordsmen don't sound like exact clones without needing fresh randomness on every hit.
+// Returns a value in roughly [0.97, 1.03] — deliberately small; class identity must stay intact.
+// A clean classification seam for future audio-priority work (voice stealing, distance-based
+// culling exceptions, etc. — none of that exists yet, deliberately deferred; see BACKLOG.md's
+// "Audio mastery — deferred passes"). Recognizes the four cases the reference material's own
+// priority framing calls "important": a boss-related event, the currently-selected tower, a
+// critical hit, and an evolution. Not wired into deep logic today — this exists so a future pass
+// has one place to ask "does this event matter more than routine background noise?" instead of
+// four different ad-hoc checks scattered through the file.
+function isImportantAudioEvent(eventType, context){
+  context = context || {};
+  if(context.isBoss) return true;
+  if(context.isSelectedTower) return true;
+  if(context.isCritical) return true;
+  if(eventType === 'evolution') return true;
+  return false;
+}
+function towerAudioBias(towerId){
+  if(towerId === undefined) return 1;
+  const h = ((towerId * 2654435761) >>> 0) % 1000;
+  return 0.97 + (h / 1000) * 0.06;
+}
+function playImpactSound(archOrWeapon, worldX, hitPower, isCritical, towerId){
   if(!audioEngine.unlocked) return;
+  audioEngine.debugCounters.impactRequested++;
   const hp = clampNum(hitPower || 1, 0.3, 2.2);
-  const pan = audioEngine.panFor(worldX);
   const bigMoment = !!isCritical || hp > 1.4; // routes a reverb send for real weight only on genuinely big hits, not every routine tick
+  // Family-level concurrency suppression — at most one impact sound per weapon family within a
+  // short window, so a dense Gatling/swarm fight doesn't stack many acoustically-identical impact
+  // voices at once. Crits and hard hits always bypass this: an "important" event should never be
+  // silently dropped by a routine-event throttle.
+  const nowIS = audioEngine.ctx.currentTime;
+  const lastPlay = audioEngine.lastFamilyPlayAt[archOrWeapon];
+  if(!bigMoment && lastPlay !== undefined && nowIS - lastPlay < 0.035){
+    audioEngine.debugCounters.impactSuppressed++;
+    return;
+  }
+  audioEngine.lastFamilyPlayAt[archOrWeapon] = nowIS;
+  audioEngine.debugCounters.impactPlayed++;
+  const pan = audioEngine.panFor(worldX);
+  const bias = towerAudioBias(towerId);
+  // At 5x/10x, routine (non-crit, non-hard) hits drop their secondary layer — the game is
+  // executing every attack regardless, but at that density individual secondary layers are no
+  // longer perceptually distinct from each other, so thinning them keeps the mix legible instead
+  // of turning into an undifferentiated wall of noise.
+  const thinSecondary = gameSpeed >= 5 && !bigMoment;
   if(archOrWeapon === 'BLADE'){
     // sharp, bright, short — a real cutting edge, higher-frequency noise content matching a
     // thin, fast-moving contact surface
-    audioEngine.noise(0.05 + hp*0.02, 3200 + hp*800, 'highpass', pan, bigMoment);
-    audioEngine.tone(500 + hp*80, 0.05, 'sawtooth', 180, pan);
+    if(!thinSecondary) audioEngine.noise(0.05 + hp*0.02, (3200 + hp*800)*bias, 'highpass', pan, bigMoment);
+    audioEngine.tone((500 + hp*80)*bias, 0.05, 'sawtooth', 180*bias, pan);
   } else if(archOrWeapon === 'BLUNT'){
     // low, dull, heavier — kinetic energy going into crushing/displacement rather than a clean cut
-    audioEngine.noise(0.09 + hp*0.03, 300 + hp*100, 'lowpass', pan, bigMoment);
-    audioEngine.tone(110 + hp*20, 0.1 + hp*0.03, 'square', 55, pan);
+    if(!thinSecondary) audioEngine.noise(0.09 + hp*0.03, (300 + hp*100)*bias, 'lowpass', pan, bigMoment);
+    audioEngine.tone((110 + hp*20)*bias, 0.1 + hp*0.03, 'square', 55*bias, pan);
   } else if(archOrWeapon === 'PIERCE'){
     // thin, fast, focused — a narrow puncture concentrates force into a small contact area,
     // reads as a tight high crack rather than a broad noisy impact
-    audioEngine.noise(0.04, 4200, 'highpass', pan, bigMoment);
-    audioEngine.tone(700 + hp*100, 0.04, 'triangle', 300, pan);
+    if(!thinSecondary) audioEngine.noise(0.04, 4200*bias, 'highpass', pan, bigMoment);
+    audioEngine.tone((700 + hp*100)*bias, 0.04, 'triangle', 300*bias, pan);
   } else if(archOrWeapon === 'ARCHER'){
     // soft, understated — matches the entry-wound forensic point (real puncture wounds show
     // modest external signs despite real damage): a quiet thwack, not a dramatic crack
-    audioEngine.noise(0.04, 2200, 'bandpass', pan);
-    audioEngine.tone(340 + hp*40, 0.04, 'triangle', 200, pan);
+    if(!thinSecondary) audioEngine.noise(0.04, 2200*bias, 'bandpass', pan);
+    audioEngine.tone((340 + hp*40)*bias, 0.04, 'triangle', 200*bias, pan);
   } else if(archOrWeapon === 'MAGE'){
     // layered — bright shimmer plus real low-end weight, scaling hardest of any archetype since
     // Mage already has the widest damage variance band (±40%) in the game
-    audioEngine.tone(1400 + hp*200, 0.09, 'sine', 500, pan, bigMoment);
-    audioEngine.noise(0.08 + hp*0.04, 500 + hp*150, 'bandpass', pan, bigMoment);
-    audioEngine.tone(80 + hp*15, 0.12 + hp*0.04, 'square', 45, pan, bigMoment);
+    audioEngine.tone((1400 + hp*200)*bias, 0.09, 'sine', 500*bias, pan, bigMoment);
+    if(!thinSecondary) audioEngine.noise(0.08 + hp*0.04, (500 + hp*150)*bias, 'bandpass', pan, bigMoment);
+    audioEngine.tone((80 + hp*15)*bias, 0.12 + hp*0.04, 'square', 45*bias, pan, bigMoment);
   } else if(archOrWeapon === 'EXPLOSIVE'){
     audioEngine.noise(0.12 + hp*0.05, 220 + hp*80, 'lowpass', pan, true);
     audioEngine.tone(70 + hp*10, 0.14, 'square', 35, pan, true);
@@ -3003,6 +3154,7 @@ function checkLegendaryStatus(tower){
   tower.shieldPct = Math.min(0.9, (tower.shieldPct||0) + 0.05);
   tower.recomputeStats(); // recalculates maxHp from baseMaxHp * strHpMult * legendaryHpMult
   tower.hp = tower.maxHp; // full heal on reaching Legendary
+  playSound('legendary'); // fired immediately, before the blocking prompt() below — the "you did it" moment should be heard right away, not only after answering a naming dialog
   setTimeout(() => {
     const name = prompt('🏆 This unit reached 100 total stats! Name it:', tower.def.name);
     tower.legendaryName = (name && name.trim()) ? name.trim().slice(0,20) : tower.def.name;
@@ -4094,7 +4246,7 @@ class Enemy{
       // The ground pool's shape/size now matches whichever specific weapon caused it, not just the
       // broad archetype — spawnDecal's own elong table differentiates BLADE/BLUNT/PIERCE (see there).
       const decalArch = arch === 'WARRIOR' ? weapon : arch;
-      if(!bio.isDust) playImpactSound(decalArch, this.x, hitPower, isCritical);
+      if(!bio.isDust) playImpactSound(decalArch, this.x, hitPower, isCritical, sourceTower ? sourceTower.id : undefined);
       const markChance = (arch === 'ARCHER' || arch === 'MAGE') ? 0.5 : 0.3;
       if(!bio.isDust && this.hp > 0 && Math.random() < markChance){
         spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.5), true, impactAngle, decalArch, bio.viscous, dmgRollT, bloodPoolSizeScale(this.radius));
@@ -4582,6 +4734,7 @@ class Tower{
     this.skinMain = colorAtLightness(jobColor.main, skinL);
     this.skinShade = colorAtLightness(jobColor.shade, pantsL);
     this.faceColor = colorAtLightness(jobColor.main, clampNum(skinL - (8 + Math.random()*2), 25, 80)); // always 8-10% darker than THIS tower's own skinMain — the one non-independent layer, by design
+    this.mustacheColor = HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)]; // only ever visible once STR > 47 — see drawStickman() — but rolled here alongside the other stable per-tower appearance traits so it's set the moment the tower exists, not the moment it first qualifies
   }
   // Per-tower height/weight variance around the class's own baseline JOB_BUILD proportions —
   // rolled independently on X (weight/breadth) and Y (height), so two towers of the same class
@@ -4687,7 +4840,14 @@ class Tower{
 
     const strForHp = EARLY_HP_CAP_TYPES.includes(this.type) ? Math.min(strEff, EARLY_STAT_CAP_POINTS) : strEff;
     const strHpMult = 1 + diminishingStatValue(strForHp, 0.03); // +3% max HP/point, diminishing every 5 points
-    const newMaxHp = Math.round(this.baseMaxHp * strHpMult * this.legendaryHpMult);
+    // "HP stat" — a separate, deliberately much slower-growing derived value on top of the
+    // percentage bonus above, not a replacement for it. Fed by tiny decimal increments from STR
+    // (0.004/point — smaller than any other per-point rate in the game, including DEX's own 0.007
+    // accuracy rate, verified before picking this number, specifically so this is the single
+    // hardest stat to grow). Converts to flat bonus HP at a 10:1 ratio: 23 HP stat = 230 bonus HP.
+    this.hpStat = diminishingStatValue(strForHp, 0.004);
+    const hpStatBonus = Math.round(this.hpStat * 10);
+    const newMaxHp = Math.round(this.baseMaxHp * strHpMult * this.legendaryHpMult) + hpStatBonus;
     const hpDelta = newMaxHp - this.maxHp;
     this.maxHp = newMaxHp;
     if(hpDelta > 0) this.hp += hpDelta; // gaining max HP heals by the increase, rather than being wasted or forcing a full heal
@@ -4753,7 +4913,7 @@ class Tower{
     if(!this.isHero && this.equippedItems.length >= MAX_ITEM_SLOTS){
       this.isHero = true;
       spawnFloatingText(this.x, this.y - 30, '⭐ HERO!', '#ffd700');
-      playSound('wave');
+      playSound('hero');
       this.recomputeStats();
     }
   }
@@ -4794,7 +4954,7 @@ class Tower{
     this.hp = this.maxHp; // full heal on transformation
     spawnFloatingText(this.x, this.y - 40, '✨ Evolved!', '#ffd700');
     showToast(oldName + ' evolved into ' + this.def.name + '!');
-    playSound('wave');
+    playSound('evolution');
     updateInspectPanel();
   }
   canUpgrade(){ return this.level < this.def.tiers.length; }
@@ -5355,7 +5515,7 @@ class Tower{
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, mustacheColor: this.mustacheColor };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -6882,6 +7042,26 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.moveTo(-4.5,-29); ctx.quadraticCurveTo(0,-38,4.5,-29); ctx.closePath(); ctx.fill(); // peaked crown
     ctx.strokeStyle = '#d94f4f'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(3,-35); ctx.quadraticCurveTo(10,-41,7,-30); ctx.stroke(); // feather
+    ctx.restore();
+  }
+  // STR mustache — appears once STR exceeds 47, growing with additional STR up to a capped max
+  // size (full size by STR 97, 50 points above the threshold), in a stable human hair color rolled
+  // once per tower in rollSkinTones(). Sits on the lower-front of the head, below the head-item
+  // block above so a hat still renders on top correctly.
+  if(extra && extra.mustacheColor && (extra.str || 0) > 47){
+    const mT = clampNum(((extra.str||0) - 47) / 50, 0, 1); // 0 right at the threshold, 1 at the cap
+    const mReach = 2 + mT*5; // half-width each side: barely-there at threshold, a real handlebar at the cap
+    const mY = -21; // lower-front of the head circle — reads as sitting just above the mouth
+    ctx.save();
+    ctx.strokeStyle = extra.mustacheColor;
+    ctx.lineWidth = 1.5 + mT*1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, mY);
+    ctx.quadraticCurveTo(-mReach*0.6, mY-1, -mReach, mY + mT*1.5); // left side, curling upward more at bigger sizes
+    ctx.moveTo(0, mY);
+    ctx.quadraticCurveTo(mReach*0.6, mY-1, mReach, mY + mT*1.5); // right side, mirrored
+    ctx.stroke();
     ctx.restore();
   }
   // legs: shaded tone for a subtle two-tone look
@@ -8791,7 +8971,10 @@ document.getElementById('gfxLowRadio').addEventListener('change', () => {
 });
 document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
   isMuted = e.target.checked; savePrefs();
-  if(audioEngine.master) audioEngine.master.gain.value = isMuted ? 0 : 0.5;
+  if(audioEngine.master){
+    audioEngine.master.gain.cancelScheduledValues(audioEngine.ctx.currentTime); // clears any in-flight duck() recovery ramp — otherwise a queued automation event could silently un-mute the game moments later
+    audioEngine.master.gain.value = isMuted ? 0 : 0.5;
+  }
 });
 document.getElementById('settingsGoreToggle').addEventListener('change', (e) => {
   goreMode = e.target.checked; savePrefs();
@@ -8919,6 +9102,7 @@ document.getElementById('specDual').addEventListener('pointerdown', (e) => {
   updateInspectPanel();
 });
 
+let hpBarShowPercent = false; // toggled by clicking the HP bar — see the click handler near the other inspect-panel button wiring
 function updateInspectPanel(){
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
   inspectPanel.classList.remove('hidden');
@@ -8933,7 +9117,7 @@ function updateInspectPanel(){
   document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   document.getElementById('inspHpBarFill').style.width = hpPct + '%';
-  document.getElementById('inspHpBarText').textContent = Math.round(t.hp) + '/' + t.maxHp;
+  document.getElementById('inspHpBarText').textContent = hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp);
   const evoTrack = document.getElementById('inspEvoBarTrack');
   evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
   if(t.expLevel >= MAX_TOWER_LEVEL){
@@ -8982,13 +9166,12 @@ function updateInspectPanel(){
   const dmgHalf = t.type === 'MAGE' ? 0.4 : 0.2; // must match applyDamage()'s varianceHalfWidth exactly — Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band
   const dmgMinEl = document.getElementById('inspAtkRange');
   if(dmgMinEl) dmgMinEl.textContent = Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf));
-  document.getElementById('inspHpVal').textContent = Math.round(t.hp);
-  document.getElementById('inspMaxHpVal').textContent = t.maxHp;
+  document.getElementById('inspHpStatVal').textContent = Math.round((t.hpStat||0)*100)/100;
   document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100) + '%';
   document.getElementById('inspRangeVal').textContent = rng;
   document.getElementById('inspSpeedVal').textContent = cd ? (cd/1000).toFixed(2) : '0';
   document.getElementById('inspLuckVal').textContent = '+' + Math.round(((t.goldMult||1)-1)*100) + '%';
-  document.getElementById('inspCritVal').textContent = Math.round((t.critChance||0)*1000)/10 + '% ⚔️' + (Math.round((t.critMult||1.2)*100)/100);
+  document.getElementById('inspCritVal').textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
   // Real single-target DPS — average damage per hit (the variance band above is symmetric, so
   // `atk` itself is already the average) times attacks/second, discounted by missChance: the same
   // "relative accuracy" mechanic driving every attack type (melee cone, projectile, Cleric smite)
@@ -9101,6 +9284,12 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
   selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false;
   updateHUD(); updateInspectPanel();
+});
+document.getElementById('inspHpBarTrack').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  hpBarShowPercent = !hpBarShowPercent;
+  playSound('click');
+  updateInspectPanel();
 });
 document.getElementById('inspStoreBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();

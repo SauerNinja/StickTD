@@ -1,5 +1,157 @@
 # Changelog
 
+## [1.1.30] - 2026-09-08
+- **Removed the redundant ❤️ current/max HP display from the compact stat row** — the HP bar
+  directly above it already shows the exact same numbers (and, as of 1.1.29, toggles to a
+  percentage on click), so the stat row was just duplicating it. Kept the 💗 HP-stat indicator on
+  its own, since that's genuinely different information not shown anywhere else. Verified no other
+  code referenced the two removed elements before deleting them.
+## [1.1.29] - 2026-09-08
+- **The HP bar is now clickable — toggles between exact numbers (78/100) and percentage (78%).**
+  A display preference, not per-tower state, so it persists across different tower selections
+  until clicked again. Added `cursor:pointer` so it's visually discoverable.
+- **Caught and fixed a real bug while building this, before it shipped**: the toggle's state
+  variable was initially declared with `let` *inside* `updateInspectPanel()`, which runs on every
+  panel refresh — that would have reset the toggle back to the default every single time the panel
+  updated, making it effectively never stick. Moved the declaration to module scope. Verified with
+  a runtime test simulating repeated panel refreshes between clicks, confirming the mode now
+  actually persists instead of resetting.
+## [1.1.28] - 2026-09-08
+- **Crit multiplier symbol changed from ⚔️ to 🗡️ (dagger)** — the code already correctly said
+  ⚔️, but a screenshot showed it rendering as a plain "✕" fallback glyph, likely because
+  crossed-swords needs more font/emoji support than a single dagger does. Also avoids reusing the
+  same icon as the base damage stat two columns to the left in the same row.
+- **The new HP stat (1.1.27) is now actually visible in the panel** — previously it only silently
+  added to the total HP number, with no way to see it existed or was growing, which is why it kept
+  reading as "nothing changed" for towers with little STR invested even though the math was
+  correct. New 💗 indicator next to the HP display shows the raw derived value directly.
+## [1.1.27] - 2026-09-08 — new "HP stat" mechanic
+- **New derived `hpStat`, fed by tiny decimal increments from STR, converting to flat bonus HP at
+  a 10:1 ratio** (23 HP stat = 230 bonus HP), per explicit spec. Deliberately additive on top of
+  the existing percentage-based `strHpMult` — that system is completely unchanged, this is a
+  separate, much slower-growing bonus layered underneath it, not a replacement.
+- **Verified this is genuinely the hardest stat to grow in the game, not just by name**: rate is
+  0.004 per STR point — checked against every other per-point rate already in the game (DEX
+  accuracy 0.007, DEX attack speed 0.03, STR's own HP% 0.03) and confirmed smaller than all of
+  them before picking the number. At STR 2000 — an extreme late-game value — the bonus is still
+  only +20 HP, confirming the scale holds even under heavy investment rather than becoming trivial
+  to max out.
+## [1.1.26] - 2026-09-08 — STR mustache
+- **Towers with STR above 47 now grow a mustache**, sized proportionally to STR above the
+  threshold and capped at a maximum (full size by STR 97) — verified numerically across the full
+  range including extreme late-game STR values (150, 600) before shipping, confirming the cap
+  actually holds rather than growing unboundedly.
+- **Color rolled once per tower** from a realistic human hair palette (`HAIR_COLORS`: black, dark
+  brown, brown, blonde, ginger/red, gray/white, auburn) — same stable-roll pattern already used for
+  skin and pants tone in `rollSkinTones()`, so it's set the moment a tower is created and re-rolls
+  on upgrade/evolution exactly like those existing traits already do (deliberate existing behavior
+  — "leveling up visibly shows growth," not something new introduced here).
+- Threaded through the existing `extra` object `drawStickman()` already receives each render — no
+  new per-frame state reads, no changes to the rendering function's calling convention.
+## [1.1.25] - 2026-09-08 — Hero/Legendary sound family (Nintendo economy + WoW rarity escalation)
+- **Found StickTD's two real achievement tiers were badly under-served, audio-wise.** Hero (6
+  item slots filled) reused the same generic `'wave'` blip already flagged this session as
+  over-used across 9 different events. Legendary (100 total stats — permanent, player-named, the
+  single rarest milestone in the game) played **no sound at all**. Verified both by reading the
+  actual `checkHeroStatus()`/`checkLegendaryStatus()` code before changing anything.
+- **Built as one shared, escalating motif family, not two disconnected new sounds** — `'hero'` is
+  a quick 2-note sibling of `'evolution'`'s existing A-root ascending language; `'legendary'`
+  reuses `'evolution'`'s exact 4-note pattern verbatim, then extends it with a 5th rising note and
+  a sustained double-stop (two notes held together) for a conclusive finish. Same underlying
+  vocabulary recontextualized into a grander form at each rarity tier, rather than three unrelated
+  fanfares — matches the "shared class motifs with contextual variation" principle already applied
+  elsewhere this session, and mirrors how tiered-rarity loot audio escalates a shared sonic
+  language rather than switching languages per tier.
+- **Duck depth escalates with rarity, verified numerically**: hero −2.5dB (gain 0.375) → evolution
+  −4dB (0.316, unchanged) → legendary −5dB (0.281, the deepest duck in the game) — confirmed
+  correctly ordered before shipping, not just assumed from the dB numbers looking right.
+- Legendary's sound fires immediately on reaching the milestone, before the existing blocking
+  `prompt()` naming dialog — the "you did it" moment is heard right away, not only after the
+  player answers a dialog.
+## [1.1.24] - 2026-09-08 — dynamic mix ducking (real consumer of the priority seam)
+- **New `SoundEngine.duck(amountDb, durationSec)`** — briefly dips the master bus so a genuinely
+  important moment (losing a life, leveling up, a tower evolving) gets real headroom against
+  whatever combat clutter is playing, instead of just making the cue itself louder. The first real
+  consumer of the `isImportantAudioEvent()` classification seam added in 1.1.22.
+- **Found and fixed a real interaction bug before it could ship**: the mute toggle does a plain
+  `gain.value =` assignment with no `cancelScheduledValues()` — muting mid-duck could have left a
+  queued recovery ramp that silently un-muted the game moments later. Fixed the mute handler to
+  cancel scheduled automation first. Runtime-tested the exact scenario (duck in flight, mute fires
+  mid-ramp): confirmed the gain correctly stays at 0 instead of drifting back to 0.5.
+- **Scoped deliberately**: ducks on `'lose'`, `'levelup'`, and `'evolution'` only — verified
+  `'wave'` has 9 call sites across genuinely different events (chest pickups, expansions,
+  milestones, not just wave-start), which would have over-triggered constantly. This was already
+  flagged as the exact risk to avoid in BACKLOG.md's "Mix ducking on important cues" entry, written
+  before this was built — followed that guidance rather than taking the shortcut.
+- Removed the "Mix ducking on important cues" entry from BACKLOG.md — shipped.
+## [1.1.23] - 2026-09-08 — two verified fixes from a Gemini review, rest declined
+- **Fixed `randomJobQuote()` repeating the same line consecutively** — confirmed real by reading
+  the actual code (`Math.floor(Math.random()*lines.length)`, zero history tracking). New
+  `randomNoRepeat()` ring-buffer helper, one history slot per tower type. Runtime-tested: 30 picks
+  from a 5-option pool produced zero consecutive repeats.
+- **Fixed a real, mathematically-verified pitch asymmetry in `tone()`'s random detune** — the old
+  linear `±6%` swing produced +100.9 cents up but −107.1 cents down for the same input range
+  (calculated directly, not assumed from a citation) since pitch perception is logarithmic. New
+  cent-based math gives exactly ±100 cents, verified symmetric, with almost identical audible
+  magnitude to before (0.9439/1.0595 vs. the old 0.94/1.06).
+- **Everything else from the reviewed Gemini output declined for this pass**: its headline
+  "concurrent-impact throttling" proposal is already shipped (1.1.21, from an earlier session
+  Gemini wasn't aware of); its specific book/page citations couldn't be verified without reading
+  the source PDFs directly, which wasn't done; and several proposals (LFSR noise emulation,
+  comb-filter feedback delay lines, granular "evaporation" synthesis, HDR mix windowing, dot-
+  product wind vectoring, polyrhythmic music scheduling) are real techniques in the abstract but
+  meaningfully heavier systems than their "quick win" framing suggested, for uncertain payoff on
+  an already-lean procedural engine.
+## [1.1.22] - 2026-09-08 — Audio Pass B, continued (UI pitch stability, evolution fanfare, priority seam)
+- **Fixed a real, verified bug: `tone()` applied a random ±6% pitch detune to every call
+  unconditionally, including UI confirmation sounds** (`click`, `ui_open`, `ui_close`, `ui_buy`,
+  `ui_deny`) — exactly the case the reference material specifically warns against, since pitch
+  randomization on button feedback can make the intended state read as ambiguous. New optional
+  9th `stablePitch` param on `tone()`, opted into by every UI case; every other existing call site
+  is unaffected (purely additive). Runtime-verified: `stablePitch=true` produces detune=1 exactly
+  every call, `false` still varies as before.
+- **Verified the deny/confirm/open/close acoustic grammar while making this fix — already
+  correct, not changed**: `ui_buy` is bright/rising/sine, `ui_deny` is low/falling/buzzy-square,
+  `ui_open` expands upward, `ui_close` contracts downward. Matches the reference material's
+  recommended grammar exactly. Confirmed rather than assumed broken.
+- **New dedicated `evolution` sound** — a real 3-note ascending fanfare with a sparkle harmonic
+  and reverb, `stablePitch` since it's a state-confirmation cue. Found while auditing: evolution
+  previously reused the generic `'wave'` sound — the same one-tone blip as a routine wave clear,
+  expansion, or chest pickup — meaning one of the rarest, most exciting events in the game sounded
+  identical to background noise. `evolveInto()` now calls `playSound('evolution')`.
+- **New `isImportantAudioEvent(eventType, context)` helper** — a clean classification seam for
+  future voice-priority work (deferred Pass D), recognizing boss/selected-tower/crit/evolution as
+  "important." Not wired into deep priority logic yet, since that system doesn't exist — exists so
+  a future pass has one place to plug into instead of four scattered ad-hoc checks. Runtime-tested
+  all four true cases, the false/routine case, and the no-context-argument case (doesn't throw).
+## [1.1.21] - 2026-09-08 — Audio Pass B (family suppression, per-tower bias, speed thinning)
+- **New per-weapon-family concurrency suppression in `playImpactSound()`** — verified first that
+  this is the ONLY call site for weapon-hit sounds (one call, in `applyDamage()`, not scattered).
+  At most one impact voice per weapon family (BLADE/BLUNT/PIERCE/ARCHER/MAGE/EXPLOSIVE) plays every
+  35ms; crits and hard hits always bypass it. Runtime-tested (not just syntax-checked) with a
+  stubbed harness: 20 rapid same-family hits in 100ms correctly dropped to 3 actual voices, and a
+  crit fired inside the suppression window correctly bypassed it. Fixes dense Gatling/swarm fights
+  stacking many acoustically-identical impact sounds at once.
+- **New stable per-tower audio bias** — `towerAudioBias(towerId)`, a cheap deterministic hash of
+  the tower's own persistent `id` (verified real and stable — assigned once in `Tower.create()`),
+  giving each tower a small (±3%) fixed pitch offset instead of every hit sounding identical or
+  using fresh per-call randomness. No save-format change needed. Sanity-checked the hash: well
+  distributed across sample IDs, correctly neutral (1.0, no bias) when no tower ID is available.
+- **Automatic secondary-layer thinning at 5x/10x game speed** — routine (non-crit) impact hits
+  drop their noise()-layer detail at high simulation speed, since individual secondary layers stop
+  being perceptually distinct at that density anyway; crits and hard hits keep full detail always.
+- **Always-on debug telemetry** (`audioEngine.debugCounters`: impactRequested/impactPlayed/
+  impactSuppressed, plus `peakVoices` tracked in the existing `reserveVoiceSlot()`) — near-zero
+  cost, inspectable from the browser console, so future audio tuning has real data instead of
+  guesswork.
+- **Click-safety audited, not changed** — checked `tone()`'s actual envelope: instant onset at
+  `osc.start()` (correct for a percussive impulse, not a bug) into a smooth exponential release.
+  No discontinuity found; no code change needed.
+- **Logged the remaining larger audio-mastery passes to BACKLOG.md** (true 2D distance — verified
+  61 `playSound()` call sites, confirming why that's a separate, larger pass; voice-priority tiers;
+  bus architecture; procedural material response; forensic gore-audio integration; whole-palette
+  mastering) rather than attempting all of them in one already-large session, per the reference
+  material's own explicit "do not implement everything in one patch" instruction.
 ## [1.1.20] - 2026-09-08
 - Added a 🍪 cookie emoji to the left of the consent banner's Accept button text.
 ## [1.1.19] - 2026-09-08

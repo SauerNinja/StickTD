@@ -62,6 +62,15 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   `update()`. Towers have their own parallel set for breakaway-inflicted statuses.
 - `drawStickman()` is the single shared rendering function for every tower class — each class
   branches inside it (`if(type === 'ARCHER')` etc.) rather than having separate draw functions.
+  Per-tower appearance traits (skin/pants/face color, build scale, and — since 1.1.26 — mustache
+  color) are rolled once in `Tower.rollSkinTones()`/`rollBuild()` (called at `create()`,
+  `evolveInto()`, and `upgrade()` — re-rolled on upgrade is deliberate existing behavior, a visual
+  "you got stronger" signal, not something the mustache addition introduced), then passed into
+  `drawStickman()` via the `extra` object built fresh each render from the live tower instance —
+  `drawStickman()` itself never reads `this`/tower state directly. The mustache specifically:
+  invisible at STR ≤ 47, grows with additional STR, capped at STR 97 (verified numerically across
+  the full range including extreme late-game values before shipping) — color is one of
+  `HAIR_COLORS`, a realistic human hair palette, rolled the same way as skin/pants tone.
 - The bottom inspect panel (`#inspect-panel`) is the WC3/WoW-style nameplate + full options UI.
   Tapping the nameplate toggles `inspPanelExpanded` between a compact view (portrait, HP bar,
   combat stats) and the full options row (upgrade/move/sell/target/stats/inventory).
@@ -86,7 +95,12 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   at 2%. This formula is now identical for every archetype with no exceptions — there used to be an
   `EARLY_ACCURACY_CAP_TYPES` early-cap for casters/melee, removed per explicit balance direction.
   Damage itself stays strictly archetype-exclusive as always (see the Leveling bullet above);
-  `missChance` is the one universal DEX effect that applies regardless of class. Warrior damage
+  `missChance` is the one universal DEX effect that applies regardless of class. `recomputeStats()`
+  also computes `hpStat` — a separate, deliberately much-slower-growing derived value on top of the
+  existing percentage-based `strHpMult` (fed by STR at 0.004/point, the smallest per-point rate
+  anywhere in the game, verified smaller than every other rate before picking it), converting to
+  flat bonus HP at a 10:1 ratio (23 HP stat = 230 bonus HP). Additive, not a replacement —
+  `strHpMult` is untouched. Warrior damage
   specifically uses `warriorStrDamageMult()`, a separate curve from the shared
   `diminishingStatValue()` (higher base rate, higher/slower-decaying late-game floor) so heavy STR
   investment keeps compounding into the endgame instead of flattening out — every other stat effect
@@ -104,6 +118,42 @@ idea from the backlog gets built, move it to `CHANGELOG.md` under its version an
   `SPLIT_CHILD_TYPE`, `CLASS_ARCHETYPE`, `FOOTSTEP_WEIGHT`, `JOB_QUOTES`, `TOWER_STRATEGY`,
   starter/evolved type lists) for dangling references — extend it, don't bypass it, when adding a
   new table with cross-references of its own.
+- **Audio Pass B: family suppression, per-tower bias, speed thinning, UI pitch stability,
+  evolution fanfare, priority seam** — first-tier reference is
+  the 5 uploaded game-audio books; the running plan (what shipped, what's deliberately deferred,
+  and why) lives in BACKLOG.md under "Audio mastery — deferred passes," not here, since it's a
+  living plan rather than a fixed architecture note. `playImpactSound()` — the single call site for
+  every weapon-hit sound (verified only one exists, in `applyDamage()`) — now: (1) throttles to at
+  most one voice per weapon family every 35ms via `lastFamilyPlayAt`, bypassed for crits/hard hits
+  so an important event is never silently dropped by a routine-event throttle; (2)
+  `towerAudioBias(towerId)` derives a small (±3%) deterministic pitch offset from the tower's own
+  persistent `id` — same tower always sounds slightly different from other towers of its class,
+  with no fresh randomness per hit and no save-format change; (3) drops the secondary noise() layer
+  for routine (non-crit) hits at `gameSpeed >= 5`. `SoundEngine.debugCounters` (impactRequested/
+  impactPlayed/impactSuppressed/peakVoices) is always-on, near-zero-cost telemetry — inspect via
+  `audioEngine.debugCounters` in the browser console. `tone()`'s optional 9th `stablePitch` param
+  opts out of its default random ±6% detune — every UI confirmation sound (`click`/`ui_open`/
+  `ui_close`/`ui_buy`/`ui_deny`) now uses it, since pitch-wobbling button feedback can read as
+  ambiguous. `evolution` is now its own dedicated 3-note fanfare (previously reused the generic
+  `'wave'` blip — the same sound as a routine wave clear). `isImportantAudioEvent(eventType,
+  context)` recognizes boss/selected-tower/crit/evolution — a classification seam for the deferred
+  Pass D (voice priority), not wired into deep logic yet since that system doesn't exist.
+  `SoundEngine.duck(amountDb, durationSec)` is its first real consumer: briefly dips `master.gain`
+  on `'lose'`/`'levelup'`/`'evolution'` — deliberately NOT `'wave'`, which has 9 call sites across
+  genuinely different events and would over-trigger. Skips entirely while muted, and the mute
+  toggle itself now calls `cancelScheduledValues()` before its direct `gain.value =` assignment —
+  a plain assignment does not cancel already-scheduled Web Audio automation, so muting mid-duck
+  could previously have left a queued recovery ramp that silently un-muted the game later; verified
+  fixed with a runtime test of that exact scenario. `randomJobQuote()` now uses `randomNoRepeat()`
+  (a tiny per-key history ring buffer) instead of raw `Math.random()`, which could and did repeat
+  the same line twice in a row. `tone()`'s random detune is cent-based (`Math.pow(2, cents/1200)`)
+  rather than linear — verified by direct calculation that the old `±6%` linear swing produced an
+  asymmetric ±100.9/-107.1 cents, not a symmetric range, since pitch perception is logarithmic.
+  `'hero'` and `'legendary'` (checkHeroStatus()/checkLegendaryStatus()) share `'evolution'`'s
+  A-root ascending motif rather than being disconnected new fanfares — `'hero'` is a quick 2-note
+  sibling, `'legendary'` extends `'evolution'`'s exact 4-note pattern with a 5th note and a
+  sustained double-stop dyad. Duck depth escalates with rarity: hero (−2.5dB) → evolution (−4dB) →
+  legendary (−5dB, the deepest in the game), verified numerically ordered before shipping.
 - **Spawn-quip and aura-box systems** — `JOB_QUOTES` (keyed by tower type, 5 lines each) feeds
   `randomJobQuote()`, shown via `spawnTowerQuip()` (a 1800ms-life floating text, NOT the generic
   550ms `spawnFloatingText()` — a real multi-word phrase needs real time to read) plus a

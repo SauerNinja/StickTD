@@ -155,6 +155,10 @@ other tower of the same class:
   reads green); only lightness is randomized.
 - **Face color** is the one deliberate exception — always a subtle shade darker than that
   specific tower's own skin tone, so the face reliably reads as part of the same figure.
+- **STR mustache** — once a tower's STR exceeds 47, it grows a mustache that gets visibly bigger
+  with additional STR, up to a capped maximum (full size by 97 STR). Color is rolled once from a
+  realistic human hair palette (black, brown, blonde, ginger, gray, auburn), same as skin and
+  pants tone.
 
 Re-rolled (fresh randomization) on **upgrade** and on **evolution**, so leveling up and evolving
 visibly show growth and change, not just a stat readout.
@@ -310,7 +314,10 @@ one tower's inventory onto another to transfer them, or dropped on the ground fi
 item bobs gently with a soft pulsing ring around it at every graphics setting, and while you're
 actively dragging one, a 👇🏻 indicator appears above whichever tower is currently the valid drop
 target. Global passive upgrades apply to every tower you own, current and future. A tower with all
-6 item slots filled awakens into a **Hero**, with a permanent stat bonus and a visible crown.
+6 item slots filled awakens into a **Hero**, with a permanent stat bonus and a visible crown, and
+its own distinct sound. A tower whose STR+DEX+INT reaches 100 total becomes **Legendary** — a
+separate, rarer milestone with its own small permanent stat bonus, a player-chosen name, and the
+biggest fanfare in the game.
 
 ## Resources
 
