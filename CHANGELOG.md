@@ -1,5 +1,120 @@
 # Changelog
 
+## [1.1.45] - 2026-09-08 — attract mode: stronger pan, genuinely random enemies
+- **Camera pan/zoom significantly increased** — horizontal amplitude 0.04→0.11 of canvas width,
+  vertical 0.03→0.08, faster periods, wider zoom range (1.06±0.05 → 1.1±0.09) — a much more
+  noticeable drift than before.
+- **Enemies are now genuinely randomized, not a fixed hand-authored list.** Each scene previously
+  had the same hardcoded enemy lineup every time it played (e.g. always `['GRUNT','SWARM',
+  'GRUNT','TANK','SWARM']`); now every scene init draws from a broad 18-type pool
+  (`ATTRACT_ENEMY_POOL`) at random, and count increased from 5 to 7 for a busier lane. Every pool
+  entry individually verified to exist in `CONFIG.ENEMIES` with a real emoji before trusting it,
+  not assumed from memory.
+- **Verified with an extended 100-second simulation** (6,000 frames): confirmed 17 of the 18
+  possible enemy types actually appeared across scene re-initializations (real randomization, not
+  theoretical), zero NaN across 18,000 `drawStickman()` calls, and projectiles still resolving
+  cleanly rather than accumulating.
+## [1.1.44] - 2026-09-08 — attract mode rebuilt as a real mini-simulation
+- **Start-screen demo now actually emulates gameplay** instead of showing static/idle poses.
+  Rebuilt `renderAttractMode()` as a genuine self-contained mini-simulation with its own
+  enemies/towers/projectiles (still fully isolated from real game state — never touches
+  `enemyPool`/`towerPool`/`projectilePool`): towers actually attack on a real cycle, driving
+  `drawStickman()`'s real swing/draw/cast animation fields rather than a frozen pose, and Archer/
+  Mage fire projectiles that visibly travel to their target and land.
+- **Three distinct scenes**, each with a different tower layout and a differently-shaped enemy
+  lane (straight left-to-right, a bent V-shape, a reverse descending diagonal) — not the same
+  arrangement shifted sideways.
+- **Slow autonomous camera pan/zoom** for a retro-arcade drift feel, layered as a pure rendering
+  transform so it doesn't affect any of the simulation math underneath.
+- **Top HUD bar now hidden during the start screen** — it was visible (dimmed) behind the attract
+  mode, which read as real UI rather than a demo. Restored the moment Play is pressed.
+- **Runtime-tested with an actual 50-second simulation** (3,000 frames), not just a syntax check:
+  confirmed zero NaN positions/angles across 9,000 `drawStickman()` calls, correct scene-cycling
+  count, stable enemy count, and projectiles correctly resolving to zero rather than leaking
+  unbounded — before trusting any of this was working.
+- The dark vignette overlay from 1.1.39 is unchanged, per explicit confirmation it was already
+  right — only the content moving behind it changed.
+## [1.1.43] - 2026-09-08 — reduced aim lead-prediction further
+- **`MAX_LEAD_PREDICT_TIME` reduced from 0.35s to 0.2s** — per direct feedback that towers still
+  aimed noticeably too far ahead of their target even with the existing cap. Quantified the actual
+  effect before shipping: at typical enemy speeds (27–112 world units/sec), this cuts the
+  extrapolated lead distance by roughly 43% across the board — from ~9 down to ~5 world units at
+  slow speeds, and from ~39 down to ~22 at the fastest enemy speeds in the game. Trades away more
+  of the technically-correct lead on long straight stretches (the less common case on this
+  winding path) in exchange for meaningfully less overshoot near the frequent turns.
+## [1.1.42] - 2026-09-08 — inspect panel button rows: no more clipped text or wrapping
+- **DPS now has a label**: a small gold "DPS" caption sits above the number, centered, with a
+  subtle glow on the value — replacing a bare number with no indication of what it was.
+- **Upgrade's cost text will never be cut off again.** The Upgrade/Sell/DPS row previously used
+  `flex-shrink` + `text-overflow:ellipsis` to make room for the DPS number between them, which is
+  exactly what was clipping Upgrade's cost — confirmed directly in the reported screenshot
+  ("Upgrade (..."). Replaced with the same guaranteed-single-line scaling already proven on the
+  main stat row: the whole row shrinks together via a CSS transform when it doesn't fit, so every
+  character stays visible, just smaller — never clipped.
+- **Target/Move (and the axe-mode/help buttons) will never wrap to a second line again** — that
+  row used `flex-wrap:wrap`, which is what was dropping them down a line at some widths. Same
+  fix: `fitOptRowToOneLine()`, a reusable version of the stat row's scale-to-fit technique, now
+  applied to both button rows. Called once at the true end of `updateInspectPanel()`, after every
+  button's text (cost, sell value, target mode, move charges) is confirmed already set, rather
+  than guessing at ordering by calling it mid-function.
+## [1.1.41] - 2026-09-08 — Mage staff no longer stuck floating at an old angle when idle
+- **Fixed the Mage's staff/orb staying locked at whatever angle it last aimed at, indefinitely,
+  once genuinely idle** — visible in a screenshot as the orb floating off to the side, detached
+  from a natural resting pose. Traced to an earlier, documented fix that intentionally removed a
+  *different* bug (the staff used to snap instantly between "aimed" and a separate idle pose,
+  which looked like the whole cast restarting) by simply always using the last-aimed angle
+  forever — which fixed the snap but introduced this: no path back to a neutral resting pose at
+  all once truly idle, so an awkward last-aimed angle could persist on screen permanently.
+- **Fix**: new `restBlend`, computed once in `Tower.draw()` from time since `lastTargetTime` —
+  stays 0 for the first 2s after losing a target (preserving the original no-snap fix for brief
+  disengagement), then ramps smoothly to 1 over the next 1.5s if still idle. The Mage's arm and
+  staff both blend from the last-aimed angle toward a neutral resting angle (straight down) as
+  `restBlend` increases, using shortest-path angle interpolation so it never spins the long way
+  around at the ±π wraparound.
+- Runtime-verified both pieces: the timing curve (0 through 2s, ramping 2s–3.5s, holding at 1
+  after), and the wraparound case specifically — confirmed the interpolated angle is
+  mathematically equivalent through `cos`/`sin` (which is the only place it's ever used) even
+  when the raw intermediate number falls outside the usual ±π range.
+## [1.1.40] - 2026-09-08 — HOTFIX: skulls occluded by walking enemies, misread as "fading"
+- **Fixed skulls (and bones/worms) appearing to fade in and out as enemies walked past.** Root
+  cause wasn't an alpha bug — checked the actual rendering code first (it correctly hardcodes full
+  opacity for this debris, with no fade curve and no pulsing effect anywhere near it) and the
+  actual draw order, which is what turned out to be wrong: `drawDecals()` drew all debris
+  (bones/skulls/worms) in the same early pass as blood, *before* enemies in the render pipeline —
+  so any enemy walking directly over a skull's tile fully occluded it while passing over, then it
+  reappeared once the enemy moved on. Visually that reads exactly as "fading in and out randomly
+  as minions walk," confirmed by checking the render order line-by-line rather than assuming.
+- **Fix**: split `drawDecals()` into blood-only (unchanged position, before scenery) and a new
+  `drawDebrisDecals()` for bones/skulls/worms, called after both enemies and towers in the render
+  pipeline. Debris was already designed as permanent, always-visible scene furniture — this
+  extends that guarantee to include "never hidden by anything that walks over it," not just
+  "never fades," which is what was actually being reported.
+- Verified both draw functions are still called exactly once each (no double-draw risk from the
+  split), and `perfStats`' visible/total decal counters correctly still track across both passes.
+## [1.1.39] - 2026-09-08
+- **Consent overlay is now full-screen and blocking** — covers the entire viewport with a
+  near-opaque background instead of a small dismissable bottom bar, so nothing underneath
+  (including Play) is reachable until Accept is clicked. The z-index (999) was already above every
+  other modal in the game (max 25), so this only needed the layout redesign, not a z-index change.
+  Removed `fitConsentBannerToOneLine()` — that scale-to-fit technique existed specifically to keep
+  everything on one line in a thin bottom bar; the new centered card has room to wrap text
+  normally, so it's no longer needed.
+- **New start-screen attract-mode background** — a decorative loop of Swordsman/Archer/Mage
+  facing a small procession of enemies, cycling between two arrangements every 10s with a brief
+  fade transition, retro-arcade-attract-screen style. Fully isolated from real game state: uses
+  `drawStickman()` with minimal fake objects (verified every field defaults gracefully when
+  absent, rather than assumed) instead of real Tower instances, and its own timing based on the
+  raw animation-frame timestamp rather than the global `gameTime` (which is frozen before Play is
+  pressed) — nothing here can leak into or be affected by the actual game. Caught and fixed a real
+  mistake while wiring this in: an edit meant to insert a new render branch before `loop()`
+  accidentally deleted the `function loop(now){` line itself, breaking the whole file — found via
+  the immediate syntax check this project always runs before shipping, fixed before it could ship.
+- Start screen's background overlay changed from a flat 92%-opaque fill to a radial vignette
+  (65% opacity near the center where the menu sits, 90% toward the edges) so the attract-mode
+  animation is visible but the menu buttons and title stay clearly readable — split off from the
+  end-screen's rule, which keeps the original opaque background unchanged.
+- **Moved Changes/Share/Copy Link buttons from the start screen into Settings > About**, alongside
+  the existing README/debug-log links — same button IDs and click handlers, markup relocated only.
 ## [1.1.38] - 2026-09-08 — item-only armor, panel layout, enemy damage rebalance
 - **Armor now comes only from items — Lucky Branch grants +1 armor, 1 armor = 1% damage
   reduction.** New per-item `armor` field, summed alongside the existing str/dex/int item

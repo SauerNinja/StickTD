@@ -360,10 +360,14 @@
   #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
-  .insp-opt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-  #inspUpgradeBtn, #inspSellBtn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #inspDpsBetween{flex:0 0 auto;font-size:0.85em;opacity:0.85;font-weight:bold;padding:0 2px;white-space:nowrap;}
-  .insp-opt-row button:not(.info-btn){flex:1 1 0;min-width:0;}
+  .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;transform-origin:left center;}
+  #inspUpgradeBtn, #inspSellBtn{flex:1 1 0;min-width:0;white-space:nowrap;}
+  #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
+  .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
+    font-weight:bold;}
+  #inspDpsVal{font-size:1.05em;font-weight:bold;color:var(--paper);text-shadow:0 0 4px rgba(241,196,15,0.5);}
+  .insp-opt-row button:not(.info-btn){flex:1 1 0;min-width:0;white-space:nowrap;}
   #inspFullOptions.hidden{display:none;}
   #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:6px;cursor:pointer;
     padding:2px 5px;margin:-3px -5px 0px;border-radius:6px;user-select:none;-webkit-user-select:none;}
@@ -460,10 +464,12 @@
   #cancelMoveBtn{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     padding:8px 14px;min-height:40px;cursor:pointer;font-weight:bold;}
 
-  #start-screen,#end-screen{position:absolute;inset:0;background:rgba(10,15,8,0.92);
+  #start-screen,#end-screen{position:absolute;inset:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     color:var(--paper);text-align:center;z-index:10;padding:20px;
     overflow-y:auto;touch-action:pan-y;}
+  #end-screen{background:rgba(10,15,8,0.92);}
+  #start-screen{background:radial-gradient(ellipse at center, rgba(10,15,8,0.65) 0%, rgba(10,15,8,0.65) 40%, rgba(10,15,8,0.9) 100%);}
   #start-screen.hidden,#end-screen.hidden{display:none;}
   #start-screen h1,#end-screen h1{font-size:clamp(22px,5vw,40px);color:var(--gold);
     text-shadow:2px 2px 0 #000;margin-bottom:6px;}
@@ -493,16 +499,17 @@
 </head>
 <body>
 <style>
-  #consent-banner{position:fixed;left:0;right:0;bottom:0;z-index:999;
-    background:rgba(20,14,6,0.97);border-top:2px solid #f1c40f;color:#f5f0e6;
-    padding:12px 16px;display:flex;align-items:center;overflow:hidden;
-    font-family:inherit;font-size:14px;}
+  #consent-banner{position:fixed;inset:0;z-index:999;
+    background:rgba(8,6,3,0.96);color:#f5f0e6;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    font-family:inherit;font-size:16px;}
   #consent-banner.hidden{display:none;}
-  #consent-inner{display:flex;flex-wrap:nowrap;align-items:center;gap:14px;
-    white-space:nowrap;transform-origin:left center;}
-  #consent-banner p{margin:0;line-height:1.4;white-space:nowrap;}
-  #consentAccept{border-radius:6px;padding:8px 16px;font-weight:bold;cursor:pointer;
-    font-size:inherit;min-height:36px;border:2px solid #f1c40f;flex:0 0 auto;
+  #consent-inner{display:flex;flex-direction:column;align-items:center;gap:20px;
+    max-width:480px;text-align:center;background:rgba(30,20,10,0.97);
+    border:2px solid #f1c40f;border-radius:14px;padding:32px 28px;}
+  #consent-banner p{margin:0;line-height:1.5;}
+  #consentAccept{border-radius:8px;padding:14px 32px;font-weight:bold;cursor:pointer;
+    font-size:1.1em;min-height:48px;border:2px solid #f1c40f;
     background:#f1c40f;color:#3a2a00;white-space:nowrap;}
 </style>
 <div id="consent-banner" class="hidden">
@@ -512,42 +519,27 @@
   </div>
 </div>
 <script>
-  // Cookie-consent banner — fully self-contained (its own markup/CSS/logic here), independent of
+  // Cookie-consent overlay — fully self-contained (its own markup/CSS/logic here), independent of
   // the main game script below, so it can never be affected by or interfere with anything
   // downstream. Drives Google Consent Mode v2 (defaulted to denied in <head> above): only actually
   // grants analytics_storage once the visitor clicks Accept, and remembers the choice so the
-  // banner doesn't reappear on later visits. Accept-only by request — no Decline button; consent
-  // stays denied (the default) unless/until Accept is clicked, but there's no explicit "no" action
-  // to click for a visitor who wants to actively refuse rather than just ignore the banner.
+  // overlay doesn't reappear on later visits. Full-screen by request — covers the entire viewport
+  // so nothing underneath (including Play) is reachable until Accept is clicked, rather than a
+  // dismissable bottom bar. Accept-only — no Decline button; consent stays denied (the default)
+  // unless/until Accept is clicked, but there's no explicit "no" action for a visitor who wants to
+  // actively refuse rather than just leave the overlay up.
   (function(){
     var STORAGE_KEY = 'stickTD_consentChoice';
     var banner = document.getElementById('consent-banner');
-    var inner = document.getElementById('consent-inner');
     var saved = null;
-    try { saved = localStorage.getItem(STORAGE_KEY); } catch(e) { /* localStorage unavailable (private browsing, etc.) — banner just shows every visit in that case */ }
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch(e) { /* localStorage unavailable (private browsing, etc.) — overlay just shows every visit in that case */ }
     function applyConsent(choice){
       if(window.gtag) window.gtag('consent', 'update', { 'analytics_storage': choice === 'granted' ? 'granted' : 'denied' });
-    }
-    // Same scale-to-fit technique already used for the top HUD bar (fitHudTopToOneLine) and the
-    // inspect panel's stat row (fitStatRowToOneLine) — measure the content's true natural width,
-    // compare to the banner's available width, and shrink with a left-anchored transform so text
-    // and button always sit on one line instead of wrapping to a second row.
-    function fitConsentBannerToOneLine(){
-      inner.style.transform = 'scale(1)';
-      var natural = inner.scrollWidth;
-      var available = banner.clientWidth - 32; // banner's own 16px+16px padding
-      if(natural > available && available > 0){
-        var scale = available / natural;
-        inner.style.transform = 'scale(' + scale.toFixed(3) + ')';
-      }
     }
     if(saved === 'granted' || saved === 'denied'){
       applyConsent(saved);
     } else {
       banner.classList.remove('hidden');
-      fitConsentBannerToOneLine();
-      window.addEventListener('resize', fitConsentBannerToOneLine);
-      window.addEventListener('orientationchange', fitConsentBannerToOneLine);
     }
     document.getElementById('consentAccept').addEventListener('click', function(){
       try { localStorage.setItem(STORAGE_KEY, 'granted'); } catch(e) {}
@@ -606,13 +598,13 @@
         <span id="inspLuckRow">🍀 <span id="inspLuckVal">0%</span></span>
       </div>
       <div id="inspFullOptions" class="hidden">
-        <div class="insp-opt-row">
+        <div class="insp-opt-row" id="inspUpgradeSellRow">
           <button id="inspUpgradeBtn">🆙 Upgrade <span id="inspUpgradeCost"></span></button>
-          <span id="inspDpsBetween"><span id="inspDpsVal">0</span></span>
+          <span id="inspDpsBetween"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span></span>
           <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
         </div>
-        <div class="insp-opt-row">
+        <div class="insp-opt-row" id="inspTargetMoveRow">
           <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
           <button id="inspMoveBtn">🔀 Move <span id="inspMoveCost"></span></button>
           <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
@@ -748,6 +740,14 @@
             <button id="viewReadmeBtn">📄 View as page</button>
             <button id="expandAboutBtn">More info ▾</button>
             <div id="about-expand-content" class="hidden"></div>
+            <div id="intro-links-row">
+              <button class="link-btn" id="changesBtn" title="See what's new">📋 Changes</button>
+              <button class="link-btn" id="shareXBtn" title="Share on X">𝕏 Share</button>
+              <button class="link-btn" id="shareRedditBtn" title="Share on Reddit">
+                <svg width="14" height="14" viewBox="0 0 20 20" style="vertical-align:-2px;margin-right:3px;"><circle cx="10" cy="10" r="9" fill="#FF4500"/><circle cx="10" cy="12" r="6" fill="#fff"/><circle cx="7.3" cy="12" r="1.15" fill="#FF4500"/><circle cx="12.7" cy="12" r="1.15" fill="#FF4500"/><path d="M7 14.3c1 .8 5 .8 6 0" stroke="#FF4500" stroke-width="0.9" fill="none" stroke-linecap="round"/><circle cx="14.3" cy="7.7" r="1.4" fill="#FF4500"/><path d="M10 8.5l0.8-4.3 3 .6" stroke="#FF4500" stroke-width="0.8" fill="none" stroke-linecap="round"/></svg>Share
+              </button>
+              <button class="link-btn" id="shareCopyBtn" title="Copy link">🔗 Copy Link</button>
+            </div>
           </div>
         </div>
       </div>
@@ -860,14 +860,6 @@
         <label id="goreLabel"><input type="checkbox" id="goreToggle" checked> I am 18+ — enable intense effects (🩸 Mature)</label>
       </div>
       <button class="big-btn" id="playBtn">▶ PLAY</button>
-      <div id="intro-links-row">
-        <button class="link-btn" id="changesBtn" title="See what's new">📋 Changes</button>
-        <button class="link-btn" id="shareXBtn" title="Share on X">𝕏 Share</button>
-        <button class="link-btn" id="shareRedditBtn" title="Share on Reddit">
-          <svg width="14" height="14" viewBox="0 0 20 20" style="vertical-align:-2px;margin-right:3px;"><circle cx="10" cy="10" r="9" fill="#FF4500"/><circle cx="10" cy="12" r="6" fill="#fff"/><circle cx="7.3" cy="12" r="1.15" fill="#FF4500"/><circle cx="12.7" cy="12" r="1.15" fill="#FF4500"/><path d="M7 14.3c1 .8 5 .8 6 0" stroke="#FF4500" stroke-width="0.9" fill="none" stroke-linecap="round"/><circle cx="14.3" cy="7.7" r="1.4" fill="#FF4500"/><path d="M10 8.5l0.8-4.3 3 .6" stroke="#FF4500" stroke-width="0.8" fill="none" stroke-linecap="round"/></svg>Share
-        </button>
-        <button class="link-btn" id="shareCopyBtn" title="Copy link">🔗 Copy Link</button>
-      </div>
     </div>
 
     <div id="end-screen" class="hidden">
@@ -912,7 +904,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.38'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.45'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1173,8 +1165,11 @@ const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% mo
 // ~0.8s of flight time) aims at where the target would be if it kept going perfectly straight for
 // that whole time — but this map's spiral path turns every 1-3 tiles, so the target routinely
 // changes direction long before a slow shot arrives, and the arrow flies straight past the corner
-// it turned on. 0.35s keeps the aim reliable on typical straight-stretch lengths between turns.
-const MAX_LEAD_PREDICT_TIME = 0.35;
+// it turned on. Originally capped at 0.35s (1.1.2); reduced further to 0.2s per direct feedback
+// that towers still aimed noticeably too far ahead even with that cap — trading away more of the
+// "technically correct" lead on long straight stretches (the less common case on this winding
+// path) for meaningfully less overshoot near the frequent turns (the more common case).
+const MAX_LEAD_PREDICT_TIME = 0.2;
 
 // Only Swordsman, Archer, and Mage are directly buildable — every other fighting class is reached
 // by investing 10+ points into a specific stat on one of those three, a one-way transformation.
@@ -5601,7 +5596,13 @@ class Tower{
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, mustacheColor: this.mustacheColor };
+    // Gradual return-to-rest for Mage's staff (see drawStickman()'s MAGE branch): 0 for the first
+    // 2s after losing a target — preserves the existing fix where a brief disengagement shouldn't
+    // snap the pose — then ramps smoothly to 1 over the next 1.5s if still idle, so the staff/orb
+    // settles back to a neutral resting angle instead of staying locked at whatever angle it last
+    // aimed at forever, which could leave it pointing at an odd angle indefinitely once idle.
+    const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -6525,32 +6526,45 @@ function decalLifespanVariance(){
 }
 function drawDecals(ctx){
   // Expiry is a single authoritative pass over the real array (splice needs real indices),
-  // independent of draw order below.
+  // independent of draw order below. Runs here since this is always called first in the frame
+  // (before drawDebrisDecals(), which relies on expiry already having happened this frame).
   for(let i = decals.length - 1; i >= 0; i--){
     const d = decals[i];
     const age = realTime - d.spawnTime;
     const lifespan = d.lifespan || DECAL_LIFESPAN;
     if(age >= lifespan) decals.splice(i, 1); // actually expires now, not just capacity-recycled
   }
-  // Viewport culling, same principle as drawScenery()'s — computed once per call, then a cheap
-  // numeric comparison rejects offscreen decals before any Canvas state is touched. Decals aren't
-  // tile-aligned like scenery, so this is a plain bounds check rather than a grid-cell lookup.
-  // Margin covers the largest blood pool's blob radius plus its glisten/skeletonization rings.
-  const cullMargin = TILE_SIZE * 1.2;
-  const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
-  const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
-  const viewTop = (0 - camera.y) / camera.zoom - cullMargin;
-  const viewBottom = (CANVAS_H - camera.y) / camera.zoom + cullMargin;
-  function visible(d){ return d.x >= viewLeft && d.x <= viewRight && d.y >= viewTop && d.y <= viewBottom; }
+  const bounds = decalViewBounds();
   perfStats.totalDecals = decals.length;
-  let visibleDecalCount = 0;
-  // Two ordered draw passes: blood/other decals first, then bone/skull/rock/worm debris on top —
-  // guarantees the latter always renders above blood regardless of which was pushed to the array
-  // first, instead of depending on push order like a single shared pass did before (1.1.16 fix).
-  for(const d of decals) if(!d.isEmojiDrop && !d.isWorm && visible(d)){ visibleDecalCount++; drawOneDecal(ctx, d); }
-  for(const d of decals) if((d.isEmojiDrop || d.isWorm) && visible(d)){ visibleDecalCount++; drawOneDecal(ctx, d); }
-  perfStats.visibleDecals = visibleDecalCount;
+  perfStats.visibleDecals = 0;
+  for(const d of decals) if(!d.isEmojiDrop && !d.isWorm && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
 }
+// Bone/skull/rock/worm debris — deliberately drawn in its OWN later pass (called from render()
+// after enemies and towers, not from drawDecals() above) rather than immediately after blood.
+// Previously bundled into the same early pass as blood, which put it BEFORE enemies in the draw
+// order — meaning any enemy walking directly over a skull's tile fully occluded it while passing,
+// which read as the skull randomly "fading in and out" as minions walked, confirmed by checking
+// the actual draw order rather than assuming. Debris is permanent, always-on-top scene furniture
+// by design (see drawOneDecal()'s isEmojiDrop branch) — it should never be hideable by a walking
+// enemy any more than it should fade, so it now draws after everything that moves.
+function drawDebrisDecals(ctx){
+  const bounds = decalViewBounds();
+  for(const d of decals) if((d.isEmojiDrop || d.isWorm) && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
+}
+function decalViewBounds(){
+  // Same viewport-culling principle as drawScenery()'s — computed fresh each call (cheap
+  // arithmetic, not worth caching across the two decal passes in the same frame) so offscreen
+  // decals are rejected before any Canvas state is touched. Margin covers the largest blood
+  // pool's blob radius plus its glisten/skeletonization rings.
+  const cullMargin = TILE_SIZE * 1.2;
+  return {
+    left: (0 - camera.x) / camera.zoom - cullMargin,
+    right: (CANVAS_W - camera.x) / camera.zoom + cullMargin,
+    top: (0 - camera.y) / camera.zoom - cullMargin,
+    bottom: (CANVAS_H - camera.y) / camera.zoom + cullMargin
+  };
+}
+function decalVisible(d, b){ return d.x >= b.left && d.x <= b.right && d.y >= b.top && d.y <= b.bottom; }
 function drawOneDecal(ctx, d){
     const age = realTime - d.spawnTime;
     const lifespan = d.lifespan || DECAL_LIFESPAN;
@@ -7315,9 +7329,19 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // whole cast restarting even though the charge percentage never actually moved. `angle` itself
     // already holds a stable last-aimed value between targets (see update()'s recentlyEngaged
     // grace window), so simply always using it here removes the snap entirely.
-    const staffAngle = angle;
+    // Blends from the last-aimed angle toward a neutral resting angle (straight down) as
+    // restBlend ramps up while genuinely idle (see the extra.restBlend computation in Tower.draw()
+    // for the timing) — shortest-path interpolation so it doesn't spin the long way around at the
+    // ±π wraparound. Preserves the no-snap fix for brief disengagement (restBlend stays 0 for the
+    // first 2s), while fixing the actual bug this was reported for: the orb previously stayed
+    // locked at whatever angle it last aimed at indefinitely once idle, which could leave it
+    // pointing at an arbitrary, unnatural-looking angle forever instead of settling to rest.
+    const restAngle = Math.PI/2;
+    const restBlend = extra.restBlend || 0;
+    const angleDiff = ((restAngle - angle + Math.PI*3) % (Math.PI*2)) - Math.PI;
+    const staffAngle = angle + angleDiff*restBlend;
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, wandBend);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, staffAngle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
     const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
@@ -8223,6 +8247,7 @@ function render(ctx){
   drawDeathAnims(ctx);
   for(const e of enemyPool) if(e.active) e.draw(ctx);
   for(const t of towerPool) if(t.active) t.draw(ctx, t === selectedTower);
+  drawDebrisDecals(ctx); // bones/skulls/worms — always above enemies/towers, see drawDebrisDecals() for why
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = Math.sin(gameTime/300 + gi.id)*4;
@@ -8300,8 +8325,187 @@ function drawBossCompass(ctx){
 // Inspect via the browser console: `perfStats`.
 const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
   visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0 };
+// Start-screen attract-mode — a genuine self-contained mini-simulation, entirely separate from
+// real game state (its own enemies/towers/projectiles arrays, never enemyPool/towerPool/
+// projectilePool), advancing on its own now-based delta time rather than the global gameTime
+// (frozen while gameState !== 'PLAYING'). Three scenes, each with a different tower layout and a
+// differently-shaped enemy lane, cycle with a brief fade. Towers actually attack — swing/draw/cast
+// animations drive drawStickman()'s real animation fields, ranged classes fire projectiles that
+// travel to their target — rather than static idle poses. A slow autonomous pan/zoom gives a
+// retro-arcade drift; the dark vignette overlay is #start-screen's own CSS and untouched here,
+// only the content moving behind it changes.
+let attractScenes = null;
+let attractState = null;
+let attractSceneIndex = -1;
+let attractSceneStartTime = 0;
+let attractLastFrameTime = 0;
+const ATTRACT_SCENE_DURATION = 13000;
+
+function buildAttractScenes(){
+  return [
+    { // straight lane, left to right
+      lane: [{xf:0.0,yf:0.68},{xf:1.0,yf:0.68}],
+      towers: [ {type:'SWORDSMAN', xf:0.22, yf:0.5}, {type:'ARCHER', xf:0.5, yf:0.42}, {type:'MAGE', xf:0.78, yf:0.5} ]
+    },
+    { // bent V lane — enters top-left, dips to bottom-center, exits top-right
+      lane: [{xf:0.05,yf:0.25},{xf:0.5,yf:0.8},{xf:0.95,yf:0.25}],
+      towers: [ {type:'MAGE', xf:0.28, yf:0.45}, {type:'ARCHER', xf:0.5, yf:0.95}, {type:'SWORDSMAN', xf:0.72, yf:0.45} ]
+    },
+    { // reverse diagonal, right to left, descending
+      lane: [{xf:0.95,yf:0.2},{xf:0.5,yf:0.5},{xf:0.05,yf:0.85}],
+      towers: [ {type:'ARCHER', xf:0.75, yf:0.35}, {type:'SWORDSMAN', xf:0.5, yf:0.65}, {type:'MAGE', xf:0.25, yf:0.9} ]
+    }
+  ];
+}
+// Broad pool of ordinary enemy types for the attract mode's random mix — excludes BOSS (its huge
+// radius reads oddly at this decorative scale) and TROLL (has no independent wave presence, only
+// appears via a special mechanic elsewhere), everything else is fair game.
+const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','TANK','RUNNER','FIRE','ICE','SPLITTER','SPLITMINI',
+  'HEALER','SHIELDED','ZOMBIE','WRAITH','SKELETON','WOLF','REAPER','BOULDER','ROCKLET','MONARCH'];
+function attractLanePointAt(lane, t){
+  const segCount = lane.length - 1;
+  const segT = clampNum(t,0,1) * segCount;
+  const segIndex = Math.min(segCount-1, Math.floor(segT));
+  const localT = segT - segIndex;
+  const a = lane[segIndex], b = lane[segIndex+1];
+  return { xf: a.xf + (b.xf-a.xf)*localT, yf: a.yf + (b.yf-a.yf)*localT };
+}
+function initAttractScene(index){
+  const def = attractScenes[index % attractScenes.length];
+  const enemyCount = 7; // up from 5, for a busier/more varied-looking lane
+  return {
+    def,
+    towers: def.towers.map((t, i) => ({ ...t, nextAttackAt: 800 + i*400, phase:'idle', phaseStart:0, phaseDur:0, targetIdx:-1 })),
+    enemies: Array.from({length: enemyCount}, (_, i) => ({
+      type: ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)],
+      t: i/enemyCount, speed: 0.000035 + Math.random()*0.00001, flashUntil:0
+    })),
+    projectiles: []
+  };
+}
+function renderAttractMode(ctx, now){
+  if(!attractScenes) attractScenes = buildAttractScenes();
+  if(attractSceneIndex < 0){
+    attractSceneIndex = 0; attractSceneStartTime = now; attractLastFrameTime = now;
+    attractState = initAttractScene(0);
+  }
+  let dt = now - attractLastFrameTime;
+  attractLastFrameTime = now;
+  if(dt > 100) dt = 100; // safety clamp, same reasoning as the real game loop's own frameTime clamp
+
+  const elapsed = now - attractSceneStartTime;
+  if(elapsed > ATTRACT_SCENE_DURATION){
+    attractSceneIndex = (attractSceneIndex + 1) % attractScenes.length;
+    attractSceneStartTime = now;
+    attractState = initAttractScene(attractSceneIndex);
+  }
+  const sceneT = (now - attractSceneStartTime) / ATTRACT_SCENE_DURATION;
+  const fadeT = sceneT < 0.06 ? sceneT/0.06 : (sceneT > 0.94 ? (1-sceneT)/0.06 : 1);
+
+  // Slow autonomous camera drift — purely a rendering transform, doesn't affect any simulation
+  // math below (which all operates in canvas-fraction space), only where it ends up drawn.
+  const panX = Math.sin(now/4200) * CANVAS_W * 0.11;
+  const panY = Math.cos(now/5600) * CANVAS_H * 0.08;
+  const zoom = 1.1 + Math.sin(now/6500) * 0.09;
+
+  ctx.save();
+  ctx.fillStyle = '#8a6a3a';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.globalAlpha = fadeT;
+  ctx.translate(CANVAS_W/2, CANVAS_H/2);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-CANVAS_W/2 + panX, -CANVAS_H/2 + panY);
+
+  const st = attractState;
+  const lane = st.def.lane;
+
+  for(const e of st.enemies){
+    e.t += e.speed * dt;
+    if(e.t >= 1) e.t = 0; // loops back to the start rather than despawning, keeping the lane populated
+  }
+
+  // Tower attack logic — a simplified but real per-class attack cycle, not a frozen pose: each
+  // tower periodically finds the nearest lane enemy and goes through an actual swing/draw/cast
+  // phase, then either resolves a melee hit immediately (Swordsman) or spawns a travelling
+  // projectile (Archer/Mage) that lands on arrival.
+  for(const t of st.towers){
+    const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
+    if(t.phase === 'idle' && now >= t.nextAttackAt){
+      let bestIdx = -1, bestD = Infinity;
+      for(let i=0;i<st.enemies.length;i++){
+        const p = attractLanePointAt(lane, st.enemies[i].t);
+        const d = Math.hypot(p.xf*CANVAS_W - tx, p.yf*CANVAS_H - ty);
+        if(d < bestD){ bestD = d; bestIdx = i; }
+      }
+      if(bestIdx >= 0){
+        t.targetIdx = bestIdx; t.phaseStart = now;
+        if(t.type === 'SWORDSMAN'){ t.phase = 'swing'; t.phaseDur = 220; }
+        else if(t.type === 'ARCHER'){ t.phase = 'draw'; t.phaseDur = 500; }
+        else { t.phase = 'cast'; t.phaseDur = 650; }
+      }
+    }
+    if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
+      const target = st.enemies[t.targetIdx];
+      if(target){
+        if(t.type === 'SWORDSMAN'){ target.flashUntil = now + 150; target.t = 0; }
+        else st.projectiles.push({ fromX:tx, fromY:ty, targetIdx:t.targetIdx, startTime:now, duration: t.type==='ARCHER'?260:340, kind:t.type });
+      }
+      t.phase = 'idle';
+      t.nextAttackAt = now + 900 + Math.random()*700;
+    }
+  }
+
+  for(let i = st.projectiles.length-1; i>=0; i--){
+    const p = st.projectiles[i];
+    if(now - p.startTime >= p.duration){
+      const target = st.enemies[p.targetIdx];
+      if(target){ target.flashUntil = now + 150; target.t = 0; }
+      st.projectiles.splice(i,1);
+    }
+  }
+
+  // Enemies draw before towers, matching the real game's own draw order
+  ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const e of st.enemies){
+    const p = attractLanePointAt(lane, e.t);
+    const ex = p.xf*CANVAS_W, ey = p.yf*CANVAS_H;
+    if(now < e.flashUntil){
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.arc(ex, ey, 13, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.fillText(CONFIG.ENEMIES[e.type].emoji, ex, ey);
+  }
+
+  for(const t of st.towers){
+    const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
+    const target = t.targetIdx >= 0 ? st.enemies[t.targetIdx] : null;
+    let angle = Math.PI/2;
+    if(target){
+      const p = attractLanePointAt(lane, target.t);
+      angle = Math.atan2(p.yf*CANVAS_H - ty, p.xf*CANVAS_W - tx);
+    }
+    const extraAtk = { hasTarget: !!target };
+    if(t.phase === 'swing') extraAtk.swingProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
+    else if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
+    else if(t.phase === 'cast'){ extraAtk.castProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1); extraAtk.chargeProgress = extraAtk.castProgress; }
+    drawStickman(ctx, tx, ty, angle, 1, t.type, extraAtk);
+  }
+
+  for(const p of st.projectiles){
+    const target = st.enemies[p.targetIdx];
+    if(!target) continue;
+    const pT = clampNum((now - p.startTime) / p.duration, 0, 1);
+    const tp = attractLanePointAt(lane, target.t);
+    const px = p.fromX + (tp.xf*CANVAS_W - p.fromX)*pT;
+    const py = p.fromY + (tp.yf*CANVAS_H - p.fromY)*pT;
+    ctx.fillStyle = p.kind === 'MAGE' ? '#7dd3fc' : '#f1c40f';
+    ctx.beginPath(); ctx.arc(px, py, p.kind==='MAGE'?4:2.5, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
 function loop(now){
   requestAnimationFrame(loop);
+  if(gameState === 'START'){ renderAttractMode(ctx, now); return; }
   if(gameState !== 'PLAYING'){ lastTime = now; return; }
   const frameStart = performance.now();
   let frameTime = now - lastTime;
@@ -8423,6 +8627,30 @@ function fitStatRowToOneLine(){
 }
 window.addEventListener('resize', fitStatRowToOneLine);
 window.addEventListener('orientationchange', fitStatRowToOneLine);
+
+// Reusable version of the same technique, for any inspect-panel button row that must never wrap
+// or clip text — currently the Upgrade/Sell/DPS row and the Target/Move row. Previously those
+// used flex-shrink + ellipsis (which cut off Upgrade's cost text) or flex-wrap (which let Target/
+// Move drop to a second line) — this replaces both with the same guaranteed-single-line scaling
+// already proven on the stat row, so text always stays fully visible, just smaller if needed.
+function fitOptRowToOneLine(rowId){
+  const row = document.getElementById(rowId);
+  const panel = document.getElementById('inspect-panel');
+  if(!row || !panel) return;
+  row.style.transform = 'scale(1)';
+  const naturalWidth = row.scrollWidth;
+  const availableWidth = panel.clientWidth - 16;
+  if(naturalWidth > availableWidth && availableWidth > 0){
+    const scale = availableWidth / naturalWidth;
+    row.style.transform = 'scale(' + scale.toFixed(3) + ')';
+  }
+}
+function fitOptRowsToOneLine(){
+  fitOptRowToOneLine('inspUpgradeSellRow');
+  fitOptRowToOneLine('inspTargetMoveRow');
+}
+window.addEventListener('resize', fitOptRowsToOneLine);
+window.addEventListener('orientationchange', fitOptRowsToOneLine);
 
 // Extends the HP/XP bar area (#inspNameplateMid) to explicitly fill the exact same available
 // width fitStatRowToOneLine() computes for the stat row below — rather than trusting
@@ -9477,6 +9705,7 @@ function updateInspectPanel(){
     btn.disabled = noPoints;
     btn.classList.toggle('has-points', !noPoints);
   }
+  fitOptRowsToOneLine();
 }
 
 inspUpgradeBtn.addEventListener('pointerdown', (e) => {
@@ -9666,6 +9895,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
   startScreen.classList.add('hidden');
+  document.getElementById('hud-top').style.display = '';
   gameState = 'PLAYING';
   lastTime = performance.now();
   updateHUD();
@@ -9732,6 +9962,7 @@ centerCameraOnActiveRegion();
 document.getElementById('versionText').textContent = GAME_VERSION;
 document.getElementById('aboutVersionText').textContent = GAME_VERSION;
 updateHUD();
+document.getElementById('hud-top').style.display = 'none'; // hidden during the start-screen attract mode — restored in playBtn's handler
 requestAnimationFrame(loop);
 </script>
 </body>
