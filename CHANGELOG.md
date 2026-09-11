@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.1.38] - 2026-09-08 — item-only armor, panel layout, enemy damage rebalance
+- **Armor now comes only from items — Lucky Branch grants +1 armor, 1 armor = 1% damage
+  reduction.** New per-item `armor` field, summed alongside the existing str/dex/int item
+  summation in `recomputeStats()`. `shieldPct` (the actual damage-reduction multiplier) is now a
+  derived value recomputed every call from a new `baseShieldPct` (the class-ability/Legendary
+  source, e.g. Hammerman's signature 35%) plus item armor at a fixed 1%-per-point rate, capped at
+  90% — same ceiling the Legendary bonus already used. Runtime-verified the full matrix (no items,
+  Lucky Branch alone, stacked Lucky Branches, Hammerman base, Hammerman+Legendary+heavy armor
+  hitting the cap) before shipping.
+- **Found and fixed a real, reachable pre-existing bug while restructuring this**: Hammerman is
+  evolution-only (never built directly), but `evolveInto()` updated `baseMaxHp` for the new class
+  and never touched the shield field at all — meaning a tower evolving into Hammerman never
+  actually got its signature 35% shield. Fixed alongside the `baseMaxHp` line it already sat next
+  to; also preserves the Legendary shield bonus across evolution now, matching how
+  `legendaryHpMult` already did.
+- **Save/load fix required by the same restructuring**: `baseShieldPct` isn't itself part of the
+  save payload (nothing equivalent was, before this change), so it's now derived at load time from
+  the restored type + `isLegendary` — same pattern already used for `legendaryHpMult` — before
+  `recomputeStats()` runs.
+- **Panel layout**: removed DPS from the compact stat row; it now lives between the Upgrade and
+  Sell buttons (only visible when the panel is expanded, since that's where those buttons already
+  live) as a plain number. Upgrade/Sell now share space equally and shrink together
+  (`flex:1 1 0`, ellipsis overflow) so there's always room for it. Added 🆙 to Upgrade and 🏷️ to
+  Sell. Removed the "+" prefix from the luck display.
+- **Enemy damage rebalanced down ~20% across the board** (`breakDamage` — the damage enemies deal
+  attacking towers/barricades directly), preserving relative differences between enemy types
+  rather than an arbitrary flat cut. Life-loss damage (`loseLife(1)` on reaching the end) was
+  already a flat 1 regardless of enemy type and untouched — the scalable damage source was
+  `breakDamage`.
 ## [1.1.37] - 2026-09-08 — HP stat rebalance: archetype-differentiated base + growth rate
 - **Replaced the single universal HP-stat rate (0.004/point, deliberately the hardest stat in the
   game) with archetype-differentiated base values and growth rates, per explicit spec**: Warrior

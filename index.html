@@ -361,6 +361,8 @@
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
   .insp-opt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  #inspUpgradeBtn, #inspSellBtn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #inspDpsBetween{flex:0 0 auto;font-size:0.85em;opacity:0.85;font-weight:bold;padding:0 2px;white-space:nowrap;}
   .insp-opt-row button:not(.info-btn){flex:1 1 0;min-width:0;}
   #inspFullOptions.hidden{display:none;}
   #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:6px;cursor:pointer;
@@ -600,14 +602,14 @@
         <span>⚔️ <span id="inspAtkVal"></span><span id="inspAtkRange"></span></span>
         <span>💥 <span id="inspCritVal">0%</span></span>
         <span>⏳ <span id="inspSpeedVal">0</span>s</span>
-        <span>🥈 <span id="inspDpsVal">0</span></span>
         <span>🎯 <span id="inspRangeVal">0</span></span>
-        <span id="inspLuckRow">🍀 <span id="inspLuckVal">+0%</span></span>
+        <span id="inspLuckRow">🍀 <span id="inspLuckVal">0%</span></span>
       </div>
       <div id="inspFullOptions" class="hidden">
         <div class="insp-opt-row">
-          <button id="inspUpgradeBtn">Upgrade <span id="inspUpgradeCost"></span></button>
-          <button id="inspSellBtn">Sell <span id="inspSellValue"></span></button>
+          <button id="inspUpgradeBtn">🆙 Upgrade <span id="inspUpgradeCost"></span></button>
+          <span id="inspDpsBetween"><span id="inspDpsVal">0</span></span>
+          <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
         </div>
         <div class="insp-opt-row">
@@ -910,7 +912,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.37'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.38'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1202,7 +1204,7 @@ const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART
 // All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
 // tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
 // (deliberately simple); more can be added to this list later without touching anything else.
-const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, cost:70, woodCost:15 };
+const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, armor:1, cost:70, woodCost:15 };
 const BARRICADE_ITEM = { id:'BARRICADE_ITEM', name:'Barricade', icon:'🚧', cost:0, woodCost:600, stoneCost:300, isBarricade:true };
 const UNIVERSAL_ITEMS = [ LUCKY_BRANCH, BARRICADE_ITEM ];
 
@@ -1390,26 +1392,26 @@ const CONFIG = {
     // big(19-23) / huge(34, Boss). Previously everything but Boss was squeezed into a narrow
     // 10-20 band, which the individual variance ended up overlapping across almost the whole
     // roster.
-    GRUNT:  { emoji:'😡', baseHp:73,  speed:50,  bounty:6,  radius:15, armor:0, breakawayChance:0.02, breakDamage:7 },
-    SWARM:  { emoji:'🐜', baseHp:27,  speed:79,  bounty:2,  radius:9,  armor:0, breakawayChance:0.02, breakDamage:5 },
-    TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:12 },
-    RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:7 },
+    GRUNT:  { emoji:'😡', baseHp:73,  speed:50,  bounty:6,  radius:15, armor:0, breakawayChance:0.02, breakDamage:6 },
+    SWARM:  { emoji:'🐜', baseHp:27,  speed:79,  bounty:2,  radius:9,  armor:0, breakawayChance:0.02, breakDamage:4 },
+    TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:10 },
+    RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:6 },
     BOSS:   { emoji:'👹', baseHp:2684,speed:22,  bounty:173,radius:34, armor:8, breakawayChance:0,    breakDamage:0 },
     TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
-    FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:10, statusOnTower:'BURN' },
-    ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'ICE' },
-    SPLITTER: { emoji:'🦠', baseHp:85,  speed:43,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:6, splits:true },
-    SPLITMINI:{ emoji:'🦠', baseHp:29,  speed:61,  bounty:2,  radius:8,  armor:0, breakawayChance:0,    breakDamage:3 },
-    HEALER: { emoji:'💉', baseHp:104, speed:40,  bounty:13, radius:15, armor:0, breakawayChance:0.02, breakDamage:6, healsAllies:true, holyLifesteal:true },
-    SHIELDED: { emoji:'🛡️', baseHp:116, speed:36,  bounty:12, radius:16, armor:0, breakawayChance:0.02, breakDamage:7, hasShield:true },
-    ZOMBIE: { emoji:'🧟', baseHp:183, speed:23,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:9, isUndead:true },
-    WRAITH: { emoji:'👻', baseHp:46,  speed:94,  bounty:9,  radius:12, armor:4, breakawayChance:0.04, breakDamage:6, isUndead:true },
-    SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:6, revives:true, isUndead:true },
-    WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:6, pack:true },
-    REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:9, isUndead:true },
-    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:10, splits:true },
-    ROCKLET: { emoji:'🪨', baseHp:108, speed:35, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:5 },
-    MONARCH: { emoji:'🦋', baseHp:33,  speed:112, bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:4 }
+    FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
+    ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
+    SPLITTER: { emoji:'🦠', baseHp:85,  speed:43,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
+    SPLITMINI:{ emoji:'🦠', baseHp:29,  speed:61,  bounty:2,  radius:8,  armor:0, breakawayChance:0,    breakDamage:2 },
+    HEALER: { emoji:'💉', baseHp:104, speed:40,  bounty:13, radius:15, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
+    SHIELDED: { emoji:'🛡️', baseHp:116, speed:36,  bounty:12, radius:16, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
+    ZOMBIE: { emoji:'🧟', baseHp:183, speed:23,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:7, isUndead:true },
+    WRAITH: { emoji:'👻', baseHp:46,  speed:94,  bounty:9,  radius:12, armor:4, breakawayChance:0.04, breakDamage:5, isUndead:true },
+    SKELETON: { emoji:'🦴', baseHp:79,  speed:43,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
+    WOLF: { emoji:'🐺', baseHp:39,  speed:72,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:5, pack:true },
+    REAPER: { emoji:'💀', baseHp:220, speed:32, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:7, isUndead:true },
+    BOULDER: { emoji:'🪨', baseHp:317, speed:25, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:8, splits:true },
+    ROCKLET: { emoji:'🪨', baseHp:108, speed:35, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:4 },
+    MONARCH: { emoji:'🦋', baseHp:33,  speed:112, bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:3 }
   },
   WAVES: [
     [{type:'GRUNT',count:4,spawnDelay:1300}],
@@ -3209,7 +3211,7 @@ function checkLegendaryStatus(tower){
   if(tower.str + tower.dex + tower.int < 100) return;
   tower.isLegendary = true;
   tower.legendaryHpMult = 1.05;
-  tower.shieldPct = Math.min(0.9, (tower.shieldPct||0) + 0.05);
+  tower.baseShieldPct = Math.min(0.9, (tower.baseShieldPct||0) + 0.05);
   tower.recomputeStats(); // recalculates maxHp from baseMaxHp * strHpMult * legendaryHpMult
   tower.hp = tower.maxHp; // full heal on reaching Legendary
   playSound('legendary'); // fired immediately, before the blocking prompt() below — the "you did it" moment should be heard right away, not only after answering a naming dialog
@@ -3350,6 +3352,7 @@ function restoreGameState(state){
     t.equippedItems = (td.itemIds||[]).map(id => UNIVERSAL_ITEMS.find(i => i.id===id)).filter(Boolean);
     t.isLegendary = !!td.isLegendary; t.legendaryName = td.legendaryName || '';
     t.legendaryHpMult = t.isLegendary ? 1.05 : 1; // must be set before recomputeStats() so max HP includes it
+    t.baseShieldPct = (t.type === 'HAMMERMAN' ? 0.35 : 0) + (t.isLegendary ? 0.05 : 0); // must be set before recomputeStats() so shieldPct includes it — item-granted armor is added on top inside recomputeStats() itself, from the just-restored equippedItems
     t.recomputeStats();
     t.checkHeroStatus();
     if(td.hp !== undefined) t.hp = Math.min(td.hp, t.maxHp); // clamp protects against loading an older
@@ -4735,7 +4738,7 @@ class Tower{
     this.isLegendary = false;
     this.legendaryName = '';
     this.hp = this.maxHp;
-    this.shieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks
+    this.baseShieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks — class ability, not an item, kept separate from item-granted armor
     this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
     this.disabledWavesLeft = 0; // reaching 0 HP locks the tower out for the next 2 waves, not just a short timer
     this.burnUntil = 0;       // FIRE breakaway status
@@ -4849,8 +4852,13 @@ class Tower{
   // CLERIC is the one exception: INT boosts healAmount instead of adding to range (its range is a
   // fixed detection radius for smiting undead, not something that scales the same way).
   recomputeStats(){
-    let itemStr = 0, itemDex = 0, itemInt = 0;
-    for(const it of this.equippedItems){ itemStr += it.str; itemDex += it.dex; itemInt += it.int; }
+    let itemStr = 0, itemDex = 0, itemInt = 0, itemArmor = 0;
+    for(const it of this.equippedItems){ itemStr += it.str; itemDex += it.dex; itemInt += it.int; itemArmor += it.armor || 0; }
+    // Armor from items only, at a fixed 1 armor = 1% damage reduction — baseShieldPct (class
+    // ability like Hammerman's, plus the Legendary bonus) is a separate, permanent, non-item
+    // source, summed here rather than mutated ad-hoc so equipping/unequipping an armor item takes
+    // effect immediately. Same 90% cap the Legendary bonus already used.
+    this.shieldPct = Math.min(0.9, this.baseShieldPct + itemArmor*0.01);
     const heroBonus = this.isHero ? HERO_BONUS_STAT : 0;
     const globalStr = globalPassiveCounts.GLOBAL_STR || 0;
     const globalDex = globalPassiveCounts.GLOBAL_DEX || 0;
@@ -5010,6 +5018,12 @@ class Tower{
     // they carry straight through evolution instead of being cleared. isHero (which only requires
     // all slots filled, not any specific class's items) stays valid for the same reason.
     this.baseMaxHp = newType === 'BARRICADE' ? 10 : (newType === 'HAMMERMAN' ? 180 : 100);
+    // Fixed alongside the baseMaxHp line above, which this exact bug already sat next to: Hammerman
+    // is evolution-only (never built directly, see EVOLVED_TOWER_TYPES), so evolveInto() not
+    // updating the shield-granting field meant a tower evolving into Hammerman never actually got
+    // its signature 35% shield. Preserves the Legendary bonus across evolution, matching how
+    // legendaryHpMult already does.
+    this.baseShieldPct = (newType === 'HAMMERMAN' ? 0.35 : 0) + (this.isLegendary ? 0.05 : 0);
     this.rollSkinTones(); // fresh shade fitting the new class's own hue, not a carried-over old-class tone
     this.rollBuild(); // fresh height/weight variance around the new class's own baseline proportions
     this.applyTierStats(); // re-initializes damage/range/cooldown/etc from the new class's tier-1 data, then calls recomputeStats()
@@ -9369,7 +9383,7 @@ function updateInspectPanel(){
   document.getElementById('inspRangeVal').textContent = rng;
   document.getElementById('inspSpeedVal').textContent = cd ? (cd/1000).toFixed(2) : '0';
   const luckPct = Math.round(((t.goldMult||1)-1)*100);
-  document.getElementById('inspLuckVal').textContent = '+' + luckPct + '%';
+  document.getElementById('inspLuckVal').textContent = luckPct + '%';
   document.getElementById('inspLuckRow').classList.toggle('hidden', luckPct === 0);
   document.getElementById('inspCritVal').textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
   // Real single-target DPS — average damage per hit (the variance band above is symmetric, so
