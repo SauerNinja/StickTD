@@ -88,14 +88,15 @@
     touch-action:none;user-select:none;-webkit-user-select:none;
     -webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-text-size-adjust:none;
     font-family:'Trebuchet MS',Verdana,sans-serif;}
-  #game-wrapper{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+  #game-wrapper{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity 0.5s ease;} /* starts invisible over the black page background; .loaded fades it in once boot has actually run one real frame — fixes a flash where the HUD/canvas used to pop in instantly, sometimes for a moment before JS had even hidden hud-top */
+  #game-wrapper.loaded{opacity:1;}
   #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;}
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
 
-  #hud-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;flex-wrap:nowrap;
+  #hud-top{position:absolute;top:0;left:0;right:0;display:none;align-items:center;flex-wrap:nowrap;
     column-gap:3px;justify-content:center;padding:6px 8px;
     max-width:900px;margin:0 auto;transform-origin:top center;
-    background:linear-gradient(180deg,rgba(74,47,29,0.92),rgba(74,47,29,0));
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
   /* Every direct child now keeps its natural content size and never wraps its own text — the sole
      job of fitting everything to the screen belongs to fitHudTopToOneLine()'s single transform:
@@ -361,7 +362,7 @@
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
   .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;transform-origin:left center;}
-  #inspUpgradeBtn, #inspSellBtn{flex:1 1 0;min-width:0;white-space:nowrap;}
+  #inspUpgradeBtn, #inspSellBtn{flex:0 1 auto;min-width:0;white-space:nowrap;}
   #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
     justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
@@ -422,8 +423,8 @@
     box-shadow:none;color:var(--gold);font-size:14px;cursor:pointer;padding:0;margin:0 2px 0 0;
     line-height:1;flex-shrink:0;}
   #inspStatsRow button.stat-btn{background:#3d5a66;color:#ffffff;font-weight:bold;
-    border:1px solid rgba(125,211,252,0.6);border-radius:6px;padding:6px 9px;
-    min-height:36px;cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);}
+    border:1px solid rgba(125,211,252,0.6);border-radius:6px;
+    cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);}
   #inspStatsRow button.stat-btn:disabled{cursor:default;color:#ffffff;opacity:1;} /* overrides the general #inspect-panel button:disabled dimming — these must never fade */
   #inspStatsRow button.stat-btn .plus-hint{display:none;}
   #inspStatsRow button.stat-btn.has-points{border-color:#4caf50;
@@ -599,7 +600,7 @@
       </div>
       <div id="inspFullOptions" class="hidden">
         <div class="insp-opt-row" id="inspUpgradeSellRow">
-          <button id="inspUpgradeBtn">🆙 Upgrade <span id="inspUpgradeCost"></span></button>
+          <button id="inspUpgradeBtn">🆙 Promote <span id="inspUpgradeCost"></span></button>
           <span id="inspDpsBetween"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span></span>
           <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
@@ -912,7 +913,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.53'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.56'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1118,7 +1119,33 @@ function warriorStrDamageMult(strEff){
 // punishing mechanic. CLERIC already maps to the MAGE archetype in CLASS_ARCHETYPE, so it gets
 // the Mage tier automatically. BARRICADE has no archetype entry at all and never attacks, so it
 // falls through to the WARRIOR-tier default below — moot, since its own value is never used.
-const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.22, ARCHER: 0.14, WARRIOR: 0.07 };
+const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.45, ARCHER: 0.40, WARRIOR: 0.30 };
+// Front-loaded accuracy curve, RuneScape-style: reaching 100 effective DEX gets almost all the
+// achievable accuracy benefit (miss chance drops from the archetype's base all the way down to
+// just 4%), while grinding from 100 to 500 effective DEX only trims that remaining sliver down to
+// a true 0% — the same "early progress is cheap, the last stretch costs disproportionately more
+// for a smaller gain" shape RuneScape's XP curve uses (1-92 costs the same total XP as 92-99),
+// applied here to accuracy-gained-per-DEX-point rather than XP-cost-per-level. Two straight
+// segments hit both anchor points exactly rather than approximating them with a generic
+// diminishing-returns formula. Effective DEX (dexEff) already includes each archetype's own
+// preferred-stat multiplier (see PREFERRED_STAT_MULT) — so Archer, whose preferred stat IS DEX,
+// reaches both milestones at a lower RAW dex investment than Warrior/Mage, same as everywhere
+// else DEX/STR/INT specialization already pays off faster for a class's own preferred stat.
+const ACCURACY_MIDPOINT_DEX = 100;
+const ACCURACY_MIDPOINT_MISS = 0.04;
+const ACCURACY_CAP_DEX = 500;
+function computeMissChance(baseMissChance, dexEff){
+  if(dexEff <= 0) return baseMissChance;
+  if(dexEff < ACCURACY_MIDPOINT_DEX){
+    const t = dexEff / ACCURACY_MIDPOINT_DEX;
+    return baseMissChance + (ACCURACY_MIDPOINT_MISS - baseMissChance) * t;
+  }
+  if(dexEff < ACCURACY_CAP_DEX){
+    const t = (dexEff - ACCURACY_MIDPOINT_DEX) / (ACCURACY_CAP_DEX - ACCURACY_MIDPOINT_DEX);
+    return ACCURACY_MIDPOINT_MISS * (1 - t);
+  }
+  return 0; // 500+ effective DEX — a genuinely guaranteed hit, a deliberate design choice per explicit request, superseding the old "never fully guaranteed to hit" 2% floor
+}
 const EARLY_HP_CAP_TYPES = ['ARCHER']; // stays fragile no matter how tough it gets
 const EARLY_STAT_CAP_POINTS = 15; // points beyond this stop contributing to the capped stat specifically
 
@@ -1183,10 +1210,15 @@ const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% mo
 // path) for meaningfully less overshoot near the frequent turns (the more common case).
 const MAX_LEAD_PREDICT_TIME = 0.2;
 // Max angular correction rate (radians/sec) applied to a committed (pre-rolled hit) single-target
-// projectile's heading each frame — see Projectile.update()'s intercept-correction block. Subtle
-// by design: enough to keep a guaranteed hit actually connecting with a moving/turning target,
-// not fast enough to look like a heat-seeking missile.
-const PROJECTILE_HOMING_MAX_TURN_RATE = 7;
+// projectile's heading each frame — see Projectile.update()'s intercept-correction block. Kept
+// deliberately small: it exists only as a safety net for the rare case where a target changes
+// direction after launch, not as a visible flight-path adjustment. At the original 7 rad/s this
+// was clearly visible as arrows curving toward their target mid-flight, especially from Archer
+// (slow ~320-400px/s arrows by design, giving a long flight time for the correction to compound
+// over) — reported as "arrows following enemies like homing missiles." Lowered to 1.5, and
+// Archer's own projectile speed increased separately (see CONFIG.TOWERS.ARCHER) so shots also
+// simply spend less time in flight for any drift to accumulate over.
+const PROJECTILE_HOMING_MAX_TURN_RATE = 1.5;
 
 // Only Swordsman, Archer, and Mage are directly buildable — every other fighting class is reached
 // by investing 10+ points into a specific stat on one of those three, a one-way transformation.
@@ -1299,9 +1331,9 @@ const CONFIG = {
       name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
       blurb: 'Draws the bow fully before loosing — slower arrows, but real power behind every shot.',
       tiers: [
-        { range: 260, damage: 20, cooldown: 1150, drawTime: 800, projectileSpeed: 320 },
-        { range: 290, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 360, upgradeCost: 95 },
-        { range: 320, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 400, upgradeCost: 135 }
+        { range: 260, damage: 20, cooldown: 1150, drawTime: 800, projectileSpeed: 480 },
+        { range: 290, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 540, upgradeCost: 95 },
+        { range: 320, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 600, upgradeCost: 135 }
       ]
     },
     AXEMAN: {
@@ -2471,12 +2503,40 @@ function drawDepthSortedLayer(ctx){
     visibleSceneryCount++;
     const size = TILE_SIZE * 0.72 * item.scale;
     const baseY = item.y + size*0.5; // the item's "feet" — same anchor tallStretch already uses, so depth matches what visually reads as its base
-    items.push({ sortY: baseY, draw: () => drawOneSceneryItem(ctx, key, item, size) });
+    items.push({ sortY: baseY, kind: 's', key, item, size });
   }
-  for(const e of enemyPool) if(e.active) items.push({ sortY: e.y, draw: () => e.draw(ctx) });
-  for(const t of towerPool) if(t.active) items.push({ sortY: t.y, draw: () => t.draw(ctx, t === selectedTower) });
+  for(const e of enemyPool) if(e.active) items.push({ sortY: e.y, kind: 'e', e });
+  for(const t of towerPool) if(t.active) items.push({ sortY: t.y, kind: 't', t });
+  // Bone/skull/worm debris — depth-sorted by its own y like everything else here, replacing the
+  // old separate always-on-top pass (drawDebrisDecals(), removed). That pass was a real fix for a
+  // real bug (debris flickering out when an enemy walked directly onto its exact tile, since it
+  // used to draw BEFORE enemies), but "always above everything" overcorrected: a skull would
+  // render in front of an enemy that was actually further down/closer to the camera, which reads
+  // just as wrong as the flicker did. Depth-sorting by y — the same mechanism already proven for
+  // trees — fixes both: an enemy standing exactly on a skull's tile still occludes it correctly
+  // (same y, natural sort tie), while an enemy elsewhere on the path sorts correctly relative to it.
+  //
+  // Items are plain tagged objects dispatched through the switch below, not per-item closures —
+  // in a decal-heavy area (a lot of accumulated blood/bone debris, which now participates in this
+  // sort) that was potentially hundreds of throwaway arrow-function allocations every single
+  // frame just to be called once immediately after, for no behavioral difference. This was a real,
+  // measurable per-frame allocation cost in exactly the kind of cluttered scene reported as laggy.
+  const debrisBounds = decalViewBounds();
+  for(const d of decals){
+    if(!(d.isEmojiDrop || d.isWorm)) continue;
+    if(!decalVisible(d, debrisBounds)) continue;
+    perfStats.visibleDecals++;
+    items.push({ sortY: d.y, kind: 'd', d });
+  }
   items.sort((a,b) => a.sortY - b.sortY);
-  for(const it of items) it.draw();
+  for(const it of items){
+    switch(it.kind){
+      case 's': drawOneSceneryItem(ctx, it.key, it.item, it.size); break;
+      case 'e': it.e.draw(ctx); break;
+      case 't': it.t.draw(ctx, it.t === selectedTower); break;
+      case 'd': drawOneDecal(ctx, it.d); break;
+    }
+  }
   perfStats.visibleScenery = visibleSceneryCount;
   perfStats.totalScenery = sceneryMap.size;
 }
@@ -5110,9 +5170,8 @@ class Tower{
     this.maxHp = newMaxHp;
     if(hpDelta > 0) this.hp += hpDelta; // gaining max HP heals by the increase, rather than being wasted or forcing a full heal
 
-    const baseMissChance = BASE_MISS_CHANCE_BY_ARCHETYPE[archetype] || BASE_MISS_CHANCE_BY_ARCHETYPE.WARRIOR; // per-archetype baseline (see BASE_MISS_CHANCE_BY_ARCHETYPE) — was a flat 0.12 for every tower regardless of class
-    const dexAccuracy = diminishingStatValue(dexEff, 0.007); // DEX reduces miss chance, diminishing every 5 points — uncapped, scales identically for every tower with no exceptions
-    this.missChance = Math.max(0.02, baseMissChance - dexAccuracy); // floored — never fully guaranteed to hit
+    const baseMissChance = BASE_MISS_CHANCE_BY_ARCHETYPE[archetype] || BASE_MISS_CHANCE_BY_ARCHETYPE.WARRIOR; // per-archetype baseline (see BASE_MISS_CHANCE_BY_ARCHETYPE)
+    this.missChance = computeMissChance(baseMissChance, dexEff); // front-loaded curve — see computeMissChance() for the full design writeup
 
     // Critical hits — DEX increases the CHANCE, INT increases the MULTIPLIER, both universal
     // (every archetype benefits, same as DEX's accuracy/attack-speed and INT's range) and both
@@ -6901,7 +6960,8 @@ function decalLifespanVariance(){
 function drawDecals(ctx){
   // Expiry is a single authoritative pass over the real array (splice needs real indices),
   // independent of draw order below. Runs here since this is always called first in the frame
-  // (before drawDebrisDecals(), which relies on expiry already having happened this frame).
+  // (before drawDepthSortedLayer(), which draws debris too now and relies on expiry having
+  // already happened this frame).
   for(let i = decals.length - 1; i >= 0; i--){
     const d = decals[i];
     const age = realTime - d.spawnTime;
@@ -6912,18 +6972,6 @@ function drawDecals(ctx){
   perfStats.totalDecals = decals.length;
   perfStats.visibleDecals = 0;
   for(const d of decals) if(!d.isEmojiDrop && !d.isWorm && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
-}
-// Bone/skull/rock/worm debris — deliberately drawn in its OWN later pass (called from render()
-// after enemies and towers, not from drawDecals() above) rather than immediately after blood.
-// Previously bundled into the same early pass as blood, which put it BEFORE enemies in the draw
-// order — meaning any enemy walking directly over a skull's tile fully occluded it while passing,
-// which read as the skull randomly "fading in and out" as minions walked, confirmed by checking
-// the actual draw order rather than assuming. Debris is permanent, always-on-top scene furniture
-// by design (see drawOneDecal()'s isEmojiDrop branch) — it should never be hideable by a walking
-// enemy any more than it should fade, so it now draws after everything that moves.
-function drawDebrisDecals(ctx){
-  const bounds = decalViewBounds();
-  for(const d of decals) if((d.isEmojiDrop || d.isWorm) && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
 }
 function decalViewBounds(){
   // Same viewport-culling principle as drawDepthSortedLayer()'s — computed fresh each call (cheap
@@ -6944,25 +6992,34 @@ function drawOneDecal(ctx, d){
     const lifespan = d.lifespan || DECAL_LIFESPAN;
     const growT = 1; // no grow-in animation — real blood spatter appears instantaneously on impact, not as a fade/expand effect. A decal now renders at full size the exact frame it spawns.
     const lifeT = age / lifespan;
-    // Real forensic bloodstain aging, compressed so one round ≈ 5 real-world hours: bright
-    // oxyhemoglobin red holds for the first ~3.3% of life (≈10 minutes of the 5h scale — blood
-    // stays genuinely bright red for a real stretch before any browning starts), then passes
-    // through a reddish-brown oxidizing stage as it dries, settling into the fully-dried true
-    // color by ~40% of life (≈2 hours) rather than one flat two-color lerp.
-    const rgb = d.rgb;
-    let r, g, b;
-    if(lifeT < 0.033){
-      const t = lifeT / 0.033;
-      r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
-    } else {
-      const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
-      r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
+    // Bone/skull/worm debris never uses color/alpha at all (see their branches below — bones are
+    // hardcoded to full opacity, worms shrink instead of fading), so the color-aging math below is
+    // skipped entirely for them. It's a real cost to skip: several Math.round calls plus a fresh
+    // string concatenation, previously run every frame for every visible decal regardless of type —
+    // in a scene with a lot of accumulated bone debris (a real reported laggy case), that was pure
+    // wasted work on a result nothing ever read.
+    let color, alpha;
+    if(!d.isEmojiDrop && !d.isWorm){
+      // Real forensic bloodstain aging, compressed so one round ≈ 5 real-world hours: bright
+      // oxyhemoglobin red holds for the first ~3.3% of life (≈10 minutes of the 5h scale — blood
+      // stays genuinely bright red for a real stretch before any browning starts), then passes
+      // through a reddish-brown oxidizing stage as it dries, settling into the fully-dried true
+      // color by ~40% of life (≈2 hours) rather than one flat two-color lerp.
+      const rgb = d.rgb;
+      let r, g, b;
+      if(lifeT < 0.033){
+        const t = lifeT / 0.033;
+        r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
+      } else {
+        const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
+        r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
+      }
+      // holds steady until 85% of life, then fades to fully transparent — so old stains clear out
+      // instead of accumulating indefinitely
+      const fadeOut = lifeT > 0.85 ? Math.max(0, 1 - (lifeT - 0.85)/0.15) : 1;
+      alpha = rgb.a * fadeOut;
+      color = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
     }
-    // holds steady until 85% of life, then fades to fully transparent — so old stains clear out
-    // instead of accumulating indefinitely
-    const fadeOut = lifeT > 0.85 ? Math.max(0, 1 - (lifeT - 0.85)/0.15) : 1;
-    const alpha = rgb.a * fadeOut;
-    const color = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
     if(d.isPeel){
       ctx.fillStyle = color;
       ctx.beginPath();
@@ -8641,8 +8698,7 @@ function render(ctx){
   drawDecals(ctx);
   drawBuildPreview(ctx);
   drawDeathAnims(ctx);
-  drawDepthSortedLayer(ctx); // scenery + enemies + towers, interleaved by Y-depth — see drawDepthSortedLayer() for why
-  drawDebrisDecals(ctx); // bones/skulls/worms — always above enemies/towers, see drawDebrisDecals() for why
+  drawDepthSortedLayer(ctx); // scenery + enemies + towers + bone/skull/worm debris, interleaved by Y-depth — see drawDepthSortedLayer() for why
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = Math.sin(gameTime/300 + gi.id)*4;
@@ -10396,7 +10452,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
   startScreen.classList.add('hidden');
-  document.getElementById('hud-top').style.display = '';
+  document.getElementById('hud-top').style.display = 'flex';
   gameState = 'PLAYING';
   lastTime = performance.now();
   updateHUD();
@@ -10465,8 +10521,14 @@ centerCameraOnActiveRegion();
 document.getElementById('versionText').textContent = GAME_VERSION;
 document.getElementById('aboutVersionText').textContent = GAME_VERSION;
 updateHUD();
-document.getElementById('hud-top').style.display = 'none'; // hidden during the start-screen attract mode — restored in playBtn's handler
 requestAnimationFrame(loop);
+// Reveal the whole game-wrapper (canvas + start-screen + hud-top, all hidden/opacity:0 by default
+// in CSS) only after the browser has actually painted a real frame — double rAF is the standard
+// "wait for next paint" technique. Fixes a flash where the raw HUD buttons or an unpainted canvas
+// could show for a moment before JS finished setting up the attract-mode's first frame.
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  document.getElementById('game-wrapper').classList.add('loaded');
+}));
 </script>
 </body>
 </html>

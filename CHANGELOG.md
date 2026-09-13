@@ -1,5 +1,128 @@
 # Changelog
 
+## [1.1.56] - 2026-09-13 — Front-loaded "RuneScape-style" accuracy curve
+- **Replaced the generic diminishing-returns accuracy formula with a purpose-built two-segment
+  curve hitting exact requested targets**: 100 effective DEX now misses just 4% of the time
+  (safely under the requested 5% ceiling), and 500 effective DEX is a genuinely guaranteed hit
+  (0% miss) — a deliberate, explicit design choice that supersedes the previous "never fully
+  guaranteed to hit" 2% floor.
+- **Front-loaded on purpose, RuneScape-style**: the 0→100 DEX stretch does almost all the work
+  (dropping from the archetype's base miss — 30-45% depending on class — all the way down to just
+  4%, a huge reduction over a comparatively small investment), while 100→500 DEX (4x the point
+  investment) only trims that remaining 4% sliver down to a true 0%. Same shape as RuneScape's XP
+  curve, where the early levels are cheap and the last stretch costs disproportionately more for a
+  smaller gain — applied here to accuracy-gained-per-DEX-point instead of XP-cost-per-level.
+  New `computeMissChance()`, replacing the `diminishingStatValue()`-based calculation (that generic
+  helper is still used elsewhere — HP, crit chance — untouched here).
+- Archetype baselines (Warrior 30%, Archer 40%, Mage 45% at 0 DEX, from the previous session's
+  rebalance) are unchanged and still feed into the new curve as its starting point — only the
+  DEX-to-accuracy-reduction shape changed, not the zero-investment baseline.
+- Archer's existing 1.6x preferred-stat multiplier on DEX (`PREFERRED_STAT_MULT`) still applies
+  before this curve runs, so Archer reaches both milestones (4% miss, 0% miss) at a lower raw DEX
+  investment than Warrior/Mage — 62.5 raw DEX for the 4%-miss milestone, exactly the same
+  "specialization pays off faster in your preferred stat" pattern already used everywhere else in
+  this game's stat system.
+- Verified numerically (19 assertions, not by hand): every archetype hits exactly 4% miss at
+  dexEff=100 and exactly 0% at dexEff=500 and beyond; dexEff=0 always equals the archetype's base;
+  and for every archetype, the accuracy gained across 0-100 DEX is at least 5x larger than the
+  accuracy gained across 100-500 DEX, confirming the front-loaded shape actually holds rather than
+  just hitting the two named anchor points with an arbitrary curve in between.
+
+## [1.1.55] - 2026-09-13 — Performance: decal-heavy scene lag
+Player-reported lag in a scene with heavy accumulated blood/bone debris and several active
+enemies at a chokepoint. Two real, measurable per-frame costs found and fixed — both are pure
+efficiency changes with no visual or behavioral difference, so nothing here should look any
+different, just run lighter in decal-dense areas.
+
+- **Removed per-item closure allocation in `drawDepthSortedLayer()`.** Every scenery piece, enemy,
+  tower, and (as of the previous session's bone-depth-sort fix) every visible bone/skull/worm decal
+  was allocating a fresh arrow function every single frame just to be sorted once and invoked
+  immediately after — in a scene with a lot of accumulated debris, that's potentially hundreds of
+  throwaway closures created and garbage-collected 60 times a second for no behavioral benefit.
+  Replaced with plain tagged objects (`{sortY, kind, ...}`) dispatched through one `switch` in the
+  draw loop — identical sort order, identical visual output, no extra allocation.
+- **Skipped the blood color-aging computation entirely for bone/skull/worm decals, which never use
+  its result.** `drawOneDecal()` was unconditionally running its full forensic color-aging math
+  (branching arithmetic plus a fresh `rgba(...)` string concatenation) for every decal regardless
+  of type — but bones are hardcoded to a fixed full opacity and worms shrink instead of fading, so
+  neither branch ever reads the `color`/`alpha` this computed. That's real, wasted per-frame work
+  on a result nothing consumes, for every bone/skull decal on screen — and a scene that's been
+  fighting at one chokepoint for a while can easily have a lot of those, since bone debris has a
+  45-minute lifespan by design. Now scoped behind an `if(!d.isEmojiDrop && !d.isWorm)` check.
+- Not touched: decal lifespans and the 2000-decal cap are unchanged — those were deliberately tuned
+  in an earlier session so blood/bone stains last long enough to feel persistent across a long game
+  rather than disappearing early, and changing them wasn't part of what was reported. If a
+  chokepoint scene is still heavy after this, lowering `BONE_LIFESPAN`/`DECAL_LIFESPAN` or the
+  `MAX_DECALS` cap would be the next lever, but that's a balance/feel trade-off worth a deliberate
+  decision, not a silent side effect of a performance pass.
+
+## [1.1.54] - 2026-09-13 — Preload flash, UI polish, bone z-order, arrow homing, accuracy rebalance
+Player-reported feedback from a live playtest, addressed in full this pass (a partial version of
+this was designed in the previous session but never actually shipped as a file — corrected here).
+
+- **Fixed the preload flash.** `#hud-top` was visible by default in CSS (`display:flex`) and only
+  hidden by a JS line that ran at the very end of boot — meaning the browser could paint at least
+  one frame with the raw HUD buttons showing before JS had a chance to hide them. `#hud-top` now
+  defaults to `display:none` in CSS itself, and the whole `#game-wrapper` (canvas + start-screen +
+  hud-top together) fades in from black via a `.loaded` class added after a double
+  `requestAnimationFrame` — guaranteeing the browser has actually painted a real frame before the
+  fade begins, rather than fading in an unpainted canvas.
+- **Removed the dark gradient bar behind the top HUD buttons** (`#hud-top`'s
+  `linear-gradient(180deg,rgba(74,47,29,0.92),rgba(74,47,29,0))` background) — buttons now sit
+  directly over the canvas with no shadow/backing bar, per feedback.
+- **Renamed the gold-tier "Upgrade" button to "Promote"** to avoid confusion with the unrelated
+  stat-based evolution system, which already uses "upgrade" as a generic word in its own hint text.
+  Also fixed the Promote/Sell button pair from equal-width flex distribution (`flex:1 1 0`, which
+  forces both buttons to the same width regardless of content, so a long cost value on one button
+  drags the other down too) to content-based sizing (`flex:0 1 auto`) — each button now sizes to
+  its own text, while the existing `fitOptRowToOneLine()` row-level scaling (confirmed already
+  running on every panel refresh, not just window resize) still guarantees the row never overflows
+  regardless of how large the cost number gets. Deliberately did NOT add `text-overflow:ellipsis`
+  to these buttons — the codebase's own history shows that was already tried on this exact button
+  and reverted because it silently truncated the cost number itself, which is why the row-scaling
+  approach exists in the first place.
+- **Fixed STR/DEX/INT button sizing** — `#inspStatsRow button.stat-btn` was overriding the panel's
+  standard button size (40px min-height, 8px/10px padding, used by every other button in the same
+  panel) down to a smaller 36px/6px-9px with no documented reason, making them look subtly
+  undersized next to Target/Move/Promote/Sell. Now inherits the standard size like everything else.
+- **Fixed bone/skull/worm debris rendering above every enemy on screen regardless of actual depth.**
+  This was a deliberate design choice from an earlier session (`drawDebrisDecals()`, a separate
+  always-on-top pass) that correctly fixed a real prior bug — debris used to flicker out when an
+  enemy walked directly onto its exact tile — but overcorrected into "always above everything,"
+  which reads just as wrong when a skull renders in front of an enemy that should visually be in
+  front of it. Removed that separate pass entirely and folded debris into the existing
+  `drawDepthSortedLayer()` (sorted by its own y-position, the exact same mechanism already proven
+  correct for trees) — this fixes both problems at once: an enemy standing exactly on a skull's
+  tile still occludes it correctly (matching y, natural sort tie), while an enemy elsewhere on the
+  path now sorts correctly relative to it instead of always losing.
+- **Arrows no longer visibly curve toward their target like homing missiles.** The intercept
+  correction added for the projectile pre-roll architecture (`PROJECTILE_HOMING_MAX_TURN_RATE`)
+  was tuned at 7 rad/s, which was clearly visible as arrows bending mid-flight — especially from
+  Archer, whose arrows are intentionally slow (320-400px/s) by design, giving the correction a long
+  flight time to compound over. Lowered to 1.5 rad/s (a subtle safety net again, not a visible
+  flight-path change) and separately sped up Archer's own projectiles to 480-600px/s (up from
+  320-400) so shots also simply spend less time in flight for any drift to accumulate over — the
+  bow-draw/cooldown cadence that's the tower's actual "slow but powerful" identity is untouched,
+  only how fast the arrow travels once loosed.
+- **Rebalanced accuracy — misses were essentially unseeable in practice.** The old formula
+  (`BASE_MISS_CHANCE_BY_ARCHETYPE` + a 0.007-per-DEX-point diminishing bonus) saturated to the 2%
+  floor by roughly 20-30 DEX — trivial to reach through ordinary leveling alone — which is why
+  Archers were reported to "never miss." Raised the base miss chances substantially (Warrior
+  7%→30%, Archer 14%→40%, Mage 22%→45% at zero DEX) and lowered the per-point rate to 0.0025 so the
+  curve actually spans this game's real DEX range under the new attunement system (100 for
+  attunement, 500 for specialization) instead of maxing out almost immediately. Verified the
+  resulting curve numerically rather than by hand: a zero-DEX Archer now misses 40% of shots, a
+  modestly-invested one (100 DEX) still misses ~27%, and only heavy investment (~350+ DEX) brings
+  it down near the 2% floor — DEX remains the sole accuracy lever for every archetype, exactly as
+  intended, just tuned to actually matter across the stat range that now exists.
+- On the reported wave-6 enemy bunching: verified `resolveSweptEnemyCollisions()`,
+  `resolveEnemyCollisions()`, and `checkStallWatchdog()` are all still intact and running every
+  frame, unchanged by anything in this session. The screenshot's clustering at a Barricade
+  chokepoint looks like expected queueing behavior at a bottleneck rather than the pathing bug this
+  codebase has iterated on extensively before (see CHANGELOG history) — but this environment has no
+  way to actually play the game and reproduce live clustering, so this is a code-level check, not a
+  playtest confirmation. Flagging honestly rather than claiming it's fixed or ruled out.
+
 ## [1.1.53] - 2026-09-13 — Elemental attunement + evolution overhaul, new Marksman class
 - **Replaced the flat `threshold:20` first-tier evolution for the 3 base classes** (Swordsman/
   Archer/Mage) with the two-stage design from the 2026-09-13 external review: whichever stat
