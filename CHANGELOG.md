@@ -1,5 +1,312 @@
 # Changelog
 
+## [1.1.53] - 2026-09-13 — Elemental attunement + evolution overhaul, new Marksman class
+- **Replaced the flat `threshold:20` first-tier evolution for the 3 base classes** (Swordsman/
+  Archer/Mage) with the two-stage design from the 2026-09-13 external review: whichever stat
+  reaches `ATTUNEMENT_THRESHOLD` (100) first permanently locks an element on the tower
+  (`ATTUNEMENTS`: STR→Fire/DEX→Electric/INT→Ice) — the lock never changes afterward even if a
+  different stat later overtakes it. Reaching `SPECIALIZATION_THRESHOLD` (500) in that *same*
+  attuned stat then evolves the tower into `SPECIALIZATIONS[type][element]`, if one is defined.
+  New `Tower.checkAttunementAndSpecialization()`, called from `checkEvolution()` only for
+  `BASE_ATTUNABLE_TYPES` — every deeper evolution beyond a base class's own specialization
+  (Blowdart→Squirt Gun, Hammerman→Paladin, Marksman→Sniper) is unrelated to attunement and keeps
+  using the old flat-threshold `EVOLUTIONS` table exactly as before.
+- **New `MARKSMAN` class** — Archer's Ice (INT) specialization, replacing the old `int→BOMBER`
+  mapping the review specifically flagged as wrong ("INT Archer is the gun-precision path... do NOT
+  map INT Archer to Bomber"). Fully defined per the review's own checklist: `CONFIG.TOWERS` stats/
+  tiers (a mid-tier precision rifle sitting between base Archer and Sniper), color palette, build
+  scale, job quotes, tower-strategy tooltip, `RANGE_CAPS`, `CLASS_ARCHETYPE` (ARCHER, matching
+  every other gun/bow evolution), ranged-shot sound (reuses `shot_gunalinder` rather than building
+  a whole new audio preset — out of scope for this pass), a full `drawStickman()` rendering branch
+  (two-handed medium rifle, visually a stepping stone between Gunalinder's revolver and Sniper's
+  long rifle), `EVOLVED_TOWER_TYPES` registration, and its own deeper evolution to Sniper — reusing
+  Gunalinder's already-established `int:60` threshold rather than inventing a new one.
+- **Save persistence + legacy migration.** `Tower.attunement` is now part of the save payload
+  (`serializeGameState()`/`restoreGameState()`). A base-class tower loaded from a save that
+  predates this field runs the new `migrateLegacyAttunement()`: a single stat at or above 100
+  picks that element; multiple qualifying stats pick the unique highest; an exact tie among
+  qualifying stats leaves the tower unattuned rather than guessing. In practice this is a defensive
+  safety net, not a fix for something that can currently happen — `checkEvolution()` has always run
+  synchronously after every stat change in this codebase (both `allocateStat()` and `upgrade()`'s
+  random growth call it), so no still-base-type tower in any real save should ever actually have a
+  stat at or above 100 to begin with.
+- **`validateGameDefinitions()` extended** to cross-check the new `SPECIALIZATIONS` table (every
+  base type is attunable, every element key is real, every target tower exists) — same pattern as
+  the existing `EVOLUTIONS` check.
+- **Inspect-panel evolution hint rewritten** for the 3 base classes: shows attunement progress
+  toward 100 before locking in (when one stat is unambiguously ahead), then specialization progress
+  toward 500 after locking in, or a plain "Attuned" label with no further-evolution implication if
+  this base/element combination has no specialization defined. Every other tower type keeps the
+  unchanged old hint logic.
+- **In-game help modal and README rewritten** — both still described the old flat "invest 10+
+  points" system (the README table also still listed `int→BOMBER`), and the help modal specifically
+  had drifted from the actual code in a second, unrelated way: it said "Blowdart → DEX 25 → Squirt
+  Gun" while the code has always used threshold 40. Both now describe the two-stage system
+  accurately, include Marksman, include Snap Caster (which existed in code but was never listed in
+  either document before this pass), and note that Bomber/Gunalinder remain fully functional for
+  existing towers but are no longer reachable via a fresh Archer's evolution.
+- **Scope decisions made explicit, not silently glossed over** (see `BACKLOG.md` for the full
+  writeup): Mage has no Fire/STR specialization defined (no existing evolution fits, and the review
+  says not to fabricate one); Mage's Ice/INT specialization is Cleric, a known imperfect thematic
+  fit (holy/anti-undead, not frost) kept only because reassigning Cleric's identity was out of
+  scope here; Bomber and Gunalinder are consequently orphaned from fresh evolution paths, though
+  fully preserved and functional for any tower that's already one.
+- Verified with an isolated Node test of the actual attunement/specialization/migration logic (16
+  assertions, since this environment has no live game loop to run the real file end-to-end):
+  confirmed the lock fires exactly at 100 and never moves afterward even when other stats
+  overtake it; confirmed an unattuned stat crossing 500 does *not* trigger a premature
+  specialization; confirmed all 3 Archer branches (Fire→Gatling, Electric→Blowdart, Ice→Marksman)
+  fire correctly at 500 in the correct stat; confirmed an attuned base class with no defined
+  specialization (Mage/Fire) stays at its base type indefinitely without crashing or fabricating an
+  evolution; and confirmed all 4 `migrateLegacyAttunement()` cases (single qualifier, unique
+  highest among multiple qualifiers, exact tie → unattuned, nothing qualifies → unattuned).
+
+## [1.1.52] - 2026-09-13 — Projectile hit/miss pre-roll architecture
+- **Accuracy is now decided at launch, never at the moment of geometric contact.** Previously
+  every single-target shot (Archer, Mage, Axeman's throw, etc.) flew a normal aimed path and only
+  rolled `missChance` in `onImpact()` — the instant it geometrically touched the enemy. That meant
+  every miss in the game visually looked exactly like a hit (the shot flew straight in and touched
+  the target) and only afterward revealed "actually, that didn't count" — the precise "accuracy
+  miss whose projectile visually hits" contradiction the PDF review flagged. `fireProjectile()`
+  (and `fireAxeThrow()`, a separate acquisition path with its own copy of the same logic) now roll
+  `willHit` once, before the shot even leaves the tower.
+- **A rolled hit tracks its target and gets subtle continuous intercept correction**
+  (`PROJECTILE_HOMING_MAX_TURN_RATE`, 7 rad/s cap) each frame in `Projectile.update()` — enough to
+  keep actually connecting with a moving/turning target beyond what the one-time lead-prediction
+  computed at launch could guarantee, not fast enough to look like a homing missile. `onImpact()`
+  no longer re-rolls accuracy for single-target shots — reaching it at all now means `willHit` was
+  already true.
+- **A rolled miss is deliberately aimed off-target** at launch (a lateral offset scaled to the
+  target's own radius) and flagged `isGuaranteedMiss` — `update()` skips collision resolution
+  entirely for that shot, so it can never accidentally land on a *different* enemy standing in its
+  path either. The "MISS" floating text and particle now appear at the moment the shot would have
+  crossed the target (timed from launch), not immediately.
+- **A committed hit whose target dies before the shot arrives cancels cleanly** (`update()` checks
+  `trackedTarget.active` every frame) instead of potentially drifting into and hitting a nearby
+  enemy it was never rolled against.
+- **Splash-radius shots (Bomber) are explicitly untouched** — they're not aimed at one tracked
+  enemy's silhouette the way a bolt/arrow/axe is, so `onImpact()` keeps its own independent
+  accuracy roll exactly as before, scoped now to the `splashRadius > 0` branch specifically.
+- Caught and fixed one real object-pool leak risk while writing this: `fireAxeThrow()` acquires
+  from the same `projectilePool` as `fireProjectile()` but is a separate code path — without
+  explicitly resetting `trackedTarget`/`isGuaranteedMiss`/`missRevealAt`/`missRevealed` there too,
+  a thrown axe reusing a pooled slot could have silently inherited a stale `isGuaranteedMiss=true`
+  from whatever that slot last fired (skipping all collision forever) or gone back to never being
+  able to miss at all. Both acquisition sites now set every one of these fields unconditionally on
+  every fire.
+- Verified with an isolated Node test of the actual pre-roll/homing/cancellation logic (faithfully
+  reproduced with mocked `spawnFloatingText`/`spawnParticles`/collision-mask dependencies, 2000
+  randomized trials per case, since this environment has no live Canvas/game loop to run the real
+  file end-to-end): forced-hit shots landed exactly on the intended target with correct damage
+  2000/2000; forced-miss shots dealt zero damage and showed MISS 2000/2000; a target dying
+  mid-flight canceled the shot cleanly with zero damage 2000/2000; a forced-miss shot never hit a
+  bystander enemy sitting directly on the original aim line, 0/2000; and a moving target crossing
+  the original aim line was still hit via intercept correction, 2000/2000.
+
+## [1.1.51] - 2026-09-13 — Sparse decorative ground flora
+- **Added purely cosmetic ground-cover accents** (`CONFIG.FLORA`, `floraMap`) scattered across
+  buildable tiles as the board expands — a small design touch requested against
+  *The Principles of Beautiful Web Design*'s color-restraint/focal-point guidance (a very limited,
+  consistent base palette; an isolated, high-contrast element is what reads as a focal point, not
+  color used liberally). Two tiers:
+  - **COMMON** (🌿 herb, 🌱 seedling, 🍀 clover, 🌾 sheaf of rice, 🍃 fluttering leaf, 🍂 fallen leaf)
+    — low-key green/brown ground texture, `coverage: 0.09` (9% of buildable non-path tiles).
+  - **ACCENT** (🍁 maple leaf, 🍄 mushroom, 🌺 hibiscus, 🌻 sunflower) — saturated color, held to
+    `accentShare: 0.12` of *that* 9% (≈1% of all buildable tiles), so color stays genuinely rare
+    rather than just "less common," the same isolation-creates-a-focal-point idea applied to a
+    tile-based scatter instead of a page layout.
+  - Each glyph gets a random rotation, small positional jitter, and 75-125% size variance
+    (`spawnFlora()`) so a cluster of the same glyph never reads as a stamped repeating pattern.
+- **Purely decorative — no gameplay/economy effect.** Never clearable, never yields wood/stone,
+  never occupies a tile (a tower or Barricade can still be built directly on top of one; it's
+  background paint, not an obstacle). Not part of the save-file schema at all — regenerated fresh
+  for the loaded region on load, same as it is for a new game, since it carries no state worth
+  preserving exactly.
+- **Follows the exact same "only the new ring" pattern already used for scenery** (matching
+  `scatterSceneryInRing()`): `generateFlora()` seeds the whole starting region once; every map
+  expansion calls the new `scatterFloraInRing()`, which only ever touches the freshly-revealed
+  ring, leaving already-active ground (and anything built on it) untouched — so the board reads as
+  an ever-larger, ever-more-detailed world as it grows, not as existing ground re-rolling under the
+  player's own towers. Also cleared from any tile the extending path spiral now crosses, mirroring
+  the existing scenery cleanup in `performExpansion()`.
+- **Baked into the existing static ground layer** (`drawMap()`/`mapCanvas`) rather than drawn
+  per-frame in the dynamic depth-sorted entity layer — flora is flat ground texture with no
+  occlusion needs, unlike trees/rocks, which stay dynamic specifically so an actor can visibly pass
+  in front of or behind one. Zero added per-frame draw cost.
+- Verified with an isolated Node logic test of the placement math (no live Canvas needed for this
+  part): simulated a 900-tile region, confirmed actual placement count matches the configured
+  coverage fraction exactly, confirmed the accent tier landed at ~11% of placed flora (target 12%,
+  within one simulation's random variance) rather than leaking into the common tier, and confirmed
+  every entry's rotation/offset stayed within its intended range. Real-glyph visual density/spacing
+  still benefits from an in-browser look — this environment has no live Canvas to render the actual
+  emoji glyphs at actual tile scale.
+
+## [1.1.50] - 2026-09-13 — Pixel-precise enemy hitboxes
+- **Projectile hits now require actually crossing the visible emoji, not just its bounding
+  circle.** Added a narrow-phase alpha-mask test (`getEnemyCollisionMask()`,
+  `segmentHitsEnemyMask()`) layered strictly on top of the existing broad-phase swept-circle check
+  in `Projectile.update()` — the old `pointSegmentDist2 <= radius^2` test still runs first and
+  unchanged; a hit now also has to cross an opaque pixel of the actual glyph to register. This
+  closes the gap the PDF review flagged: `Enemy.draw()` renders each emoji at a font-size of
+  exactly `radius*2`, but the collision test was the full bounding circle, so a shot could visibly
+  pass through empty padding next to a narrow glyph (a stick-shape enemy, say) and still count as a
+  hit.
+- **Implementation**: one small 40×40 reference-size mask is rendered per enemy *type* (not per
+  instance) using the exact same `font`/`textAlign`/`textBaseline` settings `Enemy.draw()` already
+  uses, then its alpha channel is cached (`enemyCollisionMasks`). Test coordinates for any real
+  instance are rescaled by that instance's actual `radius` (`mask.size / (e.radius*2)`) before
+  sampling, so boss-scaled and size-jittered enemies of the same type still test correctly against
+  one shared cached mask rather than needing a mask per exact size. The projectile's full
+  this-frame travel segment is sampled (`segmentHitsEnemyMask()`), not just its endpoint, since a
+  fast Mage bolt can cross an enemy within a single frame — same swept-collision reasoning the
+  broad-phase check already used.
+- **Deliberately fails safe in every direction**: if a mask hasn't been built yet, `getImageData()`
+  throws (tainted/unsupported canvas), or a coordinate falls outside the cached mask's own bounds,
+  every helper returns a result that defers to the *old* radius-only behavior rather than ever
+  creating a new miss where the previous code would have hit. This is a pure narrow-phase addition,
+  never a replacement — a broken or unavailable mask can only fail open, not closed.
+- Verified with an isolated Node test (no live Canvas/DOM available in this environment) against a
+  fabricated circular alpha buffer standing in for a real glyph: confirmed a segment through the
+  buffer's center hits, a segment offset just outside the fabricated glyph's radius but still
+  inside the old bounding circle correctly misses (the exact gap this change closes), a segment
+  just inside the glyph radius still hits, a long fast segment sweeping through the shape is still
+  caught by the sampling loop, a segment entirely outside the mask's bounds misses, and the
+  missing-mask fallback path returns `true` (fail open). Real-glyph visual verification (actual
+  emoji shapes vary by platform font) still needs an in-browser pass before shipping to players.
+
+## [1.1.49] - 2026-09-13 — Attract mode rebuilt as a curated arcade vignette
+- **Replaced the 3-scene mixed-tower attract mode with a single fixed 3-Archer formation** (top-
+  center, lower-left, lower-right, in a shallow arc) per the discussed redesign — no more
+  Swordsman/Mage rotating through different lane layouts.
+- **Enemies now spawn from randomized points around the full screen perimeter** (`attractSpawnPoint()`
+  picks top/bottom/left/right at random, just outside the canvas edge) instead of following one
+  fixed hand-authored lane path. Each spawn's travel target is the formation's own center with a
+  bounded random jitter (`attractSpawnEnemy()`) — enough variety that enemies don't all converge on
+  one pixel, but still clearly reads as "attacking the group" rather than scattering randomly, per
+  the "controlled random angles, not true randomness" requirement.
+- **Added phase-driven pacing** (`ATTRACT_PHASES`): CALM (sparse spawns, 0-3s) → ACTION (steady
+  spawns, 3-9.5s) → INTENSE (fast spawns, higher concurrent cap, 9.5-15s) → AFTERMATH (spawning
+  stops, remaining enemies clear, 15-18s) → FADE (18-19s) → loop. One curated ~19s cycle (inside
+  the requested 15-25s window) replaces the previous straight loop with no intensity arc.
+- Removed the old scene-rotation state (`buildAttractScenes()`, `attractScenes`,
+  `attractSceneIndex`, `ATTRACT_SCENE_DURATION`, `attractLanePointAt()`) — verified no other call
+  sites referenced any of it before deleting. New state (`ATTRACT_FORMATION`, `attractState`,
+  `attractLoopStartTime`, `attractPhaseAt()`, `attractSpawnPoint()`, `attractFormationCenter()`,
+  `attractSpawnEnemy()`, `initAttractLoop()`) is fully self-contained, still never touches real
+  `enemyPool`/`towerPool`/`projectilePool`.
+- Verified with an isolated Node smoke test of the spawn/phase/timing math (no Canvas dependency):
+  2000 simulated frames across multiple full loop cycles, confirmed no `NaN` in any spawn's
+  position/target fields, spawn rate correctly capped per phase's `maxAlive`, and phase transitions
+  advance in order without getting stuck.
+- Not covered by this pass: the "title card / high-score interlude" visual dressing mentioned
+  alongside the video-reference research — the phase timeline/spawn behavior it inspired is done,
+  the optional interlude card itself is cosmetic polish and stays in `BACKLOG.md`.
+
+## [1.1.48] - 2026-09-13 — Mage starter DPS rebalance
+- **Mage's expected DPS brought in line with Swordsman** (the balance anchor), rather than running
+  roughly 2-3x hotter at low/mid tiers. Measured actual current-code DPS first rather than
+  guessing: at tier 1, Mage was 187 dmg / 4.86s cooldown ≈ 38.5 expected DPS against Swordsman's
+  18 dmg / 1.35s ≈ 13.3 — nearly 3x. Retuned all three Mage tiers so `damage ≈ targetDPS *
+  cooldown` using Swordsman's own tier DPS as the target, while pushing cooldown up (slower,
+  matching Mage's intended identity) rather than just cutting damage:
+  - Tier 1: 187 dmg / 4860ms → **80 dmg / 6000ms** (DPS ~38.5 → ~13.3, matches Swordsman tier 1)
+  - Tier 2: 319 dmg / 4320ms → **216 dmg / 5400ms** (DPS ~73.8 → ~40.0, matches Swordsman tier 2)
+  - Tier 3: 495 dmg / 3780ms → **657 dmg / 4800ms** (DPS ~130.9 → ~136.9, matches Swordsman tier 3)
+  Mage's existing ±40% damage-variance band (`varianceHalfWidth`, `applyDamage()`) is untouched —
+  it still swings much wider than Swordsman/Archer's ±20%, so Mage keeps its "rare dramatic hit"
+  identity, it just no longer has a higher *average* DPS than the other two starters on top of
+  that variance. Range/projectileSpeed/slow fields unchanged.
+- Not done in this pass — logged to `BACKLOG.md` instead of silently dropped: the projectile
+  hit/miss pre-roll architecture, pixel-precise (alpha-mask) enemy hitboxes, the full 100/500-point
+  elemental attunement + evolution overhaul (Fire/Electric/Ice, new Marksman class), the
+  curated-vignette attract-mode redesign, and the inspect-panel responsiveness pass. These are
+  large, architecturally risky changes on a single 10k-line file and need their own scoped,
+  tested passes per `AGENTS.md` §5 rather than being rushed through together with a balance tweak.
+
+## [1.1.47] - 2026-09-08 — HOTFIX: Barricade crash, and Build's Barricade row was actually dead code
+- **Mage resting pose corrected further** — v1.1.46 changed the rest *angle* but kept a single
+  shared angle driving both the arm and the staff extension. Re-checked Swordsman's actual
+  resting mechanics precisely: its arm hangs down-and-out while its blade points up near the
+  shoulder via a *completely separate* angle — the arm and weapon-direction are two independently
+  angled things, not one shared compromise angle. Restructured so the Mage's arm angle and staff
+  direction now blend independently toward their own Swordsman-matching targets, unified (both
+  equal to the aim angle) whenever actually aiming so nothing changes there. Verified numerically:
+  confirmed exact continuity at restBlend=0 (no discontinuity re-engaging a target) and confirmed
+  the arm/staff genuinely diverge to different angles at full rest, matching Swordsman's real
+  arm-vs-blade geometric split rather than approximating it.
+- **Fixed the Barricade upgrade crash at its root.** `recomputeStats()` had no Barricade guard at
+  all — it fell through to the generic stat pipeline, and since Barricade has no
+  `CLASS_ARCHETYPE` entry, `hpStatBase`/`hpStatRate` silently fell back to Mage's values. The
+  actual trigger: `upgrade()`'s random stat-growth loop (`this[stat] += 1-6`) also had zero
+  Barricade guard, so if reached it would inflate `str/dex/int` directly on a Barricade instance,
+  which `recomputeStats()` would then use to compute a wildly different `maxHp` instead of the
+  fixed 10 — the flash/crash. Added an early return in `recomputeStats()` hard-setting `maxHp=10`
+  for Barricade, plus independent defensive guards in `canUpgrade()`, `upgrade()`, and
+  `allocateStat()` (not just relying on one to protect the others). Verified with a direct
+  functional test: a simulated Barricade with `str=47` now correctly stays at `maxHp=10`.
+- **Found something bigger while tracing the reported "Shop purchase is confusing" complaint**:
+  `STARTER_TOWER_TYPES` (which controls what the Build menu actually shows) never included
+  `'BARRICADE'` — meaning the Build tray's already-written Barricade cost/afford display logic was
+  completely dead code, unreachable. The Shop wasn't just a confusing *alternative* path — it was
+  the *only* path, because Build genuinely could never show a Barricade row at all. Added
+  `'BARRICADE'` to `STARTER_TOWER_TYPES` (verified every other usage of that constant first to
+  confirm no side effects) — this alone is what makes Build → Barricade → tap tile reachable for
+  the first time.
+- **Found and fixed the matching cost bug**: `CONFIG.TOWERS.BARRICADE` had no `woodCost`/
+  `stoneCost` fields at all, even though the Build tray's display code already read
+  `def.woodCost`/`def.stoneCost` — an always-`undefined` comparison, meaning the affordability
+  check was silently broken. Added the real values (600 wood / 300 stone, matching what
+  `BARRICADE_ITEM` used to charge). Fixed `canAffordTower()` to actually check free-charge/wood/
+  stone for Barricade instead of gold (previously `gold >= 0`, always true). Fixed the real
+  placement handler, which — even after the above — still only ever deducted gold via
+  `baseCost` (0 for Barricade, so nothing was ever charged): now consumes a free charge first,
+  otherwise deducts wood+stone, mirroring `buyItem()`'s existing pattern. Verified with 4
+  functional tests: exact-cost placement, free-charge-available (wood/stone untouched), 
+  insufficient-resources (nothing consumed), and free-charge consumed exactly once.
+- **Removed Barricade from the Shop's purchasable items** — the confusing duplicate path (buy
+  into a tower's inventory, then drag onto the path) is gone. `UNIVERSAL_ITEMS` itself is
+  untouched (still needed for save-file item lookups and the Store/pickup mechanic, which reuses
+  `BARRICADE_ITEM`'s shape as a ground-item template, not a purchase — confirmed that re-placement
+  path was already correctly free before touching anything nearby).
+- **Simplified Barricade's inspect panel** — hides the EXP bar, combat stat row, allocatable
+  stats, and inventory row entirely (not just showing zeros in them); keeps only durability,
+  Move, Store, Sell, and its own help button. Cleaned up now-redundant dead conditions this left
+  behind further down the function.
+- **Save/load**: Barricade's `str/dex/int/statPoints` are now explicitly zeroed on load, on top
+  of `recomputeStats()`'s own guard which already made `maxHp` safe regardless — fully matching
+  "Barricades shouldn't have any stats," not just "stats don't affect their HP anymore."
+- Updated Barricade's config blurb and its dedicated help-modal text, both of which still
+  described the old Shop/inventory/drag workflow. Removed a now-dead Barricade branch in
+  `itemStatLine()` (its only caller already excludes Barricade items).
+- This entire fix was driven by a detailed external code review (via an uploaded PDF) making
+  specific, falsifiable claims about the codebase — every claim was individually verified against
+  the actual current file before acting on it, per this project's own standing rule about
+  external AI-generated suggestions, rather than trusted at face value. Several of the claims led
+  to finding *additional*, more severe problems (the dead `STARTER_TOWER_TYPES` entry, the missing
+  cost fields) than the review itself had found.
+## [1.1.46] - 2026-09-08 — Mage resting stance fixed, real scenery depth-sorting
+- **Mage's resting staff pose fixed** — checked Swordsman's actual idle stance directly rather
+  than guessing: it's a dedicated upright pose (weapon held near the body, arms bent up), not
+  "angle pointing down." The Mage's rest angle from 1.1.41 (straight down, `Math.PI/2`) was wrong
+  for exactly that reason — it doesn't match the reference pose it was supposed to echo, and reads
+  worse for a staff than a sword since the staff extends further past the hand. Changed to mostly
+  upright (`-Math.PI/2 + 0.3`), so the orb settles near shoulder height at rest instead of
+  pointing at the ground. Kept the same smooth-blend mechanism (not a hard switch) since that's
+  what prevents the orb from visually snapping to a new screen position — the original bug this
+  system exists to avoid.
+- **Real Y-depth sorting between scenery and entities**, replacing the fixed "all scenery, then
+  all entities" draw order. Checked scenery placement rules first: trees can be placed on any
+  buildable tile, so towers are commonly right next to them — ruling out simply moving scenery to
+  always draw on top, which would have hidden towers standing near a tree in the common case
+  instead of just fixing the specific reported one. New `drawDepthSortedLayer()` builds one list
+  from visible scenery + active enemies + active towers, sorted by Y position (a tree's own base,
+  an entity's own y), and draws in that order — a tree now correctly occludes anything positioned
+  behind its base and is correctly occluded by anything in front of it, verified with both
+  directions of a representative test case before shipping.
+- Extracted `drawOneSceneryItem()` from the old `drawScenery()` (same pattern already used for
+  `drawOneDecal()`) so the per-item logic could be reused inside the new sorted pass.
+  `drawScenery()` itself is now genuinely dead code and was removed rather than left behind, per
+  this project's own standard — confirmed no other call site referenced it first.
 ## [1.1.45] - 2026-09-08 — attract mode: stronger pan, genuinely random enemies
 - **Camera pan/zoom significantly increased** — horizontal amplitude 0.04→0.11 of canvas width,
   vertical 0.03→0.08, faster periods, wider zoom range (1.06±0.05 → 1.1±0.09) — a much more

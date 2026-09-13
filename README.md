@@ -114,8 +114,12 @@ they don't have a specialized niche yet to explain.
 
 ## Towers & evolutions
 
-Only Swordsman, Archer, Mage, and Barricade are built directly. Every other class is reached by
-investing stat points into an existing tower.
+Only Swordsman, Archer, Mage, and Barricade are built directly. Every other class is reached in two
+stages: whichever stat reaches **100** first permanently locks in an element (STR → 🔥 Fire, DEX →
+⚡ Electric, INT → ❄️ Ice) — the lock never changes even if another stat later overtakes it — then
+reaching **500** in that same attuned stat evolves the tower into its specialization, if one is
+defined for that combination. A few classes have a further, deeper evolution beyond that, unrelated
+to attunement, using a flat stat threshold like before.
 
 | Tower | Role |
 |---|---|
@@ -123,17 +127,23 @@ investing stat points into an existing tower.
 | 🏹 Archer | Ranged, visibly draws the bow before firing — slower arrows, real power behind each shot |
 | 🔮 Mage | Slows whatever it hits, small chance to burn, freeze, or shock |
 | 🚧 Barricade | Doesn't attack — extremely tough, placeable directly on the path, freezes the first enemy that touches it |
-| 🔨 Hammerman | *(Swordsman → STR)* Stuns on hit, carries a shield and extra HP |
-| 🪓 Axeman | *(Swordsman → DEX)* Dual hand axes; manually toggle between a close swing and a ranged throw |
-| 🔱 Spearman | *(Swordsman → INT)* Long melee reach, slow but hard-hitting |
-| ⚜️ Paladin | *(Hammerman → INT, 2nd tier)* Every hit deals holy pure damage, bypassing armor entirely |
-| 🔫 Gatling | *(Archer → STR)* Very fast, low damage per shot — shreds swarms |
-| 🎯 Blowdart | *(Archer → DEX)* Short range, fast fire rate, every dart poisons |
-| 💣 Bomber | *(Archer → INT)* Splash damage against groups |
-| 🔫 Gunalinder | *(Bomber → INT, 2nd tier)* Trades splash for precision — fires all six chambers of a revolver in a rapid burst, then a long reload |
-| 🎯 Sniper | *(Gunalinder → INT, 3rd tier)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
-| 🔫 Dual Squirt Gun | *(Blowdart → DEX, 2nd tier)* Dual-wielded, deeper DEX specialization |
-| ✝️ Cleric | *(Mage → INT)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
+| 🔨 Hammerman | *(Swordsman → 🔥 Fire, STR 100/500)* Stuns on hit, carries a shield and extra HP |
+| 🪓 Axeman | *(Swordsman → ⚡ Electric, DEX 100/500)* Dual hand axes; manually toggle between a close swing and a ranged throw |
+| 🔱 Spearman | *(Swordsman → ❄️ Ice, INT 100/500)* Long melee reach, slow but hard-hitting |
+| ⚜️ Paladin | *(Hammerman → INT 40, deep tier)* Every hit deals holy pure damage, bypassing armor entirely |
+| 🔫 Gatling | *(Archer → 🔥 Fire, STR 100/500)* Very fast, low damage per shot — shreds swarms |
+| 🎯 Blowdart | *(Archer → ⚡ Electric, DEX 100/500)* Short range, fast fire rate, every dart poisons |
+| 🔫 Dual Squirt Gun | *(Blowdart → DEX 40, deep tier)* Dual-wielded, deeper DEX specialization |
+| 🔫 Marksman | *(Archer → ❄️ Ice, INT 100/500)* One carefully aimed rifle shot at a time — longer range and harder-hitting than base Archer |
+| 🎯 Sniper | *(Marksman → INT 60, deep tier)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
+| ⚡ Snap Caster | *(Mage → ⚡ Electric, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
+| ✝️ Cleric | *(Mage → ❄️ Ice, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
+
+💣 Bomber and 🔫 Gunalinder still exist and work exactly as before for anyone who already has one,
+but as of the attunement redesign above, a fresh Archer's INT path now leads to Marksman instead —
+they're no longer reachable through a new evolution. Mage has no Fire (STR) specialization yet;
+an attuned Fire Mage simply stays a Mage rather than being forced into an evolution that doesn't
+exist.
 
 Gold-tier upgrades (paid with gold, separate from EXP levels) raise range, cooldown, and unlock
 class mechanics, with a modest damage bump included — but damage growth is weighted so a tower's
@@ -385,6 +395,9 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L700)
 - [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1212)
 - [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1434)
+- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1533)
+- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1206)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5214)
 - [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2015)
 - [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2046)
 - [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2380)

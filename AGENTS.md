@@ -164,10 +164,22 @@ hand — this part is not meant to be read in full every session.
 - `CONFIG.TOWERS`, `CONFIG.ENEMIES`, `CONFIG.WAVES` are the three top-level data tables inside one
   `CONFIG` object — most of the practical benefit of split config files without breaking the
   single-file rule.
-- `EVOLUTIONS` maps starter/first-tier towers to evolved forms, keyed by which stat (str/dex/int)
-  triggers it and the point threshold. Some towers have a second-tier evolution beyond that (e.g.
-  Blowdart → Squirt Gun, Hammerman → Paladin). `EVOLVED_TOWER_TYPES` lists everything reachable
-  only via evolution, never built directly (includes Hammerman itself).
+- The 3 base classes (Swordsman/Archer/Mage) evolve through a two-stage **elemental attunement**
+  system, not a flat threshold: `ATTUNEMENTS` (STR→Fire/DEX→Electric/INT→Ice) permanently locks an
+  element on whichever stat first reaches `ATTUNEMENT_THRESHOLD` (100) — checked in
+  `Tower.checkAttunementAndSpecialization()`, called from `checkEvolution()` only for
+  `BASE_ATTUNABLE_TYPES`. Reaching `SPECIALIZATION_THRESHOLD` (500) in that *same* attuned stat then
+  evolves into `SPECIALIZATIONS[type][element]`, if one is defined — not every base/element
+  combination is (Mage has no Fire specialization; see the comments directly above
+  `SPECIALIZATIONS` in `index.html` and `BACKLOG.md` for exactly which cells are intentional gaps
+  vs. imperfect fits kept for scope reasons). `EVOLUTIONS` still exists for every deeper evolution
+  beyond a base class's own specialization (Blowdart → Squirt Gun, Hammerman → Paladin, Marksman →
+  Sniper) using the old flat stat-threshold check, unrelated to attunement.
+  `EVOLVED_TOWER_TYPES` lists everything reachable only via evolution, never built directly
+  (includes Hammerman itself). A base-type tower loaded from a save that predates the `attunement`
+  field runs `migrateLegacyAttunement()` — deterministic, and in practice a no-op for any real save,
+  since `checkEvolution()` has always run synchronously after every stat change, so no still-base-
+  type tower should ever actually have a stat at or above 100 in saved data.
 - Enemy status effects (burn, poison/curse, slow, stun) live as fields directly on the `Enemy`
   instance (`burnUntil`, `poisonUntil`, `slowTimer`, `stunnedUntil`), checked each tick in
   `update()`. Towers have a parallel set for breakaway-inflicted statuses.
@@ -218,9 +230,9 @@ hand — this part is not meant to be read in full every session.
   runs. `evolveInto()` must also set `baseShieldPct` for the new class (a real bug existed here
   before this was caught: Hammerman is evolution-only, and evolving into it didn't grant the 35%).
 - `validateGameDefinitions()` runs once at boot, cross-checks every data-driven table (WAVES/
-  TOWERS/ENEMIES, EVOLUTIONS, SPLIT_CHILD_TYPE, CLASS_ARCHETYPE, FOOTSTEP_WEIGHT, JOB_QUOTES,
-  TOWER_STRATEGY, starter/evolved type lists) for dangling references — extend it when adding a
-  new table with cross-references of its own.
+  TOWERS/ENEMIES, EVOLUTIONS, SPECIALIZATIONS, SPLIT_CHILD_TYPE, CLASS_ARCHETYPE, FOOTSTEP_WEIGHT,
+  JOB_QUOTES, TOWER_STRATEGY, starter/evolved type lists) for dangling references — extend it when
+  adding a new table with cross-references of its own.
 
 ## Audio architecture
 

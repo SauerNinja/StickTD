@@ -75,6 +75,52 @@ verified pass rather than being folded into an already-large session:
   consistent perceived loudness/timbre, a phone-speaker translation check, and a mono-compatibility
   check — real listening tests, not something verifiable from source code alone.
 
+## From the 2026-09-13 ChatGPT "master implementation prompt" (barricade fix, Mage DPS rebalance,
+## attract-mode redesign, pixel-precise hitboxes, projectile hit/miss pre-roll architecture, and
+## the elemental attunement overhaul already shipped in 1.1.47-1.1.53 — everything below is still
+## outstanding)
+
+Each needs its own scoped, tested pass per `AGENTS.md` §5 (touches collision/save/entity-lifecycle
+risk categories) rather than being bundled into one giant rewrite.
+
+- ~~Pixel-precise enemy hitboxes~~ — shipped in 1.1.50 (alpha-mask narrow phase layered on the
+  existing broad-phase circle test; real-glyph visual QA across platform emoji fonts still pending
+  an in-browser pass, since this environment has no live Canvas to verify actual glyph shapes).
+- ~~Projectile hit/miss pre-roll architecture~~ — shipped in 1.1.52 (`willHit` decided at launch in
+  `fireProjectile()`/`fireAxeThrow()`, subtle intercept correction for committed hits, guaranteed
+  misses skip collision entirely, dead-target-mid-flight cancels cleanly). Verified via an isolated
+  Node re-implementation of the logic, 2000 trials per invariant — real in-browser playtesting
+  against SWARM specifically (the stress case named in the original review) still pending, since
+  this environment has no live game loop to run the actual file end-to-end.
+- ~~Elemental attunement + evolution overhaul~~ — shipped in 1.1.53. `ATTUNEMENTS`
+  (STR→Fire/DEX→Electric/INT→Ice, 100pt permanent lock) + `SPECIALIZATIONS` (500pt evolution)
+  replace the old flat `threshold:20` first-tier evolutions for Swordsman/Archer/Mage.
+  `checkAttunementAndSpecialization()`, save persistence, `migrateLegacyAttunement()` for old
+  saves, and the inspect-panel hint were all added; verified with an isolated Node test (16
+  assertions: lock-once behavior, no premature specialization from an unattuned stat, all 3 Archer
+  branches, and the migration tie-break rules specifically). New `MARKSMAN` class fully defined
+  (config/stats/rendering/sound/validation) as Archer's Ice path, replacing the old, review-flagged
+  `int→BOMBER` mapping. Scope decisions worth knowing about, not silently glossed over:
+  - **Bomber and Gunalinder are orphaned from fresh evolution.** They still work exactly as before
+    for any tower that's already one, but a new Archer's INT path now goes to Marksman instead —
+    matching the review's explicit instruction not to map INT→Bomber, but leaving Gatling with no
+    onward evolution defined (the review's own "Gatling → Bomber" future-tier idea was explicitly
+    marked out of scope: "do not invent the third-stage threshold in this pass").
+  - **Mage has no Fire (STR) specialization.** No existing Mage evolution fits a heavy-impact
+    identity, and the review says not to fabricate one just to fill the matrix — an attuned Fire
+    Mage simply stays a Mage.
+  - **Mage's Ice (INT) specialization is Cleric, a known imperfect thematic fit** (holy/anti-undead,
+    not frost/control) kept only because reassigning Cleric's whole identity was out of scope for
+    this pass — flagged in the `SPECIALIZATIONS` comments in `index.html`, not hidden.
+  - Real in-browser visual QA for Marksman's new rendering, and actual playtesting of the full
+    attunement progression across a real game, are both still pending — this environment has no
+    live Canvas/game loop to verify either end-to-end.
+- ~~Attract-mode redesign~~ — shipped in 1.1.49 (3-Archer formation, perimeter spawns, phased
+  calm→action→intense→aftermath→fade vignette).
+- **Inspect-panel responsiveness pass.** Prefer CSS grid/flex sizing over `fitStatRowToOneLine()`'s
+  whole-row `transform:scale()` for the button row specifically — same no-clipping/no-wrapping
+  goal, less legibility loss at extreme late-game values.
+
 ## Ideas
 
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —

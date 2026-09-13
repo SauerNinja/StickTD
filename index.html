@@ -798,17 +798,24 @@
         <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
 
         <h3>✨ Evolution</h3>
-        <p>Only Swordsman, Archer, and Mage are built directly. Every other class is reached by investing 10+ points into a specific stat — a one-way transformation that keeps your accumulated stats.</p>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ STR 10 →</span> 🔨 Hammerman</div>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ DEX 10 →</span> 🪓 Axeman</div>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 10 →</span> 🔱 Spearman</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ STR 10 →</span> 🔫 Gatling</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ DEX 10 →</span> 🎯 Blowdart</div>
-        <div class="evo-row">🎯 Blowdart <span class="evo-arrow">→ DEX 25 →</span> 🔫 Dual Squirt Gun</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 10 →</span> 💣 Bomber</div>
-        <div class="evo-row">💣 Bomber <span class="evo-arrow">→ INT 25 →</span> 🔫 Gunalinder</div>
-        <div class="evo-row">🔫 Gunalinder <span class="evo-arrow">→ INT 40 →</span> 🎯 Sniper</div>
-        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 10 →</span> ✝️ Cleric</div>
+        <p>Only Swordsman, Archer, and Mage are built directly. Every other class is reached in two
+        stages. First, whichever stat reaches <b>100</b> first permanently locks in an element —
+        STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice — and that lock never changes, even if a
+        different stat later overtakes it. Then, reaching <b>500</b> in that same attuned stat
+        evolves the tower into its specialization, if one exists for that combination — a one-way
+        transformation that keeps your accumulated stats. A few classes beyond that have a further,
+        deeper evolution of their own.</p>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ STR 100 → 500 →</span> 🔨 Hammerman</div>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ DEX 100 → 500 →</span> 🪓 Axeman</div>
+        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 100 → 500 →</span> 🔱 Spearman</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ STR 100 → 500 →</span> 🔫 Gatling</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ DEX 100 → 500 →</span> 🎯 Blowdart</div>
+        <div class="evo-row">🎯 Blowdart <span class="evo-arrow">→ DEX 40 →</span> 🔫 Dual Squirt Gun</div>
+        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 100 → 500 →</span> 🔫 Marksman</div>
+        <div class="evo-row">🔫 Marksman <span class="evo-arrow">→ INT 60 →</span> 🎯 Sniper</div>
+        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ DEX 100 → 500 →</span> ⚡ Snap Caster</div>
+        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 100 → 500 →</span> ✝️ Cleric</div>
+        <div class="evo-row">🔨 Hammerman <span class="evo-arrow">→ INT 40 →</span> ⚜️ Paladin</div>
 
         <h3>🎒 Items & Heroes</h3>
         <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 slots per tower — fill all 6 to awaken it as a Hero with a permanent bonus to every stat.</p>
@@ -833,10 +840,11 @@
       <div id="barricade-help-modal-inner">
         <h2>🚧 How Barricades Work</h2>
         <p>Barricades don't attack, don't earn EXP, don't level up, and can't evolve — they're a
-        tough obstacle, not a fighter. Bought as an item from the Shop (costs wood + stone, not
-        gold) for whichever tower you have selected — drag it out of that tower's inventory onto
-        a valid path tile to place it live, or onto any tower's inventory to store or move it.
-        Once placed, it physically blocks enemies from passing.</p>
+        tough obstacle, not a fighter. Bought directly from Build (costs wood + stone, not gold,
+        or free using a banked free-barricade charge) — tap Barricade in the Build menu, then tap
+        a valid path tile to place it. Once placed, it physically blocks enemies from passing. It
+        can still be picked back up (📦 Store) and re-placed or moved for free afterward, since
+        it's already paid for.</p>
         <p>A Barricade's HP is its literal block-strength (shown as a fraction, e.g. 7/10) — it
         only loses HP while something is actively pressed against it, at most 1 point every 2
         seconds, so a single Barricade can hold a chokepoint for a long time before breaking.</p>
@@ -904,7 +912,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.45'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.53'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -977,7 +985,8 @@ const JOB_COLORS = {
   BLOWDART:  { main:'hsl(95,45%,75%)',  shade:'hsl(95,38%,52%)'  }, // sickly poison green
   SQUIRTGUN: { main:'hsl(105,70%,68%)', shade:'hsl(105,60%,42%)' }, // vivid acid green
   GUNALINDER:{ main:'hsl(15,25%,68%)',  shade:'hsl(15,30%,42%)'  }, // dark gunmetal brown
-  SNIPER:    { main:'hsl(100,15%,62%)', shade:'hsl(100,20%,38%)' }  // desaturated tactical gray-green
+  SNIPER:    { main:'hsl(100,15%,62%)', shade:'hsl(100,20%,38%)' }, // desaturated tactical gray-green
+  MARKSMAN:  { main:'hsl(205,20%,66%)', shade:'hsl(205,25%,42%)' }  // cool tactical steel-blue, distinct from Gunalinder's warm brown and Sniper's green
 };
 const JOB_BUILD = {
   SWORDSMAN: { scaleX:1.00, scaleY:1.00 }, // average
@@ -994,7 +1003,8 @@ const JOB_BUILD = {
   BLOWDART:  { scaleX:0.88, scaleY:1.02 },  // lean and quick
   SQUIRTGUN: { scaleX:0.86, scaleY:1.00 },  // even lighter, built for speed
   GUNALINDER:{ scaleX:1.08, scaleY:0.95 },  // stocky gunslinger stance
-  SNIPER:    { scaleX:0.84, scaleY:1.10 }   // lean, low profile
+  SNIPER:    { scaleX:0.84, scaleY:1.10 },  // lean, low profile
+  MARKSMAN:  { scaleX:0.88, scaleY:1.07 }   // lean, between Gunalinder's stocky stance and Sniper's full leanness
 };
 // Flavor lines per class — tied to combat role/personality, not to any real-world region or ethnicity.
 const JOB_QUOTES = {
@@ -1012,6 +1022,7 @@ const JOB_QUOTES = {
   SQUIRTGUN: ["Double the guns, double the burn.", "Acid doesn't miss twice.", "Wet work, my specialty.", "Corrosive and ready.", "Let it burn."],
   GUNALINDER:["Six rounds, six problems solved.", "Reloading is for the slow.", "Empty the cylinder!", "Spin the barrel!", "Every shot counts."],
   SNIPER:    ["One shot. That's all I need.", "Nothing outruns this range.", "Patience is the real weapon.", "Target acquired.", "One breath, one shot."],
+  MARKSMAN:  ["Steady hands, sure aim.", "I don't miss twice.", "Line it up.", "Trigger discipline.", "Every round's placed, not sprayed."],
   SNAPCASTER:["The bolt finds its mark.", "Lightning at my command.", "Snap, and it's over.", "Precision and power.", "Watch the sparks fly."]
 };
 // Tiny "no immediate repeat" helper — pure uniform Math.random() can and does pick the same
@@ -1045,6 +1056,7 @@ const TOWER_STRATEGY = {
   BOMBER:    { icon: '💣', text: 'The only splash-damage tower — one shot hits every enemy in its blast radius. Built for dense clumps (Swarm, Elite Vanguard), wasted on a single isolated target.' },
   GUNALINDER:{ icon: '🔄', text: 'Burst-fire revolver: several fast shots, then a longer reload. Real DPS is high but lumpy — check its 🥈 DPS stat, not just the per-shot number, to judge it fairly.' },
   SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
+  MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Evolves further into Sniper." },
   SNAPCASTER:{ icon: '⚡', text: 'Mage evolved through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
   CLERIC:    { icon: '✨', text: 'The only support tower: heals nearby towers and smites undead directly rather than shooting enemies. Doesn\'t fight the wave — keeps everyone else able to.' }
 };
@@ -1058,7 +1070,7 @@ const HERO_BONUS_STAT = 5;
 // lower its ceiling. Ranged casters/shooters cap highest (Mage the very highest of all), and among
 // melee weapons, reach determines the order: Spearman > Swordsman, Axeman > Hammerman.
 const RANGE_CAPS = {
-  SNIPER: 520, MAGE: 420, ARCHER: 380, GATLING: 340, GUNALINDER: 310, BOMBER: 320,
+  SNIPER: 520, MAGE: 420, ARCHER: 380, GATLING: 340, MARKSMAN: 360, GUNALINDER: 310, BOMBER: 320,
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
   CLERIC: 200, BLOWDART: 240, SQUIRTGUN: 260
 };
@@ -1151,7 +1163,7 @@ const FOOTSTEP_WEIGHT = {
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
-  GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER',
+  GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE'
 };
 // HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR
@@ -1170,6 +1182,11 @@ const PREFERRED_STAT_MULT = 1.6; // a tower's archetype-preferred stat is 60% mo
 // "technically correct" lead on long straight stretches (the less common case on this winding
 // path) for meaningfully less overshoot near the frequent turns (the more common case).
 const MAX_LEAD_PREDICT_TIME = 0.2;
+// Max angular correction rate (radians/sec) applied to a committed (pre-rolled hit) single-target
+// projectile's heading each frame — see Projectile.update()'s intercept-correction block. Subtle
+// by design: enough to keep a guaranteed hit actually connecting with a moving/turning target,
+// not fast enough to look like a heat-seeking missile.
+const PROJECTILE_HOMING_MAX_TURN_RATE = 7;
 
 // Only Swordsman, Archer, and Mage are directly buildable — every other fighting class is reached
 // by investing 10+ points into a specific stat on one of those three, a one-way transformation.
@@ -1178,23 +1195,56 @@ const MAX_LEAD_PREDICT_TIME = 0.2;
 // branches into the other three ARCHER-style classes, Mage (MAGE) branches into Cleric, its one
 // magic-aligned sibling. Barricade sits outside this tree entirely — it's a utility piece, not a
 // fighter with a stat identity.
+//
+// Elemental attunement — replaces the old flat "threshold:20" first-tier evolution for the 3 base
+// classes (Swordsman/Archer/Mage) with a two-stage design, per a detailed external design review
+// (2026-09-13, see CHANGELOG for the full session). A base tower's FIRST stat to cross
+// ATTUNEMENT_THRESHOLD permanently locks its element — it never changes afterward even if a
+// different stat later overtakes it (Tower.attunement, set once in checkAttunementAndSpecialization(),
+// never cleared). Crossing SPECIALIZATION_THRESHOLD in that SAME attuned stat then evolves the
+// tower into that base class's specialization for that element, if SPECIALIZATIONS defines one.
+const ATTUNEMENT_THRESHOLD = 100;
+const SPECIALIZATION_THRESHOLD = 500;
+const ATTUNEMENTS = { str: 'FIRE', dex: 'ELECTRIC', int: 'ICE' };
+const ATTUNEMENT_STAT_BY_ELEMENT = { FIRE: 'str', ELECTRIC: 'dex', ICE: 'int' };
+const ATTUNEMENT_ICON = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️' };
+const BASE_ATTUNABLE_TYPES = ['SWORDSMAN', 'ARCHER', 'MAGE'];
+// Only cells with a genuinely well-established mechanical/thematic fit are filled — matching the
+// review's own explicit instruction not to fabricate a class just to complete the matrix.
+// SWORDSMAN: identical targets to the old first-tier evolutions (Fire→raw heavy impact fits
+// Hammerman's stun-and-shield identity, Electric→speed fits Axeman's dual-wield agility,
+// Ice→control/reach fits Spearman's long precise thrust) — just re-gated behind attunement+500
+// instead of a flat threshold:20.
+// ARCHER: Fire→Gatling and Electric→Blowdart are the same existing targets; Ice→MARKSMAN is a
+// genuinely new class (see CONFIG.TOWERS.MARKSMAN) replacing the old int→BOMBER mapping, which the
+// review flagged as wrong ("INT Archer is the gun-precision path... do NOT map INT Archer to
+// Bomber"). Bomber/Gunalinder remain fully functional for any existing save that already has one,
+// just no longer reachable via a fresh Archer's evolution — see BACKLOG.md.
+// MAGE: Electric→Snapcaster is an exceptionally clean fit (Snapcaster's kit is already built
+// almost entirely around proc'ing chain lightning/shock). Ice→Cleric is kept only because
+// reassigning Cleric's whole holy/anti-undead identity is out of scope here — it's a known
+// imperfect thematic fit, flagged rather than hidden (see BACKLOG.md). Fire/STR is intentionally
+// left undefined: no existing Mage evolution fits a heavy-impact identity, and the review's own
+// guidance is not to invent one just to fill the cell.
+const SPECIALIZATIONS = {
+  SWORDSMAN: { FIRE: 'HAMMERMAN', ELECTRIC: 'AXEMAN', ICE: 'SPEARMAN' },
+  ARCHER: { FIRE: 'GATLING', ELECTRIC: 'BLOWDART', ICE: 'MARKSMAN' },
+  MAGE: { ELECTRIC: 'SNAPCASTER', ICE: 'CLERIC' }
+};
 const EVOLUTIONS = {
-  // Rebalanced across the board — first-tier thresholds were all 10, a stat investment reached
-  // within the first few waves for essentially any actively-played tower, making the evolution
-  // choice feel automatic rather than a real build decision. Doubled to 20 (matching the explicit
-  // "need 20 dex" ask for Snap Caster, applied consistently to every first-tier evolution rather
-  // than singling one class out), with second- and third-tier thresholds scaled up proportionally
-  // to preserve the same relative gap between tiers.
-  SWORDSMAN: { str: {target:'HAMMERMAN', threshold:20}, dex: {target:'AXEMAN', threshold:20}, int: {target:'SPEARMAN', threshold:20} },
-  ARCHER: { str: {target:'GATLING', threshold:20}, dex: {target:'BLOWDART', threshold:20}, int: {target:'BOMBER', threshold:20} },
-  MAGE: { int: {target:'CLERIC', threshold:20}, dex: {target:'SNAPCASTER', threshold:20} },
+  // Deep-tier evolutions beyond a base class's own specialization — unrelated to attunement,
+  // unchanged from before.
   BLOWDART: { dex: {target:'SQUIRTGUN', threshold:40} }, // deeper DEX specialization — a second tier beyond the first evolution
   HAMMERMAN: { int: {target:'PALADIN', threshold:40} }, // holy devotion — a second tier beyond the first evolution
-  BOMBER: { int: {target:'GUNALINDER', threshold:40} }, // deeper INT specialization — trades splash for a rapid-fire revolver
-  GUNALINDER: { int: {target:'SNIPER', threshold:60} } // third tier — the deepest INT investment in the game, longest range as the payoff
+  BOMBER: { int: {target:'GUNALINDER', threshold:40} }, // legacy chain, kept working for any existing save with a Bomber — no longer fed by a fresh Archer's evolution (see SPECIALIZATIONS.ARCHER.ICE above)
+  GUNALINDER: { int: {target:'SNIPER', threshold:60} }, // legacy chain's own third tier — the deepest INT investment in the game, longest range as the payoff
+  // Marksman's own deeper evolution reuses Gunalinder's already-established int:60/Sniper target
+  // exactly (same destination class, same relative threshold) — the review's carve-out for reusing
+  // "an existing explicit threshold... finalized elsewhere" rather than inventing a new one.
+  MARKSMAN: { int: {target:'SNIPER', threshold:60} }
 };
-const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE']; // the only types shown in the Build menu — everything else must be evolved into, or (Barricade) bought as an item from the Shop
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER']; // reachable only via evolution, never built directly
+const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into. Barricade included here (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable.
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN']; // reachable only via evolution, never built directly
 
 // All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
 // tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
@@ -1225,7 +1275,6 @@ function buyPassive(id){
   return true;
 }
 function itemStatLine(def){
-  if(def.isBarricade) return 'Drag from inventory onto a valid path tile to place, or onto a tower to store';
   const parts = [];
   if(def.str) parts.push('+'+def.str+' STR');
   if(def.dex) parts.push('+'+def.dex+' DEX');
@@ -1295,9 +1344,9 @@ const CONFIG = {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
       blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
       tiers: [
-        { range: 220, damage: 187,  cooldown: 4860, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 240, damage: 319, cooldown: 4320, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-        { range: 260, damage: 495, cooldown: 3780, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+        { range: 220, damage: 80,  cooldown: 6000, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 240, damage: 216, cooldown: 5400, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 260, damage: 657, cooldown: 4800, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
     SNAPCASTER: {
@@ -1328,8 +1377,8 @@ const CONFIG = {
       ]
     },
     BARRICADE: {
-      name: 'Barricade', icon: '🚧', baseCost: 0, unlocksAfterWave: 0,
-      blurb: "Doesn't attack — just a tough obstacle. Bought as an item from the Shop, not the Build menu — drag it out of a tower's inventory onto a valid path tile to place it, or onto a tower to store it. Breakaway enemies will target it if it's their nearest option, soaking the hit instead of a real tower.",
+      name: 'Barricade', icon: '🚧', baseCost: 0, woodCost: 600, stoneCost: 300, unlocksAfterWave: 0,
+      blurb: "Doesn't attack — just a tough obstacle. Bought directly from Build, not Shop — tap Barricade in the Build menu, then tap a valid path tile to place it. Costs wood and stone (or free, using a banked free-barricade charge). Breakaway enemies will target it if it's their nearest option, soaking the hit instead of a real tower.",
       tiers: [
         { range: 0, damage: 0, cooldown: 999999 }
       ]
@@ -1377,6 +1426,15 @@ const CONFIG = {
         { range: 420, damage: 120, cooldown: 2800, projectileSpeed: 600 },
         { range: 450, damage: 170, cooldown: 2600, projectileSpeed: 640, upgradeCost: 260 },
         { range: 480, damage: 230, cooldown: 2400, projectileSpeed: 680, upgradeCost: 340 }
+      ]
+    },
+    MARKSMAN: {
+      name: 'Marksman', icon: '🔫', baseCost: 85, unlocksAfterWave: 6,
+      blurb: "Ice Archer's specialization — one carefully aimed rifle shot at a time. Longer range and harder-hitting than base Archer, without Gatling's fire rate or Blowdart's poison. Evolves further into Sniper at deep INT investment.",
+      tiers: [
+        { range: 300, damage: 60,  cooldown: 1000, projectileSpeed: 520 },
+        { range: 320, damage: 85,  cooldown: 900,  projectileSpeed: 560, upgradeCost: 140 },
+        { range: 340, damage: 115, cooldown: 800,  projectileSpeed: 600, upgradeCost: 190 }
       ]
     }
   },
@@ -1522,6 +1580,19 @@ const CONFIG = {
     superClearMs: 8000,
     superBonusGold: 50,
     respawnChancePerWave: 0.4, // chance, each wave cleared, that 1-2 new scenery pieces appear on empty tiles
+  },
+  // Purely cosmetic ground-texture accents — never clearable, never yield resources, never occupy
+  // a tile (a tower or Barricade can still be built right on top of one; it's just a background
+  // paint detail). Two tiers, deliberately imbalanced in frequency: COMMON is the low-key green/
+  // brown ground texture that can appear fairly often, ACCENT is saturated color (red/orange/
+  // yellow/pink) held to a small fraction of that — color used sparingly reads as an intentional
+  // focal point against a calm green field, the same "isolation + contrast creates a focal point,
+  // keep the palette otherwise limited" principle real design references use for photos/layouts.
+  FLORA: {
+    coverage: 0.09,      // fraction of buildable (non-path) tiles that get ANY flora glyph
+    accentShare: 0.12,   // of the tiles that do get flora, only this fraction get an ACCENT glyph instead of a COMMON one — keeps color genuinely rare, not just "less common"
+    COMMON: ['🌿','🌱','🍀','🌾','🍃','🍂'],
+    ACCENT: ['🍁','🍄','🌺','🌻']
   }
 };
 
@@ -1581,6 +1652,21 @@ function validateGameDefinitions(){
       const branch = branches[stat];
       if(!towerTypes.includes(branch.target)) problems.push('EVOLUTIONS.' + sourceType + '.' + stat + '.target = "' + branch.target + '" — not in CONFIG.TOWERS');
       if(!(Number.isFinite(branch.threshold) && branch.threshold > 0)) problems.push('EVOLUTIONS.' + sourceType + '.' + stat + '.threshold = ' + branch.threshold + ' — must be a positive finite number');
+    }
+  }
+
+  // SPECIALIZATIONS — every base class must be attunable, every element key must be a real
+  // attunement element, and every target tower must actually exist. A base class with fewer than
+  // 3 elements defined is fine (see the intentional gaps noted above SPECIALIZATIONS itself) —
+  // this only catches typos and dangling references, not incompleteness.
+  const validElements = Object.values(ATTUNEMENTS);
+  for(const baseType of Object.keys(SPECIALIZATIONS)){
+    if(!BASE_ATTUNABLE_TYPES.includes(baseType)) problems.push('SPECIALIZATIONS.' + baseType + ' — not in BASE_ATTUNABLE_TYPES');
+    const branches = SPECIALIZATIONS[baseType];
+    for(const element of Object.keys(branches)){
+      if(!validElements.includes(element)) problems.push('SPECIALIZATIONS.' + baseType + '.' + element + ' — not a valid attunement element');
+      const target = branches[element];
+      if(!towerTypes.includes(target)) problems.push('SPECIALIZATIONS.' + baseType + '.' + element + ' = "' + target + '" — not in CONFIG.TOWERS');
     }
   }
 
@@ -1811,8 +1897,10 @@ function performExpansion(label, labelColor){
   // clear any pre-existing scenery that now happens to sit on the new spiral's route
   for(const tile of pathWaypointTiles){
     sceneryMap.delete(tile.x+','+tile.y);
+    floraMap.delete(tile.x+','+tile.y);
   }
   scatterSceneryInRing(oldRegion, newRegion);
+  scatterFloraInRing(oldRegion, newRegion);
   rebakeMap();
   spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, label, labelColor);
   playSound('wave');
@@ -1850,6 +1938,7 @@ function isInActiveRegion(gx, gy){
    build tiles until cleared for gold, granting wood/stone)
    ========================================================= */
 const sceneryMap = new Map(); // "gx,gy" -> scenery object
+const floraMap = new Map(); // "gx,gy" -> {gx, gy, x, y, glyph, rotDeg, offX, offY, sizeFrac} — purely decorative, see CONFIG.FLORA
 
 function shuffleArray(arr){
   for(let i=arr.length-1; i>0; i--){
@@ -2167,6 +2256,35 @@ function generateScenery(){
   for(let i=0; i<count; i++) spawnScenery(cells[i][0], cells[i][1]);
 }
 
+// Purely cosmetic ground-texture accent — see CONFIG.FLORA. Rolls COMMON vs. the much rarer
+// ACCENT tier, then a small random rotation/offset/size jitter within the tile so a cluster of
+// the same glyph never looks like a stamped grid — organic scatter rather than a repeating pattern.
+function spawnFlora(gx, gy){
+  const F = CONFIG.FLORA;
+  const isAccent = Math.random() < F.accentShare;
+  const pool = isAccent ? F.ACCENT : F.COMMON;
+  const glyph = pool[Math.floor(Math.random()*pool.length)];
+  floraMap.set(gx+','+gy, {
+    gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2, glyph, isAccent,
+    rotDeg: Math.round(Math.random()*360),
+    offX: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
+    offY: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
+    sizeFrac: 0.75 + Math.random()*0.5 // 75%-125% of the base glyph size, for scale variety
+  });
+}
+function generateFlora(){
+  floraMap.clear();
+  const cells = [];
+  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
+    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
+      if(!pathCells.has(gx+','+gy)) cells.push([gx,gy]);
+    }
+  }
+  shuffleArray(cells);
+  const count = Math.floor(cells.length * CONFIG.FLORA.coverage);
+  for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1]);
+}
+
 // A handful of free Barricades pre-placed directly on the path within the starting region —
 // the smaller start leans on these for early chokepoints instead of needing to buy them right away.
 function seedStartingBarricades(){
@@ -2195,6 +2313,25 @@ function scatterSceneryInRing(oldRegion, newRegion){
   shuffleArray(cells);
   const count = Math.floor(cells.length * CONFIG.SCENERY.coverage);
   for(let i=0; i<count; i++) spawnScenery(cells[i][0], cells[i][1]);
+}
+// Same ring-only pattern as scatterSceneryInRing() — every expansion gives the freshly-revealed
+// ring its own random flora, but ground the player has already seen keeps whatever it had,
+// exactly like real scenery already behaves. This is how "the board grows more unique every
+// expansion" reads as an ever-larger, ever-more-detailed world rather than the existing ground
+// visibly re-rolling under the player's own built towers.
+function scatterFloraInRing(oldRegion, newRegion){
+  const cells = [];
+  for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
+    for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
+      const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
+      if(wasActive) continue;
+      if(pathCells.has(gx+','+gy)) continue;
+      cells.push([gx,gy]);
+    }
+  }
+  shuffleArray(cells);
+  const count = Math.floor(cells.length * CONFIG.FLORA.coverage);
+  for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1]);
 }
 
 function maybeSpawnMoreScenery(){
@@ -2268,79 +2405,82 @@ function updateScenery(dt){
   }
 }
 
-function drawScenery(ctx){
-  // Viewport culling — computed once per call, not per item, then a cheap numeric comparison
-  // rejects offscreen scenery before any Canvas state is touched. Verified before adding this:
-  // drawScenery() previously iterated and fully rendered every scenery item in the world
-  // regardless of whether it was ever visible on screen. Margin is generous (1.5 tiles) to cover
-  // the largest possible sprite (a tall-stretched tree can extend well above its base position)
-  // so nothing visibly pops in/out at the screen edge.
+function drawOneSceneryItem(ctx, key, item, size){
+  if(item.isSuper){
+    ctx.save();
+    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,215,0,0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(item.x, item.y, size*0.62, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.font = Math.round(size) + 'px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
+  const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
+  const stretch = item.tallStretch || 1;
+  if(stretch !== 1){
+    // Non-uniform vertical-only scale, anchored at the tree's base (the bottom of its glyph,
+    // roughly item.y + size*0.5) rather than its center — stretching from the center would sink
+    // the trunk into the ground as the canopy grew upward. Anchoring at the base keeps the trunk
+    // correctly planted while only the canopy extends taller, which is what actually reads as
+    // "a taller tree" instead of "a distorted one".
+    const baseY = item.y + size*0.5;
+    ctx.save();
+    ctx.translate(item.x, baseY);
+    ctx.scale(1, stretch);
+    ctx.translate(-item.x, -baseY);
+    ctx.fillText(emoji, item.x, item.y + 2);
+    ctx.restore();
+  } else {
+    ctx.fillText(emoji, item.x, item.y + 2);
+  }
+
+  if(item.isClearing){
+    const progress = Math.min(1, (gameTime-item.clearStart)/item.clearMs);
+    const r = size*0.62;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(item.x, item.y, r, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = '#f1c40f';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(item.x, item.y, r, -Math.PI/2, -Math.PI/2 + progress*Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  } else if(key === hoveredSceneryKey){
+    // cost label only shown while hovered/tapped, not cluttering the map at all times
+    ctx.font = 'bold 10px Verdana';
+    ctx.textAlign = 'center';
+    const costStr = item.clearCost > 0 ? '💰'+item.clearCost : 'FREE';
+    ctx.fillStyle = item.clearCost > 0 ? '#fff' : '#7dd3fc';
+    ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
+  }
+}
+function drawDepthSortedLayer(ctx){
   const cullMargin = TILE_SIZE * 1.5;
   const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
   const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
   const viewTop = (0 - camera.y) / camera.zoom - cullMargin;
   const viewBottom = (CANVAS_H - camera.y) / camera.zoom + cullMargin;
-  let visibleCount = 0;
-  const totalCount = sceneryMap.size;
+  const items = [];
+  let visibleSceneryCount = 0;
   for(const [key, item] of sceneryMap){
     if(item.x < viewLeft || item.x > viewRight || item.y < viewTop || item.y > viewBottom) continue;
-    visibleCount++;
+    visibleSceneryCount++;
     const size = TILE_SIZE * 0.72 * item.scale;
-    if(item.isSuper){
-      ctx.save();
-      ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255,215,0,0.7)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(item.x, item.y, size*0.62, 0, Math.PI*2); ctx.stroke();
-      ctx.restore();
-    }
-    ctx.font = Math.round(size) + 'px serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it (now blood decals, previously the last thing drawn in the prior frame)
-    const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
-    const stretch = item.tallStretch || 1;
-    if(stretch !== 1){
-      // Non-uniform vertical-only scale, anchored at the tree's base (the bottom of its glyph,
-      // roughly item.y + size*0.5) rather than its center — stretching from the center would sink
-      // the trunk into the ground as the canopy grew upward. Anchoring at the base keeps the trunk
-      // correctly planted while only the canopy extends taller, which is what actually reads as
-      // "a taller tree" instead of "a distorted one".
-      const baseY = item.y + size*0.5;
-      ctx.save();
-      ctx.translate(item.x, baseY);
-      ctx.scale(1, stretch);
-      ctx.translate(-item.x, -baseY);
-      ctx.fillText(emoji, item.x, item.y + 2);
-      ctx.restore();
-    } else {
-      ctx.fillText(emoji, item.x, item.y + 2);
-    }
-
-    if(item.isClearing){
-      const progress = Math.min(1, (gameTime-item.clearStart)/item.clearMs);
-      const r = size*0.62;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.arc(item.x, item.y, r, 0, Math.PI*2); ctx.stroke();
-      ctx.strokeStyle = '#f1c40f';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.arc(item.x, item.y, r, -Math.PI/2, -Math.PI/2 + progress*Math.PI*2);
-      ctx.stroke();
-      ctx.restore();
-    } else if(key === hoveredSceneryKey){
-      // cost label only shown while hovered/tapped, not cluttering the map at all times
-      ctx.font = 'bold 10px Verdana';
-      ctx.textAlign = 'center';
-      const costStr = item.clearCost > 0 ? '💰'+item.clearCost : 'FREE';
-      ctx.fillStyle = item.clearCost > 0 ? '#fff' : '#7dd3fc';
-      ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
-    }
+    const baseY = item.y + size*0.5; // the item's "feet" — same anchor tallStretch already uses, so depth matches what visually reads as its base
+    items.push({ sortY: baseY, draw: () => drawOneSceneryItem(ctx, key, item, size) });
   }
-  perfStats.visibleScenery = visibleCount;
-  perfStats.totalScenery = totalCount;
+  for(const e of enemyPool) if(e.active) items.push({ sortY: e.y, draw: () => e.draw(ctx) });
+  for(const t of towerPool) if(t.active) items.push({ sortY: t.y, draw: () => t.draw(ctx, t === selectedTower) });
+  items.sort((a,b) => a.sortY - b.sortY);
+  for(const it of items) it.draw();
+  perfStats.visibleScenery = visibleSceneryCount;
+  perfStats.totalScenery = sceneryMap.size;
 }
+
 
 function roundedRectPath(ctx,x,y,w,h,r){
   if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
@@ -2379,6 +2519,19 @@ function drawMap(ctx){
       ctx.lineWidth = 1;
       ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
     }
+  }
+
+  // Flora — sparse cosmetic ground-cover accents (CONFIG.FLORA). Baked here rather than drawn
+  // per-frame since it's flat ground texture with no occlusion needs, unlike trees/rocks (which
+  // stay in the dynamic depth-sorted layer specifically so they can occlude/be occluded by actors).
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const item of floraMap.values()){
+    ctx.save();
+    ctx.translate(item.x + item.offX, item.y + item.offY);
+    ctx.rotate(item.rotDeg * Math.PI/180);
+    ctx.font = Math.round(TILE_SIZE*0.42*item.sizeFrac) + 'px serif';
+    ctx.fillText(item.glyph, 0, 0);
+    ctx.restore();
   }
 }
 function rebakeMap(){
@@ -3002,11 +3155,16 @@ let wood = 0, stone = 0;
 // checked or deducted.
 let freeBarricadesLeft = 0;
 const MAX_FREE_BARRICADES = 3;
-// Shared affordability check for the build tray/hover/placement handlers — every Build-menu
-// tower costs gold. Barricade used to be built here too and had its own wood/stone branch, but
-// it's a Shop-purchased item now (see buyItem()), not a Build-menu tower, so this simplified back
-// down to the plain gold check every other tower already used.
+// Shared affordability check for the build tray/hover/placement handlers. Every other Build-menu
+// tower costs gold (checked in the fallback branch below); Barricade is the one exception — it's
+// bought directly from Build with wood/stone (or a free charge), not gold, since the 1.1.47 fix
+// moved it out of the Shop's confusing buy-into-inventory-then-drag flow.
 function canAffordTower(type){
+  if(type === 'BARRICADE'){
+    const def = CONFIG.TOWERS.BARRICADE;
+    if(freeBarricadesLeft > 0) return true;
+    return wood >= def.woodCost && stone >= def.stoneCost;
+  }
   return gold >= CONFIG.TOWERS[type].baseCost;
 }
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
@@ -3274,6 +3432,7 @@ function serializeGameState(){
     str: t.str, dex: t.dex, int: t.int, statPoints: t.statPoints, xp: t.xp, expLevel: t.expLevel,
     spec: t.spec || null,
     itemIds: t.equippedItems.map(i => i.id),
+    attunement: t.attunement || null,
     hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
     killCount: t.killCount, killStreak: t.killStreak, nextStreakTier: t.nextStreakTier,
     isLegendary: t.isLegendary, legendaryName: t.legendaryName, disabledWavesLeft: t.disabledWavesLeft
@@ -3301,6 +3460,23 @@ function downloadSaveFile(){
   a.href = url; a.download = 'savegame-' + state.seed + '.txt'; a.click();
   URL.revokeObjectURL(url);
   showToast('💾 Saved (seed ' + state.seed + ')');
+}
+// Deterministic migration for a base-class tower loaded from a save that predates the attunement
+// field entirely (state.towers[i].attunement === undefined). In practice this codebase's
+// checkEvolution()/checkAttunementAndSpecialization() has always run synchronously right after
+// every stat change (both allocateStat() and upgrade()'s random growth call it), so a tower that's
+// still a base type when saved should never actually have a stat at or above this threshold under
+// any version of this game's evolution rules — this exists as a defensive safety net (a
+// hand-edited save, or any future change to that invariant) rather than a fix for something that
+// can currently occur in real save data.
+function migrateLegacyAttunement(t){
+  const candidates = [['str', t.str||0], ['dex', t.dex||0], ['int', t.int||0]]
+    .filter(([, v]) => v >= ATTUNEMENT_THRESHOLD);
+  if(candidates.length === 0) return null; // nothing qualifies — stays unattuned, correct and expected for virtually every real save
+  const maxVal = Math.max(...candidates.map(([, v]) => v));
+  const topStats = candidates.filter(([, v]) => v === maxVal);
+  if(topStats.length !== 1) return null; // exact tie among qualifying stats — leave unattuned rather than arbitrarily picking one
+  return ATTUNEMENTS[topStats[0][0]];
 }
 function restoreGameState(state){
   for(const e of enemyPool) e.active = false;
@@ -3331,6 +3507,7 @@ function restoreGameState(state){
     }
   }
   rebuildPathCellsAndPx();
+  generateFlora();
 
   for(const s of (state.scenery || [])) sceneryMap.set(s.key, s.item);
 
@@ -3341,6 +3518,12 @@ function restoreGameState(state){
     t.level = td.level;
     t.applyTierStats();
     t.str = td.str||0; t.dex = td.dex||0; t.int = td.int||0; t.statPoints = td.statPoints||0;
+    if(td.attunement !== undefined){
+      t.attunement = td.attunement || null;
+    } else if(BASE_ATTUNABLE_TYPES.includes(t.type)){
+      t.attunement = migrateLegacyAttunement(t);
+    }
+    if(t.type === 'BARRICADE'){ t.str = 0; t.dex = 0; t.int = 0; t.statPoints = 0; } // obstacle, not a tower — clears any stray stats an old (pre-fix) corrupted save might carry, on top of recomputeStats()'s own guard which already made maxHp safe regardless
     t.xp = td.xp||0; t.expLevel = td.expLevel||1;
     if(td.spec) t.spec = td.spec;
     if(td.targetMode) t.targetMode = td.targetMode;
@@ -4742,6 +4925,7 @@ class Tower{
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
     // WC3-hero-style distributable stats: STR = damage, DEX = attack speed, INT = range
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0;
+    this.attunement = null; // null | 'FIRE' | 'ELECTRIC' | 'ICE' — permanently locked once set, see checkAttunementAndSpecialization()
     this.xp = 0; this.expLevel = 1; // Dota-style EXP level, separate from the gold-tier `level` above —
     // grants 1 stat point per level, up to MAX_TOWER_LEVEL. Fed by kills, killstreaks, and round survival.
     this.waveXp = 0; // XP earned so far THIS wave only — reset each time a new wave starts, used for the wave-end summary popup
@@ -4847,6 +5031,15 @@ class Tower{
   // CLERIC is the one exception: INT boosts healAmount instead of adding to range (its range is a
   // fixed detection radius for smiting undead, not something that scales the same way).
   recomputeStats(){
+    // Barricades are obstacles, not towers — fixed 10/10 durability, never touched by any of the
+    // generic stat machinery below (STR/DEX/INT, items, Hero/Legendary bonuses, archetype damage
+    // curves, HP-stat, crit, accuracy...). This was the actual root cause of a real, reproducible
+    // crash: without this guard, Barricade (no CLASS_ARCHETYPE entry) fell all the way through to
+    // hpStatBase/hpStatRate's Mage fallback below and recalculated maxHp from whatever str/dex/int
+    // the instance happened to have — which could only ever be nonzero because upgrade()'s random
+    // stat-growth loop had no Barricade guard either (fixed separately, see upgrade()), silently
+    // mutating str/dex/int on a Barricade instance that should never carry meaningful stats at all.
+    if(this.type === 'BARRICADE'){ this.maxHp = 10; return; }
     let itemStr = 0, itemDex = 0, itemInt = 0, itemArmor = 0;
     for(const it of this.equippedItems){ itemStr += it.str; itemDex += it.dex; itemInt += it.int; itemArmor += it.armor || 0; }
     // Armor from items only, at a fixed 1 armor = 1% damage reduction — baseShieldPct (class
@@ -4983,6 +5176,7 @@ class Tower{
     }
   }
   allocateStat(stat){
+    if(this.type === 'BARRICADE') return false; // obstacle, not a tower — defensive invariant even though statPoints should already always be 0 for it
     if(this.statPoints <= 0) return false;
     if(stat === 'str') this.str++;
     else if(stat === 'dex') this.dex++;
@@ -4997,6 +5191,10 @@ class Tower{
   // transforms it into that class, one-way, keeping accumulated stats and equipped items (items are
   // universal now, so they carry straight across) while resetting level/tier progression.
   checkEvolution(){
+    if(BASE_ATTUNABLE_TYPES.includes(this.type)){
+      this.checkAttunementAndSpecialization();
+      return;
+    }
     const evoMap = EVOLUTIONS[this.type];
     if(!evoMap) return; // not a base class, or already evolved — evolution is one-way and terminal
     let targetType = null;
@@ -5004,6 +5202,30 @@ class Tower{
     else if(evoMap.dex && this.dex >= evoMap.dex.threshold) targetType = evoMap.dex.target;
     else if(evoMap.int && this.int >= evoMap.int.threshold) targetType = evoMap.int.target;
     if(targetType) this.evolveInto(targetType);
+  }
+  // Elemental attunement (see the ATTUNEMENTS/SPECIALIZATIONS block above CONFIG for the full
+  // design writeup). Called only for the 3 base classes, from checkEvolution() above. The first
+  // stat to cross ATTUNEMENT_THRESHOLD locks this.attunement permanently — checked in the same
+  // str→dex→int priority order the old evolution check always used, though in practice only one
+  // stat can cross in any single allocateStat() call anyway, so this order only ever matters for
+  // the save-migration path (restoreGameState()'s legacy-save handling), not live play. Crossing
+  // SPECIALIZATION_THRESHOLD in that same attuned stat then evolves into the matching
+  // specialization, if SPECIALIZATIONS defines one for this (type, element) pair.
+  checkAttunementAndSpecialization(){
+    if(!this.attunement){
+      if(this.str >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.str;
+      else if(this.dex >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
+      else if(this.int >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.int;
+      if(this.attunement){
+        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!', '#ffd700');
+        playSound('levelup');
+      }
+    }
+    if(!this.attunement) return;
+    const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
+    if(this[attunedStat] < SPECIALIZATION_THRESHOLD) return;
+    const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
+    if(target) this.evolveInto(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
   }
   evolveInto(newType){
     const oldName = this.def.name;
@@ -5028,13 +5250,14 @@ class Tower{
     playSound('evolution');
     updateInspectPanel();
   }
-  canUpgrade(){ return this.level < this.def.tiers.length; }
+  canUpgrade(){ return this.type !== 'BARRICADE' && this.level < this.def.tiers.length; }
   // Named differently from the tier data's "upgradeCost" field on purpose — applyTierStats()
   // copies every tier field onto the instance via Object.assign, and a method with the exact
   // same name as a data field gets silently overwritten (shadowed) by that number after the
   // first upgrade, breaking every upgrade after that. This was a real, reproducible crash.
   nextUpgradeCost(){ return this.canUpgrade() ? this.def.tiers[this.level].upgradeCost : 0; }
   upgrade(){
+    if(this.type === 'BARRICADE') return false; // obstacle, not a tower — see recomputeStats() for the full rationale; independent guard here rather than only trusting canUpgrade()
     if(!this.canUpgrade()) return false;
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
@@ -5344,9 +5567,33 @@ class Tower{
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
     p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : '#f1c40f';
+    // Hit/miss pre-roll — decided here, at launch, not at the moment of geometric contact. Object-
+    // pool reuse means every one of these fields must be set unconditionally on every fire, or a
+    // stale value from whatever this pooled Projectile last did could leak into this shot.
+    p.trackedTarget = null; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
+    if(!p.splashRadius && this.target){
+      p.trackedTarget = this.target;
+      const willHit = Math.random() >= this.missChance;
+      if(!willHit){
+        // Deliberately bend the launch angle so the shot visibly clears the target's silhouette
+        // by a real margin, instead of flying straight at it and only revealing "actually that
+        // was a miss" once it geometrically arrives (the previous behavior, and exactly the
+        // visual-hit/gameplay-miss contradiction this pre-roll exists to remove).
+        const missOffsetPx = Math.max(this.target.radius*1.8, 20) * (Math.random() < 0.5 ? -1 : 1);
+        const distToTarget = Math.hypot(this.target.x-spawnX, this.target.y-spawnY) || 1;
+        const angleOffset = Math.atan2(missOffsetPx, distToTarget);
+        const missAngle = angle + angleOffset;
+        p.vx = Math.cos(missAngle)*this.projectileSpeed;
+        p.vy = Math.sin(missAngle)*this.projectileSpeed;
+        p.angle = missAngle;
+        p.isGuaranteedMiss = true;
+        p.missRevealAt = gameTime + (distToTarget/this.projectileSpeed)*1000;
+      }
+    }
     const rangedSound = {
       ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
       BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
+      MARKSMAN: 'shot_gunalinder',
       BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage'
     }[this.type] || 'shot_archer';
     playSound(rangedSound);
@@ -5406,6 +5653,21 @@ class Tower{
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0;
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this;
     p.color = '#9aa0a6';
+    // Same launch-time pre-roll as fireProjectile() — an axe throw is still a single-target shot
+    // and needs the same accuracy handling, just via this separate acquisition path.
+    p.trackedTarget = t;
+    const willHit = Math.random() >= this.missChance;
+    p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
+    if(!willHit){
+      const missOffsetPx = Math.max(t.radius*1.8, 20) * (Math.random() < 0.5 ? -1 : 1);
+      const angleOffset = Math.atan2(missOffsetPx, dist);
+      const missAngle = angle + angleOffset;
+      p.vx = Math.cos(missAngle)*this.projectileSpeed;
+      p.vy = Math.sin(missAngle)*this.projectileSpeed;
+      p.angle = missAngle;
+      p.isGuaranteedMiss = true;
+      p.missRevealAt = gameTime + (dist/this.projectileSpeed)*1000;
+    }
     this.renderSwordAngle = angle;
     playSound('throw_axe');
   }
@@ -5716,6 +5978,73 @@ function pointSegmentDist2(px,py, ax,ay, bx,by){
   const dx = px-cx, dy = py-cy;
   return dx*dx+dy*dy;
 }
+// Enemy hitbox precision — a narrow-phase alpha-mask test layered strictly on top of the existing
+// broad-phase swept-circle check below (Projectile.update()'s pointSegmentDist2 <= radius^2), never
+// a replacement for it. Enemy.draw() renders each emoji at `font = radius*2 + 'px serif'`, centered
+// (textAlign/textBaseline 'center'/'middle') at local (0,0) — building one small reference-size
+// mask per type with those exact same font settings, then rescaling test coordinates by the actual
+// instance's radius, keeps the mask aligned with whatever's really on screen for any instance
+// (size-jittered or boss-scaled) without re-rendering per-instance. This can only make a hit
+// stricter than before, never looser: every helper below defaults to `true` (defer to the existing
+// radius-only result) on any failure — mask not yet built, glyph render throws, canvas tainted —
+// so a broken mask never takes away a hit the old code already granted.
+const ENEMY_MASK_REF_SIZE = 40; // arbitrary but fixed reference font-size (px) for every cached mask; real instances are rescaled to this at test time
+let enemyMaskCanvas = null, enemyMaskCtx = null;
+const enemyCollisionMasks = {}; // type -> {size, alpha:Uint8ClampedArray} | null (null = build failed once, narrow phase skipped for that type from then on)
+function buildEnemyCollisionMask(type){
+  const def = CONFIG.ENEMIES[type];
+  if(!def || !def.emoji) return null;
+  try{
+    if(!enemyMaskCanvas){
+      enemyMaskCanvas = document.createElement('canvas');
+      enemyMaskCanvas.width = ENEMY_MASK_REF_SIZE; enemyMaskCanvas.height = ENEMY_MASK_REF_SIZE;
+      enemyMaskCtx = enemyMaskCanvas.getContext('2d', { willReadFrequently: true });
+    }
+    const mctx = enemyMaskCtx;
+    mctx.clearRect(0, 0, ENEMY_MASK_REF_SIZE, ENEMY_MASK_REF_SIZE);
+    mctx.fillStyle = '#000000';
+    mctx.font = ENEMY_MASK_REF_SIZE + 'px serif';
+    mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+    mctx.fillText(def.emoji, ENEMY_MASK_REF_SIZE/2, ENEMY_MASK_REF_SIZE/2);
+    const data = mctx.getImageData(0, 0, ENEMY_MASK_REF_SIZE, ENEMY_MASK_REF_SIZE).data;
+    const alpha = new Uint8ClampedArray(ENEMY_MASK_REF_SIZE * ENEMY_MASK_REF_SIZE);
+    for(let i=0;i<alpha.length;i++) alpha[i] = data[i*4+3]; // keep the alpha channel only — that's the whole silhouette test
+    return { size: ENEMY_MASK_REF_SIZE, alpha };
+  } catch(err){
+    return null; // getImageData can throw on a tainted/unsupported canvas — narrow phase just doesn't apply for this type, broad-phase circle still does
+  }
+}
+function getEnemyCollisionMask(type){
+  if(!(type in enemyCollisionMasks)) enemyCollisionMasks[type] = buildEnemyCollisionMask(type);
+  return enemyCollisionMasks[type];
+}
+// True if world-space point (wx,wy) lands on an opaque (or nearly opaque) pixel of enemy e's glyph.
+function pointOnEnemyMask(e, wx, wy){
+  const mask = getEnemyCollisionMask(e.type);
+  if(!mask) return true; // no mask available — defer entirely to the existing radius-only result
+  const scale = mask.size / (e.radius * 2); // world px -> reference-mask px, using the same radius*2=font-size relationship Enemy.draw() itself uses
+  const mx = Math.floor((wx - e.x) * scale + mask.size/2);
+  const my = Math.floor((wy - e.y) * scale + mask.size/2);
+  if(mx < 0 || my < 0 || mx >= mask.size || my >= mask.size) return false; // outside the glyph's own bounding box entirely
+  return mask.alpha[my*mask.size + mx] > 20; // small threshold rather than a strict >0 — heavily antialiased glyph edge pixels have near-zero alpha and shouldn't register as a hit
+}
+// Swept narrow-phase: samples along the projectile's this-frame travel segment, not just its final
+// point — a fast projectile (Mage bolts especially) can cross an entire enemy within one frame, so
+// an endpoint-only test could tunnel through a real hit or register a hit past where the glyph
+// visually ends. Sample density is fixed relative to mask-space distance, capped so a long fast
+// segment can't blow up the loop.
+function segmentHitsEnemyMask(e, x0, y0, x1, y1){
+  const mask = getEnemyCollisionMask(e.type);
+  if(!mask) return true;
+  const scale = mask.size / (e.radius * 2);
+  const segLenMaskPx = Math.hypot(x1-x0, y1-y0) * scale;
+  const steps = Math.max(1, Math.min(20, Math.ceil(segLenMaskPx / 2))); // ~2 mask-px per sample
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    if(pointOnEnemyMask(e, x0+(x1-x0)*t, y0+(y1-y0)*t)) return true;
+  }
+  return false;
+}
 class Projectile{
   constructor(){ this.active = false; }
   update(dt, enemyHash){
@@ -5725,6 +6054,46 @@ class Projectile{
     if(this.x < -20 || this.x > WORLD_MAX_W+20 || this.y < -20 || this.y > WORLD_MAX_H+20){
       this.active = false; return;
     }
+    // A rolled miss never resolves a hit, on anything — it just flies its (deliberately offset)
+    // path and reveals the MISS feedback once, near where it would have crossed the target, then
+    // continues on to natural off-world expiry above. This is the whole point of pre-rolling at
+    // launch: "rolled MISS = visual miss = gameplay miss," never a shot that visually connects and
+    // only afterward turns out not to count.
+    if(this.isGuaranteedMiss){
+      if(!this.missRevealed && gameTime >= this.missRevealAt){
+        this.missRevealed = true;
+        if(this.trackedTarget) spawnFloatingText(this.trackedTarget.x, this.trackedTarget.y - this.trackedTarget.radius - 6, 'MISS', '#aaaaaa');
+        spawnParticles(this.x, this.y, '#999999', 2);
+      }
+      return;
+    }
+    // The target a committed (rolled-hit) shot was tracking died to something else before this
+    // shot arrived. That's not an accuracy miss — cancel cleanly rather than let the shot
+    // potentially geometrically cross, and hit, a different enemy it wasn't rolled against.
+    if(this.trackedTarget && !this.trackedTarget.active){
+      this.active = false;
+      spawnParticles(this.x, this.y, this.color || '#ffffff', 2);
+      return;
+    }
+    // Subtle continuous intercept correction for a committed single-target shot — nudges heading
+    // toward the target's real current position every frame (rate-capped, see
+    // PROJECTILE_HOMING_MAX_TURN_RATE), so a guaranteed hit keeps actually intersecting a moving/
+    // turning target instead of relying solely on the one-shot lead-prediction computed at launch.
+    // Splash shots are excluded — they detonate at an area, not a single tracked point.
+    if(this.trackedTarget && !this.splashRadius){
+      const desiredAngle = Math.atan2(this.trackedTarget.y - this.y, this.trackedTarget.x - this.x);
+      const curAngle = Math.atan2(this.vy, this.vx);
+      let diff = desiredAngle - curAngle;
+      while(diff > Math.PI) diff -= Math.PI*2;
+      while(diff < -Math.PI) diff += Math.PI*2;
+      const maxTurn = PROJECTILE_HOMING_MAX_TURN_RATE * dt/1000;
+      const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+      const newAngle = curAngle + turn;
+      const speed = Math.hypot(this.vx, this.vy);
+      this.vx = Math.cos(newAngle)*speed;
+      this.vy = Math.sin(newAngle)*speed;
+      this.angle = newAngle;
+    }
     // Query radius widened to cover the WHOLE distance traveled this frame, not just a small area
     // around the new endpoint — otherwise a target sitting near where the projectile USED to be
     // (a frame ago) could fall outside the search entirely on a fast-moving shot.
@@ -5733,6 +6102,7 @@ class Projectile{
     for(const e of nearby){
       const d2 = pointSegmentDist2(e.x, e.y, prevX, prevY, this.x, this.y);
       if(d2 <= e.radius*e.radius){
+        if(!segmentHitsEnemyMask(e, prevX, prevY, this.x, this.y)) continue; // passed the broad-phase circle but the segment never actually crossed the visible glyph — not a real hit
         this.onImpact(e);
         this.active = false;
         return;
@@ -5740,13 +6110,17 @@ class Projectile{
     }
   }
   onImpact(hitEnemy){
-    const missChance = this.sourceTower ? (this.sourceTower.missChance || 0) : 0;
-    if(Math.random() < missChance){
-      spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 6, 'MISS', '#aaaaaa');
-      spawnParticles(this.x, this.y, '#999999', 2);
-      return;
-    }
     if(this.splashRadius > 0){
+      // Splash shots keep their own independent roll here — unlike single-target shots, a splash
+      // detonation isn't pre-rolled against one tracked enemy in fireProjectile() (it's not aimed
+      // at a specific enemy's silhouette so much as a ground point), so this is still the right
+      // place for it.
+      const missChance = this.sourceTower ? (this.sourceTower.missChance || 0) : 0;
+      if(Math.random() < missChance){
+        spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 6, 'MISS', '#aaaaaa');
+        spawnParticles(this.x, this.y, '#999999', 2);
+        return;
+      }
       let streakClaimed = false;
       for(const e of enemyPool){
         if(!e.active) continue;
@@ -6552,7 +6926,7 @@ function drawDebrisDecals(ctx){
   for(const d of decals) if((d.isEmojiDrop || d.isWorm) && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
 }
 function decalViewBounds(){
-  // Same viewport-culling principle as drawScenery()'s — computed fresh each call (cheap
+  // Same viewport-culling principle as drawDepthSortedLayer()'s — computed fresh each call (cheap
   // arithmetic, not worth caching across the two decal passes in the same frame) so offscreen
   // decals are rejected before any Canvas state is touched. Margin covers the largest blood
   // pool's blob radius plus its glisten/skeletonization rings.
@@ -7329,19 +7703,27 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // whole cast restarting even though the charge percentage never actually moved. `angle` itself
     // already holds a stable last-aimed value between targets (see update()'s recentlyEngaged
     // grace window), so simply always using it here removes the snap entirely.
-    // Blends from the last-aimed angle toward a neutral resting angle (straight down) as
-    // restBlend ramps up while genuinely idle (see the extra.restBlend computation in Tower.draw()
-    // for the timing) — shortest-path interpolation so it doesn't spin the long way around at the
-    // ±π wraparound. Preserves the no-snap fix for brief disengagement (restBlend stays 0 for the
-    // first 2s), while fixing the actual bug this was reported for: the orb previously stayed
-    // locked at whatever angle it last aimed at indefinitely once idle, which could leave it
-    // pointing at an arbitrary, unnatural-looking angle forever instead of settling to rest.
-    const restAngle = Math.PI/2;
+    // Blends the arm angle and the staff's own extension direction independently toward
+    // Swordsman-matching resting targets as restBlend ramps up while genuinely idle (see the
+    // extra.restBlend computation in Tower.draw() for the timing). Checked Swordsman's actual
+    // resting mechanics directly rather than guessing a single shared angle: Swordsman's arm
+    // hangs down-and-out (Math.PI/2-0.7) while its BLADE points up near the shoulder via a
+    // completely separate angle (-Math.PI/2+0.96) — the arm and weapon-direction are two
+    // independently-angled things, not one. A single shared blend (the previous version here)
+    // isn't structurally how Swordsman achieves that look, which is why it still read as
+    // anatomically different even after the target angle itself was corrected. Both angles are
+    // unified (equal to `angle`) at restBlend=0, so nothing changes for the aimed/casting case —
+    // only genuine rest now independently walks the arm down and the staff-tip up, mirroring
+    // Swordsman's real geometry rather than approximating it with one compromise angle.
     const restBlend = extra.restBlend || 0;
-    const angleDiff = ((restAngle - angle + Math.PI*3) % (Math.PI*2)) - Math.PI;
-    const staffAngle = angle + angleDiff*restBlend;
+    function shortestBlend(from, to, t){
+      const diff = ((to - from + Math.PI*3) % (Math.PI*2)) - Math.PI;
+      return from + diff*t;
+    }
+    const armAngle = shortestBlend(angle, Math.PI/2 - 0.7, restBlend); // matches Swordsman's actual resting sword-hand arm angle
+    const staffAngle = shortestBlend(angle, -Math.PI/2 + 0.96, restBlend); // matches Swordsman's actual resting blade direction
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, staffAngle, armLen, skinMain, wandBend);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, armAngle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
     const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
@@ -7577,6 +7959,21 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       const tipX = mainHand.handX + Math.cos(gunAngle)*gunLen, tipY = mainHand.handY + Math.sin(gunAngle)*gunLen;
       ctx.fillStyle = 'rgba(200,160,60,0.5)';
       ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
+    }
+  } else if(type === 'MARKSMAN'){
+    // Two-handed medium rifle — a visual stepping stone between Gunalinder's short one-handed-plus-
+    // brace revolver and Sniper's full extended-barrel long rifle: braced with both hands like
+    // Sniper, but a shorter barrel and no scope glint, since Sniper is the deeper investment.
+    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gripHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.85, skinMain, -0.1);
+    const supportHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.95, skinMain, 0.08); // support hand closer in than Sniper's — a shorter weapon
+    ctx.strokeStyle = '#4a5a68'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
+    const barrelLen = weaponLenFromScale(15, 21, extra.weaponScale); // between Gunalinder's short revolver and Sniper's notably long barrel
+    const tipX = gripHand.handX + Math.cos(gunAngle)*barrelLen, tipY = gripHand.handY + Math.sin(gunAngle)*barrelLen;
+    ctx.beginPath(); ctx.moveTo(gripHand.handX, gripHand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
+    if(!lowGfx){
+      ctx.fillStyle = 'rgba(180,200,220,0.5)';
+      ctx.beginPath(); ctx.arc(tipX,tipY,2.2,0,Math.PI*2); ctx.fill();
     }
   } else if(type === 'SNIPER'){
     // long rifle, extended barrel — a much longer weapon glyph line than any other class, both
@@ -8242,11 +8639,9 @@ function render(ctx){
   // ground, and a tree/rock is a physically taller object that should occlude any stain directly
   // behind it, not have blood rendered on top of it. The previous order drew stains over trees.
   drawDecals(ctx);
-  drawScenery(ctx);
   drawBuildPreview(ctx);
   drawDeathAnims(ctx);
-  for(const e of enemyPool) if(e.active) e.draw(ctx);
-  for(const t of towerPool) if(t.active) t.draw(ctx, t === selectedTower);
+  drawDepthSortedLayer(ctx); // scenery + enemies + towers, interleaved by Y-depth — see drawDepthSortedLayer() for why
   drawDebrisDecals(ctx); // bones/skulls/worms — always above enemies/towers, see drawDebrisDecals() for why
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
@@ -8328,130 +8723,162 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
 // Start-screen attract-mode — a genuine self-contained mini-simulation, entirely separate from
 // real game state (its own enemies/towers/projectiles arrays, never enemyPool/towerPool/
 // projectilePool), advancing on its own now-based delta time rather than the global gameTime
-// (frozen while gameState !== 'PLAYING'). Three scenes, each with a different tower layout and a
-// differently-shaped enemy lane, cycle with a brief fade. Towers actually attack — swing/draw/cast
-// animations drive drawStickman()'s real animation fields, ranged classes fire projectiles that
-// travel to their target — rather than static idle poses. A slow autonomous pan/zoom gives a
-// retro-arcade drift; the dark vignette overlay is #start-screen's own CSS and untouched here,
-// only the content moving behind it changes.
-let attractScenes = null;
-let attractState = null;
-let attractSceneIndex = -1;
-let attractSceneStartTime = 0;
-let attractLastFrameTime = 0;
-const ATTRACT_SCENE_DURATION = 13000;
-
-function buildAttractScenes(){
-  return [
-    { // straight lane, left to right
-      lane: [{xf:0.0,yf:0.68},{xf:1.0,yf:0.68}],
-      towers: [ {type:'SWORDSMAN', xf:0.22, yf:0.5}, {type:'ARCHER', xf:0.5, yf:0.42}, {type:'MAGE', xf:0.78, yf:0.5} ]
-    },
-    { // bent V lane — enters top-left, dips to bottom-center, exits top-right
-      lane: [{xf:0.05,yf:0.25},{xf:0.5,yf:0.8},{xf:0.95,yf:0.25}],
-      towers: [ {type:'MAGE', xf:0.28, yf:0.45}, {type:'ARCHER', xf:0.5, yf:0.95}, {type:'SWORDSMAN', xf:0.72, yf:0.45} ]
-    },
-    { // reverse diagonal, right to left, descending
-      lane: [{xf:0.95,yf:0.2},{xf:0.5,yf:0.5},{xf:0.05,yf:0.85}],
-      towers: [ {type:'ARCHER', xf:0.75, yf:0.35}, {type:'SWORDSMAN', xf:0.5, yf:0.65}, {type:'MAGE', xf:0.25, yf:0.9} ]
-    }
-  ];
-}
+// (frozen while gameState !== 'PLAYING'). Redesigned as a curated arcade-attract vignette rather
+// than looping distinct tower layouts: a single fixed 3-Archer formation, centered in a shallow
+// arc and facing outward, defends against enemies that spawn from randomized points around the
+// screen perimeter and travel inward toward the formation — never a fixed left-to-right lane, and
+// never truly random either (each spawn's target point is jittered around the formation center so
+// motion still reads as "attacking the group" rather than scattering). One phase-driven loop
+// (calm → action → high-intensity → aftermath → fade) repeats indefinitely, each phase changing
+// spawn rate/enemy mix/intensity rather than switching to a different scene. Archers actually
+// attack — draw/fire animations drive drawStickman()'s real animation fields, real projectiles
+// travel to their target — rather than static idle poses. The dark vignette overlay is
+// #start-screen's own CSS and untouched here, only the content moving behind it changes.
+const ATTRACT_FORMATION = [
+  { xf: 0.50, yf: 0.32 }, // top-center archer
+  { xf: 0.28, yf: 0.62 }, // lower-left archer
+  { xf: 0.72, yf: 0.62 }  // lower-right archer
+];
 // Broad pool of ordinary enemy types for the attract mode's random mix — excludes BOSS (its huge
 // radius reads oddly at this decorative scale) and TROLL (has no independent wave presence, only
 // appears via a special mechanic elsewhere), everything else is fair game.
 const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','TANK','RUNNER','FIRE','ICE','SPLITTER','SPLITMINI',
   'HEALER','SHIELDED','ZOMBIE','WRAITH','SKELETON','WOLF','REAPER','BOULDER','ROCKLET','MONARCH'];
-function attractLanePointAt(lane, t){
-  const segCount = lane.length - 1;
-  const segT = clampNum(t,0,1) * segCount;
-  const segIndex = Math.min(segCount-1, Math.floor(segT));
-  const localT = segT - segIndex;
-  const a = lane[segIndex], b = lane[segIndex+1];
-  return { xf: a.xf + (b.xf-a.xf)*localT, yf: a.yf + (b.yf-a.yf)*localT };
+// Phase timeline for one attract loop, in ms from loop start. Durations sit inside the "classic
+// arcade cadence" discussed for the redesign: brief fade in/out, several seconds of escalating
+// action, a short aftermath beat before the next loop. Total loop length ~19s, inside the
+// requested 15-25s window.
+const ATTRACT_PHASES = [
+  { name: 'CALM',      start: 0,     end: 3000,  spawnEvery: 1400, maxAlive: 2, enemySpeedMult: 0.75 },
+  { name: 'ACTION',    start: 3000,  end: 9500,  spawnEvery: 700,  maxAlive: 5, enemySpeedMult: 1.0  },
+  { name: 'INTENSE',   start: 9500,  end: 15000, spawnEvery: 380,  maxAlive: 9, enemySpeedMult: 1.25 },
+  { name: 'AFTERMATH', start: 15000, end: 18000, spawnEvery: Infinity, maxAlive: 0, enemySpeedMult: 1.0 },
+  { name: 'FADE',      start: 18000, end: 19000, spawnEvery: Infinity, maxAlive: 0, enemySpeedMult: 1.0 }
+];
+const ATTRACT_LOOP_DURATION = ATTRACT_PHASES[ATTRACT_PHASES.length - 1].end;
+let attractState = null;
+let attractLoopStartTime = 0;
+let attractLastFrameTime = 0;
+let attractNextSpawnAt = 0;
+
+function attractPhaseAt(loopMs){
+  for(const p of ATTRACT_PHASES) if(loopMs >= p.start && loopMs < p.end) return p;
+  return ATTRACT_PHASES[ATTRACT_PHASES.length - 1];
 }
-function initAttractScene(index){
-  const def = attractScenes[index % attractScenes.length];
-  const enemyCount = 7; // up from 5, for a busier/more varied-looking lane
+// Controlled-random perimeter spawn: pick a random point just outside the canvas edge (any side,
+// including corners), then aim it at the formation's own center with a bounded random jitter —
+// enough variety that shots don't all converge on one pixel, not so much that enemies wander off
+// looking scattered rather than attacking.
+function attractSpawnPoint(){
+  const side = Math.floor(Math.random()*4);
+  const pad = 0.12;
+  let xf, yf;
+  if(side === 0){ xf = Math.random(); yf = -pad; }               // top
+  else if(side === 1){ xf = Math.random(); yf = 1 + pad; }        // bottom
+  else if(side === 2){ xf = -pad; yf = Math.random(); }           // left
+  else { xf = 1 + pad; yf = Math.random(); }                      // right
+  return { xf, yf };
+}
+function attractFormationCenter(){
+  let cx = 0, cy = 0;
+  for(const f of ATTRACT_FORMATION){ cx += f.xf; cy += f.yf; }
+  return { xf: cx/ATTRACT_FORMATION.length, yf: cy/ATTRACT_FORMATION.length };
+}
+function attractSpawnEnemy(now){
+  const spawn = attractSpawnPoint();
+  const center = attractFormationCenter();
+  // Bounded jitter around the formation center — "controlled random angles, not true randomness."
+  const jitter = 0.10;
+  const targetXf = clampNum(center.xf + (Math.random()*2-1)*jitter, 0.08, 0.92);
+  const targetYf = clampNum(center.yf + (Math.random()*2-1)*jitter, 0.08, 0.92);
   return {
-    def,
-    towers: def.towers.map((t, i) => ({ ...t, nextAttackAt: 800 + i*400, phase:'idle', phaseStart:0, phaseDur:0, targetIdx:-1 })),
-    enemies: Array.from({length: enemyCount}, (_, i) => ({
-      type: ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)],
-      t: i/enemyCount, speed: 0.000035 + Math.random()*0.00001, flashUntil:0
+    type: ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)],
+    fromXf: spawn.xf, fromYf: spawn.yf, toXf: targetXf, toYf: targetYf,
+    t: 0, speed: 0.00028 + Math.random()*0.00010, flashUntil: 0, spawnedAt: now, dead: false
+  };
+}
+function initAttractLoop(now){
+  attractLoopStartTime = now;
+  attractLastFrameTime = now;
+  attractNextSpawnAt = now;
+  attractState = {
+    towers: ATTRACT_FORMATION.map((f, i) => ({
+      ...f, nextAttackAt: 900 + i*350, phase: 'idle', phaseStart: 0, phaseDur: 0, targetIdx: -1
     })),
+    enemies: [],
     projectiles: []
   };
 }
+function attractEnemyScreenPos(e, t){
+  return { xf: e.fromXf + (e.toXf - e.fromXf)*t, yf: e.fromYf + (e.toYf - e.fromYf)*t };
+}
 function renderAttractMode(ctx, now){
-  if(!attractScenes) attractScenes = buildAttractScenes();
-  if(attractSceneIndex < 0){
-    attractSceneIndex = 0; attractSceneStartTime = now; attractLastFrameTime = now;
-    attractState = initAttractScene(0);
-  }
+  if(!attractState) initAttractLoop(now);
   let dt = now - attractLastFrameTime;
   attractLastFrameTime = now;
   if(dt > 100) dt = 100; // safety clamp, same reasoning as the real game loop's own frameTime clamp
 
-  const elapsed = now - attractSceneStartTime;
-  if(elapsed > ATTRACT_SCENE_DURATION){
-    attractSceneIndex = (attractSceneIndex + 1) % attractScenes.length;
-    attractSceneStartTime = now;
-    attractState = initAttractScene(attractSceneIndex);
+  let loopMs = now - attractLoopStartTime;
+  if(loopMs >= ATTRACT_LOOP_DURATION){
+    initAttractLoop(now);
+    loopMs = 0;
   }
-  const sceneT = (now - attractSceneStartTime) / ATTRACT_SCENE_DURATION;
-  const fadeT = sceneT < 0.06 ? sceneT/0.06 : (sceneT > 0.94 ? (1-sceneT)/0.06 : 1);
+  const phase = attractPhaseAt(loopMs);
+  const st = attractState;
 
-  // Slow autonomous camera drift — purely a rendering transform, doesn't affect any simulation
-  // math below (which all operates in canvas-fraction space), only where it ends up drawn.
-  const panX = Math.sin(now/4200) * CANVAS_W * 0.11;
-  const panY = Math.cos(now/5600) * CANVAS_H * 0.08;
-  const zoom = 1.1 + Math.sin(now/6500) * 0.09;
+  // Fade curve: fades in over the CALM phase's first 700ms, fades out over the FADE phase.
+  let fadeT = 1;
+  if(loopMs < 700) fadeT = loopMs / 700;
+  else if(phase.name === 'FADE'){
+    const fadePhase = ATTRACT_PHASES[ATTRACT_PHASES.length - 1];
+    fadeT = 1 - clampNum((loopMs - fadePhase.start) / (fadePhase.end - fadePhase.start), 0, 1);
+  }
+
+  // Spawning — rate-limited per current phase, capped to that phase's max concurrent enemies so
+  // AFTERMATH visibly thins out rather than instantly clearing.
+  const aliveCount = st.enemies.filter(e => !e.dead).length;
+  if(now >= attractNextSpawnAt && aliveCount < phase.maxAlive && phase.spawnEvery !== Infinity){
+    st.enemies.push(attractSpawnEnemy(now));
+    attractNextSpawnAt = now + phase.spawnEvery * (0.7 + Math.random()*0.6);
+  }
+
+  for(const e of st.enemies){
+    if(e.dead) continue;
+    e.t += e.speed * phase.enemySpeedMult * dt;
+    if(e.t >= 1){ e.dead = true; } // reached the formation center — cleared without a kill-flash
+  }
+  st.enemies = st.enemies.filter(e => !e.dead || now - e.spawnedAt < 400); // keep briefly for flash
 
   ctx.save();
   ctx.fillStyle = '#8a6a3a';
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   ctx.globalAlpha = fadeT;
-  ctx.translate(CANVAS_W/2, CANVAS_H/2);
-  ctx.scale(zoom, zoom);
-  ctx.translate(-CANVAS_W/2 + panX, -CANVAS_H/2 + panY);
 
-  const st = attractState;
-  const lane = st.def.lane;
-
-  for(const e of st.enemies){
-    e.t += e.speed * dt;
-    if(e.t >= 1) e.t = 0; // loops back to the start rather than despawning, keeping the lane populated
-  }
-
-  // Tower attack logic — a simplified but real per-class attack cycle, not a frozen pose: each
-  // tower periodically finds the nearest lane enemy and goes through an actual swing/draw/cast
-  // phase, then either resolves a melee hit immediately (Swordsman) or spawns a travelling
-  // projectile (Archer/Mage) that lands on arrival.
+  // Tower attack logic — each Archer periodically finds the nearest live enemy and goes through a
+  // real draw/fire cycle, spawning a travelling projectile that lands on arrival, rather than a
+  // frozen idle pose.
+  const liveEnemies = st.enemies.filter(e => !e.dead);
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
-    if(t.phase === 'idle' && now >= t.nextAttackAt){
+    if(t.phase === 'idle' && now >= t.nextAttackAt && liveEnemies.length){
       let bestIdx = -1, bestD = Infinity;
       for(let i=0;i<st.enemies.length;i++){
-        const p = attractLanePointAt(lane, st.enemies[i].t);
+        if(st.enemies[i].dead) continue;
+        const p = attractEnemyScreenPos(st.enemies[i], st.enemies[i].t);
         const d = Math.hypot(p.xf*CANVAS_W - tx, p.yf*CANVAS_H - ty);
         if(d < bestD){ bestD = d; bestIdx = i; }
       }
       if(bestIdx >= 0){
-        t.targetIdx = bestIdx; t.phaseStart = now;
-        if(t.type === 'SWORDSMAN'){ t.phase = 'swing'; t.phaseDur = 220; }
-        else if(t.type === 'ARCHER'){ t.phase = 'draw'; t.phaseDur = 500; }
-        else { t.phase = 'cast'; t.phaseDur = 650; }
+        t.targetIdx = bestIdx; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480;
       }
     }
     if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
       const target = st.enemies[t.targetIdx];
-      if(target){
-        if(t.type === 'SWORDSMAN'){ target.flashUntil = now + 150; target.t = 0; }
-        else st.projectiles.push({ fromX:tx, fromY:ty, targetIdx:t.targetIdx, startTime:now, duration: t.type==='ARCHER'?260:340, kind:t.type });
+      if(target && !target.dead){
+        st.projectiles.push({ fromX: tx, fromY: ty, targetIdx: t.targetIdx, startTime: now, duration: 240 });
       }
       t.phase = 'idle';
-      t.nextAttackAt = now + 900 + Math.random()*700;
+      t.nextAttackAt = now + 700 + Math.random()*500;
     }
   }
 
@@ -8459,47 +8886,45 @@ function renderAttractMode(ctx, now){
     const p = st.projectiles[i];
     if(now - p.startTime >= p.duration){
       const target = st.enemies[p.targetIdx];
-      if(target){ target.flashUntil = now + 150; target.t = 0; }
+      if(target && !target.dead){ target.flashUntil = now + 150; target.dead = true; }
       st.projectiles.splice(i,1);
     }
   }
 
-  // Enemies draw before towers, matching the real game's own draw order
+  // Enemies draw before towers, matching the real game's own draw order.
   ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for(const e of st.enemies){
-    const p = attractLanePointAt(lane, e.t);
+    const p = attractEnemyScreenPos(e, Math.min(e.t, 1));
     const ex = p.xf*CANVAS_W, ey = p.yf*CANVAS_H;
     if(now < e.flashUntil){
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.beginPath(); ctx.arc(ex, ey, 13, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillText(CONFIG.ENEMIES[e.type].emoji, ex, ey);
+    if(!e.dead || now < e.flashUntil) ctx.fillText(CONFIG.ENEMIES[e.type].emoji, ex, ey);
   }
 
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
-    const target = t.targetIdx >= 0 ? st.enemies[t.targetIdx] : null;
-    let angle = Math.PI/2;
+    const target = (t.targetIdx >= 0 && st.enemies[t.targetIdx] && !st.enemies[t.targetIdx].dead) ? st.enemies[t.targetIdx] : null;
+    let angle = Math.PI/2; // face outward/downward from the formation when idle
     if(target){
-      const p = attractLanePointAt(lane, target.t);
+      const p = attractEnemyScreenPos(target, target.t);
       angle = Math.atan2(p.yf*CANVAS_H - ty, p.xf*CANVAS_W - tx);
     }
     const extraAtk = { hasTarget: !!target };
-    if(t.phase === 'swing') extraAtk.swingProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
-    else if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
-    else if(t.phase === 'cast'){ extraAtk.castProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1); extraAtk.chargeProgress = extraAtk.castProgress; }
-    drawStickman(ctx, tx, ty, angle, 1, t.type, extraAtk);
+    if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
+    drawStickman(ctx, tx, ty, angle, 1, 'ARCHER', extraAtk);
   }
 
   for(const p of st.projectiles){
     const target = st.enemies[p.targetIdx];
     if(!target) continue;
     const pT = clampNum((now - p.startTime) / p.duration, 0, 1);
-    const tp = attractLanePointAt(lane, target.t);
+    const tp = attractEnemyScreenPos(target, target.t);
     const px = p.fromX + (tp.xf*CANVAS_W - p.fromX)*pT;
     const py = p.fromY + (tp.yf*CANVAS_H - p.fromY)*pT;
-    ctx.fillStyle = p.kind === 'MAGE' ? '#7dd3fc' : '#f1c40f';
-    ctx.beginPath(); ctx.arc(px, py, p.kind==='MAGE'?4:2.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
   }
   ctx.restore();
 }
@@ -8767,7 +9192,16 @@ function handleTap(clientX, clientY){
     if(!canAffordTower(selectedBuildType)) return;
     const t = acquireActive(towerPool);
     if(!t) return;
-    gold -= CONFIG.TOWERS[selectedBuildType].baseCost;
+    if(selectedBuildType === 'BARRICADE'){
+      // Consumes a free charge first when available, otherwise deducts wood+stone — mirrors
+      // buyItem()'s existing free-charge-first pattern. canAffordTower() above already confirmed
+      // one of these two is true, so exactly one branch here can run.
+      const def = CONFIG.TOWERS.BARRICADE;
+      if(freeBarricadesLeft > 0) freeBarricadesLeft--;
+      else { wood -= def.woodCost; stone -= def.stoneCost; }
+    } else {
+      gold -= CONFIG.TOWERS[selectedBuildType].baseCost;
+    }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
     playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type]);
@@ -9133,7 +9567,7 @@ function buildShopGrid(){
     });
   }
 
-  for(const def of UNIVERSAL_ITEMS){
+  for(const def of UNIVERSAL_ITEMS.filter(d => !d.isBarricade)){ // Barricade is bought from Build now, not Shop — see buildTowerModal()'s existing wood/stone/free-charge logic
     const alreadyOwned = towerSelected && selectedTower.equippedItems.some(i => i.id === def.id);
     const full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
     const useFreeCharge = def.isBarricade && freeBarricadesLeft > 0;
@@ -9468,6 +9902,7 @@ function generateDebugLog(){
   s += 'Death animations: ' + deathAnims.length + '\n';
   s += 'Decals: ' + decals.length + ' (cap ' + MAX_DECALS + ')\n';
   s += 'Scenery items: ' + sceneryMap.size + '\n';
+  s += 'Flora items: ' + floraMap.size + '\n';
   s += 'Ground items: ' + groundItems.length + '\n\n';
 
   s += 'BROWSER / DEVICE\n';
@@ -9550,14 +9985,40 @@ function updateInspectPanel(){
   document.getElementById('inspExpandChevron').style.transform = inspPanelExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
   document.getElementById('inspExpandChevron').classList.toggle('has-points', selectedTower.statPoints > 0);
   const t = selectedTower;
+  const isBarricade = t.type === 'BARRICADE';
+  document.getElementById('inspEvoBarTrack').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspCombatRow').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspStatsRow').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspItemsRow').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspUpgradeBtn').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspDpsBetween').classList.toggle('hidden', isBarricade);
+  document.getElementById('inspTargetBtn').classList.toggle('hidden', isBarricade);
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Two-Hander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
-  inspLevel.textContent = 'Lv.' + t.expLevel + specLabel + heroLabel;
+  inspLevel.textContent = isBarricade ? '' : ('Lv.' + t.expLevel + specLabel + heroLabel);
   document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   document.getElementById('inspHpBarFill').style.width = hpPct + '%';
   document.getElementById('inspHpBarText').textContent = hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp);
+  if(isBarricade){
+    // Obstacle, not a tower — deliberately simplified panel. Skips every combat/stat/XP/evolution
+    // computation below entirely (not just hiding the resulting fields) since none of it is
+    // meaningful for a Barricade; only durability (the HP bar above, already generic) plus
+    // Move/Store/Sell/Help remain relevant, matching the requested simplified obstacle view.
+    inspSellValue.textContent = '(💰' + t.sellValue() + ')';
+    document.getElementById('inspStoreBtn').classList.toggle('hidden', false);
+    const moveBtn = document.getElementById('inspMoveBtn');
+    const moveCost = document.getElementById('inspMoveCost');
+    moveBtn.disabled = moveCharges <= 0;
+    moveCost.textContent = '(' + moveCharges + ' left)';
+    document.getElementById('inspAxeModeBtn').classList.add('hidden');
+    document.getElementById('statsInfoBtn').classList.add('hidden');
+    document.getElementById('barricadeInfoBtn').classList.remove('hidden');
+    document.getElementById('inspAuraBox').classList.add('hidden');
+    fitOptRowsToOneLine();
+    return;
+  }
   const evoTrack = document.getElementById('inspEvoBarTrack');
   evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
   if(t.expLevel >= MAX_TOWER_LEVEL){
@@ -9569,8 +10030,47 @@ function updateInspectPanel(){
     document.getElementById('inspEvoBarText').textContent = Math.round(t.xp) + '/' + need + ' XP';
   }
   const evoHint = document.getElementById('inspEvoHint');
-  const evo = EVOLUTIONS[t.type];
-  if(evo){
+  if(BASE_ATTUNABLE_TYPES.includes(t.type)){
+    if(!t.attunement){
+      // Pre-attunement: same "single clear leader" heuristic the old hint used — only call out a
+      // likely element when one stat is unambiguously ahead, not at the start or on a tie.
+      const stats = ['str','dex','int'];
+      const values = stats.map(k => t[k]||0);
+      const maxVal = Math.max(...values);
+      const leaders = stats.filter(k => (t[k]||0) === maxVal);
+      if(maxVal > 0 && leaders.length === 1){
+        const statKey = leaders[0];
+        const remaining = Math.max(0, ATTUNEMENT_THRESHOLD - (t[statKey]||0));
+        const element = ATTUNEMENTS[statKey];
+        const elementLabel = element.charAt(0) + element.slice(1).toLowerCase();
+        evoHint.textContent = remaining > 0
+          ? (ATTUNEMENT_ICON[element] + ' ' + elementLabel + ' — ' + remaining + ' more ' + statKey.toUpperCase())
+          : (ATTUNEMENT_ICON[element] + ' Ready to attune!');
+        evoHint.classList.remove('hidden');
+      } else {
+        evoHint.classList.add('hidden');
+      }
+    } else {
+      const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[t.attunement];
+      const target = SPECIALIZATIONS[t.type] && SPECIALIZATIONS[t.type][t.attunement];
+      const elementLabel = t.attunement.charAt(0) + t.attunement.slice(1).toLowerCase();
+      if(target){
+        const remaining = Math.max(0, SPECIALIZATION_THRESHOLD - (t[attunedStat]||0));
+        const targetDef = CONFIG.TOWERS[target];
+        evoHint.textContent = remaining > 0
+          ? (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ' + remaining + ' more ' + attunedStat.toUpperCase())
+          : (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ready to evolve!');
+      } else {
+        // Attuned, but this base class has no defined specialization for this element yet
+        // (intentional — see SPECIALIZATIONS comments and BACKLOG.md) — say so plainly rather
+        // than hiding the hint or implying a further evolution is coming.
+        evoHint.textContent = ATTUNEMENT_ICON[t.attunement] + ' ' + elementLabel + ' Attuned';
+      }
+      evoHint.classList.remove('hidden');
+    }
+  } else {
+    const evo = EVOLUTIONS[t.type];
+    if(evo){
     // only call out a "most likely" evolution when one branch-relevant stat is a clear, single
     // leader — not at the start (all zero) and not when two-plus stats are tied, since neither
     // case actually predicts which evolution the player is heading toward
@@ -9591,8 +10091,9 @@ function updateInspectPanel(){
     } else {
       evoHint.classList.add('hidden');
     }
-  } else {
-    evoHint.classList.add('hidden');
+    } else {
+      evoHint.classList.add('hidden');
+    }
   }
 
   const isMeleeMode = t.type === 'AXEMAN' ? t.axeMode === 'MELEE' : !!t.baseMeleeDamage;
@@ -9661,7 +10162,7 @@ function updateInspectPanel(){
     inspUpgradeCost.textContent = '(MAX)';
   }
   inspSellValue.textContent = '(💰' + t.sellValue() + ')';
-  document.getElementById('inspStoreBtn').classList.toggle('hidden', t.type !== 'BARRICADE');
+  document.getElementById('inspStoreBtn').classList.add('hidden'); // Barricade-only button; Barricade itself returned early above and set this visible there
   inspTargetMode.textContent = t.targetMode;
   const moveBtn = document.getElementById('inspMoveBtn');
   const moveCost = document.getElementById('inspMoveCost');
@@ -9678,8 +10179,8 @@ function updateInspectPanel(){
     axeBtn.classList.add('hidden');
   }
 
-  document.getElementById('statsInfoBtn').classList.toggle('hidden', t.type === 'BARRICADE');
-  document.getElementById('barricadeInfoBtn').classList.toggle('hidden', t.type !== 'BARRICADE');
+  document.getElementById('statsInfoBtn').classList.remove('hidden');
+  document.getElementById('barricadeInfoBtn').classList.add('hidden');
 
   const slots = document.querySelectorAll('.item-slot');
   slots.forEach((slot, i) => {
@@ -9931,6 +10432,7 @@ function resetGame(){
   exitMoveMode();
   initRegionAndPath();
   generateScenery();
+  generateFlora();
   rebakeMap();
   document.getElementById('pauseBtn').textContent = '⏸';
   document.getElementById('pauseBtn').classList.remove('active');
@@ -9953,6 +10455,7 @@ function resetGame(){
    ========================================================= */
 validateGameDefinitions();
 initRegionAndPath();
+generateFlora();
 const mapCanvas = document.createElement('canvas');
 mapCanvas.width = WORLD_MAX_W; mapCanvas.height = WORLD_MAX_H;
 drawMap(mapCanvas.getContext('2d')); // rendered once here and re-baked on each map expansion — see rebakeMap()
