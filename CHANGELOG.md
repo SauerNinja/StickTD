@@ -1,5 +1,78 @@
 # Changelog
 
+## [1.1.58] - 2026-09-13 — Three more confirmed bugs from the external review
+Continuing the triage from 1.1.57 — three more findings re-verified against this file and fixed,
+each with an isolated regression test reproducing the exact reported scenario.
+
+- **Fixed the 4-stack bleed cap not actually capping damage.** `bleedStackCount` was correctly
+  capped at 4, but `bleedDamagePerTick` kept accumulating unbounded on every application regardless
+  — 6 applications of 10 damage produced a "4 stacks" display while actually dealing 60 damage/tick,
+  not 40. Now tracks each stack's own damage-per-tick in an array (`bleedStackDamages`, max 4
+  entries, since different arrows can roll different damage — a single "cap using the newest value"
+  approach would be wrong), and derives `bleedDamagePerTick` as their sum. A 5th+ application still
+  refreshes bleed duration but no longer adds to the damage total. Also fixed a related pooling
+  bug found while in this code: `Enemy.spawn()` reset every other bleed field but not
+  `bleedStackCount` itself, so a reused pool slot could start "pre-stacked" from whatever its
+  previous occupant had. Verified with 10 assertions: the exact 6×10 scenario now caps at 40;
+  mixed-strength stacks sum correctly; a 5th application refreshes duration without adding damage;
+  and a simulated pool-reuse reset starts genuinely clean.
+- **Fixed Barricade-in-inventory corrupting a tower's entire stat calculation.** `BARRICADE_ITEM`
+  has no `str`/`dex`/`int` fields, and the item-stat accumulator (`itemStr += it.str` etc.) had no
+  guard against `undefined` — `itemArmor` already had one (`it.armor || 0`), just not the other
+  three, for no apparent reason. `undefined + number = NaN`, which then poisoned every downstream
+  stat (damage, range, cooldown, max HP, miss chance) for the whole tower once a Barricade sat in
+  its inventory. Fixed by matching the armor field's existing pattern. Verified: a Barricade alone
+  now contributes exactly zero stats instead of NaN; a real item stored alongside a Barricade keeps
+  its own stats intact; ordinary multi-item inventories are unaffected.
+- **Fixed exactly-coincident enemies never separating.** `resolveEnemyCollisions()`'s divide-by-zero
+  guard (`Math.hypot(dx,dy) || 0.0001`) only prevented a crash — when `dx` and `dy` are both
+  exactly zero, dividing them by any fallback distance still produces a `(0,0)` push direction, so
+  the pair never actually moved apart. Now derives a deterministic direction from the pair's own
+  enemy IDs when centers coincide, rather than `Math.random()` — the same coincident pair always
+  separates the same way instead of either staying stuck or jittering a different direction every
+  frame. Verified: a coincident pair now gets a real non-zero push; the same pair produces an
+  identical direction on repeated calls (no jitter); different ID pairs get different directions;
+  and the normal (non-coincident) case is completely unaffected.
+- Remaining findings from the review are still untouched and still listed in `BACKLOG.md` — this
+  pass did not attempt pooled-state leaks beyond bleed, axe/poison inheritance, evolution field
+  retention, save/load fidelity, pool exhaustion, input cancellation, or any of the performance
+  items (viewport culling, empty-hash queries, UI refresh coalescing, hash-build reuse).
+
+## [1.1.57] - 2026-09-13 — Two confirmed bugs fixed from an external code review
+A detailed external review (ChatGPT, reviewing v1.1.56) raised ~20 findings across rendering,
+combat, pooling, save/load, and input. Rather than act on all of them at once, each was
+re-verified against the actual current file before touching anything — two were confirmed real
+and fixed here with an executed regression test; the rest are triaged honestly in `BACKLOG.md`,
+distinguishing what's independently verified from what's merely plausible.
+
+- **Fixed a real `ReferenceError` crash in `drawOneDecal()`**, introduced by the previous session's
+  "skip color computation for bones" optimization (1.1.55). `r`/`g`/`b` were declared with `let`
+  inside the `if(!d.isEmojiDrop && !d.isWorm)` block, but the oxidation-ring/skeletonization effect
+  for aged blood pools (~120s+ into a pool's life) reads them from *outside* that block — block-
+  scoped `let` doesn't leak past its braces, so any blood pool old enough to reach that code threw
+  immediately. Fixed by hoisting the declarations to function scope (assigning, not re-declaring,
+  inside the conditional) — the bones/worms optimization itself is untouched. Verified by
+  extracting the actual current function and running it against a blood-pool decal at ages 0,
+  60000, 120000, 120001, 180000, and 600000ms — all pass now (120001ms threw before the fix).
+- **Fixed duplicate death processing when two damage sources kill the same enemy in one tick.**
+  `Enemy.die()` had no re-entrancy guard, and the targeting/collision hash is built once per tick
+  before towers attack — so a kill earlier in the tick doesn't remove that corpse from the hash
+  until the next rebuild. A second hit landing on the same (now-dead) enemy reference would run the
+  *entire* death sequence again: bounty awarded twice, kill credited twice, death particles/sound/
+  floating text spawned twice. Added `if(!this.active) return;` to the top of both
+  `Enemy.applyDamage()` and `Enemy.die()`. Verified with an isolated reproduction of the exact
+  scenario (two lethal hits, same tick): bounty and kill-credit now fire exactly once, and a
+  separate check confirmed the revive mechanic (which deliberately keeps an enemy `active` through
+  its first "death") is unaffected by the new guard.
+- Everything else from the review — dead-enemy target selection, pooled-enemy state leaking across
+  reuse, axe projectiles inheriting a previous projectile's poison, the bleed-stack damage cap not
+  actually capping total damage, barricade-in-inventory producing NaN-adjacent stat corruption,
+  coincident-enemy collision never separating, evolution retaining a previous class's fields,
+  save/load not fully restoring specialization modifiers, pool-exhaustion silently dropping spawns,
+  `pointercancel` still committing a tap, and the reported viewport-culling/empty-hash/UI-refresh
+  performance items — has **not** been independently verified against this file yet. Full triage
+  with priority is in `BACKLOG.md`. None of it is claimed fixed here.
+
 ## [1.1.56] - 2026-09-13 — Front-loaded "RuneScape-style" accuracy curve
 - **Replaced the generic diminishing-returns accuracy formula with a purpose-built two-segment
   curve hitting exact requested targets**: 100 effective DEX now misses just 4% of the time

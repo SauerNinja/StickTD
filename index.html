@@ -913,7 +913,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.56'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.58'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3803,6 +3803,8 @@ class Enemy{
     this.bleedStartedAt = 0;     // reference point for the cessation taper — spurt intensity winds down as the wound approaches bleedUntil instead of cutting off abruptly at full strength
     this.bleedTickTimer = 0;
     this.bleedDamagePerTick = 0;
+    this.bleedStackCount = 0;    // was missing from this reset — a reused pool slot could otherwise inherit a stale stack count from whatever this slot last held
+    this.bleedStackDamages = []; // per-stack damage-per-tick values (max 4) — see applyBleed(), this is what actually enforces the 4-stack cap on total damage, not just the display count
     this.lastBleedSource = null;
     this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
@@ -3868,13 +3870,20 @@ class Enemy{
   applyBleed(damagePerTick, ms, sourceTower){
     // Cumulative — multiple arrows stuck in the same target add to the total bleed rate instead of
     // just refreshing to whichever hit was strongest. A real body with three arrows in it bleeds
-    // faster than one with a single arrow — capped at 4 stacks (bleedStackCount) so a fast-firing
-    // Archer can't compound this into an instant, unbounded death spiral; a real body also only
-    // has so much blood pressure to lose regardless of how many wounds are open.
-    this.bleedStackCount = Math.min(4, (this.bleedStackCount||0) + 1);
+    // faster than one with a single arrow — capped at 4 stacks so a fast-firing Archer can't
+    // compound this into an instant, unbounded death spiral; a real body also only has so much
+    // blood pressure to lose regardless of how many wounds are open. Each stack's own
+    // damage-per-tick is tracked individually (bleedStackDamages) rather than one running sum,
+    // since different arrows can roll different damage — once at the 4-stack cap, a new
+    // application still refreshes duration below but no longer adds to the damage total, which is
+    // what actually enforces the cap this comment describes (a bare stack-count cap with an
+    // unbounded running sum underneath it wouldn't).
+    if(!this.bleedStackDamages) this.bleedStackDamages = [];
+    if(this.bleedStackDamages.length < 4) this.bleedStackDamages.push(damagePerTick);
+    this.bleedStackCount = this.bleedStackDamages.length;
     this.bleedUntil = Math.max(this.bleedUntil, gameTime + ms);
-    if((this.bleedStackCount||0) <= 1) this.bleedStartedAt = gameTime; // reference point for the cessation taper — only reset on the FIRST arrow, so a second/third stacking on doesn't restart the clock
-    this.bleedDamagePerTick = (this.bleedDamagePerTick||0) + damagePerTick;
+    if(this.bleedStackCount <= 1) this.bleedStartedAt = gameTime; // reference point for the cessation taper — only reset on the FIRST arrow, so a second/third stacking on doesn't restart the clock
+    this.bleedDamagePerTick = this.bleedStackDamages.reduce((a,b) => a+b, 0);
     if(sourceTower) this.lastBleedSource = sourceTower;
   }
   update(dt){
@@ -4005,6 +4014,7 @@ class Enemy{
     } else {
       this.bleedDamagePerTick = 0; // expired — a fresh wound starts clean rather than keeping a stale strength
       this.bleedStackCount = 0; // all arrows have finished bleeding out — the next one starts a fresh count
+      this.bleedStackDamages = [];
     }
     if(this.healsAllies) this.updateHealAura(dt);
     if(this.hasShield) this.updateShieldRegen(dt);
@@ -4224,6 +4234,7 @@ class Enemy{
   }
   reachEnd(){ this.active = false; loseLife(1); }
   applyDamage(amount, sourceTower, forStreak, isHoly){
+    if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
     // cosmetic overlay. Symmetric around 1.0, so average DPS over many hits lands exactly where
     // each tower's tuned base numbers already put it — this only adds hit-to-hit spread, it never
@@ -4577,6 +4588,7 @@ class Enemy{
     if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
   die(sourceTower, forStreak){
+    if(!this.active) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
     if(this.revives && !this.hasRevived){
       this.hasRevived = true;
       this.maxHp = Math.round(this.maxHp * 0.5); // permanently weaker second life
@@ -5101,7 +5113,7 @@ class Tower{
     // mutating str/dex/int on a Barricade instance that should never carry meaningful stats at all.
     if(this.type === 'BARRICADE'){ this.maxHp = 10; return; }
     let itemStr = 0, itemDex = 0, itemInt = 0, itemArmor = 0;
-    for(const it of this.equippedItems){ itemStr += it.str; itemDex += it.dex; itemInt += it.int; itemArmor += it.armor || 0; }
+    for(const it of this.equippedItems){ itemStr += it.str || 0; itemDex += it.dex || 0; itemInt += it.int || 0; itemArmor += it.armor || 0; }
     // Armor from items only, at a fixed 1 armor = 1% damage reduction — baseShieldPct (class
     // ability like Hammerman's, plus the Legendary bonus) is a separate, permanent, non-item
     // source, summed here rather than mutated ad-hoc so equipping/unequipping an armor item takes
@@ -6998,7 +7010,7 @@ function drawOneDecal(ctx, d){
     // string concatenation, previously run every frame for every visible decal regardless of type —
     // in a scene with a lot of accumulated bone debris (a real reported laggy case), that was pure
     // wasted work on a result nothing ever read.
-    let color, alpha;
+    let color, alpha, r, g, b;
     if(!d.isEmojiDrop && !d.isWorm){
       // Real forensic bloodstain aging, compressed so one round ≈ 5 real-world hours: bright
       // oxyhemoglobin red holds for the first ~3.3% of life (≈10 minutes of the 5h scale — blood
@@ -7006,7 +7018,6 @@ function drawOneDecal(ctx, d){
       // through a reddish-brown oxidizing stage as it dries, settling into the fully-dried true
       // color by ~40% of life (≈2 hours) rather than one flat two-color lerp.
       const rgb = d.rgb;
-      let r, g, b;
       if(lifeT < 0.033){
         const t = lifeT / 0.033;
         r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
@@ -8190,11 +8201,22 @@ function resolveEnemyCollisions(){
         if(!other.active) continue;
         if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
         const dx = e.x - other.x, dy = e.y - other.y;
-        const dist = Math.hypot(dx,dy) || 0.0001;
+        const dist = Math.hypot(dx,dy);
         const minDist = e.radius + other.radius + 2; // strict non-overlap (was 0.82x, deliberately allowing 18% visual overlap that read as sprite stacking/"invisible" units)
         if(dist >= minDist) continue;
         const overlap = minDist - dist;
-        let pushX = dx/dist, pushY = dy/dist;
+        let pushX, pushY;
+        if(dist > 0.0001){
+          pushX = dx/dist; pushY = dy/dist;
+        } else {
+          // Exactly (or near-exactly) coincident centers — dx and dy are both ~0, so dividing by
+          // any fallback distance still yields a (0,0) push direction and the pair never actually
+          // separates. Derive a deterministic angle from the pair's own IDs instead of
+          // Math.random() — the same coincident pair then always separates the same way rather
+          // than jittering a different direction every frame it stays stuck.
+          const angle = ((e.id * 2654435761 + other.id * 40503) % 360) * Math.PI/180;
+          pushX = Math.cos(angle); pushY = Math.sin(angle);
+        }
         const eFrozen = isEnemyFrozen(e);
         const otherFrozen = isEnemyFrozen(other);
         if(!eFrozen && !otherFrozen){

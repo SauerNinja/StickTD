@@ -121,6 +121,71 @@ risk categories) rather than being bundled into one giant rewrite.
   whole-row `transform:scale()` for the button row specifically — same no-clipping/no-wrapping
   goal, less legibility loss at extreme late-game values.
 
+## From the 2026-09-13 external code review (ChatGPT, reviewing v1.1.56) — five confirmed and fixed
+## so far: 1.1.57 (decal ReferenceError crash, duplicate death processing), 1.1.58 (bleed-cap damage
+## not actually capped, Barricade-in-inventory NaN stat corruption, coincident-enemy collision never
+## separating). Everything below
+## is unverified against this file and NOT claimed fixed
+
+The review is thorough and specific (exact line numbers, several claims backed by extracted-and-
+executed function tests), but it reviewed a static upload, not this live file, so re-verification is
+required before acting on any of it — several past sessions in this project have already found that
+"looks right on paper" and "confirmed by reading the actual code" are different things worth keeping
+separate.
+
+**High-priority correctness bugs claimed, not yet re-verified:**
+- Pooled enemies retain previous-occupant state across reuse — `wetFeetSteps` and `packSpeedBonus`
+  cited as surviving `Enemy.spawn()`'s reset (`bleedStackCount`, cited alongside these two, was
+  independently verified and fixed in 1.1.58 — the other two are still unverified).
+- Axe projectiles (`fireAxeThrow()`) don't initialize poison fields the way `fireProjectile()` does,
+  so a reused pooled projectile can carry over a previous shot's poison.
+- Evolution (`applyTierStats()`/`evolveInto()`) claimed to leave old class-specific fields (splash
+  radius, burst count, etc.) intact when the destination class doesn't define them — cited example:
+  Bomber → Gunalinder retaining `splashRadius`.
+- Save/load claimed to not fully reconstruct Swordsman specialization modifiers (damage/cooldown/
+  swing arc from `chooseSpec()`) or `totalSpent` (used for sell value) after a restore.
+- `pointercancel` reportedly shares a handler with `pointerup` and can still commit a tap/drop.
+- Restart (`resetGame()`) claimed to leave `hitStopUntil`, `groundItems`, `deathAnims`, and the
+  fixed-tick accumulator un-reset.
+- Fast-forward claimed to not recheck `gameState` between fixed-tick iterations within one frame,
+  so a game-over mid-loop doesn't stop the remaining ticks that frame.
+- `restoreGameState()` claimed to mutate live session state before validating a loaded save, so a
+  malformed save can damage the current run rather than being rejected cleanly.
+- Pool exhaustion (enemy/projectile) claimed to silently drop a queued spawn or consume a firing
+  cycle with no acquired slot, rather than failing visibly or deferring.
+
+**Performance items claimed, not yet re-verified (distinguish from the P0 crash and double-death
+bug above — these are about wasted CPU/allocation, not incorrect behavior):**
+- `drawDepthSortedLayer()` still adds every active enemy/tower unconditionally, with no viewport
+  cull before constructing/drawing them (scenery and debris ARE culled; enemies/towers reportedly
+  are not).
+- `Tower.draw()`'s unspent-stat-points scroll icon runs a blur/shadow effect with no Low-graphics
+  check, unlike the nearby killstreak glow.
+- Idle towers still call `queryNearby()` against a known-empty spatial hash rather than
+  short-circuiting.
+- Combat-event UI updates (`gainTowerExp()`, `creditKill()`, `updateHUD()`, `updateInspectPanel()`)
+  claimed to each trigger their own full refresh rather than coalescing multiple events from one
+  frame into a single refresh.
+- Five separate spatial-hash builds per simulation tick, each allocating fresh bucket storage.
+- The barricade/pileup queue-assignment search is quadratic even when there's no actual queue to
+  join.
+- Audio synthesis (`tone()`/`noise()`) claimed to still construct oscillator/gain/filter nodes while
+  muted, rather than rejecting new sound creation at the synthesis entry point.
+
+**Design questions raised, not bugs:** the review flags that `SPECIALIZATIONS`' 500-point threshold
+and the pre-existing deeper `EVOLUTIONS` thresholds (Blowdart→Squirtgun at 40, Marksman→Sniper at
+60) can both already be satisfied by the time a tower reaches its 500-point specialization,
+making the intermediate class a very brief stage rather than a real milestone — worth a deliberate
+decision (refresh/replace/leave as absolute thresholds), not a silent balance change.
+
+**Process recommendation from the review, worth adopting regardless of how the above triages**:
+require a same-scene before/after comparison (frame-interval p50/p95/p99, not just `node --check`)
+for any change touching update/render loops, collision, targeting, UI refresh, or object lifetimes.
+This project has no way to run a browser in this environment to produce that measurement — every
+"performance fix" shipped so far has been justified by allocation/logic reasoning and isolated
+Node tests, never an actual measured frame-time before/after. That's a real gap worth being
+upfront about rather than implying otherwise.
+
 ## Ideas
 
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
