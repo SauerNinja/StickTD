@@ -138,6 +138,7 @@ to attunement, using a flat stat threshold like before.
 | 🎯 Sniper | *(Marksman → INT 60, deep tier)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
 | ⚡ Snap Caster | *(Mage → ⚡ Electric, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
 | ✝️ Cleric | *(Mage → ❄️ Ice, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
+| 🧑‍🦳 Pope | *(Cleric → INT 750, deep tier)* Cleric's ultimate form — the curse hits every enemy in range at once instead of one target, still 5x against undead. A visibly growing hat on Cleric telegraphs the approach to this evolution the whole way from 500 to 750 INT. |
 
 💣 Bomber and 🔫 Gunalinder still exist and work exactly as before for anyone who already has one,
 but as of the attunement redesign above, a fresh Archer's INT path now leads to Marksman instead —

@@ -113,6 +113,13 @@
   #hud-stats-stack{display:flex;flex-direction:column;gap:2px;}
   .hud-stat-row{display:flex;align-items:center;gap:8px;}
   .hud-stat-row .hud-stat{font-size:clamp(11px,1.6vw,15px);}
+  /* The two numbers a player actually watches constantly to make decisions get a color-coded
+     accent — gold for the currency it represents, a warm rose for lives (evoking health/danger,
+     same family as --danger used elsewhere). Wood/stone stay plain white on purpose: they're
+     secondary resources that shouldn't compete for attention with the primary two. Only color/
+     weight — no size or spacing change, so this can't affect the tight-fit top bar's width. */
+  #goldVal{color:var(--gold);font-weight:bold;}
+  #livesVal{color:#ff9e96;font-weight:bold;}
   #livesMeter{width:40px;height:9px;vertical-align:middle;}
   #waveProgress{width:40px;height:7px;vertical-align:middle;}
   #livesMeter::-webkit-meter-bar{background:rgba(0,0,0,0.35);border-radius:4px;border:none;}
@@ -132,17 +139,19 @@
     border-radius:6px;min-width:36px;min-height:38px;font-size:clamp(13px,2vw,16px);
     font-weight:bold;cursor:pointer;padding:4px 6px;}
   .hud-btn.active{background:var(--gold);color:#3a2a00;}
-  #nextWaveBtn{pointer-events:auto;background:var(--gold);color:#3a2a00;border:none;
+  #nextWaveBtn{pointer-events:auto;
+    background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;border:none;
     padding:6px 10px;border-radius:6px;font-weight:bold;font-size:clamp(12px,2vw,16px);
-    cursor:pointer;min-height:38px;min-width:42px;}
+    cursor:pointer;min-height:38px;min-width:42px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
   #nextWaveBtn:disabled{background:#8a8a8a;color:#444;cursor:default;}
   .build-row.expand-row{background:rgba(58,117,51,0.35);box-shadow:inset 0 0 0 2px #7dd3fc;}
   .build-row.expand-row:active{background:rgba(58,117,51,0.55);}
   .build-row.expand-row.disabled{cursor:default;opacity:0.55;filter:grayscale(1);}
 
-  .hud-action-btn{background:var(--gold);color:#3a2a00;border:none;border-radius:6px;
+  .hud-action-btn{background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;border:none;border-radius:6px;
     padding:7px 10px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:38px;
-    pointer-events:auto;}
+    pointer-events:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
   #settingsBtn.hud-action-btn{padding:8px 9px;min-width:40px;}
   .hud-action-btn.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
   .hud-action-btn.has-unlock{position:relative;}
@@ -150,7 +159,7 @@
     border-radius:50%;background:var(--danger);box-shadow:0 0 4px var(--danger);}
 
   #unlock-toast{position:absolute;top:56px;left:50%;transform:translateX(-50%);
-    max-width:88%;background:rgba(30,20,10,0.95);border:2px solid var(--gold);border-radius:8px;
+    max-width:88%;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid var(--gold);border-radius:8px;
     padding:8px 16px;color:var(--paper);font-weight:bold;font-size:clamp(11px,1.8vw,14px);
     text-align:center;z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s;}
   #unlock-toast.show{opacity:1;}
@@ -162,7 +171,7 @@
     z-index:15;opacity:0;pointer-events:none;transition:none;}
   #killstreak-banner.show{animation:killstreakPop 2.2s ease-out forwards;}
   #wave-summary-toast{position:absolute;top:76px;left:50%;transform:translateX(-50%) translateY(-8px);
-    max-width:min(280px,88%);background:rgba(30,20,10,0.95);border:2px solid var(--gold);border-radius:8px;
+    max-width:min(280px,88%);background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid var(--gold);border-radius:8px;
     padding:10px 16px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:center;
     z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s ease,transform 0.3s ease;}
   #wave-summary-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -171,7 +180,7 @@
   #waveSummaryXpList{display:flex;flex-direction:column;gap:2px;}
   .wave-summary-xp-row{display:flex;justify-content:space-between;gap:10px;color:#bdeaff;}
   #new-enemy-toast{position:absolute;top:150px;left:50%;transform:translateX(-50%) translateY(-8px);
-    max-width:min(300px,88%);background:rgba(30,20,10,0.95);border:2px solid #e63946;border-radius:8px;
+    max-width:min(300px,88%);background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid #e63946;border-radius:8px;
     padding:10px 16px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:center;
     z-index:9;opacity:0;pointer-events:none;transition:opacity 0.3s ease,transform 0.3s ease;}
   #new-enemy-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
@@ -203,7 +212,7 @@
   #tower-modal{position:absolute;inset:0;background:transparent;z-index:20;pointer-events:none;}
   #tower-modal.hidden{display:none;}
   #tower-modal-inner{position:absolute;top:52px;left:8px;pointer-events:auto;
-    background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+    background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     width:min(300px,92vw);max-height:75vh;display:flex;flex-direction:column;overflow:hidden;
     box-shadow:0 8px 24px rgba(0,0,0,0.5);}
   #tower-modal-header{display:flex;align-items:center;justify-content:space-between;
@@ -233,7 +242,7 @@
   #settings-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:24;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #settings-modal.hidden{display:none;}
-  #settings-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+  #settings-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:460px;width:100%;display:flex;flex-direction:column;overflow:hidden;}
   #settings-modal-header{display:flex;align-items:center;justify-content:space-between;
     padding:12px 14px;border-bottom:2px solid var(--wood-light);}
@@ -262,7 +271,7 @@
   #help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #help-modal.hidden{display:none;}
-  #help-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+  #help-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:560px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
     text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
   #help-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
@@ -271,27 +280,29 @@
   #help-modal-inner h3:first-of-type{margin-top:10px;}
   #help-modal-inner .evo-row{display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap;}
   #help-modal-inner .evo-arrow{opacity:0.6;}
-  #help-modal-close{display:block;margin:14px auto 0;background:var(--gold);color:#3a2a00;
-    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;}
+  #help-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
+    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
   #barricade-help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #barricade-help-modal.hidden{display:none;}
-  #barricade-help-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+  #barricade-help-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
     text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
   #barricade-help-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
-  #barricade-help-modal-close{display:block;margin:14px auto 0;background:var(--gold);color:#3a2a00;
-    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;}
+  #barricade-help-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
+    border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
 
   #spec-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:21;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #spec-modal.hidden{display:none;}
-  #spec-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+  #spec-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:520px;width:100%;padding:16px;text-align:center;color:var(--paper);}
   #spec-modal-inner h2{margin:0 0 6px;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
   .spec-sub{font-size:clamp(11px,1.8vw,13px);opacity:0.9;margin:0 0 14px;line-height:1.4;}
   #spec-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .spec-card{background:var(--wood-light);border:2px solid var(--wood);border-radius:8px;
+  .spec-card{background:linear-gradient(165deg, #7a5238 0%, var(--wood-light) 40%, var(--wood) 100%);border:2px solid var(--wood);border-radius:8px;
     padding:14px 10px;cursor:pointer;transition:border-color 0.15s;}
   .spec-card:active{border-color:var(--gold);}
   .spec-card .icon{font-size:30px;}
@@ -303,11 +314,17 @@
   #shop-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:22;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #shop-modal.hidden{display:none;}
-  #shop-modal-inner{background:var(--wood);border:2px solid var(--gold);border-radius:10px;
+  #shop-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:600px;width:100%;max-height:88%;display:flex;flex-direction:column;overflow:hidden;}
   #shop-modal-header{display:flex;align-items:center;justify-content:space-between;
     padding:12px 14px;border-bottom:2px solid var(--wood-light);}
   #shop-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
+  /* Serif display face for every modal headline, matching the start-screen title — gives the whole
+     game one consistent typographic hierarchy (serif for headlines, the existing Trebuchet sans
+     for body/UI) instead of every h2 sharing the same face as its own buttons and labels. */
+  #tower-modal-header h2, #settings-modal-header h2, #help-modal-inner h2,
+  #barricade-help-modal-inner h2, #spec-modal-inner h2, #shop-modal-header h2{
+    font-family:Georgia,'Times New Roman',serif;letter-spacing:0.5px;}
   #shopModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     width:36px;height:36px;min-width:36px;min-height:36px;cursor:pointer;font-size:16px;}
   #shop-selected-note{padding:6px 14px;font-size:11.5px;color:#bdeaff;opacity:0.9;}
@@ -315,7 +332,7 @@
     grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
   .shop-section-divider{color:var(--gold);font-size:12px;font-weight:bold;padding:8px 2px 2px;
     border-top:1px solid var(--wood-light);margin-top:4px;}
-  .shop-item-card{position:relative;background:var(--wood-light);border:2px solid var(--wood);
+  .shop-item-card{position:relative;background:linear-gradient(165deg, #7a5238 0%, var(--wood-light) 40%, var(--wood) 100%);border:2px solid var(--wood);
     border-radius:8px;padding:10px;text-align:center;color:var(--paper);cursor:pointer;}
   .shop-item-card .icon{font-size:26px;}
   .shop-item-card .name{font-weight:bold;margin-top:2px;font-size:12.5px;}
@@ -338,11 +355,11 @@
   #zoom-controls button:active{background:rgba(107,69,48,0.95);}
 
   #inspect-panel{position:absolute;bottom:8px;left:8px;right:auto;max-width:min(320px,calc(100% - 16px));
-    background:rgba(30,20,10,0.95);
+    background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);
     border:2px solid var(--gold);border-radius:8px;padding:8px;color:var(--paper);z-index:6;
     display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:clamp(11px,1.8vw,14px);}
   #inspTargetFrame{position:absolute;bottom:8px;display:none;
-    background:rgba(30,20,10,0.95);border:2px solid #e63946;border-radius:8px;padding:8px;
+    background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid #e63946;border-radius:8px;padding:8px;
     color:var(--paper);z-index:6;gap:10px;align-items:center;font-size:clamp(11px,1.8vw,14px);
     max-width:270px;}
   #inspTargetFrame.show{display:flex;}
@@ -457,7 +474,7 @@
   #auraTooltip.hidden{display:none;}
   #auraTooltipIcon{font-size:1.3em;flex:0 0 auto;}
 
-  #move-mode-banner{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(30,20,10,0.95);
+  #move-mode-banner{position:absolute;bottom:8px;left:8px;right:8px;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);
     border:2px solid #7dd3fc;border-radius:8px;padding:10px 14px;color:var(--paper);z-index:6;
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     font-size:clamp(12px,2vw,15px);font-weight:bold;}
@@ -472,8 +489,10 @@
   #end-screen{background:rgba(10,15,8,0.92);}
   #start-screen{background:radial-gradient(ellipse at center, rgba(10,15,8,0.65) 0%, rgba(10,15,8,0.65) 40%, rgba(10,15,8,0.9) 100%);}
   #start-screen.hidden,#end-screen.hidden{display:none;}
-  #start-screen h1,#end-screen h1{font-size:clamp(22px,5vw,40px);color:var(--gold);
-    text-shadow:2px 2px 0 #000;margin-bottom:6px;}
+  #start-screen h1,#end-screen h1{font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;
+    font-size:clamp(22px,5vw,40px);color:var(--gold);
+    text-shadow:2px 2px 0 #000, 0 0 18px rgba(241,196,15,0.35), 0 -1px 0 rgba(255,255,255,0.2);
+    margin-bottom:6px;}
   #versionTag{font-size:11px;color:var(--paper);opacity:0.55;margin-bottom:14px;}
   #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
@@ -484,17 +503,23 @@
   .rating-badge.rating-mature{color:#e63946;}
   #goreLabel{font-size:11.5px;opacity:0.9;display:flex;align-items:center;gap:6px;cursor:pointer;}
   .quality-label{font-size:clamp(11px,1.8vw,14px);opacity:0.85;}
-  .quality-btn{background:var(--wood-light);color:var(--paper);border:2px solid var(--wood);
+  .quality-btn{background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);
+    color:var(--paper);border:2px solid var(--wood);
     border-radius:6px;padding:8px 16px;font-size:clamp(12px,2vw,15px);font-weight:bold;
-    cursor:pointer;min-height:40px;}
+    cursor:pointer;min-height:40px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12);}
   .quality-btn.selected{border-color:var(--gold);box-shadow:0 0 6px var(--gold);}
-  .big-btn{margin-top:12px;background:var(--gold);color:#3a2a00;border:none;padding:14px 28px;
-    border-radius:8px;font-size:clamp(14px,2.4vw,20px);font-weight:bold;cursor:pointer;min-height:48px;}
+  .big-btn{margin-top:12px;
+    background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);
+    color:#3a2a00;border:none;padding:14px 28px;letter-spacing:0.5px;
+    border-radius:8px;font-size:clamp(14px,2.4vw,20px);font-weight:bold;cursor:pointer;min-height:48px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(0,0,0,0.18), 0 3px 6px rgba(0,0,0,0.35);}
+  .big-btn:active{box-shadow:inset 0 2px 4px rgba(0,0,0,0.3);}
   #intro-links-row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;}
-  .link-btn{background:rgba(74,47,29,0.75);color:var(--paper);border:1.5px solid var(--gold);
+  .link-btn{background:linear-gradient(180deg, rgba(90,60,38,0.85) 0%, rgba(64,40,24,0.85) 100%);
+    color:var(--paper);border:1.5px solid var(--gold);
     padding:7px 12px;border-radius:6px;font-size:clamp(11px,1.8vw,14px);font-weight:bold;
     cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;}
-  .link-btn:hover{background:rgba(74,47,29,0.95);}
+  .link-btn:hover{background:linear-gradient(180deg, rgba(105,72,46,0.95) 0%, rgba(74,47,29,0.95) 100%);}
 
 </style>
 </head>
@@ -816,6 +841,7 @@
         <div class="evo-row">🔫 Marksman <span class="evo-arrow">→ INT 60 →</span> 🎯 Sniper</div>
         <div class="evo-row">🔮 Mage <span class="evo-arrow">→ DEX 100 → 500 →</span> ⚡ Snap Caster</div>
         <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 100 → 500 →</span> ✝️ Cleric</div>
+        <div class="evo-row">✝️ Cleric <span class="evo-arrow">→ INT 750 →</span> 🧑‍🦳 Pope</div>
         <div class="evo-row">🔨 Hammerman <span class="evo-arrow">→ INT 40 →</span> ⚜️ Paladin</div>
 
         <h3>🎒 Items & Heroes</h3>
@@ -913,7 +939,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.58'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.77'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -983,6 +1009,7 @@ const JOB_COLORS = {
   BOMBER:    { main:'hsl(42,60%,78%)',  shade:'hsl(42,48%,58%)'  }, // amber/brown
   GATLING:   { main:'hsl(220,18%,80%)', shade:'hsl(220,22%,55%)' }, // desaturated steel gray-blue
   CLERIC:    { main:'hsl(48,70%,90%)',  shade:'hsl(48,45%,68%)'  }, // pale gold-white
+  POPE:      { main:'hsl(45,75%,80%)',  shade:'hsl(42,60%,50%)'  }, // richer, deeper gold — grander than Cleric's pale gold-white
   BLOWDART:  { main:'hsl(95,45%,75%)',  shade:'hsl(95,38%,52%)'  }, // sickly poison green
   SQUIRTGUN: { main:'hsl(105,70%,68%)', shade:'hsl(105,60%,42%)' }, // vivid acid green
   GUNALINDER:{ main:'hsl(15,25%,68%)',  shade:'hsl(15,30%,42%)'  }, // dark gunmetal brown
@@ -1001,6 +1028,7 @@ const JOB_BUILD = {
   BOMBER:    { scaleX:1.20, scaleY:0.88 }, // stout, heavy-set
   GATLING:   { scaleX:1.12, scaleY:0.95 }, // bulky
   CLERIC:    { scaleX:0.92, scaleY:1.05 },  // upright, composed
+  POPE:      { scaleX:0.96, scaleY:1.08 },  // slightly grander stance than Cleric
   BLOWDART:  { scaleX:0.88, scaleY:1.02 },  // lean and quick
   SQUIRTGUN: { scaleX:0.86, scaleY:1.00 },  // even lighter, built for speed
   GUNALINDER:{ scaleX:1.08, scaleY:0.95 },  // stocky gunslinger stance
@@ -1019,6 +1047,7 @@ const JOB_QUOTES = {
   BOMBER:    ["Fire in the hole!", "Stand back — way back.", "Boom first, questions later.", "Lit and ready.", "Clear the blast radius!"],
   GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum.", "Barrels hot!", "Keep 'em coming."],
   CLERIC:    ["None shall fall today.", "Be still, and be healed.", "The undead have no place here.", "Grace and judgment.", "Faith mends what's broken."],
+  POPE:      ["Let all be judged as one.", "The light spares no evil.", "By my word, be cleansed.", "None escape this grace.", "The faithful stand eternal."],
   BLOWDART:  ["One prick is all it takes.", "The poison does the rest.", "Fast hands, sharp aim.", "A little sting, a lot of damage.", "Silent and precise."],
   SQUIRTGUN: ["Double the guns, double the burn.", "Acid doesn't miss twice.", "Wet work, my specialty.", "Corrosive and ready.", "Let it burn."],
   GUNALINDER:["Six rounds, six problems solved.", "Reloading is for the slow.", "Empty the cylinder!", "Spin the barrel!", "Every shot counts."],
@@ -1059,7 +1088,8 @@ const TOWER_STRATEGY = {
   SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
   MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Evolves further into Sniper." },
   SNAPCASTER:{ icon: '⚡', text: 'Mage evolved through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
-  CLERIC:    { icon: '✨', text: 'The only support tower: heals nearby towers and smites undead directly rather than shooting enemies. Doesn\'t fight the wave — keeps everyone else able to.' }
+  CLERIC:    { icon: '✨', text: 'The only support tower: heals nearby towers and smites undead directly rather than shooting enemies. Doesn\'t fight the wave — keeps everyone else able to.' },
+  POPE:      { icon: '⛪', text: "Cleric's AOE evolution — hits every enemy in range at once instead of one target. Reached only through very deep INT investment (750 total). Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
 };
 
 // Hero items — bought from the shop, type-restricted (a Swordsman can only equip Swordsman gear).
@@ -1073,20 +1103,27 @@ const HERO_BONUS_STAT = 5;
 const RANGE_CAPS = {
   SNIPER: 520, MAGE: 420, ARCHER: 380, GATLING: 340, MARKSMAN: 360, GUNALINDER: 310, BOMBER: 320,
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
-  CLERIC: 200, BLOWDART: 240, SQUIRTGUN: 260
+  CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260
 };
 // Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less —
 // tier 0 (points 1-5) at full value, tier 1 (6-10) at 85%, tier 2 (11-15) at 70%, and so on down
 // to a 25% floor so heavy investment is never completely worthless, just increasingly inefficient.
 function diminishingStatValue(points, perPoint){
   let total = 0, remaining = points, tier = 0;
-  while(remaining > 0){
+  // Tiers 0-4 (the first 25 points) each have a genuinely different multiplier and must be
+  // iterated individually.
+  while(remaining > 0 && tier < 5){
     const inTier = Math.min(5, remaining);
-    const tierMult = Math.max(0.25, 1 - tier*0.15);
+    const tierMult = 1 - tier*0.15;
     total += inTier * perPoint * tierMult;
     remaining -= inTier;
     tier++;
   }
+  // Beyond 25 points, the Math.max(0.25, ...) floor means every further tier computes the exact
+  // same 0.25 multiplier — closed-form arithmetic instead of looping through it a tier at a time,
+  // since a single stat can now realistically reach several hundred points (attunement's
+  // SPECIALIZATION_THRESHOLD=500, Cleric's own Pope evolution at 750).
+  if(remaining > 0) total += remaining * perPoint * 0.25;
   return total;
 }
 // WARRIOR archetype (Swordsman and its evolutions — Hammerman, Axeman, Spearman, Paladin) STR
@@ -1191,7 +1228,7 @@ const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
   GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER',
-  MAGE:'MAGE', CLERIC:'MAGE'
+  MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE'
 };
 // HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR
 // growth rate, per explicit spec: Warrior starts heaviest and grows fastest, Mage starts
@@ -1273,10 +1310,16 @@ const EVOLUTIONS = {
   // Marksman's own deeper evolution reuses Gunalinder's already-established int:60/Sniper target
   // exactly (same destination class, same relative threshold) — the review's carve-out for reusing
   // "an existing explicit threshold... finalized elsewhere" rather than inventing a new one.
-  MARKSMAN: { int: {target:'SNIPER', threshold:60} }
+  MARKSMAN: { int: {target:'SNIPER', threshold:60} },
+  // Cleric's own deep-tier evolution — requested as "250 more INT after becoming Cleric." Cleric
+  // itself already requires 500 INT (SPECIALIZATIONS.MAGE.ICE), and every EVOLUTIONS threshold is
+  // checked against the tower's raw cumulative int (not "since this evolution"), so the actual
+  // number here has to be 500+250=750, not a bare 250 — a bare 250 would already be satisfied the
+  // instant Cleric is reached and would fire immediately rather than after further investment.
+  CLERIC: { int: {target:'POPE', threshold:750} }
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into. Barricade included here (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable.
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN']; // reachable only via evolution, never built directly
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE']; // reachable only via evolution, never built directly
 
 // All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
 // tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
@@ -1422,6 +1465,15 @@ const CONFIG = {
         { range: 140, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
         { range: 155, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
         { range: 170, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
+      ]
+    },
+    POPE: {
+      name: 'Pope', icon: '🧑‍🦳', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Cleric's ultimate form, reached only after 750 total INT — the curse is no longer aimed at a single target. Every enemy within range is struck at once in a holy nova, still dealing 5x tick damage against the undead. Still heals your lowest-HP tower once per wave.",
+      tiers: [
+        { range: 130, damage: 30, cooldown: 8000, healAmount: 80, curseDuration: 4000 },
+        { range: 145, damage: 40, cooldown: 7200, healAmount: 100, curseDuration: 4400, upgradeCost: 220 },
+        { range: 160, damage: 52, cooldown: 6400, healAmount: 130, curseDuration: 4800, upgradeCost: 300 }
       ]
     },
     BLOWDART: {
@@ -2093,12 +2145,19 @@ function updateBarricadesAndPileup(){
   // adjacent, unrelated lane and snaps sideways across tracks to "join" that queue
   const MAX_TRAVELED_GAP_FOR_CATCHMENT = 110;
   const claimedSlots = new Set();
+  let anyBlockedSeed = false;
   for(const e of active){
     // Both of these are independent per-enemy, order-agnostic operations — merged into one pass
     // rather than two separate loops over the same freshly-sorted array right after each other.
     e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; e.origTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
-    if(e.pileBlocked) claimedSlots.add(Math.round(e.traveled)); // enemies already directly touching a barricade occupy their own traveled position
+    if(e.pileBlocked){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
   }
+  // The catchment assignment loop below can only ever pull an enemy into a queue by matching it
+  // against an already-pileBlocked enemy — with none blocked this frame (the common case, no
+  // barricade currently under contact), it's guaranteed to do N*(N-1)/2 iterations of pure wasted
+  // work, every one of them immediately hitting the `!ahead.pileBlocked` skip below. Skipping the
+  // whole loop here changes no behavior — it would have assigned nobody to a queue anyway.
+  if(anyBlockedSeed){
   for(let i=0; i<active.length; i++){
     const behind = active[i];
     if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
@@ -2128,6 +2187,7 @@ function updateBarricadesAndPileup(){
       snapEnemyToTraveled(behind, slotDist);
     }
   }
+  } // end if(anyBlockedSeed)
   // Enemies not caught up in an actual barricade queue are left alone here — resolveEnemyCollisions()
   // and resolveSweptEnemyCollisions() (run later this same frame, after movement) already enforce
   // spacing between them using real physical (x,y) distance. A previous version of this function also
@@ -2505,16 +2565,29 @@ function drawDepthSortedLayer(ctx){
     const baseY = item.y + size*0.5; // the item's "feet" — same anchor tallStretch already uses, so depth matches what visually reads as its base
     items.push({ sortY: baseY, kind: 's', key, item, size });
   }
-  for(const e of enemyPool) if(e.active) items.push({ sortY: e.y, kind: 'e', e });
-  for(const t of towerPool) if(t.active) items.push({ sortY: t.y, kind: 't', t });
+  const actorViewLeft = viewLeft - 60, actorViewRight = viewRight + 60, actorViewTop = viewTop - 60, actorViewBottom = viewBottom + 60; // wider than scenery's own margin — floating text, HP bars, and legendary name labels can extend further above an enemy/tower than any scenery ever does
+  for(const e of enemyPool){
+    if(!e.active) continue;
+    if(e.x < actorViewLeft || e.x > actorViewRight || e.y < actorViewTop || e.y > actorViewBottom) continue;
+    items.push({ sortY: e.y, kind: 'e', e });
+  }
+  for(const t of towerPool){
+    if(!t.active) continue;
+    // The selected tower is the only one that ever draws a range circle (gated by isSelected
+    // inside Tower.draw() — confirmed, not assumed), which can extend far beyond its own body, so
+    // it's never culled regardless of position. Every other tower gets the same actor-bounds check
+    // as enemies above.
+    if(t !== selectedTower && (t.x < actorViewLeft || t.x > actorViewRight || t.y < actorViewTop || t.y > actorViewBottom)) continue;
+    items.push({ sortY: t.y, kind: 't', t });
+  }
   // Bone/skull/worm debris — depth-sorted by its own y like everything else here, replacing the
   // old separate always-on-top pass (drawDebrisDecals(), removed). That pass was a real fix for a
   // real bug (debris flickering out when an enemy walked directly onto its exact tile, since it
   // used to draw BEFORE enemies), but "always above everything" overcorrected: a skull would
   // render in front of an enemy that was actually further down/closer to the camera, which reads
   // just as wrong as the flicker did. Depth-sorting by y — the same mechanism already proven for
-  // trees — fixes both: an enemy standing exactly on a skull's tile still occludes it correctly
-  // (same y, natural sort tie), while an enemy elsewhere on the path sorts correctly relative to it.
+  // trees — fixes the general case. The exact-tie case (an enemy standing precisely on a bone's own
+  // tile) needed a separate small fix below — see the sortY epsilon on the debris push.
   //
   // Items are plain tagged objects dispatched through the switch below, not per-item closures —
   // in a decal-heavy area (a lot of accumulated blood/bone debris, which now participates in this
@@ -2526,7 +2599,15 @@ function drawDepthSortedLayer(ctx){
     if(!(d.isEmojiDrop || d.isWorm)) continue;
     if(!decalVisible(d, debrisBounds)) continue;
     perfStats.visibleDecals++;
-    items.push({ sortY: d.y, kind: 'd', d });
+    // Tiny negative epsilon, not just d.y: Array.sort is stable, and debris is pushed into this
+    // array AFTER enemies/towers above — so an exact position tie (an enemy standing precisely on
+    // a bone's tile, which is the single most common case, since that's where bones actually drop)
+    // would otherwise keep the enemy earlier in the stable sort and the bone later, meaning the
+    // bone draws ON TOP of the enemy standing there — backwards from the intended fix, and
+    // invisible in normal play until an enemy is actually standing on the exact bone tile, which is
+    // exactly the scenario reported as still broken. This epsilon is far too small to affect
+    // ordering against anything at a real depth difference.
+    items.push({ sortY: d.y - 0.5, kind: 'd', d });
   }
   items.sort((a,b) => a.sortY - b.sortY);
   for(const it of items){
@@ -2563,6 +2644,26 @@ function drawMap(ctx){
     for(let gy=0; gy<ROWS; gy++){
       if(!pathCells.has(gx+','+gy)) continue;
       if((gx+gy)%2===0) ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+  // Subtle speckle texture on the path itself — a mix of small darker (packed dirt/pebble) and
+  // lighter (dry/dusty patch) dots, sparse and low-opacity by design so it reads as ground detail
+  // from a normal viewing distance rather than competing with blood decals or floating combat text
+  // during a fight. The path was otherwise a single flat fill plus the faint shading above — the
+  // largest, flattest surface in the whole game, and the one every enemy/tower/particle is seen
+  // against. Baked once here, same as everything else in this function, not a per-frame cost.
+  for(let gx=0; gx<COLS; gx++){
+    for(let gy=0; gy<ROWS; gy++){
+      if(!pathCells.has(gx+','+gy)) continue;
+      const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
+      const speckleCount = 3 + Math.floor(Math.random()*3); // 3-5 per tile — enough to read as texture, not clutter
+      for(let i=0; i<speckleCount; i++){
+        const sx = tx + Math.random()*TILE_SIZE, sy = ty + Math.random()*TILE_SIZE;
+        const r = 1 + Math.random()*1.8;
+        const isDark = Math.random() < 0.6;
+        ctx.fillStyle = isDark ? 'rgba(0,0,0,0.10)' : 'rgba(255,235,200,0.08)';
+        ctx.beginPath(); ctx.ellipse(sx, sy, r, r*0.7, Math.random()*Math.PI, 0, Math.PI*2); ctx.fill();
+      }
     }
   }
 
@@ -3378,7 +3479,7 @@ function showWaveSummary(waveNum, goldGained, xpByType){
 // Once per round (wave completion): every active Cleric heals one damaged tower, always picking
 // the lowest-HP-fraction target not already claimed by another Cleric this same round.
 function processClericHealing(){
-  const clerics = towerPool.filter(t => t.active && t.type === 'CLERIC');
+  const clerics = towerPool.filter(t => t.active && (t.type === 'CLERIC' || t.type === 'POPE'));
   if(!clerics.length) return;
   const healedThisRound = new Set();
   for(const cleric of clerics){
@@ -3460,8 +3561,8 @@ function gainTowerExp(tower, amount){
 function creditKill(tower, forStreak){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
-  gainTowerExp(tower, 4); // small, frequent XP per kill — bumped from 3, shifting more weight onto active kills vs. passive wave-survival XP below (evolution thresholds are the actual pacing lever now that they've doubled; this is a ratio rebalance between XP sources, not a pace change on its own)
-  if(!forStreak){ updateInspectPanel(); updateHUD(); return; } // e.g. splash kills beyond the first in one blast
+  gainTowerExp(tower, 4); // small, frequent XP per kill — bumped from 3, shifting more weight onto active kills vs. passive wave-survival XP below (evolution thresholds are the actual pacing lever now that they've doubled; this is a ratio rebalance between XP sources, not a pace change on its own). Already refreshes the inspect panel internally (if `tower` is the one currently selected) — nothing below needs to call updateInspectPanel() again.
+  if(!forStreak){ updateHUD(); return; } // e.g. splash kills beyond the first in one blast
   if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
     tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
   }
@@ -3474,7 +3575,6 @@ function creditKill(tower, forStreak){
     showKillstreakBanner(tier.label);
   }
   checkLegendaryStatus(tower);
-  updateInspectPanel();
   updateHUD();
 }
 
@@ -3494,6 +3594,7 @@ function serializeGameState(){
     itemIds: t.equippedItems.map(i => i.id),
     attunement: t.attunement || null,
     hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
+    totalSpent: t.totalSpent,
     killCount: t.killCount, killStreak: t.killStreak, nextStreakTier: t.nextStreakTier,
     isLegendary: t.isLegendary, legendaryName: t.legendaryName, disabledWavesLeft: t.disabledWavesLeft
   }));
@@ -3585,7 +3686,8 @@ function restoreGameState(state){
     }
     if(t.type === 'BARRICADE'){ t.str = 0; t.dex = 0; t.int = 0; t.statPoints = 0; } // obstacle, not a tower — clears any stray stats an old (pre-fix) corrupted save might carry, on top of recomputeStats()'s own guard which already made maxHp safe regardless
     t.xp = td.xp||0; t.expLevel = td.expLevel||1;
-    if(td.spec) t.spec = td.spec;
+    if(td.spec) t.chooseSpec(td.spec); // calls the real spec-choice logic (damage/cooldown/swing-arc multipliers), not a bare label assignment — chooseSpec() itself guards against re-applying if t.spec is somehow already set
+    if(td.totalSpent !== undefined) t.totalSpent = td.totalSpent; // else: an old save predating this field — t.create() above already set totalSpent to this tower's base cost, a safe (if not perfectly accurate for a heavily-upgraded legacy tower) fallback rather than a crash
     if(td.targetMode) t.targetMode = td.targetMode;
     t.equippedItems = (td.itemIds||[]).map(id => UNIVERSAL_ITEMS.find(i => i.id===id)).filter(Boolean);
     t.isLegendary = !!td.isLegendary; t.legendaryName = td.legendaryName || '';
@@ -3610,11 +3712,28 @@ function restoreGameState(state){
   updateHUD();
   updateInspectPanel();
 }
+// Rejects an obviously malformed save BEFORE restoreGameState() runs — that function destructively
+// clears all live state (enemyPool/towerPool/sceneryMap) in its very first lines, with no
+// validation beforehand, so by the time a missing/wrong-type field throws deeper inside it, the
+// live session is already gone with no way back. Checks the specific fields restoreGameState()
+// dereferences without a guard early on — pathWaypointTiles is the exact one whose absence throws
+// inside rebuildPathCellsAndPx()'s `pathWaypointTiles.map(...)` call. Not exhaustive (a save with
+// the right top-level shape but nonsensical nested data could still fail later), but it closes the
+// reproduced crash and the most common real failure mode: a non-save file, or one from an
+// incompatible/corrupted source.
+function validateSaveShape(state){
+  if(!state || typeof state !== 'object') return false;
+  if(typeof state.gold !== 'number' || typeof state.lives !== 'number') return false;
+  if(!Array.isArray(state.pathWaypointTiles)) return false;
+  if(!state.activeRegion || typeof state.activeRegion !== 'object') return false;
+  return true;
+}
 function loadSaveFileText(text){
   const jsonStart = text.indexOf('{');
   if(jsonStart === -1){ showToast('⚠️ Not a valid save file'); return; }
   try{
     const state = JSON.parse(text.slice(jsonStart));
+    if(!validateSaveShape(state)){ showToast('⚠️ Not a valid save file — your current game is untouched'); return; }
     restoreGameState(state);
     const versionNote = (state.gameVersion && state.gameVersion !== GAME_VERSION)
       ? ' — from v' + state.gameVersion + ', this is v' + GAME_VERSION : '';
@@ -3805,6 +3924,7 @@ class Enemy{
     this.bleedDamagePerTick = 0;
     this.bleedStackCount = 0;    // was missing from this reset — a reused pool slot could otherwise inherit a stale stack count from whatever this slot last held
     this.bleedStackDamages = []; // per-stack damage-per-tick values (max 4) — see applyBleed(), this is what actually enforces the 4-stack cap on total damage, not just the display count
+    this.lastBleedTriggerAt = -Infinity; // 10s per-enemy cooldown gate on triggering a new bleed event — see the severity>0.15 check in applyDamage(). -Infinity, not 0: gameTime can legitimately be 0 at the moment of a real trigger, and 0 is falsy in JS, which would make a bare "!this.lastBleedTriggerAt" guard true forever afterward
     this.lastBleedSource = null;
     this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
@@ -3841,6 +3961,9 @@ class Enemy{
     this.revives = !!def.revives;
     this.hasRevived = false;
     this.pack = !!def.pack;
+    this.packSpeedBonus = 1; // only ever recomputed inside if(this.pack) in update() — a non-pack enemy reusing a pack-enemy's old slot would otherwise keep a stale bonus forever, since nothing else ever touches this field for it
+    this.packCheckTimer = 0;
+    this.wetFeetSteps = 0; this.wetFeetStepsMax = 0; this.wetFeetSizeBonus = 0; // read unconditionally in update() with no gate on whether THIS enemy actually stepped in blood — must start at zero, not inherit a previous occupant's mid-sequence values
     this.isUndead = !!def.isUndead;
     // Ambient footstep cadence — a fixed stride LENGTH (not a wall-clock interval), so a faster
     // enemy naturally steps more often without needing its own separate timer scaling. `null`
@@ -4578,9 +4701,14 @@ class Enemy{
       // just a one-off visual drip. Strongest application wins (doesn't stack into a burst), and
       // while it's active the enemy keeps actively spraying/pooling fresh blood every tick (see
       // the bleedUntil handling in update()), on top of whatever the low-HP passive drip is doing.
-      if(!bio.isDust && this.hp > 0 && severity > 0.15){
+      // Gated by a 10s per-enemy cooldown (lastBleedTriggerAt) — without one, a fast-firing tower
+      // landing repeated >15%-of-max-HP hits on the same enemy could retrigger a fresh bleed event
+      // every hit, stacking floating "BLEEDING" text, drip trails, and stack recalculation rapidly
+      // enough to read as visually broken rather than as a status effect.
+      if(!bio.isDust && this.hp > 0 && severity > 0.15 && gameTime - this.lastBleedTriggerAt >= 10000){
         const bleedDmg = Math.max(1, Math.round(this.maxHp * 0.018));
         this.applyBleed(bleedDmg, 5000 + severity*4000, sourceTower);
+        this.lastBleedTriggerAt = gameTime;
       }
     } else {
       spawnParticles(this.x, this.y, '#ffaa33', 3, 0);
@@ -5063,6 +5191,15 @@ class Tower{
   }
   applyTierStats(){
     this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Gunalinder) must not inherit a stale value from whatever this tower was before evolving
+    // Same reasoning extended to two more real leaks found by checking every evolution edge, not
+    // just the one already fixed above: Bomber's tiers define splashRadius but Gunalinder's don't
+    // (a Gunalinder would otherwise still deal unintended AOE splash via onImpact()'s unconditional
+    // `splashRadius > 0` check, directly contradicting its own "trades splash for precision"
+    // identity), and Mage's tiers define slowFactor/slowDuration but Cleric's/Pope's don't (lower
+    // impact — Cleric/Pope's own curse-based attack path never reads these — but still stale state
+    // that has no business surviving the evolution). Blowdart→Squirtgun was checked too and is
+    // fine: both define poisonDamage/poisonDuration in every tier.
+    this.splashRadius = 0; this.slowFactor = 0; this.slowDuration = 0;
     Object.assign(this, this.def.tiers[this.level-1]);
     // snapshot the tier's numbers as the "base" that STR/DEX/INT bonuses layer on top of.
     // Damage specifically is dampened here: the raw tier table's damage growth (tier 1 -> max tier)
@@ -5428,6 +5565,7 @@ class Tower{
     this.cooldownTimer -= dt*iceMult;
     const nearby = queryNearby(enemyHash, this.x, this.y, this.targetingRange);
     if(this.type === 'CLERIC'){ this.updateClericSmite(dt, nearby); return; }
+    if(this.type === 'POPE'){ this.updatePopeSmite(dt, nearby); return; }
     this.findTarget(nearby);
     if(this.target && !this.target.active) this.target = null;
     if(this.target) this.lastTargetTime = gameTime; // grace-period anchor — see recentlyEngaged below
@@ -5500,6 +5638,25 @@ class Tower{
     }
     this.cooldownTimer = this.cooldown;
   }
+  // Pope's evolution over Cleric: no single target, no miss chance to roll against (an AOE pulse
+  // centered on itself can't "miss") — every enemy within range gets cursed at once. Same
+  // curse-tick/5x-undead-damage mechanics as Cleric's own smite, just applied to everyone in range
+  // simultaneously instead of the single closest enemy.
+  updatePopeSmite(dt, nearby){
+    if(this.cooldownTimer > 0) return;
+    if(!nearby.length){ this.angle = IDLE_WEAPON_ANGLE; return; }
+    const curseDur = this.curseDuration || 3000;
+    const tickCount = Math.max(1, Math.round(curseDur / 600));
+    const perTick = this.damage / tickCount;
+    for(const target of nearby){
+      const curseTick = target.isUndead ? Math.round(perTick * 5) : Math.round(perTick);
+      target.applyPoison(curseTick, curseDur, this);
+    }
+    spawnShockring(this.x, this.y, hexToRgba('#ffe9a8', 0.75), this.range);
+    spawnShockring(this.x, this.y, hexToRgba('#ffffff', 0.6), 30);
+    playSound('cast_cleric');
+    this.cooldownTimer = this.cooldown;
+  }
   // Called from a breakaway enemy's attack. Returns true if this hit dropped the tower to 0 HP.
   takeDamage(amount, statusType){
     const reduced = Math.max(1, Math.round(amount * (1-this.shieldPct)));
@@ -5566,10 +5723,11 @@ class Tower{
       const elapsed = gameTime - this.drawStart;
       this.drawProgress = Math.min(1, elapsed / Math.max(1, this.drawTime));
       if(this.drawProgress >= 1){
-        this.fireProjectile();
-        this.isDrawing = false;
-        this.drawProgress = 0;
-        this.cooldownTimer = this.cooldown;
+        if(this.fireProjectile()){
+          this.isDrawing = false;
+          this.drawProgress = 0;
+          this.cooldownTimer = this.cooldown;
+        } // else: pool exhausted this frame — stay fully drawn and retry next frame once a slot frees up
       }
     }
   }
@@ -5578,13 +5736,14 @@ class Tower{
       if(this.burstCount > 1 && this.burstShotsLeft === 0){
         this.burstShotsLeft = this.burstCount; // start a fresh burst
       }
-      this.fireProjectile();
-      if(this.burstCount > 1){
-        this.burstShotsLeft--;
-        this.cooldownTimer = this.burstShotsLeft > 0 ? this.burstDelay : this.cooldown;
-      } else {
-        this.cooldownTimer = this.cooldown;
-      }
+      if(this.fireProjectile()){
+        if(this.burstCount > 1){
+          this.burstShotsLeft--;
+          this.cooldownTimer = this.burstShotsLeft > 0 ? this.burstDelay : this.cooldown;
+        } else {
+          this.cooldownTimer = this.cooldown;
+        }
+      } // else: pool exhausted this frame — cooldownTimer stays <=0 and burstShotsLeft is untouched, so the very next frame retries the same shot rather than silently consuming it
     }
   }
   fireProjectile(){
@@ -5622,7 +5781,7 @@ class Tower{
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
-    if(!p) return;
+    if(!p) return false; // pool exhausted — caller must not treat this as a fired shot
     p.active = true;
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
@@ -5668,6 +5827,7 @@ class Tower{
       BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage'
     }[this.type] || 'shot_archer';
     playSound(rangedSound);
+    return true;
   }
 
   updateAxeman(dt, nearby){
@@ -5682,8 +5842,7 @@ class Tower{
         this.cooldownTimer = this.meleeCooldown;
         playSound('swing_axe');
       } else {
-        this.fireAxeThrow();
-        this.cooldownTimer = this.cooldown;
+        if(this.fireAxeThrow()) this.cooldownTimer = this.cooldown; // pool exhausted this frame — stay off cooldown and retry next frame otherwise
       }
     }
     if(this.isSwinging){
@@ -5714,15 +5873,15 @@ class Tower{
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
-    if(!p) return;
+    if(!p) return false; // pool exhausted — caller must not treat this as a fired shot
     p.active = true;
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
     p.vy = Math.sin(angle)*this.projectileSpeed;
     p.damage = this.damage;
     p.angle = angle;
-    p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0;
-    p.isAxe = true; p.spinAngle = 0; p.sourceTower = this;
+    p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0;
+    p.isAxe = true; p.spinAngle = 0; p.sourceTower = this; p.isMagicMissile = false;
     p.color = '#9aa0a6';
     // Same launch-time pre-roll as fireProjectile() — an axe throw is still a single-target shot
     // and needs the same accuracy handling, just via this separate acquisition path.
@@ -5741,6 +5900,7 @@ class Tower{
     }
     this.renderSwordAngle = angle;
     playSound('throw_axe');
+    return true;
   }
 
   updateSwordsman(dt, nearby){
@@ -5935,7 +6095,7 @@ class Tower{
     // settles back to a neutral resting angle instead of staying locked at whatever angle it last
     // aimed at forever, which could leave it pointing at an odd angle indefinitely once idle.
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, mustacheColor: this.mustacheColor, restBlend };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -6017,7 +6177,7 @@ class Tower{
       else if(this.isHero) scrollY -= 8*STICKMAN_SCALE;
       const pulse = 0.55 + 0.45*Math.sin(gameTime/220); // gentle glow pulse, not a hard flash
       ctx.save();
-      ctx.shadowColor = '#4caf50'; ctx.shadowBlur = 8 + pulse*6;
+      ctx.shadowColor = '#4caf50'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8 + pulse*6;
       ctx.fillStyle = '#ffffff';
       ctx.fillText('📜', this.x, scrollY);
       ctx.restore();
@@ -6502,7 +6662,7 @@ function rollBloodProfile(enemyType){
 function resolveGoreArchetype(sourceTower){
   if(!sourceTower || !sourceTower.active) return 'WARRIOR';
   if(sourceTower.type === 'BOMBER') return 'EXPLOSIVE'; // splash/explosive flavor despite being ARCHER-archetype for stats
-  if(sourceTower.type === 'CLERIC') return 'HOLY'; // was falling through to the generic 'WARRIOR' default (a melee cut-and-arc treatment) despite Cleric being neither melee nor physically striking anything — its curse kills deserve their own identity, not a borrowed one
+  if(sourceTower.type === 'CLERIC' || sourceTower.type === 'POPE') return 'HOLY'; // was falling through to the generic 'WARRIOR' default (a melee cut-and-arc treatment) despite Cleric being neither melee nor physically striking anything — its curse kills deserve their own identity, not a borrowed one
   if(sourceTower.type === 'SNAPCASTER') return 'MAGE'; // same override shape as Bomber/Cleric above — SnapCaster is ARCHER-archetype for DEX-based stat scaling, but it's still visually a magic bolt from a staff, not an arrow; its kills should read as Mage's cone, not Archer's puncture mark
   return CLASS_ARCHETYPE[sourceTower.type] || 'WARRIOR';
 }
@@ -7953,6 +8113,54 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.ellipse(0, -30, 7, 2.5, 0, 0, Math.PI*2); ctx.stroke();
     }
+    // Growing skullcap (zucchetto) — starts small the moment Cleric is first reached (500 total
+    // INT) and grows to its full size by 750 INT, the threshold where it evolves into Pope (see
+    // EVOLUTIONS.CLERIC). A visible countdown to the coming evolution, not just a stat number.
+    {
+      const intProgress = clampNum(((extra.int||0) - 500) / 250, 0, 1);
+      const hatR = 2.5 + intProgress*3.5; // 2.5px newly-Cleric -> 6px right before evolving into Pope
+      ctx.fillStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
+      ctx.strokeStyle = '#b89b5e'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, -29, hatR, Math.PI, 0); ctx.fill(); ctx.stroke();
+    }
+  } else if(type === 'POPE'){
+    // Cleric's ultimate form — both arms raised in a wide blessing gesture rather than one arm
+    // reaching toward a single target, since Pope has no single target at all (its curse hits
+    // everyone in range at once). A much grander mitre replaces Cleric's small skullcap entirely,
+    // and the halo scales up to match.
+    const isCasting = !!(extra && extra.hasTarget);
+    const raiseAngle = isCasting ? -Math.PI/2 - 0.55 : -Math.PI/2 - 0.25;
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, raiseAngle, armLen, skinMain, -0.2);
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI - raiseAngle, armLen, skinMain, 0.2);
+    if(isCasting){
+      const handX = hand.handX, handY = hand.handY;
+      ctx.strokeStyle = '#ffe9a8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(handX, handY-8); ctx.lineTo(handX, handY+5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(handX-5, handY-2); ctx.lineTo(handX+5, handY-2); ctx.stroke();
+    }
+    // grand halo — visibly larger than Cleric's, matching the bigger everything else
+    if(!lowGfx){
+      ctx.strokeStyle = 'rgba(255,233,168,0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, -31, 10, 3.5, 0, 0, Math.PI*2); ctx.stroke();
+    }
+    // The mitre — a tall pointed bishop's hat with two hanging lappets at the back, unmistakably
+    // grander than Cleric's small skullcap it replaces entirely at this evolution.
+    ctx.fillStyle = '#fdf6e3';
+    ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-6, -29); ctx.lineTo(-2, -44); ctx.lineTo(0, -40); ctx.lineTo(2, -44); ctx.lineTo(6, -29);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-2,-44); ctx.lineTo(2,-31); ctx.stroke(); // center seam
+    if(!lowGfx){
+      ctx.fillStyle = '#d4af37';
+      ctx.beginPath(); ctx.arc(0, -34, 1.3, 0, Math.PI*2); ctx.fill(); // small gold band ornament
+    }
+    ctx.strokeStyle = '#fdf6e3'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-4,-29); ctx.lineTo(-5,-20); ctx.stroke(); // back lappets
+    ctx.beginPath(); ctx.moveTo(4,-29); ctx.lineTo(5,-20); ctx.stroke();
   } else if(type === 'BLOWDART'){
     // Single arm, anchored at mouth height (not the shoulder) so the pipe reads as actually held
     // up to the face in one continuous gesture — matches the reference sketch. Previously had a
@@ -8279,6 +8487,7 @@ function buildEnemyHash(){
   return hash;
 }
 function queryNearby(hash, x, y, range){
+  if(hash === EMPTY_ENEMY_HASH) return []; // no active enemies at all — skip the entire cell scan below rather than doing real work to look for nothing
   const result = [];
   const cellRadius = Math.ceil(range/TILE_SIZE) + 1;
   const cx = Math.floor(x/TILE_SIZE), cy = Math.floor(y/TILE_SIZE);
@@ -8513,11 +8722,12 @@ function startNextWave(){
 }
 function spawnEnemy(type){
   const e = acquireActive(enemyPool);
-  if(!e) return;
+  if(!e) return false; // pool exhausted — caller must not treat this as a successful spawn
   const hpMult = 1 + (waveIndex-1)*0.20;
   const isBig = Math.random() < BIG_VARIANT_CHANCE;
   e.spawn(type, hpMult, isBig);
   if(isBig) spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
+  return true;
 }
 function loseLife(n){
   lives -= n;
@@ -8544,7 +8754,8 @@ function update(dt){
     if(!anyBarricadeQueued){
       waveTimer += dt;
       while(spawnQueue.length && spawnQueue[0].delay <= waveTimer){
-        spawnEnemy(spawnQueue.shift().type);
+        if(!spawnEnemy(spawnQueue[0].type)) break; // pool exhausted this frame — leave the entry queued and retry once a slot frees up, rather than losing it
+        spawnQueue.shift();
       }
     }
     if(!spawnQueue.length) waveState = 'ACTIVE';
@@ -8650,6 +8861,7 @@ function update(dt){
 let targetFrameContentKey = '';
 let targetFrameWasVisible = false;
 let targetFrameLayoutDirty = true;
+let targetFrameLastTower = null; // #inspect-panel has no fixed height (rows are conditionally hidden per tower type), so switching to a different selected tower can change its geometry even while the target frame stays continuously visible throughout — this catches that case, which resize/visibility-transition alone don't
 window.addEventListener('resize', () => { targetFrameLayoutDirty = true; });
 function updateTargetFrame(){
   const frame = document.getElementById('inspTargetFrame');
@@ -8675,6 +8887,10 @@ function updateTargetFrame(){
     frame.classList.add('show');
     targetFrameWasVisible = true;
     targetFrameLayoutDirty = true; // just became visible — geometry may be stale from whenever it was last shown
+  }
+  if(t !== targetFrameLastTower){
+    targetFrameLastTower = t;
+    targetFrameLayoutDirty = true; // a different tower's panel can have different height (rows are conditionally shown per type), even if the frame never hid in between
   }
   if(!targetFrameLayoutDirty) return;
   targetFrameLayoutDirty = false;
@@ -9020,7 +9236,7 @@ function loop(now){
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
   const updateStart = performance.now();
-  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME){
+  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME && gameState === 'PLAYING'){
     update(FIXED_DT);
     accumulator -= FIXED_DT;
     ticksThisFrame++;
@@ -9404,11 +9620,12 @@ canvas.addEventListener('pointermove', (e) => {
 
 function onPointerEnd(e){
   const wasSinglePointer = activePointers.size === 1 && e.pointerId === dragPointerId;
+  const isCancel = e.type === 'pointercancel';
   activePointers.delete(e.pointerId);
   if(activePointers.size < 2) pinchStartDist = null;
 
   if(wasSinglePointer){
-    if(draggingGroundItem){
+    if(!isCancel && draggingGroundItem){
       const target = towerPool.find(t => t.active && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
       if(target && target.receiveItem(draggingGroundItem.itemDef)){
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
@@ -9431,10 +9648,13 @@ function onPointerEnd(e){
         // Neither a tower nor a valid path tile — the ground item just stays where it was
         // dropped, same fallback as any other item drag that misses its target.
       }
-      draggingGroundItem = null;
-    } else if(!isDragging){
+    } else if(!isCancel && !draggingGroundItem && !isDragging){
       handleTap(e.clientX, e.clientY);
     }
+    // A cancel commits nothing — draggingGroundItem is cleared below same as a completed drag, but
+    // since it was never removed from groundItems above, the item simply stays exactly where it
+    // already was, available to pick up again.
+    draggingGroundItem = null;
     dragPointerId = null; dragStartClient = null; isDragging = false;
   }
 }
@@ -9447,6 +9667,7 @@ canvas.addEventListener('wheel', (e) => {
   const raw = toRawCanvasCoords(e.clientX, e.clientY);
   const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
   zoomAt(raw.x, raw.y, camera.zoom*factor);
+  if(gameState !== 'PLAYING') render(ctx); // paused — the main loop won't render on its own, so nudge one frame through now or the zoom change stays invisible until unpausing
 }, { passive:false });
 
 /* =========================================================
@@ -9506,7 +9727,6 @@ function updateHUD(){
 
   refreshTrayUI();
   fitHudTopToOneLine(); // guarded internally — only re-measures when gold/lives/wave digit count actually changed
-  positionZoomControls();
 }
 
 function refreshTrayUI(){
@@ -10475,6 +10695,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   startScreen.classList.add('hidden');
   document.getElementById('hud-top').style.display = 'flex';
+  positionZoomControls(); // hud-top just went from display:none (height 0) to visible — this is the one place its real height needs recalculating outside of an actual resize/orientation-change, both already covered by their own listeners
   gameState = 'PLAYING';
   lastTime = performance.now();
   updateHUD();
@@ -10503,6 +10724,10 @@ function resetGame(){
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
+  hitStopUntil = 0; // gates the ENTIRE simulation tick in the main loop (`if(gameTime < hitStopUntil) return;`) with no safety cap of its own — a stale value from a Boss kill in the previous session could otherwise freeze the whole new game until gameTime caught back up to it
+  accumulator = 0; lastTime = performance.now(); // the fixed-tick loop's own time-tracking — already reset at other legitimate points elsewhere (pause-resume) but was missing here
+  groundItems.length = 0; // stale dropped items from the old map — new coordinates don't even correspond to the freshly-generated map/path below
+  deathAnims.length = 0;
   screenShakeUntil = 0; screenShakeMag = 0;
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
   decals.length = 0; decalIndex = 0;

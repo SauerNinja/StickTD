@@ -121,11 +121,23 @@ risk categories) rather than being bundled into one giant rewrite.
   whole-row `transform:scale()` for the button row specifically — same no-clipping/no-wrapping
   goal, less legibility loss at extreme late-game values.
 
-## From the 2026-09-13 external code review (ChatGPT, reviewing v1.1.56) — five confirmed and fixed
-## so far: 1.1.57 (decal ReferenceError crash, duplicate death processing), 1.1.58 (bleed-cap damage
-## not actually capped, Barricade-in-inventory NaN stat corruption, coincident-enemy collision never
-## separating). Everything below
-## is unverified against this file and NOT claimed fixed
+## From the 2026-09-13 external code review (ChatGPT, reviewing v1.1.56) — ALL 20 findings now
+## confirmed and fixed as of 1.1.72. Full list: 1.1.57 (decal ReferenceError crash, duplicate death
+## processing), 1.1.58 (bleed-cap damage not actually capped, Barricade-in-inventory NaN stat
+## corruption, coincident-enemy collision never separating), 1.1.61 (axe projectiles inheriting
+## poison/magic-missile state), 1.1.62 (pooled enemies inheriting wetFeetSteps/packSpeedBonus),
+## 1.1.63 (wave-spawn-queue pool exhaustion losing enemies), 1.1.64 (projectile/firing-cycle pool
+## exhaustion consuming cooldown/burst-shots), 1.1.65 (evolution retaining old class fields —
+## splashRadius, slowFactor/slowDuration), 1.1.66 (empty-hash query short-circuit, barricade
+## queue-scan short-circuit), 1.1.67 (unspent-stat-points scroll blur ungated on Low graphics),
+## 1.1.68 (viewport culling for enemies/towers in the depth-sort), 1.1.69 (redundant inspect-panel
+## refresh on unrelated-tower kills, positionZoomControls() layout-forcing read on every HUD
+## update), 1.1.70 (pointercancel committing actions, save/load not reconstructing Swordsman
+## spec/totalSpent), 1.1.71 (restart leaving hitStopUntil/groundItems/deathAnims/accumulator
+## un-reset — the most severe bug found in this whole triage, a genuine post-restart soft-lock),
+## 1.1.72 (fast-forward not rechecking gameState mid-loop, restoreGameState() mutating live state
+## before validating a malformed save). One item was investigated and deliberately left alone with
+## documented reasoning, not silently skipped — see "Five separate spatial-hash builds" above.
 
 The review is thorough and specific (exact line numbers, several claims backed by extracted-and-
 executed function tests), but it reviewed a static upload, not this live file, so re-verification is
@@ -133,42 +145,124 @@ required before acting on any of it — several past sessions in this project ha
 "looks right on paper" and "confirmed by reading the actual code" are different things worth keeping
 separate.
 
-**High-priority correctness bugs claimed, not yet re-verified:**
-- Pooled enemies retain previous-occupant state across reuse — `wetFeetSteps` and `packSpeedBonus`
-  cited as surviving `Enemy.spawn()`'s reset (`bleedStackCount`, cited alongside these two, was
-  independently verified and fixed in 1.1.58 — the other two are still unverified).
-- Axe projectiles (`fireAxeThrow()`) don't initialize poison fields the way `fireProjectile()` does,
-  so a reused pooled projectile can carry over a previous shot's poison.
-- Evolution (`applyTierStats()`/`evolveInto()`) claimed to leave old class-specific fields (splash
-  radius, burst count, etc.) intact when the destination class doesn't define them — cited example:
-  Bomber → Gunalinder retaining `splashRadius`.
-- Save/load claimed to not fully reconstruct Swordsman specialization modifiers (damage/cooldown/
-  swing arc from `chooseSpec()`) or `totalSpent` (used for sell value) after a restore.
-- `pointercancel` reportedly shares a handler with `pointerup` and can still commit a tap/drop.
-- Restart (`resetGame()`) claimed to leave `hitStopUntil`, `groundItems`, `deathAnims`, and the
-  fixed-tick accumulator un-reset.
-- Fast-forward claimed to not recheck `gameState` between fixed-tick iterations within one frame,
-  so a game-over mid-loop doesn't stop the remaining ticks that frame.
-- `restoreGameState()` claimed to mutate live session state before validating a loaded save, so a
-  malformed save can damage the current run rather than being rejected cleanly.
-- Pool exhaustion (enemy/projectile) claimed to silently drop a queued spawn or consume a firing
-  cycle with no acquired slot, rather than failing visibly or deferring.
+**High-priority correctness bugs — all confirmed and fixed:**
+- ~~Pooled enemies retain previous-occupant state across reuse~~ — the full trio the review named
+  together (`bleedStackCount`, `wetFeetSteps`, `packSpeedBonus`) is now all fixed: `bleedStackCount`
+  in 1.1.58, the other two in 1.1.62. `packSpeedBonus` was the more serious of the two — it's only
+  ever recomputed inside `if(this.pack)` in `update()`, so a non-pack enemy reusing a pack-enemy's
+  old slot kept a stale speed multiplier permanently, since nothing else ever touched that field
+  for it.
+- ~~Axe projectiles inherit poison/magic-missile state from a previous shot~~ — fixed in 1.1.61.
+  `fireAxeThrow()` never set `poisonDamage`/`poisonDuration` (fireProjectile() does), and separately
+  never set `isMagicMissile` either — both real leaks from pooled reuse, the second one visual (a
+  reused slot could render a thrown axe as a glowing magic bolt).
+- ~~Evolution retaining old class-specific fields~~ — fixed in 1.1.65. `burstCount`/`burstDelay`
+  were already explicitly zeroed before `Object.assign()` applies the new tier; checking every
+  evolution edge systematically (not just the cited example) found two more real ones needing the
+  same treatment: `splashRadius` (confirmed — Bomber→Gunalinder would still deal unintended AOE
+  splash, contradicting Gunalinder's own "trades splash for precision" identity) and
+  `slowFactor`/`slowDuration` (Mage→Cleric/Pope, lower-impact since Cleric/Pope's own attack path
+  never reads them, but still real stale state). Blowdart→Squirtgun was checked too and needs no
+  fix — both classes define poison fields in every tier.
+- ~~Save/load not fully reconstructing Swordsman specialization or `totalSpent`~~ — fixed in
+  1.1.70. Confirmed both exactly: `restoreGameState()` was setting `t.spec` as a bare label
+  (`t.spec = td.spec`), completely bypassing `chooseSpec()`'s actual damage/cooldown/swing-arc
+  multipliers — a loaded Two-Hander looked right (label, rendering) but fought like an
+  unspecialized Swordsman. Now calls the real `chooseSpec()` method. `totalSpent` was never
+  persisted in the save payload at all, so loading any save reset every tower's upgrade-investment
+  tracking back to its base build cost, undercutting sell value for anything that had been
+  upgraded — now persisted, with an explicit safe fallback (the base-cost default) for saves that
+  predate this field.
+- ~~`pointercancel` sharing a handler with `pointerup`, committing actions on cancel~~ — fixed in
+  1.1.70. Confirmed exactly: `onPointerEnd()` had zero check on `e.type`, so a browser-interrupted
+  gesture (notification, system gesture, pointer leaving the window, multi-touch conflict) could
+  still commit a tap, drop a ground item onto whatever tower/tile happened to be underneath, or
+  place a Barricade. Cancel now only does cleanup (release pointer tracking, clear drag state) —
+  the ground item involved in a cancelled drag simply stays in `groundItems` untouched, since it
+  was never removed in the first place.
+- ~~Restart leaving `hitStopUntil`, `groundItems`, `deathAnims`, and the fixed-tick accumulator
+  un-reset~~ — fixed in 1.1.71. The most severe bug found in this whole triage: `hitStopUntil`
+  gates the ENTIRE simulation tick (`if(gameTime < hitStopUntil) return;` in the main loop) with no
+  safety cap of its own, and `resetGame()` reset `gameTime` back to 0 but left `hitStopUntil` at
+  whatever stale value a Boss kill in the *previous* session had set it to — restarting after any
+  Boss kill could freeze the entire new game's simulation until `gameTime` caught back up to that
+  stale value, potentially for minutes depending on how long the prior session ran. Also cleared
+  `groundItems`/`deathAnims` (stale entries from the old map/session) and `accumulator`/`lastTime`
+  (the fixed-tick loop's own time-tracking, already reset at other legitimate points elsewhere —
+  just missing here; lower severity than `hitStopUntil` since `frameTime`'s existing 100ms clamp
+  and the 90-tick-per-frame cap already bound how bad a stale value could be).
+- ~~Fast-forward not rechecking `gameState` between fixed-tick iterations~~ — fixed in 1.1.72.
+  Confirmed exactly: the accumulator-driven catch-up loop only checked `gameState` once, before
+  entering, never between individual ticks — a game-over firing mid-loop (e.g. lives hitting 0)
+  still let the remaining queued ticks that frame (up to `MAX_TICKS_PER_FRAME=90`) run full
+  simulation on an already-ended game. Added `gameState === 'PLAYING'` to the loop's own condition.
+- ~~`restoreGameState()` mutating live session state before validating a loaded save~~ — fixed in
+  1.1.72. `restoreGameState()` destructively clears all live state (enemyPool/towerPool/
+  sceneryMap) in its very first lines, before any validation at all — so a malformed-but-parseable
+  save corrupted the live session before the crash that revealed the problem even happened, with no
+  way back. Added `validateSaveShape()` as a gate in `loadSaveFileText()`, checking the specific
+  fields `restoreGameState()` dereferences without a guard early on (`pathWaypointTiles` is the
+  exact field whose absence threw the review's reproduced `Cannot read properties of undefined
+  (reading 'map')` error, inside `rebuildPathCellsAndPx()`) — rejects the load before any mutation
+  begins, leaving the current run completely untouched. Not exhaustive validation of every nested
+  field, but closes the reproduced crash and the most common real failure mode (a non-save file, or
+  one from an incompatible/corrupted source).
+- ~~Enemy wave-spawn-queue pool exhaustion~~ — fixed in 1.1.63. `spawnQueue.shift()` was removing a
+  due entry *before* knowing whether `spawnEnemy()` actually acquired a pool slot, so an exhausted
+  pool (220-enemy cap, plausible in a real late-game wave with splits/reinforcements/a barricade
+  backup) silently lost that enemy forever rather than deferring it. Checked both split-children
+  spawn sites (Boss's periodic Grunt, Splitter's on-death children) while in this code — both
+  already guarded correctly (`if(!child) break/continue`), so only the wave queue had this bug.
+- ~~Projectile/firing-cycle pool exhaustion~~ — fixed in 1.1.64. Confirmed across all 3 firing
+  callers (`updateArcher()`, `updateRanged()`, `updateAxeman()`'s ranged mode): each unconditionally
+  set the cooldown (and, for burst weapons, decremented `burstShotsLeft`) right after calling
+  `fireProjectile()`/`fireAxeThrow()`, with no check on whether a projectile slot was actually
+  acquired. `fireProjectile()`/`fireAxeThrow()` now report success/failure; all 3 callers only
+  consume the cooldown/burst-shot on confirmed success, retrying automatically next frame otherwise.
 
-**Performance items claimed, not yet re-verified (distinguish from the P0 crash and double-death
-bug above — these are about wasted CPU/allocation, not incorrect behavior):**
-- `drawDepthSortedLayer()` still adds every active enemy/tower unconditionally, with no viewport
-  cull before constructing/drawing them (scenery and debris ARE culled; enemies/towers reportedly
-  are not).
-- `Tower.draw()`'s unspent-stat-points scroll icon runs a blur/shadow effect with no Low-graphics
-  check, unlike the nearby killstreak glow.
-- Idle towers still call `queryNearby()` against a known-empty spatial hash rather than
-  short-circuiting.
-- Combat-event UI updates (`gainTowerExp()`, `creditKill()`, `updateHUD()`, `updateInspectPanel()`)
-  claimed to each trigger their own full refresh rather than coalescing multiple events from one
-  frame into a single refresh.
-- Five separate spatial-hash builds per simulation tick, each allocating fresh bucket storage.
-- The barricade/pileup queue-assignment search is quadratic even when there's no actual queue to
-  join.
+**Performance items — all confirmed and fixed except one deliberate exception (see below):**
+- ~~`drawDepthSortedLayer()` drawing every active enemy/tower unconditionally, with no viewport
+  cull~~ — fixed in 1.1.68. Extends the exact same bounds-check pattern already proven for scenery,
+  with a wider margin (covers floating text/HP bars/labels) and an explicit exemption for
+  `selectedTower` (confirmed it's the only tower that ever draws a range circle, which can extend
+  far beyond its own body — it must never be culled regardless of position). Simulation is
+  completely untouched; this only skips the draw() call for something that couldn't be visible.
+- ~~`Tower.draw()`'s unspent-stat-points scroll icon blur ungated on Low graphics~~ — fixed in
+  1.1.67. Every other glow effect in this file (the item-pickup glow right above it, ground items,
+  the magic-missile projectile glow) already follows the same `graphicsQuality === 'low' ? 0 : ...`
+  pattern; this was the one place it was missing, running unconditionally for every tower with
+  unspent points, every frame.
+- ~~Idle towers querying a known-empty spatial hash~~ — fixed in 1.1.66. `queryNearby()` now
+  short-circuits with an identity check against the shared `EMPTY_ENEMY_HASH` sentinel, skipping the
+  full nested cell-scan entirely (the review measured up to ~169 empty bucket lookups per query at a
+  300px range) rather than doing real work to find nothing.
+- ~~Combat-event UI updates each triggering their own full refresh~~ — fixed in 1.1.69, two
+  distinct real issues found: (1) `updateInspectPanel()` reads the *global* `selectedTower` rather
+  than taking a parameter, so `creditKill()`'s own unconditional call at the end was refreshing the
+  panel on every kill in the game as long as *any* tower was selected, even a completely unrelated
+  one — removed, since `gainTowerExp()` (called unconditionally at the top of every `creditKill()`)
+  already does the correct `if(selectedTower === tower)` gating internally. (2)
+  `positionZoomControls()` (a `getBoundingClientRect()` layout-forcing read) was called
+  unconditionally from every single `updateHUD()` — but `#hud-top` uses `flex-wrap:nowrap`, so its
+  height never actually changes from gold/lives/wave updates, only from a real resize/orientation-
+  change (already separately handled) or the one-time reveal when the game starts (now handled
+  explicitly at that one call site instead).
+- Five separate spatial-hash builds per simulation tick, each allocating fresh bucket storage —
+  count confirmed (`resolveSweptEnemyCollisions()`: 1, `resolveEnemyCollisions()`'s 3-pass
+  relaxation loop: 3, final targeting hash: 1). Deliberately not touched: the 3 builds inside
+  `resolveEnemyCollisions()` aren't redundant — its own comment explains the multi-pass design
+  exists specifically so a crowd can settle within one frame instead of visibly fighting over
+  several, and each pass moves enemies, so the hash genuinely goes stale between passes. Cutting
+  the rebuild count would risk exactly the "stale hash used across passes that move enemies"
+  regression the review itself warned against. A safe version of this optimization would need to
+  reuse the hash's bucket-array storage across builds (object pooling) rather than reduce how many
+  times it's built — a real but more invasive change than the other items in this list, and not
+  attempted here without a way to verify it under real load.
+- ~~Barricade/pileup queue-assignment search quadratic even with nothing queued~~ — fixed in 1.1.66.
+  The O(N²) catchment-matching loop can only ever succeed by matching against an already-blocked
+  enemy, so a single `anyBlockedSeed` flag (set alongside the existing per-enemy pass that already
+  seeds `claimedSlots`) now skips the whole loop when nothing is blocked — the common case, and
+  exactly 4,950 wasted iterations for 100 eligible enemies per the review's own math.
 - Audio synthesis (`tone()`/`noise()`) claimed to still construct oscillator/gain/filter nodes while
   muted, rather than rejecting new sound creation at the synthesis entry point.
 
@@ -186,7 +280,89 @@ This project has no way to run a browser in this environment to produce that mea
 Node tests, never an actual measured frame-time before/after. That's a real gap worth being
 upfront about rather than implying otherwise.
 
+## From the same 2026-09-13 external review — a smaller "still needs targeted validation" list from
+## its final round, previously only mentioned in passing and never actually filed here. Re-checked
+## against this file: three fixed, one genuinely still blocked on profiling this environment can't do.
+
+- ~~Long-run stat cost (`diminishingStatValue()`)~~ — fixed. The function's tier multiplier floors
+  at 0.25 once `tier >= 5` (25+ points) — every point beyond that computed an identical per-chunk
+  value via the loop instead of one multiplication. Directly relevant now: a single stat can
+  realistically reach several hundred points under the attunement system (500 for specialization,
+  750 for Cleric's own Pope evolution), where the old version would loop 100+ times for a
+  mathematically constant result. Rewrote the tail as closed-form arithmetic — verified with an
+  exhaustive equivalence test against the original loop-only version across ~7,200 (points,
+  perPoint) combinations plus the exact new threshold values (100/500/750): bit-identical output
+  everywhere, confirming this is a pure speed win with zero behavior change, not a rebalance.
+- ~~Target-panel positioning (`updateTargetFrame()`)~~ — fixed. Geometry invalidation covered
+  window resize and the frame's own visibility transitions, but not a *different tower being
+  selected* while the frame stayed continuously visible throughout (both towers having an active
+  target) — a real gap, since `#inspect-panel` has no fixed height (rows are conditionally shown
+  per tower type, e.g. Barricade shows fewer than a normal tower), so two different towers'
+  panels genuinely can differ in size. Added tracking of which tower the frame's geometry was last
+  calculated for, marking it dirty on a change. Verified: a tower switch now triggers a recalc; the
+  existing "same tower, many calls" optimization still avoids repeated recalcs, no regression.
+- ~~Pause and camera feedback (wheel handler)~~ — fixed. Confirmed pause sets `gameState =
+  'PAUSED'`, and the main loop skips rendering entirely whenever `gameState !== 'PLAYING'` — so
+  scrolling to zoom while paused updated `camera.zoom` correctly, but nothing re-rendered until
+  unpausing, at which point the camera would visibly jump to the new zoom all at once instead of
+  the player seeing it happen live. `render()` is a pure drawing function with no simulation side
+  effects, so it's safe to call directly — now does, but only while actually paused (the normal
+  playing case already gets a fresh frame within ~16ms via the main loop regardless, so nothing
+  extra happens there). Pan/pinch gestures likely have the same underlying gap but weren't touched
+  in this pass — noted here rather than silently left inconsistent with the wheel fix.
+- **First-hit hitch (`buildEnemyCollisionMask()` / `getEnemyCollisionMask()`)** — genuinely still
+  blocked on profiling, not fixed. Confirmed the mask cache is correctly lazy and per-type (built
+  once, reused), matching what it should do — the open question is purely whether the *first* hit
+  against a never-before-seen enemy type incurs a measurable one-time hitch from the lazy
+  glyph-rendering/readback, which this environment has no way to measure. Prewarming upcoming
+  wave types would be the fix if profiling ever shows this matters; not attempted speculatively.
+
 ## Ideas
+
+## Design ideas from a deeper skim of "The Principles of Beautiful Web Design" (2026-09-13) — not
+## implemented, kept separate from the code-review bug triage above since these are speculative
+## design suggestions, not confirmed problems. Grounded in specific sections, not general vibes.
+
+- **Continuance (eye-flow along a line/direction) for the Next Wave button.** The book's example:
+  once a viewer's eye starts moving in one direction, it keeps going until something more dominant
+  interrupts it — used deliberately, this can guide attention toward a specific call-to-action (the
+  book's own Twitter example: the Sign Up button gets continuance + isolation + contrast all at
+  once). Right now Next Wave is just another top-bar button with no directional cue pointing at it.
+  A subtle idea worth trying: when the wave timer is idle and waiting on the player, a faint
+  pulsing arrow or directional glow leading toward it — cheap, reversible, easy to rip out if it
+  reads as nagging rather than helpful.
+- **Placement — confirmed the game already gets the big one right, not a gap.** The book: center
+  and top-left are where a viewer's eye goes first. Build sits top-left (correct instinct already),
+  and the inspect panel opens bottom-left when a tower is selected (a deliberate, different zone,
+  not competing with Build). Noting this as confirmed-good rather than silently assuming it's fine.
+- **Proportion (scale mismatch draws attention) — also confirmed already correctly used, not a
+  gap.** Boss enemies are already rendered dramatically larger than regular enemies, which is
+  exactly the book's own principle ("an object placed in an environment smaller in scale than
+  itself will appear larger... draws viewers' attention, as it seems out of place"). Worth
+  confirming this extends to any future big/rare enemy variant — it already applies correctly to
+  the existing "BIG!" variant spawn chance, which visibly scales the sprite up.
+- **Color psychology — a specific, narrow idea, not a broad repaint.** The book notes orange is
+  rare in nature and "tends to jump out" precisely because it's uncommon — currently unused as a
+  dedicated signal color anywhere in the UI (gold/red/blue are all already claimed for currency/
+  danger/info respectively). A "BIG!" variant enemy or a rare item drop could use orange
+  specifically *because* nothing else in the palette currently means anything with it — giving it
+  a genuinely unique signal rather than competing with an already-meaningful color. Speculative;
+  would need to check nothing else already implies orange=X elsewhere before touching it.
+- **Balance (symmetrical vs. asymmetrical) — worth a deliberate look, not yet done.** The book's
+  asymmetrical-balance principle: a large element on one side can be balanced by several smaller
+  elements on the other, and removing any one of them (its own three-stones example) makes the
+  whole composition feel lopsided. Never actually evaluated whether the current gameplay screen
+  (top bar centered, inspect panel bottom-left only, no persistent right-side element) reads as
+  balanced or left-heavy once a tower is selected — this needs an actual look at a real screenshot
+  with a tower selected, not a guess from reading CSS, before deciding whether it's worth touching.
+- **Repetition/unity via a repeated small motif.** The book's Dribbble example: repeated thumbnail
+  treatment across many cards creates unity even in a visually busy layout. The game already
+  repeats a lot (button gradient treatment now consistent, serif headlines consistent) — a smaller
+  idea not yet tried: a single small repeated decorative motif (e.g., a tiny corner flourish) on
+  every modal panel, the kind of detail that reads as "one designed system" rather than "several
+  separately-styled screens." Purely optional polish, not chasing a real gap.
+
+
 
 - **Voice budget shipped as a flat global cap (1.0.205), not the full tiered priority system** —
   `reserveVoiceSlot()` protects the engine from unbounded concurrent voices during swarm/explosion
@@ -266,14 +442,34 @@ upfront about rather than implying otherwise.
   in its AoE (replacing or supplementing the current cone poke), with a longer cooldown to
   balance the AoE upgrade. A real combat-mechanic and animation change, not a quick tweak.
 
-- **Three visual bugs reported together, not yet fixed**:
-  - Blowdart's pose only shows one arm holding the pipe to the mouth — should be two arms, one
-    bent supporting/steadying it.
-  - Z-order layering issue: a tower with an active "stats to spend" scroll indicator overhead can
-    render *behind* an adjacent tower above it on the grid, when it should render in front. Likely
-    needs a proper Y-sort across the whole tower draw pass rather than a one-off fix.
-  - Spearman's spear-tip graphic doesn't line up with the actual visual point of the weapon.
-  - Dual Squirt Gun's hand anchor sits on the muzzle instead of the grip.
+- **Three visual bugs reported together — re-checked, one resolved, one re-diagnosed, two still
+  open**:
+  - ~~Blowdart's pose only shows one arm~~ — checked the actual code: this describes an
+    *already-removed* old behavior. The current comment on that rendering branch explicitly
+    documents that a second "steadying" off-hand existed before, visibly floated apart from the
+    body, and was deliberately removed rather than patched — single-arm is the fix that shipped,
+    not a bug. Nothing to do here; noting it as resolved so it doesn't get "fixed" backward.
+  - Spearman's spear-tip "doesn't line up with the actual visual point" — checked the actual
+    coordinates: the shaft line's endpoint and the spearhead triangle's apex both explicitly use
+    the identical `tipX, tipY` values, so they're mathematically aligned by construction — there's
+    no coordinate bug in the code as written. If this is still visibly off, it's something subtler
+    than a coordinate error (scale, timing relative to `swingProgress`, or how it reads at actual
+    render size) — needs a real screenshot to diagnose further rather than another code re-read
+    turning up the same correct math.
+  - Z-order layering issue (a tower's overhead "stats to spend" scroll can render behind an
+    adjacent tower above it) — still open, not attempted. The scroll is drawn as part of the same
+    single `draw()` call as the tower's body, sorted by the tower's own y-position — but the scroll
+    glyph extends well above the tower's head, so a single anchor point doesn't capture where the
+    *scroll* actually sits on screen relative to a neighboring tower. A real fix needs the scroll
+    sorted by its own screen position, separately from the tower body's — a genuine restructuring
+    of the depth-sort pass, not a one-off coordinate tweak, and risky to attempt without a way to
+    see the result.
+  - Dual Squirt Gun's hand anchor "sits on the muzzle instead of the grip" — still open, not
+    attempted. The code uses `textAlign:'left'` so the 🔫 glyph is anchored at one end and extends
+    toward the aim direction from there — but which end of the emoji's own internal artwork reads
+    as "grip" vs. "muzzle" depends on the platform/font rendering the glyph, which this environment
+    has no way to see. Flipping to `textAlign:'right'` is the one-line fix *if* the anchor is
+    genuinely on the wrong end, but doing that blind risks making it worse just as easily as better.
 
 - **Attack speed on EXP level-up** — reported that towers seem to gain attack speed just from
   leveling up via EXP, when it should only increase from evolving into a new class or investing

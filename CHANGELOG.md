@@ -1,5 +1,528 @@
 # Changelog
 
+## [1.1.77] - 2026-09-13 — Actual gameplay visuals this time: dirt path texture
+Shifted from menus/UI to the gameplay canvas itself, per a direct request. Checked several
+candidates before picking where to actually spend the change.
+
+- **The dirt path — the single largest, flattest surface in the entire game, and the one every
+  enemy/tower/particle is seen against — was one flat solid fill plus a faint 6% edge-shading
+  overlay.** Added sparse, low-opacity speckle texture (a mix of small darker "packed dirt" and
+  lighter "dusty patch" dots per tile, using the Texture chapter's own point-based-texture
+  principle) directly grounded in the same reasoning already used for the flora system: enough to
+  read as real ground detail from normal viewing distance, restrained enough not to compete with
+  blood decals or floating combat text during a fight. Baked once into the existing background
+  cache alongside everything else `drawMap()` already does — zero added per-frame cost, this is a
+  one-time cost paid only on map generation/expansion, exactly like the rest of that function.
+- **Checked, and deliberately left alone**: enemy HP bars are 4-5px tall — a gradient wouldn't
+  actually read at that scale, it would just look like noise. Same reasoning as the toggle/disabled
+  button states left flat earlier: small at-a-glance meters are a case where flatness is correct,
+  not a remaining gap. Didn't force a change onto something that didn't need one.
+- Verified: JS syntax unaffected (this touches only the canvas-drawing code inside `drawMap()`, no
+  HTML/CSS).
+
+## [1.1.76] - 2026-09-13 — Deeper pass through the design book's remaining chapters
+Went back through Layout & Composition and Color specifically (the two chapters not yet drawn
+from — Texture and Typography were already used). Verified what the codebase already does well
+before looking for gaps, rather than assuming there was more to fix everywhere.
+
+- **What was already fine, checked rather than assumed**: the proximity principle (a heading should
+  sit closer to the content it introduces than the content before it) — `#help-modal-inner h3`
+  already uses asymmetric margin (`16px 0 6px`, more space above than below), which is the correct
+  pattern the book describes, not something needing a fix. The game's warm brown/gold/green palette
+  with red/blue used as deliberate contrasting accents is already a reasonably disciplined color
+  scheme, not the kind of clashing or arbitrary palette the Color chapter warns against.
+- **One real, safe, additive gap found**: gold, lives, wood, and stone counts in the top HUD were
+  all styled completely identically — same white color, same weight — despite gold being the
+  number a player watches constantly to decide what to build next, and lives being the number that
+  ends the game at zero. Applied the same isolation-via-contrast focal-point principle already used
+  for the flora feature: `#goldVal` now tints gold, `#livesVal` a warm rose (same family as the
+  existing `--danger` red used elsewhere for damage/danger). Wood and stone stay plain white on
+  purpose — secondary resources that shouldn't compete for attention with the two that matter most
+  turn to turn. Only color/font-weight changed, nothing about size or spacing, so this can't affect
+  the tight-fit top bar's width or wrapping at all.
+- Deliberately did not add speculative whitespace/padding increases to the modal bodies — several
+  of those (Settings, Help) have a fixed `max-height` with internal scrolling, and guessing at
+  spacing changes there risks overflow or clipping I have no way to visually verify. Real
+  whitespace tuning in those panels is a legitimate next step, just not one to guess at blind.
+- Verified: JS syntax unaffected, CSS braces/parens balanced (249/249, 361/361).
+
+## [1.1.75] - 2026-09-13 — Extended the design-book treatment to every other menu/panel
+Same two techniques as the start-screen pass (serif headline typography, gradient/depth instead of
+flat fills), applied consistently everywhere else the identical flat pattern showed up. Pure CSS —
+nothing removed, no HTML/JS touched.
+
+- **Every modal panel** (Build tray, Settings, Help, Barricade help, Specialization choice, Shop —
+  6 in total) shared the exact same flat `background:var(--wood)` fill. All now use a consistent
+  carved-wood gradient with a subtle inset highlight, via one text substitution applied identically
+  everywhere it appeared — same visual language, not six different treatments.
+- **Every modal headline** now uses the same serif display face as the start-screen title, added
+  via one small grouped CSS rule that doesn't touch any of the existing six h2 rules' own color/
+  size/margin declarations at all — purely additive on top of them.
+- **The most-seen buttons in the entire game** — Build/Shop/gear (`.hud-action-btn`) and Next Wave
+  (`#nextWaveBtn`), visible on literally every frame during gameplay — had the exact same flat
+  single-color fill the old Play button had. Same gradient/inset-highlight treatment now. Left the
+  toggle/disabled states (`.hud-btn.active`, `#nextWaveBtn:disabled`) flat on purpose — those are
+  state indicators where plainness aids at-a-glance reading, not a remaining polish gap.
+- **The inspect panel, target frame, unlock toast, wave-summary toast, and move-mode banner** all
+  shared one identical flat dark-brown background — the single most common panel color in the whole
+  UI. One substitution applied everywhere it appeared, so the tower-selection panel (arguably the
+  single most-viewed panel during actual play) gets the same depth treatment as everything else.
+- **Specialization-choice cards and shop item cards** got the same subtle gradient instead of a
+  flat wood-light fill, for consistency with the panels around them.
+- Both modal-close buttons (Help, Barricade help) got the same button gradient as the Play/Next
+  Wave/HUD-action buttons — one substitution, since their rules were textually identical.
+- Verified after every batch: JS syntax unaffected (CSS-only changes), and CSS brace/paren counts
+  balanced at each step (247/247 braces, 359/359 parens) given how many of these were multi-
+  occurrence substitutions rather than single hand-edited rules.
+
+## [1.1.74] - 2026-09-13 — Start-screen typography and button depth, grounded in the design book
+Purely additive CSS — nothing removed, no HTML structure changes, no JS touched. Grounded in two
+specific principles from *The Principles of Beautiful Web Design* (already used earlier this
+project for the flora feature): pairing a distinct typeface for headline vs. body text is what
+gives a design real hierarchy instead of one flat font doing every job, and a flat single-color
+fill with one plain drop-shadow is the book's own example of "pick a few colors and call it a day"
+— texture and layered depth are what separate adequate from distinctive.
+
+- **Title now uses a serif display face** (`Georgia, 'Times New Roman', serif` — system fonts only,
+  zero-dependency, no external font request) instead of the same Trebuchet MS sans-serif used for
+  every button and HUD label in the game. The flat single 2px drop-shadow is now a layered
+  carved/wood-burned effect (a dark offset shadow for depth, a warm inner glow, and a thin top
+  highlight) instead of one flat offset.
+- **Play button, quality-picker buttons, and link buttons** (About/Changelog/etc.) all replaced
+  their flat single-color fills with a subtle top-to-bottom gradient plus an inset highlight edge —
+  reads as an embossed plaque/carved wood rather than a flat rectangle. Existing hover/selected/
+  active states (the quality button's gold selection glow, the link button's hover fill, a new
+  press-down state on the Play button) are all preserved or extended, never removed.
+- Verified: JS syntax unaffected (this touches only the `<style>` block), and CSS brace count
+  balanced before/after (246/246) given several of these were multi-line rule replacements.
+
+## [1.1.73] - 2026-09-13 — Three more from a re-check of the review's smaller "still needs
+## validation" list
+Went back to the actual PDF rather than relying on memory — found a section (the review's own
+"areas still need targeted validation" list from its final round) that had only ever been mentioned
+in passing and never actually filed or acted on. Three of its four items turned out fixable.
+
+- **Optimized `diminishingStatValue()`'s constant-rate tail into closed-form arithmetic.** Its
+  tier multiplier floors at 0.25 once past 25 points, so every point beyond that was looping
+  through a mathematically identical per-chunk calculation instead of one multiplication —
+  directly relevant now, since a single stat can realistically reach several hundred points under
+  this session's own attunement work (500 for specialization, 750 for Cleric's Pope evolution),
+  where the old version would loop 100+ times for a constant result. Verified with an exhaustive
+  equivalence test against the original — ~7,200 (points, perPoint) combinations plus the exact
+  new threshold values, bit-identical output everywhere. A pure speed win, zero behavior change,
+  not a rebalance.
+- **Fixed `updateTargetFrame()` not recalculating geometry when a different tower is selected**
+  while the frame stays continuously visible throughout (both the old and new tower having an
+  active target). `#inspect-panel` has no fixed height — rows are conditionally shown per tower
+  type — so two different towers' panels genuinely can differ in size, and the frame's position/
+  size (calculated relative to the panel) could go stale across a tower switch that resize/
+  visibility-transition checks alone never caught. Now tracks which tower the geometry was last
+  calculated for and marks it dirty on a change. Verified: a tower switch triggers a recalc, and
+  repeated calls on the same tower still don't (no regression to the existing dirty-flag
+  optimization).
+- **Fixed camera zoom going invisible while paused.** Confirmed pause sets `gameState =
+  'PAUSED'`, and the main loop skips rendering entirely whenever `gameState !== 'PLAYING'` — so
+  scrolling to zoom while paused correctly updated `camera.zoom`, but nothing on screen reflected
+  it until unpausing, at which point the camera would visibly snap to the new zoom all at once.
+  `render()` has no simulation side effects, so the wheel handler now calls it directly, but only
+  while actually paused — the normal playing case already gets a fresh frame within ~16ms via the
+  main loop regardless. Noted in `BACKLOG.md` that pan/pinch gestures likely share this same gap
+  but weren't touched in this pass, rather than leaving that inconsistency undocumented.
+- **Left the fourth item (first-hit hitch in `buildEnemyCollisionMask()`) genuinely unfixed** —
+  confirmed the mask cache is already correctly lazy and per-type, exactly as it should be; the
+  open question is purely whether the first hit against a never-seen enemy type causes a
+  measurable hitch, which needs real profiling this environment can't do. Not attempted
+  speculatively.
+- Filed the review's full "still needs targeted validation" list in `BACKLOG.md` for the first
+  time — it had only ever been summarized in a chat reply before, never actually written down.
+
+## [1.1.72] - 2026-09-13 — Final two: this closes out the entire external code review
+All 20 findings from the 2026-09-13 external review are now confirmed and fixed (one item was
+investigated and deliberately left alone with documented reasoning — the hash rebuilds inside the
+enemy-collision relaxation loop, which are genuinely necessary, not redundant — that's the one
+exception to "all fixed," not an oversight).
+
+- **Fixed fast-forward continuing to simulate after game-over within the same frame.** The
+  accumulator-driven catch-up loop (which can process up to `MAX_TICKS_PER_FRAME=90` ticks in one
+  frame at high speed multipliers) only checked `gameState` once, before entering — a game-over
+  firing mid-loop (lives hitting 0 partway through a batch of ticks) still let every remaining
+  queued tick that frame run full simulation on an already-ended game. Added `gameState ===
+  'PLAYING'` directly to the loop's own condition. Verified with 3 assertions: the exact reported
+  scenario (game-over on the very first of a queued batch) now stops immediately instead of running
+  the rest; the normal (no game-over) case matches an unmodified reference loop exactly, no
+  regression; and game-over landing on the very last queued tick still processes all of them
+  correctly (the check runs after `update()`, not before, so it can't shave off a legitimate tick).
+- **Fixed `restoreGameState()` destructively mutating live session state before validating a
+  loaded save.** The function clears all live state (`enemyPool`/`towerPool`/`sceneryMap`) in its
+  very first lines, with no validation beforehand — so a malformed-but-parseable save (the review's
+  exact reproduction: loading `{}`) corrupted the current run before the resulting crash
+  (`Cannot read properties of undefined (reading 'map')`, inside `rebuildPathCellsAndPx()`'s
+  `pathWaypointTiles.map(...)`) even revealed the problem, with no way back to the previous
+  session. Rather than restructure the whole function (real regression risk on a large, already-
+  tested piece of code I have no way to playtest here), added `validateSaveShape()` as a gate in
+  `loadSaveFileText()` — checks the specific fields `restoreGameState()` dereferences unguarded
+  early on, and rejects the load *before* any mutation begins if the shape looks wrong. Not
+  exhaustive validation of every nested field, but closes the reproduced crash and the most common
+  real failure mode (a non-save file, or one from an incompatible/corrupted source). Verified with
+  9 assertions: the exact `{}` input is rejected, several other malformed shapes are rejected
+  (missing/wrong-type `pathWaypointTiles`, missing `activeRegion`, wrong-type `gold`), and — just
+  as important — a genuinely valid save shape (including a minimal fresh-game-like one) still
+  passes and loads normally.
+- `BACKLOG.md`'s two subsection headers ("claimed, not yet re-verified") updated to reflect that
+  everything under them is now confirmed and fixed, rather than leaving stale, inaccurate framing
+  in place now that the underlying claims have all actually been checked.
+
+## [1.1.71] - 2026-09-13 — Restart residual state: the most severe bug found in this whole triage
+- **Fixed a genuine post-restart soft-lock.** `hitStopUntil` gates the *entire* simulation tick in
+  the main loop (`if(gameTime < hitStopUntil) return;`), with no safety cap of its own — unlike
+  `frameTime` (clamped to 100ms) or the accumulator-driven catch-up loop (capped at
+  `MAX_TICKS_PER_FRAME = 90`). `resetGame()` already reset `gameTime` back to 0, but never touched
+  `hitStopUntil` — so restarting after *any* Boss kill in the previous session left the new game
+  comparing `gameTime=0` against whatever stale (potentially large) value a prior Boss kill had set,
+  freezing the entire new game's simulation until `gameTime` caught back up to it. Depending on how
+  long the previous session ran, that could be a very long freeze indeed. `hitStopUntil = 0;` now
+  sits right next to `gameTime = 0;` in the reset block, where it always should have been.
+- **Also cleared three more pieces of genuinely stale session state**: `groundItems` and
+  `deathAnims` (leftover entries from the old map/session — `deathAnims` is lower-impact since its
+  short fixed duration means it self-expires within a couple of frames regardless, but still real
+  residual state), and `accumulator`/`lastTime` (the fixed-tick loop's own time-tracking, already
+  reset at other legitimate points elsewhere in this file like pause-resume — just missing from
+  `resetGame()` specifically).
+- Verified with an isolated test simulating a "dirty" session exactly as described (a long previous
+  game, a Boss kill 40ms before the stale `gameTime`, leftover accumulator/ground items/death
+  anims): confirms every field resets correctly, confirms the critical freeze check
+  (`gameTime < hitStopUntil`) no longer blocks simulation after the fix, and separately confirms
+  the *old* behavior really would have frozen the new game — not just a theoretical risk.
+- `BACKLOG.md` updated — eighteen of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.70] - 2026-09-13 — pointercancel committing actions, save/load spec/totalSpent fidelity
+- **Fixed `pointercancel` sharing a handler with `pointerup` and being able to commit actions.**
+  `onPointerEnd()` had zero check on `e.type` — a browser-interrupted gesture (an incoming
+  notification, a system gesture, the pointer leaving the window, a multi-touch conflict) could
+  still commit a tap, drop a ground item onto whatever tower/tile happened to be underneath, or
+  place a Barricade, none of which the user actually intended. Cancel now only does cleanup
+  (release pointer tracking, clear drag state) with zero action committed — a ground item involved
+  in a cancelled drag simply stays in `groundItems` untouched, since it was never removed from that
+  array in the first place. Verified with 7 assertions: cancelled taps/drags commit nothing, while
+  genuine `pointerup` events still work exactly as before (no regression).
+- **Fixed two real save/load fidelity bugs.** `restoreGameState()` was setting `t.spec` as a bare
+  label (`t.spec = td.spec`), completely bypassing `chooseSpec()`'s actual damage/cooldown/swing-arc
+  multipliers — a loaded Two-Hander Swordsman *looked* right (label, rendering) but *fought* like
+  an unspecialized one, missing all its real stat changes. Now calls the real `chooseSpec()`
+  method, which is itself guarded against double-application. Separately, `totalSpent` (which
+  drives sell value) was never persisted in the save payload at all — loading any save reset every
+  tower's upgrade-investment tracking back to its base build cost, undercutting sell value for
+  anything that had been upgraded. Now persisted, with an explicit safe fallback (the base-cost
+  default `create()` already sets) for saves that predate this field. Verified with 9 assertions:
+  a loaded Two-Hander now has identical actual damage/cooldown/swing-arc to a live one (confirmed
+  the old behavior really was broken, not just theorized); the re-application guard still works;
+  a loaded tower's sell value now matches its real investment instead of resetting to base cost;
+  and a legacy save with no `totalSpent` field falls back safely with no crash.
+
+## [1.1.69] - 2026-09-13 — Combat UI refresh: two real redundant-work bugs fixed
+The last performance item from the external review, and it turned out to be two distinct real
+issues rather than one vague "coalesce refreshes" ask.
+
+- **`creditKill()` was refreshing the inspect panel on every kill in the game, from any tower, as
+  long as *any* tower was selected.** `updateInspectPanel()` reads the global `selectedTower`
+  rather than taking a parameter — so `creditKill()`'s own unconditional call at the end re-rendered
+  whichever tower's panel happened to be open, regardless of whether that tower had anything to do
+  with the kill that just happened. `gainTowerExp()` (called unconditionally at the top of every
+  `creditKill()` invocation) already does the correct `if(selectedTower === tower)` check
+  internally, making `creditKill()`'s own call purely redundant whenever it *did* matter, and purely
+  wasted DOM work whenever it didn't. Removed from both branches of `creditKill()`; `updateHUD()`
+  calls are untouched since `gainTowerExp()` never touches those.
+- **`positionZoomControls()` — a `getBoundingClientRect()` layout-forcing read — was called
+  unconditionally from every single `updateHUD()` invocation**, which fires on every kill, every
+  resource change, constantly during combat. But `#hud-top` uses `flex-wrap:nowrap`, so its actual
+  rendered height never changes from any of those events — only from a genuine window resize or
+  orientation change (both already have their own dedicated listeners) or the one-time reveal when
+  `hud-top` first goes from `display:none` to visible at game start. Moved the call to that one
+  specific transition point instead. Worth noting: the function right above this one in
+  `updateHUD()` (`fitHudTopToOneLine()`) already had exactly the right instinct, per its own
+  existing comment ("guarded internally — only re-measures when gold/lives/wave digit count
+  actually changed") — `positionZoomControls()` just never got the same treatment.
+- Verified both with isolated tests of the actual logic: a kill from an unrelated tower no longer
+  touches the inspect panel at all while a different tower is selected (HUD still refreshes
+  correctly, since that's global); a kill from the selected tower refreshes the panel exactly once,
+  not twice; a killstreak-milestone kill (a genuinely distinct second XP-gain event, not a
+  duplicate) still correctly triggers two refreshes; 50 simulated rapid HUD updates during a kill
+  burst now trigger zero `positionZoomControls()` calls (was 50); and the one legitimate reveal
+  transition still positions the zoom controls exactly once.
+- This closes out the external review's original performance-item list in full. `BACKLOG.md`
+  updated — fifteen of the review's ~20 total findings are now confirmed and fixed; the remainder
+  are the two correctness bugs not related to lag/efficiency (save/load specialization fidelity,
+  `pointercancel` committing taps) and the one performance item deliberately left alone with
+  documented reasoning (the 3 hash rebuilds inside the enemy-collision relaxation loop, which are
+  genuinely necessary, not redundant).
+
+## [1.1.68] - 2026-09-13 — Viewport culling for enemies/towers, plus an investigated-but-declined item
+Focused on efficiency/lag specifically, with an explicit constraint: no feature or gameplay loss.
+
+- **`drawDepthSortedLayer()` now culls offscreen enemies and towers from the draw pass**, extending
+  the exact same bounds-check pattern already proven correct for scenery — nothing new invented.
+  Uses a wider margin than scenery's own (covers floating text, HP bars, and legendary name labels,
+  which can extend further above an enemy/tower than any scenery ever does), and explicitly exempts
+  `selectedTower` from culling: confirmed by reading `Tower.draw()` that it's the *only* tower that
+  ever draws a range circle (gated behind `if(isSelected)`), which can extend far beyond the
+  tower's own body — so it must never be culled regardless of its position relative to the camera.
+  Simulation (`update()`) is completely untouched by this; it only skips the `draw()` call for
+  something that couldn't have been visible anyway, so nothing about how the game plays changes,
+  only how much gets drawn on a large expanded map or a zoomed-in view.
+- Verified with an isolated test of the actual cull logic (6 assertions): an onscreen enemy is
+  included, a far-offscreen one is excluded, an enemy just past the visible edge but within the
+  wider actor margin is still included (confirming labels/HP bars won't clip), a non-selected
+  offscreen tower is excluded, an offscreen *selected* tower is still always included regardless of
+  position, and inactive entities remain excluded exactly as before regardless of culling.
+- **Investigated the "5 spatial-hash builds per tick" finding and deliberately did not touch it.**
+  The count is real (`resolveSweptEnemyCollisions()`: 1, `resolveEnemyCollisions()`'s 3-pass
+  relaxation loop: 3, final targeting hash: 1), but the 3 builds inside the relaxation loop aren't
+  redundant — that loop's own existing comment explains the multi-pass design exists specifically
+  so a crowd of enemies can settle within one frame instead of visibly fighting over several, and
+  each pass genuinely moves enemies, so the hash is genuinely stale by the next pass. Cutting the
+  rebuild count here would risk exactly the "stale hash used across passes that move enemies"
+  regression the review itself explicitly warned against, and I have no way to verify jitter/pileup
+  behavior under real load in this environment. Documented in `BACKLOG.md` with what a *safe*
+  version of this optimization would actually require (reusing bucket-array storage across builds,
+  not reducing how many happen), so a future pass with real profiling capability doesn't have to
+  re-derive this reasoning from scratch.
+- `BACKLOG.md` updated — fourteen of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.67] - 2026-09-13 — One more simple fix I'd overlooked: scroll-blur Low-graphics gate
+Asked directly whether every simple/low-effort item from the review had actually been done — it
+hadn't. Checking the full remaining list against what had shipped so far turned up one real miss.
+
+- **Gated the unspent-stat-points scroll icon's blur behind the Low-graphics setting.** Every other
+  glow effect in this file (the item-pickup glow a few lines above this exact code, ground items,
+  the magic-missile projectile glow) already follows the same `graphicsQuality === 'low' ? 0 : ...`
+  pattern — this was the one place it was missing, running unconditionally
+  (`ctx.shadowBlur = 8 + pulse*6`) for every tower with unspent stat points, every single frame,
+  regardless of the player's graphics setting. Matches the existing convention exactly rather than
+  inventing a new one.
+- `BACKLOG.md` updated — thirteen of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.66] - 2026-09-13 — Two low-effort, high-impact performance fixes from the external review
+Picked deliberately for effort/impact — both are small, safe, behavior-preserving short-circuits
+around wasted work, not structural rewrites.
+
+- **`queryNearby()` now short-circuits entirely when there are no active enemies.** Every idle
+  tower calls this every frame regardless of whether there's anything to find — previously it
+  always ran the full nested cell-scan (the review measured up to ~169 empty bucket lookups per
+  query at a 300px range) and allocated a fresh result array, even against a hash guaranteed to
+  have zero entries. Now checks by identity against the existing `EMPTY_ENEMY_HASH` sentinel
+  (already used elsewhere to represent "no active enemies this tick") and returns immediately with
+  a fresh empty array — skips all the real work, costs one reference comparison. Verified a normal
+  (non-empty) hash still finds real entries correctly, and that a plain empty object that *isn't*
+  the sentinel still goes through the real scan (so this only fires on the specific known-empty
+  case, not any object that happens to have no keys).
+- **The barricade/pileup queue-assignment search no longer runs its O(N²) loop when nothing is
+  actually blocked.** The loop can only ever succeed by matching an enemy against one that's
+  already `pileBlocked` — with zero blocked enemies (the common case: no barricade currently under
+  contact), every single iteration was guaranteed to immediately hit the `!ahead.pileBlocked` skip
+  and do nothing, for `N*(N-1)/2` iterations (4,950 for the review's 100-enemy example). A single
+  `anyBlockedSeed` flag, set alongside the existing pass that already seeds `claimedSlots`, now
+  skips the whole assignment loop when nothing is blocked. Verified with an isolated test: exactly
+  0 inner-loop iterations for 100 unblocked enemies (was 4,950), and confirmed the loop still runs
+  and can still find matches correctly when something genuinely is blocked.
+- Neither fix changes any observable behavior in the normal/non-empty case — both are strict
+  short-circuits around work that was previously guaranteed to accomplish nothing.
+- `BACKLOG.md` updated — twelve of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.65] - 2026-09-13 — Tenth confirmed bug: evolution retaining old class-specific fields
+- **Fixed `splashRadius` surviving Bomber → Gunalinder**, exactly as the review reproduced.
+  `applyTierStats()` already explicitly zeroed `burstCount`/`burstDelay` before applying the new
+  tier's data (a previous fix for this same pattern), but missed `splashRadius` — Bomber's tiers
+  define it (55-78 depending on tier), Gunalinder's don't, and `Object.assign()` only overwrites
+  fields present in the new tier's data, leaving the old value in place. A Gunalinder would have
+  kept dealing unintended AOE splash damage on every shot, directly contradicting its own blurb
+  ("trades splash for precision").
+- **Checked every evolution edge systematically, not just the cited example, and found one more
+  real leak**: Mage's tiers define `slowFactor`/`slowDuration` in every tier, but neither Cleric's
+  nor Pope's do — a Mage evolving into either would leave a stale slow value behind. Lower impact
+  than the splash bug (Cleric/Pope's own curse-based attack path never reads these fields, so it's
+  dead state rather than an active gameplay effect), but real leftover state with no business
+  surviving the evolution regardless.
+- **Checked Blowdart → Squirtgun too and confirmed it needs no fix** — both classes define
+  `poisonDamage`/`poisonDuration` in every tier, so there's no gap for a stale value to hide in.
+- Both new leaks fixed the same way as the existing `burstCount`/`burstDelay` fix: explicitly
+  zeroed in `applyTierStats()` before `Object.assign()` applies the destination tier's actual data.
+- Verified with an isolated test of the actual fixed logic: confirms Gunalinder no longer retains
+  Bomber's splash radius while still correctly getting its own burst fields; confirms Cleric no
+  longer retains Mage's slow fields while still correctly getting its own heal/curse fields; and
+  confirms evolving in the *other* direction (back into a splash or slow class) still works
+  correctly — the zero-first reset doesn't permanently disable these fields for classes that
+  actually use them.
+- `BACKLOG.md` updated — ten of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.64] - 2026-09-13 — Ninth confirmed bug: projectile pool exhaustion wasting cooldowns/bursts
+The direct sibling of 1.1.63's enemy-spawn-queue fix — same underlying pattern (a pooled-resource
+acquisition that can fail, with a caller that didn't check), on the firing side instead of the
+spawning side.
+
+- **Fixed all 3 projectile-firing callers unconditionally consuming a cooldown or burst shot even
+  when no projectile slot was actually acquired.** `updateArcher()` (bow-draw completion),
+  `updateRanged()` (the generic ranged path — Mage, Gatling, Blowdart, etc.), and
+  `updateAxeman()`'s ranged-throw mode all called `fireProjectile()`/`fireAxeThrow()` and then
+  immediately set `this.cooldownTimer = this.cooldown` (and, for burst weapons,
+  `this.burstShotsLeft--`) with no check on success — but both fire functions silently no-op on
+  pool exhaustion (`if(!p) return;`, previously with nothing communicated back to the caller). A
+  pool-exhausted archer would complete a full draw animation, "fire" nothing, and go on cooldown as
+  if it had — silently wasting the attack with no projectile ever appearing. A burst weapon could
+  lose individual shots mid-burst the same way, ending early with fewer actual shots than intended.
+- `fireProjectile()` and `fireAxeThrow()` now both return `true`/`false` to report whether a
+  projectile was actually acquired and launched. All 3 callers now only advance their cooldown/
+  burst state on confirmed success — a failed attempt leaves the tower fully drawn (Archer) or off
+  cooldown (everything else), retrying automatically next frame once a slot frees up, rather than
+  silently eating the attack.
+- Verified with an isolated test covering all 3 callers plus the burst-mid-sequence case
+  specifically (11 assertions): confirms no cooldown/burst-count is consumed while the pool is
+  simulated exhausted, and confirms each caller correctly fires and advances its cooldown/burst
+  state once the pool frees up on a later attempt — including a burst weapon correctly resuming
+  from its actual remaining shot count rather than restarting or skipping.
+- This closes out the review's original combined "pool exhaustion (enemy/projectile)" finding in
+  full — both halves (the enemy spawn queue in 1.1.63, the projectile firing cycle here) are now
+  fixed. `BACKLOG.md` updated — nine of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.63] - 2026-09-13 — Eighth confirmed bug: wave-spawn-queue pool exhaustion losing enemies
+Prompted by a request to look closely at enemy organization/deployment specifically. Went straight
+to the wave-spawn queue and enemy-pool acquisition path.
+
+- **Fixed a real bug where an exhausted enemy pool could silently lose a queued wave spawn
+  forever.** `spawnQueue.shift()` removed a due entry from the queue *before* knowing whether
+  `spawnEnemy()` actually acquired a slot from the 220-enemy pool — `spawnEnemy()` itself just
+  silently returned on failure with no signal to the caller. In a real late-game scenario (a big
+  wave, Splitter/Splitmini children, Boss reinforcements, and a barricade backup all sharing the
+  same 220-slot pool concurrently), pool exhaustion is plausible, not theoretical — and when it
+  happened, that enemy was gone: not spawned, not requeued, just silently missing from the wave.
+  `spawnEnemy()` now returns `true`/`false` to report success, and the queue only advances
+  (`shift()`) on confirmed success — a failed attempt leaves the entry at the front of the queue
+  and `break`s out of the spawn loop entirely for that frame (the pool won't free up mid-frame, so
+  continuing to try later-queued entries would either waste cycles or spin without progress),
+  retrying automatically once a slot frees up on a later frame.
+- **Checked both split-children spawn sites while in this code** — Boss's periodic Grunt spawn and
+  Splitter's on-death children both already guard correctly (`if(!child) break/continue`), so this
+  was specifically a wave-queue bug, not a pattern repeated elsewhere in enemy spawning.
+- Verified with an isolated test of the actual queue-processing logic: confirms nothing spawns and
+  the due entry is *not* lost while the pool is simulated full; confirms the exact same entry
+  successfully spawns once the pool frees up on a later attempt, with the queue fully draining; and
+  confirms the normal (never-exhausted) case behaves identically to before, with no regression.
+- Split the review's original combined "pool exhaustion (enemy/projectile)" bullet in `BACKLOG.md`
+  — the enemy-spawn-queue half is now fixed, the projectile/firing-cycle half (a burst shot or
+  cooldown consumed even when no projectile slot was acquired) is still unverified and unchanged.
+
+## [1.1.62] - 2026-09-13 — Seventh confirmed bug from the external review: pooled enemy state leaks
+- **Fixed `packSpeedBonus` and the wet-feet fields never being reset in `Enemy.spawn()`.** The more
+  serious of the two: `packSpeedBonus` is only ever recomputed inside `if(this.pack){...}` in
+  `update()` — so a non-pack enemy that reuses a pool slot previously occupied by a pack-type enemy
+  kept that pack enemy's last speed multiplier *permanently*, since nothing else ever touches this
+  field for a non-pack enemy. The movement formula (`effectiveSpeed = this.speed *
+  this.slowMultiplier * (this.packSpeedBonus || 1)`) applies it unconditionally regardless of
+  whether the enemy is actually a pack member. Also fixed `wetFeetSteps`/`wetFeetStepsMax`/
+  `wetFeetSizeBonus`, which `update()` reads unconditionally (`if(e.wetFeetSteps > 0)`) with no
+  check on whether *this* enemy actually just stepped in blood — a freshly-spawned enemy reusing a
+  slot that last had active wet footprints could immediately show them despite never having
+  touched blood. All three now explicitly reset in `spawn()`, matching the pattern used for the
+  other status fields there.
+- Verified with an isolated test simulating a slot reused across an incompatible enemy-type swap
+  (pack enemy → non-pack enemy, wet-footprint enemy → fresh enemy): confirms the stale speed bonus
+  and footprint state no longer carry over, confirms the actual movement-formula and footstep-check
+  math now produce the correct baseline result for a freshly-reset enemy, and confirms a genuinely
+  pack-type enemy still spawns correctly (no false negative introduced by the fix).
+- `BACKLOG.md` updated — seven of the review's ~20 findings are now confirmed and fixed. This also
+  closes out the "pooled enemies retain previous-occupant state" bullet in full — all three fields
+  the review named together (`bleedStackCount`, `wetFeetSteps`, `packSpeedBonus`) are now fixed
+  across 1.1.58 and this version.
+
+## [1.1.61] - 2026-09-13 — Sixth confirmed bug from the external review: axe projectile state leak
+- **Fixed two real field-leak bugs in `fireAxeThrow()`**, a separate projectile-pool acquisition
+  path from `fireProjectile()`'s. Comparing every field the two paths set side-by-side (not just
+  re-checking the one the review named) turned up two distinct leaks, not one:
+  - `poisonDamage`/`poisonDuration` were never set at all — `fireProjectile()` explicitly zeroes
+    them when not applicable, but `fireAxeThrow()` skipped them entirely. A reused pooled
+    projectile that last held a poisoned Blowdart shot could leak that poison onto a thrown axe,
+    since `onImpact()`'s poison-application check (`if(this.poisonDamage > 0)`) has no per-class
+    gating of its own.
+  - `isMagicMissile` was also never set — left stale from a reused slot that previously held a Mage
+    bolt, a thrown axe would render as a glowing magic missile instead of a spinning axe. Purely
+    visual, but a real and noticeable bug.
+  Both fixed by adding the missing resets to `fireAxeThrow()`'s existing explicit-zeroing block,
+  matching `fireProjectile()`'s pattern exactly. The one remaining field difference between the two
+  paths (`spinAngle`, set only by `fireAxeThrow()`) is confirmed harmless — it's only ever read
+  when `isAxe` is true, which `fireProjectile()` always sets to `false`, so a stale value there is
+  simply never consumed by a non-axe shot.
+- Verified with an isolated test simulating a "dirty" pool slot carrying stale poison/magic-missile
+  state from a previous shot: confirms both fields reset correctly, confirms the other explicit
+  resets are unaffected, and confirms `onImpact()`'s poison-application condition would now
+  correctly evaluate false for the fixed axe throw.
+- `BACKLOG.md` updated — six of the review's ~20 findings are now confirmed and fixed.
+
+## [1.1.60] - 2026-09-13 — Fixed bones still rendering on top of enemies standing on them
+- **The 1.1.54 depth-sort fix for bones had a real bug in the exact case it was meant to fix.**
+  `Array.sort` is stable, and debris was pushed into `drawDepthSortedLayer()`'s items array *after*
+  enemies/towers — so for an enemy standing precisely on a bone's own tile (the single most common
+  case, since that's literally where bones drop), the stable sort kept the enemy earlier in the
+  sorted order (drawn first, further back) and the bone later (drawn on top). That's backwards from
+  the intended fix, and specifically invisible unless an enemy was actually standing on the exact
+  bone tile — which is exactly the "enemies walking beneath the bones" report. My own comment at
+  the time claimed this case "naturally" resolved correctly; it was never actually verified and was
+  wrong.
+- Fixed by giving debris a tiny negative epsilon on its sort position (`d.y - 0.5`) rather than the
+  raw `d.y` — far too small to affect ordering at any real depth difference, but enough to reliably
+  break exact ties in favor of the enemy standing there instead of the bone underneath it.
+- Verified with an isolated test of the actual sort logic: an enemy at the exact same position as a
+  bone now draws on top of it; an enemy meaningfully behind or in front of a bone still sorts
+  correctly either way (unaffected by the epsilon); and a side-by-side comparison against the old
+  (un-epsiloned) version confirms the bug was real, not just theorized — the old logic really did
+  draw the bone on top at an exact tie.
+
+## [1.1.59] - 2026-09-13 — New Pope class, Cleric's growing hat, bleed-cooldown fix
+- **New `POPE` class** — Cleric's deep-tier AOE evolution, reached at 750 total INT (500 to first
+  become Cleric via `SPECIALIZATIONS.MAGE.ICE`, +250 more per this request — a bare 250 would
+  already be satisfied the instant Cleric is reached, since `EVOLUTIONS` thresholds check the raw
+  cumulative stat, not "since this evolution," so the actual number had to be 750, not 250. Flagging
+  this plainly rather than silently picking one). New `updatePopeSmite()`: instead of Cleric's
+  single closest-target curse, every enemy within range gets cursed simultaneously in a holy nova,
+  same curse-tick/5x-undead-damage mechanics as Cleric, visualized with the existing
+  `spawnShockring()` particle effect (no new particle system needed). Registered everywhere a new
+  evolved class needs to be: `CONFIG.TOWERS`, `EVOLUTIONS`, `EVOLVED_TOWER_TYPES`,
+  `CLASS_ARCHETYPE`, color palette, build scale, job quotes, tower-strategy blurb, `RANGE_CAPS`,
+  the once-per-wave heal mechanic (Pope keeps healing, per its blurb), and the HOLY damage-type
+  classification. New rendering: a two-armed "blessing" pose and a grand mitre (tall pointed hat
+  with back lappets) replacing Cleric's skullcap entirely.
+- **Cleric's hat now visibly grows** from the moment it's first reached (500 INT) up to the
+  threshold where it evolves into Pope (750 INT) — a small skullcap scaling from 2.5px to 6px,
+  telegraphing the coming evolution the whole way there rather than it arriving with no visual
+  buildup.
+- **Fixed a real bug found while building Pope's rendering**: my draft had a garbled, redundant
+  third arm-draw call with nonsense angle math, and used a `-shoulderX` that implied a left/right
+  shoulder offset — this codebase's actual convention (confirmed by checking Cleric's own arms) is
+  a single central shoulder point at x=0, with both arms distinguished by angle only. Caught before
+  shipping, not after.
+- **Added a 10s per-enemy cooldown before a new bleed event can trigger.** Previously, any hit
+  dealing over 15% of an enemy's max HP retriggered `applyBleed()` immediately, with no cooldown at
+  all — a fast-firing tower (Gatling, Blowdart) landing repeated qualifying hits on the same enemy
+  could restack bleed several times a second, which is what was actually causing the reported
+  visual clutter (repeated floating "BLEEDING" text, drip trails, and stack recalculation), not the
+  bleed mechanic itself. New `Enemy.lastBleedTriggerAt` gates the trigger.
+- **Caught and fixed a real bug in my own fix while testing it**: initializing the new cooldown
+  field to `0` (the "never triggered yet" sentinel) is broken, because `0` is falsy in JavaScript —
+  a bare `!this.lastBleedTriggerAt` guard would keep evaluating `true` forever after the very first
+  trigger happened to fire at `gameTime` exactly `0` (which is legitimately possible), permanently
+  bypassing the cooldown. An isolated test of the exact rapid-refire scenario caught this
+  immediately (a "20 rapid hits should produce 1 trigger" case failed against the naive version).
+  Fixed by using `-Infinity` as the sentinel instead, which also let the guard simplify to a single
+  time comparison with no separate falsy check needed.
+- Verified with isolated Node tests: Pope's AOE hits every enemy in range at once (not just the
+  closest), applies the undead damage bonus correctly, and correctly no-ops with an empty range or
+  while on cooldown (4 assertions). The bleed cooldown was tested against the first-hit case, 20
+  rapid re-hits within the window (produces exactly 1 trigger, not 20), the exact 10-second
+  boundary in both directions, below-threshold hits never triggering regardless of cooldown, and a
+  simulated pool-reuse reset not inheriting a stale cooldown from a previous occupant (8
+  assertions, all passing only after the `-Infinity` fix above).
+- Updated the in-game help modal's evolution tree and README's towers table to include Pope,
+  matching the standard set earlier this session for keeping player-facing docs in sync with new
+  classes as they're added, rather than letting them drift stale again.
+
 ## [1.1.58] - 2026-09-13 — Three more confirmed bugs from the external review
 Continuing the triage from 1.1.57 — three more findings re-verified against this file and fixed,
 each with an isolated regression test reproducing the exact reported scenario.
