@@ -114,12 +114,25 @@ they don't have a specialized niche yet to explain.
 
 ## Towers & evolutions
 
-Only Swordsman, Archer, Mage, and Barricade are built directly. Every other class is reached in two
-stages: whichever stat reaches **100** first permanently locks in an element (STR → 🔥 Fire, DEX →
-⚡ Electric, INT → ❄️ Ice) — the lock never changes even if another stat later overtakes it — then
-reaching **500** in that same attuned stat evolves the tower into its specialization, if one is
-defined for that combination. A few classes have a further, deeper evolution beyond that, unrelated
-to attunement, using a flat stat threshold like before.
+A tower never transforms into a new class — it keeps its own identity forever and just keeps
+growing its own stats. What reaching certain thresholds *does* do: permanently unlock a different,
+better tower as directly buildable from the Build menu, for the rest of the current game. Grind a
+Swordsman's stats far enough and Spearman shows up as its own buildable tower — the Swordsman that
+earned it stays a Swordsman. Only Swordsman, Archer, Mage, and Barricade start out buildable;
+everything else has to be unlocked first.
+
+Unlocking happens in two stages: whichever stat reaches **100** first on a Swordsman/Archer/Mage
+permanently locks in an element (STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice) — the lock never
+changes even if another stat later overtakes it — then reaching **500** in that same stat unlocks
+that class's specialization for that element, if one is defined. A few specializations have a
+further unlock of their own beyond that, at a flat stat threshold, unrelated to attunement.
+
+**The first time any tower actually reaches an unlock threshold, that class becomes permanently
+buildable for the rest of the game** — it shows up directly in the Build menu from then on,
+buildable for gold like any starter. This persists across save/load and resets on a new game, same
+as the existing wave-gated starter unlocks. Not-yet-reached classes show up in the Build menu
+grayed out with a 🔒 and a message explaining exactly which class + stat threshold unlocks them —
+e.g., reaching ❄️ Ice on a Swordsman (INT 500) unlocks Spearman as directly buildable from then on.
 
 | Tower | Role |
 |---|---|
@@ -127,18 +140,18 @@ to attunement, using a flat stat threshold like before.
 | 🏹 Archer | Ranged, visibly draws the bow before firing — slower arrows, real power behind each shot |
 | 🔮 Mage | Slows whatever it hits, small chance to burn, freeze, or shock |
 | 🚧 Barricade | Doesn't attack — extremely tough, placeable directly on the path, freezes the first enemy that touches it |
-| 🔨 Hammerman | *(Swordsman → 🔥 Fire, STR 100/500)* Stuns on hit, carries a shield and extra HP |
-| 🪓 Axeman | *(Swordsman → ⚡ Electric, DEX 100/500)* Dual hand axes; manually toggle between a close swing and a ranged throw |
-| 🔱 Spearman | *(Swordsman → ❄️ Ice, INT 100/500)* Long melee reach, slow but hard-hitting |
-| ⚜️ Paladin | *(Hammerman → INT 40, deep tier)* Every hit deals holy pure damage, bypassing armor entirely |
-| 🔫 Gatling | *(Archer → 🔥 Fire, STR 100/500)* Very fast, low damage per shot — shreds swarms |
-| 🎯 Blowdart | *(Archer → ⚡ Electric, DEX 100/500)* Short range, fast fire rate, every dart poisons |
-| 🔫 Dual Squirt Gun | *(Blowdart → DEX 40, deep tier)* Dual-wielded, deeper DEX specialization |
-| 🔫 Marksman | *(Archer → ❄️ Ice, INT 100/500)* One carefully aimed rifle shot at a time — longer range and harder-hitting than base Archer |
-| 🎯 Sniper | *(Marksman → INT 60, deep tier)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
-| ⚡ Snap Caster | *(Mage → ⚡ Electric, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
-| ✝️ Cleric | *(Mage → ❄️ Ice, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
-| 🧑‍🦳 Pope | *(Cleric → INT 750, deep tier)* Cleric's ultimate form — the curse hits every enemy in range at once instead of one target, still 5x against undead. A visibly growing hat on Cleric telegraphs the approach to this evolution the whole way from 500 to 750 INT. |
+| 🔨 Hammerman | *(unlocked by 🔥 Fire on a Swordsman, STR 100/500)* Stuns on hit, carries a shield and extra HP |
+| 🪓 Axeman | *(unlocked by ⚡ Electric on a Swordsman, DEX 100/500)* Dual hand axes; manually toggle between a close swing and a ranged throw |
+| 🔱 Spearman | *(unlocked by ❄️ Ice on a Swordsman, INT 100/500)* Long melee reach, slow but hard-hitting |
+| ⚜️ Paladin | *(unlocked by a Hammerman reaching INT 40)* Every hit deals holy pure damage, bypassing armor entirely |
+| 🔫 Gatling | *(unlocked by 🔥 Fire on an Archer, STR 100/500)* Very fast, low damage per shot — shreds swarms |
+| 🎯 Blowdart | *(unlocked by ⚡ Electric on an Archer, DEX 100/500)* Short range, fast fire rate, every dart poisons |
+| 🔫 Dual Squirt Gun | *(unlocked by a Blowdart reaching DEX 40)* Dual-wielded, deeper DEX specialization |
+| 🔫 Marksman | *(unlocked by ❄️ Ice on an Archer, INT 100/500)* One carefully aimed rifle shot at a time — longer range and harder-hitting than base Archer |
+| 🎯 Sniper | *(unlocked by a Marksman reaching INT 60)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
+| ⚡ Snap Caster | *(unlocked by ⚡ Electric on a Mage, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
+| ✝️ Cleric | *(unlocked by ❄️ Ice on a Mage, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
+| 🧑‍🦳 Pope | *(unlocked by a Cleric reaching INT 750)* Cleric's ultimate form as a separate tower — the curse hits every enemy in range at once instead of one target, still 5x against undead. A visibly growing hat on any Cleric telegraphs its own approach to this unlock threshold, from 500 to 750 INT — the Cleric doesn't become Pope, it just earns the unlock. |
 
 💣 Bomber and 🔫 Gunalinder still exist and work exactly as before for anyone who already has one,
 but as of the attunement redesign above, a fresh Archer's INT path now leads to Marksman instead —
@@ -256,31 +269,39 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
 
 ## Leveling
 
-Every tower has its own EXP level (1-99), separate from its gold-bought upgrade tier. EXP comes
-from landing kills, killstreak milestones, spending gold to upgrade a tower's tier, and simply
-surviving to the end of a round. Each level-up grants exactly one stat point — small and frequent
-rather than big lump sums — for the player to allocate manually via the STR/DEX/INT buttons.
-Barricades don't fight, so they don't earn EXP.
+Every tower has its own EXP level (1-99), separate from its gold-bought upgrade tier. **EXP comes
+only from landing kills** — a small amount per kill, a bigger burst at each killstreak milestone.
+Spending gold to promote a tower's tier and simply surviving a round to its end both used to grant
+some EXP too; both were removed on purpose, so leveling (and the stat points it grants) reflects
+active combat performance specifically, not gold spent or time survived. Each level-up grants
+exactly one stat point — small and frequent rather than big lump sums — for the player to allocate
+manually via the STR/DEX/INT buttons. Barricades don't fight, so they don't earn EXP. A tower that
+never lands a kill (out of range, badly placed, or simply outclassed) stays at level 1 — this is
+intentional now, not an oversight.
 
 Stat damage bonuses are class-exclusive, Dota-style, with no exceptions: STR only boosts damage
 for Warrior-archetype towers (Swordsman and its evolutions), DEX only for Archer-style towers
-(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster), and INT
-only for Mage-archetype towers (Mage, Cleric). STR's max-HP bonus and DEX's attack-speed/luck/
-accuracy bonus stay universal across every class — DEX-based accuracy in particular scales via
-the exact same formula for every tower regardless of archetype, with no early-game caps for any
-class. A tower's primary stat is the dominant driver of how hard it hits, with Warriors using a
-separate, steeper damage curve from the other two archetypes specifically so heavy STR investment
-keeps compounding meaningfully into the deep endgame instead of flattening out.
+(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster, Marksman),
+and INT only for Mage-archetype towers (Mage, Cleric, Pope). STR's max-HP bonus and DEX's
+attack-speed/luck/accuracy bonus stay universal across every class — DEX-based accuracy in
+particular scales via the exact same curve for every tower regardless of archetype. A tower's
+primary stat is the dominant driver of how hard it hits, with Warriors using a separate, steeper
+damage curve from the other two archetypes specifically so heavy STR investment keeps compounding
+meaningfully into the deep endgame instead of flattening out.
 
-Spending gold to upgrade a tower's tier also grants random stat growth on top of its guaranteed
-tier stat bump: 3 independent rolls of 1-6 points each into a randomly chosen stat, plus a
-guaranteed extra 1-3 points into the tower's own favored/main stat. This is separate from — and
-in addition to — the 1 stat point every EXP level grants.
+Promoting a tower's tier for gold also grants random stat growth on top of its guaranteed tier
+stat bump: 3 independent rolls of 1-6 points each into a randomly chosen stat, plus a guaranteed
+extra 1-3 points into the tower's own favored/main stat. This is a separate "gear training" layer
+from EXP leveling — it doesn't grant EXP itself (see above), it just grants stat points directly.
 
-Baseline (zero-DEX) miss chance differs by archetype on purpose: Mage misses the most (22%),
-Archer a moderate amount (14%), and Warriors (melee) the least (7%) — a deliberate hierarchy, not
-a bug, reflecting how forgiving each class's attack type is to land. All three converge toward a
-2% floor with enough DEX investment, since the accuracy formula itself is identical for everyone.
+Accuracy is deliberately front-loaded, RuneScape-style: a tower's miss chance at zero DEX
+investment differs by archetype (Mage misses the most at 45%, Archer 40%, Warriors — melee — the
+least at 30%, reflecting how forgiving each class's attack type is to land), but the first 100
+effective DEX brings any of them down to just 4% — almost all the achievable benefit for a
+comparatively small investment. Pushing from there to 500 effective DEX only trims that remaining
+4% down to a true 0% (a genuinely guaranteed hit), over four times the investment for a much
+smaller payoff — the same "cheap early progress, expensive last stretch" shape as an RPG leveling
+curve, applied to accuracy instead of XP cost.
 
 The inspect panel shows each tower's real min-max damage range (no separate flat number
 alongside it) and its actual DPS — average damage per hit times attacks per second, discounted by
@@ -397,8 +418,10 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1212)
 - [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1434)
 - [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1533)
+- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6515)
 - [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1206)
 - [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5214)
+- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — first-reach-ever permanently unlocks a tower type as directly Build-menu-buildable (every tier, not just base-class specializations)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1363)
 - [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2015)
 - [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2046)
 - [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2380)

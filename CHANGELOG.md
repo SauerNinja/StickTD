@@ -1,5 +1,156 @@
 # Changelog
 
+## [1.1.81] - 2026-09-14 — No-transform unlock redesign, implemented and verified end-to-end
+- **Explicit clarification acted on directly**: a tower must never change its own type, ever —
+  reaching a threshold only unlocks the *next* tier as a separately buildable tower, at every tier,
+  not just the base-class specializations. Reworked `checkEvolution()` and
+  `checkAttunementAndSpecialization()` so neither calls `evolveInto()` anymore; both now call
+  `unlockTowerTypeBuild()` (renamed from `unlockSpecializationBuild()`, generalized scope) instead.
+  `evolveInto()` itself is left defined but explicitly marked unused, rather than deleted outright.
+- **Generalized the unlock-tracking system to cover every tier**, not just the 8 first-tier
+  specializations from the previous pass. `UNLOCKABLE_TOWER_TYPES` and
+  `TOWER_UNLOCK_SOURCE_BY_TARGET` are now derived from *both* `SPECIALIZATIONS` and `EVOLUTIONS`
+  (12 total: the original 8 plus Paladin/Squirt Gun/Sniper/Pope), each tagged `element` or `stat`
+  so the Build menu's locked-row message can describe either kind correctly (e.g. "Reach ❄️ Ice on
+  a Swordsman (INT 500)" vs. "Reach INT 40 on a Hammerman"). Bomber and Gunalinder are deliberately
+  excluded from the unlockable list — nothing currently unlocks Bomber itself (a known, previously
+  documented gap), so nothing can grind it toward Gunalinder either; showing either as a locked row
+  promising a reachable unlock would be misleading.
+- **Rewrote the in-game help modal and README's evolution section** — both previously said a tower
+  "evolves into" or "transforms into" its specialization, which is now simply false. Both now
+  explicitly state a tower keeps its own identity forever, with the exact clarifying example
+  (grinding a Swordsman unlocks Spearman, the Swordsman stays a Swordsman) used directly in both.
+  Updated `BACKLOG.md`'s Phase 2 (dual-element combination) doc for the renamed identifiers and
+  confirmed its own design was already written assuming the correct "unlock, don't transform"
+  model — it needed no conceptual changes, just the rename.
+- Verified with 11 isolated assertions covering the actual redesigned logic: the derived unlock
+  list contains exactly 12 types with Bomber/Gunalinder correctly excluded; the exact clarifying
+  example (a Swordsman reaching 500 INT stays type `'SWORDSMAN'` while unlocking Spearman); the
+  same non-transformation confirmed for two deep-tier cases (a Blowdart reaching its own DEX
+  threshold, a Marksman reaching its own INT threshold); and an unlock firing exactly once even
+  when two different towers independently reach the same threshold.
+
+## [1.1.80] - 2026-09-14 — Camera pan to spawn, finish-line carpet, selection arrow, two visual cleanups
+- **Confirmed the no-transform unlock redesign from last turn is complete and correct**, including
+  Cleric→Pope specifically (the exact case raised): `checkEvolution()` already routes every
+  flat-`EVOLUTIONS`-table case, Cleric's deep-tier unlock included, through `unlockTowerTypeBuild()`
+  rather than transforming the tower — verified by re-reading the actual current code, not assumed.
+- **Removed the serum-separation ring effect on blood decals** per direct feedback — a pale
+  yellow/tan stroked halo drawn around blood pool blobs during early clotting, which read as an
+  unwanted white ring. Removed the whole block cleanly.
+- **Removed the persistent gold ring around BIG-variant enemies** per direct feedback. The actual
+  BIG mechanic (bigger size, more HP) and its spawn-time "BIG!" floating text are both untouched —
+  only the decorative ring that stayed around it for the enemy's whole lifetime is gone.
+- **New: camera pans to the wave's spawn point when a wave starts**, the same eased pan/zoom curve
+  already used when selecting a tower, but built as a fully separate, independent mechanism rather
+  than touching the existing (already carefully-tuned) tower-follow code at all. Mutually exclusive
+  with tower-follow — whichever the player's attention is on wins, they never fight over the
+  camera in the same frame. Reads the actual last-known path endpoint (`waypointsPx[0]`), not a
+  fixed guess.
+- **New: animated pointer above the currently selected tower** — a smooth bobbing 👇, distinct
+  bob cadence from the existing ground-item bob so the two never look like the same animation,
+  soft glow gated behind Low graphics matching every other glow effect in this file.
+- **New: a checkered finish-line carpet across the actual end of the path**, black flag 🏴 at the
+  lower end, white flag 🏳️ at the upper end. Orientation is derived from the real last two path
+  waypoints (perpendicular to the direction of travel there), not a fixed horizontal/vertical
+  assumption — the spiral path can end pointing any direction. Baked into the existing static map
+  cache alongside the dirt texture and flora, so this is a one-time cost on map generation/
+  expansion, not a per-frame draw. Verified the lower/upper flag assignment with an isolated test
+  across straight, vertical, and diagonal path-end directions, plus the degenerate zero-length-
+  segment edge case (confirmed no NaN/crash).
+- **Investigated, deliberately did not change**: the reported "enemies stick, want a strict preset
+  path" concern. Confirmed by reading `getPositionAtTraveled()` that movement already follows a
+  fixed precomputed path polyline, not free-roaming pathfinding — that part already matches what
+  was asked for. The visible "sticking" is the local separation system at chokepoints doing
+  necessary work (preventing enemies from perfectly overlapping), and that system's own code
+  already documents an extensive history of prior tuning for exactly this symptom. Didn't touch it
+  further without being able to visually verify the result — logged in `BACKLOG.md` with the
+  reasoning so a future pass with real visual verification doesn't have to re-derive it.
+- Verified: full-file syntax check after every change this turn, plus isolated logic tests for the
+  finish-line flag geometry (5 assertions, including the degenerate edge case).
+
+## [1.1.79] - 2026-09-14 — New system: specializations unlock permanently, buildable from then on
+Implemented the core of the requested unlock system — reusing the existing attunement/
+specialization system as the trigger rather than replacing it, since it already does exactly what
+was being described ("getting an ice Swordsman unlocks the Spearman" is precisely how
+`SPECIALIZATIONS.SWORDSMAN.ICE = 'SPEARMAN'` already works, just not previously exposed as a
+Build-menu unlock). The dual-element combination system (Steam, a new "Blow Gunner" class) is
+deliberately NOT implemented here — see below and `BACKLOG.md`.
+
+- **Every specialization class permanently unlocks as directly Build-menu-buildable the first
+  time any tower actually reaches it.** New `unlockedSpecializations` (a `Set`, persists across
+  save/load, resets on a new game — same precedent as the existing wave-gated starter unlocks) and
+  `unlockSpecializationBuild()`, hooked into `checkAttunementAndSpecialization()` right where a
+  specialization already fires. Reuses the existing `showUnlockToast()` mechanism, so this reads
+  as the same kind of "🎉 New tower unlocked" notification the game already gives for wave-gated
+  starters, not a new, separate notification style.
+- **Build menu now shows all 8 specialization classes** (Hammerman, Axeman, Spearman, Gatling,
+  Blowdart, Marksman, Snap Caster, Cleric) as rows, extending the *exact* locked/unlocked row
+  system the Build menu already had for wave-gated starters (grayed styling, 🔒 message, a `?`
+  help-toggle button) rather than building new UI from scratch. A locked row explains precisely
+  what to do: e.g. "🔒 Reach ❄️ Ice on a Swordsman (INT 500) to unlock." Once unlocked, a
+  specialization is placeable directly like any starter tower, buying at tier 1 for its existing
+  `baseCost` — confirmed the placement/affordability pipeline is fully generic and never actually
+  restricted to `STARTER_TOWER_TYPES`, so no changes were needed there at all.
+- `UNLOCKABLE_SPECIALIZATION_TYPES` and `SPECIALIZATION_SOURCE_BY_TARGET` (the reverse lookup used
+  to build each locked row's message) are both derived programmatically from `SPECIALIZATIONS`
+  itself, not a separately maintained list — a future specialization is automatically covered.
+- Also updated the in-game help modal and README to explain the new unlock mechanic, with the
+  exact example from the request (Ice Swordsman → Spearman) used as the worked example in both.
+- Verified with 10 isolated assertions: the derived type list contains exactly the right 8 classes;
+  the reverse lookup correctly maps the exact example given (Spearman ← Swordsman+Ice) and a second
+  one (Blowdart ← Archer+Electric); an unlock toast fires exactly once even if a second tower
+  reaches the same specialization later; two different specializations unlock independently with
+  their own toasts; a save/restore round-trip preserves unlocks correctly; and a save from before
+  this feature existed restores to an empty (not crashing, not retroactively-unlocked) state.
+- **Deliberately not implemented**: the dual-element combination system (Fire+Ice→Steam, unlocking
+  a new "Blow Gunner" class on an Archer reaching it). Fully specified in `BACKLOG.md` as Phase 2,
+  including the open design questions that need answering first (what actually triggers a hybrid,
+  whether it replaces or sits alongside single-element specialization) and the full "new class"
+  checklist it would need — the same one Marksman got, not a stub. Doing this alongside Phase 1 in
+  one pass risked shipping an untested brand-new tower class; Phase 1's infrastructure
+  (`unlockedSpecializations`, `showUnlockToast()`, the Build-menu row pattern) is designed to be
+  directly reusable once Phase 2 is actually scoped.
+
+## [1.1.78] - 2026-09-14 — XP decoupled from Promote/wave-survival, ambient leaf gust, doc fixes
+- **EXP now comes only from kills.** Removed two XP grants that contradicted the intended design:
+  Promote (gold-tier upgrade) no longer grants XP directly, and every active tower no longer gets
+  passive XP just for surviving a wave regardless of whether it landed a hit. Leveling — and the
+  one stat point each level grants — now reflects active combat performance specifically, not gold
+  spent or time survived. A tower that never lands a kill stays at level 1; this is intentional.
+  Confirmed Cleric/Pope's curse-tick kills still route through the same `die()` → `creditKill()`
+  path as every other kill type, so they're not accidentally excluded from the only XP source left.
+  Promote's own separate random-stat-roll-on-upgrade mechanic is untouched — that's a distinct
+  "gear training" layer, not XP.
+- **Fixed the awkward static leaf on the ground.** `🍃` (leaf fluttering in wind) was in the
+  static ground-flora pool, randomly rotated and sitting still — its own artwork implies motion,
+  which is exactly why a stationary rotated copy read as visually wrong. Removed from static flora
+  (`CONFIG.FLORA.COMMON`); `🍂` (fallen leaf, correctly implies "already on the ground") stays.
+- **New ambient leaf gust.** A one-time gust of 3-5 leaves drifts across the screen 20-60s after a
+  game starts (new game, restart, or load — not on unpause), purely decorative, no gameplay effect.
+  This is the natural home for the fluttering-leaf glyph removed from static flora above, rather
+  than a separate bolt-on. Verified with isolated tests: scheduled delay always falls in the
+  20-60s window, spawn count is always 3-5 and actually varies, every leaf starts off-screen on
+  one side, and a leaf that drifts past the far edge gets cleaned up correctly.
+- **STR/DEX/INT buttons sized down** slightly from the standard 40px panel-button height per
+  feedback that they were reading as oversized in the tight stats row.
+- **Logged, not guess-fixed**: an enemy reported jumping ahead on the path for no apparent reason.
+  No repro details (enemy type, what else was happening) to narrow down which of several systems
+  (pack speed bonus, swept collision push, barricade queue snap, a slow/freeze wearing off) could
+  plausibly look like a "jump" from a glance — added to `BACKLOG.md` rather than touched blind.
+- **Doc accuracy pass while updating README for the XP change**: caught and fixed two genuinely
+  stale numbers in `AGENTS.md` an external review had correctly flagged — the miss-chance
+  baselines and lead-prediction cap were both still describing an old formula/value, several
+  versions out of date. Also fixed a real mismatch between the Build help text ("free expansion
+  every 3 waves") and what the code actually implements (every 4 waves, confirmed at the actual
+  `wavesCompleted % 4 === 0` check).
+- **Re-verified the bone depth-sort fix (1.1.60) is still correctly in place and architecturally
+  complete** — confirmed bones only ever render through one path (the fixed
+  `drawDepthSortedLayer()`, with its tie-break epsilon), and the general decal loop explicitly
+  excludes them, so there's no second/bypassing draw call. If bones are still rendering above
+  enemies on the live site, the most likely explanation is the deployed copy predates 1.1.60 —
+  that fix only takes effect once this file is actually uploaded to the live repo.
+
 ## [1.1.77] - 2026-09-13 — Actual gameplay visuals this time: dirt path texture
 Shifted from menus/UI to the gameplay canvas itself, per a direct request. Checked several
 candidates before picking where to actually spend the change.

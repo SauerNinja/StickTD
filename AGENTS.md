@@ -208,16 +208,19 @@ hand — this part is not meant to be read in full every session.
   stat growth on top of the guaranteed tier bump: 3 rolls of 1-6 into a random stat, plus 1-3
   guaranteed into the tower's own favored stat — additive to, not a replacement for, the EXP
   system's manual point.
-- `recomputeStats()` computes `missChance` from `BASE_MISS_CHANCE_BY_ARCHETYPE` (Mage 22% / Archer
-  14% / Warrior 7% at zero DEX — an explicit balance hierarchy) minus DEX-scaled accuracy, floored
-  at 2%. Identical formula for every archetype, no exceptions. Damage stays strictly
-  archetype-exclusive; `missChance` is the one universal DEX effect. Warrior damage uses
-  `warriorStrDamageMult()`, a separate curve from the shared `diminishingStatValue()` (higher base
-  rate, slower-decaying late-game floor) so heavy STR keeps compounding instead of flattening.
-  Critical hits (`critChance`/`critMult`) are a real damage effect (base 2.5%/1.20x, DEX/INT
-  scaled, capped 50%/3x), rolled in `applyDamage()` before armor mitigation. `DPS` in the inspect
-  panel folds in the crit's expected-value contribution. DEX attack-speed rate is 3%/point. Ranged
-  lead-prediction is capped by `MAX_LEAD_PREDICT_TIME` (0.35s).
+- `recomputeStats()` computes `missChance` via `computeMissChance()` — a front-loaded, two-segment
+  curve, not a flat diminishing-returns formula. `BASE_MISS_CHANCE_BY_ARCHETYPE` sets the zero-DEX
+  baseline (Mage 45% / Archer 40% / Warrior 30% — an explicit balance hierarchy), then the curve
+  drops steeply to 4% by `ACCURACY_MIDPOINT_DEX` (100 effective DEX) and only trims that remaining
+  4% down to a genuine 0% by `ACCURACY_CAP_DEX` (500) — most of the benefit front-loaded into the
+  first 100 points, RuneScape-XP-curve-shaped. Identical curve for every archetype, no exceptions.
+  Damage stays strictly archetype-exclusive; `missChance` is the one universal DEX effect. Warrior
+  damage uses `warriorStrDamageMult()`, a separate curve from the shared `diminishingStatValue()`
+  (higher base rate, slower-decaying late-game floor) so heavy STR keeps compounding instead of
+  flattening. Critical hits (`critChance`/`critMult`) are a real damage effect (base 2.5%/1.20x,
+  DEX/INT scaled, capped 50%/3x), rolled in `applyDamage()` before armor mitigation. `DPS` in the
+  inspect panel folds in the crit's expected-value contribution. DEX attack-speed rate is
+  3%/point. Ranged lead-prediction is capped by `MAX_LEAD_PREDICT_TIME` (0.2s).
 - **HP stat** (`hpStat`, converts to flat bonus HP at 10:1) is archetype-differentiated:
   `HP_STAT_BASE`/`HP_STAT_RATE` give Warrior 3-heart/30HP base growing 0.32/STR point, Archer
   2-heart/20HP growing 0.25/point, Mage 1-heart/10HP growing 0.15/point (Barricade falls back to

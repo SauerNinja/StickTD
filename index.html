@@ -440,7 +440,7 @@
     box-shadow:none;color:var(--gold);font-size:14px;cursor:pointer;padding:0;margin:0 2px 0 0;
     line-height:1;flex-shrink:0;}
   #inspStatsRow button.stat-btn{background:#3d5a66;color:#ffffff;font-weight:bold;
-    border:1px solid rgba(125,211,252,0.6);border-radius:6px;
+    border:1px solid rgba(125,211,252,0.6);border-radius:6px;padding:6px 8px;min-height:34px;
     cursor:pointer;font-size:inherit;box-shadow:inset 0 2px 4px rgba(0,0,0,0.25);}
   #inspStatsRow button.stat-btn:disabled{cursor:default;color:#ffffff;opacity:1;} /* overrides the general #inspect-panel button:disabled dimming — these must never fade */
   #inspStatsRow button.stat-btn .plus-hint{display:none;}
@@ -823,14 +823,18 @@
         <h3>⚔️ Archetypes</h3>
         <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
 
-        <h3>✨ Evolution</h3>
-        <p>Only Swordsman, Archer, and Mage are built directly. Every other class is reached in two
-        stages. First, whichever stat reaches <b>100</b> first permanently locks in an element —
-        STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice — and that lock never changes, even if a
-        different stat later overtakes it. Then, reaching <b>500</b> in that same attuned stat
-        evolves the tower into its specialization, if one exists for that combination — a one-way
-        transformation that keeps your accumulated stats. A few classes beyond that have a further,
-        deeper evolution of their own.</p>
+        <h3>🔓 Unlocking new towers</h3>
+        <p>A tower never transforms into a new class — it stays exactly what it is forever and just
+        keeps growing its own stats. What DOES happen: reaching certain stat thresholds on any
+        tower permanently unlocks a <i>different</i>, better tower as directly buildable from the
+        Build menu from then on, for the rest of the current game. Grind out a Swordsman's stats
+        far enough and you unlock Spearman as its own buildable tower — the Swordsman that earned
+        it stays a Swordsman.</p>
+        <p>First, whichever stat reaches <b>100</b> first on a Swordsman/Archer/Mage permanently
+        locks in an element — STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice — and that lock never
+        changes, even if a different stat later overtakes it. Reaching <b>500</b> in that same
+        stat then unlocks that class's specialization for that element, if one exists. A few
+        specializations have their own further unlock beyond that, at a flat stat threshold.</p>
         <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ STR 100 → 500 →</span> 🔨 Hammerman</div>
         <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ DEX 100 → 500 →</span> 🪓 Axeman</div>
         <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 100 → 500 →</span> 🔱 Spearman</div>
@@ -843,6 +847,11 @@
         <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 100 → 500 →</span> ✝️ Cleric</div>
         <div class="evo-row">✝️ Cleric <span class="evo-arrow">→ INT 750 →</span> 🧑‍🦳 Pope</div>
         <div class="evo-row">🔨 Hammerman <span class="evo-arrow">→ INT 40 →</span> ⚜️ Paladin</div>
+        <p>Every arrow above reads as "unlocks," not "becomes" — reach the numbers on the left on
+        ANY tower of that type and the tower on the right shows up in the Build menu, buildable for
+        gold from then on. Check the Build menu and it'll show up there too, right alongside the
+        locked ones — which show up grayed out with a 🔒 and say exactly what to do to unlock
+        them. Tap the <b>?</b> on any row to see it.</p>
 
         <h3>🎒 Items & Heroes</h3>
         <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 slots per tower — fill all 6 to awaken it as a Hero with a permanent bonus to every stat.</p>
@@ -939,7 +948,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.77'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.1.81'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1320,6 +1329,43 @@ const EVOLUTIONS = {
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into. Barricade included here (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable.
 const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE']; // reachable only via evolution, never built directly
+// Progression unlocks — a tower never transforms into a new class (see
+// checkEvolution()/checkAttunementAndSpecialization()); reaching a threshold only permanently
+// unlocks the NEXT tier as a separately buildable tower in the Build menu, for the rest of the
+// current game (survives save/load, resets on a genuinely new game — same precedent as the
+// existing wave-gated starter unlocks). Two kinds of unlock, both derived from the tables that
+// already define them rather than duplicating thresholds a second time:
+//  - "element" unlocks (from SPECIALIZATIONS): reach 500 in the attuned stat on a base class.
+//  - "stat" unlocks (from EVOLUTIONS): reach a flat raw-stat threshold on a specific source class.
+// BOMBER and GUNALINDER are deliberately excluded from the buildable-unlock list even though they
+// have EVOLUTIONS entries — nothing currently unlocks BOMBER itself (see BACKLOG.md: its old
+// Archer-evolution path was intentionally removed and never replaced with a real threshold), so
+// it can never actually be reached to grind toward GUNALINDER either. Both stay defined for any
+// existing save that already has one, they just don't show up as a locked row promising an unlock
+// that isn't actually reachable.
+const UNREACHABLE_EVOLUTION_SOURCES = ['BOMBER', 'GUNALINDER'];
+const TOWER_UNLOCK_SOURCE_BY_TARGET = {}; // target type -> descriptive info for the Build menu's "how to unlock" message
+for(const baseType of Object.keys(SPECIALIZATIONS)){
+  for(const element of Object.keys(SPECIALIZATIONS[baseType])){
+    TOWER_UNLOCK_SOURCE_BY_TARGET[SPECIALIZATIONS[baseType][element]] = { kind: 'element', baseType, element };
+  }
+}
+for(const sourceType of Object.keys(EVOLUTIONS)){
+  if(UNREACHABLE_EVOLUTION_SOURCES.includes(sourceType)) continue;
+  for(const stat of Object.keys(EVOLUTIONS[sourceType])){
+    const branch = EVOLUTIONS[sourceType][stat];
+    TOWER_UNLOCK_SOURCE_BY_TARGET[branch.target] = { kind: 'stat', baseType: sourceType, stat, threshold: branch.threshold };
+  }
+}
+const UNLOCKABLE_TOWER_TYPES = Object.keys(TOWER_UNLOCK_SOURCE_BY_TARGET);
+// Permanently unlocked tower types for the current game — the whole point is "prove you can reach
+// this once, and it's yours to build directly from then on," for every tier, not just the first.
+let unlockedTowerTypes = new Set();
+function unlockTowerTypeBuild(type){
+  if(unlockedTowerTypes.has(type)) return; // already unlocked — no toast on a repeat reach
+  unlockedTowerTypes.add(type);
+  showUnlockToast([type]);
+}
 
 // All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
 // tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
@@ -1675,7 +1721,7 @@ const CONFIG = {
   FLORA: {
     coverage: 0.09,      // fraction of buildable (non-path) tiles that get ANY flora glyph
     accentShare: 0.12,   // of the tiles that do get flora, only this fraction get an ACCENT glyph instead of a COMMON one — keeps color genuinely rare, not just "less common"
-    COMMON: ['🌿','🌱','🍀','🌾','🍃','🍂'],
+    COMMON: ['🌿','🌱','🍀','🌾','🍂'],
     ACCENT: ['🍁','🍄','🌺','🌻']
   }
 };
@@ -2682,6 +2728,43 @@ function drawMap(ctx){
     }
   }
 
+  // Finish-line carpet — a checkered black/white strip laid across the actual end of the path
+  // (where enemies reach and damage lives), so the "you lose here" point reads as clearly
+  // demarcated rather than the lane just trailing off. Orientation is derived from the last two
+  // real path waypoints (perpendicular to the direction of travel there), not a fixed
+  // horizontal/vertical assumption, since the spiral path can end pointing any direction.
+  if(waypointsPx && waypointsPx.length >= 2){
+    const end = waypointsPx[waypointsPx.length - 1];
+    const prev = waypointsPx[waypointsPx.length - 2];
+    const dirX = end.x - prev.x, dirY = end.y - prev.y;
+    const dirLen = Math.hypot(dirX, dirY) || 1;
+    const perpX = -dirY/dirLen, perpY = dirX/dirLen; // perpendicular to travel direction
+    const halfSpan = TILE_SIZE * 0.5;
+    // "Lower" end = further down/+Y (black flag), "upper" end = further up/-Y (white flag) —
+    // independent of which literal perpendicular direction the math produces first.
+    const pA = { x: end.x + perpX*halfSpan, y: end.y + perpY*halfSpan };
+    const pB = { x: end.x - perpX*halfSpan, y: end.y - perpY*halfSpan };
+    const lowerP = pA.y >= pB.y ? pA : pB;
+    const upperP = pA.y >= pB.y ? pB : pA;
+    const squareCount = 8;
+    for(let i=0; i<squareCount; i++){
+      const t0 = i/squareCount, t1 = (i+1)/squareCount;
+      ctx.fillStyle = i%2===0 ? '#1a1a1a' : '#f0f0f0';
+      ctx.beginPath();
+      ctx.moveTo(upperP.x+(lowerP.x-upperP.x)*t0, upperP.y+(lowerP.y-upperP.y)*t0);
+      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t1, upperP.y+(lowerP.y-upperP.y)*t1);
+      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t1 + dirX/dirLen*10, upperP.y+(lowerP.y-upperP.y)*t1 + dirY/dirLen*10);
+      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t0 + dirX/dirLen*10, upperP.y+(lowerP.y-upperP.y)*t0 + dirY/dirLen*10);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(upperP.x, upperP.y); ctx.lineTo(lowerP.x, lowerP.y); ctx.stroke();
+    ctx.font = '22px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🏴', lowerP.x, lowerP.y);
+    ctx.fillText('🏳️', upperP.x, upperP.y);
+  }
+
   // Flora — sparse cosmetic ground-cover accents (CONFIG.FLORA). Baked here rather than drawn
   // per-frame since it's flat ground texture with no occlusion needs, unlike trees/rocks (which
   // stay in the dynamic depth-sorted layer specifically so they can occlude/be occluded by actors).
@@ -3604,6 +3687,7 @@ function serializeGameState(){
     gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
     goreMode, graphicsQuality, showZoomControls, seenEnemyTypes: [...seenEnemyTypes],
+    unlockedTowerTypes: [...unlockedTowerTypes],
     towers: towersData, scenery: sceneryData
   };
 }
@@ -3657,6 +3741,7 @@ function restoreGameState(state){
   if(state.graphicsQuality){ graphicsQuality = state.graphicsQuality; setupCanvas(); }
   showZoomControls = !!state.showZoomControls;
   document.getElementById('zoom-controls').classList.toggle('show', showZoomControls);
+  unlockedTowerTypes = new Set(state.unlockedTowerTypes || []); // empty for a save from before this feature existed — nothing pre-unlocks retroactively, matches how a fresh game starts
   if(state.seenEnemyTypes){
     seenEnemyTypes = new Set(state.seenEnemyTypes);
   } else {
@@ -3708,6 +3793,7 @@ function restoreGameState(state){
   rebakeMap();
   centerCameraOnActiveRegion();
   gameState = 'PLAYING';
+  blowingLeaves = []; scheduleLeafGust();
   document.getElementById('start-screen').classList.add('hidden');
   updateHUD();
   updateInspectPanel();
@@ -3750,7 +3836,35 @@ const MIN_ZOOM = 0.6, MAX_ZOOM = 2.5;
 const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
+  waveStartCameraPan = null; // mutually exclusive with the wave-start pan below — whichever the player's attention is on wins, they never fight over camera.x/y/zoom in the same frame
   cameraFollow = { tower, selectTime: gameTime, phase: 'waiting', panStartX: 0, panStartY: 0 };
+}
+// Pans the camera to the wave's spawn point when a new wave actually starts, the same kind of
+// eased pan/zoom already used for tower selection (see updateCameraFollow() below) but a fully
+// separate, independent mechanism — deliberately not sharing state or code with the tower-follow
+// system, so this addition can't risk regressing that already-tuned behavior at all.
+let waveStartCameraPan = null;
+function startWaveStartCameraPan(){
+  if(!waypointsPx || !waypointsPx.length) return;
+  if(cameraFollow) return; // a tower is already being followed — don't fight it for the camera
+  const spawn = waypointsPx[0];
+  const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
+  waveStartCameraPan = {
+    panStartTime: gameTime, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
+    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - spawn.y*targetZoom
+  };
+}
+function updateWaveStartCameraPan(){
+  if(!waveStartCameraPan) return;
+  if(cameraFollow){ waveStartCameraPan = null; return; } // player selected a tower mid-pan — hand off to that instead of fighting it
+  const PAN_MS = 1200;
+  const f = waveStartCameraPan;
+  const t = Math.min(1, (gameTime - f.panStartTime) / PAN_MS);
+  const eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; // smooth ease-in-out cubic, same curve as the tower-follow pan
+  camera.zoom = f.panStartZoom + (f.targetZoom - f.panStartZoom)*eased;
+  camera.x = f.panStartX + (f.targetX - f.panStartX)*eased;
+  camera.y = f.panStartY + (f.targetY - f.panStartY)*eased;
+  if(t >= 1) waveStartCameraPan = null;
 }
 function cancelCameraFollow(){
   cameraFollow = null;
@@ -4937,16 +5051,6 @@ class Enemy{
   draw(ctx){
     ctx.save();
     ctx.globalAlpha = 1.0; // strictly bracket every enemy draw pass so no leftover alpha/composite state from a previous draw call (this enemy or another) can wash this one out
-    if(this.isBig){
-      const pulse = Math.sin(performance.now()/150)*2;
-      const r = this.radius + 7 + pulse;
-      if(graphicsQuality !== 'low'){
-        ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI*2);
-        ctx.strokeStyle = 'rgba(255,215,0,0.35)'; ctx.lineWidth = 6; ctx.stroke();
-      }
-      ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(255,215,0,0.9)'; ctx.lineWidth = 2; ctx.stroke();
-    }
     if(this.slowMultiplier < 1){
       ctx.fillStyle = 'rgba(125,211,252,0.25)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
@@ -5395,21 +5499,25 @@ class Tower{
     this.checkEvolution();
     return true;
   }
-  // Evolution: reaching 10+ in a stat that the tower's base class has mapped to an evolution
-  // transforms it into that class, one-way, keeping accumulated stats and equipped items (items are
-  // universal now, so they carry straight across) while resetting level/tier progression.
+  // Progression: a tower never transforms into a new class — it keeps its own identity forever and
+  // just keeps growing its own stats/attunement. Reaching a threshold instead permanently unlocks
+  // the NEXT tier as a separately buildable tower (see unlockedTowerTypes/unlockTowerTypeBuild) —
+  // "grind out a lower tower to unlock a better one," not "a tower grows up into a better one."
+  // Applies uniformly at every tier: a freshly-built Blowdart (once unlocked) grinding its own DEX
+  // toward 40 unlocks Squirt Gun the exact same way a Swordsman grinding STR toward 500 unlocks
+  // Hammerman — neither tower ever becomes the thing it unlocked.
   checkEvolution(){
     if(BASE_ATTUNABLE_TYPES.includes(this.type)){
       this.checkAttunementAndSpecialization();
       return;
     }
     const evoMap = EVOLUTIONS[this.type];
-    if(!evoMap) return; // not a base class, or already evolved — evolution is one-way and terminal
+    if(!evoMap) return; // not a base class, or has no further tier to unlock
     let targetType = null;
     if(evoMap.str && this.str >= evoMap.str.threshold) targetType = evoMap.str.target;
     else if(evoMap.dex && this.dex >= evoMap.dex.threshold) targetType = evoMap.dex.target;
     else if(evoMap.int && this.int >= evoMap.int.threshold) targetType = evoMap.int.target;
-    if(targetType) this.evolveInto(targetType);
+    if(targetType) unlockTowerTypeBuild(targetType);
   }
   // Elemental attunement (see the ATTUNEMENTS/SPECIALIZATIONS block above CONFIG for the full
   // design writeup). Called only for the 3 base classes, from checkEvolution() above. The first
@@ -5417,8 +5525,9 @@ class Tower{
   // str→dex→int priority order the old evolution check always used, though in practice only one
   // stat can cross in any single allocateStat() call anyway, so this order only ever matters for
   // the save-migration path (restoreGameState()'s legacy-save handling), not live play. Crossing
-  // SPECIALIZATION_THRESHOLD in that same attuned stat then evolves into the matching
-  // specialization, if SPECIALIZATIONS defines one for this (type, element) pair.
+  // SPECIALIZATION_THRESHOLD in that same attuned stat then permanently unlocks the matching
+  // specialization as buildable, if SPECIALIZATIONS defines one for this (type, element) pair —
+  // this tower itself stays exactly what it is.
   checkAttunementAndSpecialization(){
     if(!this.attunement){
       if(this.str >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.str;
@@ -5433,8 +5542,13 @@ class Tower{
     const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
     if(this[attunedStat] < SPECIALIZATION_THRESHOLD) return;
     const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
-    if(target) this.evolveInto(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
+    if(target) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
   }
+  // Currently unused — kept defined rather than deleted. Towers no longer transform into a new
+  // class at all (see checkEvolution()/checkAttunementAndSpecialization() above — reaching a
+  // threshold now only unlocks the next tier as a separately buildable tower, the source tower
+  // keeps its own identity forever), so nothing calls this anymore as of the redesign that removed
+  // both of its call sites. Left in place rather than removed outright.
   evolveInto(newType){
     const oldName = this.def.name;
     this.type = newType; // 'def' is a getter derived from this.type — no separate assignment needed or possible
@@ -5470,7 +5584,6 @@ class Tower{
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
-    gainTowerExp(this, 25); // gold-tier upgrades still feed some XP (training from better gear), but no longer hand out a lump of stat points directly
     // Random growth on upgrade: 3 independent rolls, each adding 1-6 points to a randomly chosen
     // stat (so a given upgrade might land 1-3 different stats, or stack multiple rolls onto the
     // same one), plus a guaranteed extra 1-3 points into the tower's favored/main stat
@@ -6514,6 +6627,58 @@ let particleIndex = 0;
 let enemyHash = null;
 const MAX_DECALS = 2000;
 const decals = [];
+// Ambient blowing-leaves gust — a handful of leaves drift across the screen once, 20-60s after a
+// game starts, purely decorative (no gameplay effect, no collision, doesn't interact with
+// anything). Replaces the old static fluttering-leaf ground decal (see CONFIG.FLORA.COMMON) —
+// that emoji's own artwork implies motion, so it belongs actually moving through the air once,
+// not randomly rotated and sitting still on the ground forever.
+let blowingLeaves = [];
+let nextLeafGustAt = null; // gameTime of the next scheduled gust, or null if none scheduled this game
+function scheduleLeafGust(){
+  nextLeafGustAt = gameTime + 20000 + Math.random()*40000; // 20-60s from now
+}
+function spawnLeafGust(){
+  const count = 3 + Math.floor(Math.random()*3); // 3-5 leaves
+  const leafGlyphs = ['🍃','🍂'];
+  for(let i=0; i<count; i++){
+    const fromLeft = Math.random() < 0.5;
+    const startX = fromLeft ? -30 : CANVAS_W + 30;
+    const dirX = fromLeft ? 1 : -1;
+    blowingLeaves.push({
+      glyph: leafGlyphs[Math.floor(Math.random()*leafGlyphs.length)],
+      x: startX, y: 40 + Math.random()*(CANVAS_H*0.5),
+      vx: dirX*(30 + Math.random()*40), vy: 10 + Math.random()*15, // px/sec — slow horizontal drift with a light downward drop
+      rot: Math.random()*360, rotSpeed: (Math.random()*2-1)*60, // deg/sec, gentle tumble
+      spawnedAt: gameTime + i*400 // staggered, not all at once
+    });
+  }
+}
+function updateAndDrawBlowingLeaves(ctx){
+  if(gameState !== 'PLAYING') return;
+  if(nextLeafGustAt !== null && gameTime >= nextLeafGustAt){
+    spawnLeafGust();
+    nextLeafGustAt = null; // one gust per game — not a recurring weather system
+  }
+  if(!blowingLeaves.length) return;
+  const dtSec = Math.min(0.1, (gameTime - (updateAndDrawBlowingLeaves._lastGameTime ?? gameTime)) / 1000);
+  updateAndDrawBlowingLeaves._lastGameTime = gameTime;
+  ctx.save();
+  ctx.font = '20px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.75;
+  for(let i=blowingLeaves.length-1; i>=0; i--){
+    const leaf = blowingLeaves[i];
+    if(gameTime < leaf.spawnedAt) continue; // staggered start
+    leaf.x += leaf.vx*dtSec; leaf.y += leaf.vy*dtSec; leaf.rot += leaf.rotSpeed*dtSec;
+    if(leaf.x < -50 || leaf.x > CANVAS_W+50 || leaf.y > CANVAS_H+50){ blowingLeaves.splice(i,1); continue; }
+    ctx.save();
+    ctx.translate(leaf.x, leaf.y);
+    ctx.rotate(leaf.rot*Math.PI/180);
+    ctx.fillText(leaf.glyph, 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+}
 const deathAnims = []; // lightweight, fully decoupled from Enemy/enemyPool — a corpse gets a brief
 // squash-and-fade animation instead of vanishing the instant hp hits 0. Deliberately NOT part of
 // the enemy object or its pooling/targeting/collision systems: it's a pure render-only overlay
@@ -7314,30 +7479,6 @@ function drawOneDecal(ctx, d){
           ctx.lineWidth = Math.max(1, br*0.28);
           ctx.beginPath(); ctx.arc(bx, by, br*0.86, 0, Math.PI*2); ctx.stroke();
           ctx.beginPath(); ctx.arc(bx, by, br*0.62, 0, Math.PI*2); ctx.fill();
-        }
-      }
-      // Serum separation ring — a real, distinct forensic detail (BPA ch.9, "Clotting of Blood"):
-      // as a blood clot retracts, it squeezes out the remaining liquid serum, which spreads
-      // slightly beyond the clot's own edge as a thin, translucent pale-yellow halo. This is
-      // deliberately separate from the skeletonization rim above (which darkens the stain's OWN
-      // edge) — serum sits just OUTSIDE it, and only during the wet clot-retraction window: onset
-      // within the first couple minutes of real clotting, gone again by the point the stain reads
-      // as fully dried (matched to the same 40%-of-life "fully dried" mark the color-aging curve
-      // above already settles at). Gated to genuinely sized pools — real serum separation isn't
-      // visible on fine spatter flecks, only larger pooled stains.
-      const serumT = lifeT > 0.02 && lifeT < 0.4
-        ? Math.min(1, (lifeT-0.02)/0.08) * Math.max(0, 1 - Math.max(0,(lifeT-0.25))/0.15)
-        : 0;
-      if(serumT > 0 && d.blobs.length){
-        const biggestBlob = d.blobs.reduce((a,b) => b.r > a.r ? b : a);
-        if(biggestBlob.r > 2.5){
-          ctx.strokeStyle = 'rgba(212,190,110,' + (serumT*0.28*alpha).toFixed(2) + ')';
-          for(const b3 of d.blobs){
-            if(b3.r < 2) continue; // skip tiny flecks — matches the real-world visibility threshold
-            const bx3 = d.x+b3.dx*growT, by3 = d.y+b3.dy*growT, br3 = b3.r*growT;
-            ctx.lineWidth = Math.max(1, br3*0.22);
-            ctx.beginPath(); ctx.arc(bx3, by3, br3*1.15, 0, Math.PI*2); ctx.stroke();
-          }
         }
       }
     }
@@ -8714,6 +8855,7 @@ function startNextWave(){
   waveTimer = 0;
   waveIndex++;
   waveState = 'SPAWNING';
+  startWaveStartCameraPan();
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
   for(const t of towerPool) if(t.active) t.waveXp = 0;
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
@@ -8797,8 +8939,6 @@ function update(dt){
     if(!anyAlive && deathAnims.length === 0){
       waveState = 'IDLE';
       wavesCompleted++;
-      const surviveXp = 4 + Math.floor(waveIndex * 0.5); // trimmed from 6+0.6x — active kills (bumped above) now carry relatively more of a tower's total XP than passive wave-clear alone, per "more emphasis on collecting exp"
-      for(const t of towerPool){ if(t.active) gainTowerExp(t, surviveXp); }
       processClericHealing();
       expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
@@ -8912,9 +9052,27 @@ function updateTargetFrame(){
   }
   frame.style.minHeight = panelRect.height + 'px'; // match the nameplate panel's height so the two plates feel like one consistent UI set
 }
+// Animated pointer above the currently selected tower — deliberately its own small function
+// rather than folded into Tower.draw() (which already handles a lot per tower and is called for
+// every active tower every frame; this only ever needs to run once, for whichever tower is
+// actually selected). A safely conservative fixed offset above the tower's own anchor point
+// clears the usual overhead elements (name, HP bar, unspent-points scroll) without needing to
+// know the exact height of every possible combination of those on every class.
+function drawSelectedTowerArrow(ctx){
+  if(!selectedTower || !selectedTower.active) return;
+  const bob = Math.sin(gameTime/260) * 7; // distinct cadence/amplitude from the ground-item bob (gameTime/300, ±4) so the two never read as the same animation
+  const arrowY = selectedTower.y - 58 + bob;
+  ctx.save();
+  ctx.font = '26px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if(graphicsQuality !== 'low'){ ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 8; }
+  ctx.fillText('👇', selectedTower.x, arrowY);
+  ctx.restore();
+}
 function render(ctx){
   updateTargetFrame();
   updateCameraFollow();
+  updateWaveStartCameraPan();
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   ctx.save();
@@ -8937,6 +9095,7 @@ function render(ctx){
   drawBuildPreview(ctx);
   drawDeathAnims(ctx);
   drawDepthSortedLayer(ctx); // scenery + enemies + towers + bone/skull/worm debris, interleaved by Y-depth — see drawDepthSortedLayer() for why
+  drawSelectedTowerArrow(ctx);
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = Math.sin(gameTime/300 + gi.id)*4;
@@ -8980,6 +9139,7 @@ function render(ctx){
 
   ctx.restore();
   drawBossCompass(ctx);
+  updateAndDrawBlowingLeaves(ctx);
 }
 function drawBossCompass(ctx){
   const boss = enemyPool.find(e => e.active && e.type === 'BOSS');
@@ -9751,7 +9911,7 @@ function buildTowerModal(){
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map by one ring — only between waves. You also get one free every 3 waves cleared.</div>';
+    '<div class="build-row-blurb">Grows the map by one ring — only between waves. You also get one free every 4 waves cleared.</div>';
   if(canExpand){
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
@@ -9809,6 +9969,58 @@ function buildTowerModal(){
     helpBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
       blurb.classList.toggle('show');
+    });
+    grid.appendChild(row);
+  }
+  // Unlockable tower types — locked until any tower reaches the threshold that unlocks them once,
+  // ever, in the current game (see unlockedTowerTypes). Same row/help-toggle pattern as starters
+  // above. Covers every tier now, not just base-class specializations — a tower never transforms
+  // into what it unlocks, it just makes that tower buildable from the Build menu from then on.
+  for(const type of UNLOCKABLE_TOWER_TYPES){
+    const def = CONFIG.TOWERS[type];
+    const unlocked = unlockedTowerTypes.has(type);
+    const affordable = gold >= def.baseCost;
+    const costLabel = '💰' + def.baseCost;
+    const src = TOWER_UNLOCK_SOURCE_BY_TARGET[type];
+    let lockMsg = '🔒 Locked';
+    if(src && src.kind === 'element'){
+      const srcStat = ATTUNEMENT_STAT_BY_ELEMENT[src.element].toUpperCase();
+      const srcElementLabel = ATTUNEMENT_ICON[src.element] + ' ' + src.element.charAt(0) + src.element.slice(1).toLowerCase();
+      const srcBaseName = CONFIG.TOWERS[src.baseType].name;
+      lockMsg = '🔒 Reach ' + srcElementLabel + ' on a ' + srcBaseName + ' (' + srcStat + ' 500) to unlock';
+    } else if(src && src.kind === 'stat'){
+      const srcBaseName = CONFIG.TOWERS[src.baseType].name;
+      lockMsg = '🔒 Reach ' + src.stat.toUpperCase() + ' ' + src.threshold + ' on a ' + srcBaseName + ' to unlock';
+    }
+    const row = document.createElement('div');
+    row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
+    row.innerHTML =
+      '<div class="icon">' + def.icon + '</div>' +
+      '<div class="name">' + def.name + (unlocked && !affordable ? ' <span style="color:#e63946">(need ' + costLabel + ')</span>' : '') + '</div>' +
+      (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') +
+      '<button class="help-btn" type="button">?</button>' +
+      (unlocked
+        ? '<div class="build-row-blurb">' + def.blurb + '</div>'
+        : '<div class="build-row-lock">' + lockMsg + '</div>');
+    if(unlocked){
+      row.addEventListener('pointerdown', (e) => {
+        if(e.target.classList.contains('help-btn')) return;
+        e.stopPropagation();
+        if(!affordable) return;
+        selectedBuildType = type;
+        selectedTower = null; cancelCameraFollow();
+        inspPanelExpanded = false;
+        playSound('click');
+        closeTowerModal();
+        updateInspectPanel();
+        refreshTrayUI();
+      });
+    }
+    const helpBtn2 = row.querySelector('.help-btn');
+    const blurb2 = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
+    helpBtn2.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      blurb2.classList.toggle('show');
     });
     grid.appendChild(row);
   }
@@ -10698,6 +10910,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   positionZoomControls(); // hud-top just went from display:none (height 0) to visible — this is the one place its real height needs recalculating outside of an actual resize/orientation-change, both already covered by their own listeners
   gameState = 'PLAYING';
   lastTime = performance.now();
+  blowingLeaves = []; scheduleLeafGust();
   updateHUD();
 });
 
@@ -10707,6 +10920,7 @@ document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   endScreen.classList.add('hidden');
   gameState = 'PLAYING';
   lastTime = performance.now();
+  blowingLeaves = []; scheduleLeafGust();
 });
 
 function endGame(){
@@ -10724,6 +10938,7 @@ function resetGame(){
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
+  unlockedTowerTypes = new Set();
   hitStopUntil = 0; // gates the ENTIRE simulation tick in the main loop (`if(gameTime < hitStopUntil) return;`) with no safety cap of its own — a stale value from a Boss kill in the previous session could otherwise freeze the whole new game until gameTime caught back up to it
   accumulator = 0; lastTime = performance.now(); // the fixed-tick loop's own time-tracking — already reset at other legitimate points elsewhere (pause-resume) but was missing here
   groundItems.length = 0; // stale dropped items from the old map — new coordinates don't even correspond to the freshly-generated map/path below

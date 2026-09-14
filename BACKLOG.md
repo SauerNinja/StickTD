@@ -317,6 +317,65 @@ upfront about rather than implying otherwise.
   glyph-rendering/readback, which this environment has no way to measure. Prewarming upcoming
   wave types would be the fix if profiling ever shows this matters; not attempted speculatively.
 
+- **Enemy seen jumping ahead on the path for no apparent reason** — reported once, no repro
+  details (which enemy type, which system was active — pack speed bonus, swept collision push,
+  barricade queue snap, or a slow/freeze wearing off could all plausibly look like a "jump" from a
+  glance). Not investigated blind; needs at least the enemy type and roughly what else was
+  happening on screen (barricade nearby? pack of similar enemies? just got hit by something?) to
+  narrow down which system to check first.
+
+## Phase 2 (not implemented) — dual-element combinations, requested alongside the specialization
+## unlock system above. Scoped out deliberately: inventing a brand-new tower class from scratch
+## (full stats/rendering/sound/validation, the same checklist Marksman needed) is a much bigger,
+## riskier undertaking than the unlock-tracking system in Phase 1, and doing both in one pass risked
+## shipping something untested. Specified here so the design isn't lost, not started.
+
+- **Dual-element combinations.** A tower attuned to one element that gets pushed toward a SECOND
+  element's threshold (rather than just adding more of the same stat) combines into a hybrid:
+  Fire+Ice → Steam, and by the same logic Fire+Electric and Ice+Electric need their own named
+  hybrids too (not specified yet — needs a naming/identity decision before implementation, not
+  invented here to avoid guessing at something that should be a deliberate choice). A hybrid
+  "does both" of its parent elements' effects (per the request, Steam specifically).
+  - Open design questions that need answering before this is buildable, not guessed at: what
+    stat combination triggers a hybrid (two stats independently crossing 100? crossing 500? a new
+    threshold entirely?), whether a hybrid replaces the single-element specialization path or sits
+    alongside it, and whether every base class can reach every hybrid or only specific ones.
+- **New class unlocked by a hybrid, first-reach-anywhere**: reaching Steam on an Archer for the
+  first time unlocks a new class — "Blow Gunner" per the request — the same permanent,
+  first-reach-unlocks-it-forever pattern as Phase 1's `unlockTowerTypeBuild()`, just triggered
+  by a hybrid-element combo instead of a single element. This class doesn't exist in the code at
+  all yet and needs the full definition checklist Marksman got: `CONFIG.TOWERS` stats/tiers,
+  color palette, build scale, job quotes, tower-strategy blurb, `RANGE_CAPS`, `CLASS_ARCHETYPE`,
+  ranged-shot sound, a full `drawStickman()` rendering branch, `EVOLVED_TOWER_TYPES` registration,
+  and validated with real tests the way every other new class this project has added was — not a
+  stub.
+- **Infrastructure already in place for this, from Phase 1**: `unlockedTowerTypes` (the Set, now
+  proven to persist correctly across save/load, and now generalized to cover every tier — not just
+  first-tier specializations, see the Phase 1 note below), `showUnlockToast()`, and the
+  locked/unlocked Build-menu row pattern are all reusable as-is for however hybrids end up
+  triggering — Phase 2 should extend that same system, not build a second parallel one.
+- **Explicit confirmation this design was already correct**: Phase 1 shipped with towers actually
+  transforming into what they unlocked (`evolveInto()` changing `this.type`); a later explicit
+  clarification established that a tower must NEVER change its own type, ever — only unlock the
+  next tier as separately buildable. Phase 1 was reworked accordingly (`evolveInto()` is now
+  unused/dead code, kept defined rather than deleted). This Phase 2 doc's own design was already
+  written assuming exactly that "unlock, don't transform" model, so it needed no changes for the
+  clarification beyond the identifier renames above.
+
+- **Reported: enemies "stick"/seem to have free will at a congested chokepoint, wants a strictly
+  preset path.** Investigated, not changed. Confirmed by reading the actual movement code
+  (`getPositionAtTraveled()`) that enemies already move along a fixed, precomputed path polyline
+  via a single `traveled` distance scalar — this is not steering/free-roaming pathfinding, the
+  path itself is exactly the preset system being asked for. What's actually causing the visible
+  "sticking" is `resolveEnemyCollisions()`'s local separation/push logic, which perturbs enemies
+  perpendicular to the path when several overlap at a chokepoint (like a Barricade) — necessary to
+  prevent enemies from perfectly stacking/overlapping, but visually reads as wandering off the
+  path when a crowd is dense. That function's own comments document an extensive prior history of
+  tuning specifically for this symptom (corner hang-ups, sideways-shoving, double-separation).
+  Didn't touch it further without being able to see the result — real risk of undoing already-
+  careful prior work blind. If revisited, needs actual visual verification of the outcome, not
+  another speculative parameter tweak.
+
 ## Ideas
 
 ## Design ideas from a deeper skim of "The Principles of Beautiful Web Design" (2026-09-13) — not
