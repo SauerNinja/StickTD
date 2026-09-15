@@ -1,5 +1,130 @@
 # Changelog
 
+## [1.2.1] - 2026-09-14 — One more real audio fix, plus a BACKLOG staleness sweep
+- **`tone()`/`noise()` now correctly skip real Web Audio node creation while muted.** `duck()`
+  already had this guard; the actual node-creating primitives didn't. Every sound call — muted or
+  not — was building real oscillator/gain/filter nodes and consuming a voice-budget slot for
+  something nobody could hear. Added the identical guard `duck()` already used, before
+  `reserveVoiceSlot()` too so a muted sound doesn't take a slot an audible one could have used.
+  Verified with an isolated test: unmuted calls create real nodes, muted calls create none, and
+  unmuting resumes normal behavior correctly.
+- **Swept `BACKLOG.md` for entries the no-transform redesign made stale, not just added new ones.**
+  Found one real case: a design concern (from the original external review) that specialization
+  and deeper-evolution thresholds could overlap, making an intermediate class "a very brief stage."
+  That only made sense when a tower's accumulated stats carried straight through a literal
+  transformation — now that a tower never transforms, a freshly-unlocked class starts at 0 stats
+  and has to independently earn its own way toward the next threshold, so the scenario this was
+  warning about no longer exists. Marked resolved-by-redesign rather than left to describe a
+  problem the current architecture can't actually produce.
+- Full sweep of the in-game help modal and README for any remaining stale references (old evolution
+  thresholds, orphaned-class language) — both came back clean; nothing left to fix there.
+
+## [1.2.0] - 2026-09-14 — Milestone: full documentation consistency pass for the unlock system
+Requested as a full expert review before calling the no-transform unlock system "the new normal"
+rather than a recent change still settling in. Bumped to 1.2.0 to mark it as the current stable
+baseline, not a routine patch. Every fix below came from actually re-reading `AGENTS.md` end to
+end looking for drift, not assuming the earlier passes caught everything.
+
+- **`AGENTS.md`'s Architecture overview — the single most load-bearing technical paragraph in the
+  whole file — completely rewritten.** It still described the OLD transform-based system in detail
+  (towers "evolve into" their specialization) as if it were current. Now states the permanent
+  design plainly up front: a tower never transforms, `evolveInto()` is dead code, every unlock
+  (base-class specialization or deep-tier) goes through `unlockTowerTypeBuild()`. Added the
+  previously-undocumented facts that all 14 evolved classes now trace to a real unlock (Bomber/
+  Gunalinder's gap closed via `EVOLUTIONS.GATLING`) and that the exact unlock source is
+  *deliberately* never shown to players (`TOWER_UNLOCK_RIDDLE`) — with an explicit instruction not
+  to "fix" the in-game UI to match this file's own precision, since that would undo the intended
+  mystery. Cross-referenced against `README.md`'s matching callout so both files agree on *why*
+  they differ from the game itself, not just that they do.
+- **Found and fixed three more smaller drift spots in `AGENTS.md`** while doing the full read: the
+  tower lifecycle example still listed `evolveInto()` as a real step (`create() → evolveInto() →
+  upgrade()`); the appearance-rerolling note still said traits re-roll at `evolveInto()`; and the
+  `baseShieldPct`/Hammerman-armor note still described a historical bug tied to `evolveInto()` not
+  setting a field, presented as a live concern rather than moot code that no longer runs.
+- **Caught something the doc read actually turned up in the real code, not just in the docs**: the
+  `'evolution'` sound — deliberately built as the game's biggest fanfare, bigger than `levelup` or
+  `wave` — only ever played from inside `evolveInto()`. Since nothing calls that anymore, the
+  fanfare has been completely unreachable since the no-transform redesign shipped, with no
+  replacement. Reconnected it to `showUnlockToast()`, the event that actually replaced the old
+  transform moment — arguably deserves the fanfare more now, since an unlock is permanent for the
+  rest of the game rather than a one-off. Fixed the stale in-code comment on the sound preset
+  itself too ("a tower transforming into a new class" → accurate description of what fires it now).
+- Confirmed `isImportantAudioEvent()`'s `evolution` classification and the shared A-root motif
+  family (`evolution`/`hero`/`legendary`) are both unaffected — those describe the sound's own
+  musical/priority properties, not when it fires, and needed no changes.
+- Full syntax check after every batch of changes in this pass, all clean.
+
+## [1.1.83] - 2026-09-14 — Pan/pinch pause-redraw gap closed, design principles committed to memory
+Checked context for anything asked but never finished, rather than assuming everything was done.
+Found two real loose ends and closed both.
+
+- **Pan/pinch camera gestures now redraw immediately while paused**, matching the wheel-zoom fix
+  from an earlier pass. That fix was explicitly noted at the time as "pan/pinch likely have the
+  same gap but weren't touched" — confirmed true by reading the actual pointermove handler: both
+  the pinch-zoom branch and the single-finger pan branch updated `camera.zoom`/`camera.x`/`camera.y`
+  with no redraw while paused, so the camera would silently accumulate a pan/zoom offscreen and
+  visibly jump all at once on unpause. Same one-line, already-proven fix
+  (`if(gameState !== 'PLAYING') render(ctx);`) added to both branches — `render()` is a pure
+  drawing function with no simulation side effects, so calling it directly outside the main loop
+  is safe, exactly as already established for the wheel case.
+- **Committed the design-book principles to persistent memory** — asked for several turns ago,
+  never actually done (checked memory directly rather than assuming). Wrote
+  `/topics/design-principles.md`: a distilled reference covering Texture, Typography, Layout/
+  Emphasis (Placement, Continuance, Isolation, Contrast, Proportion), Color, and Imagery, each
+  tied to where it's already been applied in this project (or explicitly not, with the reasoning
+  why) — so future design work can reference this instead of re-skimming the PDF, and so
+  already-settled judgment calls (Balance needs a real screenshot to evaluate, small UI elements
+  are correctly left flat, this environment can't visually confirm gradients) aren't re-litigated.
+- Everything else checked and confirmed still accurate: all 20 findings from the original external
+  code review are done (per `BACKLOG.md`'s own summary, verified present); the no-transform unlock
+  redesign and full 14/14 unlock coverage from the last two versions are intact; the Phase 2
+  dual-element combination system (Steam, Blow Gunner) remains deliberately unimplemented and
+  documented, not forgotten; the first-hit hitch and the reported "enemy jumping ahead" both remain
+  correctly blocked on profiling/repro information this environment can't supply on its own.
+
+## [1.1.82] - 2026-09-14 — Full unlock coverage + mysterious in-game reveal
+Two explicit requests: (1) make sure every buildable evolved tower actually traces to a real
+unlock, no exceptions, and (2) stop telling players exactly which stat/element unlocks what —
+make it something to discover, not read off a label.
+
+- **Closed the last real coverage gap.** Bomber and Gunalinder were the only two evolved classes
+  with no reachable unlock path (documented, not hidden, in earlier passes) — nothing unlocked
+  Bomber itself, so nothing could grind toward Gunalinder either. Added `EVOLUTIONS.GATLING`
+  (`str: 40 → BOMBER`), the exact "Gatling → Bomber" deep tier this project's own design notes had
+  called out as the eventual intent but deferred pending a real threshold decision. Reused the same
+  `threshold: 40` convention every sibling deep-tier unlock already uses (Hammerman→Paladin,
+  Blowdart→Squirtgun) rather than inventing an arbitrary new number. This makes Gunalinder reachable
+  transitively too, once Bomber is built and grinds its own existing int:40 path. **All 14 evolved
+  tower types now trace to a real, reachable unlock — verified directly against
+  `EVOLVED_TOWER_TYPES`, not assumed.**
+- **Made the unlock system genuinely mysterious in-game, on purpose.** The Build menu's locked rows
+  used to say exactly "Reach ❄️ Ice on a Swordsman (INT 500) to unlock" — replaced with unique,
+  thematic riddles per class (`TOWER_UNLOCK_RIDDLE`) that hint at the stat (raw power / swiftness /
+  a sharp mind) and the element's feel (ignite / crackle / frost) without literally naming the
+  source class, the stat, or the threshold number. The tower's own icon and name stay visible (so
+  there's still a specific, known goal), only the *how* is now something to notice or puzzle out.
+  Rewrote the in-game help modal the same way — it used to include the full exact evolution-tree
+  table; now it explains the general shape of the system (grow stats, unlock better towers,
+  original tower keeps its identity) without spelling out the per-class mapping.
+- **README kept exactly precise on purpose, with a note explaining why that's correct.** README is
+  a technical/developer reference, not player-facing UI, so it's appropriate for it to document the
+  real mechanics exactly — added an explicit callout at the top of the Towers & evolutions section
+  so a future editor understands the in-game UI is *supposed* to differ from this document, rather
+  than "fixing" the Build menu to match the docs and accidentally undoing the mystery. Also added
+  proper table rows for Bomber/Gunalinder (previously described as orphaned) and corrected the
+  stale claim that they were unreachable.
+- **Fixed a real bug caught by the syntax check, not shipped blind**: one riddle
+  ("Deep obsession with one's own craft...") used a plain apostrophe that terminated its string
+  literal early, breaking the whole script. Fixed with the same `\u2019` curly-apostrophe
+  convention already used correctly in every other riddle with a possessive — caught before
+  delivery, not after.
+- Corrected the now-stale "Bomber/Gunalinder orphaned" note in `BACKLOG.md` (accurate when
+  written, superseded by this pass) rather than leaving it to contradict the current code.
+- Verified with isolated tests: all 14 evolved types now have a traceable unlock path (up from 12);
+  Bomber's real source is confirmed as Gatling+STR, Gunalinder's as Bomber+INT (transitively
+  reachable); and every one of the 14 unlockable types has its own riddle in the actual shipped
+  file (checked the real dictionary's keys directly, not a mirror) — no silent fallback needed.
+
 ## [1.1.81] - 2026-09-14 — No-transform unlock redesign, implemented and verified end-to-end
 - **Explicit clarification acted on directly**: a tower must never change its own type, ever —
   reaching a threshold only unlocks the *next* tier as a separately buildable tower, at every tier,

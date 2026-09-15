@@ -825,33 +825,15 @@
 
         <h3>🔓 Unlocking new towers</h3>
         <p>A tower never transforms into a new class — it stays exactly what it is forever and just
-        keeps growing its own stats. What DOES happen: reaching certain stat thresholds on any
-        tower permanently unlocks a <i>different</i>, better tower as directly buildable from the
-        Build menu from then on, for the rest of the current game. Grind out a Swordsman's stats
-        far enough and you unlock Spearman as its own buildable tower — the Swordsman that earned
-        it stays a Swordsman.</p>
-        <p>First, whichever stat reaches <b>100</b> first on a Swordsman/Archer/Mage permanently
-        locks in an element — STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice — and that lock never
-        changes, even if a different stat later overtakes it. Reaching <b>500</b> in that same
-        stat then unlocks that class's specialization for that element, if one exists. A few
-        specializations have their own further unlock beyond that, at a flat stat threshold.</p>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ STR 100 → 500 →</span> 🔨 Hammerman</div>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ DEX 100 → 500 →</span> 🪓 Axeman</div>
-        <div class="evo-row">⚔️ Swordsman <span class="evo-arrow">→ INT 100 → 500 →</span> 🔱 Spearman</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ STR 100 → 500 →</span> 🔫 Gatling</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ DEX 100 → 500 →</span> 🎯 Blowdart</div>
-        <div class="evo-row">🎯 Blowdart <span class="evo-arrow">→ DEX 40 →</span> 🔫 Dual Squirt Gun</div>
-        <div class="evo-row">🏹 Archer <span class="evo-arrow">→ INT 100 → 500 →</span> 🔫 Marksman</div>
-        <div class="evo-row">🔫 Marksman <span class="evo-arrow">→ INT 60 →</span> 🎯 Sniper</div>
-        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ DEX 100 → 500 →</span> ⚡ Snap Caster</div>
-        <div class="evo-row">🔮 Mage <span class="evo-arrow">→ INT 100 → 500 →</span> ✝️ Cleric</div>
-        <div class="evo-row">✝️ Cleric <span class="evo-arrow">→ INT 750 →</span> 🧑‍🦳 Pope</div>
-        <div class="evo-row">🔨 Hammerman <span class="evo-arrow">→ INT 40 →</span> ⚜️ Paladin</div>
-        <p>Every arrow above reads as "unlocks," not "becomes" — reach the numbers on the left on
-        ANY tower of that type and the tower on the right shows up in the Build menu, buildable for
-        gold from then on. Check the Build menu and it'll show up there too, right alongside the
-        locked ones — which show up grayed out with a 🔒 and say exactly what to do to unlock
-        them. Tap the <b>?</b> on any row to see it.</p>
+        keeps growing its own stats. What DOES happen: pushing a stat far enough locks in something
+        about that tower, permanently, and pushing far enough again unlocks a <i>different</i>,
+        better tower as directly buildable from the Build menu from then on, for the rest of the
+        current game. The tower that earned the unlock stays exactly what it was.</p>
+        <p>Exactly which stat leads where, and how far it takes, isn't spelled out here on purpose —
+        part of the game is noticing the pattern yourself as towers change and new things unlock.
+        Every locked slot in the Build menu shows the tower waiting to be found, with a hint at
+        what to try next rather than an exact formula. Tap the <b>?</b> on any locked row to see
+        its hint.</p>
 
         <h3>🎒 Items & Heroes</h3>
         <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 slots per tower — fill all 6 to awaken it as a Hero with a permanent bonus to every stat.</p>
@@ -948,7 +930,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.1.81'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.1'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1314,8 +1296,18 @@ const EVOLUTIONS = {
   // unchanged from before.
   BLOWDART: { dex: {target:'SQUIRTGUN', threshold:40} }, // deeper DEX specialization — a second tier beyond the first evolution
   HAMMERMAN: { int: {target:'PALADIN', threshold:40} }, // holy devotion — a second tier beyond the first evolution
-  BOMBER: { int: {target:'GUNALINDER', threshold:40} }, // legacy chain, kept working for any existing save with a Bomber — no longer fed by a fresh Archer's evolution (see SPECIALIZATIONS.ARCHER.ICE above)
-  GUNALINDER: { int: {target:'SNIPER', threshold:60} }, // legacy chain's own third tier — the deepest INT investment in the game, longest range as the payoff
+  // Gatling's own deep-tier unlock into Bomber — the design's long-stated intent ("Gatling →
+  // Bomber"), previously deferred as needing a real threshold decision rather than an invented
+  // one. Decided now: reuses the same threshold:40 convention every sibling deep-tier unlock
+  // already uses (Hammerman→Paladin, Blowdart→Squirtgun), not a new arbitrary number. This closes
+  // the last gap where a buildable class had no traceable unlock path at all — Bomber was
+  // previously unreachable by design (nothing fed it after Archer's old int→Bomber mapping was
+  // intentionally removed), and Gunalinder was unreachable transitively as a result. Both are now
+  // reachable through this one connected Fire-Archer chain: Gatling (STR 40) unlocks Bomber, which
+  // can then grind its own existing int:40 path into Gunalinder below.
+  GATLING: { str: {target:'BOMBER', threshold:40} },
+  BOMBER: { int: {target:'GUNALINDER', threshold:40} }, // now genuinely reachable via the Gatling unlock above, not just kept working for legacy saves
+  GUNALINDER: { int: {target:'SNIPER', threshold:60} }, // deepest INT investment in the game, longest range as the payoff
   // Marksman's own deeper evolution reuses Gunalinder's already-established int:60/Sniper target
   // exactly (same destination class, same relative threshold) — the review's carve-out for reusing
   // "an existing explicit threshold... finalized elsewhere" rather than inventing a new one.
@@ -1337,21 +1329,17 @@ const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART
 // already define them rather than duplicating thresholds a second time:
 //  - "element" unlocks (from SPECIALIZATIONS): reach 500 in the attuned stat on a base class.
 //  - "stat" unlocks (from EVOLUTIONS): reach a flat raw-stat threshold on a specific source class.
-// BOMBER and GUNALINDER are deliberately excluded from the buildable-unlock list even though they
-// have EVOLUTIONS entries — nothing currently unlocks BOMBER itself (see BACKLOG.md: its old
-// Archer-evolution path was intentionally removed and never replaced with a real threshold), so
-// it can never actually be reached to grind toward GUNALINDER either. Both stay defined for any
-// existing save that already has one, they just don't show up as a locked row promising an unlock
-// that isn't actually reachable.
-const UNREACHABLE_EVOLUTION_SOURCES = ['BOMBER', 'GUNALINDER'];
-const TOWER_UNLOCK_SOURCE_BY_TARGET = {}; // target type -> descriptive info for the Build menu's "how to unlock" message
+// Every buildable evolved class now traces to a real, reachable unlock — confirmed by checking
+// EVOLVED_TOWER_TYPES against this derived list directly, not assumed. This used to exclude BOMBER
+// and GUNALINDER (nothing unlocked Bomber itself, so nothing could reach Gunalinder either) until
+// EVOLUTIONS.GATLING was added above specifically to close that gap.
+const TOWER_UNLOCK_SOURCE_BY_TARGET = {}; // target type -> the REAL mechanical unlock source — internal only now (see TOWER_UNLOCK_RIDDLE in buildTowerModal() for what's actually shown to players), kept for deriving UNLOCKABLE_TOWER_TYPES and any future dev/debug tooling
 for(const baseType of Object.keys(SPECIALIZATIONS)){
   for(const element of Object.keys(SPECIALIZATIONS[baseType])){
     TOWER_UNLOCK_SOURCE_BY_TARGET[SPECIALIZATIONS[baseType][element]] = { kind: 'element', baseType, element };
   }
 }
 for(const sourceType of Object.keys(EVOLUTIONS)){
-  if(UNREACHABLE_EVOLUTION_SOURCES.includes(sourceType)) continue;
   for(const stat of Object.keys(EVOLUTIONS[sourceType])){
     const branch = EVOLUTIONS[sourceType][stat];
     TOWER_UNLOCK_SOURCE_BY_TARGET[branch.target] = { kind: 'stat', baseType: sourceType, stat, threshold: branch.threshold };
@@ -2965,6 +2953,7 @@ class SoundEngine{
   }
   tone(freq, duration, type, freqEnd, pan, reverbSend, delay, force, stablePitch){
     if(!this.unlocked) return;
+    if(typeof isMuted !== 'undefined' && isMuted) return; // skip real oscillator/gain node creation entirely while muted — matches the same guard duck() already has, extended to the actual node-creating primitives which previously lacked it
     if(!force && !this.reserveVoiceSlot(duration, delay)) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -3005,6 +2994,7 @@ class SoundEngine{
   }
   noise(duration, filterFreq, filterType, pan, reverbSend, delay, gainMult){
     if(!this.unlocked) return;
+    if(typeof isMuted !== 'undefined' && isMuted) return; // same guard as tone() — skip real node creation entirely while muted
     if(!this.reserveVoiceSlot(duration, delay)) return;
     // Previously allocated a brand-new AudioBuffer and filled it sample-by-sample with
     // Math.random() on EVERY single call — noise() fires extremely often (gore, impacts,
@@ -3087,15 +3077,17 @@ class SoundEngine{
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
       case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
-      case 'evolution': // a tower transforming into a new class — one of the rarest, most exciting
-        // events in the game, previously reusing 'wave' (the same generic blip as a routine wave
-        // clear, expansion, or chest pickup). A real 3-note ascending fanfare, deliberately bigger
-        // than both 'wave' (one tone) and 'levelup' (two tones), with a sparkle harmonic and
-        // reverb for real weight. stablePitch since this is a state-confirmation cue that should
-        // read unambiguously as "evolution happened," not wobble (1.1.22). Ducks the master bus
-        // (1.1.24) so this genuinely rare moment gets real headroom against combat clutter. Root
-        // of a shared A-based ascending motif family — see 'hero' and 'legendary' below, which
-        // reuse and extend this same vocabulary rather than inventing disconnected new ones
+      case 'evolution': // unlocking a new tower type — one of the rarest, most exciting events in
+        // the game (previously played on a tower transforming into a new class; that no longer
+        // happens at all, but this is the event that replaced it and arguably deserves the fanfare
+        // even more, since the unlock is permanent for the rest of the game, not a one-off). A
+        // real 3-note ascending fanfare, deliberately bigger than both 'wave' (one tone) and
+        // 'levelup' (two tones), with a sparkle harmonic and reverb for real weight. stablePitch
+        // since this is a state-confirmation cue that should read unambiguously as "something new
+        // just unlocked," not wobble (1.1.22). Ducks the master bus (1.1.24) so this genuinely
+        // rare moment gets real headroom against combat clutter. Root of a shared A-based
+        // ascending motif family — see 'hero' and 'legendary' below, which reuse and extend this
+        // same vocabulary rather than inventing disconnected new ones
         // (1.1.25).
         this.duck(-4, 0.4);
         this.tone(440, 0.10, 'sine', 660, undefined, true, undefined, true, true);
@@ -3507,6 +3499,7 @@ function showToast(message){
 function showUnlockToast(types){
   const names = types.map(t => CONFIG.TOWERS[t].name).join(', ');
   showToast('🎉 New tower unlocked: ' + names);
+  playSound('evolution'); // the game's biggest fanfare, previously only reachable from the now-dead evolveInto() — this is the event that actually deserves it now
   hasUnseenUnlock = true;
   refreshTrayUI();
 }
@@ -9736,6 +9729,7 @@ canvas.addEventListener('pointermove', (e) => {
     if(pinchStartDist){
       const raw = toRawCanvasCoords(mid.x, mid.y);
       zoomAt(raw.x, raw.y, camera.zoom * (dist/pinchStartDist));
+      if(gameState !== 'PLAYING') render(ctx); // paused — same reasoning as the wheel handler's own fix: nudge one frame through now or the zoom change stays invisible until unpausing
     }
     pinchStartDist = dist;
     return;
@@ -9753,6 +9747,7 @@ canvas.addEventListener('pointermove', (e) => {
       camera.y += (e.clientY - prev.y)*scaleY;
       clampCamera();
       cancelCameraFollow();
+      if(gameState !== 'PLAYING') render(ctx); // paused — same reasoning as the wheel/pinch fixes: nudge one frame through now or the pan stays invisible until unpausing
     }
   }
 
@@ -9976,22 +9971,34 @@ function buildTowerModal(){
   // ever, in the current game (see unlockedTowerTypes). Same row/help-toggle pattern as starters
   // above. Covers every tier now, not just base-class specializations — a tower never transforms
   // into what it unlocks, it just makes that tower buildable from the Build menu from then on.
+  // Cryptic unlock hints — deliberately not the exact "reach STAT NUMBER on CLASS" instructions
+  // these used to be. Each hints at the stat (raw power / swiftness / a sharp mind) and the
+  // element's feel (ignite / crackle / frost) without literally naming the source class, the
+  // stat, or the threshold — the element/stat mapping is meant to be something players notice or
+  // puzzle out themselves, not read off a label. The tower's own icon and name stay visible below
+  // (so there's still a specific goal in view), only the HOW is a riddle now.
+  const TOWER_UNLOCK_RIDDLE = {
+    HAMMERMAN:  '🔒 Some say raw power, given enough time, starts to ignite...',
+    AXEMAN:     '🔒 Push swiftness far enough and it starts to crackle...',
+    SPEARMAN:   '🔒 A sharp enough mind can turn a blade cold as winter...',
+    GATLING:    '🔒 An archer\u2019s raw strength, unleashed, never seems to stop...',
+    BLOWDART:   '🔒 A swift hand finds a shocking new trick...',
+    MARKSMAN:   '🔒 A calculating eye brings a colder kind of precision...',
+    SNAPCASTER: '🔒 A mage quick enough starts throwing sparks instead of bolts...',
+    CLERIC:     '🔒 Deep wisdom turns a mage\u2019s power toward something colder, and holier...',
+    PALADIN:    '🔒 A devoted mind can turn brute force into something righteous...',
+    SQUIRTGUN:  '🔒 A dedicated hand always finds room for a second weapon...',
+    BOMBER:     '🔒 Raw strength, pushed past its limit, starts throwing more than arrows...',
+    GUNALINDER: '🔒 Deep obsession with one\u2019s own craft finds a faster trigger...',
+    SNIPER:     '🔒 True patience rewards the very deepest precision...',
+    POPE:       '🔒 The truly devoted eventually lead more than themselves...'
+  };
   for(const type of UNLOCKABLE_TOWER_TYPES){
     const def = CONFIG.TOWERS[type];
     const unlocked = unlockedTowerTypes.has(type);
     const affordable = gold >= def.baseCost;
     const costLabel = '💰' + def.baseCost;
-    const src = TOWER_UNLOCK_SOURCE_BY_TARGET[type];
-    let lockMsg = '🔒 Locked';
-    if(src && src.kind === 'element'){
-      const srcStat = ATTUNEMENT_STAT_BY_ELEMENT[src.element].toUpperCase();
-      const srcElementLabel = ATTUNEMENT_ICON[src.element] + ' ' + src.element.charAt(0) + src.element.slice(1).toLowerCase();
-      const srcBaseName = CONFIG.TOWERS[src.baseType].name;
-      lockMsg = '🔒 Reach ' + srcElementLabel + ' on a ' + srcBaseName + ' (' + srcStat + ' 500) to unlock';
-    } else if(src && src.kind === 'stat'){
-      const srcBaseName = CONFIG.TOWERS[src.baseType].name;
-      lockMsg = '🔒 Reach ' + src.stat.toUpperCase() + ' ' + src.threshold + ' on a ' + srcBaseName + ' to unlock';
-    }
+    const lockMsg = TOWER_UNLOCK_RIDDLE[type] || '🔒 Locked — a secret combination unlocks this';
     const row = document.createElement('div');
     row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
     row.innerHTML =

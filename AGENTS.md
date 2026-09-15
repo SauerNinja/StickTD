@@ -48,10 +48,11 @@ session; open the reference doc only when a specific subsystem note is actually 
   not as a mandatory first step. Code Map line numbers drift; treat a link as a starting point to
   search from, not a guaranteed address.
 - **Inspect targeted dependencies, not just the changed function**: relevant callers, what reads
-  and writes the same state, the full lifecycle a change touches (`create()` → `evolveInto()` →
-  `upgrade()` → save → load, for anything tower-related), and any existing test for that area.
-  Reading only the function being edited misses exactly the class of bug this file's regression
-  list exists to prevent.
+  and writes the same state, the full lifecycle a change touches (`create()` → `upgrade()` → save
+  → load, for anything tower-related — `evolveInto()` is no longer part of this: towers never
+  change type anymore, see "Architecture overview" below), and any existing test for that area. Reading only the
+  function being edited misses exactly the class of bug this file's regression list exists to
+  prevent.
 - **For an authorized implementation task, continue through**: inspection → a small, cohesive
   patch → relevant tests → handoff. Don't stop at a plan without a real blocker.
 - **Ask only when ambiguity materially affects behavior, compatibility, scope, or authority** —
@@ -164,30 +165,53 @@ hand — this part is not meant to be read in full every session.
 - `CONFIG.TOWERS`, `CONFIG.ENEMIES`, `CONFIG.WAVES` are the three top-level data tables inside one
   `CONFIG` object — most of the practical benefit of split config files without breaking the
   single-file rule.
-- The 3 base classes (Swordsman/Archer/Mage) evolve through a two-stage **elemental attunement**
-  system, not a flat threshold: `ATTUNEMENTS` (STR→Fire/DEX→Electric/INT→Ice) permanently locks an
-  element on whichever stat first reaches `ATTUNEMENT_THRESHOLD` (100) — checked in
+- **A tower never transforms into a new class — this is the permanent design, not a WIP state.**
+  `Tower.evolveInto()` still exists in the source but is fully unused/dead code (kept defined
+  rather than deleted); nothing calls it. Reaching a threshold instead permanently unlocks the
+  *next* tier as a separately buildable tower via `unlockTowerTypeBuild()` — the tower that earned
+  the unlock keeps its own type and keeps growing its own stats. This applies uniformly at every
+  tier, base-class specialization or deep-tier alike.
+- The 3 base classes (Swordsman/Archer/Mage) unlock through a two-stage **elemental attunement**
+  system: `ATTUNEMENTS` (STR→Fire/DEX→Electric/INT→Ice) permanently locks an element on whichever
+  stat first reaches `ATTUNEMENT_THRESHOLD` (100) — checked in
   `Tower.checkAttunementAndSpecialization()`, called from `checkEvolution()` only for
   `BASE_ATTUNABLE_TYPES`. Reaching `SPECIALIZATION_THRESHOLD` (500) in that *same* attuned stat then
-  evolves into `SPECIALIZATIONS[type][element]`, if one is defined — not every base/element
-  combination is (Mage has no Fire specialization; see the comments directly above
+  calls `unlockTowerTypeBuild(SPECIALIZATIONS[type][element])`, if one is defined — not every
+  base/element combination is (Mage has no Fire specialization; see the comments directly above
   `SPECIALIZATIONS` in `index.html` and `BACKLOG.md` for exactly which cells are intentional gaps
-  vs. imperfect fits kept for scope reasons). `EVOLUTIONS` still exists for every deeper evolution
-  beyond a base class's own specialization (Blowdart → Squirt Gun, Hammerman → Paladin, Marksman →
-  Sniper) using the old flat stat-threshold check, unrelated to attunement.
-  `EVOLVED_TOWER_TYPES` lists everything reachable only via evolution, never built directly
-  (includes Hammerman itself). A base-type tower loaded from a save that predates the `attunement`
-  field runs `migrateLegacyAttunement()` — deterministic, and in practice a no-op for any real save,
-  since `checkEvolution()` has always run synchronously after every stat change, so no still-base-
-  type tower should ever actually have a stat at or above 100 in saved data.
+  vs. imperfect fits kept for scope reasons). `EVOLUTIONS` covers every deeper unlock beyond a base
+  class's own specialization (Blowdart → Squirt Gun, Hammerman → Paladin, Marksman → Sniper,
+  Gatling → Bomber → Gunalinder) using the same flat stat-threshold pattern, unrelated to
+  attunement — `checkEvolution()`'s non-base-class branch calls `unlockTowerTypeBuild()` the exact
+  same way, never `evolveInto()`. Every class in `EVOLVED_TOWER_TYPES` traces to a real, reachable
+  unlock now — verified directly, no orphaned classes (Bomber/Gunalinder were the last gap, closed
+  by adding `EVOLUTIONS.GATLING`).
+- `unlockedTowerTypes` (a `Set`, persists across save/load, resets on a genuinely new game — same
+  precedent as the existing wave-gated starter unlocks via `isTowerUnlocked()`) tracks which
+  evolution targets have actually been unlocked this game; `UNLOCKABLE_TOWER_TYPES` and
+  `TOWER_UNLOCK_SOURCE_BY_TARGET` are both derived programmatically from `SPECIALIZATIONS` +
+  `EVOLUTIONS`, not a separately maintained list. **The exact unlock source/threshold for each
+  class is deliberately never shown to players** — the Build menu's locked rows and the in-game
+  help modal both use `TOWER_UNLOCK_RIDDLE`, a set of thematic hints, instead of the precise
+  mechanical requirement `TOWER_UNLOCK_SOURCE_BY_TARGET` actually holds. This is intentional design
+  (discovering the stat/element mapping is meant to be part of the game), not incomplete
+  documentation — don't "fix" the in-game UI to be more precise to match this file or `README.md`,
+  which document the exact mechanics on purpose since they're developer-facing, not player-facing.
+  See `README.md`'s own callout on this at the top of its "Towers & evolutions" section.
+- `EVOLVED_TOWER_TYPES` lists everything reachable only via unlock, never built directly from the
+  start (includes Hammerman itself). A base-type tower loaded from a save that predates the
+  `attunement` field runs `migrateLegacyAttunement()` — deterministic, and in practice a no-op for
+  any real save, since `checkEvolution()` has always run synchronously after every stat change, so
+  no still-base-type tower should ever actually have a stat at or above 100 in saved data.
 - Enemy status effects (burn, poison/curse, slow, stun) live as fields directly on the `Enemy`
   instance (`burnUntil`, `poisonUntil`, `slowTimer`, `stunnedUntil`), checked each tick in
   `update()`. Towers have a parallel set for breakaway-inflicted statuses.
 - `drawStickman()` is the single shared rendering function for every tower class — each class
   branches inside it rather than having separate draw functions. Per-tower appearance traits
   (skin/pants/face color, build scale, mustache color) are rolled once in `rollSkinTones()`/
-  `rollBuild()` (at `create()`, `evolveInto()`, and `upgrade()` — re-rolling on upgrade is
-  deliberate, a visual "you got stronger" signal), passed into `drawStickman()` via an `extra`
+  `rollBuild()` — at `create()`, and re-rolled at `upgrade()` (deliberate, a visual "you got
+  stronger" signal; `evolveInto()` used to also re-roll here but is unused now — see "Architecture
+  overview"), passed into `drawStickman()` via an `extra`
   object built fresh each render — the render function never reads tower state directly. Mustache:
   invisible at STR ≤ 47, grows with STR, capped at 97; color from `HAIR_COLORS`.
 - The bottom inspect panel (`#inspect-panel`) is a WC3/WoW-style nameplate + full-options UI.
@@ -230,8 +254,10 @@ hand — this part is not meant to be read in full every session.
   Hammerman's 35%, set at `create()`, +5% from `checkLegendaryStatus()`) plus summed item `armor`
   fields at 1% per point, capped at 90%. `baseShieldPct` isn't in the save payload — derived at
   load time from type + `isLegendary`, same pattern as `legendaryHpMult`, before `recomputeStats()`
-  runs. `evolveInto()` must also set `baseShieldPct` for the new class (a real bug existed here
-  before this was caught: Hammerman is evolution-only, and evolving into it didn't grant the 35%).
+  runs. Simpler now than it used to be: since a tower never transforms, `create()` alone sets this
+  correctly for every Hammerman regardless of when it's built (a historical bug here — `evolveInto()`
+  not also setting this, so a Hammerman reached via the old transform-based evolution never got its
+  35% — is now moot, since `evolveInto()` doesn't run at all anymore).
 - `validateGameDefinitions()` runs once at boot, cross-checks every data-driven table (WAVES/
   TOWERS/ENEMIES, EVOLUTIONS, SPECIALIZATIONS, SPLIT_CHILD_TYPE, CLASS_ARCHETYPE, FOOTSTEP_WEIGHT,
   JOB_QUOTES, TOWER_STRATEGY, starter/evolved type lists) for dangling references — extend it when

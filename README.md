@@ -114,6 +114,13 @@ they don't have a specialized niche yet to explain.
 
 ## Towers & evolutions
 
+> **Note for anyone editing this file or the code:** everything below is documented exactly, the
+> way a technical reference should be — but the game itself deliberately does NOT show players this
+> exact mapping. The in-game help modal and the Build menu's locked-row messages both use vague,
+> thematic riddles instead (see `TOWER_UNLOCK_RIDDLE` in `buildTowerModal()`), on purpose, so
+> discovering which stat/element leads where is part of the game. If you're tempted to make the
+> in-game UI this precise to "match the docs" — don't; that's the opposite of the intent.
+
 A tower never transforms into a new class — it keeps its own identity forever and just keeps
 growing its own stats. What reaching certain thresholds *does* do: permanently unlock a different,
 better tower as directly buildable from the Build menu, for the rest of the current game. Grind a
@@ -152,12 +159,13 @@ e.g., reaching ❄️ Ice on a Swordsman (INT 500) unlocks Spearman as directly 
 | ⚡ Snap Caster | *(unlocked by ⚡ Electric on a Mage, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
 | ✝️ Cleric | *(unlocked by ❄️ Ice on a Mage, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
 | 🧑‍🦳 Pope | *(unlocked by a Cleric reaching INT 750)* Cleric's ultimate form as a separate tower — the curse hits every enemy in range at once instead of one target, still 5x against undead. A visibly growing hat on any Cleric telegraphs its own approach to this unlock threshold, from 500 to 750 INT — the Cleric doesn't become Pope, it just earns the unlock. |
+| 💣 Bomber | *(unlocked by a Gatling reaching STR 40)* Splash damage against groups — the intended "Gatling → Bomber" deep tier, previously deferred pending a real threshold decision, now decided. |
+| 🔫 Gunalinder | *(unlocked by a Bomber reaching INT 40)* Trades splash for precision — fires all six chambers of a revolver in a rapid burst, then a long reload. |
 
-💣 Bomber and 🔫 Gunalinder still exist and work exactly as before for anyone who already has one,
-but as of the attunement redesign above, a fresh Archer's INT path now leads to Marksman instead —
-they're no longer reachable through a new evolution. Mage has no Fire (STR) specialization yet;
-an attuned Fire Mage simply stays a Mage rather than being forced into an evolution that doesn't
-exist.
+Every buildable evolved class now traces to a real, reachable unlock path — no orphaned classes.
+Mage has no Fire (STR) specialization yet; an attuned Fire Mage simply stays a Mage rather than
+being forced into an evolution that doesn't exist. That gap is intentional (see the `SPECIALIZATIONS`
+comments in `index.html`), not an oversight like Bomber/Gunalinder's used to be.
 
 Gold-tier upgrades (paid with gold, separate from EXP levels) raise range, cooldown, and unlock
 class mechanics, with a modest damage bump included — but damage growth is weighted so a tower's

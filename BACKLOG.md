@@ -101,11 +101,10 @@ risk categories) rather than being bundled into one giant rewrite.
   branches, and the migration tie-break rules specifically). New `MARKSMAN` class fully defined
   (config/stats/rendering/sound/validation) as Archer's Ice path, replacing the old, review-flagged
   `int→BOMBER` mapping. Scope decisions worth knowing about, not silently glossed over:
-  - **Bomber and Gunalinder are orphaned from fresh evolution.** They still work exactly as before
-    for any tower that's already one, but a new Archer's INT path now goes to Marksman instead —
-    matching the review's explicit instruction not to map INT→Bomber, but leaving Gatling with no
-    onward evolution defined (the review's own "Gatling → Bomber" future-tier idea was explicitly
-    marked out of scope: "do not invent the third-stage threshold in this pass").
+  - ~~Bomber and Gunalinder are orphaned from fresh evolution~~ — no longer true, fixed in a later
+    pass (see the "every build unit traced to an unlock" entry below): `Gatling → Bomber` (the
+    exact future-tier idea this note originally said was out of scope) was decided and
+    implemented, closing the gap. This bullet is kept for history, not as a current issue.
   - **Mage has no Fire (STR) specialization.** No existing Mage evolution fits a heavy-impact
     identity, and the review says not to fabricate one just to fill the matrix — an attuned Fire
     Mage simply stays a Mage.
@@ -263,14 +262,26 @@ separate.
   enemy, so a single `anyBlockedSeed` flag (set alongside the existing per-enemy pass that already
   seeds `claimedSlots`) now skips the whole loop when nothing is blocked — the common case, and
   exactly 4,950 wasted iterations for 100 eligible enemies per the review's own math.
-- Audio synthesis (`tone()`/`noise()`) claimed to still construct oscillator/gain/filter nodes while
-  muted, rather than rejecting new sound creation at the synthesis entry point.
+- ~~Audio synthesis (`tone()`/`noise()`) constructing oscillator/gain/filter nodes while muted~~ —
+  fixed. Confirmed real: `duck()` already had an `isMuted` guard, but `tone()`/`noise()` — the
+  actual node-creating primitives, called both by `duck()`'s callers and directly elsewhere — had
+  no such check, so every sound call still built real Web Audio nodes and consumed a voice-budget
+  slot even with the game fully muted. Added the identical guard `duck()` already used, placed
+  before `reserveVoiceSlot()` too so a muted sound doesn't take a slot an audible one could have
+  used. Verified with an isolated test: unmuted calls create real nodes, muted calls create zero,
+  and unmuting again correctly resumes normal behavior.
 
-**Design questions raised, not bugs:** the review flags that `SPECIALIZATIONS`' 500-point threshold
-and the pre-existing deeper `EVOLUTIONS` thresholds (Blowdart→Squirtgun at 40, Marksman→Sniper at
-60) can both already be satisfied by the time a tower reaches its 500-point specialization,
-making the intermediate class a very brief stage rather than a real milestone — worth a deliberate
-decision (refresh/replace/leave as absolute thresholds), not a silent balance change.
+**Design questions raised, not bugs:** ~~the review flagged that `SPECIALIZATIONS`' 500-point
+threshold and the pre-existing deeper `EVOLUTIONS` thresholds (Blowdart→Squirtgun at 40,
+Marksman→Sniper at 60) could both already be satisfied by the time a tower reaches its 500-point
+specialization, making the intermediate class a very brief stage rather than a real milestone~~ —
+**moot now, not fixed directly but resolved by the no-transform redesign.** This concern only made
+sense when the tower itself transformed (a Swordsman literally becoming a Spearman, carrying its
+accumulated stats straight into the next threshold check). Now that a tower never transforms, a
+Marksman built from the Build menu starts at 0 stats and has to independently grind its own way
+toward Sniper's threshold from scratch — there's no "instant pass-through" scenario left for this
+to describe. Kept here as a record of what the concern was and why it no longer applies, not
+deleted outright.
 
 **Process recommendation from the review, worth adopting regardless of how the above triages**:
 require a same-scene before/after comparison (frame-interval p50/p95/p99, not just `node --check`)
@@ -308,8 +319,9 @@ upfront about rather than implying otherwise.
   the player seeing it happen live. `render()` is a pure drawing function with no simulation side
   effects, so it's safe to call directly — now does, but only while actually paused (the normal
   playing case already gets a fresh frame within ~16ms via the main loop regardless, so nothing
-  extra happens there). Pan/pinch gestures likely have the same underlying gap but weren't touched
-  in this pass — noted here rather than silently left inconsistent with the wheel fix.
+  extra happens there). ~~Pan/pinch gestures had the same underlying gap~~ — also fixed, in a
+  later pass: the exact same one-line nudge (`if(gameState !== 'PLAYING') render(ctx);`) added to
+  both the pinch-zoom branch and the single-finger pan branch of the pointermove handler.
 - **First-hit hitch (`buildEnemyCollisionMask()` / `getEnemyCollisionMask()`)** — genuinely still
   blocked on profiling, not fixed. Confirmed the mask cache is correctly lazy and per-type (built
   once, reused), matching what it should do — the open question is purely whether the *first* hit
@@ -330,25 +342,44 @@ upfront about rather than implying otherwise.
 ## riskier undertaking than the unlock-tracking system in Phase 1, and doing both in one pass risked
 ## shipping something untested. Specified here so the design isn't lost, not started.
 
-- **Dual-element combinations.** A tower attuned to one element that gets pushed toward a SECOND
-  element's threshold (rather than just adding more of the same stat) combines into a hybrid:
-  Fire+Ice → Steam, and by the same logic Fire+Electric and Ice+Electric need their own named
-  hybrids too (not specified yet — needs a naming/identity decision before implementation, not
-  invented here to avoid guessing at something that should be a deliberate choice). A hybrid
-  "does both" of its parent elements' effects (per the request, Steam specifically).
-  - Open design questions that need answering before this is buildable, not guessed at: what
-    stat combination triggers a hybrid (two stats independently crossing 100? crossing 500? a new
-    threshold entirely?), whether a hybrid replaces the single-element specialization path or sits
-    alongside it, and whether every base class can reach every hybrid or only specific ones.
-- **New class unlocked by a hybrid, first-reach-anywhere**: reaching Steam on an Archer for the
-  first time unlocks a new class — "Blow Gunner" per the request — the same permanent,
+- **Dual and triple-element combinations — now fully named, still not implemented.** A tower
+  pushed toward a second (or third) element rather than just growing the one it's already locked
+  into combines into a hybrid, "doing both" (or all three) of its parent elements' effects:
+  - 🔥 Fire + ❄️ Ice → **Steam**
+  - 🔥 Fire + ⚡ Electric → **Proton** (purple)
+  - ⚡ Electric + ❄️ Ice → **Dark Matter** (black)
+  - 🔥 Fire + ⚡ Electric + ❄️ Ice, all three equally → **Quasar** (white)
+  This closes the naming gap flagged in the previous version of this doc (Fire+Electric and
+  Ice+Electric both needed names before anything could be built) — worth noting the triple-element
+  tier is new information, not something the earlier scoping anticipated, and it's a genuinely
+  different *kind* of design problem from the dual combos, not just a third name to add:
+  - **The dual combos still fit the existing attunement model reasonably well** — a tower already
+    locked into one element being pushed toward a second element's own threshold. The open
+    questions from before are unchanged and still unanswered: what stat state actually triggers
+    the combo (two stats independently crossing 100? 500? something new?), and whether a hybrid
+    replaces the single-element specialization path or exists alongside it.
+  - **"All three equally" for Quasar is a different shape of problem entirely.** The current
+    `this.attunement` is a single locked value (`ATTUNEMENTS.str/dex/int` locks to exactly one
+    element, permanently, the first stat to cross the threshold — see
+    `checkAttunementAndSpecialization()`). "All three equally" doesn't fit that model at all: it's
+    not about which stat locked first, it's about three stats being in some kind of balance
+    relative to each other, checked independently of (or instead of) the existing single-lock
+    mechanism. This needs actual design thought before any code — what "equally" means precisely
+    (exact numeric equality? within some tolerance? all three past a shared threshold
+    simultaneously?), and how it interacts with a tower that's already locked into one element
+    via the existing system. Not something to guess an implementation for.
+- **New classes unlocked by each hybrid, first-reach-anywhere**: reaching Steam on an Archer for
+  the first time unlocks "Blow Gunner" per the original request — the same permanent,
   first-reach-unlocks-it-forever pattern as Phase 1's `unlockTowerTypeBuild()`, just triggered
-  by a hybrid-element combo instead of a single element. This class doesn't exist in the code at
-  all yet and needs the full definition checklist Marksman got: `CONFIG.TOWERS` stats/tiers,
-  color palette, build scale, job quotes, tower-strategy blurb, `RANGE_CAPS`, `CLASS_ARCHETYPE`,
-  ranged-shot sound, a full `drawStickman()` rendering branch, `EVOLVED_TOWER_TYPES` registration,
-  and validated with real tests the way every other new class this project has added was — not a
-  stub.
+  by a hybrid-element combo instead of a single element. Proton/Dark Matter/Quasar would each need
+  their own unlocked class(es) too, on which base class(es) — not specified yet, and not guessed
+  at here. None of these classes exist in the code at all and each needs the full definition
+  checklist Marksman got: `CONFIG.TOWERS` stats/tiers, color palette (Proton's purple and Dark
+  Matter's black are specified now — Steam's and Quasar's white aren't yet distinct from existing
+  palette entries, worth checking for clashes before implementing), build scale, job quotes,
+  tower-strategy blurb, `RANGE_CAPS`, `CLASS_ARCHETYPE`, ranged-shot sound, a full
+  `drawStickman()` rendering branch, `EVOLVED_TOWER_TYPES` registration, and validated with real
+  tests the way every other new class this project has added was — not a stub, and not four stubs.
 - **Infrastructure already in place for this, from Phase 1**: `unlockedTowerTypes` (the Set, now
   proven to persist correctly across save/load, and now generalized to cover every tier — not just
   first-tier specializations, see the Phase 1 note below), `showUnlockToast()`, and the
