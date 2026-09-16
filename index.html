@@ -786,8 +786,8 @@
         <div id="spec-modal-grid">
           <div class="spec-card" id="specTwoHander">
             <div class="icon">🗡️</div>
-            <div class="name">Two-Hander</div>
-            <div class="blurb">One massive blade with a huge sweeping arc and heavy damage — hits everything in a much wider cone.</div>
+            <div class="name">Zweihander</div>
+            <div class="blurb">One massive two-handed blade with a huge sweeping arc and heavy damage. Visibly charges up between swings — the longer it's been since the last hit, the more the blade trembles and glows, right up to the release.</div>
           </div>
           <div class="spec-card" id="specDual">
             <div class="icon">⚔️</div>
@@ -930,7 +930,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.1'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.24'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1005,7 +1005,17 @@ const JOB_COLORS = {
   SQUIRTGUN: { main:'hsl(105,70%,68%)', shade:'hsl(105,60%,42%)' }, // vivid acid green
   GUNALINDER:{ main:'hsl(15,25%,68%)',  shade:'hsl(15,30%,42%)'  }, // dark gunmetal brown
   SNIPER:    { main:'hsl(100,15%,62%)', shade:'hsl(100,20%,38%)' }, // desaturated tactical gray-green
-  MARKSMAN:  { main:'hsl(205,20%,66%)', shade:'hsl(205,25%,42%)' }  // cool tactical steel-blue, distinct from Gunalinder's warm brown and Sniper's green
+  MARKSMAN:  { main:'hsl(205,20%,66%)', shade:'hsl(205,25%,42%)' },  // cool tactical steel-blue, distinct from Gunalinder's warm brown and Sniper's green
+  // Fully desaturated (0% saturation) rather than a preset hue — unlike every other class, whose
+  // rolled skin/pants lightness (see rollSkinTones()) still reads as a tint of that class's own
+  // hue, Cat Snapper stays grayscale/black-and-white at any rolled lightness, so it never
+  // accidentally reads as "colorful" the way a lightness roll on a saturated hue would.
+  CAT_SNAPPER: { main:'hsl(0,0%,22%)', shade:'hsl(0,0%,8%)' },
+  NECROMANCER: { main:'hsl(280,25%,55%)', shade:'hsl(280,30%,30%)' }, // muted dark purple — distinct from Mage's own brighter violet, reads as "corrupted" rather than "arcane"
+  BLOW_GUNNER: { main:'hsl(200,30%,82%)', shade:'hsl(200,25%,55%)' }, // pale steam-blue mist, distinct from Squirtgun's vivid acid green and Marksman's cooler steel-blue
+  PROTON: { main:'hsl(275,65%,68%)', shade:'hsl(275,55%,42%)' }, // vivid purple — "space electricity," distinct from Necromancer's own muted dark purple
+  DARK_MATTER: { main:'hsl(240,15%,28%)', shade:'hsl(240,20%,10%)' }, // near-black with a cold blue undertone — void-black, distinct from Cat Snapper's neutral gray
+  QUASAR: { main:'hsl(50,15%,92%)', shade:'hsl(50,20%,72%)' } // blinding near-white with a faint warm tint, distinct from Pope's richer gold and every other pale entry
 };
 const JOB_BUILD = {
   SWORDSMAN: { scaleX:1.00, scaleY:1.00 }, // average
@@ -1024,7 +1034,13 @@ const JOB_BUILD = {
   SQUIRTGUN: { scaleX:0.86, scaleY:1.00 },  // even lighter, built for speed
   GUNALINDER:{ scaleX:1.08, scaleY:0.95 },  // stocky gunslinger stance
   SNIPER:    { scaleX:0.84, scaleY:1.10 },  // lean, low profile
-  MARKSMAN:  { scaleX:0.88, scaleY:1.07 }   // lean, between Gunalinder's stocky stance and Sniper's full leanness
+  MARKSMAN:  { scaleX:0.88, scaleY:1.07 },  // lean, between Gunalinder's stocky stance and Sniper's full leanness
+  CAT_SNAPPER: { scaleX:0.92, scaleY:0.94 }, // a touch narrower and shorter than average — a slight hunch, not a distinct body type
+  NECROMANCER: { scaleX:0.87, scaleY:1.06 }, // gaunt and a bit tall, like Mage but leaner still
+  BLOW_GUNNER: { scaleX:0.9, scaleY:0.97 }, // close to base Archer's own build — a hybrid of two siblings, not a distinct body type
+  PROTON: { scaleX:0.95, scaleY:1.02 }, // reachable from any base class, so kept close to the shared Mage-archetype default rather than leaning toward any one source
+  DARK_MATTER: { scaleX:0.95, scaleY:1.02 }, // same reasoning as Proton — reachable from any base class
+  QUASAR: { scaleX:0.98, scaleY:1.05 } // very slightly grander than the other hybrids — the hardest unlock in the game, reads as a touch more imposing
 };
 // Flavor lines per class — tied to combat role/personality, not to any real-world region or ethnicity.
 const JOB_QUOTES = {
@@ -1044,7 +1060,13 @@ const JOB_QUOTES = {
   GUNALINDER:["Six rounds, six problems solved.", "Reloading is for the slow.", "Empty the cylinder!", "Spin the barrel!", "Every shot counts."],
   SNIPER:    ["One shot. That's all I need.", "Nothing outruns this range.", "Patience is the real weapon.", "Target acquired.", "One breath, one shot."],
   MARKSMAN:  ["Steady hands, sure aim.", "I don't miss twice.", "Line it up.", "Trigger discipline.", "Every round's placed, not sprayed."],
-  SNAPCASTER:["The bolt finds its mark.", "Lightning at my command.", "Snap, and it's over.", "Precision and power.", "Watch the sparks fly."]
+  SNAPCASTER:["The bolt finds its mark.", "Lightning at my command.", "Snap, and it's over.", "Precision and power.", "Watch the sparks fly."],
+  CAT_SNAPPER:["Here, kitty.", "Go get 'em.", "Claws out.", "Fetch.", "Good cat."],
+  NECROMANCER:["Rise.", "Death is no obstacle.", "Bones remember how to fight.", "Serve me once more.", "None truly rest."],
+  BLOW_GUNNER:["Feel the burn.", "Hot and cold.", "Steam clears the air.", "One breath is all it takes.", "Scalded and chilled."],
+  PROTON:["Feel the charge.", "Nowhere left to run.", "Burned and stunned.", "The stars provide.", "Crackling with purpose."],
+  DARK_MATTER:["Into the void.", "Nothing escapes gravity.", "The dark provides too.", "Cold and absolute.", "Swallowed whole."],
+  QUASAR:["Behold.", "All three, at once.", "The rarest light.", "Nothing survives this.", "Ascendant."]
 };
 // Tiny "no immediate repeat" helper — pure uniform Math.random() can and does pick the same
 // index twice in a row, which reads as a bug/glitch for a spoken line even though it's
@@ -1081,6 +1103,12 @@ const TOWER_STRATEGY = {
   SNAPCASTER:{ icon: '⚡', text: 'Mage evolved through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
   CLERIC:    { icon: '✨', text: 'The only support tower: heals nearby towers and smites undead directly rather than shooting enemies. Doesn\'t fight the wave — keeps everyone else able to.' },
   POPE:      { icon: '⛪', text: "Cleric's AOE evolution — hits every enemy in range at once instead of one target. Reached only through very deep INT investment (750 total). Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
+  NECROMANCER:{ icon: '💀', text: "Mage evolved through STR instead of INT: a dark bolt attack, plus a small band of skeleton minions raised near it at the start of every round (gone again the instant the round ends). The skeletons aren't a one-time boost — budget for them fresh each round, and place this where its own raised band can actually reach the path." },
+  BLOW_GUNNER:{ icon: '♨️', text: "Archer's Fire+Ice hybrid — reached by pushing STR and INT both to 500, not just the one that locked the attunement first. Every hit carries both Blowdart's poison DoT and a Mage-style chilling slow at once, a genuinely different identity from either single-element sibling rather than a stronger version of one." },
+  CAT_SNAPPER:{ icon: '🐈‍⬛', text: "Unlocked by an Archer reaching 500 DEX — a raw stat threshold, not tied to which element that Archer ends up attuning to. Throws temporary shadow-cat companions instead of dealing damage directly; the real question when placing this is whether its cats can actually reach the path, not just this tower's own range." },
+  PROTON:{ icon: '☄️', text: "Fire+Electric hybrid, reachable from any base class — Swordsman, Archer, or Mage, whichever pushes both STR and DEX to 500 first. Every hit burns and briefly disrupts its target's speed at once, a purple energy identity distinct from Steam's own scald-and-chill." },
+  DARK_MATTER:{ icon: '🕳️', text: "Electric+Ice hybrid, reachable from any base class — whichever pushes both DEX and INT to 500 first. Leans harder into the slow than the burn, unlike Proton — a control-focused identity rather than a damage-focused one." },
+  QUASAR:{ icon: '🌟', text: "The hardest unlock in the game — needs STR, DEX, AND INT each at 500 on the same tower, not just two. Hits everything in a small splash radius around its target, not just the one enemy, on top of the same burn+slow every hybrid carries." },
 };
 
 // Hero items — bought from the shop, type-restricted (a Swordsman can only equip Swordsman gear).
@@ -1094,7 +1122,7 @@ const HERO_BONUS_STAT = 5;
 const RANGE_CAPS = {
   SNIPER: 520, MAGE: 420, ARCHER: 380, GATLING: 340, MARKSMAN: 360, GUNALINDER: 310, BOMBER: 320,
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
-  CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260
+  CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260, CAT_SNAPPER: 280, NECROMANCER: 250, BLOW_GUNNER: 250, PROTON: 270, DARK_MATTER: 275, QUASAR: 260
 };
 // Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less —
 // tier 0 (points 1-5) at full value, tier 1 (6-10) at 85%, tier 2 (11-15) at 70%, and so on down
@@ -1218,8 +1246,21 @@ const FOOTSTEP_WEIGHT = {
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
-  GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER',
-  MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE'
+  GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER', BLOW_GUNNER:'ARCHER',
+  MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE', NECROMANCER:'MAGE',
+  // Not a Mage evolution — it's an Archer unlock (see SPECIALIZATIONS' comment on the raw-DEX
+  // check for it), but archetype-tagged MAGE, not ARCHER, purely so its damage/range/HP scaling
+  // follows the same INT-preferred generic formulas every archetype-driven calculation in this
+  // file already uses, kept as originally built rather than re-tuned to DEX scaling just because
+  // its unlock source changed. Its own unique mechanic (the companion cats) is handled separately
+  // in Tower.fireProjectile()/Projectile.onImpact()/CatCompanion, not through the archetype system.
+  CAT_SNAPPER:'MAGE',
+  // Reachable from any of the 3 base classes (see HYBRID_SPECIALIZATIONS), so archetype-tagged
+  // MAGE independent of whichever one actually unlocked it — same pattern Cat Snapper already
+  // established just above. A Swordsman that unlocks Proton doesn't keep STR-scaled damage; the
+  // class itself is always INT-scaled once built, regardless of source. Same reasoning for
+  // Dark Matter and Quasar below.
+  PROTON:'MAGE', DARK_MATTER:'MAGE', QUASAR:'MAGE'
 };
 // HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR
 // growth rate, per explicit spec: Warrior starts heaviest and grows fastest, Mage starts
@@ -1248,13 +1289,16 @@ const MAX_LEAD_PREDICT_TIME = 0.2;
 // simply spend less time in flight for any drift to accumulate over.
 const PROJECTILE_HOMING_MAX_TURN_RATE = 1.5;
 
-// Only Swordsman, Archer, and Mage are directly buildable — every other fighting class is reached
-// by investing 10+ points into a specific stat on one of those three, a one-way transformation.
-// Grouped so a base class only ever evolves into classes matching its own archetype family:
-// Swordsman (WARRIOR) branches into the other three WARRIOR classes, Archer (ARCHER-style)
-// branches into the other three ARCHER-style classes, Mage (MAGE) branches into Cleric, its one
-// magic-aligned sibling. Barricade sits outside this tree entirely — it's a utility piece, not a
-// fighter with a stat identity.
+// Only Swordsman, Archer, and Mage are the ROOT of an evolution tree — every other fighting class
+// (besides Cat Snapper, see below) is reached by investing 10+ points into a specific stat on one
+// of those three, a one-way transformation. Grouped so a base class only ever evolves into classes
+// matching its own archetype family: Swordsman (WARRIOR) branches into the other three WARRIOR
+// classes, Archer (ARCHER-style) branches into the other three ARCHER-style classes, Mage (MAGE)
+// branches into Cleric, its one magic-aligned sibling. Barricade sits outside this tree entirely —
+// it's a utility piece, not a fighter with a stat identity. Cat Snapper is also directly buildable
+// (see STARTER_TOWER_TYPES) but, like Barricade, sits outside this tree entirely too — it doesn't
+// evolve into anything and nothing evolves into it; it's just a 4th fighting starter with its own
+// separate summon mechanic (see CatCompanion) rather than a 4th root of a stat-driven branch.
 //
 // Elemental attunement — replaces the old flat "threshold:20" first-tier evolution for the 3 base
 // classes (Swordsman/Archer/Mage) with a two-stage design, per a detailed external design review
@@ -1283,13 +1327,46 @@ const BASE_ATTUNABLE_TYPES = ['SWORDSMAN', 'ARCHER', 'MAGE'];
 // MAGE: Electric→Snapcaster is an exceptionally clean fit (Snapcaster's kit is already built
 // almost entirely around proc'ing chain lightning/shock). Ice→Cleric is kept only because
 // reassigning Cleric's whole holy/anti-undead identity is out of scope here — it's a known
-// imperfect thematic fit, flagged rather than hidden (see BACKLOG.md). Fire/STR is intentionally
-// left undefined: no existing Mage evolution fits a heavy-impact identity, and the review's own
-// guidance is not to invent one just to fill the cell.
+// imperfect thematic fit, flagged rather than hidden (see BACKLOG.md). Fire/STR was intentionally
+// left undefined for a while (no existing evolution fit a heavy-impact identity, and the guidance
+// at the time was not to invent one just to fill the cell) — now filled, by explicit request, with
+// Necromancer: a genuinely new class built for this slot, structurally parallel to Cleric (a
+// single Mage specialization tier, same attack+support-ability kit shape) but STR-gated instead of
+// INT-gated, and raising temporary skeleton minions each round instead of healing.
 const SPECIALIZATIONS = {
   SWORDSMAN: { FIRE: 'HAMMERMAN', ELECTRIC: 'AXEMAN', ICE: 'SPEARMAN' },
   ARCHER: { FIRE: 'GATLING', ELECTRIC: 'BLOWDART', ICE: 'MARKSMAN' },
-  MAGE: { ELECTRIC: 'SNAPCASTER', ICE: 'CLERIC' }
+  MAGE: { FIRE: 'NECROMANCER', ELECTRIC: 'SNAPCASTER', ICE: 'CLERIC' }
+};
+// Cat Snapper is a special case, not a 4th entry in ARCHER's own element map above: all 3 of
+// Archer's slots are already taken (Gatling/Blowdart/Marksman), so it can't be gated through the
+// normal attunement system at all. Instead it's a raw stat-threshold unlock directly on the base
+// class — any Archer reaching SPECIALIZATION_THRESHOLD (500) DEX unlocks it, independent of which
+// element that Archer ends up attuning to (or even whether it's attuned yet at all). Checked as
+// its own explicit condition in checkAttunementAndSpecialization(), not through this table.
+// Dual-element hybrids (see BACKLOG.md's "Phase 2" for the full design history). A tower already
+// locked into one element (this.attunement) that ALSO pushes the OTHER element's own stat to
+// SPECIALIZATION_THRESHOLD unlocks a hybrid class — checked in checkAttunementAndSpecialization()
+// right alongside the single-element check above, additively (a tower can unlock both its own
+// single-element specialization AND a hybrid off the same stat growth; neither blocks the other).
+// Reuses the exact same two thresholds single-element specialization already uses — no new
+// numeric design invented for the trigger itself, since that part of the open design question was
+// answerable by extending the existing pattern rather than inventing a new one.
+// Only Fire+Ice ("Steam") → Blow Gunner on Archer is defined single-base-class; Fire+Electric
+// ("Proton") and Electric+Ice ("Dark Matter", black) are both defined reachable from ALL THREE
+// base classes, by explicit design choice — "all towers can turn into all elements with the right
+// stat combo." Whichever base class gets a given combo to 500/500 first unlocks that same shared
+// class; the target is identical regardless of source, matching how a hybrid unlock has always
+// meant "prove you can reach this once, from wherever," not "each base class gets its own
+// separate version." All three elements at once ("Quasar", white) isn't gated through this table
+// at all — it's checked as its own independent raw-triple-stat condition directly in
+// checkAttunementAndSpecialization(), the same way Cat Snapper's raw-DEX check bypasses this table
+// entirely — see the comment there for why "all three equally" needed a genuinely different check
+// shape than the pairKey system below, not a workaround of it.
+const HYBRID_SPECIALIZATIONS = {
+  SWORDSMAN: { 'ELECTRIC+FIRE': 'PROTON', 'ELECTRIC+ICE': 'DARK_MATTER' },
+  ARCHER: { 'FIRE+ICE': 'BLOW_GUNNER', 'ELECTRIC+FIRE': 'PROTON', 'ELECTRIC+ICE': 'DARK_MATTER' },
+  MAGE: { 'ELECTRIC+FIRE': 'PROTON', 'ELECTRIC+ICE': 'DARK_MATTER' }
 };
 const EVOLUTIONS = {
   // Deep-tier evolutions beyond a base class's own specialization — unrelated to attunement,
@@ -1319,8 +1396,26 @@ const EVOLUTIONS = {
   // instant Cleric is reached and would fire immediately rather than after further investment.
   CLERIC: { int: {target:'POPE', threshold:750} }
 };
-const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu — everything else must be evolved into. Barricade included here (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable.
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE']; // reachable only via evolution, never built directly
+const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','PROTON','DARK_MATTER','QUASAR']; // reachable only via evolution, never built directly
+// The deepest evolution tier in each lineage that actually has one beyond its own base
+// specialization — Paladin (Hammerman's own 2nd tier), Squirtgun (Blowdart's), Sniper (shared
+// deepest tier for both the Gatling→Bomber→Gunalinder AND Marksman chains), Pope (Cleric's).
+// Axeman/Spearman/Snapcaster have no deeper evolution at all — they ARE their lineage's endpoint,
+// not a "hyper-rare" tier the way these four are. Necromancer is the one deliberate exception —
+// it's only a first-tier Mage specialization (like Cleric itself), not a deepest-tier class, but
+// explicitly requested to be capped the same way regardless, for its own reasons (a full-board
+// skeleton-raising army being the actual rarity concern, not evolution depth). Capped at one
+// ACTIVE copy on the board at a time — see towerCountOnBoard()/isTowerTypeAvailable() — rather
+// than a one-time purchase limit, so selling or losing one frees up the slot again.
+const MAX_ONE_PER_BOARD_TYPES = ['PALADIN','SQUIRTGUN','SNIPER','POPE','NECROMANCER'];
+// The 3 base classes stay genuinely unlimited in count, but each additional copy already on the
+// board makes the next one cost more — see currentBuildCost(). Deliberately NOT applied to any
+// evolved/specialized type (those already gate progress through their own unlock requirement,
+// not gold) or to Barricade (wood/stone economy, not gold, and it has its own separate free-charge
+// system already).
+const SCALING_COST_TYPES = ['SWORDSMAN','ARCHER','MAGE'];
+const SCALING_COST_GROWTH = 1.2; // cost multiplier per existing on-board copy of that type — e.g. a 50-gold base becomes ~60/72/86/124/310 gold for the 2nd/3rd/4th/6th/11th copy
 // Progression unlocks — a tower never transforms into a new class (see
 // checkEvolution()/checkAttunementAndSpecialization()); reaching a threshold only permanently
 // unlocks the NEXT tier as a separately buildable tower in the Build menu, for the rest of the
@@ -1345,6 +1440,23 @@ for(const sourceType of Object.keys(EVOLUTIONS)){
     TOWER_UNLOCK_SOURCE_BY_TARGET[branch.target] = { kind: 'stat', baseType: sourceType, stat, threshold: branch.threshold };
   }
 }
+// HYBRID_SPECIALIZATIONS targets were missing from this derivation entirely until now — meaning
+// Blow Gunner (the one hybrid actually implemented) was unlockable in principle but never actually
+// appeared in the Build tray at all, locked OR unlocked, since UNLOCKABLE_TOWER_TYPES below is
+// derived purely from this object's keys. Found and fixed while adding Cat Snapper's own entry.
+for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
+  for(const pairKey of Object.keys(HYBRID_SPECIALIZATIONS[baseType])){
+    TOWER_UNLOCK_SOURCE_BY_TARGET[HYBRID_SPECIALIZATIONS[baseType][pairKey]] = { kind: 'hybrid', baseType, pairKey };
+  }
+}
+// Cat Snapper isn't table-driven at all (see the comment above SPECIALIZATIONS — a raw DEX
+// threshold directly on Archer, not an element/hybrid slot), so it needs its own explicit entry
+// here rather than falling out of a loop over one of the unlock tables.
+TOWER_UNLOCK_SOURCE_BY_TARGET.CAT_SNAPPER = { kind: 'stat', baseType: 'ARCHER', stat: 'dex', threshold: SPECIALIZATION_THRESHOLD };
+// Quasar — same "not table-driven" reasoning as Cat Snapper above, but a genuinely different
+// trigger shape: all three raw stats each reaching SPECIALIZATION_THRESHOLD, not tied to any one
+// base class (see the check itself in checkAttunementAndSpecialization()).
+TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR = { kind: 'triple-stat', threshold: SPECIALIZATION_THRESHOLD };
 const UNLOCKABLE_TOWER_TYPES = Object.keys(TOWER_UNLOCK_SOURCE_BY_TARGET);
 // Permanently unlocked tower types for the current game — the whole point is "prove you can reach
 // this once, and it's yours to build directly from then on," for every tier, not just the first.
@@ -1458,6 +1570,24 @@ const CONFIG = {
         { range: 260, damage: 657, cooldown: 4800, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
+    // Unlocked by an Archer reaching 500 DEX (see SPECIALIZATIONS' raw-DEX check comment) — not a
+    // starter anymore, and not gated through an element/attunement slot either, since all 3 of
+    // Archer's own element slots are already taken (Gatling/Blowdart/Marksman). Archetype-tagged
+    // MAGE regardless — see CLASS_ARCHETYPE's note on why that stayed as originally built rather
+    // than switching to DEX scaling just because the unlock source changed. `damage` here drives
+    // each individual cat scratch identically to how it drives a normal projectile hit elsewhere —
+    // deliberately reused rather than a separate catDamage field, so a cat's damage always matches
+    // whatever this tower's own (tier-scaled) damage stat actually displays, with no second number
+    // that could quietly drift out of sync with it.
+    CAT_SNAPPER: {
+      name: 'Cat Snapper', icon: '🐈‍⬛', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Throws a temporary shadow cat at its target instead of dealing damage directly. The cat latches on, scratching its target every beat or so for a few seconds before it runs off — capped at 2 cats out at once per Cat Snapper.",
+      tiers: [
+        { range: 190, damage: 8,  cooldown: 1350, projectileSpeed: 300, catAttackCooldown: 900, catLifetime: 3500, maxActiveCats: 2 },
+        { range: 210, damage: 13, cooldown: 1150, projectileSpeed: 330, catAttackCooldown: 780, catLifetime: 4200, maxActiveCats: 2, upgradeCost: 100 },
+        { range: 230, damage: 20, cooldown: 950,  projectileSpeed: 360, catAttackCooldown: 660, catLifetime: 4900, maxActiveCats: 2, upgradeCost: 145 }
+      ]
+    },
     SNAPCASTER: {
       name: 'Snap Caster', icon: '⚡', baseCost: 95, unlocksAfterWave: 8,
       blurb: "A DEX-focused Mage evolution — dual-wields a second wand, casting a rapid two-bolt burst each cycle instead of a single blast. Still meaningfully slower than an Archer overall, and each individual bolt hits for less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
@@ -1501,6 +1631,21 @@ const CONFIG = {
         { range: 170, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
       ]
     },
+    // Mage's STR/Fire specialization — structurally Cleric's mirror (attack + one support ability,
+    // same evolution tier depth) but STR-gated instead of INT-gated, and raising temporary
+    // skeleton minions each round instead of healing. See raiseSkeletonsForTower()/SkeletonMinion
+    // for the actual mechanic — skeletonCount of them are raised near this tower at the start of
+    // every round and destroyed the instant that round completes. Capped at one active Necromancer
+    // on the board at a time (MAX_ONE_PER_BOARD_TYPES), by explicit request.
+    NECROMANCER: {
+      name: 'Necromancer', icon: '💀', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Mage's STR-attuned specialization, reached at 500 STR — fires a dark bolt attack, and at the start of every round raises a small band of skeleton minions near itself to help hold the line. The skeletons crumble back to dust the instant the round ends, then a fresh band rises with the next one.",
+      tiers: [
+        { range: 190, damage: 30, cooldown: 2200, projectileSpeed: 900,  skeletonCount: 2, skeletonDamage: 6,  skeletonCooldown: 900, skeletonRange: 70 },
+        { range: 205, damage: 46, cooldown: 1900, projectileSpeed: 950,  skeletonCount: 3, skeletonDamage: 9,  skeletonCooldown: 800, skeletonRange: 75, upgradeCost: 130 },
+        { range: 220, damage: 68, cooldown: 1600, projectileSpeed: 1000, skeletonCount: 4, skeletonDamage: 13, skeletonCooldown: 700, skeletonRange: 80, upgradeCost: 190 }
+      ]
+    },
     POPE: {
       name: 'Pope', icon: '🧑‍🦳', baseCost: 0, unlocksAfterWave: 0,
       blurb: "Cleric's ultimate form, reached only after 750 total INT — the curse is no longer aimed at a single target. Every enemy within range is struck at once in a holy nova, still dealing 5x tick damage against the undead. Still heals your lowest-HP tower once per wave.",
@@ -1526,6 +1671,68 @@ const CONFIG = {
         { range: 160, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
         { range: 175, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 95 },
         { range: 195, damage: 14, cooldown: 140, projectileSpeed: 520, poisonDamage: 10, poisonDuration: 4500, upgradeCost: 135 }
+      ]
+    },
+    // Archer's Fire+Ice hybrid ("Steam" — see HYBRID_SPECIALIZATIONS). Reached by pushing BOTH
+    // STR and INT to 500 (either order), not just the one that locked the attunement first — a
+    // genuinely harder unlock than a single-element specialization, since it needs two stats maxed
+    // instead of one. Combines poisonDamage (Blowdart/Squirtgun's own scald-like DoT) with
+    // slowFactor/slowDuration (Mage's own chill) on the same hit — both fields already apply fully
+    // generically on impact (see Projectile.onImpact()), so this needed no new status-effect code,
+    // just the two existing mechanics defined together on one class for the first time.
+    BLOW_GUNNER: {
+      name: 'Blow Gunner', icon: '♨️', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Archer's Fire+Ice hybrid, reached by pushing STR and INT both to 500 rather than just one. Every dart carries a scalding steam-vapor sting — Blowdart's poison DoT and a brief chilling slow, together on the same hit.",
+      tiers: [
+        { range: 165, damage: 9,  cooldown: 300, projectileSpeed: 460, poisonDamage: 4, poisonDuration: 3200, slowFactor: 0.2,  slowDuration: 900 },
+        { range: 180, damage: 13, cooldown: 250, projectileSpeed: 490, poisonDamage: 6, poisonDuration: 3400, slowFactor: 0.25, slowDuration: 1000, upgradeCost: 105 },
+        { range: 200, damage: 19, cooldown: 205, projectileSpeed: 520, poisonDamage: 9, poisonDuration: 3800, slowFactor: 0.3,  slowDuration: 1100, upgradeCost: 150 }
+      ]
+    },
+    // Fire+Electric hybrid ("Proton", purple) — unlike Blow Gunner, reachable from ANY of the 3
+    // base classes (see HYBRID_SPECIALIZATIONS), by explicit design choice: whichever tower gets
+    // both STR and DEX to 500 first unlocks this same class, regardless of which one it was.
+    // Archetype-tagged MAGE (below) independent of the unlock source, same pattern Cat Snapper
+    // already established. Burn (poisonDamage, reskinned) plus a brief electrical slow
+    // (slowFactor) on every hit — the same dual-existing-mechanic-reuse shape Blow Gunner already
+    // uses, just recolored/reflavored, so this needed no new status-effect code either.
+    PROTON: {
+      name: 'Proton', icon: '☄️', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Fire+Electric hybrid, reachable from any base class that pushes both STR and DEX to 500 — Swordsman, Archer, or Mage, whichever gets there first. A bolt of crackling purple energy that burns on contact and leaves the target's own nerves briefly disrupted, slowing it.",
+      tiers: [
+        { range: 200, damage: 26, cooldown: 1500, projectileSpeed: 1000, poisonDamage: 10, poisonDuration: 3000, slowFactor: 0.3,  slowDuration: 1200 },
+        { range: 220, damage: 40, cooldown: 1300, projectileSpeed: 1100, poisonDamage: 15, poisonDuration: 3200, slowFactor: 0.38, slowDuration: 1400, upgradeCost: 140 },
+        { range: 240, damage: 58, cooldown: 1100, projectileSpeed: 1200, poisonDamage: 22, poisonDuration: 3600, slowFactor: 0.45, slowDuration: 1600, upgradeCost: 200 }
+      ]
+    },
+    // Electric+Ice hybrid ("Dark Matter", black) — same all-3-base-classes shape as Proton, same
+    // dual-mechanic-reuse pattern (poisonDamage/slowFactor, both already generic on impact), but
+    // biased toward the slow rather than the DoT — Electric and Ice both connote control/disable
+    // more than damage-over-time, so the differentiation from Proton/Blow Gunner is in the ratio
+    // between the two shared fields, not a new mechanic.
+    DARK_MATTER: {
+      name: 'Dark Matter', icon: '🕳️', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "Electric+Ice hybrid, reachable from any base class that pushes both DEX and INT to 500 — Swordsman, Archer, or Mage, whichever gets there first. A void-black bolt that saps the target's own energy, hitting harder with its slow than its burn.",
+      tiers: [
+        { range: 205, damage: 22, cooldown: 1450, projectileSpeed: 950,  poisonDamage: 8,  poisonDuration: 3100, slowFactor: 0.4,  slowDuration: 1500 },
+        { range: 225, damage: 34, cooldown: 1250, projectileSpeed: 1050, poisonDamage: 12, poisonDuration: 3300, slowFactor: 0.48, slowDuration: 1700, upgradeCost: 145 },
+        { range: 245, damage: 50, cooldown: 1050, projectileSpeed: 1150, poisonDamage: 18, poisonDuration: 3700, slowFactor: 0.55, slowDuration: 1900, upgradeCost: 205 }
+      ]
+    },
+    // All three elements ("Quasar", white) — the genuine capstone hybrid, gated on a much harder
+    // threshold than any other class in the game (all 3 of str/dex/int at 500, not 2), so it's
+    // noticeably stronger than Proton/Dark Matter/Blow Gunner in kind, not just tier level: adds
+    // splashRadius (AoE, already generic on impact — same field Bomber/Squirtgun use) on top of
+    // the same poisonDamage/slowFactor combo the other hybrids share, rather than a brand new
+    // mechanic. Not gated through HYBRID_SPECIALIZATIONS at all — see the triple-stat check in
+    // checkAttunementAndSpecialization() and its own comment for why.
+    QUASAR: {
+      name: 'Quasar', icon: '🌟', baseCost: 0, unlocksAfterWave: 0,
+      blurb: "The rarest unlock in the game — reachable from any base class, but only once STR, DEX, AND INT have each reached 500 (not just two). A blinding white burst that scorches and slows everything in a small radius, not just its direct target.",
+      tiers: [
+        { range: 190, damage: 20, cooldown: 1700, projectileSpeed: 900,  splashRadius: 55, poisonDamage: 8,  poisonDuration: 2800, slowFactor: 0.3,  slowDuration: 1300 },
+        { range: 210, damage: 31, cooldown: 1500, projectileSpeed: 1000, splashRadius: 65, poisonDamage: 12, poisonDuration: 3000, slowFactor: 0.36, slowDuration: 1500, upgradeCost: 180 },
+        { range: 230, damage: 46, cooldown: 1300, projectileSpeed: 1100, splashRadius: 75, poisonDamage: 18, poisonDuration: 3400, slowFactor: 0.42, slowDuration: 1700, upgradeCost: 260 }
       ]
     },
     GUNALINDER: {
@@ -1788,6 +1995,23 @@ function validateGameDefinitions(){
     }
   }
 
+  // HYBRID_SPECIALIZATIONS — every base class must be attunable, every pair key must be two real
+  // attunement elements joined with '+' in sorted order (matching how checkAttunementAndSpecialization()
+  // actually builds the key), and every target must exist.
+  for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
+    if(!BASE_ATTUNABLE_TYPES.includes(baseType)) problems.push('HYBRID_SPECIALIZATIONS.' + baseType + ' — not in BASE_ATTUNABLE_TYPES');
+    const branches = HYBRID_SPECIALIZATIONS[baseType];
+    for(const pairKey of Object.keys(branches)){
+      const parts = pairKey.split('+');
+      const expectedKey = parts.length === 2 ? [...parts].sort().join('+') : null;
+      if(parts.length !== 2 || !validElements.includes(parts[0]) || !validElements.includes(parts[1]) || pairKey !== expectedKey){
+        problems.push('HYBRID_SPECIALIZATIONS.' + baseType + '.' + pairKey + ' — not two valid attunement elements in sorted-order "A+B" form');
+      }
+      const target = branches[pairKey];
+      if(!towerTypes.includes(target)) problems.push('HYBRID_SPECIALIZATIONS.' + baseType + '.' + pairKey + ' = "' + target + '" — not in CONFIG.TOWERS');
+    }
+  }
+
   // SPLIT_CHILD_TYPE — parent and child must both exist as enemy types
   for(const parentType of Object.keys(SPLIT_CHILD_TYPE)){
     if(!enemyTypes.includes(parentType)) problems.push('SPLIT_CHILD_TYPE.' + parentType + ' — parent not in CONFIG.ENEMIES');
@@ -1803,6 +2027,23 @@ function validateGameDefinitions(){
   // STARTER_TOWER_TYPES / EVOLVED_TOWER_TYPES — every listed type must exist
   for(const type of STARTER_TOWER_TYPES) if(!towerTypes.includes(type)) problems.push('STARTER_TOWER_TYPES contains "' + type + '" — not in CONFIG.TOWERS');
   for(const type of EVOLVED_TOWER_TYPES) if(!towerTypes.includes(type)) problems.push('EVOLVED_TOWER_TYPES contains "' + type + '" — not in CONFIG.TOWERS');
+  // Every EVOLVED_TOWER_TYPES entry must actually be reachable — present in
+  // TOWER_UNLOCK_SOURCE_BY_TARGET (and therefore UNLOCKABLE_TOWER_TYPES, which the Build tray's
+  // locked/unlocked row loop is driven by directly). This is exactly the check that would have
+  // caught Blow Gunner never appearing in the Build tray at all, locked or unlocked, because
+  // HYBRID_SPECIALIZATIONS targets weren't being folded into TOWER_UNLOCK_SOURCE_BY_TARGET —
+  // found by inspection while adding Cat Snapper's own entry, not by this check (which didn't
+  // exist yet), but added now so the next gap like it fails loudly instead of silently.
+  for(const type of EVOLVED_TOWER_TYPES){
+    if(!UNLOCKABLE_TOWER_TYPES.includes(type)) problems.push('"' + type + '" is in EVOLVED_TOWER_TYPES but missing from UNLOCKABLE_TOWER_TYPES/TOWER_UNLOCK_SOURCE_BY_TARGET — it would never appear in the Build tray at all, locked or unlocked');
+  }
+
+  // MAX_ONE_PER_BOARD_TYPES / SCALING_COST_TYPES — every listed type must exist, and the two
+  // lists must be mutually exclusive (a hyper-rare capped-at-one type scaling its own cost by
+  // count-on-board would be contradictory — it can never have more than 1 to scale against).
+  for(const type of MAX_ONE_PER_BOARD_TYPES) if(!towerTypes.includes(type)) problems.push('MAX_ONE_PER_BOARD_TYPES contains "' + type + '" — not in CONFIG.TOWERS');
+  for(const type of SCALING_COST_TYPES) if(!towerTypes.includes(type)) problems.push('SCALING_COST_TYPES contains "' + type + '" — not in CONFIG.TOWERS');
+  for(const type of SCALING_COST_TYPES) if(MAX_ONE_PER_BOARD_TYPES.includes(type)) problems.push('"' + type + '" is in both SCALING_COST_TYPES and MAX_ONE_PER_BOARD_TYPES — contradictory');
 
   // FOOTSTEP_WEIGHT — every keyed enemy type must exist
   for(const type of Object.keys(FOOTSTEP_WEIGHT)){
@@ -2115,7 +2356,7 @@ function getPositionAtTraveled(dist){
 function updateBarricadesAndPileup(){
   const active = [];
   for(const e of enemyPool){
-    if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime) continue;
+    if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime || e.escaped) continue;
     e.pileBlocked = false;
     e.touchingBarricade = false;
     e.candidateBarricade = findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
@@ -2643,6 +2884,17 @@ function drawDepthSortedLayer(ctx){
     // ordering against anything at a real depth difference.
     items.push({ sortY: d.y - 0.5, kind: 'd', d });
   }
+  // Start-line flags — depth-sorted by their own "feet" (the pole's bottom, same point
+  // drawFinishFlagPole() plants) exactly like scenery/enemies/towers/debris above, instead of
+  // being baked into the static map layer where they'd always draw behind every enemy and blood
+  // decal regardless of actual position. A flag has real height (like a tree), so it needs the
+  // same occlusion treatment — an enemy standing in front of it should cover it, one standing
+  // behind it should be covered by it, which a flat baked layer can never do correctly.
+  const sf = computeSpawnFlags();
+  if(sf){
+    items.push({ sortY: sf.flagLower.y, kind: 'f', pos: sf.flagLower, center: sf.center, isBlack: true });
+    items.push({ sortY: sf.flagUpper.y, kind: 'f', pos: sf.flagUpper, center: sf.center, isBlack: false });
+  }
   items.sort((a,b) => a.sortY - b.sortY);
   for(const it of items){
     switch(it.kind){
@@ -2650,6 +2902,12 @@ function drawDepthSortedLayer(ctx){
       case 'e': it.e.draw(ctx); break;
       case 't': it.t.draw(ctx, it.t === selectedTower); break;
       case 'd': drawOneDecal(ctx, it.d); break;
+      case 'f': {
+        const dx = it.pos.x-it.center.x, dy = it.pos.y-it.center.y;
+        const dlen = Math.hypot(dx,dy) || 1;
+        drawFinishFlagPole(ctx, it.pos.x, it.pos.y, dx/dlen, dy/dlen, it.isBlack);
+        break;
+      }
     }
   }
   perfStats.visibleScenery = visibleSceneryCount;
@@ -2668,6 +2926,111 @@ function roundedRectPath(ctx,x,y,w,h,r){
   ctx.closePath();
 }
 
+// Single authoritative source for where the finish line's carpet actually sits, in world pixel
+// space — used both by the carpet render in drawMap() below and by Enemy's own final-stretch
+// movement/escape check (see update()'s `if(!target)` branch and reachEnd()), so the two can
+// never drift out of sync with each other. `edgeX/edgeY` is the true outer boundary of the last
+// path tile (the last waypoint sits at that tile's CENTER — see rebuildPathCellsAndPx() — so the
+// edge is exactly one half-tile further out, in the direction of travel), not the waypoint's own
+// center point. `ux/uy` is the unit direction of travel at that edge. `lowerP`/`upperP` are the
+// two corners of that edge, split by absolute screen Y (further +Y = "lower", further -Y =
+// "upper") regardless of which literal compass direction the path happens to be exiting toward,
+// since the spiral path can end pointing any direction. The finish flags live on the SPAWN tile
+// instead (see computeSpawnFlags() below), not here — this function is carpet-only now.
+function computeFinishLine(){
+  if(!waypointsPx || waypointsPx.length < 2) return null;
+  const end = waypointsPx[waypointsPx.length - 1];
+  const prev = waypointsPx[waypointsPx.length - 2];
+  const dirX = end.x - prev.x, dirY = end.y - prev.y;
+  const dirLen = Math.hypot(dirX, dirY) || 1;
+  const ux = dirX/dirLen, uy = dirY/dirLen;
+  const perpX = -uy, perpY = ux;
+  const halfSpan = TILE_SIZE * 0.5;
+  const edgeX = end.x + ux*halfSpan, edgeY = end.y + uy*halfSpan;
+  const pA = { x: edgeX + perpX*halfSpan, y: edgeY + perpY*halfSpan };
+  const pB = { x: edgeX - perpX*halfSpan, y: edgeY - perpY*halfSpan };
+  const lowerP = pA.y >= pB.y ? pA : pB;
+  const upperP = pA.y >= pB.y ? pB : pA;
+  return { edgeX, edgeY, ux, uy, lowerP, upperP };
+}
+// The two flags mark the SPAWN tile instead — where enemies actually appear — not the finish
+// tile, per direct request: they should move with wherever enemies currently spawn from, round to
+// round, rather than sit fixed by the carpet. Mirrors computeFinishLine()'s own geometry exactly,
+// just anchored at the path's FIRST waypoint instead of its last, using the initial direction of
+// travel (leaving the spawn) instead of the final one. Both flags land on the spawn tile's own far
+// edge — the side facing away from that initial direction of travel, i.e. "behind" where enemies
+// first appear — reading as a start line rather than sitting in the middle of the tile. Recomputed
+// fresh from the current path every call, exactly like computeFinishLine() — already correctly
+// follows the spawn point if the path itself changes between rounds (map expansion, reroll), with
+// no caching or extra wave-change handling needed.
+function computeSpawnFlags(){
+  if(!waypointsPx || waypointsPx.length < 2) return null;
+  const start = waypointsPx[0];
+  const next = waypointsPx[1];
+  const dirX = next.x - start.x, dirY = next.y - start.y;
+  const dirLen = Math.hypot(dirX, dirY) || 1;
+  const ux = dirX/dirLen, uy = dirY/dirLen;
+  const perpX = -uy, perpY = ux;
+  const halfSpan = TILE_SIZE * 0.5;
+  const farEdgeX = start.x - ux*halfSpan, farEdgeY = start.y - uy*halfSpan; // opposite the direction enemies first walk
+  const fA = { x: farEdgeX + perpX*halfSpan, y: farEdgeY + perpY*halfSpan };
+  const fB = { x: farEdgeX - perpX*halfSpan, y: farEdgeY - perpY*halfSpan };
+  const flagLower = fA.y >= fB.y ? fA : fB; // "lower" = further down/+Y = black flag, same convention as computeFinishLine()
+  const flagUpper = fA.y >= fB.y ? fB : fA;
+  return { center: start, flagLower, flagUpper };
+}
+// Small procedural flag-and-pole, planted with the pole's BOTTOM exactly at (x,y) — no offset, no
+// emoji glyph. Renders identically crisp on every platform/font, unlike the 🏴/🏳️ characters this
+// replaced, whose rendering quality depended entirely on the browser's own emoji font. awayX/awayY
+// is the direction the banner points away from the pole (typically away from the finish tile's
+// own center) — direction of the WIND itself never drives the underlying gameplay effect
+// (windMissPenalty() stays strength-only), but it does now lean the flutter a little for visual
+// variety — see windDirAngle below.
+function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
+  const poleH = 26;
+  ctx.strokeStyle = '#6b5842'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-poleH); ctx.stroke();
+  ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
+  // Flutter — several points along the banner's length, each rippling with a phase that shifts
+  // with position (a real traveling wave, not two rigid control points swinging the whole shape
+  // back and forth like a fish tail), and amplitude that grows from exactly 0 right at the pole
+  // (where real cloth is pinned) up to full strength at the free end. Speed and amplitude both
+  // scale gently with windStrength — a calm day barely moves the banner, a strong gust visibly
+  // whips it, but neither ever moves fast enough to read as flicking rather than fluttering.
+  const perpX = -awayY, perpY = awayX;
+  const amp = 1 + windStrength*3;
+  const speed = 1.6 + windStrength*1.8;
+  const phase = gameTime/1000*speed;
+  // A slight, slowly-drifting lean toward the current wind direction (windDirAngle) — how much of
+  // that direction actually pushes across this particular flag depends on the angle between the
+  // wind and the banner's own away-axis, so a flag doesn't lean the same amount regardless of
+  // which way it happens to be facing.
+  const windDirX = Math.cos(windDirAngle), windDirY = Math.sin(windDirAngle);
+  const leanAmount = (windDirX*perpX + windDirY*perpY) * windStrength * 2.5;
+  const segs = 4;
+  const bannerLen = 16, bannerHalfH = 4.5;
+  const topPts = [], botPts = [];
+  for(let i=0;i<=segs;i++){
+    const t = i/segs;
+    const ripple = Math.sin(phase - t*3.0) * amp * t + leanAmount*t;
+    const bx = x + awayX*bannerLen*t, by = y-poleH + awayY*bannerLen*t;
+    const halfH = bannerHalfH*(1 - t*0.3);
+    topPts.push({ x: bx + perpX*(ripple - halfH), y: by + perpY*(ripple - halfH) });
+    botPts.push({ x: bx + perpX*(ripple + halfH), y: by + perpY*(ripple + halfH) });
+  }
+  ctx.beginPath();
+  ctx.moveTo(topPts[0].x, topPts[0].y);
+  for(let i=1;i<topPts.length;i++) ctx.lineTo(topPts[i].x, topPts[i].y);
+  for(let i=botPts.length-1;i>=0;i--) ctx.lineTo(botPts[i].x, botPts[i].y);
+  ctx.closePath();
+  ctx.fill();
+  // Both flags get a contrasting outline now — white banner on black, black banner on white —
+  // rather than only the white one, so each reads clearly regardless of what's behind it (a dark
+  // path tile behind the black flag, a light buildable tile behind the white one).
+  ctx.strokeStyle = isBlack ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
 function drawMap(ctx){
   ctx.fillStyle = '#8b5a2b';
   ctx.fillRect(0,0,WORLD_MAX_W,WORLD_MAX_H);
@@ -2716,42 +3079,45 @@ function drawMap(ctx){
     }
   }
 
-  // Finish-line carpet — a checkered black/white strip laid across the actual end of the path
-  // (where enemies reach and damage lives), so the "you lose here" point reads as clearly
-  // demarcated rather than the lane just trailing off. Orientation is derived from the last two
-  // real path waypoints (perpendicular to the direction of travel there), not a fixed
-  // horizontal/vertical assumption, since the spiral path can end pointing any direction.
-  if(waypointsPx && waypointsPx.length >= 2){
-    const end = waypointsPx[waypointsPx.length - 1];
-    const prev = waypointsPx[waypointsPx.length - 2];
-    const dirX = end.x - prev.x, dirY = end.y - prev.y;
-    const dirLen = Math.hypot(dirX, dirY) || 1;
-    const perpX = -dirY/dirLen, perpY = dirX/dirLen; // perpendicular to travel direction
-    const halfSpan = TILE_SIZE * 0.5;
-    // "Lower" end = further down/+Y (black flag), "upper" end = further up/-Y (white flag) —
-    // independent of which literal perpendicular direction the math produces first.
-    const pA = { x: end.x + perpX*halfSpan, y: end.y + perpY*halfSpan };
-    const pB = { x: end.x - perpX*halfSpan, y: end.y - perpY*halfSpan };
-    const lowerP = pA.y >= pB.y ? pA : pB;
-    const upperP = pA.y >= pB.y ? pB : pA;
-    const squareCount = 8;
-    for(let i=0; i<squareCount; i++){
-      const t0 = i/squareCount, t1 = (i+1)/squareCount;
-      ctx.fillStyle = i%2===0 ? '#1a1a1a' : '#f0f0f0';
-      ctx.beginPath();
-      ctx.moveTo(upperP.x+(lowerP.x-upperP.x)*t0, upperP.y+(lowerP.y-upperP.y)*t0);
-      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t1, upperP.y+(lowerP.y-upperP.y)*t1);
-      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t1 + dirX/dirLen*10, upperP.y+(lowerP.y-upperP.y)*t1 + dirY/dirLen*10);
-      ctx.lineTo(upperP.x+(lowerP.x-upperP.x)*t0 + dirX/dirLen*10, upperP.y+(lowerP.y-upperP.y)*t0 + dirY/dirLen*10);
-      ctx.closePath();
-      ctx.fill();
+  // Finish-line carpet — a genuinely 2D checkered black/white strip (alternating along BOTH the
+  // perpendicular and the thickness axis, not just one row of stripes down one axis — the
+  // previous version only alternated one way, which read as plain stripes rather than a
+  // checkerboard at this aspect ratio) laid flush against the true outer edge of the last path
+  // tile (where an enemy's entire body must actually clear before it counts as having crossed —
+  // see computeFinishLine()/Enemy.update()'s final-stretch branch). The strip's outer boundary
+  // sits exactly ON that edge and extends back INWARD (toward the path) by its own thickness, so
+  // it reads as flush with the boundary rather than overhanging past it into unrendered space.
+  // The flags themselves are no longer drawn here — see computeSpawnFlags() below, on the spawn
+  // tile instead.
+  const fl = computeFinishLine();
+  if(fl){
+    const { ux, uy, lowerP, upperP } = fl;
+    const stripThickness = 16;
+    const cols = 8, rows = 2; // 8x2 cells, each a true square (64px edge / 8 cols = 8px; 16px thickness / 2 rows = 8px)
+    for(let row=0; row<rows; row++){
+      const r0 = row/rows, r1 = (row+1)/rows;
+      for(let col=0; col<cols; col++){
+        const c0 = col/cols, c1 = (col+1)/cols;
+        ctx.fillStyle = (col+row)%2===0 ? '#1a1a1a' : '#f0f0f0';
+        const outerX0 = upperP.x+(lowerP.x-upperP.x)*c0, outerY0 = upperP.y+(lowerP.y-upperP.y)*c0;
+        const outerX1 = upperP.x+(lowerP.x-upperP.x)*c1, outerY1 = upperP.y+(lowerP.y-upperP.y)*c1;
+        ctx.beginPath();
+        ctx.moveTo(outerX0 - ux*stripThickness*r0, outerY0 - uy*stripThickness*r0);
+        ctx.lineTo(outerX1 - ux*stripThickness*r0, outerY1 - uy*stripThickness*r0);
+        ctx.lineTo(outerX1 - ux*stripThickness*r1, outerY1 - uy*stripThickness*r1);
+        ctx.lineTo(outerX0 - ux*stripThickness*r1, outerY0 - uy*stripThickness*r1);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(upperP.x, upperP.y); ctx.lineTo(lowerP.x, lowerP.y); ctx.stroke();
-    ctx.font = '22px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('🏴', lowerP.x, lowerP.y);
-    ctx.fillText('🏳️', upperP.x, upperP.y);
   }
+
+  // The start-line flags are NOT drawn here — they now live in the dynamic depth-sorted layer
+  // (see drawDepthSortedLayer()'s 'f' case), same as trees/rocks, so enemies and blood decals can
+  // properly occlude/be occluded by them based on actual position instead of a flag always
+  // drawing behind every dynamic entity regardless of where either one actually is.
 
   // Flora — sparse cosmetic ground-cover accents (CONFIG.FLORA). Baked here rather than drawn
   // per-frame since it's flat ground texture with no occlusion needs, unlike trees/rocks (which
@@ -2767,7 +3133,22 @@ function drawMap(ctx){
   }
 }
 function rebakeMap(){
-  drawMap(mapCanvas.getContext('2d'));
+  // mapCanvas's raster resolution is dprValue-scaled (see resizeMapCanvasForDpr()), but drawMap()
+  // itself is written entirely in world-pixel coordinates — scaling this context by dprValue here
+  // lets drawMap() stay coordinate-system-agnostic while the actual baked bitmap ends up at the
+  // display's real device-pixel density instead of a flat 1x raster later stretched to fit it.
+  const mctx = mapCanvas.getContext('2d');
+  mctx.setTransform(dprValue,0,0,dprValue,0,0);
+  drawMap(mctx);
+}
+// Resizes the offscreen static-map canvas to match the current dprValue and re-bakes it —
+// called once at BOOT and again whenever setupCanvas() detects dprValue actually changed
+// (graphics-quality toggle, or a cross-monitor DPI change). WORLD_MAX_W/H (the fixed map extent)
+// never change, only how many raster pixels represent them.
+function resizeMapCanvasForDpr(){
+  mapCanvas.width = WORLD_MAX_W * dprValue;
+  mapCanvas.height = WORLD_MAX_H * dprValue;
+  rebakeMap();
 }
 
 function drawBuildPreview(ctx){
@@ -2779,7 +3160,7 @@ function drawBuildPreview(ctx){
   if(moveModeTower){
     valid = isTileBuildable(gx, gy, moveModeTower, moveModeTower.type);
   } else {
-    valid = isTileBuildable(gx, gy, null, selectedBuildType) && canAffordTower(selectedBuildType);
+    valid = isTileBuildable(gx, gy, null, selectedBuildType) && canAffordTower(selectedBuildType) && isTowerTypeAvailable(selectedBuildType);
   }
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
   ctx.save();
@@ -3074,6 +3455,18 @@ class SoundEngine{
         break;
       }
       case 'wave':  this.tone(440,0.20,'sine',660,undefined,undefined,undefined,true); break;
+      case 'roundStart': // the new pre-spawn countdown's fanfare (see WAVE_COUNTDOWN_MS/
+        // drawWaveCountdown()) — a real short-short-short-LONG bugle-call rhythm on a brassier
+        // sawtooth voice, deliberately distinct in timbre from the sine-based 'evolution'/'hero'/
+        // 'legendary' motif family so it reads as "a round is starting," not as one more member of
+        // that unlock-fanfare vocabulary. stablePitch/force throughout — a state-confirmation cue
+        // every player hears every single round should be crisp and unwobbling, never throttled.
+        this.duck(-3, 1.1);
+        this.tone(440, 0.12, 'sawtooth', 440, undefined, true, 0,    true, true);
+        this.tone(440, 0.12, 'sawtooth', 440, undefined, true, 0.18, true, true);
+        this.tone(554, 0.12, 'sawtooth', 554, undefined, true, 0.36, true, true);
+        this.tone(659, 0.45, 'sawtooth', 659, undefined, true, 0.54, true, true); // held final note
+        break;
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
       case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
@@ -3167,6 +3560,7 @@ class SoundEngine{
       case 'shot_blowdart':this.tone(1800, 0.05, 'sine', 1200); break; // soft high puff
       case 'shot_gunalinder': this.noise(0.06, 900, 'bandpass'); this.tone(150, 0.05, 'square', 80); break; // mechanical clack
       case 'shot_squirtgun': this.tone(600, 0.07, 'triangle', 300); this.noise(0.05, 1800, 'highpass'); break; // wet spray
+      case 'shot_cat': this.noise(0.06, 1400, 'bandpass'); this.tone(500, 0.07, 'sine', 900); break; // soft toss whoosh with a quick playful rising blip — not a bowstring/gunshot, this is a throw
       case 'shot_bomber':   this.tone(120, 0.14, 'sine', 55); this.noise(0.14, 250, 'lowpass'); break; // heavy lob thud
       case 'cast_mage': { // rising magical shimmer with a deep bass thump — staged envelope:
         // faint anticipation shimmer, then the existing blast, then an extended bass tail so the
@@ -3395,13 +3789,35 @@ const MAX_FREE_BARRICADES = 3;
 // tower costs gold (checked in the fallback branch below); Barricade is the one exception — it's
 // bought directly from Build with wood/stone (or a free charge), not gold, since the 1.1.47 fix
 // moved it out of the Shop's confusing buy-into-inventory-then-drag flow.
+function towerCountOnBoard(type){
+  let n = 0;
+  for(const t of towerPool) if(t.active && t.type === type) n++;
+  return n;
+}
+// Single authoritative cost calculation — used by canAffordTower(), the actual gold deduction at
+// placement, and every build-tray cost label, so none of them can drift out of sync with each
+// other. Returns the flat CONFIG.TOWERS baseCost unchanged for every type except the 3 in
+// SCALING_COST_TYPES, where it compounds by SCALING_COST_GROWTH per already-active copy of that
+// same type on the board.
+function currentBuildCost(type){
+  const base = CONFIG.TOWERS[type].baseCost;
+  if(!SCALING_COST_TYPES.includes(type)) return base;
+  return Math.round(base * Math.pow(SCALING_COST_GROWTH, towerCountOnBoard(type)));
+}
+// The MAX_ONE_PER_BOARD_TYPES cap — distinct from affordability, since a player could easily have
+// enough gold for a second Pope and still be blocked. Selling/losing the existing one frees the
+// slot again (this checks live board state, not a one-time-ever flag).
+function isTowerTypeAvailable(type){
+  if(!MAX_ONE_PER_BOARD_TYPES.includes(type)) return true;
+  return towerCountOnBoard(type) === 0;
+}
 function canAffordTower(type){
   if(type === 'BARRICADE'){
     const def = CONFIG.TOWERS.BARRICADE;
     if(freeBarricadesLeft > 0) return true;
     return wood >= def.woodCost && stone >= def.stoneCost;
   }
-  return gold >= CONFIG.TOWERS[type].baseCost;
+  return gold >= currentBuildCost(type);
 }
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
 let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
@@ -3410,6 +3826,57 @@ let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD b
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
 let realTimeFrozen = false; // true while waveState is IDLE (between waves) — blood shouldn't age at all during the rest period between rounds
+// Ambient wind — 0 (calm) to 1 (max gust), a bounded random walk (each new target is a step away
+// from the CURRENT value, not an independent re-roll) so it can never jump straight to a wildly
+// different level — always ramps through the intermediate range on the way there. Capped per-wave
+// by windCeilingForWave (see startNextWave()), which itself scales with progress — rough wind is
+// genuinely rare in the early game and becomes a real possibility later, not present from wave 1.
+// Direction (windDirAngle) is a separate, independently-walking value — cosmetic only, purely for
+// the flag's flutter lean; the gameplay effect (windMissPenalty()) stays direction-agnostic, only
+// strength matters there. Both advance via gameTime's own dt (already scaled by gameSpeed), so
+// gusts and their gameplay effect speed up consistently with the game rather than gusting in
+// real-time while their effect lags behind at high speed.
+let windStrength = 0;
+let windTarget = 0;
+let windRetargetTimer = 0;
+let windCeilingForWave = 0.15; // set fresh each round in startNextWave() — see there for the actual progression curve
+let windDirAngle = Math.random()*Math.PI*2;
+let windDirTarget = windDirAngle;
+let windDirRetargetTimer = 0;
+function updateWind(dt){
+  windRetargetTimer -= dt;
+  if(windRetargetTimer <= 0){
+    windRetargetTimer = 6000 + Math.random()*9000; // a new target every 6-15s — noticeably slower/more gradual than before
+    const maxStep = 0.35; // how far a single retarget can reach from wherever wind currently is — never a jump straight from calm to a full gust
+    const step = (Math.random()*2 - 1) * maxStep;
+    windTarget = clampNum(windStrength + step, 0, windCeilingForWave);
+  }
+  windStrength += (windTarget - windStrength) * Math.min(1, dt/4500); // slower ease than before — a gentler, more gradual build/fade rather than a quick slide
+  windDirRetargetTimer -= dt;
+  if(windDirRetargetTimer <= 0){
+    windDirRetargetTimer = 8000 + Math.random()*10000;
+    windDirTarget = windDirAngle + (Math.random()*2-1)*(Math.PI*0.6); // direction drifts by up to ~110°, never spins instantly to face the opposite way
+  }
+  let diff = windDirTarget - windDirAngle;
+  while(diff > Math.PI) diff -= Math.PI*2;
+  while(diff < -Math.PI) diff += Math.PI*2;
+  windDirAngle += diff * Math.min(1, dt/6000);
+}
+// Current wind's added miss-chance penalty for a tower's own ranged attack roll — Archer- and
+// Mage-archetype classes only, never Warriors (a melee swing isn't meaningfully wind-affected the
+// way an arrow or bolt actually in flight is). Mage gets an extra, quadratic-in-wind term on top
+// of the shared base penalty — "even more when very windy," not just the same flat amount every
+// archetype gets — since a slower, heavier magic bolt spends more time in flight for a gust to
+// actually throw it off than a faster arrow does. Direction of the wind never enters into this —
+// only its strength — matching the underlying gameplay effect, though the flag's visual flutter
+// now does lean with windDirAngle for a bit of variety.
+function windMissPenalty(tower){
+  const archetype = CLASS_ARCHETYPE[tower.type];
+  if(archetype !== 'ARCHER' && archetype !== 'MAGE') return 0;
+  let penalty = windStrength * 0.25; // up to +25 percentage points of miss chance at max wind
+  if(archetype === 'MAGE') penalty += windStrength * windStrength * 0.15;
+  return penalty;
+}
 let isMuted = false;
 // Lightweight UI-preference persistence — deliberately separate from the file-based full game
 // save system (serializeGameState/restoreGameState), which stays exactly as-is. This is only for
@@ -3454,6 +3921,11 @@ loadPrefs();
 })();
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
+// Flat delay (added to every spawn's own already-tuned delay in startNextWave()) before the first
+// enemy of a new wave actually arrives — gives the round-start fanfare/countdown/leaf-gust/camera
+// pan a moment to land instead of the wave visually starting and spawning in the same instant. See
+// drawWaveCountdown() for the on-screen "3-2-1-GO" and the 'roundStart' sound case for the fanfare.
+const WAVE_COUNTDOWN_MS = 3000;
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let spawnQueue = [];
@@ -3720,6 +4192,8 @@ function restoreGameState(state){
   for(const e of enemyPool) e.active = false;
   for(const t of towerPool) t.active = false;
   for(const p of projectilePool) p.active = false;
+  for(const c of catPool) c.active = false; // temporary companions never persist across a save — see CatCompanion's own comment
+  for(const s of skeletonPool) s.active = false; // same — skeletons are round-scoped, never saved
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   sceneryMap.clear();
@@ -3786,7 +4260,7 @@ function restoreGameState(state){
   rebakeMap();
   centerCameraOnActiveRegion();
   gameState = 'PLAYING';
-  blowingLeaves = []; scheduleLeafGust();
+  blowingLeaves = [];
   document.getElementById('start-screen').classList.add('hidden');
   updateHUD();
   updateInspectPanel();
@@ -3805,6 +4279,24 @@ function validateSaveShape(state){
   if(typeof state.gold !== 'number' || typeof state.lives !== 'number') return false;
   if(!Array.isArray(state.pathWaypointTiles)) return false;
   if(!state.activeRegion || typeof state.activeRegion !== 'object') return false;
+  // restoreGameState() destructively clears every live pool (enemyPool/towerPool/projectilePool/
+  // sceneryMap) in its first lines with no validation of its own, then iterates state.towers/
+  // state.scenery directly. If either field is present but malformed (not an array, or a tower
+  // entry with a type that isn't a real CONFIG.TOWERS key — t.create() dereferences
+  // CONFIG.TOWERS[type].baseCost unguarded), that iteration throws AFTER the destructive clear
+  // has already run. loadSaveFileText()'s try/catch swallows the exception and reports "could not
+  // read that save file," which reads as "nothing happened" but the live in-progress session was
+  // actually already destroyed. Reject here, before restoreGameState() ever runs, so a malformed
+  // towers/scenery payload fails the same way an obviously-invalid file already did.
+  if(state.towers !== undefined){
+    if(!Array.isArray(state.towers)) return false;
+    for(const td of state.towers){
+      if(!td || typeof td !== 'object') return false;
+      if(typeof td.type !== 'string' || !CONFIG.TOWERS[td.type]) return false;
+      if(typeof td.gridX !== 'number' || typeof td.gridY !== 'number') return false;
+    }
+  }
+  if(state.scenery !== undefined && !Array.isArray(state.scenery)) return false;
   return true;
 }
 function loadSaveFileText(text){
@@ -4078,6 +4570,12 @@ class Enemy{
     this.footstepWeight = FOOTSTEP_WEIGHT[type] !== undefined ? FOOTSTEP_WEIGHT[type] : 1;
     this.footstepDist = this.footstepWeight === null ? Infinity : (this.radius * 17);
     this.enrageCueFired = false; // one-shot low-HP growl for Boss/Troll (see update())
+    // Escaped/wandering state — see reachEnd()/updateEscaped(). Reset explicitly on every reuse
+    // (pool slot could previously have belonged to an escaped enemy that was later cleared by
+    // startNextWave() without passing back through spawn()'s normal death/deactivation path).
+    this.escaped = false;
+    this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0;
+    this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
     this.active = true;
   }
   applySlow(factor, duration){
@@ -4248,6 +4746,11 @@ class Enemy{
     }
     if(this.healsAllies) this.updateHealAura(dt);
     if(this.hasShield) this.updateShieldRegen(dt);
+    // Escaped enemies (see reachEnd()) get their own fully separate movement branch — same DOT/
+    // status/gore handling above still applies (they can still burn/bleed/be poisoned to death
+    // while wandering), but none of the path-following, barricade-pileup, breakaway, troll, or
+    // stall-watchdog logic below is relevant to something no longer walking a path.
+    if(this.escaped){ this.updateEscaped(dt); return; }
     // One-shot low-HP growl for the game's two "tough, distinct" enemies — telegraphs a real
     // state change through sound instead of only a shrinking health bar. Checked before the
     // pileBlocked/stunned early-returns below so it still fires even while queued at a barricade,
@@ -4307,7 +4810,23 @@ class Enemy{
     // keep fighting right back — that push-and-correct cycle is what read as jittery bumping.
     if(this.followSpeedCap !== undefined && this.followSpeedCap < effectiveSpeed) effectiveSpeed = this.followSpeedCap;
     const target = waypointsPx[this.pathIndex+1];
-    if(!target){ this.reachEnd(); return; }
+    if(!target){
+      // Final stretch: this enemy has passed the last real waypoint but hasn't fully crossed the
+      // finish line yet (see computeFinishLine() and the matching carpet render in drawMap()) —
+      // keep walking straight in the same direction the path was already heading, rather than
+      // instantly vanishing at the waypoint's center. reachEnd() only fires once this enemy's own
+      // BACK edge (center minus its radius, along the direction of travel) has cleared the tile's
+      // true outer edge — i.e. its entire sprite, not just its leading point, is past the carpet.
+      const fl = computeFinishLine();
+      if(!fl){ this.reachEnd(); return; } // degenerate/unset path — fail safe to the old immediate behavior rather than getting stuck with nowhere to walk
+      const alongDist = (this.x - fl.edgeX)*fl.ux + (this.y - fl.edgeY)*fl.uy;
+      if(alongDist >= this.radius){ this.reachEnd(); return; }
+      const finalSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
+      this.vx = fl.ux*finalSpeed; this.vy = fl.uy*finalSpeed;
+      this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
+      this.traveled += finalSpeed*dt/1000;
+      return;
+    }
     const dx = target.x - this.x, dy = target.y - this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
     const moveDist = effectiveSpeed * dt / 1000;
@@ -4462,7 +4981,79 @@ class Enemy{
     this.isBreakaway = false;
     this.breakawayDone = true; // won't try again this life — resumes its original path from here
   }
-  reachEnd(){ this.active = false; loseLife(1); }
+  reachEnd(){
+    loseLife(1);
+    // Doesn't deactivate — stays on screen as a wandering, still-killable target instead of
+    // disappearing the instant it crosses the finish line (see updateEscaped()). Persists across
+    // wave boundaries now (no longer force-cleared when the next wave starts — see
+    // startNextWave()) — never blocks a wave from completing regardless (see the `anyAlive`
+    // check's `!e.escaped` filter in update()), but otherwise stays a real, ongoing target/threat
+    // until something actually kills it.
+    this.escaped = true;
+    this.wanderRepickTimer = 0; // pick a wander heading on the very next tick instead of waiting out a leftover timer value
+  }
+  // Aimless post-escape wandering, PLUS a periodic real threat to nearby towers — an escaped
+  // enemy isn't just annoying to go hunt down, it can genuinely damage an unguarded tower if left
+  // wandering too long. Reuses findNearestActiveTower() and Tower.takeDamage() exactly as the
+  // normal on-path breakaway system already does (same damage/defeat/gore handling, zero special
+  // casing there) — only the targeting decision and movement are separate from that system, since
+  // isBreakaway/updateBreakaway() never actually run for an escaped enemy (update()'s dispatch
+  // returns via this method before ever reaching that check).
+  updateEscaped(dt){
+    if(this.escapedAttackTarget && this.escapedAttackTarget.active){
+      const t = this.escapedAttackTarget;
+      const dx = t.x-this.x, dy = t.y-this.y;
+      const dist = Math.hypot(dx,dy) || 0.0001;
+      const engageRange = 26;
+      if(dist > engageRange){
+        const chaseSpeed = this.speed * 0.7; // faster than aimless bumbling (0.4x below) but short of full on-path speed — reads as "went after that one on purpose"
+        this.vx = dx/dist*chaseSpeed; this.vy = dy/dist*chaseSpeed;
+        this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
+      } else {
+        this.vx = 0; this.vy = 0;
+        this.escapedAttackTimer -= dt;
+        if(this.escapedAttackTimer <= 0){
+          this.escapedAttackTimer = 800; // same cadence as the normal on-path breakaway attack
+          const defeated = t.takeDamage(this.breakDamage, this.statusOnTower);
+          if(defeated) this.escapedAttackTarget = null;
+        }
+      }
+      return; // skip the aimless-wander movement below while actively engaging a tower
+    }
+    // Re-rolled periodically rather than once at spawn (unlike the normal on-path willBreakaway
+    // roll) — and at a much higher chance per roll (0.5) than any on-path breakawayChance (max 0.6
+    // total across a whole lifetime, for Fire/Ice; most types are 0.02-0.04) — deliberately more
+    // aggressive, since this is meant to feel like a real, escalating cost for every escapee left
+    // wandering, not a rare event.
+    this.escapedAttackCheckTimer -= dt;
+    if(this.escapedAttackCheckTimer <= 0){
+      this.escapedAttackCheckTimer = 1000 + Math.random()*1000;
+      if(Math.random() < 0.5){
+        // Shorter reach than the on-path breakaway's 320 — a wandering escapee shouldn't be able
+        // to snipe a tower from clear across the map, only one it's actually bumbled near.
+        const target = findNearestActiveTower(this.x, this.y, 140);
+        if(target){ this.escapedAttackTarget = target; this.escapedAttackTimer = 0; }
+      }
+    }
+    this.wanderRepickTimer -= dt;
+    if(this.wanderRepickTimer <= 0){
+      this.wanderRepickTimer = 900 + Math.random()*1400;
+      const ang = Math.random()*Math.PI*2;
+      const bumbleSpeed = this.speed * 0.4; // slower, aimless — reads as "loose," not still fleeing somewhere
+      this.wanderVx = Math.cos(ang)*bumbleSpeed;
+      this.wanderVy = Math.sin(ang)*bumbleSpeed;
+    }
+    this.vx = this.wanderVx; this.vy = this.wanderVy;
+    this.x += this.vx*dt/1000;
+    this.y += this.vy*dt/1000;
+    // Soft bounce off the world bounds — keeps wandering enemies inside the generated map instead
+    // of drifting into never-rendered territory, without a hard "hit an invisible wall" stop.
+    const margin = this.radius + 20;
+    if(this.x < margin){ this.x = margin; this.wanderVx = Math.abs(this.wanderVx); }
+    else if(this.x > WORLD_MAX_W-margin){ this.x = WORLD_MAX_W-margin; this.wanderVx = -Math.abs(this.wanderVx); }
+    if(this.y < margin){ this.y = margin; this.wanderVy = Math.abs(this.wanderVy); }
+    else if(this.y > WORLD_MAX_H-margin){ this.y = WORLD_MAX_H-margin; this.wanderVy = -Math.abs(this.wanderVy); }
+  }
   applyDamage(amount, sourceTower, forStreak, isHoly){
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
@@ -5531,11 +6122,42 @@ class Tower{
         playSound('levelup');
       }
     }
+    // Cat Snapper — a raw DEX-threshold unlock directly on Archer, independent of attunement
+    // entirely (checked even if this.attunement is still null), since all 3 of Archer's own
+    // element slots are already taken and this was never going through that system at all — see
+    // the comment above SPECIALIZATIONS. Reuses SPECIALIZATION_THRESHOLD (500), the same number
+    // every other specialization unlock in this file already uses, rather than inventing a new one.
+    if(this.type === 'ARCHER' && this.dex >= SPECIALIZATION_THRESHOLD) unlockTowerTypeBuild('CAT_SNAPPER');
+    // Quasar — "all three elements equally." The pairKey system above (and HYBRID_SPECIALIZATIONS)
+    // is built entirely around this.attunement being a single locked value, which structurally
+    // can't express "all three at once" no matter how it's queried — so this doesn't go through
+    // that system, or through this.attunement, at all. Checked as its own fully independent
+    // condition instead: all three raw stats (str/dex/int) each reaching SPECIALIZATION_THRESHOLD
+    // (500) — the same number every other specialization/hybrid unlock in this file already uses,
+    // not a new threshold invented for this. Reachable from any of the 3 base classes, same as
+    // Proton/Dark Matter — nothing here is type-restricted beyond BASE_ATTUNABLE_TYPES, which is
+    // already what gates every tower that reaches this function at all.
+    if(this.str >= SPECIALIZATION_THRESHOLD && this.dex >= SPECIALIZATION_THRESHOLD && this.int >= SPECIALIZATION_THRESHOLD){
+      unlockTowerTypeBuild('QUASAR');
+    }
     if(!this.attunement) return;
     const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
-    if(this[attunedStat] < SPECIALIZATION_THRESHOLD) return;
-    const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
-    if(target) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
+    if(this[attunedStat] >= SPECIALIZATION_THRESHOLD){
+      const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
+      if(target) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
+    }
+    // Hybrid check — independent of the single-element check above, off the same stat growth.
+    // Iterates the other two elements (never re-checks this.attunement's own element against
+    // itself) rather than hardcoding which pair might apply, so adding Proton/Dark Matter later is
+    // just adding a HYBRID_SPECIALIZATIONS entry, not touching this loop.
+    for(const other of Object.values(ATTUNEMENTS)){
+      if(other === this.attunement) continue;
+      const otherStat = ATTUNEMENT_STAT_BY_ELEMENT[other];
+      if(this[otherStat] < SPECIALIZATION_THRESHOLD) continue;
+      const pairKey = [this.attunement, other].sort().join('+'); // order-independent — locking Fire first or Ice first both reach 'FIRE+ICE'
+      const hybridTarget = HYBRID_SPECIALIZATIONS[this.type] && HYBRID_SPECIALIZATIONS[this.type][pairKey];
+      if(hybridTarget) unlockTowerTypeBuild(hybridTarget);
+    }
   }
   // Currently unused — kept defined rather than deleted. Towers no longer transform into a new
   // class at all (see checkEvolution()/checkAttunementAndSpecialization() above — reaching a
@@ -5728,7 +6350,7 @@ class Tower{
     }
     if(!target){ this.angle = IDLE_WEAPON_ANGLE; return; }
     this.angle = Math.atan2(target.y-this.y, target.x-this.x);
-    if(Math.random() < this.missChance){
+    if(Math.random() < this.missChance + windMissPenalty(this)){
       spawnFloatingText(target.x, target.y - target.radius - 6, 'MISS', '#aaaaaa');
     } else {
       // curse: a lingering DoT tick, not a single burst — 5x tick damage against undead specifically.
@@ -5873,6 +6495,12 @@ class Tower{
       case 'GATLING': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
       case 'BLOWDART': localReach = armLen*0.7 + 14*weaponScale; break; // short pipe held near the mouth — matches the render formula exactly, which does scale the pipe length
       case 'SQUIRTGUN': localReach = armLen*0.9 + weaponLenFromScale(11, 17, weaponScale); break;
+      case 'BLOW_GUNNER': localReach = armLen*0.85 + weaponLenFromScale(9, 14, weaponScale); break;
+      case 'CAT_SNAPPER': localReach = armLen + weaponLenFromScale(10, 16, weaponScale); break;
+      case 'NECROMANCER': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
+      case 'PROTON': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
+      case 'DARK_MATTER': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
+      case 'QUASAR': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
       default: localReach = armLen + 10;
     }
     const muzzleOffset = localReach * STICKMAN_SCALE;
@@ -5882,7 +6510,7 @@ class Tower{
     // bow sit higher than where the arrow actually spawned, i.e. arrows spawned visibly low.
     const bodyScaleY = this.buildScaleY || (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
     const legendaryScale = this.isLegendary ? 1.1 : 1;
-    const pivotBaseY = this.type === 'BLOWDART' ? -21 : -13; // Blowdart's arm now anchors at mouth height, not shoulder height — keep the spawn point in sync
+    const pivotBaseY = (this.type === 'BLOWDART' || this.type === 'BLOW_GUNNER') ? -21 : -13; // Blow Gunner is also a mouth-anchored blowgun weapon, same as Blowdart — keep the spawn point in sync
     const shoulderYWorld = pivotBaseY * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     const spawnX = this.x + Math.cos(angle)*muzzleOffset;
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
@@ -5898,18 +6526,23 @@ class Tower{
     p.slowDuration = this.slowDuration || 0;
     p.splashRadius = this.splashRadius || 0;
     p.isAxe = false;
-    p.isMagicMissile = this.type === 'MAGE' || this.type === 'SNAPCASTER';
+    // Marks this shot for Projectile.onImpact()'s 'CAT' branch — the cat doesn't deal impact
+    // damage itself, it spawns a CatCompanion that does the actual damage over its lifetime
+    // instead (see onImpact() below). Set unconditionally on every fire, like isAxe above, so a
+    // reused pooled Projectile can never carry a stale effectType from whatever it last was.
+    p.effectType = this.type === 'CAT_SNAPPER' ? 'CAT' : null;
+    p.isMagicMissile = this.type === 'MAGE' || this.type === 'SNAPCASTER' || this.type === 'NECROMANCER' || this.type === 'PROTON' || this.type === 'DARK_MATTER' || this.type === 'QUASAR';
     p.sourceTower = this;
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
-    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : '#f1c40f';
+    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : this.type === 'CAT_SNAPPER' ? '#2a2a2a' : this.type === 'NECROMANCER' ? '#5a2d82' : this.type === 'BLOW_GUNNER' ? '#c8e8f0' : this.type === 'PROTON' ? '#a855f7' : this.type === 'DARK_MATTER' ? '#1a1a2e' : this.type === 'QUASAR' ? '#fdf6d8' : '#f1c40f';
     // Hit/miss pre-roll — decided here, at launch, not at the moment of geometric contact. Object-
     // pool reuse means every one of these fields must be set unconditionally on every fire, or a
     // stale value from whatever this pooled Projectile last did could leak into this shot.
     p.trackedTarget = null; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
     if(!p.splashRadius && this.target){
       p.trackedTarget = this.target;
-      const willHit = Math.random() >= this.missChance;
+      const willHit = Math.random() >= (this.missChance + windMissPenalty(this));
       if(!willHit){
         // Deliberately bend the launch angle so the shot visibly clears the target's silhouette
         // by a real margin, instead of flying straight at it and only revealing "actually that
@@ -5929,8 +6562,8 @@ class Tower{
     const rangedSound = {
       ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
       BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
-      MARKSMAN: 'shot_gunalinder',
-      BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage'
+      MARKSMAN: 'shot_gunalinder', CAT_SNAPPER: 'shot_cat', BLOW_GUNNER: 'shot_blowdart',
+      BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage', NECROMANCER: 'cast_mage', PROTON: 'cast_mage', DARK_MATTER: 'cast_mage', QUASAR: 'cast_mage'
     }[this.type] || 'shot_archer';
     playSound(rangedSound);
     return true;
@@ -5988,6 +6621,7 @@ class Tower{
     p.angle = angle;
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0;
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this; p.isMagicMissile = false;
+    p.effectType = null; // reset — see fireProjectile()'s identical reset for why this must be unconditional on every fire path
     p.color = '#9aa0a6';
     // Same launch-time pre-roll as fireProjectile() — an axe throw is still a single-target shot
     // and needs the same accuracy handling, just via this separate acquisition path.
@@ -6180,16 +6814,25 @@ class Tower{
       swingProgress = st;
     }
     let castProgress = 0;
-    if(this.type === 'MAGE' || this.type === 'SNAPCASTER'){
+    if(this.type === 'MAGE' || this.type === 'SNAPCASTER' || this.type === 'PROTON' || this.type === 'DARK_MATTER' || this.type === 'QUASAR'){
       const sinceFired = gameTime - this.lastFireTime;
       if(sinceFired < 350) castProgress = 1 - sinceFired/350;
+    }
+    // Same post-fire-flourish pattern as castProgress above, for Cat Snapper's brief "cat visibly
+    // leaves the hand" beat right after a throw — see drawStickman()'s CAT_SNAPPER branch.
+    let throwProgress = 0;
+    if(this.type === 'CAT_SNAPPER'){
+      const sinceThrown = gameTime - this.lastFireTime;
+      if(sinceThrown < 350) throwProgress = 1 - sinceThrown/350;
     }
     // Continuous charge-up toward the next shot — 0 right after firing, approaching 1 as the
     // (now much longer) cooldown nears its end. Computed purely from cooldownTimer/cooldown, with
     // no dependency on having a target, so the tower visibly telegraphs that it's always building
     // toward its next shot rather than looking idle/broken during the long wait between shots.
+    // Also drives a two-handed Swordsman's ("Zweihander") own wind-up tremble/glow, reusing this
+    // exact same mechanic rather than a separate one — see the SWORDSMAN branch's isTwoHander path.
     let chargeProgress = 0;
-    if((this.type === 'MAGE' || this.type === 'SNAPCASTER') && this.cooldown > 0){
+    if((this.type === 'MAGE' || this.type === 'SNAPCASTER' || (this.type === 'SWORDSMAN' && this.spec === 'TWOHANDER')) && this.cooldown > 0){
       chargeProgress = clampNum(1 - (this.cooldownTimer / this.cooldown), 0, 1);
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
@@ -6201,7 +6844,7 @@ class Tower{
     // settles back to a neutral resting angle instead of staying locked at whatever angle it last
     // aimed at forever, which could leave it pointing at an odd angle indefinitely once idle.
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -6447,12 +7090,29 @@ class Projectile{
     }
   }
   onImpact(hitEnemy){
+    if(this.effectType === 'CAT'){
+      // The thrown cat doesn't deal impact damage itself — it becomes a temporary companion that
+      // follows this enemy and scratches it repeatedly instead (see CatCompanion). Per-tower cap
+      // checked BEFORE touching the pool, so a Cat Snapper already at its own limit doesn't
+      // needlessly acquire-then-release a slot other Cat Snappers could use.
+      const maxCats = (this.sourceTower && this.sourceTower.maxActiveCats) || 2;
+      const perTowerCount = this.sourceTower
+        ? catPool.reduce((n,c) => n + (c.active && c.sourceTower === this.sourceTower ? 1 : 0), 0)
+        : maxCats;
+      if(perTowerCount < maxCats){
+        const cat = acquireActive(catPool);
+        if(cat) cat.spawn(this.sourceTower, hitEnemy, this.x, this.y);
+        // else: global cat pool exhausted — the throw simply has no further effect, no crash, no unlimited spawning
+      }
+      spawnParticles(this.x, this.y, '#333333', 4);
+      return;
+    }
     if(this.splashRadius > 0){
       // Splash shots keep their own independent roll here — unlike single-target shots, a splash
       // detonation isn't pre-rolled against one tracked enemy in fireProjectile() (it's not aimed
       // at a specific enemy's silhouette so much as a ground point), so this is still the right
       // place for it.
-      const missChance = this.sourceTower ? (this.sourceTower.missChance || 0) : 0;
+      const missChance = this.sourceTower ? ((this.sourceTower.missChance || 0) + windMissPenalty(this.sourceTower)) : 0;
       if(Math.random() < missChance){
         spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 6, 'MISS', '#aaaaaa');
         spawnParticles(this.x, this.y, '#999999', 2);
@@ -6620,53 +7280,66 @@ let particleIndex = 0;
 let enemyHash = null;
 const MAX_DECALS = 2000;
 const decals = [];
-// Ambient blowing-leaves gust — a handful of leaves drift across the screen once, 20-60s after a
-// game starts, purely decorative (no gameplay effect, no collision, doesn't interact with
-// anything). Replaces the old static fluttering-leaf ground decal (see CONFIG.FLORA.COMMON) —
-// that emoji's own artwork implies motion, so it belongs actually moving through the air once,
-// not randomly rotated and sitting still on the ground forever.
+// Ambient blowing-leaves gust — a handful of leaves drift across the screen at the start of every
+// round, purely decorative (no gameplay effect, no collision, doesn't interact with anything).
+// Replaces the old static fluttering-leaf ground decal (see CONFIG.FLORA.COMMON) — that emoji's
+// own artwork implies motion, so it belongs actually moving through the air, not randomly rotated
+// and sitting still on the ground forever. Every leaf in one gust shares the same glyph (never
+// mixed within a gust) — green (🍃) through wave 20, brown (🍂) from wave 21 on, called directly
+// from startNextWave() rather than scheduled against a wall-clock timer.
 let blowingLeaves = [];
-let nextLeafGustAt = null; // gameTime of the next scheduled gust, or null if none scheduled this game
-function scheduleLeafGust(){
-  nextLeafGustAt = gameTime + 20000 + Math.random()*40000; // 20-60s from now
-}
 function spawnLeafGust(){
+  // Safety cap, not a normal-play concern — a gust's leaves naturally clear out well within one
+  // wave's real duration, but this stops any pathological back-to-back-wave-start case from
+  // accumulating leaf objects without bound.
+  if(blowingLeaves.length > 20) return;
   const count = 3 + Math.floor(Math.random()*3); // 3-5 leaves
-  const leafGlyphs = ['🍃','🍂'];
+  const glyph = wavesCompleted >= 20 ? '🍂' : '🍃'; // one glyph for the whole gust — see comment above
   for(let i=0; i<count; i++){
     const fromLeft = Math.random() < 0.5;
     const startX = fromLeft ? -30 : CANVAS_W + 30;
     const dirX = fromLeft ? 1 : -1;
     blowingLeaves.push({
-      glyph: leafGlyphs[Math.floor(Math.random()*leafGlyphs.length)],
+      glyph,
       x: startX, y: 40 + Math.random()*(CANVAS_H*0.5),
       vx: dirX*(30 + Math.random()*40), vy: 10 + Math.random()*15, // px/sec — slow horizontal drift with a light downward drop
       rot: Math.random()*360, rotSpeed: (Math.random()*2-1)*60, // deg/sec, gentle tumble
+      // Lateral flutter riding on top of the straight drift above — real windblown leaves sway
+      // side-to-side as they travel rather than tracing one flat diagonal line. Amplitude/frequency
+      // both randomized per-leaf so a gust doesn't read as one shape repeated several times.
+      swayAmp: 8 + Math.random()*14, swayFreq: 0.4 + Math.random()*0.6, swayPhase: Math.random()*Math.PI*2,
+      size: 16 + Math.random()*9, // per-leaf size variance instead of one flat 20px for every leaf
       spawnedAt: gameTime + i*400 // staggered, not all at once
     });
   }
 }
 function updateAndDrawBlowingLeaves(ctx){
   if(gameState !== 'PLAYING') return;
-  if(nextLeafGustAt !== null && gameTime >= nextLeafGustAt){
-    spawnLeafGust();
-    nextLeafGustAt = null; // one gust per game — not a recurring weather system
-  }
   if(!blowingLeaves.length) return;
   const dtSec = Math.min(0.1, (gameTime - (updateAndDrawBlowingLeaves._lastGameTime ?? gameTime)) / 1000);
   updateAndDrawBlowingLeaves._lastGameTime = gameTime;
   ctx.save();
-  ctx.font = '20px serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.globalAlpha = 0.75;
   for(let i=blowingLeaves.length-1; i>=0; i--){
     const leaf = blowingLeaves[i];
     if(gameTime < leaf.spawnedAt) continue; // staggered start
     leaf.x += leaf.vx*dtSec; leaf.y += leaf.vy*dtSec; leaf.rot += leaf.rotSpeed*dtSec;
     if(leaf.x < -50 || leaf.x > CANVAS_W+50 || leaf.y > CANVAS_H+50){ blowingLeaves.splice(i,1); continue; }
+    // Fade in/out based on proximity to the despawn bounds above, rather than a flat alpha the
+    // whole flight — a leaf now visibly emerges out of nothing near the screen edge and dissolves
+    // back out rather than popping in at full opacity and vanishing abruptly.
+    const edgeFade = clampNum(Math.min(leaf.x-(-50), (CANVAS_W+50)-leaf.x, (CANVAS_H+50)-leaf.y)/55, 0, 1);
+    ctx.globalAlpha = 0.75 * edgeFade;
+    const swayX = Math.sin((gameTime-leaf.spawnedAt)/1000 * leaf.swayFreq*Math.PI*2 + leaf.swayPhase) * leaf.swayAmp;
+    // A flat glyph has no real depth to tumble through, so scaleX pulsing (tied to its own
+    // rotation, at a non-1:1 rate so the two never lock into an obviously mechanical loop)
+    // simulates a leaf flashing edge-on as it spins, instead of rotating as a flat coin.
+    const scaleX = 0.4 + 0.6*Math.abs(Math.cos(leaf.rot*Math.PI/180*1.7));
     ctx.save();
-    ctx.translate(leaf.x, leaf.y);
+    ctx.translate(leaf.x+swayX, leaf.y);
     ctx.rotate(leaf.rot*Math.PI/180);
+    ctx.scale(scaleX, 1);
+    ctx.font = leaf.size+'px serif';
     ctx.fillText(leaf.glyph, 0, 0);
     ctx.restore();
   }
@@ -7796,6 +8469,182 @@ function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   return { handX, handY };
 }
 
+// Small reusable black-cat silhouette, drawn as flat Canvas primitives — no emoji, no image asset —
+// so it renders consistently regardless of the platform's emoji font, and so it can be recolored/
+// scaled/posed the same way the rest of this file's procedural art already is. Used both for Cat
+// Snapper's own idle/throwing companion glyph (drawStickman()'s CAT_SNAPPER branch, options.idle)
+// and for the pooled CatCompanion.draw() (options.crouch) — one renderer, two pose flags, per the
+// original request that both use the same art rather than two different-looking cats.
+function drawCat(ctx, x, y, rotation, scale, options){
+  options = options || {};
+  const crouch = options.crouch ? 2 : 0; // active/attacking cats sit a bit lower and more alert than the upright idle pose
+  const attackT = options.attackProgress || 0; // 0-1, a brief paw-swipe pulse — see CatCompanion.update()
+  ctx.save();
+  ctx.translate(x, y);
+  if(rotation) ctx.rotate(rotation);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#111111';
+  // tail — behind the body, so the swipe/legs below draw on top of its base
+  ctx.strokeStyle = '#111111'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  const tailFlick = options.idle ? Math.sin((options.phase||0) + (options.t||0)) * 2 : 0;
+  ctx.beginPath();
+  ctx.moveTo(-9, crouch);
+  ctx.quadraticCurveTo(-16, -2+crouch, -13, -8+crouch-tailFlick);
+  ctx.stroke();
+  // body
+  ctx.beginPath();
+  ctx.ellipse(0, crouch, 10, crouch ? 5 : 6, 0, 0, Math.PI*2);
+  ctx.fill();
+  // four short legs — the front pair swipes outward during an attack pulse, the back pair stays put
+  ctx.lineWidth = 1.4;
+  const legY = crouch + 5;
+  ctx.beginPath();
+  ctx.moveTo(-6, legY); ctx.lineTo(-7, legY+4);
+  ctx.moveTo(-2, legY); ctx.lineTo(-3, legY+4);
+  ctx.stroke();
+  const pawSwipe = Math.sin(attackT*Math.PI) * 5;
+  ctx.beginPath();
+  ctx.moveTo(4, legY); ctx.lineTo(4+pawSwipe, legY+4-pawSwipe*0.3);
+  ctx.moveTo(7, legY); ctx.lineTo(7+pawSwipe, legY+4-pawSwipe*0.3);
+  ctx.stroke();
+  // head + triangular ears
+  ctx.fillStyle = '#111111';
+  ctx.beginPath(); ctx.arc(9, -5+crouch, 6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(6,-9+crouch); ctx.lineTo(8,-14+crouch); ctx.lineTo(10,-9+crouch); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(11,-9+crouch); ctx.lineTo(13,-14+crouch); ctx.lineTo(14.5,-9+crouch); ctx.closePath(); ctx.fill();
+  // small pale eyes, so the face reads against the otherwise fully black silhouette
+  ctx.fillStyle = '#e8e8e8';
+  ctx.beginPath(); ctx.arc(11, -6+crouch, 1, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(14, -6+crouch, 1, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// Pooled temporary companion spawned when a Cat Snapper's thrown cat lands on a target (see
+// Projectile.onImpact()'s 'CAT' branch). Follows its target's CURRENT x/y every frame rather than
+// walking the path itself — deliberately not a second lane-navigating agent, so it can't affect
+// pathfinding, collision, breakaway logic, or barricade queueing no matter what it does. Reuses the
+// same generic Enemy.applyDamage() every other damage source in the game already goes through, so
+// kill credit/gold/gore/death handling all work identically to a normal tower hit with zero special
+// casing there.
+class CatCompanion{
+  constructor(){ this.active = false; }
+  spawn(sourceTower, targetEnemy, x, y){
+    this.sourceTower = sourceTower;
+    this.targetEnemy = targetEnemy;
+    this.x = x; this.y = y;
+    this.age = 0;
+    this.lifetime = sourceTower.catLifetime || 3500;
+    this.attackCooldown = sourceTower.catAttackCooldown || 900;
+    this.attackTimer = this.attackCooldown * 0.4; // lands and scratches a bit sooner than a full cooldown after arriving, not instantly on contact
+    this.phase = Math.random()*Math.PI*2;
+    this.attackProgress = 0;
+    this.active = true;
+  }
+  update(dt, enemyHash){
+    this.age += dt;
+    if(this.age >= this.lifetime){ this.active = false; return; }
+    if(!this.targetEnemy || !this.targetEnemy.active){
+      // Retarget once, using the exact same spatial-hash query every tower's own targeting already
+      // uses — never an independent search of the whole enemy list, and never anything path-aware.
+      const nearby = queryNearby(enemyHash, this.x, this.y, 160).filter(e => e.active);
+      this.targetEnemy = nearby.length ? nearby[Math.floor(Math.random()*nearby.length)] : null;
+      if(!this.targetEnemy){ this.active = false; return; }
+    }
+    const orbitAngle = gameTime*0.004 + this.phase;
+    const desiredX = this.targetEnemy.x + Math.cos(orbitAngle)*13;
+    const desiredY = this.targetEnemy.y - 8 + Math.sin(orbitAngle)*5;
+    const followStrength = Math.min(1, dt/120); // light smoothing so it visibly glides to the target rather than teleporting each frame
+    this.x += (desiredX - this.x) * followStrength;
+    this.y += (desiredY - this.y) * followStrength;
+    this.attackProgress = Math.max(0, this.attackProgress - dt/220);
+    this.attackTimer -= dt;
+    if(this.attackTimer <= 0 && this.targetEnemy.active){ // re-checked here too — update() above can null/deactivate it, and applyDamage() itself is not safe to call on an inactive enemy
+      this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower);
+      this.attackTimer += this.attackCooldown;
+      this.attackProgress = 1;
+    }
+  }
+  draw(ctx){
+    drawCat(ctx, this.x, this.y, 0, 0.55, { crouch: true, attackProgress: this.attackProgress });
+  }
+}
+// Fixed-size pool, matching every other pooled entity type in this file (enemyPool/towerPool/
+// projectilePool) — no per-frame allocation, deterministic hard cap, exhaustion just means the
+// next cat throw has no further effect rather than crashing or growing unbounded.
+const MAX_ACTIVE_CATS = 24;
+const catPool = Array.from({length: MAX_ACTIVE_CATS}, () => new CatCompanion());
+
+// Necromancer's start-of-round skeleton minions — stationary allies raised near the tower at the
+// start of every round (see startNextWave()'s raiseSkeletonsForTower()) and destroyed the instant
+// that round actually completes (see the waveState ACTIVE->IDLE transition in update()), never
+// carried into the between-wave lull. Deliberately NOT damageable by enemies and deliberately
+// placed only near the (off-path) tower itself, never anywhere path-aware — same "pure combat
+// bonus, zero interaction with pathfinding/collision/blocking/breakaway targeting" contract
+// CatCompanion already established, just with a per-round lifecycle instead of a per-target one.
+// Making them killable would mean teaching the breakaway-targeting system a new kind of valid
+// target — a real, separate feature, not part of this request.
+class SkeletonMinion{
+  constructor(){ this.active = false; }
+  spawn(sourceTower, x, y, damage, cooldown, range){
+    this.sourceTower = sourceTower;
+    this.x = x; this.y = y;
+    this.damage = damage; this.attackCooldown = cooldown; this.range = range;
+    this.attackTimer = Math.random()*cooldown; // staggered so a freshly-raised band doesn't all swing in lockstep on the very first tick
+    this.attackProgress = 0;
+    this.phase = Math.random()*Math.PI*2;
+    this.active = true;
+  }
+  update(dt, enemyHash){
+    this.attackProgress = Math.max(0, this.attackProgress - dt/220);
+    this.attackTimer -= dt;
+    if(this.attackTimer > 0) return;
+    const nearby = queryNearby(enemyHash, this.x, this.y, this.range).filter(e => e.active);
+    if(!nearby.length) return; // stays raised and waiting — does not expire just for having nothing in range right now, only at round-complete
+    nearby[0].applyDamage(this.damage, this.sourceTower);
+    this.attackTimer = this.attackCooldown;
+    this.attackProgress = 1;
+  }
+  draw(ctx){ drawSkeleton(ctx, this.x, this.y, this.phase, this.attackProgress); }
+}
+const MAX_ACTIVE_SKELETONS = 8; // headroom above what's actually reachable today — MAX_ONE_PER_BOARD_TYPES caps Necromancer itself at one active copy, so at most 4 (tier 3's skeletonCount) can ever exist at once right now — rather than sizing the pool exactly to today's numbers
+const skeletonPool = Array.from({length: MAX_ACTIVE_SKELETONS}, () => new SkeletonMinion());
+function raiseSkeletonsForTower(t){
+  const count = t.skeletonCount || 0;
+  for(let i=0; i<count; i++){
+    const skel = acquireActive(skeletonPool);
+    if(!skel) break; // pool exhausted — the remaining skeletons for this tower simply aren't raised, no crash, no unbounded growth
+    const ang = (i/count)*Math.PI*2;
+    skel.spawn(t, t.x + Math.cos(ang)*18, t.y + Math.sin(ang)*18, t.skeletonDamage, t.skeletonCooldown, t.skeletonRange);
+  }
+}
+// Small reusable bone-white skeleton silhouette — flat Canvas primitives, same "no emoji, no image
+// asset" approach as drawCat(), so it renders consistently and matches this file's procedural art.
+function drawSkeleton(ctx, x, y, phase, attackProgress){
+  const bob = Math.sin(gameTime/260 + phase) * 1.5;
+  ctx.save();
+  ctx.translate(x, y + bob);
+  ctx.strokeStyle = '#e8e4d8'; ctx.fillStyle = '#e8e4d8'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0,-10); ctx.lineTo(0,2);
+  ctx.moveTo(0,2); ctx.lineTo(-4,10);
+  ctx.moveTo(0,2); ctx.lineTo(4,10);
+  ctx.stroke();
+  ctx.beginPath(); // ribcage hint
+  ctx.moveTo(-2,-4); ctx.lineTo(2,-4);
+  ctx.moveTo(-2,-1); ctx.lineTo(2,-1);
+  ctx.stroke();
+  const swipe = Math.sin(attackProgress*Math.PI) * 4; // brief outward arm pulse on attack, otherwise resting at the sides
+  ctx.beginPath();
+  ctx.moveTo(0,-8); ctx.lineTo(-5-swipe, -3);
+  ctx.moveTo(0,-8); ctx.lineTo(5+swipe, -3);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,-14,5,0,Math.PI*2); ctx.fill(); // skull
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(-1.8,-15,1,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(1.8,-15,1,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, bladeLen, thickness){
   thickness = thickness || 1;
   const bladeWidth = (big ? 5 : 3.5) * thickness;
@@ -7929,6 +8778,33 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const swingT = extra.swingProgress || 0;
     const dynamicBend = -0.3 + swingT*0.55; // cocked back at wind-up, extends through the strike
     const swordLen = weaponLenFromScale(isTwoHander ? 17 : 15, isTwoHander ? 24 : 23, extra.weaponScale);
+    // Zweihander's wind-up — reuses the exact chargeProgress mechanic Mage's own charge-up glow
+    // already uses (see chargeProgress's computation above), just applied to a trembling blade
+    // instead of a growing orb. Only while NOT mid-swing (swingT===0) — the tremble is what "still
+    // charging" looks like, the swing itself is the release, so once it starts swinging the shake
+    // stops and the actual swing animation takes over completely.
+    const charge = (isTwoHander && swingT === 0) ? (extra.chargeProgress || 0) : 0;
+    const chargeShake = charge > 0.5 ? Math.sin(performance.now()/40) * (charge-0.5)*2 * 0.09 : 0; // only trembles in the back half of the charge, amplitude ramping toward release
+    // Small helper so the two-handed grip line + tip glow aren't duplicated between the resting
+    // and engaged poses below, which otherwise draw near-identical two-handed-specific extras.
+    const drawTwoHanderExtras = (handX, handY, bladeAngle) => {
+      ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(handX,handY); ctx.stroke();
+      if(charge <= 0.5 || lowGfx) return;
+      const tipX = handX + Math.cos(bladeAngle)*swordLen, tipY = handY + Math.sin(bladeAngle)*swordLen;
+      // A building edge-glow along the blade as the charge approaches release — distinct from
+      // Mage's orb-glow (a line along the blade, not a radial halo), so the two "charging up"
+      // languages read as different weapons rather than a reused effect.
+      ctx.strokeStyle = `rgba(255,220,180,${((charge-0.5)*0.7).toFixed(2)})`;
+      ctx.lineWidth = 1.5 + charge*2;
+      ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+      if(charge > 0.88){
+        // final flicker right before release, same threshold-flash language as Mage's own
+        const flicker = 0.5 + 0.5*Math.sin(performance.now()/55);
+        ctx.fillStyle = `rgba(255,255,255,${(flicker*(charge-0.88)/0.12).toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
+      }
+    };
     if(isDual){
       const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
       drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx, swordLen, extra.weaponThickness);
@@ -7939,24 +8815,19 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       // (verified to clear the head at the current bigger max sizes) rather than pointing straight
       // up, which wouldn't leave enough room for the larger blade
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+      const restAngle = -Math.PI/2 + 0.96 + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 - 0.7, armLen, skinMain, 0.15);
-      drawSwordBlade(ctx, hand.handX, hand.handY, -Math.PI/2 + 0.96, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
-      if(isTwoHander){
-        ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(hand.handX,hand.handY); ctx.stroke();
-      }
+      drawSwordBlade(ctx, hand.handX, hand.handY, restAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
+      if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, restAngle);
     } else {
       // engaged: off-hand fixed at its natural resting direction — tracking the weapon's actual
       // swing angle could send it crossing across the body or swinging up into the air depending
       // on which way the enemy is, so it stays put and lets the elbow bend carry any reactive motion
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, dynamicBend);
-      drawSwordBlade(ctx, hand.handX, hand.handY, angle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
-      if(isTwoHander){
-        // second hand gripping the same hilt for a two-handed stance
-        ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(hand.handX,hand.handY); ctx.stroke();
-      }
+      const swingAngle = angle + chargeShake;
+      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, swingAngle, armLen, skinMain, dynamicBend);
+      drawSwordBlade(ctx, hand.handX, hand.handY, swingAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
+      if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, swingAngle);
     }
   } else if(type === 'ARCHER'){
     const drawAmt = extra.drawProgress || 0; // 0 = relaxed, 1 = fully drawn and about to loose
@@ -8053,7 +8924,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
     ctx.fillStyle = skinMain;
     ctx.beginPath(); ctx.arc(drawX,drawY,1.8,0,Math.PI*2); ctx.fill();
-  } else if(type === 'MAGE' || type === 'SNAPCASTER'){
+  } else if(type === 'MAGE' || type === 'SNAPCASTER' || type === 'PROTON' || type === 'DARK_MATTER' || type === 'QUASAR'){
     const cast = extra.castProgress || 0;
     const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
     // Staff/orb now always points along `angle` continuously, never snapping to a separate upright
@@ -8402,6 +9273,60 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.fillStyle = 'rgba(200,220,180,0.55)';
       ctx.beginPath(); ctx.arc(tipX,tipY,2,0,Math.PI*2); ctx.fill();
     }
+  } else if(type === 'CAT_SNAPPER'){
+    // One relaxed supporting arm, one raised throwing arm — a black cat rides just above the
+    // raised hand, bobbing gently while idle/aiming. On the brief post-fire flourish
+    // (extra.throwProgress, same pattern as Mage's cast — see the extra object's construction
+    // above) the cat visibly leaves the hand along the throw line instead of just popping back.
+    const throwAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    drawArmAndHand(ctx, shoulderX, shoulderY, throwAngle, armLen, skinMain, -0.35); // relaxed supporting arm
+    const raisedAngle = throwAngle - 0.55; // held higher than the throw line itself, so the cat reads as carried rather than mid-swing
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, raisedAngle, armLen, skinMain, 0.35);
+    const tp = extra.throwProgress || 0;
+    const releaseDist = tp * 16;
+    const catX = hand.handX + Math.cos(throwAngle)*(4 + releaseDist);
+    const bobPhase = (extra.buildScaleX||1)*3 + (extra.buildScaleY||1); // cheap per-tower phase offset, same idea as the idle-breathing sway above, so a row of Cat Snappers doesn't bob in unison
+    const bob = tp > 0 ? 0 : Math.abs(Math.sin(gameTime/280 + bobPhase)) * 5;
+    const catY = hand.handY - 10 - bob - releaseDist*0.3;
+    drawCat(ctx, catX, catY, tp > 0 ? throwAngle : 0, 0.62, { idle: tp <= 0, phase: bobPhase });
+  } else if(type === 'NECROMANCER'){
+    // Single raised casting arm tipped with a conjured skull, off-hand relaxed at the side —
+    // structurally the same one-arm-cast shape as Mage's staff pose, but its own distinct prop
+    // instead of an orb, and no steadying off-hand (nothing to steady).
+    const castAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    drawArmAndHand(ctx, shoulderX, shoulderY, castAngle + Math.PI*0.85, armLen*0.75, skinMain, -0.3); // relaxed off-hand, well clear of the casting arm
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, castAngle, armLen, skinMain, -0.2);
+    ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2 * (0.8 + extra.weaponThickness*0.2);
+    const boneLen = weaponLenFromScale(10, 15, extra.weaponScale);
+    const tipX = hand.handX + Math.cos(castAngle)*boneLen, tipY = hand.handY + Math.sin(castAngle)*boneLen;
+    ctx.beginPath(); ctx.moveTo(hand.handX, hand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
+    ctx.font = (13 * extra.weaponScale) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💀', tipX, tipY - 3);
+    if(!lowGfx){
+      ctx.fillStyle = 'rgba(90,45,130,0.5)';
+      ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
+    }
+  } else if(type === 'BLOW_GUNNER'){
+    // Same mouth-anchored single-pipe pose as Blowdart (its closer sibling in weapon shape than
+    // Squirtgun's dual-pistol grip), reskinned pale steam-blue with a soft mist wisp at the tip
+    // instead of Blowdart's acid-green droplet — the hybrid identity comes through in color and
+    // the wisp, not a wholly different gesture.
+    const mouthAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const mouthX = 0, mouthY = -21;
+    const hand = drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3);
+    const tipX = hand.handX + Math.cos(mouthAngle)*14*extra.weaponScale, tipY = hand.handY + Math.sin(mouthAngle)*14*extra.weaponScale;
+    ctx.strokeStyle = '#8fa8b3'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(hand.handX,hand.handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+    if(!lowGfx){
+      // A small drifting mist wisp instead of a static droplet — two soft overlapping puffs,
+      // one rising slightly ahead of the other, reading as steam rather than a liquid spray.
+      const wispT = (gameTime % 900) / 900;
+      ctx.fillStyle = 'rgba(200,232,240,0.35)';
+      ctx.beginPath(); ctx.arc(tipX, tipY - wispT*4, 2.2 + wispT*1.3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(200,232,240,0.22)';
+      ctx.beginPath(); ctx.arc(tipX+1.5, tipY - wispT*6 - 2, 1.8 + wispT*1.1, 0, Math.PI*2); ctx.fill();
+    }
   }
 
   // armor decorations drawn last, on top of the arms — so arm lines never cross over and obscure
@@ -8449,7 +9374,7 @@ function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
 // Invisible in ordinary play; only ever fires when something has already gone wrong elsewhere.
 function checkStallWatchdog(dt){
   for(const e of enemyPool){
-    if(!e.active || e.isBreakaway) continue;
+    if(!e.active || e.isBreakaway || e.escaped) continue;
     if(isEnemyFrozen(e)){
       // legitimately blocked — not a bug, don't accumulate strikes while this is true
       e.stallWatchTimer = 0; e.stallStrikes = 0; e.stallWatchTraveled = e.traveled;
@@ -8754,8 +9679,31 @@ function generateProceduralWave(n){
 }
 function startNextWave(){
   if(waveState !== 'IDLE') return;
+  spawnLeafGust(); // ambient decoration — see the comment above spawnLeafGust() for the wave-gated glyph choice
+  // Each round gets its own wind ceiling — how strong a gust can actually get THIS wave — rather
+  // than one flat cap for the whole game. Climbs linearly from a gentle 0.15 at wave 0 to a full
+  // 1.0 by wave 30, then stays capped there — rough wind is genuinely rare early on and a real,
+  // regular possibility later, not present in force from the very first round. windStrength itself
+  // isn't reset here — only the ceiling it's allowed to climb toward changes, so a gust already in
+  // progress from the previous round doesn't snap down, it just can't climb any higher than the
+  // new (lower or higher) ceiling permits from here.
+  windCeilingForWave = clampNum(wavesCompleted / 30, 0.15, 1);
+  // Enemies still wandering from a previous round (see reachEnd()/updateEscaped()) are no longer
+  // force-cleared here — they persist across wave boundaries now, by direct request, rather than
+  // being deactivated the instant a new wave starts. They already don't block wave completion
+  // (see the `anyAlive` check's `!e.escaped` filter) and they remain a genuine, ongoing threat —
+  // still killable for the normal reward, and (since 1.2.17) still capable of attacking a nearby
+  // tower themselves — so leaving one alive is a real, persistent consequence now, not something
+  // that quietly gets swept away at the next "Next Wave" tap.
   for(const t of towerPool){
     if(t.active && t.disabledWavesLeft > 0) t.disabledWavesLeft--;
+  }
+  // Necromancer's skeletons — raised fresh every round (destroyed at round-complete, see the
+  // waveState ACTIVE->IDLE transition in update()). MAX_ONE_PER_BOARD_TYPES already limits this to
+  // at most one active Necromancer at a time, so this loop never actually raises more than one
+  // tower's worth of skeletons in practice, but it's written generically rather than assuming that.
+  for(const t of towerPool){
+    if(t.active && t.type === 'NECROMANCER') raiseSkeletonsForTower(t);
   }
   const isProcedural = waveIndex >= CONFIG.WAVES.length;
   const proceduralN = waveIndex - CONFIG.WAVES.length + 1;
@@ -8845,6 +9793,11 @@ function startNextWave(){
     if(entry.delay - prevDelay < gap) entry.delay = prevDelay + gap;
     prevDelay = entry.delay;
   }
+  // A brief pre-spawn countdown — every already-tuned relative spacing above is untouched, this
+  // just shifts the whole finished timeline later by a flat amount, giving the leaf gust/camera
+  // pan/fanfare (see drawWaveCountdown()/'roundStart' below) a moment to actually land before the
+  // first enemy arrives, instead of the wave visually starting and spawning in the same instant.
+  for(const entry of spawnQueue) entry.delay += WAVE_COUNTDOWN_MS;
   waveTimer = 0;
   waveIndex++;
   waveState = 'SPAWNING';
@@ -8852,7 +9805,7 @@ function startNextWave(){
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
   for(const t of towerPool) if(t.active) t.waveXp = 0;
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
-  playSound('wave');
+  playSound('roundStart');
   updateHUD();
 }
 function spawnEnemy(type){
@@ -8879,6 +9832,7 @@ let lastTime = 0, accumulator = 0;
 function update(dt){
   gameTime += dt;
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
+  updateWind(dt);
   updateScenery(dt);
   if(waveState === 'SPAWNING'){
     // Spawning pauses entirely while any enemy is queued/waiting at a barricade — otherwise new
@@ -8917,13 +9871,21 @@ function update(dt){
   enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
   for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
+  for(const c of catPool) if(c.active) c.update(dt, enemyHashLocal);
+  for(const s of skeletonPool) if(s.active) s.update(dt, enemyHashLocal);
   updateParticles(dt);
   updateDeathAnims();
   updateWalkingBlood(dt);
   updateFloatingTexts(dt);
 
   if(waveState === 'ACTIVE'){
-    const anyAlive = enemyPool.some(e => e.active);
+    // Escaped/wandering enemies (see reachEnd()/updateEscaped()) deliberately don't count toward
+    // "is the wave still going" — they've already done everything a wave-blocking enemy can do
+    // (cost a life), and are now just an ongoing target/threat, not something the player has to
+    // hunt down to progress. Without this exclusion the wave could never complete once even one
+    // enemy escaped, since they now persist indefinitely (no longer force-cleared at the next
+    // wave start) until something actually kills them.
+    const anyAlive = enemyPool.some(e => e.active && !e.escaped);
     // Also wait for any in-flight death animation to finish — die() sets active=false immediately
     // but the squash-and-fade animation it kicks off (deathAnims) still has up to ~220ms left to
     // play. Without this, the very last kill of a wave triggered the wave-complete
@@ -8932,6 +9894,10 @@ function update(dt){
     if(!anyAlive && deathAnims.length === 0){
       waveState = 'IDLE';
       wavesCompleted++;
+      // Necromancer's skeletons exist only for the round that raised them — see startNextWave()'s
+      // raiseSkeletonsForTower() call. Cleared the instant the round actually completes, not
+      // carried into the between-wave lull the way escaped enemies deliberately are.
+      for(const s of skeletonPool) s.active = false;
       processClericHealing();
       expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
@@ -9080,7 +10046,15 @@ function render(ctx){
   ctx.translate(camera.x + shakeX, camera.y + shakeY);
   ctx.scale(camera.zoom, camera.zoom);
 
-  ctx.drawImage(mapCanvas, 0, 0); // static map, pre-rendered once — see BOOT
+  // Explicit destination size (WORLD_MAX_W/H, not mapCanvas.width/height) is required now that
+  // mapCanvas's own raster is dprValue-scaled (see resizeMapCanvasForDpr()) — without it,
+  // drawImage would draw the source at its raw pixel dimensions in world-space units, rendering
+  // the whole map dprValue times too large. This is what actually makes the higher raster
+  // resolution pay off as sharpness instead of just wasted memory: the browser downsamples a
+  // real high-res source into these world-space destination bounds, then ctx's own dprValue
+  // transform (see setupCanvas()) scales that back up to match the display's physical pixels
+  // 1:1, rather than upscaling a flat 1x raster and blurring it.
+  ctx.drawImage(mapCanvas, 0, 0, WORLD_MAX_W, WORLD_MAX_H); // static map, pre-rendered once — see BOOT
   // Blood decals draw BEFORE scenery (trees/rocks) rather than after — blood sits flat on the
   // ground, and a tree/rock is a physically taller object that should occlude any stain directly
   // behind it, not have blood rendered on top of it. The previous order drew stains over trees.
@@ -9126,6 +10100,8 @@ function render(ctx){
       ctx.restore();
     }
   }
+  for(const c of catPool) if(c.active) c.draw(ctx);
+  for(const s of skeletonPool) if(s.active) s.draw(ctx);
   for(const p of projectilePool) if(p.active) p.draw(ctx);
   drawParticles(ctx);
   drawFloatingTexts(ctx);
@@ -9133,6 +10109,38 @@ function render(ctx){
   ctx.restore();
   drawBossCompass(ctx);
   updateAndDrawBlowingLeaves(ctx);
+  drawWaveCountdown(ctx);
+}
+// On-screen "3-2-1-GO" during the flat WAVE_COUNTDOWN_MS delay startNextWave() now adds before
+// spawning actually begins — screen-space overlay (drawn after the camera transform is already
+// popped above), purely cosmetic, reads waveTimer/waveState but never writes them.
+function drawWaveCountdown(ctx){
+  if(waveState !== 'SPAWNING') return;
+  const GO_HOLD_MS = 500;
+  if(waveTimer >= WAVE_COUNTDOWN_MS + GO_HOLD_MS) return;
+  let label, scale, alpha;
+  if(waveTimer < WAVE_COUNTDOWN_MS){
+    const secondsLeft = 3 - Math.floor(waveTimer/1000); // 3, 2, 1
+    label = String(secondsLeft);
+    const segT = (waveTimer % 1000) / 1000; // 0..1 within the current second
+    scale = 1.3 - segT*0.3; // a little pop at the start of each second, settling down toward the next
+    alpha = 0.9;
+  } else {
+    label = 'GO!';
+    const t = (waveTimer - WAVE_COUNTDOWN_MS) / GO_HOLD_MS;
+    scale = 1.4 - t*0.4;
+    alpha = 1 - t;
+  }
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = Math.round(72*scale) + 'px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillStyle = label === 'GO!' ? '#ffd700' : '#ffffff';
+  const cx = CANVAS_W/2, cy = CANVAS_H*0.32;
+  ctx.strokeText(label, cx, cy);
+  ctx.fillText(label, cx, cy);
+  ctx.restore();
 }
 function drawBossCompass(ctx){
   const boss = enemyPool.find(e => e.active && e.type === 'BOSS');
@@ -9409,6 +10417,11 @@ function loop(now){
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let dprValue = 1;
+// Guards resizeMapCanvasForDpr() against running before `mapCanvas` (declared far later, in
+// BOOT) actually exists — setupCanvas() runs once immediately below at script-load time, long
+// before that declaration executes, and referencing `mapCanvas` that early would throw (temporal
+// dead zone), not just read undefined. Flipped to true once BOOT creates the canvas.
+let mapCanvasReady = false;
 
 // Viewport resolution now dynamically matches the actual window shape instead of a fixed
 // 2048:1280 ratio — this lets the camera reveal more of the (already effectively infinite, via
@@ -9421,12 +10434,20 @@ function updateCanvasDimensions(){
 function setupCanvas(){
   updateCanvasDimensions();
   const dprCap = graphicsQuality === 'low' ? 1 : 2;
-  dprValue = Math.min(window.devicePixelRatio || 1, dprCap);
+  const newDpr = Math.min(window.devicePixelRatio || 1, dprCap);
+  const dprChanged = newDpr !== dprValue;
+  dprValue = newDpr;
   canvas.width = CANVAS_W * dprValue;
   canvas.height = CANVAS_H * dprValue;
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = graphicsQuality === 'low' ? 'low' : 'high'; // resizing the canvas clears context state, so this must be reapplied
+  // The static map layer (mapCanvas — checkerboard, flora, finish line) is baked once to an
+  // offscreen canvas and blitted every frame (see BOOT and the render() call site) rather than
+  // redrawn per-frame. It needs its OWN resolution kept in sync with dprValue separately from the
+  // main canvas above — only re-bake when dprValue genuinely changed (graphics-quality toggle, or
+  // a rare cross-monitor DPI change), not on every ordinary same-monitor resize.
+  if(mapCanvasReady && dprChanged) resizeMapCanvasForDpr();
 }
 setupCanvas();
 window.addEventListener('resize', () => { setupCanvas(); clampCamera(); }); // re-clamp (not re-center) so pan/zoom stays valid without jarringly resetting the view mid-game
@@ -9636,6 +10657,10 @@ function handleTap(clientX, clientY){
       return;
     }
     if(!isTileBuildable(gx, gy, null, selectedBuildType)) return;
+    if(!isTowerTypeAvailable(selectedBuildType)){
+      spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '⛔ Only one ' + CONFIG.TOWERS[selectedBuildType].name + ' at a time', '#e63946');
+      return;
+    }
     if(!canAffordTower(selectedBuildType)) return;
     const t = acquireActive(towerPool);
     if(!t) return;
@@ -9647,7 +10672,7 @@ function handleTap(clientX, clientY){
       if(freeBarricadesLeft > 0) freeBarricadesLeft--;
       else { wood -= def.woodCost; stone -= def.stoneCost; }
     } else {
-      gold -= CONFIG.TOWERS[selectedBuildType].baseCost;
+      gold -= currentBuildCost(selectedBuildType);
     }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
@@ -9929,12 +10954,17 @@ function buildTowerModal(){
     // Barricade costs wood+stone, not gold — and can be free if a milestone charge is banked
     // (freeBarricadesLeft, granted periodically — see the wave-completion handler).
     const isFreeBarricade = type === 'BARRICADE' && freeBarricadesLeft > 0;
+    // currentBuildCost() returns the flat baseCost unchanged for Barricade (not in
+    // SCALING_COST_TYPES) and for Swordsman/Archer/Mage returns the already-scaled price for the
+    // NEXT copy — so this label always matches exactly what canAffordTower()/the actual placement
+    // deduction will use, not a stale flat number.
+    const liveCost = currentBuildCost(type);
     const affordable = type === 'BARRICADE'
       ? (isFreeBarricade || (wood >= def.woodCost && stone >= def.stoneCost))
-      : gold >= def.baseCost;
+      : gold >= liveCost;
     const costLabel = type === 'BARRICADE'
       ? (isFreeBarricade ? '🎁 FREE!' : '🪵' + def.woodCost + ' 🪨' + def.stoneCost)
-      : '💰' + def.baseCost;
+      : '💰' + liveCost;
     const row = document.createElement('div');
     row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
     row.innerHTML =
@@ -9991,19 +11021,60 @@ function buildTowerModal(){
     BOMBER:     '🔒 Raw strength, pushed past its limit, starts throwing more than arrows...',
     GUNALINDER: '🔒 Deep obsession with one\u2019s own craft finds a faster trigger...',
     SNIPER:     '🔒 True patience rewards the very deepest precision...',
-    POPE:       '🔒 The truly devoted eventually lead more than themselves...'
+    POPE:       '🔒 The truly devoted eventually lead more than themselves...',
+    NECROMANCER:'🔒 Raw strength, given to a mind instead of an arm, finds power in what should stay buried...',
+    BLOW_GUNNER:'🔒 Push both fire and frost to their very limits, and something in between starts to form...',
+    CAT_SNAPPER:'🔒 A swift enough hand finds an unlikely companion...',
+    PROTON:      '🔒 Push both raw power and swiftness to their limits — from any path — and the sky itself starts to answer...',
+    DARK_MATTER: '🔒 Swiftness and a cold mind, together, from any path, start to bend light itself...',
+    QUASAR:      '🔒 Only when power, swiftness, AND wisdom all burn brightest at once — from any path — does something truly rare ignite...'
   };
   for(const type of UNLOCKABLE_TOWER_TYPES){
+    // Deep-tier evolutions (EVOLUTIONS-driven, gated on reaching a stat threshold on ANOTHER
+    // evolved class — Paladin/Squirtgun/Bomber/Gunalinder/Sniper/Pope) don't even show a locked
+    // row until their own prerequisite class is actually unlocked. Without this, the Build tray
+    // dumped all ~20 evolutions on the player from wave 0 — including ones requiring investment
+    // in a class ("Cleric", "Gunalinder") that isn't buildable yet at all, which read exactly like
+    // the report this fixes: "unlock requires a locked character." Checks EVERY EVOLUTIONS entry
+    // that targets this type, not just one — Sniper specifically has TWO valid prerequisite paths
+    // (Gunalinder OR Marksman), and TOWER_UNLOCK_SOURCE_BY_TARGET only ever remembers the last one
+    // written, so reusing that here would have wrongly hidden Sniper behind just one of its two
+    // real paths. Element/hybrid/triple-stat unlocks (Hammerman, Blowdart, Gatling, Marksman,
+    // Snapcaster, Cleric, Necromancer, Blow Gunner, Cat Snapper, Proton, Dark Matter, Quasar) are
+    // never gated this way — they're all rooted directly at a base class, buildable from wave 0.
+    // hasSource/reachableNow tracked separately on purpose — an initial reachableNow=true would
+    // wrongly short-circuit on the very first EVOLUTIONS entry that doesn't even target this type
+    // at all (caught by an actual isolated test against the real EVOLUTIONS table before shipping,
+    // not just assumed correct from the logic reading right).
+    let hasSource = false, reachableNow = false;
+    for(const sourceType of Object.keys(EVOLUTIONS)){
+      for(const stat of Object.keys(EVOLUTIONS[sourceType])){
+        if(EVOLUTIONS[sourceType][stat].target !== type) continue;
+        hasSource = true;
+        if(unlockedTowerTypes.has(sourceType)) reachableNow = true;
+      }
+    }
+    if(!hasSource) reachableNow = true;
+    if(!reachableNow) continue;
     const def = CONFIG.TOWERS[type];
     const unlocked = unlockedTowerTypes.has(type);
     const affordable = gold >= def.baseCost;
     const costLabel = '💰' + def.baseCost;
     const lockMsg = TOWER_UNLOCK_RIDDLE[type] || '🔒 Locked — a secret combination unlocks this';
+    // MAX_ONE_PER_BOARD_TYPES (Paladin/Squirtgun/Sniper/Pope) — distinct from affordability, so
+    // this row still reads as unlocked/gold-visible but can't actually be selected while one is
+    // already active on the board, with its own clear reason instead of just silently doing
+    // nothing on tap. Reuses live board state (isTowerTypeAvailable()), not a one-time flag, so
+    // the row goes selectable again the moment the existing copy is sold or dies.
+    const atCapacity = unlocked && !isTowerTypeAvailable(type);
     const row = document.createElement('div');
     row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
     row.innerHTML =
       '<div class="icon">' + def.icon + '</div>' +
-      '<div class="name">' + def.name + (unlocked && !affordable ? ' <span style="color:#e63946">(need ' + costLabel + ')</span>' : '') + '</div>' +
+      '<div class="name">' + def.name +
+        (atCapacity ? ' <span style="color:#e63946">(already on the field)</span>'
+          : unlocked && !affordable ? ' <span style="color:#e63946">(need ' + costLabel + ')</span>' : '') +
+        '</div>' +
       (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') +
       '<button class="help-btn" type="button">?</button>' +
       (unlocked
@@ -10013,7 +11084,7 @@ function buildTowerModal(){
       row.addEventListener('pointerdown', (e) => {
         if(e.target.classList.contains('help-btn')) return;
         e.stopPropagation();
-        if(!affordable) return;
+        if(!affordable || atCapacity) return;
         selectedBuildType = type;
         selectedTower = null; cancelCameraFollow();
         inspPanelExpanded = false;
@@ -10334,7 +11405,7 @@ function getReadmeText(){
 'others you buy with gold, but only one expansion can happen per round; extra ones queue for the next.\n\n' +
 'TOWERS\n' +
 '------\n' +
-'Swordsman - melee cone sweep, can specialize into Two-Hander or Dual Wield at level 5.\n' +
+'Swordsman - melee cone sweep, can specialize into Zweihander (two-handed) or Dual Wield at level 5.\n' +
 'Archer - ranged, now draws the bow before firing: slower arrows, but real power behind each shot.\n' +
 'Axeman - dual-wields hand axes, manually toggles between a close swing and a ranged throw.\n' +
 'Spearman - long melee reach, slow but hard-hitting.\n' +
@@ -10511,7 +11582,7 @@ function updateInspectPanel(){
   document.getElementById('inspDpsBetween').classList.toggle('hidden', isBarricade);
   document.getElementById('inspTargetBtn').classList.toggle('hidden', isBarricade);
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
-  const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Two-Hander' : ' · Dual Wield') : '';
+  const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Zweihander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
   inspLevel.textContent = isBarricade ? '' : ('Lv.' + t.expLevel + specLabel + heroLabel);
   document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
@@ -10914,10 +11985,20 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   startScreen.classList.add('hidden');
   document.getElementById('hud-top').style.display = 'flex';
+  // hud-top just went from display:none (scrollWidth measures 0 while hidden) to visible. The
+  // very first fitHudTopToOneLine(true) call already ran once at script-load time, while hud-top
+  // was still display:none — it measured naturalWidth=0, concluded no scaling was needed, and
+  // locked that (wrong) result into hudFitSignature. Nothing since then re-triggers a recompute
+  // unless the lives/gold/wave digit COUNT happens to change or the window resizes — so the bar
+  // could sit at its true, unscaled, wider-than-the-phone-screen natural width (clipping both
+  // edges, since it's centered via margin:0 auto) until one of those unrelated events happened to
+  // occur. Forcing a real recompute here, now that the bar's actual layout exists, closes that gap
+  // — same fix shape as positionZoomControls() right below it, for the identical underlying reason.
+  fitHudTopToOneLine(true);
   positionZoomControls(); // hud-top just went from display:none (height 0) to visible — this is the one place its real height needs recalculating outside of an actual resize/orientation-change, both already covered by their own listeners
   gameState = 'PLAYING';
   lastTime = performance.now();
-  blowingLeaves = []; scheduleLeafGust();
+  blowingLeaves = [];
   updateHUD();
 });
 
@@ -10927,7 +12008,7 @@ document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   endScreen.classList.add('hidden');
   gameState = 'PLAYING';
   lastTime = performance.now();
-  blowingLeaves = []; scheduleLeafGust();
+  blowingLeaves = [];
 });
 
 function endGame(){
@@ -10945,6 +12026,7 @@ function resetGame(){
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
+  windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0.15; windDirAngle = Math.random()*Math.PI*2; windDirTarget = windDirAngle; windDirRetargetTimer = 0; // fresh calm start rather than carrying over whatever gust (or wind cap) was mid-swing in the old session
   unlockedTowerTypes = new Set();
   hitStopUntil = 0; // gates the ENTIRE simulation tick in the main loop (`if(gameTime < hitStopUntil) return;`) with no safety cap of its own — a stale value from a Boss kill in the previous session could otherwise freeze the whole new game until gameTime caught back up to it
   accumulator = 0; lastTime = performance.now(); // the fixed-tick loop's own time-tracking — already reset at other legitimate points elsewhere (pause-resume) but was missing here
@@ -10968,6 +12050,8 @@ function resetGame(){
   for(const e of enemyPool) e.active = false;
   for(const t of towerPool) t.active = false;
   for(const p of projectilePool) p.active = false;
+  for(const c of catPool) c.active = false;
+  for(const s of skeletonPool) s.active = false;
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   seedStartingBarricades();
@@ -10982,8 +12066,8 @@ validateGameDefinitions();
 initRegionAndPath();
 generateFlora();
 const mapCanvas = document.createElement('canvas');
-mapCanvas.width = WORLD_MAX_W; mapCanvas.height = WORLD_MAX_H;
-drawMap(mapCanvas.getContext('2d')); // rendered once here and re-baked on each map expansion — see rebakeMap()
+mapCanvasReady = true;
+resizeMapCanvasForDpr(); // sizes at the current dprValue and bakes the first frame — see rebakeMap() for re-bakes on map expansion, resizeMapCanvasForDpr() for a later DPR change
 generateScenery();
 seedStartingBarricades();
 centerCameraOnActiveRegion();

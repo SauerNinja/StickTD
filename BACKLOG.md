@@ -336,50 +336,66 @@ upfront about rather than implying otherwise.
   happening on screen (barricade nearby? pack of similar enemies? just got hit by something?) to
   narrow down which system to check first.
 
-## Phase 2 (not implemented) — dual-element combinations, requested alongside the specialization
-## unlock system above. Scoped out deliberately: inventing a brand-new tower class from scratch
-## (full stats/rendering/sound/validation, the same checklist Marksman needed) is a much bigger,
-## riskier undertaking than the unlock-tracking system in Phase 1, and doing both in one pass risked
-## shipping something untested. Specified here so the design isn't lost, not started.
+## Phase 2 — COMPLETE as of 2026-09-15. All four dual/triple-element combinations from the
+## original design (Steam→Blow Gunner, Proton, Dark Matter, Quasar) are now implemented and
+## shipped (see CHANGELOG.md). Originally scoped out deliberately: inventing a brand-new tower
+## class from scratch (full stats/rendering/sound/validation, the same checklist Marksman needed)
+## was judged a much bigger, riskier undertaking than the unlock-tracking system in Phase 1 — that
+## caution turned out to be reasonable but not fatal; all four got built incrementally, one at a
+## time, each verified against the real code before the next one started. Kept below as the design
+## record of how it actually happened, not rewritten as if it were all planned from the start.
 
-- **Dual and triple-element combinations — now fully named, still not implemented.** A tower
-  pushed toward a second (or third) element rather than just growing the one it's already locked
-  into combines into a hybrid, "doing both" (or all three) of its parent elements' effects:
-  - 🔥 Fire + ❄️ Ice → **Steam**
-  - 🔥 Fire + ⚡ Electric → **Proton** (purple)
-  - ⚡ Electric + ❄️ Ice → **Dark Matter** (black)
-  - 🔥 Fire + ⚡ Electric + ❄️ Ice, all three equally → **Quasar** (white)
-  This closes the naming gap flagged in the previous version of this doc (Fire+Electric and
-  Ice+Electric both needed names before anything could be built) — worth noting the triple-element
-  tier is new information, not something the earlier scoping anticipated, and it's a genuinely
-  different *kind* of design problem from the dual combos, not just a third name to add:
-  - **The dual combos still fit the existing attunement model reasonably well** — a tower already
-    locked into one element being pushed toward a second element's own threshold. The open
-    questions from before are unchanged and still unanswered: what stat state actually triggers
-    the combo (two stats independently crossing 100? 500? something new?), and whether a hybrid
-    replaces the single-element specialization path or exists alongside it.
-  - **"All three equally" for Quasar is a different shape of problem entirely.** The current
-    `this.attunement` is a single locked value (`ATTUNEMENTS.str/dex/int` locks to exactly one
-    element, permanently, the first stat to cross the threshold — see
-    `checkAttunementAndSpecialization()`). "All three equally" doesn't fit that model at all: it's
-    not about which stat locked first, it's about three stats being in some kind of balance
-    relative to each other, checked independently of (or instead of) the existing single-lock
-    mechanism. This needs actual design thought before any code — what "equally" means precisely
-    (exact numeric equality? within some tolerance? all three past a shared threshold
-    simultaneously?), and how it interacts with a tower that's already locked into one element
-    via the existing system. Not something to guess an implementation for.
-- **New classes unlocked by each hybrid, first-reach-anywhere**: reaching Steam on an Archer for
-  the first time unlocks "Blow Gunner" per the original request — the same permanent,
-  first-reach-unlocks-it-forever pattern as Phase 1's `unlockTowerTypeBuild()`, just triggered
-  by a hybrid-element combo instead of a single element. Proton/Dark Matter/Quasar would each need
-  their own unlocked class(es) too, on which base class(es) — not specified yet, and not guessed
-  at here. None of these classes exist in the code at all and each needs the full definition
-  checklist Marksman got: `CONFIG.TOWERS` stats/tiers, color palette (Proton's purple and Dark
-  Matter's black are specified now — Steam's and Quasar's white aren't yet distinct from existing
-  palette entries, worth checking for clashes before implementing), build scale, job quotes,
-  tower-strategy blurb, `RANGE_CAPS`, `CLASS_ARCHETYPE`, ranged-shot sound, a full
-  `drawStickman()` rendering branch, `EVOLVED_TOWER_TYPES` registration, and validated with real
-  tests the way every other new class this project has added was — not a stub, and not four stubs.
+- **Dual and triple-element combinations — all four now implemented.** A tower pushed toward a
+  second (or third) element rather than just growing the one it's already locked into combines
+  into a hybrid, "doing both" (or all three) of its parent elements' effects:
+  - 🔥 Fire + ❄️ Ice → **Steam** → unlocks **Blow Gunner** on Archer only — implemented (see
+    `HYBRID_SPECIALIZATIONS`/`checkAttunementAndSpecialization()`). The one combo that stayed
+    single-base-class; the other three all ended up reachable from anywhere.
+  - 🔥 Fire + ⚡ Electric → **Proton** (purple) — implemented, reachable from ALL 3 base classes.
+  - ⚡ Electric + ❄️ Ice → **Dark Matter** (black) — implemented, same all-3-base-classes shape as
+    Proton.
+  - 🔥 Fire + ⚡ Electric + ❄️ Ice, all three equally → **Quasar** (white) — implemented, also
+    reachable from all 3 base classes, via a genuinely different check shape than the other three
+    (see below).
+  This closes the naming gap flagged in an earlier version of this doc — worth recording how each
+  open question actually got resolved, not just that it did:
+  - **The dual combos fit the existing attunement model well** — a tower already locked into one
+    element (`this.attunement`) whose OTHER element's own stat ALSO reaches
+    `SPECIALIZATION_THRESHOLD` (500) unlocks the hybrid, alongside its own single-element
+    specialization, not instead of it. Confirmed by building three of them this way (Steam,
+    Proton, Dark Matter).
+  - **"Which base class(es)" turned out to have a real answer beyond "pick one": reachable from
+    ALL of them.** First established for Proton by explicit request ("all towers can turn into all
+    elements with the right stat combo"), then reused directly for Dark Matter and Quasar without
+    needing to re-derive it — `HYBRID_SPECIALIZATIONS` already supported a target being reachable
+    from multiple base classes (one entry per base class, all pointing at the same target); this
+    pattern is now proven three times over, not a one-off.
+  - **"All three equally" for Quasar turned out to have a real answer too, once reframed.** The
+    blocker was never that it was impossible — it's that it doesn't fit
+    `HYBRID_SPECIALIZATIONS`'s pairKey system, which is built entirely around `this.attunement`
+    being one locked value. Quasar simply doesn't go through that system at all: it's checked as
+    its own fully independent condition in `checkAttunementAndSpecialization()` — all three raw
+    stats (str/dex/int) each reaching `SPECIALIZATION_THRESHOLD` — the exact same technique Cat
+    Snapper's raw-DEX check already used to bypass the same system for a different reason. No new
+    numeric threshold invented, no change to how `this.attunement` itself works.
+- **Classes unlocked by each hybrid, first-reach-anywhere — all four shipped**:
+  - Steam → **Blow Gunner**: `poisonDamage` (scald DoT, reusing Blowdart/Squirtgun's field) +
+    `slowFactor`/`slowDuration` (chill, reusing Mage's) — both already generic on impact, no new
+    status-effect code.
+  - Proton → **Proton** (class shares its combo's name): same poisonDamage/slowFactor reuse,
+    purple, burn-weighted.
+  - Dark Matter → **Dark Matter**: same reuse again, black, slow-weighted instead of burn-weighted
+    — the differentiation between all three of these is in the DoT/slow ratio and color, not a new
+    mechanic each time.
+  - Quasar → **Quasar**: adds `splashRadius` (AoE, already generic on impact, same field
+    Bomber/Squirtgun use) on top of the shared poisonDamage/slowFactor combo — genuinely stronger
+    in kind, matching that it's gated on 1500 total stat points instead of 1000.
+  Each got the full definition checklist Marksman needed originally: `CONFIG.TOWERS` stats/tiers,
+  color palette, build scale, job quotes, tower-strategy blurb, `RANGE_CAPS`, `CLASS_ARCHETYPE`
+  (all four tagged MAGE regardless of unlock source, matching Cat Snapper's own precedent),
+  ranged-shot sound, `EVOLVED_TOWER_TYPES` registration, and validated with real tests against the
+  actual extracted code each time — not stubs. Rendering reused the shared Mage/Snapcaster branch
+  (extended once, to cover all four) rather than four separate near-duplicate branches.
 - **Infrastructure already in place for this, from Phase 1**: `unlockedTowerTypes` (the Set, now
   proven to persist correctly across save/load, and now generalized to cover every tier — not just
   first-tier specializations, see the Phase 1 note below), `showUnlockToast()`, and the
@@ -392,6 +408,79 @@ upfront about rather than implying otherwise.
   unused/dead code, kept defined rather than deleted). This Phase 2 doc's own design was already
   written assuming exactly that "unlock, don't transform" model, so it needed no changes for the
   clarification beyond the identifier renames above.
+
+### Full proposed unlock-tree map (consolidated 2026-09-15, by request — every class ever
+### suggested anywhere in this project's history, mapped against the real current tree; nothing
+### below this line is implemented or committed to, it's an index of what's ALREADY specified
+### above/elsewhere in this file plus where the gaps actually are)
+
+The real, shipped tree first, since every proposal below only makes sense relative to it — see
+`SPECIALIZATIONS`/`EVOLUTIONS` in `index.html` for the source of truth, this is just laid out as a
+tree for scanning:
+
+```
+SWORDSMAN (Warrior/STR)         ARCHER (Archer/DEX)             MAGE (Mage/INT)
+├─ 🔥 HAMMERMAN → PALADIN       ├─ 🔥 GATLING → BOMBER           ├─ ⚡ SNAPCASTER (no deeper tier)
+├─ ⚡ AXEMAN (no deeper tier)   │         → GUNALINDER → SNIPER  └─ ❄️ CLERIC → POPE
+└─ ❄️ SPEARMAN (no deeper tier)├─ ⚡ BLOWDART → SQUIRTGUN            (Mage has NO 🔥 Fire path at all —
+                                └─ ❄️ MARKSMAN → SNIPER (same         intentional existing gap, not
+                                   endpoint as the Fire chain)        an oversight — see AGENTS.md)
+```
+
+Every proposal below is a gap-fill or extension of the above, never a replacement — nothing here
+overrides an already-shipped class or threshold.
+
+**Hybrid-element classes** (full spec in the Phase 2 entry above this map) — **all four shipped,
+this map section is now historical**:
+- 🔥+❄️ Steam → unlocks **Blow Gunner** on Archer — **shipped** (see `HYBRID_SPECIALIZATIONS` in
+  `index.html`, and CHANGELOG.md).
+- 🔥+⚡ Proton (purple) → unlocks **Proton** (the class shares its combo's own name) — **shipped**,
+  reachable from ALL 3 base classes rather than one, by explicit request ("all towers can turn
+  into all elements with the right stat combo").
+- ⚡+❄️ Dark Matter (black) → unlocks **Dark Matter** — **shipped**, same all-3-base-classes shape
+  as Proton, confirming that pattern wasn't a one-off — reused directly, no reinvention needed.
+- 🔥+⚡+❄️ equally → Quasar (white) → unlocks **Quasar** — **shipped**. The "doesn't fit the
+  single-locked-attunement model" problem noted below was real but not fatal: solved by not
+  routing it through that model at all — a fully independent raw-triple-stat check
+  (str/dex/int each ≥ `SPECIALIZATION_THRESHOLD`) in `checkAttunementAndSpecialization()`, the
+  same bypass technique Cat Snapper's own raw-DEX check already used.
+
+**STR-Mage specialization** (full spec in the "large batch of feature requests" entry below,
+search this file for "Rogue Sorcerer" for the ORIGINAL proposed version of this): **shipped**,
+but not as originally proposed here — built as a direct single-tier Mage specialization
+(`SPECIALIZATIONS.MAGE.FIRE = 'NECROMANCER'`, structurally Cleric's mirror) with a skeleton-raising
+mechanic, by explicit later request, rather than the 3-tier Rogue Sorcerer → Crazy Wizard →
+Necromancer HP-sacrifice-AoE chain originally sketched below. The original 3-tier chain concept
+remains just that — a still-unimplemented idea, listed for history, not a description of what
+actually shipped. Worth noting the archetype-exclusivity flag from the original proposal below
+does NOT apply to what actually shipped: the built Necromancer is a normal INT-scaled
+MAGE-archetype class (its own STR-gated *unlock*, same as Cleric's INT-gated unlock, but its
+damage still scales off INT like every other Mage-archetype class) — the original chain's
+STR-heavy-damage idea, and the "first deliberate exception to archetype-exclusive damage" concern
+that came with it, was never actually built.
+
+*Original, unbuilt 3-tier chain concept, for history:* Mage (grown STR-heavy instead of the usual
+INT) → **Rogue Sorcerer** → **Crazy Wizard** → **Necromancer** (HP-percentage self-sacrifice AoE
+finisher, 1-10% of caster's own max HP per cast, 120s shared cooldown, locked out below 10% HP).
+Would have been the first deliberate exception to archetype-exclusive damage in the whole tree
+(only STR drives Warrior damage, only INT drives Mage damage, see `README.md`'s Leveling section)
+— a real design decision this doc flagged as needing to be made explicitly, not quietly
+special-cased in code, if it were ever built. Superseded by the shipped version above; kept here
+only as a record of the original idea.
+
+**Warrior tree restructure** (full spec in the same "large batch" entry): Axeman renamed
+**Knight Errant** as a pre-evolution flavor stage, with **Berserker** as a further tier above it
+(no threshold specified); separately, an Hammerman that then invests DEX (instead of continuing
+toward Paladin's INT path) branches into an unnamed distinct dual-wielding class. This is the one
+proposal here that isn't just a gap-fill — it's a genuine restructure of an already-shipped part
+of the tree (Axeman currently has no deeper tier at all; this would give it one, and would turn
+Hammerman's single INT-only path into an actual branch), so it carries more risk to existing
+save-compatibility/balance than the purely-additive hybrid/Mage-chain proposals above.
+
+**Non-combat NPCs proposed alongside the above** (not towers, not part of the unlock tree, noted
+here only because they came up in the same "classes we've discussed" sweep): a static Merchant NPC
+gated behind wave 5 (part of the still-open Dota-style item-drop economy), and a wobbling Dwarf
+Builder NPC (Hammerman-proportioned, bright orange).
 
 - **Reported: enemies "stick"/seem to have free will at a congested chokepoint, wants a strictly
   preset path.** Investigated, not changed. Confirmed by reading the actual movement code
@@ -408,6 +497,18 @@ upfront about rather than implying otherwise.
   another speculative parameter tweak.
 
 ## Ideas
+
+- **"Dark Wizard" concept (mentioned 2026-09-15, not started)**: a crowd-control tower that lifts
+  an enemy in place — "force choke" style — dealing damage over time while it's suspended rather
+  than a normal instant hit; the enemy can't move while lifted, but stays a valid target for other
+  towers to keep attacking during that window. Per-hit damage would be lower than a normal attack
+  but land faster/more often, since it's a channeled effect rather than a single strike. The
+  description trailed off mid-thought when it came up ("...since it's only doing damage when
+  it's...") — genuinely incomplete, not a spec to build from yet. Would need at minimum: which
+  base class/stat combo unlocks it, a name, how "suspended in place" actually interacts with the
+  existing movement/pathing system (closest precedent is the stun system —
+  `applyStun()`/`stunMs` — but a suspended enemy reads as a bigger visual/behavioral departure
+  than a stun, not just a longer one), and the actual damage-over-time numbers.
 
 ## Design ideas from a deeper skim of "The Principles of Beautiful Web Design" (2026-09-13) — not
 ## implemented, kept separate from the code-review bug triage above since these are speculative

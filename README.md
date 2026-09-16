@@ -125,8 +125,9 @@ A tower never transforms into a new class — it keeps its own identity forever 
 growing its own stats. What reaching certain thresholds *does* do: permanently unlock a different,
 better tower as directly buildable from the Build menu, for the rest of the current game. Grind a
 Swordsman's stats far enough and Spearman shows up as its own buildable tower — the Swordsman that
-earned it stays a Swordsman. Only Swordsman, Archer, Mage, and Barricade start out buildable;
-everything else has to be unlocked first.
+earned it stays a Swordsman. Only Swordsman, Archer, Mage, and Barricade start out buildable —
+always exactly these 3 fighting classes plus Barricade, nothing else added to that list going
+forward; everything else has to be unlocked first.
 
 Unlocking happens in two stages: whichever stat reaches **100** first on a Swordsman/Archer/Mage
 permanently locks in an element (STR → 🔥 Fire, DEX → ⚡ Electric, INT → ❄️ Ice) — the lock never
@@ -141,6 +142,15 @@ as the existing wave-gated starter unlocks. Not-yet-reached classes show up in t
 grayed out with a 🔒 and a message explaining exactly which class + stat threshold unlocks them —
 e.g., reaching ❄️ Ice on a Swordsman (INT 500) unlocks Spearman as directly buildable from then on.
 
+**Two economy rules on top of the above.** Swordsman, Archer, and Mage stay genuinely unlimited in
+count, but each one you already have on the board makes the next one cost more — 20% more per
+existing copy of that same type, compounding (a 💰50 Swordsman becomes 💰60 for a 2nd, 💰72 for a
+3rd, and so on). Paladin, Squirtgun, Sniper, Pope, and Necromancer are capped at **one active copy
+on the board at a time** instead — the first four as the single deepest evolution in each lineage
+that has one, Necromancer as a deliberate exception despite being only a first-tier specialization.
+The Build-menu row shows "already on the field" and can't be selected again until that one is sold
+or dies, at which point the slot opens back up.
+
 | Tower | Role |
 |---|---|
 | ⚔️ Swordsman | Melee cone sweep — the starting warrior |
@@ -154,18 +164,21 @@ e.g., reaching ❄️ Ice on a Swordsman (INT 500) unlocks Spearman as directly 
 | 🔫 Gatling | *(unlocked by 🔥 Fire on an Archer, STR 100/500)* Very fast, low damage per shot — shreds swarms |
 | 🎯 Blowdart | *(unlocked by ⚡ Electric on an Archer, DEX 100/500)* Short range, fast fire rate, every dart poisons |
 | 🔫 Dual Squirt Gun | *(unlocked by a Blowdart reaching DEX 40)* Dual-wielded, deeper DEX specialization |
+| ♨️ Blow Gunner | *(unlocked on an Archer that pushes BOTH STR and INT to 500 — 🔥 Fire + ❄️ Ice = "Steam")* Every hit carries both a poison DoT and a brief chilling slow at once. The first dual-element hybrid class — doesn't replace Gatling/Marksman's own single-element unlocks, unlocks alongside them off the same stat growth. |
+| ☄️ Proton | *(unlocked on ANY base class — Swordsman, Archer, or Mage — that pushes BOTH STR and DEX to 500 — 🔥 Fire + ⚡ Electric)* Purple energy that burns on contact and briefly disrupts the target's speed. Unlike every other hybrid/specialization, not tied to one base class — whichever tower gets there first unlocks the same shared class. |
+| 🕳️ Dark Matter | *(unlocked on ANY base class that pushes BOTH DEX and INT to 500 — ⚡ Electric + ❄️ Ice)* Same shared-across-all-3-bases shape as Proton. Leans toward the slow more than the burn — a control identity rather than a damage one. |
+| 🌟 Quasar | *(unlocked on ANY base class that pushes STR, DEX, AND INT all to 500 — 🔥+⚡+❄️, all three)* The hardest unlock in the game by a wide margin — 1500 total stat points, not 1000. Hits everything in a small splash radius, not just its direct target, on top of the same burn+slow every hybrid carries. |
 | 🔫 Marksman | *(unlocked by ❄️ Ice on an Archer, INT 100/500)* One carefully aimed rifle shot at a time — longer range and harder-hitting than base Archer |
 | 🎯 Sniper | *(unlocked by a Marksman reaching INT 60)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
+| 🐈‍⬛ Cat Snapper | *(unlocked by an Archer reaching DEX 500 — a raw stat threshold, not gated through an element; all 3 of Archer's own element slots were already taken)* Throws a temporary shadow cat instead of dealing damage directly — the cat latches onto its target and scratches for a few seconds, up to 2 cats out at once |
 | ⚡ Snap Caster | *(unlocked by ⚡ Electric on a Mage, DEX 100/500)* Faster casts than base Mage, with a chance to chain lightning to a nearby second target |
 | ✝️ Cleric | *(unlocked by ❄️ Ice on a Mage, INT 100/500)* Curses the nearest enemy of any type with a lingering damage-over-time affliction — 5x tick damage against undead. Also heals your lowest-HP tower once per wave. |
+| 💀 Necromancer | *(unlocked by 🔥 Fire on a Mage, STR 100/500)* Fires a dark bolt, and raises a small band of skeleton minions near itself at the start of every round — gone again the instant the round ends. Capped at one active on the board at a time. |
 | 🧑‍🦳 Pope | *(unlocked by a Cleric reaching INT 750)* Cleric's ultimate form as a separate tower — the curse hits every enemy in range at once instead of one target, still 5x against undead. A visibly growing hat on any Cleric telegraphs its own approach to this unlock threshold, from 500 to 750 INT — the Cleric doesn't become Pope, it just earns the unlock. |
 | 💣 Bomber | *(unlocked by a Gatling reaching STR 40)* Splash damage against groups — the intended "Gatling → Bomber" deep tier, previously deferred pending a real threshold decision, now decided. |
 | 🔫 Gunalinder | *(unlocked by a Bomber reaching INT 40)* Trades splash for precision — fires all six chambers of a revolver in a rapid burst, then a long reload. |
 
 Every buildable evolved class now traces to a real, reachable unlock path — no orphaned classes.
-Mage has no Fire (STR) specialization yet; an attuned Fire Mage simply stays a Mage rather than
-being forced into an evolution that doesn't exist. That gap is intentional (see the `SPECIALIZATIONS`
-comments in `index.html`), not an oversight like Bomber/Gunalinder's used to be.
 
 Gold-tier upgrades (paid with gold, separate from EXP levels) raise range, cooldown, and unlock
 class mechanics, with a modest damage bump included — but damage growth is weighted so a tower's
@@ -289,13 +302,21 @@ intentional now, not an oversight.
 
 Stat damage bonuses are class-exclusive, Dota-style, with no exceptions: STR only boosts damage
 for Warrior-archetype towers (Swordsman and its evolutions), DEX only for Archer-style towers
-(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster, Marksman),
-and INT only for Mage-archetype towers (Mage, Cleric, Pope). STR's max-HP bonus and DEX's
-attack-speed/luck/accuracy bonus stay universal across every class — DEX-based accuracy in
-particular scales via the exact same curve for every tower regardless of archetype. A tower's
-primary stat is the dominant driver of how hard it hits, with Warriors using a separate, steeper
-damage curve from the other two archetypes specifically so heavy STR investment keeps compounding
-meaningfully into the deep endgame instead of flattening out.
+(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster, Marksman, Blow Gunner),
+and INT only for Mage-archetype towers (Mage, Cleric, Pope, Necromancer, Cat Snapper, Proton, Dark
+Matter, Quasar). STR's
+max-HP bonus and DEX's attack-speed/luck/accuracy bonus stay universal across every class — DEX-based
+accuracy in particular scales via the exact same curve for every tower regardless of archetype. A
+tower's primary stat is the dominant driver of how hard it hits, with Warriors using a separate,
+steeper damage curve from the other two archetypes specifically so heavy STR investment keeps
+compounding meaningfully into the deep endgame instead of flattening out.
+
+A Swordsman that reaches level 5 gets a one-time, permanent choice between two specializations —
+**Zweihander** (one massive two-handed blade, wider swing arc, heavier per-hit damage, longer
+cooldown — visibly trembles and glows more the longer it's been building toward its next swing) or
+**Dual Wield** (two swords, two independent swings, can strike two separate enemies at once). Once
+picked it can't be changed. Neither is a separate buildable class the way Cleric/Necromancer are —
+it's the same Swordsman, permanently specialized.
 
 Promoting a tower's tier for gold also grants random stat growth on top of its guaranteed tier
 stat bump: 3 independent rolls of 1-6 points each into a randomly chosen stat, plus a guaranteed
@@ -310,6 +331,19 @@ comparatively small investment. Pushing from there to 500 effective DEX only tri
 4% down to a true 0% (a genuinely guaranteed hit), over four times the investment for a much
 smaller payoff — the same "cheap early progress, expensive last stretch" shape as an RPG leveling
 curve, applied to accuracy instead of XP cost.
+
+Ambient wind adds on top of that base miss chance for Archer- and Mage-archetype towers only —
+Warriors' melee swings aren't wind-affected. It gusts and calms gradually on its own over time (no
+fixed schedule, and never a sudden jump — it always ramps through the intermediate range on the
+way to a strong gust), visible directly in how hard the two flags near the map's spawn point are
+fluttering: barely moving on a calm day, whipping around during a real gust. How strong it's even
+able to get scales with progress — genuinely rare in the first several waves, climbing to a real
+regular possibility by wave 30 and beyond. Archers lose up to 25 percentage points of accuracy at
+max wind; Mages lose that same amount plus an extra penalty that grows faster the windier it gets,
+so a Mage suffers noticeably more than an Archer in a strong gust, not just the same flat hit every
+ranged class takes. The wind's own direction never factors into that miss-chance penalty — only
+how strong it currently is — though it does now drift and gently lean the flags' own flutter for a
+bit of visual variety.
 
 The inspect panel shows each tower's real min-max damage range (no separate flat number
 alongside it) and its actual DPS — average damage per hit times attacks per second, discounted by
@@ -377,6 +411,15 @@ beyond clearing rocks yourself.
 Start with 100. Buy an extra life with gold from the **Shop** — each purchase costs
 substantially more than the last (exponential scaling), so it's a real emergency valve rather
 than a routine top-up.
+
+An enemy costs a life the instant its entire body has crossed the checkered finish line at the
+end of the path — not the moment it merely reaches the last tile. It doesn't disappear after
+that: it keeps wandering the map aimlessly and stays a fully live, killable target (same gold/EXP
+drop as any other kill) — and it doesn't get swept away at the start of the next round either, it
+genuinely persists until something actually kills it, across as many rounds as it takes. Giving
+the lull between waves something to do beyond waiting, and a real reason to actually do it: a
+wandering enemy left alone has a high, periodically-rerolled chance of finding and directly
+attacking a nearby tower.
 
 ## Settings
 
@@ -448,9 +491,12 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1069)
 - [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L896)
 - [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1493)
+- [`computeFinishLine()` — shared geometry for the finish-line carpet render and the full-body crossing check; `reachEnd()`/`updateEscaped()` — an enemy that crosses wanders as a live target instead of despawning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2681)
 - [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2502)
 - [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3342)
 - [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4249) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
+- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8111) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
+- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8195) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
 - [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3342)
 - [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5221)
 - [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5717)

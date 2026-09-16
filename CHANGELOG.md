@@ -1,5 +1,678 @@
 # Changelog
 
+## [1.2.24] - 2026-09-15 — Build tray no longer shows deep-tier evolutions before their own prerequisite is unlocked
+Real report, confirmed by reading the actual Build-tray code: it rendered a locked row for every
+one of the ~20 unlockable classes from wave 0, including ones gated on investing in a class
+("Cleric", "Gunalinder") that isn't buildable yet at all — reaching Pope needs 750 INT on a
+*Cleric* specifically, but Cleric itself has to be unlocked first. The riddle text for those rows
+gave no indication a whole separate unlock had to happen first.
+- Deep-tier evolutions (`EVOLUTIONS`-driven — Paladin, Squirtgun, Bomber, Gunalinder, Sniper, Pope)
+  now don't render a row at all until their own prerequisite class is actually unlocked. Element/
+  hybrid/triple-stat unlocks (Hammerman, Blowdart, Gatling, Marksman, Snapcaster, Cleric,
+  Necromancer, Blow Gunner, Cat Snapper, Proton, Dark Matter, Quasar) are unaffected — all rooted
+  directly at a base class, buildable from wave 0 same as always.
+- Checks EVERY `EVOLUTIONS` entry targeting a given class, not just one — Sniper specifically has
+  TWO valid prerequisite paths (Gunalinder OR Marksman), and the existing
+  `TOWER_UNLOCK_SOURCE_BY_TARGET` lookup only ever remembers whichever was written last, so reusing
+  it here would have wrongly hidden Sniper behind just one of its two real paths.
+- **Caught a real bug in my own first attempt at this fix, before it shipped**: the initial version
+  initialized its "is this reachable" flag to `true`, which meant the loop's own early-exit check
+  fired on the very first `EVOLUTIONS` entry that didn't even target the class in question at all
+  — silently defeating the entire fix (every row still would have shown, immediately, regardless
+  of prerequisites). Caught by running an isolated test against the real code before shipping, not
+  assumed correct from the logic reading right on a re-read — re-verified after the fix with the
+  same test, now passing on every case including the Sniper dual-path one.
+- `node --check` on the extracted script: clean.
+
+## [1.2.23] - 2026-09-15 — Dark Matter and Quasar shipped — every hybrid from the original design doc is now implemented
+The last two hybrids, both by explicit request to finish "mapping it all." Same reuse discipline
+as Proton/Blow Gunner throughout — no brand new status-effect systems needed for either.
+- **`DARK_MATTER`** (Electric+Ice, near-black): same all-3-base-classes shape as Proton — whichever
+  of Swordsman/Archer/Mage pushes both DEX and INT to 500 first unlocks it. Same
+  poisonDamage/slowFactor reuse as every other hybrid, just weighted toward the slow rather than
+  the burn (Electric+Ice both read as control/disable more than damage-over-time) — the
+  differentiation from Proton/Blow Gunner is in the ratio, not a new mechanic.
+- **`QUASAR`** (all three elements, near-white): the genuine capstone — gated on a real trigger,
+  not left unsolved. The blocker was never actually "impossible," it was "doesn't fit the
+  single-locked-attunement pairKey system" — true, but Quasar doesn't have to go through that
+  system at all. New independent check in `checkAttunementAndSpecialization()`: all three raw
+  stats (str/dex/int) each reaching `SPECIALIZATION_THRESHOLD` (500) — the same threshold every
+  other unlock already uses, checked directly, the same way Cat Snapper's raw-DEX check already
+  bypasses the attunement system entirely. Reachable from any base class, same as the other two.
+  Its kit adds `splashRadius` (AoE, already generic on impact, same field Bomber/Squirtgun use) on
+  top of the shared poisonDamage/slowFactor combo — genuinely stronger in kind, not just tier
+  level, matching that it's gated on 1500 total stat points instead of 1000.
+- Full definition checklist for both: `JOB_COLORS`/`JOB_BUILD`/`JOB_QUOTES`/`RANGE_CAPS`/
+  `CLASS_ARCHETYPE`/`TOWER_STRATEGY`/`EVOLVED_TOWER_TYPES`/`TOWER_UNLOCK_RIDDLE`, `fireProjectile()`
+  reach/color/sound, `isMagicMissile`, and both extended into the shared Mage/Snapcaster/Proton
+  render branch and its `castProgress` flourish rather than new branches from scratch. New manual
+  `TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR` entry (not table-driven, same pattern Cat Snapper needed).
+- Caught and fixed one real mistake while writing Dark Matter's blurb text — briefly wrote out
+  self-correcting reasoning ("wait, DEX and INT...") into the actual player-facing string before
+  catching it on the next pass. Cleaned before shipping, not left in.
+- `BACKLOG.md`'s Phase 2 doc updated end to end: both marked shipped, the "map" section's
+  per-hybrid status lines corrected, and the multi-base-class pattern now explicitly noted as
+  proven and reusable (it's been used 3 times now, not a one-off).
+- Verified against the real extracted trigger logic, not assumed from Proton's precedent: Dark
+  Matter confirmed unlocking from all 3 base classes independently; Quasar confirmed NOT firing
+  with only two of the three stats at 500 (a real negative test, not just a positive one), then
+  confirmed firing once the third stat also reaches it; Quasar confirmed reachable from Swordsman
+  and Archer, not just Mage; both confirmed present in `UNLOCKABLE_TOWER_TYPES` (20 entries total,
+  matching `EVOLVED_TOWER_TYPES`'s own count exactly). `node --check` on the extracted script:
+  clean.
+
+## [1.2.22] - 2026-09-15 — New tower: Proton — Fire+Electric hybrid, reachable from ANY base class; Quasar and Dark Wizard still not ready
+- **New `PROTON`**: purple "space electricity," burns on contact plus a brief electrical
+  slow — same dual-existing-mechanic-reuse shape `BLOW_GUNNER` already established (poisonDamage
+  reskinned as burn, slowFactor as the disruption), so this needed no new status-effect code.
+- **Reachable from all 3 base classes, not just one** — a deliberate departure from every other
+  hybrid/specialization in the game, which are each tied to exactly one base class.
+  `HYBRID_SPECIALIZATIONS` now has a `SWORDSMAN`/`ARCHER`/`MAGE` entry each mapping their own
+  `'ELECTRIC+FIRE'` pair to the SAME `PROTON` target — whichever tower gets Fire+Electric to 500/500
+  first unlocks it, one shared class rather than three separate variants (a much bigger,
+  differently-scoped ask that wasn't what was actually requested). Archetype-tagged `MAGE`
+  regardless of which base class actually unlocked it, same pattern `CAT_SNAPPER` already
+  established.
+- Full definition checklist: `JOB_COLORS`/`JOB_BUILD`/`JOB_QUOTES`/`RANGE_CAPS`/`CLASS_ARCHETYPE`/
+  `TOWER_STRATEGY`/`EVOLVED_TOWER_TYPES`, `fireProjectile()` reach/color/sound, `isMagicMissile`,
+  and a new `TOWER_UNLOCK_RIDDLE` entry phrased generically ("from any path") rather than naming
+  one source class, since it genuinely isn't tied to one. Reuses the shared `MAGE`/`SNAPCASTER`
+  render branch and `castProgress` cast-flourish computation directly (both extended to include
+  `PROTON`) rather than writing a new render branch from near-scratch.
+- **Quasar remains unbuilt** — still no defined trigger mechanism ("all three equally" doesn't fit
+  the single-locked-attunement model any more than it did before) and no unlocked-class name.
+  **Dark Wizard** (the "force-choke, lift enemies in place, other towers can still hit them"
+  concept mentioned alongside this) is logged as a future idea, not started — the description
+  trailed off mid-thought and it wasn't the request being acted on this turn.
+- Verified against the real extracted derivation and trigger logic: `PROTON` confirmed present in
+  `UNLOCKABLE_TOWER_TYPES`; the hybrid trigger fires correctly from all 3 base classes
+  independently (Swordsman, Archer, and Mage each unlock it on reaching Fire+Electric 500/500,
+  tested as three separate scenarios against the real code, not assumed from symmetry). `node
+  --check` on the extracted script: clean.
+
+## [1.2.21] - 2026-09-15 — Wind overhaul: gentler flutter, gradual bounded gusts, ceiling scales with wave progress, wind direction, both flags get a contrasting outline
+A full pass on wind feedback — every point addressed.
+- **Black flag now gets a white outline** (was white-only before) — both banners read clearly
+  against any background now, not just the white one against a dark path tile.
+- **Flutter redesigned** — the old two-point version moved the whole banner shape rigidly back and
+  forth (read as a fish tail flicking). Now a real multi-point traveling wave: amplitude is exactly
+  0 right at the pole (where real cloth is pinned) and grows toward the free end, with the ripple's
+  phase shifting along the banner's length so the wave visibly travels outward instead of the whole
+  shape swaying in place. Speed and amplitude both scaled down from before too — gentler overall.
+- **Wind changes far more gradually now**: retarget interval up from 2.5-6.5s to 6-15s, and the
+  ease rate slowed roughly 3x (`dt/1500` → `dt/4500`).
+- **Never jumps straight to a high value**: `updateWind()` rewritten as a bounded random walk —
+  each new target is a step of at most ±0.35 from wherever wind currently is, not an independent
+  re-roll — so reaching a strong gust always visibly ramps through the intermediate range first.
+- **New `windCeilingForWave`**, set fresh in `startNextWave()`: climbs linearly from a gentle 0.15
+  at wave 0 to a full 1.0 ceiling by wave 30. Rough wind is now genuinely rare early on and a real,
+  regular possibility later — "each wave needs a wind amount" — rather than one flat cap for the
+  whole game. `windStrength` itself isn't reset between waves, only the ceiling it can climb toward.
+- **New `windDirAngle`**: a separate, independently and slowly drifting value (its own bounded
+  walk, same shape as the strength one) that gently leans the flag's flutter — purely cosmetic;
+  `windMissPenalty()` stays direction-agnostic exactly as originally specified, only strength
+  drives the gameplay effect.
+- Verified against the real extracted `updateWind()`: single-retarget jumps never exceed the
+  ±0.35 step bound; with state properly reset first, wind genuinely never exceeds a given ceiling
+  over a long simulated run (an initial test run showed a value above the ceiling, traced to carried-over
+  state from a prior scenario in the test harness itself, not the actual code — confirmed by
+  re-running with a clean reset); per-tick change stays small, confirming gradual easing rather
+  than a snap; and the flutter's ripple amplitude is confirmed exactly 0 at the pole, growing
+  toward the free end. `node --check` on the extracted script: clean.
+
+## [1.2.20] - 2026-09-15 — Cat Snapper is now unlocked (Archer, DEX 500), not a starter — and a real pre-existing bug found along the way
+Standing instruction going forward: only Swordsman, Archer, and Mage are the 3 basic intro classes
+(plus Barricade, the one non-fighting utility exception) — nothing else gets added to
+`STARTER_TOWER_TYPES`. Cat Snapper was there by mistake; moved to a proper unlock instead.
+- **Removed from `STARTER_TOWER_TYPES`**, added to `EVOLVED_TOWER_TYPES`. `CONFIG.TOWERS.CAT_SNAPPER`'s
+  `baseCost` changed from 80 to 0, matching every other evolution-only class's convention.
+- **New unlock condition: an Archer reaching 500 DEX** — a raw stat threshold checked directly in
+  `checkAttunementAndSpecialization()`, independent of attunement/element entirely (fires even if
+  that Archer hasn't attuned to anything yet, or already attuned to a different element), since all
+  3 of Archer's own element slots were already taken (Gatling/Blowdart/Marksman) and this was never
+  going through `SPECIALIZATIONS` at all. Reuses `SPECIALIZATION_THRESHOLD` (500), the same number
+  every other specialization unlock already uses.
+- Archetype stayed `MAGE` (unchanged) rather than switching to DEX/`ARCHER` scaling just because
+  the unlock source changed — a deliberately conservative call, flagged rather than silently
+  assumed, since the request was about the unlock condition specifically.
+- **Found and fixed a real pre-existing bug while wiring this up**: `TOWER_UNLOCK_SOURCE_BY_TARGET`
+  (which `UNLOCKABLE_TOWER_TYPES` — and therefore the Build tray's entire locked/unlocked row
+  loop — is derived from) only ever pulled from `SPECIALIZATIONS` and `EVOLUTIONS`, never
+  `HYBRID_SPECIALIZATIONS`. That meant **Blow Gunner has never actually appeared in the Build tray
+  at all, locked or unlocked**, since it shipped — confirmed by extracting and running the real
+  derivation logic, not assumed. Fixed by folding `HYBRID_SPECIALIZATIONS` into the same
+  derivation, plus Cat Snapper's own explicit entry (not table-driven, so it needed one by hand).
+- Added a `validateGameDefinitions()` check that would have caught this: every
+  `EVOLVED_TOWER_TYPES` entry must now actually appear in `UNLOCKABLE_TOWER_TYPES`, or boot fails
+  loudly instead of silently leaving a class unreachable.
+- Filled in 3 missing `TOWER_UNLOCK_RIDDLE` entries found the same way (Necromancer, Blow Gunner,
+  Cat Snapper all had none — silently falling back to a generic "a secret combination" message
+  instead of a themed hint, not a crash, but real missing polish caught in the same sweep).
+- Verified against the real extracted derivation and unlock-check logic: both `CAT_SNAPPER` and
+  `BLOW_GUNNER` now confirmed present in `UNLOCKABLE_TOWER_TYPES` (17 entries total, matching
+  `EVOLVED_TOWER_TYPES`'s own count); the DEX-500 check fires correctly whether or not that Archer
+  is already attuned to something else, and correctly stays Archer-exclusive (a Mage reaching DEX
+  500 unlocks Snapcaster as normal, never Cat Snapper). `node --check` on the extracted script:
+  clean.
+
+## [1.2.19] - 2026-09-15 — New system: ambient wind — flags flutter with it, Archers/Mages miss more in a gust, Mages even more
+A real gameplay-affecting weather system, not just a visual — the flags are its visible gauge.
+- **New `windStrength`** (0 calm to 1 max gust), eased toward a randomly re-picked target every
+  2.5-6.5s rather than snapping, so it reads as genuine gusts and lulls instead of a flicker.
+  Squared random distribution when picking a new target, so calm/light wind comes up more often
+  than a real "very windy" spike — the strong gusts stay a real, noticeable event, not the norm.
+  Advances on `gameTime`'s own dt (already scaled by `gameSpeed`), so gusts speed up consistently
+  with the game rather than gusting in real-time while their effect lags behind at high speed.
+- **`drawFinishFlagPole()`** now animates a cloth-like ripple (two moving control points, the tip
+  lagging the mid-point's phase so the wave visibly travels out along the banner) — amplitude and
+  speed both scale with `windStrength`, so a calm moment barely moves the flag and a strong gust
+  visibly whips it. Direction of the flutter is always perpendicular to whichever way the banner
+  already points away from its pole — the wind's own direction is never part of the calculation
+  anywhere in this system, only its strength, exactly as asked.
+- **New `windMissPenalty(tower)`**: added to the existing miss-chance roll at every ranged-attack
+  site that actually applies to Archer/Mage-archetype towers (`fireProjectile()`'s single-target
+  pre-roll, `Projectile.onImpact()`'s splash roll, Cleric's own smite roll) — Warrior-archetype
+  melee rolls (the cone-sweep hit check, Axeman's throw) are untouched, since a melee swing isn't
+  meaningfully wind-affected the way a projectile actually in flight is. Archer-archetype gets up
+  to +25 percentage points of miss chance at max wind; Mage-archetype gets that same base penalty
+  PLUS an extra quadratic-in-wind term on top, so it grows visibly faster than the Archer penalty
+  as wind increases — "even more when very windy," not just the same flat amount every archetype
+  shares.
+- `windStrength`/its retarget timer reset to a fresh calm state in `resetGame()`, so a new game
+  doesn't inherit whatever gust happened to be mid-swing in the previous session.
+- Verified against the real extracted `updateWind()`/`windMissPenalty()`: Warrior-archetype towers
+  get exactly zero penalty at any wind level; Archer's penalty scales linearly with wind; Mage's
+  penalty is measurably larger than Archer's at high wind (confirming the quadratic term actually
+  does something, not just present in the formula); wind eases smoothly over many ticks and never
+  leaves its [0,1] bounds. `node --check` on the extracted script: clean.
+
+## [1.2.18] - 2026-09-15 — Escaped enemies no longer force-cleared at the next wave start — they persist until actually killed
+Direct request: enemies left wandering from a previous round were being force-deactivated the
+instant the next wave started (a deliberate design choice as of 1.2.16, since reversed). Now they
+just... stay, across as many rounds as it takes, until something actually kills them.
+- Removed the clearing loop from `startNextWave()` entirely.
+- No other logic needed to change: the wave-completion check already excludes escaped enemies via
+  its own `!e.escaped` filter regardless of how long they've been wandering, so this can't cause a
+  wave to hang waiting on one. `resetGame()`/`restoreGameState()` still unconditionally deactivate
+  every enemy on a real reset or save load — untouched, and correctly so, since that's a full
+  reset, not a between-wave clear.
+- Updated the now-stale comments this left behind in `reachEnd()` and the wave-completion check,
+  plus `README.md`'s own description of the mechanic, which still said "until the next wave
+  starts."
+- No behavior worth a Node re-verification here — this is a deletion, not new logic; the two
+  pieces of logic that actually matter (the wave-completion exclusion, and `updateEscaped()`'s own
+  attack/wander behavior) were both already verified correct in the 1.2.17 pass and are completely
+  unaffected by removing the clear. `node --check` on the extracted script: clean.
+
+## [1.2.17] - 2026-09-15 — Flags depth-sort like trees now; escaped enemies can attack towers directly, at high chance
+Two separate fixes/features requested together.
+- **Flags moved from the static baked map layer into the dynamic depth-sorted layer**
+  (`drawDepthSortedLayer()`, the same per-frame Y-sorted list trees/rocks/enemies/towers/debris
+  already share), instead of being baked once into `mapCanvas` where they'd always draw behind
+  every enemy and blood decal regardless of actual position — a flag has real height, same as a
+  tree, so it needs the same occlusion treatment. `drawMap()` no longer draws them at all; the
+  static layer is carpet-only now. `computeSpawnFlags()` itself is unchanged, just called from a
+  different place (once per frame instead of once at bake time).
+- **Escaped/wandering enemies (see `reachEnd()`/`updateEscaped()`) can now attack nearby towers
+  directly**, at a deliberately high, periodically-re-rolled chance (0.5 per ~1-2s check, vs. the
+  normal on-path `breakawayChance` field, which tops out at 0.6 total across a whole lifetime for
+  Fire/Ice and is mostly 0.02-0.04) — a real, escalating cost for leaving an escapee wandering, not
+  just something to go hunt down for the bonus kill. Reuses `findNearestActiveTower()` and
+  `Tower.takeDamage()` exactly as the existing on-path breakaway system already does (same
+  damage/defeat/gore handling, zero special-casing needed there) — this is a parallel, separate
+  targeting/movement path, not a reuse of `isBreakaway`/`updateBreakaway()` itself, since those
+  never actually run for an escaped enemy (`update()`'s dispatch returns via `updateEscaped()`
+  before reaching that check at all). Shorter engage range (140) than the on-path version's 320 —
+  a wandering escapee shouldn't be able to threaten a tower from clear across the map, only one
+  it's actually bumbled near. New pool-reuse fields (`escapedAttackTarget`/`escapedAttackTimer`/
+  `escapedAttackCheckTimer`) reset explicitly in `spawn()`, matching the existing
+  `wanderVx`/`wanderVy`/`wanderRepickTimer` pattern.
+- Verified the full attack cycle against the real extracted `updateEscaped()` method (not a
+  reimplementation): no tower nearby produces zero false-positive attacks; a tower within range is
+  correctly acquired, chased toward (distance measurably decreases), engaged at the exact
+  `breakDamage` value and cadence, and the target is correctly cleared once the tower reports
+  itself defeated. `node --check` on the extracted script: clean.
+
+## [1.2.16] - 2026-09-15 — Finish-line flags moved to the SPAWN tile instead of the finish tile
+The carpet stays exactly where it was (the finish tile, unchanged). The two flags moved
+somewhere else entirely, per direct request: instead of marking the finish tile, they now mark the
+spawn tile — where enemies actually appear — on its own far edge (both flags on the same line,
+facing away from the direction enemies first walk), reading as a start line rather than a finish
+marker.
+- New `computeSpawnFlags()`, a direct mirror of `computeFinishLine()`'s own geometry but anchored
+  at `waypointsPx[0]`/`[1]` (the path's first waypoint and the initial direction of travel leaving
+  it) instead of the last two. `computeFinishLine()` itself is now carpet-only — its now-unused
+  `center`/`flagLower`/`flagUpper` fields were removed from its return value entirely rather than
+  left dead; confirmed its only other caller (`Enemy.update()`'s final-stretch crossing check)
+  never touched those fields, only `edgeX`/`edgeY`/`ux`/`uy`, so removing them is not a regression.
+- Both functions are recomputed fresh from the live path every call — same "never cached" approach
+  either way — so if the spawn point or the finish point changes between rounds (map expansion,
+  reroll), both the carpet and the flags already track correctly with no new wave-change handling
+  needed.
+- `drawFinishFlagPole()` itself is unchanged — still the procedural vector pole from the previous
+  pass, just now called with the spawn tile's geometry instead of the finish tile's.
+- Verified against the real extracted functions with a longer, multi-segment test path: the spawn
+  flags land on the same line as each other, and end up far from the finish carpet's own position
+  (confirming they're genuinely anchored to a different tile, not still tied to the finish tile
+  under a different name). `node --check` on the extracted script: clean.
+
+## [1.2.15] - 2026-09-15 — Finish-line flags moved to the tile's far edge, both on the same line, opposite the carpet
+Replaced the diagonal-corner placement from the previous pass with a clearer, explicit spec: both
+flags on the same edge of the finish tile — the edge farthest from the carpet (the tile's far side,
+opposite the carpet's own edge), not split across a diagonal.
+- `computeFinishLine()`'s flag geometry reworked: instead of picking a diagonal corner pair, it now
+  mirrors the carpet's own edge across the tile's center (along the direction of travel) to get the
+  far edge, then takes that edge's own two corners — both flags end up on that one line together.
+- Recomputed fresh from the current path every call, same as before — already correctly tracks a
+  path that changes between rounds (map expansion, reroll) with no extra caching logic needed.
+- Verified for all 4 cardinal exit directions against the real extracted function: both flags
+  confirmed to share either the same X or the same Y (a real single line, not an approximation),
+  and that line sits exactly one full tile-width (64px) from the carpet's own edge in every case —
+  the tile's true opposite side. `node --check` on the extracted script: clean.
+
+## [1.2.14] - 2026-09-15 — Finish-line flags: real vector poles instead of emoji, pole bottom now sits exactly on the corner
+Two fixes from an annotated screenshot report. Re-verified the diagonal-corner math from the
+previous pass first (fresh Node check against all 4 cardinal exit directions, same result as
+before: white at the corner most against the direction of travel, black at its true diagonal
+opposite, both genuine tile corners) — it checked out again, so if the reported position still
+looks wrong after this, the most likely explanation is the build being looked at predates that
+fix rather than a new geometry bug; flagged this directly rather than guessing a third layout.
+- **New `drawFinishFlagPole()`**: a small procedural pole-and-banner, replacing the 🏴/🏳️ emoji
+  glyphs entirely. Nothing about it depends on how — or whether — a given platform's emoji font
+  renders those two specific characters, which is the most likely actual cause of the reported
+  "pixelation," not fully resolved by the earlier mapCanvas DPR fix alone since that only addressed
+  the layer's raster resolution, not per-glyph font rendering quality.
+- **Pole bottom now sits exactly at the corner coordinate — no outward offset.** The previous
+  version nudged the flag 6px outward from its corner "for visual clarity," which technically
+  contradicted "planted right on the corner" from the start. Removed entirely; each banner now
+  flutters outward (away from the tile's own center) instead of the whole flag being offset.
+- `node --check` on the extracted script: clean.
+
+## [1.2.13] - 2026-09-15 — Fixed HUD bar sometimes rendering full-size/unscaled at game start, clipping both edges
+Root-caused, not guessed at: `fitHudTopToOneLine()`'s very first call runs once at script-load
+time, before `#hud-top` is ever made visible (it starts `display:none` and only becomes `flex`
+when Play is pressed — see the `playBtn` handler). Measured while hidden, `scrollWidth` reads 0,
+so the function correctly-by-its-own-logic concludes "0 is never wider than the screen, no scaling
+needed" — and locks that wrong conclusion into `hudFitSignature`, the fingerprint that gates every
+later recompute. Nothing then re-triggers a real recompute until the lives/gold/wave digit COUNT
+happens to change or the window resizes, so the bar could sit at its true natural width (centered
+via `margin:0 auto`, comfortably wider than a phone screen) — clipping both edges symmetrically —
+for an arbitrary stretch of actual play, until one of those unrelated events happened to fire.
+- Added an explicit forced `fitHudTopToOneLine(true)` call in the `playBtn` handler, right where
+  `#hud-top` actually becomes visible — same fix shape, same call site, as the existing
+  `positionZoomControls()` call one line below it, which already exists for the identical
+  underlying reason ("just went from display:none (height 0) to visible").
+- Verified the specific bug (naturalWidth=0 → concludes no scaling needed) and the fix (measuring
+  after real content exists → correctly computes a scale) against the actual branching logic.
+  `node --check` on the extracted script: clean.
+
+## [1.2.12] - 2026-09-15 — Finish-line carpet is now a real 2D checkerboard; flags moved to the tile's true diagonal corners
+Two related fixes from a screenshot: the carpet had stopped reading as checkered, and the flags
+weren't where they were asked to be.
+- **The carpet was never actually a checkerboard** — it only alternated color along one axis (the
+  perpendicular direction), producing a single row of stripes, not a 2D check pattern. Rewritten as
+  a real 8×2 grid alternating in both directions (`(col+row)%2`), with each cell now a true 8×8px
+  square (64px edge ÷ 8 cols, 16px thickness ÷ 2 rows) — unambiguously checkered regardless of
+  zoom or the path's exit angle.
+- **Flags moved from the two ends of the carpet's own edge to the finish tile's actual diagonal
+  corners.** Previously both flags sat on the exit edge only (adjacent corners of the tile, both on
+  the side enemies cross) — correct-looking for some exit angles but not what was asked for.
+  `computeFinishLine()` now also returns the tile's true opposite-corner pair: one corner picked as
+  whichever is most aligned with the direction of travel, the other computed as its exact
+  reflection through the tile's own center (`center*2 - exitCorner`), guaranteeing a genuine
+  diagonal regardless of which way the path exits. Each flag nudges outward along its own
+  corner-to-center line now, not a shared travel-direction offset, since the two corners point
+  different ways from center.
+- The carpet's own edge-flush geometry (`lowerP`/`upperP`/`edgeX`/`edgeY`/`ux`/`uy`) — and
+  therefore the enemy full-body-crossing check in `Enemy.update()`, which reads those same fields —
+  is completely untouched; only added fields, nothing removed or renamed.
+- Verified against the real extracted `computeFinishLine()` for all 4 cardinal exit directions: the
+  two flag corners are confirmed true diagonal opposites through the tile center (not just visually
+  distant) and each really is one of the tile's 4 real corners (32px off-center in both axes), and
+  `edgeX`/`edgeY`/`ux`/`uy` are numerically identical to their pre-change values — confirming zero
+  regression to the crossing logic. `node --check` on the extracted script: clean.
+
+## [1.2.11] - 2026-09-15 — New tower: Blow Gunner — the first dual-element hybrid class, built from scratch (Phase 2 wasn't actually started before this)
+Corrected an overstatement from the previous turn's summary: this wasn't "ready to build" the way
+it was described — the whole hybrid-element system (Phase 2 in `BACKLOG.md`) had zero code behind
+it, just a design doc with an explicitly unresolved open question ("what stat state actually
+triggers the combo... not something to guess an implementation for"). Built the system for real
+this time, making one concrete, documented judgment call to answer that open question rather than
+leaving it blocked.
+- **The trigger decision**: a tower already locked into one element (`this.attunement`) whose
+  OTHER element's own stat ALSO reaches `SPECIALIZATION_THRESHOLD` (500) — reusing the exact same
+  threshold single-element specialization already uses, in either order (lock Fire then push Ice's
+  stat to 500, or lock Ice then push Fire's — both work identically). Not a new number invented,
+  the existing pattern applied one more time. Additive, not exclusive: a hybrid unlocks *alongside*
+  the single-element specialization, off the same stat growth — picking one doesn't foreclose the
+  other.
+- **New `HYBRID_SPECIALIZATIONS` table + generic pair-detection loop** in
+  `checkAttunementAndSpecialization()`, order-independent (sorted `'ELEMENT+ELEMENT'` key). Only
+  `ARCHER: { 'FIRE+ICE': 'BLOW_GUNNER' }` is actually defined — Proton and Dark Matter still have
+  no target base class or unlocked-class name, so wiring triggers for them would've been pure
+  invention with zero anchor point, unlike Blow Gunner which had a confirmed name, hybrid name, and
+  target base class already given. Quasar isn't attempted at all — three-way balance doesn't fit
+  this two-element model to begin with.
+- **`CONFIG.TOWERS.BLOW_GUNNER`**: combines `poisonDamage` (Blowdart/Squirtgun's own scald-like
+  DoT) with `slowFactor`/`slowDuration` (Mage's own chill) on one class for the first time — both
+  already apply fully generically on impact, so this needed zero new status-effect code, the same
+  "free mechanic reuse" pattern as the last three new classes this session.
+- Full definition checklist otherwise: `JOB_COLORS`/`JOB_BUILD`/`JOB_QUOTES`/`RANGE_CAPS`/
+  `CLASS_ARCHETYPE`/`TOWER_STRATEGY`/`EVOLVED_TOWER_TYPES`, `fireProjectile()` reach/color/sound,
+  a full `drawStickman()` render branch (Blowdart's exact mouth-anchor fix reused, a drifting
+  steam-wisp instead of a droplet), and a new `validateGameDefinitions()` check for
+  `HYBRID_SPECIALIZATIONS` matching the existing `SPECIALIZATIONS` check's shape.
+- **Corrected two now-stale claims found while touching this system**: `BACKLOG.md` previously said
+  Proton could only ever target Swordsman/Archer because "Mage has no Fire path" — that constraint
+  disappeared the moment Necromancer shipped (`SPECIALIZATIONS.MAGE.FIRE`) two turns ago, and
+  nobody had gone back to fix the claim. Also corrected `BACKLOG.md`'s "STR-Mage evolution chain"
+  section, which still described Necromancer by its *original, unbuilt* 3-tier
+  Rogue-Sorcerer→Crazy-Wizard→Necromancer HP-sacrifice-AoE design — restructured to clearly
+  separate "what was originally proposed" from "what actually shipped," since they turned out to
+  be two quite different designs.
+- Verified the hybrid trigger against the real extracted `SPECIALIZATIONS`/`HYBRID_SPECIALIZATIONS`
+  tables and a faithful transcription of the real `checkAttunementAndSpecialization()` logic, as
+  true incremental play (sequential stat growth across multiple calls, not one snapshot) rather
+  than a single-shot approximation: order-independence confirmed both directions, the undefined
+  Proton pair correctly produces nothing, and a different base class (Swordsman) reaching the same
+  Fire+Ice stat state correctly produces nothing since the pair is only defined for Archer.
+  `node --check` on the extracted script: clean.
+
+## [1.2.10] - 2026-09-15 — Named the level-5 Swordsman spec "Zweihander" and gave it a real charge-up
+Turns out most of this request was already built: the level-5 Swordsman "Two-Hander" spec already
+existed (bigger blade, wider swing arc, +60% damage, +25% cooldown) — it just wasn't named
+"Zweihander" and had no charge-up mechanic of its own. Confirmed the "and blood" part needed no
+new code at all: the gore system already scales hit-time particle counts by `dmg / target.maxHp`
+(`flinchSeverity`), so a genuinely bigger hit already produces a proportionally bigger burst with
+zero class-specific code, and the weapon-type lookup already falls through to `'BLADE'` for
+anything not explicitly Hammerman/Paladin (blunt) or Spearman (pierce) — exactly right for a giant
+two-handed sword, so that needed no changes either.
+- **Renamed** "Two-Hander" → **"Zweihander"** everywhere it's shown: the level-5 spec-choice card,
+  the tower's own name label, and the debug-log class description.
+- **New charge-up wind-up**: extended the existing `chargeProgress` mechanic (previously
+  Mage/Snapcaster-only — continuous 0→1 built from `cooldownTimer/cooldown`, already driving
+  Mage's own glowing-orb telegraph) to also cover a Zweihander Swordsman. Reused rather than
+  reinvented, so it can never drift out of sync with the tower's actual real cooldown timing. Drives
+  a trembling blade (shake amplitude ramps in only the back half of the charge, toward release) and
+  a building edge-glow with the same final-flicker-right-before-release language Mage's orb already
+  uses, in its own warm-white palette rather than a copy of Mage's blue/violet — reads as its own
+  weapon's "getting ready," not a reused effect.
+- Neither the existing damage/cooldown multipliers (still +60%/+25%) nor the swing-arc widening
+  were touched — this was about naming and telegraphing what was already there, not a rebalance.
+- Filled in two real, pre-existing documentation gaps found while touching this system: `README.md`
+  never actually documented the level-5 spec choice at all (now does), and its INT-archetype class
+  list was already stale from the last two towers added (missing Necromancer and Cat Snapper).
+- Caught myself about to bump the version to 1.3.0 (minor) out of habit for the third time this
+  session — corrected to 1.2.10 (patch-only, per `AGENTS.md`).
+- Verified `chargeProgress`'s and the shake amplitude's math against the real formulas across a
+  full charge cycle (0→1, with the shake staying exactly 0 through the first half and ramping only
+  in the back half). `node --check` on the extracted script: clean.
+
+## [1.2.9] - 2026-09-15 — New tower: Necromancer — Mage's STR specialization, raises skeletons each round; fixed a Cat Snapper sound bug from 1.2.8
+- **`SPECIALIZATIONS.MAGE.FIRE = 'NECROMANCER'`** fills a gap that was explicitly left undefined in
+  the code ("Fire/STR is intentionally left undefined... not to invent one just to fill the cell")
+  — now filled by direct request. Reached the same way Cleric is (attunement at STR 100, unlocks at
+  STR 500), structurally its mirror: a single Mage specialization tier with an attack plus one
+  support ability, just STR-gated instead of INT-gated.
+- **Own attack**: a dark bolt, reusing the standard projectile/`onImpact()` path unchanged (no
+  special-casing needed) — same magic-missile visual treatment as Mage, recolored dark purple.
+- **Signature ability**: raises `skeletonCount` (2/3/4 by tier) skeleton minions near itself at the
+  start of every round (`startNextWave()` → new `raiseSkeletonsForTower()`), destroyed the instant
+  that round actually completes (the `waveState` ACTIVE→IDLE transition) — never carried into the
+  between-round lull. New pooled `SkeletonMinion` class + `skeletonPool` (8-slot, generous headroom
+  over what's actually reachable): stationary, auto-attacks the nearest active enemy within its own
+  small range on a timer. Deliberately **not damageable by enemies** — same simplification
+  `CatCompanion` already uses; making them killable would mean teaching the breakaway-targeting
+  system a new kind of valid target, a separate feature this didn't take on.
+- **Capped at one active Necromancer on the board** (`MAX_ONE_PER_BOARD_TYPES`), by explicit
+  request — flagged in comments as a deliberate exception, since it's only a first-tier
+  specialization, not a deepest-tier class like the other three entries in that list.
+- New `drawSkeleton()`: small procedural bone-white silhouette (no emoji), same approach as
+  `drawCat()`.
+- **Found and fixed a real bug from 1.2.8 while re-touching this same area**: Cat Snapper's
+  `'shot_cat'` sound was defined in the audio engine but never actually added to `fireProjectile()`'s
+  `rangedSound` lookup table, so every Cat Snapper shot has been silently falling back to Archer's
+  bowstring-twang sound since it shipped. Fixed; `'shot_cat'` now actually plays.
+- Verified the skeleton lifecycle against the REAL extracted `SkeletonMinion` class and
+  `raiseSkeletonsForTower()` (not a reimplementation): attack timing and damage-credit-to-tower
+  correct, a skeleton with nothing in range stays raised rather than expiring early, inactive
+  enemies are correctly ignored, a tier-3 Necromancer raises exactly 4 skeletons spread around
+  itself, round-complete clears them all, and the pool never exceeds its cap even under an
+  artificial multi-Necromancer stress test. Cross-checked every new table entry
+  (`JOB_COLORS`/`JOB_BUILD`/`JOB_QUOTES`/`RANGE_CAPS`/`CLASS_ARCHETYPE`/`TOWER_STRATEGY`) is
+  actually present, not just planned. `node --check` on the extracted script: clean.
+
+## [1.2.8] - 2026-09-15 — New tower: Cat Snapper — throws temporary companion cats instead of dealing damage directly
+A genuinely new tower class, built from an external spec but verified line-by-line against the real
+code before anything was written — not trusted as-is. A 4th directly-buildable starter alongside
+Swordsman/Archer/Mage, sitting entirely outside the evolution tree: nothing evolves into it, and it
+evolves into nothing.
+- **`CONFIG.TOWERS.CAT_SNAPPER`** (baseCost 80, unlocked from wave 0): its thrown cat projectile
+  doesn't deal impact damage itself — the cat becomes a pooled `CatCompanion` that follows its
+  target's *current* x/y every frame and scratches it periodically for a few seconds, then expires.
+  Deliberately not a second lane-walking agent — it can't affect pathfinding, collision, breakaway
+  logic, or barricade queueing no matter what it does, because it never reads path/waypoint state
+  at all, only the target enemy's live position.
+- **Archetype-tagged `MAGE`**, not a special case: this alone gives it the same generic INT-scaled
+  damage/range/HP formulas every other archetype-driven tower already uses — verified by checking
+  every literal `this.type === 'MAGE'` branch in the file (wide damage variance, magic-missile
+  visual, burn/freeze/shock procs) and confirming none of them should or do fire for Cat Snapper.
+  Its own damage number is the tower's regular `this.damage` — deliberately not a separate
+  `catDamage` field, so a cat's scratch damage can never drift out of sync with what the tower's
+  own stat display shows.
+- **Capped at 2 active cats per Cat Snapper**, checked *before* touching the pool (so a tower
+  already at its own limit doesn't needlessly acquire-then-release a slot another Cat Snapper could
+  use), plus a global 24-cat hard cap (`MAX_ACTIVE_CATS`) shared across every Cat Snapper on the
+  board — pool exhaustion just means that one throw has no further effect, never a crash or
+  unbounded growth.
+- **`drawCat()`**: a small shared procedural cat silhouette (ellipse/arc/line primitives, no emoji,
+  no image asset) used identically by Cat Snapper's own idle/throwing pose and by
+  `CatCompanion.draw()` — same renderer, different pose flags (idle bob vs. crouched paw-swipe).
+- **Caught and fixed a real pool-reuse bug while wiring this up**: `Projectile`'s new `effectType`
+  field (marks a shot as a cat throw vs. a normal hit) has to be reset unconditionally on *every*
+  code path that fires a projectile, or a reused pooled `Projectile` could carry a stale `'CAT'`
+  value into an unrelated later shot. `fireProjectile()` set it correctly from the start;
+  `fireAxeThrow()` (Axeman's separate throw-acquisition path) did not, until this pass.
+- Save/load needed zero special-case code — `applyTierStats()`'s `Object.assign(this, tier)`
+  already generically picks up the new `catAttackCooldown`/`catLifetime`/`maxActiveCats` tier
+  fields, and `restoreGameState()`'s tower-restore loop is fully type-generic. Only real change:
+  `catPool` now gets cleared alongside every other transient pool in both `restoreGameState()` and
+  `resetGame()` — companions never persist into a save, same as particles or projectiles never do.
+- Verified against the REAL extracted `CatCompanion` class and `catPool` (not a reimplementation),
+  via an isolated Node harness: the per-tower cap correctly blocks a 3rd cat for the same tower
+  while a different tower is unaffected; the global pool never exceeds its 24-slot cap under
+  sustained spawning pressure; a cat correctly deactivates once its lifetime expires, having landed
+  exactly the expected number of scratches, each one credited to the source tower; a cat whose
+  target dies with a live enemy nearby retargets and keeps going; one whose target dies with
+  nothing nearby expires cleanly. `node --check` on the extracted script: clean.
+
+## [1.2.7] - 2026-09-15 — Hyper-rare towers capped at one on board; Swordsman/Archer/Mage cost scales with count
+Direct request: the deepest evolution in each lineage should be genuinely rare, while the 3 base
+classes stay unlimited but progressively more expensive to spam.
+- **New `MAX_ONE_PER_BOARD_TYPES` = Paladin, Squirtgun, Sniper, Pope.** These are specifically the
+  4 classes that have a real 2nd evolution tier beyond their own base specialization (Hammerman→
+  Paladin, Blowdart→Squirtgun, Gatling→Bomber→Gunalinder→Sniper and Marksman→Sniper, Cleric→Pope) —
+  Axeman/Spearman/Snapcaster have no deeper tier at all, so they're each already their own
+  lineage's endpoint, not part of this "hyper-rare" category. New `isTowerTypeAvailable(type)`
+  checks live board state (`towerCountOnBoard()`), not a one-time-ever flag, so selling or losing
+  the existing copy opens the slot back up. Enforced at the actual placement handler (with a clear
+  "⛔ Only one X at a time" floating-text reason instead of silently doing nothing), the build
+  preview's tile-validity check, and the Build-tray row itself (shows "already on the field" and
+  can't be tapped while at capacity).
+- **New `SCALING_COST_TYPES` = Swordsman, Archer, Mage, with `SCALING_COST_GROWTH` = 1.2.** Stay
+  genuinely unlimited in count, but the price of the next one compounds 20% per already-active copy
+  of that same type on the board (a 💰50 Swordsman: 50/60/72/86/104/124/... for the 1st through
+  6th). New `currentBuildCost(type)` is the single authoritative calculation — `canAffordTower()`,
+  the actual gold deduction at placement, and every build-tray cost label all call it, so none of
+  them can drift out of sync with each other or with what a player actually gets charged. Returns
+  the flat, unchanged `CONFIG.TOWERS[type].baseCost` for every type outside this list (Barricade
+  included — separate wood/stone economy, untouched).
+- `validateGameDefinitions()` extended to cross-check both new lists against real `CONFIG.TOWERS`
+  keys and confirm they're mutually exclusive (a capped-at-one type scaling its own cost by count
+  would be contradictory, since it can never exceed 1).
+- Verified `currentBuildCost()`'s compounding and `isTowerTypeAvailable()`'s cap/release cycle
+  against the real `CONFIG.TOWERS` table and the real constant lists extracted from `index.html`,
+  not reimplemented values. `node --check` on the extracted script: clean.
+
+## [1.2.6] - 2026-09-15 — Round-start countdown: "3-2-1-GO" plus a trumpet fanfare, wave now starts 3s later
+Direct follow-up to the leaf-gust timing change: since the gust (and camera pan) now both fire
+right at round start, giving them a moment to actually land before enemies arrive.
+- **New `WAVE_COUNTDOWN_MS` (3000ms) flat delay**, added uniformly to every spawn's already-tuned
+  delay in `startNextWave()` — every existing relative-spacing/anti-bunching calculation earlier in
+  that function is untouched; this just shifts the whole finished timeline later by a constant.
+  Confirmed no other code reads a spawn entry's `.delay` besides that construction logic and the
+  single spawn-gating check in `update()`, so nothing else needed to change.
+- **New `drawWaveCountdown()`**: a screen-space "3… 2… 1… GO!" overlay with a small pop-and-settle
+  scale animation each second, visible only during the countdown window
+  (`waveState==='SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS+500`) — reads `waveTimer`/`waveState`,
+  never writes them, so it can't affect actual spawn timing regardless of render timing/frame
+  drops. "GO!" lands and fades exactly as the first enemy of the wave actually spawns.
+- **New `'roundStart'` sound**: a real short-short-short-long bugle-call fanfare (sawtooth voice,
+  brassier than the sine-based `'evolution'`/`'hero'`/`'legendary'` unlock-fanfare family, so it
+  reads as a distinct "a round is starting" cue rather than one more member of that vocabulary) —
+  replaces the plain single-tone `'wave'` sound at this one call site only; `'wave'` itself and its
+  7 other existing call sites elsewhere in the file are untouched.
+- Verified the countdown's label/scale/alpha sequence against the real constants for the full
+  0-3600ms range: correctly steps 3→2→1→GO! on schedule and fades out by 3500ms, exactly as the
+  first enemy spawns. `node --check` on the extracted script: clean.
+
+## [1.2.5] - 2026-09-15 — Leaf gust: tied to round start, glyph no longer mixed, brown gated to wave 20+
+Follow-up to the 1.2.4 leaf-motion pass, this time about timing and which leaf art gets used, per
+direct request.
+- **Trigger changed from "once, 20-60s after boot" to every round start.** Removed the
+  `nextLeafGustAt`/`scheduleLeafGust()` wall-clock scheduling entirely (dead code once this
+  landed) — `spawnLeafGust()` is now called directly from `startNextWave()`, alongside the other
+  per-round-start effects already there (camera pan, wave sound). Recurs every wave now, not once
+  per game.
+- **No more mixing green/brown within one gust.** Previously each of the 3-5 leaves in a gust
+  independently rolled between 🍃 and 🍂. Now the whole gust shares a single glyph, decided once
+  per gust.
+- **Brown leaves gated to wave 20+.** 🍃 (green) through the wave completing the 19th round,
+  🍂 (brown) from the wave that starts after the 20th round is cleared onward — gated on
+  `wavesCompleted >= 20`, the same "past wave N" convention already used elsewhere in the file
+  (e.g. tower unlock gating), not a separately invented threshold check.
+- Added a small safety cap (skip spawning if >20 leaves are already in flight) so a pathological
+  back-to-back-wave-start case can't accumulate leaf objects without bound — not a normal-play
+  concern, a gust's own leaves clear out well within one wave's real duration.
+- Verified the wave-gate logic against the real threshold value (0/1/19/20/21/50 all resolve to
+  the correct glyph) and confirmed zero remaining references to the removed scheduling functions.
+  `node --check` on the extracted script: clean.
+
+## [1.2.4] - 2026-09-15 — Blowing-leaves gust: more natural motion, not just a flat diagonal line
+Player feedback on the ambient leaf gust (`scheduleLeafGust()`/`spawnLeafGust()`/
+`updateAndDrawBlowingLeaves()`): the motion itself read as flat — a straight-line drift at
+constant rotation speed and constant opacity. Cadence/timing (one gust per game, 20-60s in, 3-5
+leaves) is unchanged; only how each leaf actually moves and renders.
+- **Lateral sway**: each leaf now rides a per-leaf sine-wave flutter (random amplitude 8-22px,
+  frequency 0.4-1.0Hz, phase) on top of its existing straight drift, so it visibly sways
+  side-to-side as it crosses the screen instead of tracing one flat diagonal.
+- **Tumble illusion**: `ctx.scale(scaleX, 1)` pulses between 0.4-1.0, tied to the leaf's own
+  rotation at a non-1:1 rate (so it never locks into an obviously mechanical loop) — a flat glyph
+  has no real depth to tumble through, so this simulates it flashing edge-on as it spins rather
+  than rotating like a flat coin.
+- **Edge fade instead of a flat 0.75 alpha for the whole flight**: opacity now scales with
+  proximity to the despawn bounds, so a leaf visibly emerges near the screen edge and dissolves
+  back out at the other end rather than popping in/out at a constant opacity.
+- **Per-leaf size variance** (16-25px, was a flat 20px for every leaf) for a bit of depth.
+- Verified with an isolated Node simulation of a full leaf flight against the real formulas: edge
+  fade correctly ramps 0→1 near spawn and back to 0 near despawn, sway stays bounded within its
+  own amplitude, scaleX stays within [0.4, 1.0] throughout. `node --check` on the extracted script:
+  clean.
+
+## [1.2.3] - 2026-09-15 — Finish line rework: flush-to-edge carpet, real full-body crossing, escaped enemies wander instead of vanishing, static map layer no longer upscale-blurred
+Player-requested rework of the finish line, in three parts: how it looks, when an enemy actually
+counts as having crossed it, and what happens to that enemy afterward.
+- **The checkered carpet is now flush with the true outer edge of the final path tile, not
+  floating over the tile's center.** The last path waypoint sits at its tile's CENTER (see
+  `rebuildPathCellsAndPx()`), and the carpet used to be drawn straddling that center point — never
+  actually reaching the tile's real boundary. New shared `computeFinishLine()` (used by both the
+  render and the enemy-crossing check below, so they can never drift apart) computes the tile's
+  actual exit edge — exactly one half-tile further out from the last waypoint, along the real
+  direction of travel there — and the carpet's outer boundary sits exactly on it, extending inward
+  by its own thickness rather than overhanging past it. Flags sit at the two corners of that same
+  edge line, nudged slightly further out so they read as planted flagpoles rather than floating on
+  the checkered pattern; font bumped 22px→26px. Orientation is still fully general (black flag
+  always at the further-down/+Y corner, white at the further-up corner), not a hardcoded
+  left/right assumption — verified for all 4 cardinal exit directions with an isolated Node
+  harness pulling the real `computeFinishLine()` out of `index.html`: the edge point lands exactly
+  `TILE_SIZE/2` (32px) beyond the last waypoint in every case, and the black/white corner
+  assignment is consistent regardless of which way the spiral path happens to be exiting.
+- **An enemy's entire sprite must now actually cross that edge before anything happens — not just
+  reach the last waypoint's center.** Previously `reachEnd()` fired the instant
+  `waypointsPx[pathIndex+1]` didn't exist, i.e. immediately upon reaching the center of the final
+  tile, with no further travel at all. The enemy now keeps walking straight in the same direction
+  past that point, and only triggers once its own BACK edge (center minus its radius, projected
+  along the direction of travel) has cleared the tile's real boundary — verified with an isolated
+  Node simulation stepping a walking enemy frame-by-frame against the real crossing formula: it
+  triggers at the exact frame its trailing edge clears the line, not earlier.
+- **Reaching the finish line no longer deletes the enemy.** `reachEnd()` still costs a life exactly
+  as before (unchanged), but the enemy now sets `escaped=true` and keeps wandering the map
+  aimlessly (`updateEscaped()`) instead of deactivating — still a fully live, killable target (same
+  generic death/loot/gore handling as any other enemy; `buildEnemyHash()`/`queryNearby()` already
+  gate purely on `active`, not path state, so towers auto-target it with no changes needed there).
+  Gives the between-waves lull something to do beyond watching the timer, per the original request
+  ("even in the after wave section there might be stuff to do... not just taking life"). Escaped
+  enemies are explicitly excluded from `updateBarricadesAndPileup()`, `checkStallWatchdog()`, and —
+  critically — the wave-completion `anyAlive` check, so a wave can still end normally with
+  wanderers left on screen; without that last exclusion, one escaped enemy would have permanently
+  blocked every subsequent wave from ever completing. They're cleared out (no further life/gold
+  penalty either way) at the top of `startNextWave()`, bounding how long any of them stick around
+  and preventing unbounded accumulation across a long infinite-wave run. All new/changed
+  pool-reuse fields (`escaped`, `wanderVx/Vy`, `wanderRepickTimer`) reset explicitly in `spawn()`.
+- **Fixed the actual root cause of the reported carpet/flag pixelation: the static map layer baked
+  at a flat 1x raster and got stretched to fill a high-DPI screen.** `mapCanvas` (checkerboard,
+  flora, and the finish line itself — the whole static layer, pre-baked once and blitted every
+  frame) was sized at exactly `WORLD_MAX_W × WORLD_MAX_H` regardless of the display's actual
+  device-pixel ratio, while the main visible canvas already correctly scales by `dprValue` (up to
+  2x). Blitting a 1x source into a 2x-scaled destination context meant the browser had to upscale
+  it, blurring every fine detail baked into that layer — the finish line's small checkered squares
+  and flag glyphs most visibly, since they're the smallest/highest-detail elements on it, but not
+  actually specific to them. `mapCanvas` now bakes at `WORLD_MAX_W/H × dprValue`
+  (`resizeMapCanvasForDpr()`), `rebakeMap()` scales its drawing context by the same `dprValue` so
+  `drawMap()` itself stays entirely in world-pixel coordinates unchanged, and the blit call now
+  passes explicit `WORLD_MAX_W, WORLD_MAX_H` destination dimensions (required once the source
+  raster is larger than those — otherwise `drawImage` would render the whole map `dprValue`×
+  oversized). Re-bakes automatically if `dprValue` ever changes after boot (graphics-quality
+  toggle, or a rare cross-monitor DPI change) via a `mapCanvasReady` guard flag in `setupCanvas()`
+  — needed because `mapCanvas` itself is declared later, in BOOT, and referencing it from
+  `setupCanvas()`'s very first (pre-BOOT) call would otherwise throw.
+- `node --check` on the full extracted script after every batch of changes in this pass: clean.
+
+## [1.2.2] - 2026-09-15 — Save-load stabilization pass: closed the remaining `validateSaveShape()` gap
+Triage pass against a P0-ordered checklist (persistence/state-corruption first, per project
+convention). Inspected `serializeGameState()`, `restoreGameState()`, `validateSaveShape()`,
+`resetGame()`, pooled-object/delayed-callback lifecycles, and projectile hit/miss/wave-generation
+invariants. Found and fixed one real, verified issue; everything else in the checklist came back
+clean on inspection (see REMAINING-equivalent notes below) and was left untouched.
+- **`validateSaveShape()` didn't validate `state.towers`/`state.scenery`, so a malformed-but-JSON-
+  parseable save could still crash deep inside `restoreGameState()` — after its destructive clear
+  of every live pool had already run.** This was explicitly flagged as a known gap when
+  `validateSaveShape()` was first added in 1.1.72 ("Not exhaustive validation of every nested
+  field"). Two concrete repro paths, both verified against the real `CONFIG.TOWERS` table via an
+  isolated Node harness (not simulated/guessed): (1) `state.towers` present but not an array — the
+  `for(const td of state.towers)` loop in `restoreGameState()` throws immediately; (2) a tower
+  entry with a `type` that isn't a real `CONFIG.TOWERS` key — `t.create()` dereferences
+  `CONFIG.TOWERS[type].baseCost` unguarded and throws. In both cases the exception is swallowed by
+  `loadSaveFileText()`'s try/catch, which reports "⚠️ Could not read that save file" — reading as
+  "nothing happened," when the live in-progress session (enemyPool/towerPool/projectilePool/
+  sceneryMap, all cleared in `restoreGameState()`'s first lines) was actually already destroyed
+  with no way back. `validateSaveShape()` now additionally rejects: `state.towers` present and not
+  an array; any tower entry that isn't an object, has a non-string/unrecognized `type`, or has
+  non-numeric `gridX`/`gridY`; and `state.scenery` present and not an array. Verified with an
+  isolated Node harness that extracts the real `CONFIG.TOWERS` table and the real
+  `validateSaveShape()` function from `index.html` (not a reimplementation) and runs 6 cases
+  (4 malformed, 1 valid, 1 the original reproduced crash shape) — all now resolve correctly; the
+  valid-save case still passes. `node --check` on the full extracted script: clean.
+- **Everything else inspected in this pass came back clean, no changes made:**
+  pooled-object/delayed-callback safety (only 7 `setTimeout()` call sites total, all DOM-toast
+  cosmetic — no pooled entity, target, or gameplay timer uses `setTimeout()`; audio scheduling
+  already uses Web Audio's own `currentTime`-based scheduling, not JS timers); `resetGame()`
+  producing fresh-launch-equivalent state; save/load of items, attunement, legendary status, and
+  stat fields (all correctly derived at load time before `recomputeStats()` runs, per the existing
+  `baseShieldPct`/`legendaryHpMult` pattern); wave-generation emptiness/stuck-queue guards; and the
+  projectile hit/miss/double-damage invariant (pre-roll architecture already shipped and isolated-
+  Node-tested in 1.1.52).
+
 ## [1.2.1] - 2026-09-14 — One more real audio fix, plus a BACKLOG staleness sweep
 - **`tone()`/`noise()` now correctly skip real Web Audio node creation while muted.** `duck()`
   already had this guard; the actual node-creating primitives didn't. Every sound call — muted or
