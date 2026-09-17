@@ -930,12 +930,12 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.42'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.43'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
-const MINI_VARIANT_CHANCE = 0.12; // 12% per enemy spawn — small/weak/cheap filler variant of the same enemy type. Deliberately much more common than the BIG variant above (a rare golden spike vs. a real, regular part of ordinary spawn composition) — matches the explicit ask for smaller "minion" versions of existing enemies as easy, plentiful filler rather than a rare event
+const MINI_VARIANT_CHANCE = 0.55; // 55% per enemy spawn — minis are meant to be the visible MAJORITY of a wave's composition, not just a common minority (raised from 0.12 after direct feedback that there should be "more little guys than the big ones")
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
 const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
 const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose

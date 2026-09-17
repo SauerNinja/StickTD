@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.43] - 2026-09-15 — Mini variants raised to a real majority; lag report investigated, no bug found yet
+- **`MINI_VARIANT_CHANCE` raised from 0.12 to 0.55** — minis are meant to be the visible majority
+  of a wave, not just a common minority, per direct feedback ("more little guys than the big
+  ones"). `BIG_VARIANT_CHANCE` (0.005) is untouched — still a rare golden-text event.
+- **Lag report investigated, not yet resolved**: re-checked every recent hot-path change (the
+  barricade scratch-collection reuse, the new Guardian/HutBuilding update dispatch) line by line.
+  The scratch-array `.clear()`/`.length = 0` calls are correctly unconditional at the top of every
+  relevant section — no accumulation path found. The new dispatch adds exactly two boolean
+  property checks per enemy per frame, not a measurable cost at any realistic enemy count. No bug
+  found in static review; not confident enough in that alone to call it "fixed," so didn't claim it
+  is. The debug log added earlier this session (median/p95/p99 frame time, barricade telemetry,
+  actual-speed-vs-requested-speed) exists specifically to get real data here instead of guessing
+  further blind — worth pulling before the next attempt at this.
+- Enemy click-to-inspect is confirmed NOT a regression — it was never built; flagged repeatedly
+  this session as an open, unbuilt feature, distinct from anything reported as broken.
+- `node --check` on the extracted script: clean.
+
 ## [1.2.42] - 2026-09-15 — Zombie moved to wave 15; new feature: Huts (WC3-style creep camps)
 Two items by direct request, both fully implemented.
 - **Zombie's introduction moved from wave 6 to wave 15** — removed from the 4 early hand-authored
