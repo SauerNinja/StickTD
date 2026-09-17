@@ -379,7 +379,7 @@
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
   .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;transform-origin:left center;}
-  #inspUpgradeBtn, #inspSellBtn{flex:0 1 auto;min-width:0;white-space:nowrap;}
+  #inspUpgradeBtn, #inspSellBtn, #inspTargetBtn{flex:0 1 auto;min-width:0;white-space:nowrap;}
   #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
     justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
@@ -627,11 +627,11 @@
         <div class="insp-opt-row" id="inspUpgradeSellRow">
           <button id="inspUpgradeBtn">🆙 Promote <span id="inspUpgradeCost"></span></button>
           <span id="inspDpsBetween"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span></span>
-          <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
+          <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
         </div>
         <div class="insp-opt-row" id="inspTargetMoveRow">
-          <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
+          <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
           <button id="inspMoveBtn">🔀 Move <span id="inspMoveCost"></span></button>
           <button id="inspAxeModeBtn" class="hidden">Mode: <span id="inspAxeModeVal">Melee</span> <span id="inspAxeSwitches"></span></button>
           <button class="info-btn" id="statsInfoBtn" title="Tap for how everything works" aria-label="How everything works">❓</button>
@@ -2486,9 +2486,16 @@ function findNearestActiveTower(x, y, maxDist){
 }
 
 function findTouchingBarricade(e){
+  // Squared-distance comparison instead of Math.hypot() — this runs once per active enemy every
+  // tick (up to ~200+ in a dense wave), scanning the tower pool each time, so the sqrt in hypot()
+  // is pure waste when all we need is "within this radius or not". Same threshold, same result,
+  // no square root.
+  const touchDist = e.radius + 14;
+  const touchDistSq = touchDist * touchDist;
   for(const t of towerPool){
     if(!t.active || t.type !== 'BARRICADE') continue;
-    if(Math.hypot(t.x-e.x, t.y-e.y) <= e.radius + 14) return t;
+    const dx = t.x - e.x, dy = t.y - e.y;
+    if(dx*dx + dy*dy <= touchDistSq) return t;
   }
   return null;
 }
@@ -3021,20 +3028,28 @@ function drawDepthSortedLayer(ctx){
     items.push({ sortY: baseY, kind: 's', key, item, size });
   }
   const actorViewLeft = viewLeft - 60, actorViewRight = viewRight + 60, actorViewTop = viewTop - 60, actorViewBottom = viewBottom + 60; // wider than scenery's own margin — floating text, HP bars, and legendary name labels can extend further above an enemy/tower than any scenery ever does
+  let visibleEnemyCount = 0, totalActiveEnemyCount = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
+    totalActiveEnemyCount++;
     if(e.x < actorViewLeft || e.x > actorViewRight || e.y < actorViewTop || e.y > actorViewBottom) continue;
+    visibleEnemyCount++;
     items.push({ sortY: e.y, kind: 'e', e });
   }
+  let visibleTowerCount = 0, totalActiveTowerCount = 0;
   for(const t of towerPool){
     if(!t.active) continue;
+    totalActiveTowerCount++;
     // The selected tower is the only one that ever draws a range circle (gated by isSelected
     // inside Tower.draw() — confirmed, not assumed), which can extend far beyond its own body, so
     // it's never culled regardless of position. Every other tower gets the same actor-bounds check
     // as enemies above.
     if(t !== selectedTower && (t.x < actorViewLeft || t.x > actorViewRight || t.y < actorViewTop || t.y > actorViewBottom)) continue;
+    visibleTowerCount++;
     items.push({ sortY: t.y, kind: 't', t });
   }
+  perfStats.visibleEnemies = visibleEnemyCount; perfStats.totalActiveEnemies = totalActiveEnemyCount;
+  perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
   // Bone/skull/worm debris — depth-sorted by its own y like everything else here, replacing the
   // old separate always-on-top pass (drawDebrisDecals(), removed). That pass was a real fix for a
   // real bug (debris flickering out when an enemy walked directly onto its exact tile, since it
@@ -3352,7 +3367,15 @@ function drawBuildPreview(ctx){
    OBJECT POOLS
    ========================================================= */
 function acquireActive(pool){
-  return pool.find(item => !item.active) || null;
+  // Indexed scan instead of Array.prototype.find(item => !item.active) — find() allocates a new
+  // closure on every single call. This runs on every particle/projectile/decal spawn, so at
+  // combat-heavy moments (a 40+ particle Mage burst, a swarm death) that's dozens of throwaway
+  // closures per frame feeding V8's young-generation GC. Same return semantics (first inactive
+  // item, or null), zero closures.
+  for(let i=0; i<pool.length; i++){
+    if(!pool[i].active) return pool[i];
+  }
+  return null;
 }
 
 /* =========================================================
@@ -3394,7 +3417,15 @@ class SoundEngine{
   // oscillator was still scheduled or actively playing (1.0.208 fix).
   reserveVoiceSlot(duration, delay){
     const now = this.ctx.currentTime;
-    this.activeVoiceExpiry = this.activeVoiceExpiry.filter(t => t > now);
+    // In-place compaction instead of .filter(t => t > now) — filter() allocates a brand-new array
+    // (plus a closure) on every single sound attempt. This runs on every footstep/impact/projectile
+    // sound, so at 5x-10x speed with dozens of sounds/sec it's continuous small-array garbage on
+    // the audio bookkeeping path. Same result (only unexpired timestamps remain), zero allocation.
+    let voiceWriteIdx = 0;
+    for(let i=0; i<this.activeVoiceExpiry.length; i++){
+      if(this.activeVoiceExpiry[i] > now) this.activeVoiceExpiry[voiceWriteIdx++] = this.activeVoiceExpiry[i];
+    }
+    this.activeVoiceExpiry.length = voiceWriteIdx;
     if(this.activeVoiceExpiry.length >= this.MAX_VOICES) return false; // budget full — this specific call silently produces no sound rather than piling on further
     this.activeVoiceExpiry.push(now + (delay || 0) + duration);
     if(this.activeVoiceExpiry.length > this.debugCounters.peakVoices) this.debugCounters.peakVoices = this.activeVoiceExpiry.length;
@@ -4785,6 +4816,13 @@ class Enemy{
     this.pileBlocked = false; // frozen by a Barricade (either touching one, or queued up behind another blocked mob)
     this.touchingBarricade = false; // true only for the one actually pressed against the barricade (drives the bump animation)
     this.bumpTime = 0;
+    // Same bump animation as touchingBarricade above, but for melee-range breakaway/escaped
+    // attacks against a tower instead of a barricade — set to the tower being actively attacked
+    // while in range, null otherwise. Render-only (see draw()), reuses the same bumpTime clock;
+    // never both set at once in practice (a barricade-blocked enemy can't simultaneously be
+    // off-path attacking a tower), but even if they were, draw() just adds both offsets together
+    // the same way it already does with the separate hit-flinch offset.
+    this.attackBumpTarget = null;
     // Breakaway: a small per-spawn chance this enemy abandons the path partway through to
     // 1v1 the nearest tower instead. Fire/Ice specialize in this and inflict a status effect.
     this.willBreakaway = Math.random() < (def.breakawayChance || 0);
@@ -5218,10 +5256,13 @@ class Enemy{
     const dist = Math.hypot(dx,dy) || 0.0001;
     const engageRange = 26;
     if(dist > engageRange){
+      this.attackBumpTarget = null; // still closing distance — not pressed against it yet
       this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     } else {
       this.vx = 0; this.vy = 0;
+      this.attackBumpTarget = t;
+      this.bumpTime += dt;
       this.breakAttackTimer -= dt;
       if(this.breakAttackTimer <= 0){
         this.breakAttackTimer = 800;
@@ -5238,6 +5279,7 @@ class Enemy{
   }
   endBreakaway(){
     this.isBreakaway = false;
+    this.attackBumpTarget = null;
     this.breakawayDone = true; // won't try again this life — resumes its original path from here
   }
   reachEnd(){
@@ -5259,22 +5301,26 @@ class Enemy{
   // isBreakaway/updateBreakaway() never actually run for an escaped enemy (update()'s dispatch
   // returns via this method before ever reaching that check).
   updateEscaped(dt){
+    this.attackBumpTarget = null; // recomputed fresh below every tick — never left stale if the target changes or drops
     if(this.escapedAttackTarget && this.escapedAttackTarget.active && !(this.escapedAttackTarget.disabledWavesLeft > 0)){
       const t = this.escapedAttackTarget;
       const dx = t.x-this.x, dy = t.y-this.y;
       const dist = Math.hypot(dx,dy) || 0.0001;
       const engageRange = 26;
       if(dist > engageRange){
+        this.attackBumpTarget = null; // still closing distance — not pressed against it yet
         const chaseSpeed = this.speed * 0.7; // faster than aimless bumbling (0.4x below) but short of full on-path speed — reads as "went after that one on purpose"
         this.vx = dx/dist*chaseSpeed; this.vy = dy/dist*chaseSpeed;
         this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       } else {
         this.vx = 0; this.vy = 0;
+        this.attackBumpTarget = t;
+        this.bumpTime += dt;
         this.escapedAttackTimer -= dt;
         if(this.escapedAttackTimer <= 0){
           this.escapedAttackTimer = 800; // same cadence as the normal on-path breakaway attack
           const defeated = t.takeDamage(this.breakDamage, this.statusOnTower);
-          if(defeated) this.escapedAttackTarget = null;
+          if(defeated){ this.escapedAttackTarget = null; this.attackBumpTarget = null; }
         }
       }
       return; // skip the aimless-wander movement below while actively engaging a tower
@@ -6016,6 +6062,18 @@ class Enemy{
         bumpDx = (ddx/dlen)*bumpAmt;
         bumpDy = (ddy/dlen)*bumpAmt;
       }
+    } else if(this.attackBumpTarget && this.attackBumpTarget.active){
+      // Same bump animation as the barricade case above, but pointed straight at the tower being
+      // attacked instead of along the path — there's no waypoint to reference off-path, and
+      // "lean into the thing you're hitting" is the more legible read for a direct melee target
+      // anyway. Mutually exclusive with the barricade branch in practice (see the comment on
+      // attackBumpTarget's declaration), so no double-bump risk.
+      const t = this.attackBumpTarget;
+      const ddx = t.x-this.x, ddy = t.y-this.y;
+      const dlen = Math.hypot(ddx,ddy) || 1;
+      const bumpAmt = Math.abs(Math.sin(this.bumpTime/220)) * 4;
+      bumpDx = (ddx/dlen)*bumpAmt;
+      bumpDy = (ddy/dlen)*bumpAmt;
     }
     // Hit-flinch render offset — decays from full magnitude down to 0 over flinchDuration. Purely
     // additive to the barricade-bump offset above; both are render-only and can coexist.
@@ -7621,6 +7679,15 @@ let particleIndex = 0;
 let enemyHash = null;
 const MAX_DECALS = 2000;
 const decals = [];
+// Throttle for the decal-expiry sweep in drawDecals() below — expiry precision to the nearest
+// half-second is meaningless against a multi-minute decal lifespan (DECAL_LIFESPAN, 30min base
+// x a 1.15-3.0x per-decal variance — see decalLifespanVariance()), but the sweep itself is a full
+// reverse scan of the entire `decals` array (up to MAX_DECALS) with splice() on every expiry. That
+// cost scales with total decal count, which grows over a long session, so running it every single
+// rendered frame is pure waste once the array is non-trivially sized. realTime (not wall-clock)
+// so it stays correctly frozen/scaled with the rest of the sim's own time source.
+let lastDecalExpirySweep = 0;
+const DECAL_EXPIRY_SWEEP_INTERVAL = 500;
 // Ambient blowing-leaves gust — a handful of leaves drift across the screen at the start of every
 // round, purely decorative (no gameplay effect, no collision, doesn't interact with anything).
 // Replaces the old static fluttering-leaf ground decal (see CONFIG.FLORA.COMMON) — that emoji's
@@ -8305,12 +8372,18 @@ function drawDecals(ctx){
   // Expiry is a single authoritative pass over the real array (splice needs real indices),
   // independent of draw order below. Runs here since this is always called first in the frame
   // (before drawDepthSortedLayer(), which draws debris too now and relies on expiry having
-  // already happened this frame).
-  for(let i = decals.length - 1; i >= 0; i--){
-    const d = decals[i];
-    const age = realTime - d.spawnTime;
-    const lifespan = d.lifespan || DECAL_LIFESPAN;
-    if(age >= lifespan) decals.splice(i, 1); // actually expires now, not just capacity-recycled
+  // already happened this frame) — but throttled to DECAL_EXPIRY_SWEEP_INTERVAL rather than every
+  // frame; see the comment on lastDecalExpirySweep above. A decal that should have expired half a
+  // second ago but hasn't been swept yet is visually indistinguishable from one that expires
+  // exactly on schedule, against a lifespan measured in tens of minutes.
+  if(realTime - lastDecalExpirySweep >= DECAL_EXPIRY_SWEEP_INTERVAL){
+    lastDecalExpirySweep = realTime;
+    for(let i = decals.length - 1; i >= 0; i--){
+      const d = decals[i];
+      const age = realTime - d.spawnTime;
+      const lifespan = d.lifespan || DECAL_LIFESPAN;
+      if(age >= lifespan) decals.splice(i, 1); // actually expires now, not just capacity-recycled
+    }
   }
   const bounds = decalViewBounds();
   perfStats.totalDecals = decals.length;
@@ -9877,27 +9950,57 @@ function resolveEnemyCollisions(){
 // accidental write attempt throws immediately (strict mode) rather than silently corrupting
 // shared state across frames.
 const EMPTY_ENEMY_HASH = Object.freeze({});
+const EMPTY_QUERY_RESULT = Object.freeze([]);
+// Bucket-array pool for buildEnemyHash() — reused across calls instead of letting every bucket
+// ([] literal) get thrown away and reallocated on every build. Buckets are keyed by the same
+// "gx,gy" string the hash itself uses; a bucket that existed on a previous build is reused
+// (its .length reset to 0) rather than replaced, so steady-state enemy counts approach zero
+// array allocations per hash build instead of one array per occupied cell per build.
+const enemyHashBucketPool = new Map();
+// Call counters for buildEnemyHash()/queryNearby() — reset once per rendered frame (see loop()),
+// incremented inside the functions themselves below. Answers, directly, "how many times per
+// frame are we actually doing this work" instead of inferring it from source-reading, and
+// queryNearbyMaxResultLenSeen answers whether any single query is returning a suspiciously large
+// result set (a range/cell-size mismatch would show up here immediately).
+let spatialQueryCallsThisFrame = 0, hashBuildsThisFrame = 0, queryNearbyMaxResultLenSeen = 0;
 function buildEnemyHash(){
+  hashBuildsThisFrame++;
   const hash = {};
+  const usedKeys = buildEnemyHash._usedKeys || (buildEnemyHash._usedKeys = []);
+  usedKeys.length = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
     const k = cellKey(e.x, e.y);
-    (hash[k] = hash[k] || []).push(e);
+    let bucket = hash[k];
+    if(!bucket){
+      bucket = enemyHashBucketPool.get(k);
+      if(bucket){ bucket.length = 0; } else { bucket = []; enemyHashBucketPool.set(k, bucket); }
+      hash[k] = bucket;
+      usedKeys.push(k);
+    }
+    bucket.push(e);
   }
   return hash;
 }
+// Shared scratch buffer for queryNearby() — every call site consumes its result synchronously
+// (a for...of loop or an immediate .filter() copy) before making another queryNearby() call, so
+// reusing one buffer across calls is safe and eliminates a fresh array allocation on what is one
+// of the hottest per-tick paths in the engine (tower targeting, splash radius, crowd separation).
+const queryNearbyScratch = [];
 function queryNearby(hash, x, y, range){
-  if(hash === EMPTY_ENEMY_HASH) return []; // no active enemies at all — skip the entire cell scan below rather than doing real work to look for nothing
-  const result = [];
+  spatialQueryCallsThisFrame++;
+  if(hash === EMPTY_ENEMY_HASH) return EMPTY_QUERY_RESULT; // no active enemies at all — skip the entire cell scan below rather than doing real work to look for nothing
+  queryNearbyScratch.length = 0;
   const cellRadius = Math.ceil(range/TILE_SIZE) + 1;
   const cx = Math.floor(x/TILE_SIZE), cy = Math.floor(y/TILE_SIZE);
   for(let dx=-cellRadius; dx<=cellRadius; dx++){
     for(let dy=-cellRadius; dy<=cellRadius; dy++){
       const arr = hash[(cx+dx)+','+(cy+dy)];
-      if(arr){ for(let i=0;i<arr.length;i++) result.push(arr[i]); }
+      if(arr){ for(let i=0;i<arr.length;i++) queryNearbyScratch.push(arr[i]); }
     }
   }
-  return result;
+  if(queryNearbyScratch.length > queryNearbyMaxResultLenSeen) queryNearbyMaxResultLenSeen = queryNearbyScratch.length;
+  return queryNearbyScratch;
 }
 
 /* =========================================================
@@ -10057,6 +10160,17 @@ function startNextWave(){
     }
   }
   if(newTypes.length) showNewEnemyToast(newTypes);
+  // Prewarm this wave's collision masks now, during the pre-spawn countdown, instead of paying
+  // the cost on the first actual hit mid-combat. getEnemyCollisionMask() lazily builds and caches
+  // a per-type pixel mask on first call (buildEnemyCollisionMask() -> getImageData(), a synchronous
+  // GPU readback), so the very first hit landed on any enemy type new to this session used to
+  // incur that hitch at whatever moment combat happened to need it — often right as a new wave
+  // with a new type starts, which is close to the worst possible time for it. Every spawn in this
+  // wave still enters spawnQueue with WAVE_COUNTDOWN_MS added to its delay below, so this always
+  // has that whole window (currently a few seconds) before anything from this call could actually
+  // need to hit-test. getEnemyCollisionMask() is idempotent and cheap on every call after the
+  // first (cache hit), so repeating this for a type already seen this session costs nothing.
+  for(const group of waveDef) getEnemyCollisionMask(group.type);
   if(isProcedural){
     const typeName = WAVE_TYPE_NAMES[proceduralN % 9];
     if(typeName) showToast(typeName);
@@ -10110,21 +10224,28 @@ function startNextWave(){
     if(entry.delay - lastSpawnDelay < MIN_GLOBAL_SPAWN_GAP) entry.delay = lastSpawnDelay + MIN_GLOBAL_SPAWN_GAP;
     lastSpawnDelay = entry.delay;
   }
-  // Fastest units spawn first, slowest last, SO A UNIT NEVER NEEDS TO CATCH UP TO (and get
-  // speed-capped by, see followSpeedCap in updateBarricadesAndPileup) something slower placed
-  // ahead of it — but reassigning types GLOBALLY across the ENTIRE wave (as this used to do)
-  // destroys any authored group/escort/boss-pacing structure: a wave meant to open with weak
-  // fodder and close with a slow, heavy climax unit could have that climax unit's TYPE moved to
-  // the very front, since it's often the slowest in the wave. Reassigning only within bounded
-  // local windows instead keeps the fix's actual benefit (a fast unit scheduled a few slots behind
-  // a slow one, close enough in time to plausibly catch up to it, still gets moved ahead of it)
-  // while leaving the wave's overall macro shape — which group leads, which comes last — intact,
-  // since nothing can be reassigned outside its own local neighborhood in the timeline.
-  const SPEED_SORT_WINDOW = 6;
-  for(let start = 0; start < spawnQueue.length; start += SPEED_SORT_WINDOW){
-    const end = Math.min(start + SPEED_SORT_WINDOW, spawnQueue.length);
+  // Size determines spawn order now — smaller units always lead within their local window, bigger
+  // ones follow, full stop. Direct request, confirmed twice: earlier this only broke ties between
+  // similarly-fast types (speed stayed primary), which in one real case — WOLF (r11, speed 72) vs
+  // RUNNER (r12, speed 108) — left WOLF (smaller, slower) doing the leading while a faster, bigger
+  // RUNNER spawned right behind it. That's fine: a faster/bigger unit spawned right behind a
+  // smaller/slower one just gets speed-capped down to match it (see followSpeedCap in
+  // updateBarricadesAndPileup, and the pileup/jam behavior already confirmed working well) —
+  // exactly the situation that system exists to absorb gracefully, not a bug. Reassigning only
+  // within bounded local windows (not globally across the whole wave) still keeps a wave's overall
+  // authored shape intact — a wave meant to close with a slow, heavy climax unit still closes with
+  // it; only order within each local neighborhood is guaranteed, not the wave's macro structure.
+  const SIZE_SORT_WINDOW = 6;
+  for(let start = 0; start < spawnQueue.length; start += SIZE_SORT_WINDOW){
+    const end = Math.min(start + SIZE_SORT_WINDOW, spawnQueue.length);
     const windowTypes = spawnQueue.slice(start, end).map(e => e.type);
-    windowTypes.sort((a,b) => (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0));
+    // Radius ascending is the actual rule now; speed descending only breaks a tie between two
+    // same-radius types, so ordering among equal-size types still isn't arbitrary.
+    windowTypes.sort((a,b) => {
+      const radiusA = CONFIG.ENEMIES[a].radius||16, radiusB = CONFIG.ENEMIES[b].radius||16;
+      if(radiusA !== radiusB) return radiusA - radiusB;
+      return (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0);
+    });
     for(let i=start; i<end; i++) spawnQueue[i].type = windowTypes[i-start];
   }
   // Small, numerous enemy types (Swarm, Splitmini) still visibly bunch even with mixed-speed
@@ -10249,8 +10370,16 @@ let lastTime = 0, accumulator = 0;
 function update(dt){
   gameTime += dt;
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
+  // --- Per-tick phase timing instrumentation ---------------------------------------------
+  // Answers "which subsystem is actually spending the time" instead of just "updateMs is high."
+  // Accumulates into the module-scope phaseTime object (reset once per RENDERED frame, in loop(),
+  // not per tick — multiple ticks can run in one frame at high gameSpeed, and these figures should
+  // read the same way updateMs already does: total ms spent in that phase across the whole frame).
+  // Pure measurement — every phaseTime.x += line wraps an existing call with no logic change.
+  let __pt = performance.now();
   updateWind(dt);
   updateScenery(dt);
+  phaseTime.ambient += performance.now() - __pt; __pt = performance.now();
   if(waveState === 'SPAWNING'){
     // Spawning pauses entirely while any enemy is queued/waiting at a barricade — otherwise new
     // enemies kept arriving on top of an already-backed-up line, growing the pile-up instead of
@@ -10266,6 +10395,7 @@ function update(dt){
     }
     if(spawnQueueIndex >= spawnQueue.length) waveState = 'ACTIVE';
   }
+  phaseTime.spawning += performance.now() - __pt; __pt = performance.now();
 
   // updateBarricadesAndPileup() must run every frame regardless of active-enemy count — it's the
   // ONLY place that recalculates anyBarricadeQueued (which gates whether spawning is allowed to
@@ -10277,23 +10407,32 @@ function update(dt){
   // Cheap even with zero enemies (empty array/Map), unlike the collision/hash work below, which
   // is the actual performance cost and safely stays gated (1.1.35 hotfix).
   updateBarricadesAndPileup();
+  phaseTime.barricade += performance.now() - __pt; __pt = performance.now();
   const anyActiveEnemies = enemyPool.some(e => e.active);
   if(anyActiveEnemies){
     for(const e of enemyPool) if(e.active) e.update(dt);
+    phaseTime.enemyUpdate += performance.now() - __pt; __pt = performance.now();
     resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
     resolveEnemyCollisions();
     checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
+    phaseTime.collision += performance.now() - __pt; __pt = performance.now();
   }
   const enemyHashLocal = anyActiveEnemies ? buildEnemyHash() : EMPTY_ENEMY_HASH;
   enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
+  phaseTime.hashBuild += performance.now() - __pt; __pt = performance.now();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
+  phaseTime.towerUpdate += performance.now() - __pt; __pt = performance.now();
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
+  phaseTime.projectile += performance.now() - __pt; __pt = performance.now();
   for(const c of catPool) if(c.active) c.update(dt, enemyHashLocal);
   for(const s of skeletonPool) if(s.active) s.update(dt, enemyHashLocal);
+  phaseTime.catSkeleton += performance.now() - __pt; __pt = performance.now();
   updateParticles(dt);
   updateDeathAnims();
   updateWalkingBlood(dt);
   updateFloatingTexts(dt);
+  phaseTime.particles += performance.now() - __pt; __pt = performance.now();
+
 
   if(waveState === 'ACTIVE'){
     // Escaped/wandering enemies (see reachEnd()/updateEscaped()) deliberately don't count toward
@@ -10366,6 +10505,7 @@ function update(dt){
       updateHUD();
     }
   }
+  phaseTime.waveLogic += performance.now() - __pt;
 }
 
 // Dirty-check state for updateTargetFrame() — was doing two getBoundingClientRect() layout
@@ -10607,7 +10747,48 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   // "Actual speed" diagnostic — requested gameSpeed vs. what the simulation is actually achieving,
   // averaged over real time rather than one noisy frame. Answers "is a stutter a rendering
   // problem, a simulation problem, or genuine catch-up debt" at a glance instead of guessing.
-  actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0 };
+  actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
+  // Session-lifetime worst single frame — distinct from the rolling 2s-window p99/max below, which
+  // can miss a rare one-off spike (a wave-transition hitch, a first-hit collision-mask build) that
+  // happened outside the last 120 frames by the time anyone opens the debug log.
+  worstFrameMs: 0, worstFrameAtWave: 0, worstFrameTicks: 0,
+  // Distribution of ticksThisFrame across the rolling window — the median/max above can't
+  // distinguish "occasionally catches up 2 ticks, totally normal" from "constantly running 1 tick
+  // behind," and that distinction is exactly what separates ordinary catch-up from an actual
+  // accumulator spiral. Recorded every frame in loop(), read back as a histogram in the debug log.
+  ticksThisFrameHistory: [],
+  // Spatial-query telemetry — see spatialQueryCallsThisFrame/hashBuildsThisFrame/
+  // queryNearbyMaxResultLenSeen near buildEnemyHash()/queryNearby() themselves. Snapshotted here
+  // once per frame (in loop()) so the debug log can report last-frame counts, not just the
+  // session-lifetime max/current module-scope values that would otherwise require exposing those
+  // internals directly.
+  spatialQueryCallsLastFrame: 0, hashBuildsLastFrame: 0, enemyHashBucketPoolSize: 0,
+  // Visible/culled counts for enemies/towers — matches the same purpose scenery/decals already
+  // had: tell whether a lag spike correlates with a genuinely large on-screen population or with
+  // per-entity cost regardless of count. Particles/projectiles have no equivalent because —
+  // confirmed by direct inspection of drawParticles() — they are NOT viewport-culled at all
+  // currently (every active particle draws regardless of camera position); that fact is reported
+  // directly in the debug log instead of inventing a "visible" figure that doesn't exist yet.
+  visibleEnemies: 0, totalActiveEnemies: 0, visibleTowers: 0, totalActiveTowers: 0,
+  // Chrome-only (performance.memory is non-standard; guarded everywhere it's read). Sampled at
+  // most once/sec, not every frame — the point is trend-over-time (a steady climb means something
+  // genuinely isn't being recycled; a sawtooth that returns to baseline is normal GC behavior), not
+  // per-frame precision, and reading it more often than that buys nothing.
+  memorySupported: false, usedHeapMB: 0, totalHeapMB: 0, heapLimitMB: 0,
+  heapHistory: [], lastMemorySampleAt: 0 };
+// Per-phase time-in-update() breakdown — reset once per RENDERED frame (in loop(), alongside
+// ticksThisFrame), accumulated across however many simulation ticks ran that frame by the
+// phaseTime.x += lines threaded through update() itself. See the comment at the top of update()
+// for why this is frame-scoped rather than tick-scoped. phaseMaxSeen tracks the worst any single
+// frame has hit for each phase, session-lifetime — same "current + max" pattern already used for
+// ticksThisFrame/maxTicksSeen above, applied per-subsystem instead of just in aggregate.
+const phaseTime = { ambient: 0, spawning: 0, barricade: 0, enemyUpdate: 0, collision: 0,
+  hashBuild: 0, towerUpdate: 0, projectile: 0, catSkeleton: 0, particles: 0, waveLogic: 0 };
+const phaseMaxSeen = { ambient: 0, spawning: 0, barricade: 0, enemyUpdate: 0, collision: 0,
+  hashBuild: 0, towerUpdate: 0, projectile: 0, catSkeleton: 0, particles: 0, waveLogic: 0 };
+function resetPhaseTime(){
+  for(const k in phaseTime) phaseTime[k] = 0;
+}
 const PERF_HISTORY_SIZE = 120;
 function recordPerfSample(arr, value){
   arr.push(value);
@@ -10871,6 +11052,8 @@ function loop(now){
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
+  resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
+  spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
   while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME && gameState === 'PLAYING'){
     update(FIXED_DT);
@@ -10888,6 +11071,32 @@ function loop(now){
   recordPerfSample(perfStats.frameMsHistory, perfStats.frameMs);
   recordPerfSample(perfStats.updateMsHistory, perfStats.updateMs);
   recordPerfSample(perfStats.renderMsHistory, perfStats.renderMs);
+  recordPerfSample(perfStats.ticksThisFrameHistory, ticksThisFrame);
+  // Session-lifetime worst frame — kept separate from the rolling window so a rare one-off spike
+  // (e.g. a wave-transition hitch) is still visible in the debug log long after it scrolled out of
+  // the last 120-frame window.
+  if(perfStats.frameMs > perfStats.worstFrameMs){
+    perfStats.worstFrameMs = perfStats.frameMs;
+    perfStats.worstFrameAtWave = waveIndex;
+    perfStats.worstFrameTicks = ticksThisFrame;
+  }
+  // Per-phase max-seen, same pattern as maxTicksSeen above but per subsystem.
+  for(const k in phaseTime) if(phaseTime[k] > phaseMaxSeen[k]) phaseMaxSeen[k] = phaseTime[k];
+  perfStats.spatialQueryCallsLastFrame = spatialQueryCallsThisFrame;
+  perfStats.hashBuildsLastFrame = hashBuildsThisFrame;
+  perfStats.enemyHashBucketPoolSize = enemyHashBucketPool.size;
+  // Chrome-only, guarded — Firefox/Safari don't expose performance.memory at all. Sampled at most
+  // once/sec (see the comment on the perfStats fields themselves for why).
+  if(performance.memory){
+    perfStats.memorySupported = true;
+    if(now - perfStats.lastMemorySampleAt >= 1000){
+      perfStats.lastMemorySampleAt = now;
+      perfStats.usedHeapMB = performance.memory.usedJSHeapSize / 1048576;
+      perfStats.totalHeapMB = performance.memory.totalJSHeapSize / 1048576;
+      perfStats.heapLimitMB = performance.memory.jsHeapSizeLimit / 1048576;
+      recordPerfSample(perfStats.heapHistory, perfStats.usedHeapMB);
+    }
+  }
   perfStats.lastAccumulatorDebtMs = accumulator; // leftover simulation time this frame couldn't catch up on, carried into the next one
   // Actual speed: ticks actually executed vs. real elapsed time, over a rolling ~1s window rather
   // than one frame (a single frame's ratio is too noisy — a big tick burst followed by a render-only
@@ -10906,6 +11115,19 @@ function loop(now){
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let dprValue = 1;
+// Cached canvas.getBoundingClientRect() result — pointermove can fire far more often than the
+// game actually renders (every mouse-move/touch-move event, not once per frame), and the two
+// call sites below (toRawCanvasCoords, the active camera-drag pan handler) were each calling it
+// fresh on every single one of those events. getBoundingClientRect() can force a synchronous
+// layout flush, which is real cost to pay dozens of times a second for a value that only
+// actually changes on resize/orientation change. Invalidated (set back to null) exactly there —
+// see setupCanvas() and the orientationchange listener right below it — and lazily recomputed on
+// next use.
+let cachedCanvasRect = null;
+function getCanvasRect(){
+  if(!cachedCanvasRect) cachedCanvasRect = canvas.getBoundingClientRect();
+  return cachedCanvasRect;
+}
 // Guards resizeMapCanvasForDpr() against running before `mapCanvas` (declared far later, in
 // BOOT) actually exists — setupCanvas() runs once immediately below at script-load time, long
 // before that declaration executes, and referencing `mapCanvas` that early would throw (temporal
@@ -10937,9 +11159,11 @@ function setupCanvas(){
   // main canvas above — only re-bake when dprValue genuinely changed (graphics-quality toggle, or
   // a rare cross-monitor DPI change), not on every ordinary same-monitor resize.
   if(mapCanvasReady && dprChanged) resizeMapCanvasForDpr();
+  cachedCanvasRect = null; // canvas geometry may have changed — force a fresh read on next pointer event
 }
 setupCanvas();
 window.addEventListener('resize', () => { setupCanvas(); clampCamera(); }); // re-clamp (not re-center) so pan/zoom stays valid without jarringly resetting the view mid-game
+window.addEventListener('orientationchange', () => { cachedCanvasRect = null; }); // some mobile browsers fire this without a corresponding resize
 
 // The HUD is now always a single row (flex-wrap:nowrap) — previously it wrapped onto a second row
 // on narrow phone screens, which caused Next Wave and other buttons to spill below the stat
@@ -11085,7 +11309,7 @@ window.addEventListener('orientationchange', resizeGameFrame);
 
 // Screen (CSS px) -> pre-camera canvas space (post letterbox scaling, pre dpr)
 function toRawCanvasCoords(clientX, clientY){
-  const rect = canvas.getBoundingClientRect();
+  const rect = getCanvasRect();
   const scaleX = CANVAS_W / rect.width;
   const scaleY = CANVAS_H / rect.height;
   return { x: (clientX-rect.left)*scaleX, y: (clientY-rect.top)*scaleY };
@@ -11255,7 +11479,7 @@ canvas.addEventListener('pointermove', (e) => {
     if(draggingGroundItem){
       dragItemPos = toCanvasCoords(e);
     } else if(isDragging){
-      const rect = canvas.getBoundingClientRect();
+      const rect = getCanvasRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
       camera.x += (e.clientX - prev.x)*scaleX;
       camera.y += (e.clientY - prev.y)*scaleY;
@@ -11948,6 +12172,25 @@ function getReadmeText(){
 // Everything genuinely useful for debugging a report, in one plain-text file — not JSON, since
 // this is meant to be pasted directly into a bug report or chat, not machine-parsed. Reads live
 // state at the moment the button is pressed; nothing here is cached/stale.
+// Turns perfStats.ticksThisFrameHistory into a one-line distribution summary — the median/max
+// elsewhere can't distinguish "occasionally catches up 2 ticks, totally normal" from "constantly
+// running 1 tick behind," and that distinction is exactly what separates ordinary catch-up from
+// an actual accumulator spiral.
+function tickDistributionLine(){
+  const hist = perfStats.ticksThisFrameHistory;
+  if(!hist.length) return 'Tick distribution: no samples yet';
+  const buckets = { '0': 0, '1': 0, '2': 0, '3+': 0 };
+  for(const v of hist){
+    if(v <= 0) buckets['0']++;
+    else if(v === 1) buckets['1']++;
+    else if(v === 2) buckets['2']++;
+    else buckets['3+']++;
+  }
+  const pct = n => (n/hist.length*100).toFixed(0);
+  return 'Tick distribution (last ' + hist.length + ' frames): 0 ticks ' + pct(buckets['0']) + '%,  1 tick ' +
+    pct(buckets['1']) + '%,  2 ticks ' + pct(buckets['2']) + '%,  3+ ticks ' + pct(buckets['3+']) +
+    '%  (healthy 1x play should be overwhelmingly "1 tick"; a large "3+" slice at normal speed is the actual spiral-of-death signature, not just a high max)';
+}
 function generateDebugLog(){
   const now = new Date();
   const activeCount = pool => pool.filter(x => x.active).length;
@@ -11974,13 +12217,68 @@ function generateDebugLog(){
     '  p99: ' + perfPercentile(perfStats.renderMsHistory,0.99).toFixed(2) +
     '  max: ' + perfPercentile(perfStats.renderMsHistory,1).toFixed(2) + '\n';
   s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap 90)\n';
+  s += 'Worst frame this session: ' + perfStats.worstFrameMs.toFixed(2) + 'ms, at wave ' + perfStats.worstFrameAtWave +
+    ', ' + perfStats.worstFrameTicks + ' ticks that frame (separate from the rolling-window max above — ' +
+    'this persists even after the spike scrolls out of the last ' + PERF_HISTORY_SIZE + '-frame window)\n';
+  s += tickDistributionLine() + '\n';
   s += 'Requested speed: ' + gameSpeed + 'x   Actual simulation speed (last ~1s window): ' + perfStats.lastMeasuredActualSpeed.toFixed(2) + 'x\n';
   s += 'Accumulator debt (leftover simulation time not yet caught up): ' + perfStats.lastAccumulatorDebtMs.toFixed(1) + 'ms\n';
   s += 'Barricade: ' + perfStats.barricadeActiveScanned + ' active enemies scanned, ' + perfStats.barricadeQueuedCount +
     ' currently queued (max ever seen: ' + perfStats.barricadeMaxQueueLenSeen + ' / cap ' + MAX_QUEUE_DEPTH + '), ' +
     perfStats.barricadeSnapCount + ' snap operations this tick\n';
   s += 'Scenery visible/total: ' + perfStats.visibleScenery + '/' + perfStats.totalScenery + '\n';
-  s += 'Decals visible/total: ' + perfStats.visibleDecals + '/' + perfStats.totalDecals + '\n\n';
+  s += 'Decals visible/total: ' + perfStats.visibleDecals + '/' + perfStats.totalDecals + '\n';
+  s += 'Enemies visible/active: ' + perfStats.visibleEnemies + '/' + perfStats.totalActiveEnemies + '\n';
+  s += 'Towers visible/active: ' + perfStats.visibleTowers + '/' + perfStats.totalActiveTowers + '\n';
+  s += 'Particles/projectiles: NOT viewport-culled currently (every active one draws regardless ' +
+    'of camera position) — see Entity Pools below for active counts.\n\n';
+
+  s += 'UPDATE() PHASE BREAKDOWN (ms spent this frame, across all ticks that ran)\n';
+  s += '---------------------------------------------------------------------------\n';
+  s += 'This is where perfStats.updateMs (' + perfStats.updateMs.toFixed(2) + 'ms) actually goes — ' +
+    'read this before touching any specific subsystem; guessing which of several real costs is ' +
+    'dominant is exactly what this section exists to stop.\n';
+  const phaseLabels = { ambient: 'Wind/scenery (ambient)', spawning: 'Wave spawning',
+    barricade: 'Barricade/pileup', enemyUpdate: 'Enemy.update() loop', collision: 'Collision resolution (swept + 3-pass relaxation)',
+    hashBuild: 'buildEnemyHash()', towerUpdate: 'Tower.update() loop', projectile: 'Projectile.update() loop',
+    catSkeleton: 'Cat/Skeleton minions', particles: 'Particles/death-anims/blood/floating-text', waveLogic: 'Wave-complete transition logic' };
+  let phaseTotalThisFrame = 0;
+  for(const k in phaseTime) phaseTotalThisFrame += phaseTime[k];
+  for(const k in phaseTime){
+    const pct = phaseTotalThisFrame > 0 ? (phaseTime[k]/phaseTotalThisFrame*100) : 0;
+    s += '  ' + phaseLabels[k].padEnd(42) + phaseTime[k].toFixed(3) + 'ms this frame' +
+      '  (' + pct.toFixed(1) + '%,  worst frame ever: ' + phaseMaxSeen[k].toFixed(3) + 'ms)\n';
+  }
+  s += '\n';
+
+  s += 'SPATIAL QUERY / HASH ACTIVITY (this rendered frame, across all ticks)\n';
+  s += '-------------------------------------------------------------------------\n';
+  s += 'buildEnemyHash() calls: ' + perfStats.hashBuildsLastFrame + '   queryNearby() calls: ' + perfStats.spatialQueryCallsLastFrame + '\n';
+  s += 'Largest single queryNearby() result this session: ' + queryNearbyMaxResultLenSeen + ' entities ' +
+    '(a consistently huge number here would mean a range/cell-size mismatch, not a real crowd)\n';
+  s += 'Reusable hash-bucket pool size: ' + enemyHashBucketPool.size + ' (buckets currently held in the pool — ' +
+    'should stabilize, not grow without bound, once enemy positions have covered the map once)\n\n';
+
+  s += 'MEMORY (Chrome only — performance.memory)\n';
+  s += '-------------------------------------------\n';
+  if(perfStats.memorySupported){
+    s += 'Used heap: ' + perfStats.usedHeapMB.toFixed(1) + 'MB   Total heap: ' + perfStats.totalHeapMB.toFixed(1) +
+      'MB   Limit: ' + perfStats.heapLimitMB.toFixed(1) + 'MB\n';
+    if(perfStats.heapHistory.length >= 2){
+      const first = perfStats.heapHistory[0], last = perfStats.heapHistory[perfStats.heapHistory.length-1];
+      const minutesSpan = perfStats.heapHistory.length / 60; // sampled ~once/sec, so N samples ≈ N/60 minutes
+      const growthPerMin = minutesSpan > 0 ? (last-first)/minutesSpan : 0;
+      s += 'Heap trend over last ' + perfStats.heapHistory.length + ' samples (~' + minutesSpan.toFixed(1) + 'min): ' +
+        first.toFixed(1) + 'MB -> ' + last.toFixed(1) + 'MB  (' + (growthPerMin>=0?'+':'') + growthPerMin.toFixed(2) + 'MB/min — ' +
+        'a real sawtooth that keeps returning near baseline is normal GC behavior; a steady one-way climb means something is not being recycled)\n';
+    } else {
+      s += 'Not enough samples yet for a trend — check again after playing a bit longer.\n';
+    }
+  } else {
+    s += "Not available in this browser (Firefox/Safari don't expose performance.memory). " +
+      'Chrome/Edge with the game open a while gives the most useful trend data.\n';
+  }
+  s += '\n';
 
   s += 'GAME STATE\n';
   s += '----------\n';

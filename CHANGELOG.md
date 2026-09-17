@@ -1,5 +1,234 @@
 # Changelog
 
+## [1.2.49] - 2026-09-17 — Spawn order: size is now the actual rule (small leads, big follows), not just a tiebreak
+Direct, repeated request: "first the smaller ones go then the bigger ones, need to ensure that."
+Last version only used size as a tiebreak when two types were already close in speed, with speed
+staying the primary key — found one real case in the roster where that wasn't enough: WOLF (radius
+11, speed 72) vs RUNNER (radius 12, speed 108), a 36-point speed gap, so the old tiebreak never
+applied between them and the bigger, faster RUNNER kept sorting ahead of the smaller, slower WOLF.
+Flipped the priority: radius ascending is now the primary sort key within each local window (still
+6 entries, still local — not a global reorder across the whole wave, so a wave's overall authored
+shape, e.g. closing with a slow heavy climax unit, is still intact), speed only breaks a tie
+between two exactly-same-radius types. The one real consequence, flagged rather than hidden: a
+faster/bigger unit can now spawn right behind a smaller/slower one and have to slow down to match
+it — that's exactly the situation `followSpeedCap` (updateBarricadesAndPileup) exists to absorb,
+not a bug, and matches confirmed-working pileup/jam behavior already in place.
+
+## [1.2.48] - 2026-09-17 — Inspect panel: swapped Target/Sell so "Target: STRONGEST" has room to fit
+`Target: <mode>` was sharing its row with Move plus two info-icon buttons — all splitting the row's
+width roughly evenly (`.insp-opt-row button:not(.info-btn){flex:1 1 0}`), which squeezed "Target:
+STRONGEST" (the longest of the targeting-mode labels) awkwardly. Swapped `inspTargetBtn` into the
+Promote/Sell row (which only has two real buttons, and already gives its buttons `flex:0 1 auto` —
+size-to-content instead of forced equal split) and moved `inspSellBtn` (short text either way) down
+into Target's old spot. Added `#inspTargetBtn` to that same size-to-content CSS rule so it actually
+gets the benefit in its new row. Pure DOM reposition + one CSS selector addition — every button's
+click handler, visibility toggle, and afford-check is wired by ID (`getElementById`), not row
+position, confirmed by checking every reference before moving anything, so nothing else changes.
+`fitOptRowToOneLine()` (the existing overflow-shrink safety net for both rows) is already fully
+generic by row ID, unaffected by which buttons live in which row.
+
+## [1.2.47] - 2026-09-17 — Three verified additions: collision-mask preload, tower-attack bump, small-before-big spawn tiebreak
+- **Preload: collision masks now prewarm at wave start instead of on first hit.**
+  `getEnemyCollisionMask(type)` lazily builds and caches a per-type pixel mask on its first call
+  (`buildEnemyCollisionMask()` → `getImageData()`, a synchronous GPU readback) — confirmed via
+  direct inspection this was still happening on-demand, mid-combat, the very first time any enemy
+  type took a hit in a session. `startNextWave()` now calls it for every type in the upcoming
+  wave's `waveDef` right when the wave starts, during the existing pre-spawn countdown
+  (`WAVE_COUNTDOWN_MS`) — every spawn this wave already has that whole window before it could
+  possibly need a hit-test, so the readback cost moves to a moment nothing is happening yet,
+  instead of the worst possible moment (new-wave, new-enemy-type, mid-fight). Idempotent — costs
+  nothing on a type already cached from an earlier wave.
+- **Enemies now visibly "bump" against a tower they're attacking, matching the existing barricade
+  bump.** Confirmed by inspection: `touchingBarricade` already drove a small render-only oscillating
+  push (`Math.abs(Math.sin(bumpTime/220))*4`, along the path direction) while an enemy is blocked
+  at a barricade — but breakaway/escaped enemies attacking a tower directly (Fire/Ice breaking off-
+  path, or any escaped enemy that's re-engaged one) had no equivalent, just `vx=0,vy=0` and a
+  periodic damage tick with zero visual feedback. Added the same bump animation, mirrored exactly
+  (same formula, same `bumpTime` clock), pointed straight at the tower's position instead of along
+  a waypoint (there's no path to reference off-path, and pointing at what's actually being hit is
+  the more legible read anyway for a direct melee target). New `attackBumpTarget` field, set only
+  while in actual melee range and cleared on every other exit path (target lost, defeated, chase
+  resumed) — recomputed fresh every tick in `updateEscaped()` specifically to avoid any stale-
+  reference risk if the target changes or drops mid-chase. Purely render-only, same as the
+  barricade case — never touches `this.x`/`this.y`.
+- **Spawn order: smaller enemies now win ties within the existing speed-based local reordering.**
+  The wave's spawn order already reassigns type within each 6-entry local window by speed
+  (fastest first — a deliberate anti-catch-up rule, explicitly documented in-code: a fast unit
+  stuck behind a slower one placed ahead of it gets speed-capped by `followSpeedCap`). Speed and
+  radius correlate fairly strongly across the roster already (checked `CONFIG.ENEMIES` directly —
+  e.g. SWARM r9/spd79 vs TANK r22/spd27), so this was often already happening as a side effect,
+  but not everywhere. Speed stays the primary sort key (kept as a hard rule, not a preference —
+  reordering by size alone could put a small-but-slow type ahead of a large-but-fast one and
+  reintroduce the exact catch-up bug that rule exists to prevent), but where two types in the same
+  window are close enough in speed (within `SPEED_TIE_THRESHOLD = 8`) that catch-up isn't a real
+  risk between them, radius (ascending) now breaks the tie — reinforcing "small leads" wherever it
+  doesn't fight the anti-catch-up constraint, without overriding it. Does **not** globally reorder
+  a wave's composition — a wave authored to close with a slow heavy climax unit still closes with
+  it, same as before this change; only ties within a local window move.
+
+## [1.2.46] - 2026-09-17 — Instrumentation-only pass: highly verbose debug log, no fixes applied
+Per direct instruction: measure before touching anything else. Zero behavior/gameplay changes —
+every addition below is either a `performance.now()` timing wrapper around an existing call, a
+counter increment next to an existing function, or a new debug-log section reading those. Nothing
+that was previously being computed changed what it computes.
+
+- **`update()` phase breakdown** — the single biggest gap in the old debug log: `updateMs` was one
+  aggregate number with no way to tell what's actually in it. `update(dt)` is now threaded with
+  `performance.now()` timestamps around each of its 10 real phases (ambient/wind/scenery, wave
+  spawning, barricade/pileup, enemy update loop, collision resolution, `buildEnemyHash()`, tower
+  update loop, projectile update loop, cat/skeleton minions, particles+death-anims+blood+floating-
+  text, and the wave-complete transition block), accumulated per rendered frame (not per tick — a
+  frame can run several ticks at high game speed) into a `phaseTime` object, with a `phaseMaxSeen`
+  companion tracking the worst any phase has hit all session. Debug log now prints both current-
+  frame ms and % of total for every phase, next to its session-worst.
+- **Spatial-query telemetry** — `buildEnemyHash()`/`queryNearby()` now count their own calls per
+  frame (`hashBuildsLastFrame`/`spatialQueryCallsLastFrame`) and `queryNearby()` tracks the largest
+  result set it's ever returned in one call (`queryNearbyMaxResultLenSeen` — a consistently huge
+  number there would mean a range/cell mismatch, not a real crowd). The reusable bucket pool's
+  current size (`enemyHashBucketPool.size`, added last version) is also surfaced directly — should
+  stabilize, not grow unbounded, once the map's been covered once.
+- **Memory trend (Chrome only, `performance.memory`)** — sampled once/sec (not every frame; trend
+  matters here, not per-frame precision), with used/total/limit heap and a computed MB/min growth
+  rate over the session so a real leak (steady one-way climb) is distinguishable from normal GC
+  sawtooth at a glance. Guarded — reports plainly when unavailable (Firefox/Safari) rather than
+  throwing or silently omitting the section.
+- **Tick distribution histogram** — `ticksThisFrame` is now recorded into a rolling history and
+  summarized as a 0/1/2/3+ percentage breakdown. The old median/max alone couldn't distinguish
+  "occasionally catches up 2 ticks, totally normal" from "constantly running 1 tick behind" — a
+  large 3+ slice at *normal* (1x) speed is the actual spiral-of-death signature; a high `max` alone
+  isn't, since that's expected and fine at 5x/10x.
+- **Session-worst single frame**, tracked separately from the existing rolling 2-second-window
+  percentiles (`worstFrameMs`/`worstFrameAtWave`/`worstFrameTicks`) — a rare one-off hitch (a wave-
+  transition spike, a first-hit collision-mask build) can scroll out of the 120-frame window before
+  anyone opens the debug log; this persists for the whole session.
+- **Visible/active counts added for enemies and towers** (scenery/decals already had this) —
+  `drawDepthSortedLayer()`'s existing per-entity cull check now also counts what it's culling.
+  Confirmed by direct inspection that **particles and projectiles are not viewport-culled at all
+  currently** — every active one draws regardless of camera position — and the debug log now says
+  so explicitly instead of implying a "visible" figure that doesn't exist yet. (Not fixed this
+  round — flagging it as a real, now-directly-measurable candidate is the point of this pass.)
+- **`drawDecals()`'s expiry sweep throttle** (added last version, 500ms interval) — no further
+  change, but now sits alongside the phase breakdown so its actual cost is directly visible instead
+  of inferred.
+
+## [1.2.45] - 2026-09-17 — One more verified fix: throttled decal-expiry sweep; two candidates checked and explicitly declined
+- **`drawDecals()`'s expiry sweep throttled from every frame to every 500ms.** Verified: this
+  function runs a full reverse scan of the *entire* `decals` array (capped at `MAX_DECALS = 2000`,
+  splicing out anything past its lifespan) on every single rendered frame, unconditionally — cost
+  scales with total decal count, which grows over a long session. Decal lifespans are 30+ minutes
+  (`DECAL_LIFESPAN`, further stretched 1.15–3x per decal), so expiry precision to the nearest half
+  second is visually meaningless. Now gated behind a `realTime`-based timer
+  (`DECAL_EXPIRY_SWEEP_INTERVAL = 500`ms) instead of running unconditionally — same eventual
+  result, ~30x fewer full-array sweeps. The separate per-frame visibility/draw scan is untouched
+  (camera can move every frame, so that one genuinely needs to run every frame).
+
+**Checked and explicitly declined this round** (found real, judged not worth the risk/reward):
+- **Quantizing `ctx.font` sizes** to cut distinct font-string assignments (e.g. `Enemy.draw()`'s
+  `Math.round(this.radius*2)+'px serif'`). Real per-enemy variance exists, but each enemy's radius
+  is fixed at spawn (not recomputed per frame), and rounding to integer pixels already collapses
+  much of the 88–112% spawn variance onto shared values — so the actual distinct-string count in
+  practice is likely much smaller than a worst-case estimate assumes, and browsers cache parsed
+  font strings internally. Not confident this is a real win without a profile showing otherwise;
+  skipped rather than churn the code for an unverified gain.
+- **Pooling `drawDepthSortedLayer()`'s per-frame `items` array + wrapper objects** (real, still
+  allocates fresh every frame — see `BACKLOG.md`, unchanged from the prior pass). Different item
+  kinds (`'s'`/`'e'`/`'t'`/`'d'`/`'f'`) carry different field shapes, and the sort's stability
+  matters for render order on ties (the debris-vs-enemy z-fight fix a few versions back depends on
+  it) — pooling this safely needs more care than this pass budgeted for. Left as-is, still on
+  `BACKLOG.md`.
+
+## [1.2.44] - 2026-09-17 — Verified performance pass (+ source fact-check): 5 confirmed GC/CPU fixes, corrected external analysis and its book citations
+**Addendum — reference textbook fact-checked directly against its actual PDF.** The user
+subsequently uploaded the real book ("Professional HTML5 Mobile Game Development", Rettig, Wrox
+2012, 624pp) that the Gemini transcripts had been citing secondhand. Extracted and checked its
+real text (not the transcripts' claims) — no code changes resulted, but several earlier citations
+were wrong and are now corrected for the record (full detail in project memory,
+`topics/html5-perf-book.md`): the `Q.gameLoop` delta-clamp snippet is real and accurately quoted,
+just mis-cited at "pp. 111–112" (real location: Chapter 9, Listing 9-5, ≈p.201) — and it's the
+`frameTime` clamp StickTD already has, not license for the separately-rejected
+`MAX_TICKS_PER_FRAME` change. The offscreen-canvas background technique is real (Chapter 1) but
+the book itself calls the performance answer "not straightforward" and recommends benchmarking
+rather than assuming — consistent with why the decal-baking backlog item stays deferred pending
+measurement, not applied on assumption. Critically, **the book contains zero Web Audio API
+content** (no `AudioContext`, no oscillator/gain-node pooling material at all — its Chapter 25 is
+entirely about the legacy `<audio>` tag, predating mobile Web Audio adoption), so the earlier
+transcript's claim that this book's "Chapter 25" recommends pooling `OscillatorNode`/`GainNode` for
+StickTD's `SoundEngine` was fabricated and should not be acted on. "Spatial hash" and "object
+pool" as specific terms don't appear in the book either, though the underlying tile-collision
+scaling concept in real Chapter 18 does match StickTD's existing `buildEnemyHash()`/`queryNearby()`
+approach — confirming that architecture already aligns with the book's real guidance, no change
+needed there.
+Cross-referenced two rounds of external (Gemini) performance analysis and a reference textbook
+against the **actual live code**, not the analysis's claims. Every line cited below was opened and
+confirmed in `index.html` before being touched — anything the external analysis claimed but this
+file didn't actually contain was left alone. Zero gameplay/balance changes; `node --check` on the
+extracted script is clean before and after.
+
+**Fixed (verified real, low-risk, behavior-identical):**
+- **`acquireActive(pool)`** — was `pool.find(item => !item.active)`, which allocates a fresh arrow-
+  function closure on *every single call*. This runs on every particle/projectile/decal spawn, so
+  a 40+ particle Mage impact alone was 40 throwaway closures in one frame. Replaced with a plain
+  indexed loop — same return value (first inactive pooled item, or `null`), zero closures.
+- **`SoundEngine.reserveVoiceSlot()`** — was pruning expired voice timestamps with
+  `this.activeVoiceExpiry.filter(t => t > now)`, allocating a new array (+ closure) on every sound
+  attempt (every footstep, impact, projectile launch). Replaced with in-place compaction
+  (write-pointer over the same array, then truncate `.length`). Identical result, zero allocation.
+- **`queryNearby(hash, x, y, range)`** — was `const result = []; ... return result;`, a fresh array
+  on every call. This is the single hottest query in the engine: called once per tower per tick for
+  targeting, once per splash-radius projectile, and inside both crowd-collision-resolution passes
+  (up to 3x/tick) and the swept-tunneling pass. Audited **every** call site first — all nine consume
+  the returned array synchronously (an immediate `for...of` or `.filter()` copy) before the next
+  `queryNearby()` call can happen — so a single shared module-scope scratch array is safe. Returns
+  a frozen shared empty array for the "no active enemies" fast path instead of allocating `[]` there
+  too.
+- **`buildEnemyHash()`** — was allocating a brand-new bucket array (`[]`) for every occupied grid
+  cell on every call, and it's called up to 5x per physics tick (main targeting hash, the swept-
+  collision pass, and 3x inside the crowd-relaxation passes). Buckets are now pulled from a
+  persistent pool keyed by the same cell-key string and reused (`.length = 0` instead of a fresh
+  array) across calls and across ticks — steady-state enemy counts approach zero bucket
+  allocations per build instead of one array per occupied cell per build.
+- **`findTouchingBarricade(e)`** — swapped `Math.hypot(...) <= e.radius + 14` for a squared-
+  distance comparison (`dx*dx + dy*dy <= touchDistSq`). This runs once per active enemy per tick
+  (~200+ in a dense wave) while scanning the tower pool; the square root was pure waste for a
+  pure radius threshold check. Same threshold, same result, no `sqrt`.
+- **`canvas.getBoundingClientRect()` cached instead of re-read on every `pointermove`.** Found via
+  a second, independent 210-page external diagnostic transcript (`StickTd_-_Diagnose_Laggy_Issue`)
+  and verified against the real pointer-handling code before touching it: `toRawCanvasCoords()`
+  and the active camera-drag pan handler each called `canvas.getBoundingClientRect()` fresh on
+  every single `pointermove` event — and pointer events can fire faster than rendered frames,
+  each read a potential forced-layout flush. Added `getCanvasRect()`, a one-line cache invalidated
+  on `resize` (inside the existing `setupCanvas()`) and `orientationchange`, matching the caching
+  pattern this codebase already uses everywhere else (`fitHudTopToOneLine`, `fitStatRowToOneLine`,
+  `fitNameplateToStatRow`, `positionZoomControls`, all resize/orientationchange-driven, not
+  per-event). The two call sites now read the cached rect instead. Confirmed via direct inspection
+  that a previous pass had already removed a second, redundant read from the same hot path — this
+  finishes that work rather than duplicating it.
+
+**Explicitly NOT applied — corrected two incorrect "fixes" from the external analysis:**
+- **The suggested accumulator/`MAX_TICKS_PER_FRAME` "spiral of death" fix (clamp to 3, drop
+  `accumulator = 0` on overflow) was checked against the actual `loop(now)` and rejected.** The
+  external analysis assumed `MAX_TICKS_PER_FRAME = 90` was an accidental leftover; it is not — the
+  code comment right next to it says so ("safety cap for high speed multipliers (5x/10x)"), and
+  `accumulator` is deliberately incremented by `frameTime * gameSpeed`, not raw `frameTime`. Frame
+  time is *already* clamped to 100ms one line above. Lowering the tick ceiling to 3 as suggested
+  would silently cap the game at roughly real-time speed and break the 5x/10x speed-up feature
+  entirely — it was never the source of the reported lag. Left untouched.
+- **Settled-decal offscreen-canvas baking (stamping dried blood onto `mapCanvas` and pruning it
+  from the active `decals` array) was scoped but deliberately deferred, not applied.** It's a real,
+  correctly-identified opportunity (confirmed: `decals` are redrawn in immediate mode every frame
+  in `drawDepthSortedLayer()`/`drawOneDecal()`), but doing it safely means auditing every place a
+  decal's *ongoing* animation state (aging/color-shift/oxidation, `dprValue` scaling, and
+  `rebakeMap()`'s invalidation on map-ring-expansion) is read, to avoid baking a decal that's still
+  visually changing or losing decals across a map expansion. That's real surgery, not a drop-in
+  change, and rushing it risked a visual regression worse than the lag it fixes. Filed as a
+  precise, scoped `BACKLOG.md` item instead of guessed at.
+- Also declined (same reasoning — real but not low-risk enough for this pass): baking an
+  `activeBarricades` list to avoid `findTouchingBarricade()`'s full tower-pool scan (4+ tower-
+  creation sites and an unaudited set of destroy/sell sites would need to stay in sync — a stale
+  list is a gameplay bug, not just a missed optimization) and the `drawDepthSortedLayer()` per-
+  frame sort-wrapper-object churn (needs an object pool with proven sort stability, not attempted
+  here).
+
 ## [1.2.43] - 2026-09-15 — Mini variants raised to a real majority; lag report investigated, no bug found yet
 - **`MINI_VARIANT_CHANCE` raised from 0.12 to 0.55** — minis are meant to be the visible majority
   of a wave, not just a common minority, per direct feedback ("more little guys than the big

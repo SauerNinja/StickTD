@@ -3,6 +3,34 @@
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 
+## Performance — deferred from the 1.2.44 verified-fix pass
+
+Both scoped from direct code inspection (not from the external Gemini analysis, which mislocated
+or hallucinated several claims). Deliberately not attempted in 1.2.44 — real risk of a gameplay/
+visual regression if rushed, worse than the lag they'd fix.
+
+- **Settled-decal offscreen baking.** `decals` (array, ~`decals.length` entries) are redrawn in
+  full immediate-mode (`drawOneDecal()`, called from `drawDepthSortedLayer()`) every frame for
+  the life of the decal, confirmed via `perfStats.visibleDecals` / `perfStats.totalDecals`. Once
+  a decal has finished its dynamic phase (splatter animation, color/oxidation aging) it could be
+  stamped once onto the existing offscreen `mapCanvas` and spliced out of the active `decals`
+  array. Needs, before attempting: (1) the exact field/condition that marks a decal as visually
+  "done" — must not bake a decal still mid-animation or its motion freezes visibly; (2) handling
+  `dprValue` scaling identically to how `mapCanvas` itself is scaled; (3) what happens to baked
+  decals across `rebakeMap()` (map ring expansion) — they need to survive it, not vanish.
+- **`activeBarricades` tracking list**, to let `findTouchingBarricade()` skip scanning the full
+  `towerPool` for non-barricade towers. Confirmed 4 tower-creation call sites
+  (`acquireActive(towerPool)` at 4 locations); destroy/sell paths not yet fully enumerated. A
+  tracking list that falls out of sync with actual tower state is a silent gameplay bug (phantom
+  or missing barricade collision), not just a missed optimization — needs every mutation site
+  enumerated and covered before shipping, not a partial pass.
+- **`drawDepthSortedLayer()` per-frame sort-wrapper allocation.** Builds a fresh `items = []` plus
+  one `{ sortY, kind, ... }` wrapper object per visible enemy/tower/scenery/decal, every frame, to
+  feed the Y-sort. Fixable with a pooled scratch array of reusable wrapper objects, but needs the
+  sort kept stable (items at equal `sortY` must not visibly swap render order frame-to-frame) —
+  not attempted without confirming `Array.prototype.sort()`'s stability guarantee holds under
+  reused-object mutation here.
+
 ## Performance — deferred items from the 1.1.31–1.1.33 audit passes
 
 Shipped: idle-simulation fast path (skips enemy-collision work when there are genuinely zero
