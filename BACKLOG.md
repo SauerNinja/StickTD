@@ -421,14 +421,22 @@ tree for scanning:
 ```
 SWORDSMAN (Warrior/STR)         ARCHER (Archer/DEX)             MAGE (Mage/INT)
 ├─ 🔥 HAMMERMAN → PALADIN       ├─ 🔥 GATLING → BOMBER           ├─ ⚡ SNAPCASTER (no deeper tier)
-├─ ⚡ AXEMAN (no deeper tier)   │         → GUNALINDER → SNIPER  └─ ❄️ CLERIC → POPE
-└─ ❄️ SPEARMAN (no deeper tier)├─ ⚡ BLOWDART → SQUIRTGUN            (Mage has NO 🔥 Fire path at all —
+├─ ⚡ AXEMAN → BERSERKER        │         → GUNALINDER → SNIPER  └─ ❄️ CLERIC → POPE
+└─ ❄️ SPEARMAN → LANCER        ├─ ⚡ BLOWDART → SQUIRTGUN            (Mage has NO 🔥 Fire path at all —
                                 └─ ❄️ MARKSMAN → SNIPER (same         intentional existing gap, not
                                    endpoint as the Fire chain)        an oversight — see AGENTS.md)
 ```
 
 Every proposal below is a gap-fill or extension of the above, never a replacement — nothing here
 overrides an already-shipped class or threshold.
+
+**Axeman/Spearman's deep tier — shipped**: Berserker (Axeman, STR 40) and Lancer (Spearman, DEX 40)
+— see CHANGELOG.md 1.2.36. Every Swordsman-lineage branch now has a second tier; this was the last
+gap. Note this is NOT the same as the "Warrior tree restructure" proposal further below (which
+wanted Axeman itself renamed to "Knight Errant" with Berserker as flavor-staged above that, plus a
+separate Hammerman/DEX branch) — what actually shipped is the simpler, purely-additive version:
+Axeman keeps its own name and identity, Berserker/Lancer are just its and Spearman's own next tier,
+same shape as Hammerman→Paladin already has. The restructure proposal remains just that, unbuilt.
 
 **Hybrid-element classes** (full spec in the Phase 2 entry above this map) — **all four shipped,
 this map section is now historical**:
@@ -468,14 +476,15 @@ Would have been the first deliberate exception to archetype-exclusive damage in 
 special-cased in code, if it were ever built. Superseded by the shipped version above; kept here
 only as a record of the original idea.
 
-**Warrior tree restructure** (full spec in the same "large batch" entry): Axeman renamed
-**Knight Errant** as a pre-evolution flavor stage, with **Berserker** as a further tier above it
-(no threshold specified); separately, an Hammerman that then invests DEX (instead of continuing
-toward Paladin's INT path) branches into an unnamed distinct dual-wielding class. This is the one
-proposal here that isn't just a gap-fill — it's a genuine restructure of an already-shipped part
-of the tree (Axeman currently has no deeper tier at all; this would give it one, and would turn
-Hammerman's single INT-only path into an actual branch), so it carries more risk to existing
-save-compatibility/balance than the purely-additive hybrid/Mage-chain proposals above.
+**Warrior tree restructure** (full spec in the same "large batch" entry) — **partially superseded**:
+Axeman renamed **Knight Errant** as a pre-evolution flavor stage, with **Berserker** as a further
+tier above it (no threshold specified); separately, an Hammerman that then invests DEX (instead of
+continuing toward Paladin's INT path) branches into an unnamed distinct dual-wielding class. The
+"give Axeman a deeper tier" half of this shipped (see above) — as a Berserker, but WITHOUT the
+Axeman→Knight Errant rename, which never happened. The remaining, unbuilt part of this proposal is
+narrower now: just the separate Hammerman/DEX branch — a genuine restructure of an already-shipped
+part of the tree (Hammerman's single INT-only path into an actual branch), carrying more save-
+compatibility/balance risk than the purely-additive Berserker/Lancer addition above did.
 
 **Non-combat NPCs proposed alongside the above** (not towers, not part of the unlock tree, noted
 here only because they came up in the same "classes we've discussed" sweep): a static Merchant NPC
@@ -497,6 +506,39 @@ Builder NPC (Hammerman-proportioned, bright orange).
   another speculative parameter tweak.
 
 ## Ideas
+
+- **External review proposal (2026-09-15, not verified, not implemented)** — a large, unsolicited
+  external document proposing two separate bodies of work. Logged here as a summary of themes, not
+  a spec to build from — most of it was never checked against the actual code, and treating an
+  external AI's speculation as fact (rather than something to verify first) is exactly the trap
+  this project has avoided all along. One concrete, checkable claim from it (`spawnQueue.shift()`
+  being an O(n) anti-pattern) WAS verified and fixed — see CHANGELOG.md 1.2.26. The rest:
+  - **Engineering-process ideas**: explicit state machines for Enemy/Tower/Wave/Projectile instead
+    of ad-hoc boolean combinations; a startup validator pass (this project already has
+    `validateGameDefinitions()`, worth checking how much of this it already covers before assuming
+    a gap); separate RNG streams for wave generation vs. combat rolls vs. cosmetic variation, to
+    support a deterministic-replay debug mode; centralized target-invalidation so a
+    dead/downed/escaped entity can't linger as a stale reference anywhere; explicit rules for what
+    save/load treats as persistent vs. reconstructable vs. transient state; a telemetry/percentile
+    frame-time system; an "actual speed vs. requested speed" diagnostic for the game-speed
+    multiplier; a disabled-by-default in-file debug self-test harness (specific test cases listed:
+    one downed tower removes exactly one life, dead enemies can't be targeted, killstreak survives
+    save/load, wind only appears on configured waves, etc.).
+  - **Wave-design/economy proposal**: shift wave philosophy from "survive a spike" toward
+    "sustained farming" — more total enemies per wave, weaker/more plentiful filler enemies
+    (suggested 70-80% of a wave), phased wave construction (warm-up → steady stream → mixed →
+    rest → specialist pressure → cleanup → optional elite → reward tail), a real
+    results/preparation state between waves instead of auto-rushing into the next one, one
+    authoritative death-reward event (kill credit/XP/gold all from a single confirmed last hit,
+    never duplicated), a wind schedule (calm through wave 29, gentle tutorial at 30, rare "high
+    wind" later — already broadly matches what actually shipped, see the wind system in
+    CHANGELOG.md 1.2.19/1.2.21), and target calm-weather hit rates (Swordsman 100%, Archer
+    90-95%, Mage 85-90% — this project's actual numbers are close already, worth a real
+    comparison before assuming a mismatch). Also proposed smaller "minion" versions of existing
+    enemies — weaker, cheaper, filler-tier XP/gold — as a specific, more scoped piece of the
+    filler-enemy idea above.
+  - None of this has a committed design here — flagged as themes worth considering, each one
+    individually, verified against the real code first, not a batch to implement together.
 
 - **"Dark Wizard" concept (mentioned 2026-09-15, not started)**: a crowd-control tower that lifts
   an enemy in place — "force choke" style — dealing damage over time while it's suspended rather

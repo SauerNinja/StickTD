@@ -24,6 +24,7 @@ with the Web Audio API.
 - [Pathing & AI](#pathing--ai)
 - [Items & Heroes](#items--heroes)
 - [Resources](#resources)
+- [Huts](#huts)
 - [Lives](#lives)
 - [Settings](#settings)
 - [Save / Load](#save--load)
@@ -159,7 +160,9 @@ or dies, at which point the slot opens back up.
 | 🚧 Barricade | Doesn't attack — extremely tough, placeable directly on the path, freezes the first enemy that touches it |
 | 🔨 Hammerman | *(unlocked by 🔥 Fire on a Swordsman, STR 100/500)* Stuns on hit, carries a shield and extra HP |
 | 🪓 Axeman | *(unlocked by ⚡ Electric on a Swordsman, DEX 100/500)* Dual hand axes; manually toggle between a close swing and a ranged throw |
+| 👹 Berserker | *(unlocked by an Axeman reaching STR 40)* Trades the throw-toggle for a much wider, harder cleave — brute-force AoE over precision |
 | 🔱 Spearman | *(unlocked by ❄️ Ice on a Swordsman, INT 100/500)* Long melee reach, slow but hard-hitting |
+| 🎯 Lancer | *(unlocked by a Spearman reaching DEX 40)* Even longer reach than base Spearman — the longest-ranged melee class in the game |
 | ⚜️ Paladin | *(unlocked by a Hammerman reaching INT 40)* Every hit deals holy pure damage, bypassing armor entirely |
 | 🔫 Gatling | *(unlocked by 🔥 Fire on an Archer, STR 100/500)* Very fast, low damage per shot — shreds swarms |
 | 🎯 Blowdart | *(unlocked by ⚡ Electric on an Archer, DEX 100/500)* Short range, fast fire rate, every dart poisons |
@@ -298,7 +301,8 @@ active combat performance specifically, not gold spent or time survived. Each le
 exactly one stat point — small and frequent rather than big lump sums — for the player to allocate
 manually via the STR/DEX/INT buttons. Barricades don't fight, so they don't earn EXP. A tower that
 never lands a kill (out of range, badly placed, or simply outclassed) stays at level 1 — this is
-intentional now, not an oversight.
+intentional now, not an oversight. (The "Lv." shown in the inspect panel is this tower's
+gold-bought tier, not its EXP level — EXP progress has its own separate bar and number just below.)
 
 Stat damage bonuses are class-exclusive, Dota-style, with no exceptions: STR only boosts damage
 for Warrior-archetype towers (Swordsman and its evolutions), DEX only for Archer-style towers
@@ -318,10 +322,12 @@ cooldown — visibly trembles and glows more the longer it's been building towar
 picked it can't be changed. Neither is a separate buildable class the way Cleric/Necromancer are —
 it's the same Swordsman, permanently specialized.
 
-Promoting a tower's tier for gold also grants random stat growth on top of its guaranteed tier
-stat bump: 3 independent rolls of 1-6 points each into a randomly chosen stat, plus a guaranteed
-extra 1-3 points into the tower's own favored/main stat. This is a separate "gear training" layer
-from EXP leveling — it doesn't grant EXP itself (see above), it just grants stat points directly.
+Promoting a tower's tier for gold is mostly a gold sink now, not a second stat generator — it
+grants a small, predictable +1 to the tower's own favored/main stat on top of its guaranteed tier
+stat bump, rather than the large random rolls it used to (3 independent 1-6 rolls plus a
+guaranteed 1-3, averaging around 12.5 raw stats per promotion). Kills and XP are the main way a
+tower actually grows — see the EXP section above — promotion is a modest, reliable bonus alongside
+that, not competing with it.
 
 Accuracy is deliberately front-loaded, RuneScape-style: a tower's miss chance at zero DEX
 investment differs by archetype (Mage misses the most at 45%, Archer 40%, Warriors — melee — the
@@ -405,6 +411,16 @@ be picked back up with its "Store" button. Every 5 waves cleared banks one free-
 (capped at 3), consumed automatically on your next Barricade purchase before any wood/stone is
 spent. Tank (🗿) drops stone instead of gold on death — the game's one enemy-side source of stone
 beyond clearing rocks yourself.
+
+## Huts
+
+A WarCraft 3-style creep camp: a stationary hut (🛖) placed off-path somewhere in the starting
+map area, guarded by 2 enemies. Nothing about it is on the timer or the path — towers in range
+simply fight it like anything else, on your own schedule. Kill both guardians for an immediate
+gold bounty each; the hut itself is far tankier and pays a much bigger one-time reward when
+destroyed. If you clear the guardians but leave the hut standing, it respawns 2 fresh guardians
+after a random 1-5 minute real-time wait — but only once the lane around it is actually empty, and
+never at all once the hut itself has been torn down. A cleared hut stays cleared permanently.
 
 ## Lives
 

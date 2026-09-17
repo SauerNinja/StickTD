@@ -1,5 +1,468 @@
 # Changelog
 
+## [1.2.42] - 2026-09-15 — Zombie moved to wave 15; new feature: Huts (WC3-style creep camps)
+Two items by direct request, both fully implemented.
+- **Zombie's introduction moved from wave 6 to wave 15** — removed from the 4 early hand-authored
+  waves it used to appear in (6, 7, 8, 10), with modest count bumps to the remaining types in each
+  so they don't feel thin. Now first appears in the wave-15 BOSS milestone wave, by which point
+  it's actually plausible a dedicated Mage has reached Cleric (500 INT, well past the 100 INT
+  attunement minimum) rather than facing an armored enemy on the very first few towers.
+- **New: Huts** — stationary, off-path "creep camp" structures (WC3-style), each guarded by 2
+  enemies. Kill the guardians for an immediate bounty; the hut itself is far tankier still and
+  pays a much bigger one-time reward when destroyed. If the hut survives and both guardians are
+  confirmed dead, it respawns 2 fresh ones after a random 1-5 minute real-time wait — never while
+  a guardian is still alive, and never at all once the hut itself has been destroyed.
+  - Built by reusing the `Enemy` class/pool entirely (`isGuardian`/`isHutBuilding` flags) rather
+    than a parallel system — the exact same active-flag exclusion pattern already proven this
+    session for escaped enemies, not a new concept. Guardians wander within a bounded 70px radius
+    of their hut (reusing the same soft-bounce wander code `updateEscaped()` already uses, just
+    anchored differently) and use GRUNT's own moveset/appearance, boosted well past a normal
+    Grunt's stats. Both guardians and the hut itself are excluded from wave-completion checks and
+    the barricade-pileup system, matching the existing exclusion pattern for escaped enemies.
+  - Placement: one hut spawns at game start on a random valid off-path tile within the starting
+    active region.
+  - New pool-reuse fields (`isGuardian`/`hutRef`/`hutAnchorX/Y`/`isHutBuilding`/
+    `guardiansAliveCount`/`respawnAt`/`destroyed`) all reset explicitly in `spawn()`, matching the
+    established pattern for every other pool-reused state this session.
+  - **Caught and fixed a real bug before shipping**: the hut originally used `spawn('TANK', ...)`
+    for its base stats — but `die()` has a TANK-specific branch that pays a *fixed* flat stone
+    amount on death, completely ignoring `this.bounty`. That would have silently swallowed the
+    intended 8x bounty boost for destroying a hut. Switched the hut to a GRUNT base (with a much
+    larger HP multiplier to compensate for GRUNT's lower base HP) so its reward actually lands on
+    the normal gold path where the bounty multiplier applies.
+- Verified against the real extracted `updateGuardian()`/`updateHutBuilding()` methods, not a
+  reimplementation: guardian wander confirmed to never exceed its 70px bound over 2000 simulated
+  ticks; hut confirmed to refuse respawning while any guardian is alive, even past its timer;
+  confirmed to wait for the scheduled time before respawning; confirmed to spawn exactly 2 fresh
+  guardians and clear its timer once both conditions are met; and confirmed a destroyed hut never
+  respawns anything again regardless of timer state.
+- `node --check` on the extracted script: clean.
+
+## [1.2.41] - 2026-09-15 — Progression fix, per your confirmed answer: promotion is now mostly a gold sink; the actual bug turned out to be a mislabeled display
+Confirmed direction: promotion mostly a gold sink, XP/kills the main way to grow. Investigating
+turned up something better than expected — the underlying architecture already had the right
+separation (`tower.level` = gold-bought tier, driven only by Promote; `tower.expLevel` = XP
+counter, driven only by kills); the actual bug was narrower than the source document assumed: the
+inspect panel's "Lv." was reading `expLevel` instead of `level`, so the player only ever saw the
+XP counter labeled as "Level" and never saw the real Promote-driven tier at all — exactly matching
+"units keep leveling without leveling."
+- **`inspLevel.textContent` now reads `t.level`** (the real, gold-bought tier) instead of
+  `t.expLevel`. This alone was most of the reported confusion — no deeper architecture change
+  needed, since the separation the document called for already existed underneath.
+- **Promotion's random stat grant replaced with a small, predictable +1 to the favored stat only**
+  — previously 3 independent 1-6 rolls plus a guaranteed 1-3, averaging ~12.48 raw stats per
+  promotion (confirmed by simulation, matching the source document's own claimed ~12.5 exactly).
+  The tier's own baseline stat bump from `applyTierStats()` is completely untouched — that's the
+  real reward for promoting; this only removes the second, swingy stat generator competing with
+  kills/XP for being the main way a tower grows.
+- Relabeled the two places that referenced "LEVEL"/"MAX LEVEL" using `expLevel` (the training
+  floating-text and the XP bar's cap label) to "Training"/"MAX TRAINING", so the same
+  level-vs-training-level confusion can't recur from a different UI element than the one that
+  actually caused the report.
+- `README.md` updated: the promotion stat description, and a note directly on the "Lv." display
+  explaining which counter it actually shows.
+- Verified the exact old/new promotion magnitude by simulation (100,000 trials): confirmed the old
+  ~12.48 average, confirmed the new value is a flat, deterministic +1. `node --check` on the
+  extracted script: clean.
+- **HUD layout**: confirmed not wanted — left the compact centered bar exactly as it was.
+
+## [1.2.40] - 2026-09-15 — Inspect panel now shows a disabled tower's downed status, not just its raw HP; checked the world-space visual and found it already better than assumed
+- **Inspect panel**: a disabled tower's HP bar previously showed its recovered ~30% value with no
+  indication it's actually locked out of attacking — reading as "nearly dead" rather than "already
+  went down and is recovering." Now suffixes the number with `(DOWNED · N rounds)` when
+  `disabledWavesLeft > 0`, using the exact same field the world-space visual already reads.
+- **Checked the in-world visual first, found it doesn't need the fix the document proposed**: it
+  claimed the current disabled state is "only a greyed-out disabled state" with no clear
+  communication. Read the actual draw code — it already shows a grayscale/dizzy treatment PLUS an
+  explicit "N rounds left" text label above the tower, which is arguably clearer than the
+  document's own suggested single "DOWNED" word, since it also tells the player exactly how much
+  longer to wait. Left this alone rather than replacing something already working.
+- `node --check` on the extracted script: clean.
+
+## [1.2.39] - 2026-09-15 — Revive-skull marker gets a contrast badge; the Cleric-threshold "inconsistency" turned out not to be one
+- **Revive-skull readability**: the skull drawn above a revived enemy previously had nothing
+  separating it from whatever body might be standing right behind it — a floating annotation with
+  no visual anchor of its own. Now drawn on a small dark circular badge for contrast, the simpler
+  of the two fixes the source document proposed (the fuller version — actively checking nearby
+  enemy positions and nudging the marker to avoid them — would need `draw()` to receive a
+  nearby-enemies list it doesn't currently get passed, meaningfully more invasive for a purely
+  cosmetic issue).
+- **Checked, not a bug**: the document flagged Cleric's unlock as "inconsistent" — 100 INT for
+  attunement vs. 500 INT for specialization. That's not an inconsistency, it's the same two-stage
+  design every single-element specialization in the game already uses uniformly (Hammerman,
+  Axeman, Spearman, Gatling, Blowdart, Marksman, Necromancer, Snapcaster all attune at 100 and
+  specialize at 500 — confirmed directly, not assumed). Nothing to reconcile here; the document
+  appears to have misread the two-stage system as a single inconsistent threshold.
+- **Deliberately not touched**: the HUD responsive-layout suggestion (spreading the bar into
+  left/center/right groups on wide screens). Reconsidered rather than implemented — this is the
+  core always-visible gameplay HUD, its current fit-to-scale system is already carefully tuned
+  (see the 1.2.13 fix for exactly how delicate this area has been), and "spread it across an
+  ultrawide monitor" is a genuinely debatable improvement, not an obvious bug — many games
+  deliberately keep HUD controls compact and centered rather than stretched across available
+  width. Restructuring live, always-visible markup for a subjective aesthetic call from an
+  external document isn't a risk worth taking without it actually being confirmed as wanted.
+- `node --check` on the extracted script: clean.
+
+## [1.2.38] - 2026-09-15 — Two real bugs fixed from the bunching-analysis document: downed towers stop getting re-targeted, wave speed-sort no longer scrambles composition
+Both confirmed against the real code before fixing, not taken on faith.
+- **Downed/disabled towers can no longer be picked as a new breakaway/escaped-enemy attack
+  target** (`findNearestActiveTower()` now excludes `disabledWavesLeft > 0`, not just
+  `!active`). Previously an already-defenseless, disabled tower could be re-targeted and
+  re-disabled indefinitely by a different attacker, since only `.active` was checked — a real
+  gap, confirmed directly.
+- **Existing attackers now drop a target the instant it goes down mid-attack**, not just when
+  it's fully destroyed — both `updateBreakaway()` and `updateEscaped()`'s tower-attack branch now
+  check `disabledWavesLeft` alongside `.active` before continuing to engage.
+- **Wave speed-sort no longer reassigns enemy types globally across the whole wave** — this was a
+  real, confirmed issue directly related to something raised before ("faster speeds at front...
+  didn't organize it good"): the old code took every enemy type in the entire wave, sorted them
+  fastest-to-slowest, and reassigned them onto the timeline, which could pull a wave's intended
+  climax unit (often its slowest) all the way to the front. Replaced with a bounded local window
+  (6 slots): fast-before-slow ordering still applies to units close enough together in time to
+  actually catch up to each other, but nothing can be reassigned outside its own local
+  neighborhood — a wave's overall authored shape (which group opens, which closes) stays intact.
+  Verified directly: a simulated Grunt→Runner→Boss wave keeps its Boss near the very end instead
+  of it being pulled to the front, the type multiset is unchanged, and fast-before-slow ordering
+  still holds within each window.
+- `node --check` on the extracted script: clean.
+- Everything else surfaced by the same 417-page document — the progression/promotion rework (with
+  its own internal, later self-correction worth taking seriously), the full wave beat/phase
+  compiler, the responsive HUD layout, Zombie's intro-wave timing, the Cleric 100-vs-500 INT
+  threshold, enemy selection/inspection, and the "Huts" idea — remain unbuilt, each a real,
+  separate project rather than something to guess at alongside these two verified fixes.
+
+## [1.2.37] - 2026-09-15 — Entrance gating added to spawnEnemy() — path-distance safety on top of the existing time-based spawn delay
+A 417-page external document specifically analyzing enemy bunching. Unlike some earlier ones, its
+core diagnostic claims were checked and confirmed accurate against the real file — the exact
+`queueGap` formula and the `nudge = Math.min(overlap, 1.5) * 0.5` limit both matched exactly. Its
+top recommendation ("make path-progress authoritative over collision") is a genuine core-movement
+rewrite — the same scale of risk as the other big architecture items already deferred this session,
+not attempted here. Its one clearly safe, additive suggestion — entrance gating — is implemented.
+- New `lastSpawnedEnemy` tracking + a check in `spawnEnemy()`: won't release a new enemy until the
+  previously-spawned one has moved at least `(its radius + the new enemy's radius + 8px)` from the
+  shared spawn point. Time-based delay alone can still let two enemies materialize close together
+  if their scheduled delays are tight relative to frame rate — this is a real path-distance check
+  on top, not a replacement.
+- Reuses the exact same "return false, retry next frame" contract `spawnEnemy()` already has for
+  pool exhaustion — the spawn-drain loop's existing comment already documents this exact retry
+  behavior, so no new plumbing needed in the caller at all.
+- `lastSpawnedEnemy.active` naturally goes stale-safe on its own once that enemy dies, despawns, or
+  escapes — no explicit reset needed between waves.
+- Verified against a faithful transcription of the real logic: first spawn always succeeds, a
+  too-close second spawn correctly blocks, unblocks once the required gap is actually reached, and
+  correctly ignores a stale reference once the tracked enemy goes inactive.
+- Most of the rest of this 417-page document overlaps heavily with the two performance/architecture
+  documents already substantially processed across 1.2.26-1.2.35 (telemetry, spawn queue, barricade
+  scratch reuse, HUD coalescing, wind staging, progression separation, minion variants) — not
+  re-processed here as new work. `node --check` on the extracted script: clean.
+
+## [1.2.36] - 2026-09-15 — New classes: Berserker and Lancer — Axeman/Spearman's own deep tier, closing the last gap in the Swordsman lineage
+Every other Swordsman-lineage branch already had a second tier (Hammerman→Paladin); Axeman and
+Spearman were dead ends. Fixed by explicit request, with a clean, defensible pattern for the one
+open technical decision (which stat triggers each): Hammerman (STR-locked) already crosses to INT
+for Paladin, so this cycles it rather than reusing the same pairing twice — Axeman (DEX-locked)
+grows STR for Berserker, Spearman (INT-locked) grows DEX for Lancer. A full STR→INT→DEX loop
+across the three branches.
+- **Berserker** (👹, from Axeman, STR 40): trades Axeman's throw-toggle for a much wider cleave
+  (`swingArc` override — same per-type-override precedent TWOHANDER Swordsman's `chooseSpec()`
+  already established) and higher raw damage — a brute-force AoE identity.
+- **Lancer** (🎯, from Spearman, DEX 40): even longer reach than base Spearman, precision over
+  power — the longest-ranged melee class in the game.
+- Both dispatch through the exact same generic `checkEvolution()`/`EVOLUTIONS` mechanism already
+  proven by Hammerman→Paladin and Blowdart→Squirtgun — zero new code needed there, just the table
+  entries.
+- Render branches reuse their parent's exact visual (Berserker → Axeman's dual-axe pose, Lancer →
+  Spearman's thrust pose) rather than falling through to a generic default — thematically correct,
+  reusing proven code instead of writing new geometry.
+- Full definition checklist: `JOB_COLORS`/`JOB_BUILD`/`JOB_QUOTES`/`RANGE_CAPS`/`CLASS_ARCHETYPE`
+  (both WARRIOR, matching their parents)/`TOWER_STRATEGY`/`EVOLVED_TOWER_TYPES`/
+  `TOWER_UNLOCK_RIDDLE`, plus the shared melee-swing update dispatch, swing-lunge animation check,
+  and `usesSwingAngle`.
+- **Caught and fixed a real miss before shipping**: `resolveWeaponSubtype()` (drives gore-wound
+  flavor) would have silently defaulted Lancer to the generic `BLADE` treatment instead of
+  `PIERCE` like its parent Spearman, since it wasn't in the function's own explicit list yet —
+  found by reading the function directly rather than assuming inheritance would "just work."
+- Also caught two smaller mistakes in my own draft before they shipped: a typo in a comment
+  ("Berserman"), and a color comment that guessed Axeman was "steel-gray" — checked the real value,
+  it's burnt orange, corrected the comment to match.
+- Verified against the real extracted derivation/reachability/evolution-trigger logic: both classes
+  confirmed present in `UNLOCKABLE_TOWER_TYPES` (22/22, matching `EVOLVED_TOWER_TYPES`'s own
+  count); the Build-tray reachability gate (from the 1.2.24 pass) correctly hides each until its
+  own prerequisite — Axeman, Spearman — is unlocked, and correctly reveals it once that happens.
+  `node --check` on the extracted script: clean.
+
+## [1.2.35] - 2026-09-15 — Self-test harness extended to cover the two most recent features
+Added regression coverage for the last two passes to `runDebugSelfTests()`, matching its own stated
+purpose — anything that could regress silently in a later pass should have a standing check.
+- Mini/Big variant mutual exclusivity, and confirms Mini's stat reduction actually reduces (HP,
+  radius, bounty all lower than a normal spawn) — regression coverage for 1.2.33.
+- `BLOOD_ON_HIT_CHANCE` is confirmed a real probability strictly less than 1 — regression coverage
+  for 1.2.34, guarding against a future edit accidentally turning it back into a no-op.
+- Checked BACKLOG.md for any other standalone quick win before closing this pass — nothing left
+  that isn't already flagged there as a genuinely larger project, not a small addition.
+- `node --check` on the extracted script: clean.
+
+## [1.2.34] - 2026-09-15 — Blood no longer spawns on every single hit — new per-hit chance, ~30% less frequent
+Every landed hit previously produced a blood event unconditionally whenever the goreMode toggle
+was on (an implicit 100% per-hit rate) — reported as too much, with the actual blood generation
+itself explicitly not the issue.
+- New `BLOOD_ON_HIT_CHANCE` (0.7), gating whether `applyDamage()`'s blood-generation block runs at
+  all for a given hit — applied identically across every archetype (Warrior/Archer/Mage/dust)
+  rather than singling one out, since the report wasn't archetype-specific. A pure frequency gate:
+  nothing inside the block — the actual particle/decal spawning, colors, sizing, all the tuned
+  behavior — was touched at all. A hit that does pass the roll looks exactly as it always did.
+- Deliberately scoped to ordinary per-hit blood only, not the separate death burst in `die()` —
+  that's its own unconditional `if(goreMode)` block, untouched. A kill reads as a more significant,
+  climactic moment than routine damage, so it keeping a guaranteed blood event while ordinary hits
+  don't always draw blood matches the "even with damage, blood doesn't always occur" reasoning
+  behind the request rather than contradicting it.
+- `node --check` on the extracted script: clean.
+
+## [1.2.33] - 2026-09-15 — New "mini" filler enemy variant — smaller, weaker, worth much less
+The one piece of the wave-economy proposal small and safe enough to ship on its own: smaller
+"minion" versions of existing enemies, explicitly requested as a scoped-down alternative to the
+full wave/filler redesign. Built by mirroring the existing `isBig` variant system exactly, in the
+opposite direction, rather than inventing a new mechanism.
+- New `isMini` flag on `Enemy`, mutually exclusive with `isBig` (a spawn roll only ever picks one —
+  confirmed directly: forcing both true still only ever produces the Big variant, Mini is silently
+  suppressed). A mini enemy keeps its normal appearance/emoji and every type-specific special
+  ability (a mini Splitter still splits, a mini Fire enemy still ignites) — only its stats shrink:
+  35% max HP, 55% radius, 30% bounty/XP, a slight +10% speed (reads as "small and skittering" even
+  before the size difference registers).
+- New `MINI_VARIANT_CHANCE` (12% per spawn) — deliberately much more common than `BIG_VARIANT_CHANCE`
+  (0.5%): a Big spawn is a rare golden-text event, a Mini spawn is meant to be a real, regular part
+  of ordinary wave composition, giving frequent easy last-hit opportunities without touching wave
+  generation, spawn timing, or phasing at all.
+- No floating-text callout for Mini spawns (unlike Big's "BIG!" toast) — at 12% frequency that would
+  be genuinely spammy, unlike the rare 0.5% Big roll where a callout is a nice occasional treat.
+- Checked that `isBig` (the field this mirrors) is read nowhere else in the codebase outside
+  `spawn()` itself, confirming `isMini` needs no additional UI/inspect-panel wiring either — fully
+  self-contained. Checked every other `.spawn()` call site (the self-test harness, Splitter's
+  child-spawn) — none pass a 4th argument, so `isMini` defaults to falsy there, no unintended minis
+  from those paths.
+- `node --check` on the extracted script: clean.
+
+## [1.2.32] - 2026-09-15 — Attract screen finally gets the checkerboard ground and low-angle perspective requested earlier
+This request had slipped — asked for several turns ago, never actually implemented while other
+fixes took priority. Done now, scoped as a real 2D approximation rather than a true 3D rewrite: a
+genuine perspective transform of the whole simulation's coordinate system would mean touching
+enemy/tower/projectile positioning logic, not just how they're drawn — much larger, much riskier,
+and not what was actually needed to deliver the requested look.
+- **Perspective checkerboard ground**: `renderAttractMode()`'s old flat single-color background
+  replaced with a row-by-row checkerboard, each row's height growing quadratically from the
+  horizon (thin) toward the bottom of the screen (tall) — the standard 2D trick for a receding
+  ground-plane illusion, achieved entirely through ordinary Canvas 2D fills, not a real 3D or CSS
+  transform. Same two-tone-square language as the real game's own buildable-area checkerboard.
+- **Bigger, closer-camera towers and enemies**: tower draw calls now wrapped in an outer
+  `ctx.scale(1.8, 1.8)` around each tower's own position — composes with whatever `drawStickman()`
+  already does internally, which is completely untouched — rather than touching the `level`
+  parameter, which drives real gameplay-facing tier scaling in the actual game. Enemy emoji font
+  size increased from 22px to 32px to match.
+- Entirely self-contained to `renderAttractMode()` — no gameplay logic (spawning, targeting,
+  projectile timing) touched at all, and nothing here can affect the real game's own rendering,
+  layout, or hit-testing.
+- Verified the perspective math directly: confirmed zero gaps between consecutive ground rows,
+  row height growing monotonically from the horizon toward the bottom, and full coverage reaching
+  exactly the bottom edge of the screen with no leftover gap. `node --check` on the extracted
+  script: clean.
+
+## [1.2.31] - 2026-09-15 — State machines and save-state classification documented explicitly; one real mistake caught and corrected before shipping
+Pure documentation this pass — no runtime behavior changed, deliberately: a full enum-based state
+machine refactor would touch every read site across the file for zero behavioral difference, given
+every invariant documented here was already individually verified true across the last several
+passes. Formalizing what's already true in comments, not rewriting working code to prove it.
+- **Enemy's legal states** documented above `class Enemy{}`: SPAWNING/ADVANCING/QUEUED/ESCAPED/
+  INACTIVE, with the actual field combinations each one corresponds to.
+- **Wave's legal states** — the existing `waveState` comment expanded with what each state actually
+  means and where its transitions happen; confirmed there's no separate countdown/results state
+  under the hood — the round-start "3-2-1-GO" overlay and the wave-summary popup are both
+  presentation layered on top of SPAWNING/the ACTIVE→IDLE instant, not additional state values.
+- **Save-state classification** documented above `serializeGameState()`: persistent (saved) vs.
+  reconstructable (rebuilt on load) vs. transient (simply doesn't exist after a load), with a
+  concrete list of what falls in each category.
+- **Tower's legal states** — caught and corrected a real mistake in my own first draft before
+  shipping it: the first version claimed reaching 0 HP destroys a tower (active=false). Checked
+  `takeDamage()` directly and found that's not what happens — a tower at 0 HP recovers to 30% HP
+  and gets locked out of attacking for 2 waves (`disabledWavesLeft`), staying fully present and
+  selectable the whole time. A tower's `active` flag only ever goes false from the player selling
+  it, or a full pool reset — never from combat alone. This is a genuine "downed and recovering"
+  mechanic already built into the game, just not one where the tower actually leaves the board —
+  the opposite of what the external review assumed didn't exist. Rewrote the documentation to
+  match reality rather than assumption.
+- `node --check` on the extracted script: clean.
+
+**Where this leaves the full list from both external documents**: everything that was concrete,
+low-risk, and independently verifiable has now been done — spawn queue, barricade scratch reuse
+and its telemetry, HUD coalescing, percentile/actual-speed telemetry, the debug self-test harness,
+and now this documentation pass. What's left — decoupled combat events, deterministic RNG
+separation, and the full wave-economy/filler-enemy redesign — are each genuinely large,
+gameplay-touching projects, not verifiable by code-reading and `node --check` alone the way
+everything above was. Strongly recommend an actual playthrough before any of those three, given how
+many passes have now landed on top of each other unseen.
+
+## [1.2.30] - 2026-09-15 — HUD updates coalesced to once per frame; one duplicate-hash claim investigated and found more nuanced than assumed
+- **Real fix**: `updateHUD()` was called directly from `creditKill()` — meaning every single kill
+  triggered a full round of `getElementById()`+`textContent` DOM writes immediately, even though
+  most of those values (wood/stone/move charges/wave progress) rarely change on any given kill.
+  During a dense wave with several kills landing in one frame (especially at 5x/10x, where
+  multiple simulation ticks run per rendered frame), that's real repeated DOM work for no visible
+  benefit — the player only ever sees the result once per rendered frame regardless. `updateHUD()`
+  is now a dirty flag; the actual DOM work (renamed `updateHUDImmediate()`) flushes at most once
+  per frame from `loop()`, after that frame's simulation ticks finish. Every one of the 25 existing
+  call sites is unaffected — same name, same call shape, just deferred and coalesced. Checked that
+  nothing anywhere reads back from the DOM elements `updateHUD()` writes to expecting an immediate
+  synchronous update — confirmed none does, safe to defer. Verified the coalescing itself: 5 calls
+  within one frame correctly collapse to exactly 1 real DOM update; a quiet frame with none does
+  zero wasted work.
+- **Investigated, not changed**: the "duplicate `buildEnemyHash()` calls per tick" claim from the
+  external review. Traced all 3 call sites — `resolveSweptEnemyCollisions()`,
+  `resolveEnemyCollisions()` (itself in a 3-pass relaxation loop), and the tower-targeting hash.
+  This isn't simple duplicate waste: `resolveEnemyCollisions()`'s loop rebuilds because positions
+  actually shift between each of its 3 relaxation passes (rebuilding is required, not wasteful),
+  and even the very first rebuild in that loop can be justified by `resolveSweptEnemyCollisions()`
+  occasionally nudging positions on a tunnel-through detection. A genuine optimization here would
+  mean threading a "did anything actually move" flag through several tightly-coupled, carefully-
+  tuned collision functions with a long history of subtle fixes (many documented in their own
+  comments) — real risk for a small, inconsistent payoff (skipping at most one rebuild out of
+  three-to-four already-necessary ones). Left alone rather than forcing an optimization that isn't
+  as clear-cut as it was described.
+- `node --check` on the extracted script: clean.
+
+## [1.2.29] - 2026-09-15 — Barricade hot path no longer allocates fresh collections every tick, plus its own telemetry
+A second external review (a correction pass on the first one) flagged that `updateBarricadesAndPileup()`
+creates a fresh array/Map/Set on every single simulation tick — a real, concrete, low-risk
+optimization, unlike most of the first document's claims. Also specifically named `packSpeedBonus`
+and `splashRadius` as pool-reset risks; checked both directly — both already correctly reset (the
+`packSpeedBonus` reset even has its own comment already describing this exact scenario), so no
+change needed there, another confirmed-already-handled item rather than a real gap.
+- New module-level `barricadeActiveScratch`/`barricadeAttackerScratch`/`barricadeClaimedSlotsScratch`,
+  cleared (`.length = 0` / `.clear()`) at the top of each call instead of freshly allocated. Nothing
+  outside the function ever held a reference to these between calls (confirmed by checking for a
+  `return` or any external capture — there is none), and nothing reads them before they're rebuilt
+  each call, so reuse changes no behavior. Verified the reuse pattern itself with an isolated test:
+  two consecutive "calls" against different enemy sets show no leakage between them.
+- `MAX_QUEUE_DEPTH` (the queue-depth cap added last pass) hoisted from a function-local constant to
+  a module-level one, so the debug log can report the real live cap instead of a second
+  hand-typed copy of the same number that could quietly drift out of sync with it.
+- New barricade telemetry in `perfStats`/the debug log: active enemies scanned, enemies currently
+  queued, the highest queue length ever seen, and snap operations performed this tick — previously
+  invisible, no way to tell from the debug log alone whether a lag spike during a pileup was the
+  barricade system itself or something else.
+- `node --check` on the extracted script: clean.
+- **Explicitly not done this pass, and why**: the second document's own advice was followed here —
+  it explicitly said not to jump to a full Structure-of-Arrays/typed-array rewrite, and to use
+  scratch-collection reuse first, profiling before going further. That's exactly the scope taken.
+  Decoupled combat events (a pooled, bounded event queue between `Enemy.applyDamage()` and its
+  presentation effects), one-hash-per-tick reuse across collision/targeting/splash, and HUD
+  dirty-flagging are all real, larger follow-ups, not attempted here.
+
+## [1.2.28] - 2026-09-15 — Percentile telemetry, "actual speed" diagnostic, and a real debug self-test harness
+Two more items from the external-review list, both purely additive (nothing existing changed
+behavior) and both genuinely new capability, not bug fixes for something broken.
+- **Percentile frame-time tracking**: `perfStats` now keeps a rolling 120-sample window
+  (`frameMsHistory`/`updateMsHistory`/`renderMsHistory`) and the debug log reports median/p95/p99/
+  max for each, not just the last frame's snapshot — an average can look perfectly healthy while
+  intermittent stalls hide inside it; this is what actually surfaces them. Verified the percentile
+  math directly: a single outlier spike among otherwise-steady samples correctly shows up in
+  p99/max while leaving the median untouched, and an empty history returns 0 rather than crashing.
+- **"Actual speed" diagnostic**: requested `gameSpeed` vs. a real ~1-second rolling measurement of
+  ticks actually executed, plus the current accumulator debt (leftover simulation time not yet
+  caught up) — answers "is a stutter a render problem, a simulation problem, or genuine catch-up
+  debt" at a glance instead of guessing from the existing ticks-this-frame number alone.
+- **New `runDebugSelfTests()`** — never called automatically anywhere, purely for manual console
+  invocation. Built from real invariants of THIS codebase's actual mechanics, not the external
+  document's generic checklist verbatim — several of its listed tests ("downed towers," "repeated
+  damage while downed") describe a different game's mechanics and don't apply here, so weren't
+  included. Covers: dead enemies excluded from targeting, escaped-enemy pool-reuse fields reset
+  cleanly, escaped enemies excluded from wave-completion, wind respects its per-wave ceiling and
+  stays archetype-scoped (Warriors never penalized, Mage exceeds Archer at high wind), hybrid-table
+  internal consistency, and every evolved tower type actually reachable from the Build tray (the
+  exact bug class the 1.2.20 pass found and fixed — re-asserted here as a standing regression test).
+  Deliberately uses standalone `new Enemy()` instances and pure-function calls throughout, never
+  touching `enemyPool`/`towerPool` — safe to run at any time, including mid-game.
+- **Caught and fixed a real bug in the self-test harness itself before shipping**: the first draft
+  of test #1 called `buildEnemyHash()` expecting to pass it an array — it actually reads straight
+  from the global `enemyPool` with no parameter, so the test as written would have needed to touch
+  live pool state, contradicting its own stated "never touches the real pools" safety guarantee.
+  Rewritten to test the underlying `.active` filter predicate directly instead.
+- `node --check` on the extracted script: clean.
+- **Still remaining from the full list, explicitly not attempted this pass**: separated RNG streams
+  for deterministic replay, formal state-machine enums (the invariants they'd encode are already
+  true in practice per the 1.2.27 audit — this would document that explicitly, not fix broken
+  behavior), save/load state reclassification, and the full wave-economy/filler-enemy redesign —
+  each still its own dedicated, verified pass, logged in `BACKLOG.md`.
+
+## [1.2.27] - 2026-09-15 — Barricade queue now has a hard depth cap; most other claims from the external review turned out to already be handled
+Continued working the external-review list in verified batches. Result: most of the "invariant"
+concerns were already structurally guaranteed by the existing code, not real gaps — worth recording
+exactly what was checked and found, not just "reviewed, looks fine."
+- **Real gap found and fixed**: `updateBarricadesAndPileup()`'s queue-catchment chain had no upper
+  bound on length. The existing logic already guarantees no two enemies share a queue slot and
+  exactly one attacker per barricade (both confirmed by reading the code, not assumed) — but
+  nothing capped how LONG one chain could grow. New `MAX_QUEUE_DEPTH` (40): past that depth, further
+  enemies fall back to `resolveEnemyCollisions()`'s normal physical spacing instead of getting a
+  queue slot, rather than the chain extending without limit.
+- **Checked and confirmed already correct, no change needed**:
+  - Target invalidation ("dead enemies remain targetable") — every tower already does
+    `if(this.target && !this.target.active) this.target = null;` every single tick. Self-healing
+    every frame, not a centralized broadcast, but the same guarantee.
+  - `findNearestActiveTower()` already filters `!t.active` — a downed/removed tower is never
+    returned as a valid breakaway target.
+  - Barricade single-attacker-per-barricade and no-duplicate-queue-slot invariants — both already
+    enforced by construction (`attackerByBarricade` Map, `claimedSlots` Set), not by luck.
+  - Path waypoint connectivity — `buildSpiralPathTiles()`'s bridging pass already guarantees every
+    consecutive waypoint pair is a single adjacent step; this isn't validated after the fact, it's
+    structurally impossible for generation to produce a disconnected path.
+  - `validateGameDefinitions()` already checks nonnegative spawn delays, positive finite stats,
+    every cross-reference between `CONFIG`/`SPECIALIZATIONS`/`EVOLUTIONS`/`HYBRID_SPECIALIZATIONS`/
+    `CLASS_ARCHETYPE`/etc. — roughly 30 checks already in place before this pass even started.
+- `node --check` on the extracted script: clean.
+- **Explicitly not attempted this pass** — genuinely large NEW systems, not fixes for existing bugs,
+  and each deserves its own dedicated, verified pass rather than being squeezed in here: separated
+  RNG streams for deterministic replay, a telemetry/percentile frame-time system, the disabled-by-
+  default debug self-test harness, formal state-machine enums (the invariants they'd encode are
+  already true in practice, per the checks above — this would be making that explicit/documented,
+  not fixing broken behavior), save/load state reclassification, and the full wave-economy/filler-
+  enemy redesign. All still logged in `BACKLOG.md`.
+
+## [1.2.26] - 2026-09-15 — Spawn queue no longer uses shift() — one verified fix pulled out of a large external proposal
+An external review document proposed a large set of changes (state-machine refactor, telemetry,
+deterministic RNG/replay, a debug self-test harness, save-state migration rules, plus a separate
+11-point wave-economy redesign). Not implementing that wholesale — it's a dozen-plus separate
+projects, several assuming problems without confirming they exist in this codebase. Spot-checked
+its `spawnQueue.shift()` claim specifically, since it was concrete and quick to verify — confirmed
+accurate by reading the actual spawn loop, so fixed that one thing on its own merits.
+- New `spawnQueueIndex` cursor, replacing repeated `spawnQueue.shift()` calls in the per-frame spawn
+  loop. `shift()` is O(n) per call (re-indexes the whole remaining array) — harmless at the wave
+  sizes this game has shipped with so far, but a real, well-known anti-pattern worth fixing cheaply
+  now rather than after waves grow larger.
+- `spawnQueue` itself is never trimmed during a wave anymore — only the cursor advances. Every
+  `push()`/`sort()`/full-array-iteration call site in `startNextWave()` (queue construction, the
+  speed-reordering pass, the countdown-offset pass, the anti-bunching spacing pass) is unaffected,
+  since all of those run before any spawning starts, on the still-complete array. Reset to 0
+  alongside `spawnQueue = []` at all three existing reset points (new-game, wave-start rebuild,
+  full game reset) — checked each site individually rather than assuming one catch-all reset
+  existed.
+- The important existing pool-exhaustion behavior — a failed spawn attempt leaves that entry
+  queued and retries it next frame, rather than losing it — is preserved exactly: the cursor simply
+  doesn't advance past a failed `spawnEnemy()` call.
+- Verified against a faithful transcription of the real loop: spawn order preserved, wave-complete
+  transition still fires at the right moment, the source array is confirmed genuinely untouched
+  (still holds all entries throughout), and the pool-exhaustion retry-same-entry behavior confirmed
+  working via a forced-failure test. `node --check` on the extracted script: clean.
+
+## [1.2.25] - 2026-09-15 — Flags are real long-triangle pennants now, not kites
+The previous ripple redesign (two parallel edges each rippling independently, only tapering 30% by
+the far end) produced a parallelogram-with-a-wave, which read as a kite/diamond rather than a
+flag. Rewritten as an actual triangle: a fixed, perfectly vertical hoist edge running down from the
+pole's own top (matching the pole line exactly, never offset or rippled — a real seam doesn't
+wave), tapering to a single free-fluttering tip point. Both flags use the exact same construction,
+just recolored — "attached the same way" by definition, not by coincidence.
+- Verified the actual geometry against the real formula: the hoist edge is confirmed perfectly
+  vertical (both points share the same x-coordinate) at a fixed 9px height, the tip is genuinely
+  displaced away from the pole, and the three points form a real, non-degenerate triangle (nonzero
+  area) rather than three near-collinear points. `node --check` on the extracted script: clean.
+
 ## [1.2.24] - 2026-09-15 — Build tray no longer shows deep-tier evolutions before their own prerequisite is unlocked
 Real report, confirmed by reading the actual Build-tray code: it rendered a locked row for every
 one of the ~20 unlockable classes from wave 0, including ones gated on investing in a class

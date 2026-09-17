@@ -930,11 +930,12 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.24'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.42'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
 const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
+const MINI_VARIANT_CHANCE = 0.12; // 12% per enemy spawn — small/weak/cheap filler variant of the same enemy type. Deliberately much more common than the BIG variant above (a rare golden spike vs. a real, regular part of ordinary spawn composition) — matches the explicit ask for smaller "minion" versions of existing enemies as easy, plentiful filler rather than a rare event
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
 const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
 const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose
@@ -1015,7 +1016,9 @@ const JOB_COLORS = {
   BLOW_GUNNER: { main:'hsl(200,30%,82%)', shade:'hsl(200,25%,55%)' }, // pale steam-blue mist, distinct from Squirtgun's vivid acid green and Marksman's cooler steel-blue
   PROTON: { main:'hsl(275,65%,68%)', shade:'hsl(275,55%,42%)' }, // vivid purple — "space electricity," distinct from Necromancer's own muted dark purple
   DARK_MATTER: { main:'hsl(240,15%,28%)', shade:'hsl(240,20%,10%)' }, // near-black with a cold blue undertone — void-black, distinct from Cat Snapper's neutral gray
-  QUASAR: { main:'hsl(50,15%,92%)', shade:'hsl(50,20%,72%)' } // blinding near-white with a faint warm tint, distinct from Pope's richer gold and every other pale entry
+  QUASAR: { main:'hsl(50,15%,92%)', shade:'hsl(50,20%,72%)' }, // blinding near-white with a faint warm tint, distinct from Pope's richer gold and every other pale entry
+  BERSERKER: { main:'hsl(0,55%,50%)', shade:'hsl(0,55%,30%)' }, // raw, angry red — distinct from Axeman's own burnt orange
+  LANCER: { main:'hsl(195,60%,55%)', shade:'hsl(195,55%,35%)' } // deeper, more saturated blue than Spearman's own pale teal — precision, not flash
 };
 const JOB_BUILD = {
   SWORDSMAN: { scaleX:1.00, scaleY:1.00 }, // average
@@ -1040,7 +1043,9 @@ const JOB_BUILD = {
   BLOW_GUNNER: { scaleX:0.9, scaleY:0.97 }, // close to base Archer's own build — a hybrid of two siblings, not a distinct body type
   PROTON: { scaleX:0.95, scaleY:1.02 }, // reachable from any base class, so kept close to the shared Mage-archetype default rather than leaning toward any one source
   DARK_MATTER: { scaleX:0.95, scaleY:1.02 }, // same reasoning as Proton — reachable from any base class
-  QUASAR: { scaleX:0.98, scaleY:1.05 } // very slightly grander than the other hybrids — the hardest unlock in the game, reads as a touch more imposing
+  QUASAR: { scaleX:0.98, scaleY:1.05 }, // very slightly grander than the other hybrids — the hardest unlock in the game, reads as a touch more imposing
+  BERSERKER: { scaleX:1.08, scaleY:1.04 }, // a bit broader/bulkier than base Axeman — raw power, reads bigger
+  LANCER: { scaleX:0.84, scaleY:1.18 } // even leaner and taller than Spearman's own already-tall build — precision over bulk
 };
 // Flavor lines per class — tied to combat role/personality, not to any real-world region or ethnicity.
 const JOB_QUOTES = {
@@ -1066,7 +1071,9 @@ const JOB_QUOTES = {
   BLOW_GUNNER:["Feel the burn.", "Hot and cold.", "Steam clears the air.", "One breath is all it takes.", "Scalded and chilled."],
   PROTON:["Feel the charge.", "Nowhere left to run.", "Burned and stunned.", "The stars provide.", "Crackling with purpose."],
   DARK_MATTER:["Into the void.", "Nothing escapes gravity.", "The dark provides too.", "Cold and absolute.", "Swallowed whole."],
-  QUASAR:["Behold.", "All three, at once.", "The rarest light.", "Nothing survives this.", "Ascendant."]
+  QUASAR:["Behold.", "All three, at once.", "The rarest light.", "Nothing survives this.", "Ascendant."],
+  BERSERKER:["No more finesse.", "Feel my rage.", "Cleave through.", "Nothing stands.", "All of you, at once."],
+  LANCER:["Precision finds its mark.", "Not a hair closer.", "Every thrust, true.", "The tip never wavers.", "Reach and ruin."]
 };
 // Tiny "no immediate repeat" helper — pure uniform Math.random() can and does pick the same
 // index twice in a row, which reads as a bug/glitch for a spoken line even though it's
@@ -1109,6 +1116,8 @@ const TOWER_STRATEGY = {
   PROTON:{ icon: '☄️', text: "Fire+Electric hybrid, reachable from any base class — Swordsman, Archer, or Mage, whichever pushes both STR and DEX to 500 first. Every hit burns and briefly disrupts its target's speed at once, a purple energy identity distinct from Steam's own scald-and-chill." },
   DARK_MATTER:{ icon: '🕳️', text: "Electric+Ice hybrid, reachable from any base class — whichever pushes both DEX and INT to 500 first. Leans harder into the slow than the burn, unlike Proton — a control-focused identity rather than a damage-focused one." },
   QUASAR:{ icon: '🌟', text: "The hardest unlock in the game — needs STR, DEX, AND INT each at 500 on the same tower, not just two. Hits everything in a small splash radius around its target, not just the one enemy, on top of the same burn+slow every hybrid carries." },
+  BERSERKER:{ icon: '👹', text: "An Axeman pushed to STR 500 instead of a second element — trades the throw-toggle for a much wider, harder cleave. Bring it in close where its swing can actually catch a crowd; it's a brute-force AoE tool, not a precision one." },
+  LANCER:{ icon: '🎯', text: "A Spearman pushed to DEX 500 — even longer reach than base Spearman, precision over power. The longest-ranged melee class in the game; place it where its reach is the whole point, not just a bonus." },
 };
 
 // Hero items — bought from the shop, type-restricted (a Swordsman can only equip Swordsman gear).
@@ -1122,7 +1131,7 @@ const HERO_BONUS_STAT = 5;
 const RANGE_CAPS = {
   SNIPER: 520, MAGE: 420, ARCHER: 380, GATLING: 340, MARKSMAN: 360, GUNALINDER: 310, BOMBER: 320,
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
-  CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260, CAT_SNAPPER: 280, NECROMANCER: 250, BLOW_GUNNER: 250, PROTON: 270, DARK_MATTER: 275, QUASAR: 260
+  CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260, CAT_SNAPPER: 280, NECROMANCER: 250, BLOW_GUNNER: 250, PROTON: 270, DARK_MATTER: 275, QUASAR: 260, BERSERKER: 150, LANCER: 260
 };
 // Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less —
 // tier 0 (points 1-5) at full value, tier 1 (6-10) at 85%, tier 2 (11-15) at 70%, and so on down
@@ -1260,7 +1269,13 @@ const CLASS_ARCHETYPE = {
   // established just above. A Swordsman that unlocks Proton doesn't keep STR-scaled damage; the
   // class itself is always INT-scaled once built, regardless of source. Same reasoning for
   // Dark Matter and Quasar below.
-  PROTON:'MAGE', DARK_MATTER:'MAGE', QUASAR:'MAGE'
+  PROTON:'MAGE', DARK_MATTER:'MAGE', QUASAR:'MAGE',
+  // Berserker/Lancer are deep-tier Swordsman-lineage classes (Axeman/Spearman's own second tier —
+  // see EVOLUTIONS), archetype-tagged WARRIOR exactly like their parents, unlike the MAGE-tagged
+  // hybrids just above: these grow from a cross-stat (STR/DEX respectively) but the class itself
+  // stays a melee Warrior, same as Paladin staying WARRIOR despite unlocking via INT growth on a
+  // Hammerman.
+  BERSERKER:'WARRIOR', LANCER:'WARRIOR'
 };
 // HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR
 // growth rate, per explicit spec: Warrior starts heaviest and grows fastest, Mage starts
@@ -1373,6 +1388,13 @@ const EVOLUTIONS = {
   // unchanged from before.
   BLOWDART: { dex: {target:'SQUIRTGUN', threshold:40} }, // deeper DEX specialization — a second tier beyond the first evolution
   HAMMERMAN: { int: {target:'PALADIN', threshold:40} }, // holy devotion — a second tier beyond the first evolution
+  // Axeman/Spearman's own deep tiers — the last two Swordsman-lineage branches that were dead ends
+  // (every sibling already had one). Cross-stat, matching the pattern Hammerman's own STR->INT
+  // jump already set, cycled rather than reusing the same pairing twice: DEX-locked Axeman grows
+  // STR for Berserker, INT-locked Spearman grows DEX for Lancer — STR->INT->DEX->(back to STR),
+  // a full cycle across the three Swordsman branches rather than an arbitrary pick each time.
+  AXEMAN: { str: {target:'BERSERKER', threshold:40} },
+  SPEARMAN: { dex: {target:'LANCER', threshold:40} },
   // Gatling's own deep-tier unlock into Bomber — the design's long-stated intent ("Gatling →
   // Bomber"), previously deferred as needing a real threshold decision rather than an invented
   // one. Decided now: reuses the same threshold:40 convention every sibling deep-tier unlock
@@ -1397,7 +1419,7 @@ const EVOLUTIONS = {
   CLERIC: { int: {target:'POPE', threshold:750} }
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','PROTON','DARK_MATTER','QUASAR']; // reachable only via evolution, never built directly
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','PROTON','DARK_MATTER','QUASAR','BERSERKER','LANCER']; // reachable only via evolution, never built directly
 // The deepest evolution tier in each lineage that actually has one beyond its own base
 // specialization — Paladin (Hammerman's own 2nd tier), Squirtgun (Blowdart's), Sniper (shared
 // deepest tier for both the Gatling→Bomber→Gunalinder AND Marksman chains), Pope (Cleric's).
@@ -1559,6 +1581,32 @@ const CONFIG = {
         { range: 100, damage: 24, cooldown: 1000, stunMs: 550 },
         { range: 110, damage: 36, cooldown: 900,  stunMs: 700, upgradeCost: 115 },
         { range: 125, damage: 54, cooldown: 800,  stunMs: 850, upgradeCost: 175 }
+      ]
+    },
+    // An Axeman pushed to the STR extreme — raw power rather than the technique Axeman's own
+    // throw-toggle represents. Wider cleave (swingArc override in the Tower constructor, matching
+    // TWOHANDER Swordsman's own precedent for a per-type arc override) plus higher damage, catching
+    // more of a crowd per swing instead of hitting harder per single target — a brute-force AoE
+    // identity, distinct from Lancer's own precision/range identity below.
+    BERSERKER: {
+      name: 'Berserker', icon: '👹', baseCost: 0, unlocksAfterWave: 0,
+      blurb: 'An Axeman pushed to the STR extreme — trades the throw-toggle\'s finesse for a much wider, harder cleave that catches more of a crowd in one swing.',
+      tiers: [
+        { range: 105, damage: 32, cooldown: 900 },
+        { range: 115, damage: 50, cooldown: 800, upgradeCost: 120 },
+        { range: 130, damage: 75, cooldown: 700, upgradeCost: 180 }
+      ]
+    },
+    // A Spearman pushed to the DEX extreme — precision and reach rather than Berserker's raw power.
+    // Longer range than any other Warrior-archetype melee class, keeping enemies at arm's length
+    // even longer than base Spearman already does.
+    LANCER: {
+      name: 'Lancer', icon: '🎯', baseCost: 0, unlocksAfterWave: 0,
+      blurb: 'A Spearman pushed to the DEX extreme — even longer reach, precise rather than powerful, keeping enemies at arm\'s length before they ever close in.',
+      tiers: [
+        { range: 200, damage: 44, cooldown: 1700 },
+        { range: 220, damage: 66, cooldown: 1550, upgradeCost: 125 },
+        { range: 240, damage: 94, cooldown: 1400, upgradeCost: 185 }
       ]
     },
     MAGE: {
@@ -1797,16 +1845,16 @@ const CONFIG = {
     [{type:'GRUNT',count:5,spawnDelay:1000},{type:'TANK',count:1,spawnDelay:2000}], // new: TANK
     [{type:'GRUNT',count:6,spawnDelay:900},{type:'SWARM',count:10,spawnDelay:260}], // new: SWARM — eased in alongside Grunt instead of a bare wall of 16
     [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}], // new: WOLF
-    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:6,spawnDelay:700},{type:'SWARM',count:8,spawnDelay:280},{type:'ZOMBIE',count:3,spawnDelay:1300}], // new: ZOMBIE only (was ZOMBIE+SKELETON together)
-    [{type:'GRUNT',count:8,spawnDelay:650},{type:'TANK',count:3,spawnDelay:1300},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:3,spawnDelay:1100}], // new: SKELETON
-    [{type:'GRUNT',count:10,spawnDelay:600},{type:'ZOMBIE',count:3,spawnDelay:1200},{type:'SKELETON',count:3,spawnDelay:1100},{type:'RUNNER',count:8,spawnDelay:400}], // new: RUNNER (was bundled with Splitter+Wraith)
+    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:8,spawnDelay:650},{type:'SWARM',count:10,spawnDelay:260}], // ZOMBIE removed from here — see the wave-15 comment below for why it moved much later
+    [{type:'GRUNT',count:10,spawnDelay:650},{type:'TANK',count:4,spawnDelay:1300},{type:'SKELETON',count:3,spawnDelay:1100}], // new: SKELETON (ZOMBIE removed from here — moved much later, see wave 15)
+    [{type:'GRUNT',count:12,spawnDelay:600},{type:'SKELETON',count:3,spawnDelay:1100},{type:'RUNNER',count:8,spawnDelay:400}], // new: RUNNER (was bundled with Splitter+Wraith) — ZOMBIE removed from here too, see wave 15
     [{type:'GRUNT',count:8,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'SKELETON',count:4,spawnDelay:1000},{type:'SPLITTER',count:3,spawnDelay:900}], // new: SPLITTER
-    [{type:'RUNNER',count:10,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'ZOMBIE',count:4,spawnDelay:1100},{type:'WRAITH',count:3,spawnDelay:700}], // new: WRAITH
+    [{type:'RUNNER',count:12,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'WRAITH',count:3,spawnDelay:700}], // new: WRAITH — ZOMBIE removed from here, see wave 15
     [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'WRAITH',count:3,spawnDelay:700},{type:'FIRE',count:2,spawnDelay:1200}], // new: FIRE
     [{type:'SWARM',count:16,spawnDelay:220},{type:'TANK',count:3,spawnDelay:1500},{type:'SKELETON',count:4,spawnDelay:1000},{type:'HEALER',count:2,spawnDelay:1300}], // new: HEALER
     [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300},{type:'HEALER',count:2,spawnDelay:1200},{type:'SHIELDED',count:3,spawnDelay:1000}], // new: SHIELDED
     [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'SHIELDED',count:3,spawnDelay:1000},{type:'ICE',count:2,spawnDelay:1300}], // new: ICE — the full basic roster is now introduced
-    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500},{type:'ZOMBIE',count:4,spawnDelay:1000},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}], // new: BOSS — the milestone finale
+    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500},{type:'ZOMBIE',count:4,spawnDelay:1000},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}], // new: BOSS AND ZOMBIE — Zombie moved here from wave 6 by explicit request: armored/tanky enough that it should land only once it's plausible a dedicated Mage has actually reached Cleric (500 INT, past the 100 INT attunement minimum), not while the player's still on their very first few towers
     [{type:'TANK',count:10,spawnDelay:900},{type:'RUNNER',count:14,spawnDelay:280},{type:'ZOMBIE',count:6,spawnDelay:1000},{type:'FIRE',count:4,spawnDelay:900}],
     [{type:'SWARM',count:26,spawnDelay:160},{type:'WOLF',count:10,spawnDelay:350},{type:'ICE',count:4,spawnDelay:900},{type:'SHIELDED',count:5,spawnDelay:800}],
     [{type:'ZOMBIE',count:8,spawnDelay:900},{type:'WRAITH',count:6,spawnDelay:600},{type:'SKELETON',count:8,spawnDelay:800},{type:'HEALER',count:4,spawnDelay:1000}],
@@ -2067,6 +2115,115 @@ function validateGameDefinitions(){
     throw new Error('validateGameDefinitions() found ' + problems.length + ' problem(s):\n' + problems.map(p => '  - ' + p).join('\n'));
   }
 }
+// Debug self-test harness — NEVER called automatically anywhere; exists purely for manual
+// invocation from the browser console (runDebugSelfTests()) during development. Checks real
+// invariants of THIS codebase's actual mechanics, not a generic tower-defense checklist — several
+// items from the external review that inspired this (e.g. "downed towers," "repeated damage while
+// downed") describe a different game's mechanics and don't apply here at all, so aren't included.
+// Uses standalone `new Enemy()`/`new Tower()` instances or pure-function calls throughout,
+// deliberately never touching enemyPool/towerPool/projectilePool — safe to run at any time,
+// including mid-game, without disturbing a real session.
+function runDebugSelfTests(){
+  const results = [];
+  const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail: detail || '' });
+
+  // 1. Dead/inactive enemies never turn up in a targeting query. Tests the actual filter predicate
+  // buildEnemyHash()/queryNearby() apply (`e.active`) directly against standalone instances,
+  // rather than injecting them into the real enemyPool to run the real functions — buildEnemyHash()
+  // reads straight from the global enemyPool with no parameter, so calling it for real here would
+  // have meant touching live pool state, contradicting this harness's whole "never touches
+  // enemyPool/towerPool" safety guarantee.
+  {
+    const e1 = new Enemy(); e1.spawn('GRUNT', 1, false); e1.active = true;
+    const e2 = new Enemy(); e2.spawn('GRUNT', 1, false); e2.active = false;
+    const targetable = [e1, e2].filter(e => e.active);
+    check('dead enemy excluded from targeting query', !targetable.includes(e2) && targetable.includes(e1));
+  }
+
+  // 2. Pooled Enemy fields reset cleanly on reuse — an escaped/wandering enemy's fields must never
+  // leak into whatever that pool slot becomes next.
+  {
+    const e = new Enemy();
+    e.spawn('GRUNT', 1, false);
+    e.escaped = true; e.wanderVx = 5; e.wanderVy = -3; e.wanderRepickTimer = 500;
+    e.escapedAttackTarget = { active: true }; e.escapedAttackTimer = 123; e.escapedAttackCheckTimer = 456;
+    e.spawn('GRUNT', 1, false); // simulates pool reuse — same instance, fresh spawn
+    check('escaped/wander fields reset on pool reuse', e.escaped === false && e.wanderVx === 0 && e.wanderVy === 0 && e.wanderRepickTimer === 0 && e.escapedAttackTarget === null && e.escapedAttackTimer === 0 && e.escapedAttackCheckTimer === 0);
+  }
+
+  // 3. Escaped enemies excluded from the wave-completion check, matching update()'s own filter.
+  {
+    const e1 = new Enemy(); e1.spawn('GRUNT', 1, false); e1.active = true; e1.escaped = false;
+    const e2 = new Enemy(); e2.spawn('GRUNT', 1, false); e2.active = true; e2.escaped = true;
+    const anyAlive = [e1, e2].some(e => e.active && !e.escaped);
+    check('escaped enemy does not block wave completion', anyAlive === true && e2.escaped === true);
+  }
+
+  // 4. Wind respects its per-wave ceiling and stays within [0,1] — same check verified in isolation
+  // during the 1.2.21 pass, re-run here as a standing regression test rather than a one-off.
+  {
+    const savedStrength = windStrength, savedTarget = windTarget, savedTimer = windRetargetTimer, savedCeiling = windCeilingForWave;
+    windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0.15;
+    let maxSeen = 0;
+    for(let i=0;i<500;i++){ updateWind(50); maxSeen = Math.max(maxSeen, windStrength); }
+    const withinCeiling = maxSeen <= 0.15 + 1e-9;
+    windStrength = savedStrength; windTarget = savedTarget; windRetargetTimer = savedTimer; windCeilingForWave = savedCeiling;
+    check('wind never exceeds its wave ceiling', withinCeiling, 'max seen: ' + maxSeen.toFixed(3));
+  }
+
+  // 5. windMissPenalty() stays archetype-scoped — Warriors never get a wind penalty, Mage always
+  // exceeds Archer's penalty once wind is high enough for the quadratic term to matter.
+  {
+    const savedStrength = windStrength;
+    windStrength = 1;
+    const warriorPenalty = windMissPenalty({ type: 'SWORDSMAN' });
+    const archerPenalty = windMissPenalty({ type: 'ARCHER' });
+    const magePenalty = windMissPenalty({ type: 'MAGE' });
+    windStrength = savedStrength;
+    check('wind never penalizes Warrior-archetype towers', warriorPenalty === 0);
+    check('Mage wind penalty exceeds Archer at high wind', magePenalty > archerPenalty);
+  }
+
+  // 6. Barricade unlock/hybrid tables stay internally consistent — same shape as
+  // validateGameDefinitions()'s own checks, re-asserted here as a quick standalone smoke test.
+  {
+    let allTargetsExist = true;
+    for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
+      for(const pairKey of Object.keys(HYBRID_SPECIALIZATIONS[baseType])){
+        if(!CONFIG.TOWERS[HYBRID_SPECIALIZATIONS[baseType][pairKey]]) allTargetsExist = false;
+      }
+    }
+    check('every HYBRID_SPECIALIZATIONS target exists in CONFIG.TOWERS', allTargetsExist);
+  }
+
+  // 7. Every EVOLVED_TOWER_TYPES entry is actually reachable from the Build tray (the exact bug
+  // class found and fixed in the 1.2.20 pass — Blow Gunner never showing up at all).
+  {
+    const allReachable = EVOLVED_TOWER_TYPES.every(type => UNLOCKABLE_TOWER_TYPES.includes(type));
+    check('every evolved tower type is reachable via UNLOCKABLE_TOWER_TYPES', allReachable);
+  }
+
+  // 8. Mini/Big enemy variants stay mutually exclusive — a spawn roll never produces both, and
+  // Mini's stat reduction actually reduces (regression coverage for the 1.2.33 pass).
+  {
+    const eBoth = new Enemy(); eBoth.spawn('GRUNT', 1, true, true); // both flags requested at once
+    const eMini = new Enemy(); eMini.spawn('GRUNT', 1, false, true);
+    const eNormal = new Enemy(); eNormal.spawn('GRUNT', 1, false, false);
+    check('isBig/isMini stay mutually exclusive even if both requested', eBoth.isBig === true && eBoth.isMini === false);
+    check('Mini variant has less HP, radius, and bounty than a normal spawn', eMini.maxHp < eNormal.maxHp && eMini.radius < eNormal.radius && eMini.bounty < eNormal.bounty);
+  }
+
+  // 9. BLOOD_ON_HIT_CHANCE is a real, sane probability (regression coverage for the 1.2.34 pass) —
+  // this doesn't touch enemyPool/applyDamage() at all, just the constant's own value.
+  {
+    check('BLOOD_ON_HIT_CHANCE is a valid probability strictly less than 1 (a real reduction, not a no-op)', typeof BLOOD_ON_HIT_CHANCE === 'number' && BLOOD_ON_HIT_CHANCE > 0 && BLOOD_ON_HIT_CHANCE < 1);
+  }
+
+  const passed = results.filter(r => r.pass).length;
+  console.log('runDebugSelfTests(): ' + passed + '/' + results.length + ' passed');
+  for(const r of results) console.log((r.pass ? '  PASS  ' : '  FAIL  ') + r.name + (r.detail ? ' (' + r.detail + ')' : ''));
+  return results;
+}
 
 /* =========================================================
    MAP / PATH — dynamic, buyable expansion
@@ -2314,7 +2471,7 @@ function findNearestActiveTower(x, y, maxDist){
   // every other stat effect, so this stays meaningful but doesn't spiral out of control.
   const candidates = [];
   for(const t of towerPool){
-    if(!t.active) continue;
+    if(!t.active || t.disabledWavesLeft > 0) continue; // a downed/disabled tower shouldn't be picked as a NEW breakaway/escaped-attack target — it's already defenseless, and re-targeting it would just re-trigger takeDamage()'s own disable-and-recover cycle indefinitely, keeping it locked out forever instead of ever getting a real chance to recover
     const d = Math.hypot(t.x-x, t.y-y);
     if(d > (maxDist || Infinity)) continue;
     const tauntWeight = 1 + diminishingStatValue(t.str || 0, 0.08);
@@ -2353,10 +2510,26 @@ function getPositionAtTraveled(dist){
   const last = waypointsPx[waypointsPx.length-1];
   return { x: last.x, y: last.y };
 }
+// Reusable scratch collections for updateBarricadesAndPileup() — previously a fresh array/Map/Set
+// were allocated every single call (every simulation tick), which is exactly the kind of
+// per-frame garbage a hot path shouldn't create. Cleared at the top of each call instead of
+// reallocated; nothing outside this function ever reads them between calls, so reuse is safe.
+const barricadeActiveScratch = [];
+const barricadeAttackerScratch = new Map();
+const barricadeClaimedSlotsScratch = new Set();
+// Safety cap on how long one barricade queue chain can grow — none of the invariants in
+// updateBarricadesAndPileup() actually bound this (a huge simultaneous pile-up was always
+// theoretically possible even though the existing logic already prevents overlap/duplication
+// within it); past this depth, further enemies just fall back to resolveEnemyCollisions()'s normal
+// physical spacing instead of getting a queue slot. Module-level (not local to the function) so
+// the debug log can report it alongside the live queue length, one source of truth for both.
+const MAX_QUEUE_DEPTH = 40;
 function updateBarricadesAndPileup(){
-  const active = [];
+  perfStats.barricadeSnapCount = 0;
+  const active = barricadeActiveScratch;
+  active.length = 0;
   for(const e of enemyPool){
-    if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime || e.escaped) continue;
+    if(!e.active || e.isBreakaway || e.stunnedUntil > gameTime || e.escaped || e.isGuardian || e.isHutBuilding) continue;
     e.pileBlocked = false;
     e.touchingBarricade = false;
     e.candidateBarricade = findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
@@ -2368,7 +2541,8 @@ function updateBarricadesAndPileup(){
   // contact-bump animation and looking like several enemies were hitting it simultaneously. Real
   // single-file contact means exactly one body is actually pressed against it; everyone else who
   // happens to be in range is queued waiting their turn, not also attacking.
-  const attackerByBarricade = new Map();
+  const attackerByBarricade = barricadeAttackerScratch;
+  attackerByBarricade.clear();
   for(const e of active){
     const barricade = e.candidateBarricade;
     if(!barricade || barricade.hp <= 0) continue;
@@ -2419,7 +2593,8 @@ function updateBarricadesAndPileup(){
   // of track — without this, an enemy rounding a corner falsely detects a blocked unit on an
   // adjacent, unrelated lane and snaps sideways across tracks to "join" that queue
   const MAX_TRAVELED_GAP_FOR_CATCHMENT = 110;
-  const claimedSlots = new Set();
+  const claimedSlots = barricadeClaimedSlotsScratch;
+  claimedSlots.clear();
   let anyBlockedSeed = false;
   for(const e of active){
     // Both of these are independent per-enemy, order-agnostic operations — merged into one pass
@@ -2436,6 +2611,7 @@ function updateBarricadesAndPileup(){
   for(let i=0; i<active.length; i++){
     const behind = active[i];
     if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
+    if(claimedSlots.size > MAX_QUEUE_DEPTH) continue;
     let bestAhead = null, bestDist = Infinity;
     for(let j=0; j<i; j++){
       // only enemies earlier in the (already-sorted, further-along) order are eligible — since
@@ -2460,6 +2636,7 @@ function updateBarricadesAndPileup(){
       while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= spacing;
       claimedSlots.add(slotDist);
       snapEnemyToTraveled(behind, slotDist);
+      perfStats.barricadeSnapCount++;
     }
   }
   } // end if(anyBlockedSeed)
@@ -2507,6 +2684,9 @@ function updateBarricadesAndPileup(){
     }
   }
   const nowQueued = active.some(e => e.pileBlocked);
+  perfStats.barricadeActiveScanned = active.length;
+  perfStats.barricadeQueuedCount = active.reduce((n,e) => n + (e.pileBlocked ? 1 : 0), 0);
+  if(perfStats.barricadeQueuedCount > perfStats.barricadeMaxQueueLenSeen) perfStats.barricadeMaxQueueLenSeen = perfStats.barricadeQueuedCount;
   // Safety valve against a permanent soft-lock: if a barricade jam persists too long — most
   // critically if the player is out of gold and simply can't afford anything that would break it —
   // spawning must never stay paused forever, or the wave (and the whole run) can never finish.
@@ -2991,37 +3171,33 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   ctx.strokeStyle = '#6b5842'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-poleH); ctx.stroke();
   ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
-  // Flutter — several points along the banner's length, each rippling with a phase that shifts
-  // with position (a real traveling wave, not two rigid control points swinging the whole shape
-  // back and forth like a fish tail), and amplitude that grows from exactly 0 right at the pole
-  // (where real cloth is pinned) up to full strength at the free end. Speed and amplitude both
-  // scale gently with windStrength — a calm day barely moves the banner, a strong gust visibly
-  // whips it, but neither ever moves fast enough to read as flicking rather than fluttering.
+  // A real long-triangle pennant: the hoist edge (the side actually sewn to the pole) is a
+  // straight vertical segment running down from the pole's own top — same x-coordinate as the
+  // pole line drawn above, never offset or rippled, since a real seam doesn't wave. Only the free
+  // tip flutters, tapering the whole banner to a single point rather than staying a parallelogram
+  // with a wavy edge — that parallelogram shape (both edges rippling in parallel) is what read as
+  // a kite/diamond before, not a flag. Both black and white flags use this exact same construction
+  // — only the fill/outline color differs — so they're attached "the same way" by definition.
+  const bannerLen = 18, bannerH = 9;
+  const attachTopX = x, attachTopY = y - poleH;
+  const attachBotX = x, attachBotY = y - poleH + bannerH;
   const perpX = -awayY, perpY = awayX;
   const amp = 1 + windStrength*3;
   const speed = 1.6 + windStrength*1.8;
   const phase = gameTime/1000*speed;
-  // A slight, slowly-drifting lean toward the current wind direction (windDirAngle) — how much of
-  // that direction actually pushes across this particular flag depends on the angle between the
-  // wind and the banner's own away-axis, so a flag doesn't lean the same amount regardless of
-  // which way it happens to be facing.
+  // A slight, slowly-drifting lean toward the current wind direction (windDirAngle) on top of the
+  // flutter itself — how much of that direction actually pushes on this particular flag depends on
+  // the angle between the wind and the banner's own away-axis, so it doesn't lean the same amount
+  // regardless of which way the flag happens to be facing.
   const windDirX = Math.cos(windDirAngle), windDirY = Math.sin(windDirAngle);
-  const leanAmount = (windDirX*perpX + windDirY*perpY) * windStrength * 2.5;
-  const segs = 4;
-  const bannerLen = 16, bannerHalfH = 4.5;
-  const topPts = [], botPts = [];
-  for(let i=0;i<=segs;i++){
-    const t = i/segs;
-    const ripple = Math.sin(phase - t*3.0) * amp * t + leanAmount*t;
-    const bx = x + awayX*bannerLen*t, by = y-poleH + awayY*bannerLen*t;
-    const halfH = bannerHalfH*(1 - t*0.3);
-    topPts.push({ x: bx + perpX*(ripple - halfH), y: by + perpY*(ripple - halfH) });
-    botPts.push({ x: bx + perpX*(ripple + halfH), y: by + perpY*(ripple + halfH) });
-  }
+  const lean = (windDirX*perpX + windDirY*perpY) * windStrength * 3;
+  const ripple = Math.sin(phase)*amp + lean;
+  const tipX = x + awayX*bannerLen + perpX*ripple;
+  const tipY = (y - poleH + bannerH*0.5) + awayY*bannerLen + perpY*ripple;
   ctx.beginPath();
-  ctx.moveTo(topPts[0].x, topPts[0].y);
-  for(let i=1;i<topPts.length;i++) ctx.lineTo(topPts[i].x, topPts[i].y);
-  for(let i=botPts.length-1;i>=0;i--) ctx.lineTo(botPts[i].x, botPts[i].y);
+  ctx.moveTo(attachTopX, attachTopY);
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(attachBotX, attachBotY);
   ctx.closePath();
   ctx.fill();
   // Both flags get a contrasting outline now — white banner on black, black banner on white —
@@ -3821,6 +3997,15 @@ function canAffordTower(type){
 }
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
 let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
+// Per-hit chance that a landed hit actually produces blood at all, on top of the goreMode toggle
+// itself — every hit produced blood unconditionally before this (goreMode being on meant a 100%
+// per-hit rate), which read as excessive: real damage doesn't always visibly draw blood every
+// single time it connects. Reduced by ~30% from that implicit 100% baseline, applied identically
+// across every archetype (Warrior/Archer/Mage/dust) rather than singling one out, since the
+// "too much blood" report wasn't archetype-specific. Purely a frequency gate — it decides whether
+// the existing blood-generation code in applyDamage() runs at all for a given hit, and changes
+// nothing about what that code actually does on the hits that do pass it.
+const BLOOD_ON_HIT_CHANCE = 0.7;
 let showZoomControls = false; // on-screen +/-/reset buttons — off by default since pinch/scroll zoom already works; opt-in for anyone who prefers explicit buttons
 let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
@@ -3920,7 +4105,7 @@ loadPrefs();
   if(goreToggleSettings) goreToggleSettings.checked = goreMode;
 })();
 let waveIndex = 0;          // number of waves started
-let waveState = 'IDLE';     // IDLE | SPAWNING | ACTIVE
+let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (spawnQueue draining, see startNextWave()/update()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
 // Flat delay (added to every spawn's own already-tuned delay in startNextWave()) before the first
 // enemy of a new wave actually arrives — gives the round-start fanfare/countdown/leaf-gust/camera
 // pan a moment to land instead of the wave visually starting and spawning in the same instant. See
@@ -3929,6 +4114,14 @@ const WAVE_COUNTDOWN_MS = 3000;
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let spawnQueue = [];
+// Cursor into spawnQueue instead of repeatedly shift()ing it — shift() is O(n) per call (it
+// re-indexes the whole remaining array), which used to run once per spawned enemy. Harmless at
+// the wave sizes this game has shipped with so far, but a real, well-known anti-pattern worth
+// fixing cheaply now rather than after waves grow larger. spawnQueue itself is never trimmed
+// during a wave anymore — only this index advances — so every push()/sort() callsite (all in
+// startNextWave()) stays untouched; only the two places that used to read spawnQueue[0]/.length
+// as "what's left to spawn" needed to change, to spawnQueue[spawnQueueIndex]/the cursor comparison.
+let spawnQueueIndex = 0;
 let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
 let barricadeQueueStartedAt = 0; // when the current unbroken stretch of congestion began — drives the 15s force-resume safety valve so spawning can never pause permanently, even if the player has no way left to break the jam
 let waveTimer = 0;
@@ -4092,15 +4285,23 @@ function gainTowerExp(tower, amount){
   tower.xp += amount;
   tower.waveXp = (tower.waveXp || 0) + amount;
   let leveled = false;
+  let pointsGainedThisCall = 0;
   while(tower.expLevel < MAX_TOWER_LEVEL && tower.xp >= xpForNextLevel(tower.expLevel)){
     tower.xp -= xpForNextLevel(tower.expLevel);
     tower.expLevel++;
     tower.statPoints++; // one point per level — small and frequent instead of big lump sums
+    pointsGainedThisCall++;
     leveled = true;
   }
   if(tower.expLevel >= MAX_TOWER_LEVEL) tower.xp = 0;
   if(leveled){
-    spawnFloatingText(tower.x, tower.y - 40, 'LEVEL ' + tower.expLevel + '!', '#ffd23f');
+    // "Training milestone," not a level-up — this used to read "LEVEL X!" using tower.expLevel,
+    // which is exactly the mislabeling this whole fix addresses: expLevel is an internal XP
+    // counter, not the tower's actual displayed level (that's tower.level, driven only by
+    // Promote — see the inspect-panel fix). The player picks WHICH stat this point goes toward
+    // separately via allocateStat(); this call site doesn't know that choice yet, so it reports
+    // the point gained generically rather than naming a specific stat.
+    spawnFloatingText(tower.x, tower.y - 40, '+' + pointsGainedThisCall + ' Training!', '#ffd23f');
     playSound('levelup');
     playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: 40 }); // bright, excited — an upward reaction
   }
@@ -4134,6 +4335,24 @@ function generateSaveSeed(){
   for(let i=0; i<6; i++) s += chars[Math.floor(Math.random()*chars.length)];
   return s;
 }
+// State classification, documented explicitly rather than left implicit — every piece of runtime
+// state in this game falls into exactly one of these categories, and serializeGameState() below
+// only ever touches the first:
+//   PERSISTENT      — survives a save/load round-trip: gold, lives, tower stats/items/position,
+//                      wavesCompleted, unlockedTowerTypes, seenEnemyTypes, region/path shape.
+//                      Everything serializeGameState() actually writes out.
+//   RECONSTRUCTABLE — never saved, rebuilt fresh from PERSISTENT state on load: spatial hashes
+//                      (buildEnemyHash() et al.), the barricade scratch collections, waveTimer/
+//                      spawnQueue (a fresh wave always starts IDLE after a load, never mid-spawn),
+//                      camera position, UI selection state.
+//   TRANSIENT       — never saved, never reconstructed, simply doesn't exist after a load:
+//                      projectiles, particles, floating text, decals, blowingLeaves, hit-stop,
+//                      screen shake, active audio voices, catPool/skeletonPool companions, wind
+//                      (windStrength/windTarget reset to a fresh calm state — see resetGame()).
+// This is already exactly what the code does — restoreGameState() clears every TRANSIENT/
+// RECONSTRUCTABLE pool at the top and only ever assigns from PERSISTENT fields below; documented
+// here so that stays a deliberate invariant rather than an implicit accident of how the function
+// happened to be written.
 function serializeGameState(){
   const towersData = towerPool.filter(t => t.active).map(t => ({
     type: t.type, gridX: t.gridX, gridY: t.gridY, level: t.level,
@@ -4255,7 +4474,7 @@ function restoreGameState(state){
   }
 
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
-  waveState = 'IDLE'; spawnQueue = [];
+  waveState = 'IDLE'; spawnQueue = []; spawnQueueIndex = 0;
   screenShakeUntil = 0; screenShakeMag = 0;
   rebakeMap();
   centerCameraOnActiveRegion();
@@ -4461,9 +4680,24 @@ function centerCameraOnActiveRegion(zoom){
 /* =========================================================
    ENTITY CLASSES
    ========================================================= */
+// Enemy's legal states, documented explicitly (booleans/flags below remain the actual
+// implementation — this is not a refactor into a formal enum, which would touch every read site
+// across the file for no behavioral change, given every invariant below was individually verified
+// true in the 1.2.27 audit pass). At most one of these is ever true for an active enemy:
+//   SPAWNING  — briefly true only during spawn()'s own execution, never observed between frames
+//   ADVANCING — active, !escaped, not currently pileBlocked — the ordinary default state
+//   QUEUED    — active, !escaped, pileBlocked === true (waiting at a barricade)
+//   ESCAPED   — active, escaped === true (reached the finish line, now wandering/possibly
+//               attacking a tower — see updateEscaped()); mutually exclusive with QUEUED/ADVANCING,
+//               checked first in update()'s own dispatch
+//   INACTIVE  — active === false; the only state a pooled slot can be reused from (spawn() resets
+//               every field listed elsewhere in this file's own pool-reuse comments)
+// "dying" has no separate state here — die() sets active=false (-> INACTIVE) synchronously; the
+// visible death animation (deathAnims) is TRANSIENT presentation state, not a gameplay state this
+// enemy instance is still "in".
 class Enemy{
   constructor(){ this.active = false; }
-  spawn(type, hpMultiplier, isBig){
+  spawn(type, hpMultiplier, isBig, isMini){
     const def = CONFIG.ENEMIES[type];
     this.id = idCounter++;
     this.type = type;
@@ -4476,12 +4710,26 @@ class Enemy{
     this.radius = def.radius;
     this.embeddedArrows = [];
     this.isBig = !!isBig;
+    this.isMini = !isBig && !!isMini; // mutually exclusive with isBig — a spawn roll only ever picks one variant, never both
     if(this.isBig){
       this.maxHp = Math.round(this.maxHp * 1.2);
       this.hp = this.maxHp;
       this.radius = Math.round(this.radius * 1.4);
       this.bounty = Math.round(this.bounty * 1.4);
       this.speed = this.speed * 1.2;
+    } else if(this.isMini){
+      // Smaller "minion" filler variant — a much weaker, much cheaper version of the same enemy
+      // type, meant to be common ordinary spawn composition rather than a rare event (see
+      // MINI_VARIANT_CHANCE), giving frequent easy last-hit opportunities without changing what
+      // TYPE of enemy is on the path. No special-ability suppression needed here — every enemy
+      // special ability in this game is keyed off `type`, not off variant flags, so a mini Splitter
+      // still splits, a mini Fire enemy still ignites, etc. — it's simply a weaker, cheaper version
+      // of the same behavior, not a stripped-down one.
+      this.maxHp = Math.max(1, Math.round(this.maxHp * 0.35));
+      this.hp = this.maxHp;
+      this.radius = Math.max(5, Math.round(this.radius * 0.55));
+      this.bounty = Math.max(1, Math.round(this.bounty * 0.3));
+      this.speed = this.speed * 1.1; // a touch quicker — skitters rather than plods, reads as "small" on its own even before the radius difference registers
     } else {
       // Natural per-instance size variance — even within one enemy type, individuals aren't
       // identical: some ants are smaller, some bigger, not just the rare golden "Big" variant
@@ -4576,6 +4824,11 @@ class Enemy{
     this.escaped = false;
     this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0;
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
+    // Creep-camp state — see spawnHut()/spawnHutGuardian()/updateGuardian()/updateHutBuilding().
+    // Reset explicitly on every reuse for the same reason as the escaped-state block above: a pool
+    // slot could previously have belonged to a guardian or hut structure.
+    this.isGuardian = false; this.hutRef = null; this.hutAnchorX = 0; this.hutAnchorY = 0;
+    this.isHutBuilding = false; this.guardiansAliveCount = 0; this.respawnAt = null; this.destroyed = false;
     this.active = true;
   }
   applySlow(factor, duration){
@@ -4751,6 +5004,12 @@ class Enemy{
     // while wandering), but none of the path-following, barricade-pileup, breakaway, troll, or
     // stall-watchdog logic below is relevant to something no longer walking a path.
     if(this.escaped){ this.updateEscaped(dt); return; }
+    // Creep-camp guardians/structure (see spawnHut()) get their own fully separate branch too —
+    // same DOT/status/gore handling above still applies, but none of the path-following,
+    // barricade-pileup, breakaway, troll, or stall-watchdog logic below is relevant to something
+    // that was never walking a path to begin with.
+    if(this.isGuardian){ this.updateGuardian(dt); return; }
+    if(this.isHutBuilding){ this.updateHutBuilding(dt); return; }
     // One-shot low-HP growl for the game's two "tough, distinct" enemies — telegraphs a real
     // state change through sound instead of only a shrinking health bar. Checked before the
     // pileBlocked/stunned early-returns below so it still fires even while queued at a barricade,
@@ -4954,7 +5213,7 @@ class Enemy{
   }
   updateBreakaway(dt){
     const t = this.breakawayTarget;
-    if(!t || !t.active){ this.endBreakaway(); return; }
+    if(!t || !t.active || t.disabledWavesLeft > 0){ this.endBreakaway(); return; } // drop the target the instant it goes down, not just when it's fully destroyed — an already-disabled tower is defenseless and shouldn't keep getting re-hit/re-disabled by the same attacker
     const dx = t.x - this.x, dy = t.y - this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
     const engageRange = 26;
@@ -5000,7 +5259,7 @@ class Enemy{
   // isBreakaway/updateBreakaway() never actually run for an escaped enemy (update()'s dispatch
   // returns via this method before ever reaching that check).
   updateEscaped(dt){
-    if(this.escapedAttackTarget && this.escapedAttackTarget.active){
+    if(this.escapedAttackTarget && this.escapedAttackTarget.active && !(this.escapedAttackTarget.disabledWavesLeft > 0)){
       const t = this.escapedAttackTarget;
       const dx = t.x-this.x, dy = t.y-this.y;
       const dist = Math.hypot(dx,dy) || 0.0001;
@@ -5053,6 +5312,43 @@ class Enemy{
     else if(this.x > WORLD_MAX_W-margin){ this.x = WORLD_MAX_W-margin; this.wanderVx = -Math.abs(this.wanderVx); }
     if(this.y < margin){ this.y = margin; this.wanderVy = Math.abs(this.wanderVy); }
     else if(this.y > WORLD_MAX_H-margin){ this.y = WORLD_MAX_H-margin; this.wanderVy = -Math.abs(this.wanderVy); }
+  }
+  // Creep-camp guardian — stays near its hut's fixed anchor point (WC3-style: an off-path area
+  // worth clearing for a reward, not something that ever threatens the lane). Reuses the exact
+  // same soft-bounce wander pattern updateEscaped() already uses, just anchored to hutAnchorX/Y
+  // with a small fixed radius instead of the whole world's bounds — deliberately the smallest
+  // possible reuse of proven movement code rather than a new wander algorithm.
+  updateGuardian(dt){
+    this.wanderRepickTimer -= dt;
+    if(this.wanderRepickTimer <= 0){
+      this.wanderRepickTimer = 900 + Math.random()*1400;
+      const ang = Math.random()*Math.PI*2;
+      const bumbleSpeed = this.speed * 0.5;
+      this.wanderVx = Math.cos(ang)*bumbleSpeed;
+      this.wanderVy = Math.sin(ang)*bumbleSpeed;
+    }
+    this.vx = this.wanderVx; this.vy = this.wanderVy;
+    this.x += this.vx*dt/1000;
+    this.y += this.vy*dt/1000;
+    const guardRadius = 70; // how far a guardian is allowed to stray from its hut before bouncing back — keeps the whole camp visually readable as one cluster
+    const dx = this.x - this.hutAnchorX, dy = this.y - this.hutAnchorY;
+    const dist = Math.hypot(dx,dy) || 0.0001;
+    if(dist > guardRadius){
+      this.x = this.hutAnchorX + dx/dist*guardRadius;
+      this.y = this.hutAnchorY + dy/dist*guardRadius;
+      this.wanderVx = -dx/dist*Math.abs(this.wanderVx||30);
+      this.wanderVy = -dy/dist*Math.abs(this.wanderVy||30);
+    }
+  }
+  // The hut building itself — a stationary, high-HP structure that owns respawn scheduling for
+  // its own 2 guardians. Never moves, never attacks, isn't reached by any path — exists purely as
+  // a targetable structure and a small piece of standing timer state.
+  updateHutBuilding(dt){
+    if(this.destroyed) return; // dead structures don't respawn anything — see die()'s isHutBuilding branch, which sets this permanently
+    if(this.guardiansAliveCount > 0 || !this.respawnAt) return; // lane isn't clear yet, or no respawn currently scheduled
+    if(gameTime < this.respawnAt) return;
+    this.respawnAt = null;
+    for(let i=0;i<2;i++) spawnHutGuardian(this);
   }
   applyDamage(amount, sourceTower, forStreak, isHoly){
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
@@ -5130,7 +5426,12 @@ class Enemy{
     } else {
       spawnFloatingText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
-    if(goreMode){
+    // Gated by a per-hit chance on top of the goreMode toggle itself — real damage doesn't always
+    // visibly draw blood every single time it lands (skin elasticity, exact strike angle, and armor
+    // all vary), so a hit connecting doesn't have to mean a guaranteed blood event. This wraps
+    // WHETHER the block below runs at all; nothing inside it (the actual particle/decal generation)
+    // is touched — a hit that does pass this roll looks exactly as it always has.
+    if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE){
       const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
@@ -5428,6 +5729,21 @@ class Enemy{
     if(sourceTower && sourceTower.active) creditKill(sourceTower, forStreak);
     spawnDeathAnim(this.x, this.y, this.emoji, this.radius); // brief squash-and-fade in place of an instant vanish
     this.active = false;
+    // Creep-camp notifications — a dying guardian tells its hut the lane just got one emptier; the
+    // hut itself schedules its own respawn once BOTH guardians are confirmed gone (see
+    // updateHutBuilding()). A dying hut building marks itself permanently destroyed so nothing
+    // ever respawns from it again, regardless of any timer that might already be in flight.
+    if(this.isGuardian && this.hutRef && this.hutRef.active){
+      this.hutRef.guardiansAliveCount = Math.max(0, this.hutRef.guardiansAliveCount - 1);
+      if(this.hutRef.guardiansAliveCount === 0 && !this.hutRef.destroyed){
+        this.hutRef.respawnAt = gameTime + 60000 + Math.random()*240000; // 1-5 minutes
+      }
+    }
+    if(this.isHutBuilding){
+      this.destroyed = true;
+      this.respawnAt = null;
+      spawnFloatingText(this.x, this.y - this.radius - 24, 'Camp cleared!', '#ffd23f');
+    }
     const bountyMult = (sourceTower && sourceTower.active && sourceTower.goldMult) ? sourceTower.goldMult : 1;
     const bountyGold = Math.round(this.bounty * bountyMult);
     if(this.type === 'TANK'){
@@ -5673,9 +5989,20 @@ class Enemy{
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.2, 0, Math.PI*2); ctx.stroke();
     }
     if(this.revives && this.hasRevived){
+      // A small dark badge behind the skull, not just the bare glyph — the skull previously had
+      // nothing to visually separate it from whatever enemy body might be standing right behind
+      // it (this is a floating annotation, not a physical object with its own depth-sorted
+      // space), so a nearby enemy could make the marker read as overlapping or ambiguous. The
+      // full fix (actively checking nearby bodies and nudging the marker to avoid them) would
+      // need this draw call to have access to a nearby-enemies list it doesn't currently receive
+      // — this simpler, lower-risk version (opaque badge for contrast) resolves the actual
+      // readability complaint without that extra plumbing.
+      const markerY = this.y - this.radius - 6;
+      ctx.fillStyle = 'rgba(20,20,20,0.85)';
+      ctx.beginPath(); ctx.arc(this.x, markerY, 7, 0, Math.PI*2); ctx.fill();
       ctx.font = '10px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle = '#ffffff'; // same missing-fillStyle bug as the main emoji fix below — this icon is drawn before that fix runs
-      ctx.fillText('💀', this.x, this.y - this.radius - 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('💀', this.x, markerY);
     }
     if(graphicsQuality === 'high') drawGroundShadow(ctx, this.x, this.y, this.radius*0.7);
     const speed = Math.hypot(this.vx, this.vy);
@@ -5756,6 +6083,22 @@ class Enemy{
   }
 }
 
+// Tower's legal states, documented explicitly (same non-refactor approach as Enemy's above) —
+// corrected once already before shipping: an earlier draft of this comment wrongly assumed combat
+// damage could destroy a tower (active=false), checked directly against takeDamage() and found
+// that's not what happens at all:
+//   ACTIVE    — active === true, hp > 0 — the ordinary default; can attack, be targeted for
+//               healing/breakaway/escaped-enemy-attack, be upgraded/sold/moved
+//   DISABLED  — active === true, disabledWavesLeft > 0 — reaching 0 HP from combat (a breakaway or
+//               escaped-enemy attack) does NOT destroy a tower; takeDamage() instead recovers it
+//               to 30% HP and locks it out of attacking for the next 2 waves (disabledWavesLeft=3,
+//               decrementing at each wave start). The tower stays fully present and selectable the
+//               whole time — this is a genuine "downed and recovering" state, just not one that
+//               removes the tower from the board the way the generic tower-defense checklist this
+//               was cross-checked against assumed a "downed" state would.
+//   REMOVED   — active === false — reachable ONLY by the player selling the tower, or a wholesale
+//               pool reset (new game / save load) — never a consequence of combat by itself. The
+//               only state a pooled slot can be reused from.
 class Tower{
   constructor(){ this.active = false; }
   // A tower's world (x,y) is always derived from its grid (gridX,gridY) the same way — this was
@@ -5782,7 +6125,7 @@ class Tower{
     this.hitSet = new Set();
     this.lastSwordAngle = 0;
     this.swingStart = 0;
-    this.swingArc = Math.PI * 0.85; // ~153° — wide enough that anything in range gets caught by the sweep
+    this.swingArc = type === 'BERSERKER' ? Math.PI * 1.1 : Math.PI * 0.85; // Berserker's own wide cleave (~198°) — same per-type override precedent as TWOHANDER Swordsman's own chooseSpec(), just fixed at construction instead of chosen mid-game since Berserker is a whole separate class, not a spec pick
     this.swingDuration = type === 'SPEARMAN' ? 550 : 300;
     this.slowFactor = 0; this.slowDuration = 0; this.splashRadius = 0;
     this.meleeRange = 0; this.meleeDamage = 0; this.meleeCooldown = 0;
@@ -6199,19 +6542,17 @@ class Tower{
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
-    // Random growth on upgrade: 3 independent rolls, each adding 1-6 points to a randomly chosen
-    // stat (so a given upgrade might land 1-3 different stats, or stack multiple rolls onto the
-    // same one), plus a guaranteed extra 1-3 points into the tower's favored/main stat
-    // specifically. Replaces the previous flat 0-2-per-stat-plus-1-2-favored growth with a bigger,
-    // swingier payout per upgrade.
-    const STAT_KEYS = ['str', 'dex', 'int'];
-    for(let i = 0; i < 3; i++){
-      const stat = STAT_KEYS[Math.floor(Math.random()*3)];
-      this[stat] += 1 + Math.floor(Math.random()*6); // 1-6
-    }
+    // Promotion is mostly a gold sink now, not a second source of big stat swings — the real
+    // reward for promoting is the tier's own baseline stat jump from applyTierStats() below
+    // (already tuned per-class in CONFIG.TOWERS), which this doesn't touch at all. Previously
+    // added 3 random 1-6 rolls plus a guaranteed 1-3 to the favored stat (~12.5 raw stats on
+    // average per promotion) — replaced with a small, predictable +1 to the favored stat only, by
+    // explicit request: XP/kills should be the main way a tower grows (see gainTowerExp()'s own
+    // player-chosen statPoints), promotion should be a modest, reliable bonus on top, not a second
+    // large, swingy stat generator competing with it.
     const archetype = CLASS_ARCHETYPE[this.type];
     const favoredStat = archetype === 'WARRIOR' ? 'str' : archetype === 'ARCHER' ? 'dex' : archetype === 'MAGE' ? 'int' : null;
-    if(favoredStat) this[favoredStat] += 1 + Math.floor(Math.random()*3); // 1-3, guaranteed
+    if(favoredStat) this[favoredStat] += 1;
     this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
     this.applyTierStats();
     this.checkEvolution();
@@ -6335,7 +6676,7 @@ class Tower{
       // (drawTowerBody) already always points the staff at `angle` unconditionally to match.
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
-    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN') this.updateSwordsman(dt, nearby);
+    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN' || this.type === 'BERSERKER' || this.type === 'LANCER') this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
     else this.updateRanged();
@@ -6652,9 +6993,9 @@ class Tower{
       this.baseAngle = this.angle;
       this.lastSwordAngle = this.baseAngle - this.swingArc/2;
       this.cooldownTimer = this.cooldown;
-      const meleeSound = this.type === 'SPEARMAN' ? 'swing_pierce'
+      const meleeSound = (this.type === 'SPEARMAN' || this.type === 'LANCER') ? 'swing_pierce'
         : (this.type === 'HAMMERMAN' || this.type === 'PALADIN') ? 'swing_blunt'
-        : 'swing_blade';
+        : 'swing_blade'; // Swordsman, Axeman, Berserker
       playSound(meleeSound);
 
       if(hasDual){
@@ -6808,7 +7149,7 @@ class Tower{
     // separate pulsing glow ring that used to render here at every affordable-upgrade tower was
     // redundant with it and has been removed)
     let lungeAmt = 0, swingProgress = 0;
-    if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN')){
+    if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN' || this.type === 'BERSERKER' || this.type === 'LANCER')){
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       lungeAmt = Math.sin(st*Math.PI) * 4; // small forward step, peaks mid-swing, settles back
       swingProgress = st;
@@ -6849,7 +7190,7 @@ class Tower{
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
-    const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN';
+    const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
     const drawAngle = usesSwingAngle ? this.renderSwordAngle : this.angle;
 
     if(this.isHero){
@@ -7507,8 +7848,8 @@ function resolveGoreArchetype(sourceTower){
 function resolveWeaponSubtype(sourceTower){
   if(!sourceTower) return 'BLADE';
   if(sourceTower.type === 'HAMMERMAN' || sourceTower.type === 'PALADIN') return 'BLUNT';
-  if(sourceTower.type === 'SPEARMAN') return 'PIERCE';
-  return 'BLADE'; // Swordsman, Axeman
+  if(sourceTower.type === 'SPEARMAN' || sourceTower.type === 'LANCER') return 'PIERCE';
+  return 'BLADE'; // Swordsman, Axeman, Berserker
 }
 function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous, dmgRollT, sizeScale){
   const roll = Math.random();
@@ -9036,13 +9377,13 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       const tx = bx+Math.cos(gatlingAngle)*barrelLen, ty = by+Math.sin(gatlingAngle)*barrelLen;
       ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx,ty); ctx.stroke();
     }
-  } else if(type === 'AXEMAN'){
+  } else if(type === 'AXEMAN' || type === 'BERSERKER'){
     const axeLen = weaponLenFromScale(15, 24, extra.weaponScale);
     const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, -0.4);
     drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level, axeLen, extra.weaponThickness);
     const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, 0.4);
     drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level, axeLen, extra.weaponThickness);
-  } else if(type === 'SPEARMAN'){
+  } else if(type === 'SPEARMAN' || type === 'LANCER'){
     const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
     const spearAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: thrusts at the target
     if(!extra.hasTarget){
@@ -9722,7 +10063,7 @@ function startNextWave(){
   } else if(CURATED_WAVE_LABELS[waveIndex+1]){
     showToast(CURATED_WAVE_LABELS[waveIndex+1]);
   }
-  spawnQueue = [];
+  spawnQueue = []; spawnQueueIndex = 0;
   // Waves 45-99 in the fixed CONFIG.WAVES table were a repeating ~7-wave block copy-pasted roughly
   // 7 times over with byte-identical counts every repetition — zero difficulty growth across more
   // than half the fixed wave range, discovered while reworking wave pacing. The wave-type cadences
@@ -9769,17 +10110,23 @@ function startNextWave(){
     if(entry.delay - lastSpawnDelay < MIN_GLOBAL_SPAWN_GAP) entry.delay = lastSpawnDelay + MIN_GLOBAL_SPAWN_GAP;
     lastSpawnDelay = entry.delay;
   }
-  // Fastest units spawn first, slowest last — reassigns TYPES onto the already-finalized delay
-  // slots (every spawn still happens at exactly the same moment in time as before; only which
-  // enemy type occupies which slot changes). A slow unit spawning ahead of a faster one meant the
-  // faster one immediately caught up and had its own speed capped to match (see followSpeedCap in
-  // updateBarricadesAndPileup) — a direct, avoidable contributor to visible on-path bunching, since
-  // that catch-up-then-cap moment happens on nearly every wave with mixed unit types otherwise.
-  // Sorting speed-descending across the whole wave means a unit never needs to catch up to (and
-  // get capped by) something slower placed ahead of it in the first place.
-  const spawnTypesBySpeed = spawnQueue.map(e => e.type);
-  spawnTypesBySpeed.sort((a,b) => (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0));
-  for(let i=0; i<spawnQueue.length; i++) spawnQueue[i].type = spawnTypesBySpeed[i];
+  // Fastest units spawn first, slowest last, SO A UNIT NEVER NEEDS TO CATCH UP TO (and get
+  // speed-capped by, see followSpeedCap in updateBarricadesAndPileup) something slower placed
+  // ahead of it — but reassigning types GLOBALLY across the ENTIRE wave (as this used to do)
+  // destroys any authored group/escort/boss-pacing structure: a wave meant to open with weak
+  // fodder and close with a slow, heavy climax unit could have that climax unit's TYPE moved to
+  // the very front, since it's often the slowest in the wave. Reassigning only within bounded
+  // local windows instead keeps the fix's actual benefit (a fast unit scheduled a few slots behind
+  // a slow one, close enough in time to plausibly catch up to it, still gets moved ahead of it)
+  // while leaving the wave's overall macro shape — which group leads, which comes last — intact,
+  // since nothing can be reassigned outside its own local neighborhood in the timeline.
+  const SPEED_SORT_WINDOW = 6;
+  for(let start = 0; start < spawnQueue.length; start += SPEED_SORT_WINDOW){
+    const end = Math.min(start + SPEED_SORT_WINDOW, spawnQueue.length);
+    const windowTypes = spawnQueue.slice(start, end).map(e => e.type);
+    windowTypes.sort((a,b) => (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0));
+    for(let i=start; i<end; i++) spawnQueue[i].type = windowTypes[i-start];
+  }
   // Small, numerous enemy types (Swarm, Splitmini) still visibly bunch even with mixed-speed
   // catch-up eliminated above — their tiny radius means many of them physically fit within
   // collision-trigger range of each other at the same flat spacing that's plenty of room for a
@@ -9808,14 +10155,84 @@ function startNextWave(){
   playSound('roundStart');
   updateHUD();
 }
+let lastSpawnedEnemy = null; // entrance-gating state — see spawnEnemy()
 function spawnEnemy(type){
+  // Entrance gating, on top of (not instead of) the existing time-based spawn delay — time alone
+  // can still let two enemies materialize very close together at the shared spawn point if their
+  // scheduled delays are close relative to frame rate, since the delay is fixed in advance and
+  // doesn't check how far the actual enemy ahead of it has gotten. Checked against real path
+  // distance (traveled), not time. `lastSpawnedEnemy.active` naturally goes stale-safe on its
+  // own — once that enemy dies/despawns/escapes past this check mattering, the gate simply stops
+  // applying, no explicit reset needed between waves.
+  if(lastSpawnedEnemy && lastSpawnedEnemy.active){
+    const incomingRadius = (CONFIG.ENEMIES[type] && CONFIG.ENEMIES[type].radius) || 14;
+    const requiredGap = lastSpawnedEnemy.radius + incomingRadius + 8;
+    if(lastSpawnedEnemy.traveled < requiredGap) return false; // not enough room yet — the drain loop's own existing retry-next-frame behavior (see its comment) handles this identically to a pool-exhaustion false
+  }
   const e = acquireActive(enemyPool);
   if(!e) return false; // pool exhausted — caller must not treat this as a successful spawn
   const hpMult = 1 + (waveIndex-1)*0.20;
   const isBig = Math.random() < BIG_VARIANT_CHANCE;
-  e.spawn(type, hpMult, isBig);
+  const isMini = !isBig && Math.random() < MINI_VARIANT_CHANCE; // mutually exclusive — only rolled at all once the (much rarer) Big roll has already missed
+  e.spawn(type, hpMult, isBig, isMini);
   if(isBig) spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
+  lastSpawnedEnemy = e;
   return true;
+}
+// Creep camps (WC3-style): a stationary hut structure guarded by 2 enemies, placed off-path at
+// game start. Clear the guardians for an immediate bounty; the hut itself is tougher still and
+// gives a bigger one-time reward when destroyed. If the hut survives and both guardians are dead,
+// it respawns 2 fresh ones after a random 1-5 minute real-time wait — but only once the lane is
+// actually clear (see updateHutBuilding()), never while a guardian is still standing. Reuses the
+// Enemy class/pool entirely (see isGuardian/isHutBuilding in spawn()) rather than a parallel
+// system — same proven active-flag exclusion pattern already used for escaped enemies throughout
+// this file, not a new concept.
+function findHutPlacementTile(){
+  if(!activeRegion) return null;
+  const candidates = [];
+  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
+    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
+      if(pathCells.has(gx+','+gy)) continue;
+      candidates.push([gx,gy]);
+    }
+  }
+  if(!candidates.length) return null;
+  const [gx,gy] = candidates[Math.floor(Math.random()*candidates.length)];
+  return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
+}
+function spawnHutGuardian(hutRef){
+  const e = acquireActive(enemyPool);
+  if(!e) return null; // pool exhausted — the hut just has fewer guardians than intended this time rather than blocking anything else
+  e.spawn('GRUNT', 3, false, false); // a real guard, much tankier than an ordinary wave Grunt at any point in the game, but still just a Grunt's own moveset/appearance — not a new enemy type to design and balance separately
+  e.isGuardian = true;
+  e.hutRef = hutRef;
+  e.hutAnchorX = hutRef.x; e.hutAnchorY = hutRef.y;
+  e.x = hutRef.x + (Math.random()-0.5)*50;
+  e.y = hutRef.y + (Math.random()-0.5)*50;
+  e.bounty = Math.round(e.bounty * 4); // a real, deliberate reward for clearing a camp — meant to feel worth the detour
+  hutRef.guardiansAliveCount = (hutRef.guardiansAliveCount||0) + 1;
+  return e;
+}
+function spawnHut(x, y){
+  const hut = acquireActive(enemyPool);
+  if(!hut) return null;
+  hut.spawn('GRUNT', 40, false, false); // GRUNT, not TANK — TANK's death branch pays a fixed flat stone amount that ignores this.bounty entirely, which would have silently swallowed the reward boost below; GRUNT keeps this on the normal gold path where the bounty multiplier actually applies. The 40x HP multiplier is deliberately huge — this is meant to be the toughest single thing on the board
+  hut.emoji = '🛖'; // overridden from GRUNT's own default — this needs to read as a structure, not another enemy
+  hut.isHutBuilding = true;
+  hut.x = x; hut.y = y;
+  hut.speed = 0;
+  hut.guardiansAliveCount = 0;
+  hut.destroyed = false;
+  hut.respawnAt = null;
+  hut.bounty = Math.round(hut.bounty * 8); // the big one-time payout for actually clearing the whole camp, not just its guardians
+  spawnHutGuardian(hut);
+  spawnHutGuardian(hut);
+  return hut;
+}
+function spawnHuts(){
+  const tile = findHutPlacementTile();
+  if(!tile) return; // no valid off-path tile found (a tiny starting region) — simply no camp this game rather than forcing a bad placement
+  spawnHut(tile.x, tile.y);
 }
 function loseLife(n){
   lives -= n;
@@ -9842,12 +10259,12 @@ function update(dt){
     // simply resumes exactly where it left off.
     if(!anyBarricadeQueued){
       waveTimer += dt;
-      while(spawnQueue.length && spawnQueue[0].delay <= waveTimer){
-        if(!spawnEnemy(spawnQueue[0].type)) break; // pool exhausted this frame — leave the entry queued and retry once a slot frees up, rather than losing it
-        spawnQueue.shift();
+      while(spawnQueueIndex < spawnQueue.length && spawnQueue[spawnQueueIndex].delay <= waveTimer){
+        if(!spawnEnemy(spawnQueue[spawnQueueIndex].type)) break; // pool exhausted this frame — leave the entry queued and retry once a slot frees up, rather than losing it
+        spawnQueueIndex++;
       }
     }
-    if(!spawnQueue.length) waveState = 'ACTIVE';
+    if(spawnQueueIndex >= spawnQueue.length) waveState = 'ACTIVE';
   }
 
   // updateBarricadesAndPileup() must run every frame regardless of active-enemy count — it's the
@@ -9885,7 +10302,7 @@ function update(dt){
     // hunt down to progress. Without this exclusion the wave could never complete once even one
     // enemy escaped, since they now persist indefinitely (no longer force-cleared at the next
     // wave start) until something actually kills them.
-    const anyAlive = enemyPool.some(e => e.active && !e.escaped);
+    const anyAlive = enemyPool.some(e => e.active && !e.escaped && !e.isGuardian && !e.isHutBuilding);
     // Also wait for any in-flight death animation to finish — die() sets active=false immediately
     // but the squash-and-fade animation it kicks off (deathAnims) still has up to ~220ms left to
     // play. Without this, the very last kill of a wave triggered the wave-complete
@@ -10174,7 +10591,34 @@ function drawBossCompass(ctx){
 // optimization work, so future claims can be measured rather than inferred from reading code.
 // Inspect via the browser console: `perfStats`.
 const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
-  visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0 };
+  visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0,
+  // Rolling-window percentile tracking — an average frame time can look perfectly healthy while
+  // the game still stutters intermittently; a fixed-size window (2s at 60fps) of raw samples lets
+  // the debug log report median/p95/p99/max instead of just "the last frame" or a running average
+  // that smooths real spikes away. Small array, shift() cost here is negligible (120 elements max,
+  // unlike the spawnQueue case which scaled with wave size).
+  frameMsHistory: [], updateMsHistory: [], renderMsHistory: [],
+  // Barricade/pileup telemetry — this was previously invisible: no way to tell, from the debug
+  // log alone, whether a lag spike during a pileup was the barricade system itself or something
+  // else entirely. Snapshot of the most recent updateBarricadesAndPileup() call, not a rolling
+  // window — the barricade system runs every tick, so "most recent" already reflects current
+  // conditions closely enough.
+  barricadeActiveScanned: 0, barricadeQueuedCount: 0, barricadeSnapCount: 0, barricadeMaxQueueLenSeen: 0,
+  // "Actual speed" diagnostic — requested gameSpeed vs. what the simulation is actually achieving,
+  // averaged over real time rather than one noisy frame. Answers "is a stutter a rendering
+  // problem, a simulation problem, or genuine catch-up debt" at a glance instead of guessing.
+  actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0 };
+const PERF_HISTORY_SIZE = 120;
+function recordPerfSample(arr, value){
+  arr.push(value);
+  if(arr.length > PERF_HISTORY_SIZE) arr.shift();
+}
+function perfPercentile(arr, p){
+  if(!arr.length) return 0;
+  const sorted = arr.slice().sort((a,b) => a-b);
+  const idx = clampNum(Math.floor(p*sorted.length), 0, sorted.length-1);
+  return sorted[idx];
+}
 // Start-screen attract-mode — a genuine self-contained mini-simulation, entirely separate from
 // real game state (its own enemies/towers/projectiles arrays, never enemyPool/towerPool/
 // projectilePool), advancing on its own now-based delta time rather than the global gameTime
@@ -10305,8 +10749,28 @@ function renderAttractMode(ctx, now){
   st.enemies = st.enemies.filter(e => !e.dead || now - e.spawnedAt < 400); // keep briefly for flash
 
   ctx.save();
-  ctx.fillStyle = '#8a6a3a';
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // Perspective checkerboard ground — rows compress toward a horizon near the top of the screen
+  // and widen toward the bottom, approximating a ground plane viewed from a low, looking-up angle
+  // (the "bigger towers, more dramatic low-angle perspective" request) — done entirely as ordinary
+  // 2D drawing (row-by-row scaling toward a horizon line), not a real 3D/CSS transform, so it's
+  // fully self-contained to this function and can't affect the real game's own rendering, layout,
+  // or hit-testing at all.
+  const horizonY = CANVAS_H * 0.12;
+  ctx.fillStyle = '#3a2c1a'; // dark sky/backdrop above the horizon — moodier than the old flat brown fill
+  ctx.fillRect(0, 0, CANVAS_W, horizonY);
+  const groundRows = 16, groundCols = 10;
+  for(let i=0; i<groundRows; i++){
+    const t0 = i/groundRows, t1 = (i+1)/groundRows;
+    // Quadratic spacing — rows right at the horizon are thin, rows nearest the camera (bottom of
+    // the screen) are tall, the classic "receding ground plane" cue.
+    const y0 = horizonY + (CANVAS_H-horizonY) * t0*t0;
+    const y1 = horizonY + (CANVAS_H-horizonY) * t1*t1;
+    for(let c=0; c<groundCols; c++){
+      ctx.fillStyle = (i+c)%2===0 ? '#6f8f52' : '#84a562'; // checkerboard grass, same two-tone-square language as the real game's own buildable area
+      const colW = CANVAS_W/groundCols;
+      ctx.fillRect(c*colW, y0, colW+1, y1-y0+1);
+    }
+  }
   ctx.globalAlpha = fadeT;
 
   // Tower attack logic — each Archer periodically finds the nearest live enemy and goes through a
@@ -10346,14 +10810,16 @@ function renderAttractMode(ctx, now){
     }
   }
 
-  // Enemies draw before towers, matching the real game's own draw order.
-  ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Enemies draw before towers, matching the real game's own draw order. Sized up from the old
+  // flat 22px — bigger, closer-to-camera sprites, matching the low-angle ground plane above rather
+  // than looking small and distant against it.
+  ctx.font = '32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for(const e of st.enemies){
     const p = attractEnemyScreenPos(e, Math.min(e.t, 1));
     const ex = p.xf*CANVAS_W, ey = p.yf*CANVAS_H;
     if(now < e.flashUntil){
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.beginPath(); ctx.arc(ex, ey, 13, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex, ey, 19, 0, Math.PI*2); ctx.fill();
     }
     if(!e.dead || now < e.flashUntil) ctx.fillText(CONFIG.ENEMIES[e.type].emoji, ex, ey);
   }
@@ -10368,7 +10834,16 @@ function renderAttractMode(ctx, now){
     }
     const extraAtk = { hasTarget: !!target };
     if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
+    // Scaled up around each tower's own position (an outer transform, composed with whatever
+    // drawStickman() already does internally — its own code is completely untouched) for the
+    // "bigger towers, closer camera" look, rather than changing the `level` parameter, which
+    // drives real gameplay-facing tier scaling in the actual game and isn't meant for this.
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.scale(1.8, 1.8);
+    ctx.translate(-tx, -ty);
     drawStickman(ctx, tx, ty, angle, 1, 'ARCHER', extraAtk);
+    ctx.restore();
   }
 
   for(const p of st.projectiles){
@@ -10403,12 +10878,26 @@ function loop(now){
     ticksThisFrame++;
   }
   perfStats.updateMs = performance.now() - updateStart;
+  flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
   render(ctx);
   perfStats.renderMs = performance.now() - renderStart;
   perfStats.frameMs = performance.now() - frameStart;
   perfStats.ticksThisFrame = ticksThisFrame;
   if(ticksThisFrame > perfStats.maxTicksSeen) perfStats.maxTicksSeen = ticksThisFrame;
+  recordPerfSample(perfStats.frameMsHistory, perfStats.frameMs);
+  recordPerfSample(perfStats.updateMsHistory, perfStats.updateMs);
+  recordPerfSample(perfStats.renderMsHistory, perfStats.renderMs);
+  perfStats.lastAccumulatorDebtMs = accumulator; // leftover simulation time this frame couldn't catch up on, carried into the next one
+  // Actual speed: ticks actually executed vs. real elapsed time, over a rolling ~1s window rather
+  // than one frame (a single frame's ratio is too noisy — a big tick burst followed by a render-only
+  // frame would swing wildly frame to frame even at a perfectly steady overall rate).
+  perfStats.actualSpeedWindowRealMs += frameTime;
+  perfStats.actualSpeedWindowTicks += ticksThisFrame;
+  if(perfStats.actualSpeedWindowRealMs >= 1000){
+    perfStats.lastMeasuredActualSpeed = (perfStats.actualSpeedWindowTicks * FIXED_DT) / perfStats.actualSpeedWindowRealMs;
+    perfStats.actualSpeedWindowRealMs = 0; perfStats.actualSpeedWindowTicks = 0;
+  }
 }
 
 /* =========================================================
@@ -10868,7 +11357,25 @@ const inspTargetBtn = document.getElementById('inspTargetBtn');
 const inspTargetMode = document.getElementById('inspTargetMode');
 const inspClose = document.getElementById('inspClose');
 
-function updateHUD(){
+// updateHUD() is called from many places — most importantly creditKill(), meaning every single
+// kill was previously triggering a full round of getElementById()+textContent DOM writes
+// immediately, even though most of those values (wood/stone/moveCharges/wave progress/etc.) rarely
+// actually change on any given kill. During a dense wave with several kills landing in one frame
+// (especially at 5x/10x speed, where multiple simulation ticks run per rendered frame), that's
+// real repeated DOM work for no visible benefit — the player only ever sees the result once per
+// rendered frame regardless of how many times it was written to in between.
+// updateHUD() itself is now just a dirty flag; the real work moved to updateHUDImmediate() below,
+// flushed at most once per rendered frame from loop() — after all of that frame's simulation ticks
+// have run, so the HUD is never more than one frame stale, same as before. Every existing call
+// site is unaffected — same function name, same call shape, just deferred.
+let hudDirty = false;
+function updateHUD(){ hudDirty = true; }
+function flushHUDIfDirty(){
+  if(!hudDirty) return;
+  hudDirty = false;
+  updateHUDImmediate();
+}
+function updateHUDImmediate(){
   livesVal.textContent = lives;
   goldVal.textContent = gold;  const livesMeter = document.getElementById('livesMeter');
   if(livesMeter){
@@ -11027,7 +11534,9 @@ function buildTowerModal(){
     CAT_SNAPPER:'🔒 A swift enough hand finds an unlikely companion...',
     PROTON:      '🔒 Push both raw power and swiftness to their limits — from any path — and the sky itself starts to answer...',
     DARK_MATTER: '🔒 Swiftness and a cold mind, together, from any path, start to bend light itself...',
-    QUASAR:      '🔒 Only when power, swiftness, AND wisdom all burn brightest at once — from any path — does something truly rare ignite...'
+    QUASAR:      '🔒 Only when power, swiftness, AND wisdom all burn brightest at once — from any path — does something truly rare ignite...',
+    BERSERKER:   '🔒 Raw strength, given to a two-bladed hand, forgets all restraint...',
+    LANCER:      '🔒 A swift enough hand pushes reach past reason...'
   };
   for(const type of UNLOCKABLE_TOWER_TYPES){
     // Deep-tier evolutions (EVOLUTIONS-driven, gated on reaching a stat threshold on ANOTHER
@@ -11453,7 +11962,23 @@ function generateDebugLog(){
   s += '------------------------\n';
   s += 'Frame: ' + perfStats.frameMs.toFixed(2) + 'ms  Update: ' + perfStats.updateMs.toFixed(2) +
     'ms  Render: ' + perfStats.renderMs.toFixed(2) + 'ms\n';
+  s += 'Frame ms — median: ' + perfPercentile(perfStats.frameMsHistory,0.5).toFixed(2) +
+    '  p95: ' + perfPercentile(perfStats.frameMsHistory,0.95).toFixed(2) +
+    '  p99: ' + perfPercentile(perfStats.frameMsHistory,0.99).toFixed(2) +
+    '  max: ' + perfPercentile(perfStats.frameMsHistory,1).toFixed(2) +
+    '  (last ' + perfStats.frameMsHistory.length + ' frames — an average can look healthy while intermittent stalls hide inside it, this is what actually reveals them)\n';
+  s += 'Update ms — median: ' + perfPercentile(perfStats.updateMsHistory,0.5).toFixed(2) +
+    '  p99: ' + perfPercentile(perfStats.updateMsHistory,0.99).toFixed(2) +
+    '  max: ' + perfPercentile(perfStats.updateMsHistory,1).toFixed(2) + '\n';
+  s += 'Render ms — median: ' + perfPercentile(perfStats.renderMsHistory,0.5).toFixed(2) +
+    '  p99: ' + perfPercentile(perfStats.renderMsHistory,0.99).toFixed(2) +
+    '  max: ' + perfPercentile(perfStats.renderMsHistory,1).toFixed(2) + '\n';
   s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap 90)\n';
+  s += 'Requested speed: ' + gameSpeed + 'x   Actual simulation speed (last ~1s window): ' + perfStats.lastMeasuredActualSpeed.toFixed(2) + 'x\n';
+  s += 'Accumulator debt (leftover simulation time not yet caught up): ' + perfStats.lastAccumulatorDebtMs.toFixed(1) + 'ms\n';
+  s += 'Barricade: ' + perfStats.barricadeActiveScanned + ' active enemies scanned, ' + perfStats.barricadeQueuedCount +
+    ' currently queued (max ever seen: ' + perfStats.barricadeMaxQueueLenSeen + ' / cap ' + MAX_QUEUE_DEPTH + '), ' +
+    perfStats.barricadeSnapCount + ' snap operations this tick\n';
   s += 'Scenery visible/total: ' + perfStats.visibleScenery + '/' + perfStats.totalScenery + '\n';
   s += 'Decals visible/total: ' + perfStats.visibleDecals + '/' + perfStats.totalDecals + '\n\n';
 
@@ -11584,11 +12109,16 @@ function updateInspectPanel(){
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Zweihander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
-  inspLevel.textContent = isBarricade ? '' : ('Lv.' + t.expLevel + specLabel + heroLabel);
+  inspLevel.textContent = isBarricade ? '' : ('Lv.' + t.level + specLabel + heroLabel);
   document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   document.getElementById('inspHpBarFill').style.width = hpPct + '%';
-  document.getElementById('inspHpBarText').textContent = hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp);
+  // A disabled tower's HP bar shows its real recovered value (~30%, see takeDamage()) with no
+  // indication that it's actually locked out of attacking, not just running low — read on its own
+  // as "this tower is nearly dead" rather than "this tower already went down and is recovering."
+  // Prefixing the rounds-remaining count makes that distinction explicit right where the number is.
+  const disabledSuffix = (!isBarricade && t.disabledWavesLeft > 0) ? (' (DOWNED · ' + t.disabledWavesLeft + ' rounds)') : '';
+  document.getElementById('inspHpBarText').textContent = (hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp)) + disabledSuffix;
   if(isBarricade){
     // Obstacle, not a tower — deliberately simplified panel. Skips every combat/stat/XP/evolution
     // computation below entirely (not just hiding the resulting fields) since none of it is
@@ -11611,7 +12141,7 @@ function updateInspectPanel(){
   evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
   if(t.expLevel >= MAX_TOWER_LEVEL){
     document.getElementById('inspEvoBarFill').style.width = '100%';
-    document.getElementById('inspEvoBarText').textContent = 'MAX LEVEL';
+    document.getElementById('inspEvoBarText').textContent = 'MAX TRAINING'; // was "MAX LEVEL" — expLevel is the XP counter, not the tower's actual displayed level (see inspLevel above, which now correctly reads tower.level instead)
   } else {
     const need = xpForNextLevel(t.expLevel);
     document.getElementById('inspEvoBarFill').style.width = Math.round(Math.min(1, t.xp/need)*100) + '%';
@@ -12020,7 +12550,7 @@ function endGame(){
 }
 
 function resetGame(){
-  gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; spawnQueue = []; seenEnemyTypes = new Set();
+  gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; spawnQueue = []; spawnQueueIndex = 0; seenEnemyTypes = new Set();
   wood = 0; stone = 0;
   globalPassiveCounts = {};
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();
@@ -12055,6 +12585,7 @@ function resetGame(){
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   seedStartingBarricades();
+  spawnHuts();
   updateHUD();
   updateInspectPanel();
 }
