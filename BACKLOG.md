@@ -5,31 +5,9 @@ workflow this file follows — move items to `CHANGELOG.md` and delete them from
 
 ## Performance — deferred from the 1.2.44 verified-fix pass
 
-Both scoped from direct code inspection (not from the external Gemini analysis, which mislocated
-or hallucinated several claims). Deliberately not attempted in 1.2.44 — real risk of a gameplay/
-visual regression if rushed, worse than the lag they'd fix.
-
-- **Settled-decal offscreen baking.** `decals` (array, ~`decals.length` entries) are redrawn in
-  full immediate-mode (`drawOneDecal()`, called from `drawDepthSortedLayer()`) every frame for
-  the life of the decal, confirmed via `perfStats.visibleDecals` / `perfStats.totalDecals`. Once
-  a decal has finished its dynamic phase (splatter animation, color/oxidation aging) it could be
-  stamped once onto the existing offscreen `mapCanvas` and spliced out of the active `decals`
-  array. Needs, before attempting: (1) the exact field/condition that marks a decal as visually
-  "done" — must not bake a decal still mid-animation or its motion freezes visibly; (2) handling
-  `dprValue` scaling identically to how `mapCanvas` itself is scaled; (3) what happens to baked
-  decals across `rebakeMap()` (map ring expansion) — they need to survive it, not vanish.
-- **`activeBarricades` tracking list**, to let `findTouchingBarricade()` skip scanning the full
-  `towerPool` for non-barricade towers. Confirmed 4 tower-creation call sites
-  (`acquireActive(towerPool)` at 4 locations); destroy/sell paths not yet fully enumerated. A
-  tracking list that falls out of sync with actual tower state is a silent gameplay bug (phantom
-  or missing barricade collision), not just a missed optimization — needs every mutation site
-  enumerated and covered before shipping, not a partial pass.
-- **`drawDepthSortedLayer()` per-frame sort-wrapper allocation.** Builds a fresh `items = []` plus
-  one `{ sortY, kind, ... }` wrapper object per visible enemy/tower/scenery/decal, every frame, to
-  feed the Y-sort. Fixable with a pooled scratch array of reusable wrapper objects, but needs the
-  sort kept stable (items at equal `sortY` must not visibly swap render order frame-to-frame) —
-  not attempted without confirming `Array.prototype.sort()`'s stability guarantee holds under
-  reused-object mutation here.
+All four items previously here shipped in 1.2.52 — see CHANGELOG.md for the full detail on each
+(settled-decal offscreen baking, BOSS spawn-order exception, `activeBarricades` tracking, and
+`drawDepthSortedLayer()` allocation pooling). Nothing currently open in this section.
 
 ## Performance — deferred items from the 1.1.31–1.1.33 audit passes
 
@@ -40,14 +18,8 @@ read from the camera-pan hot path, and always-on frame/update/render/visible-cou
 now that `perfStats` exists, these should be evaluated against real on-device numbers before
 being attempted, not from reading code alone:
 
-- **A real design tension found, not a bug — flagging rather than silently changing it.**
-  `const low = false;` in the gore-intensity code has an explicit comment: "blood intensity is
-  controlled ONLY by the goreMode toggle, never by graphics quality — full gore shows at any
-  graphics setting as long as gore is enabled." That's a deliberate content-rating decision (gore
-  is a maturity toggle, not a performance knob), not an oversight — but it does mean Low graphics
-  currently gets full gore density regardless. Worth an explicit decision: keep gore fully
-  decoupled from performance (current behavior), or let Low graphics reduce gore density too while
-  keeping the on/off toggle itself independent. Not changed without being asked.
+- ~~**Gore density vs. graphics quality decision.**~~ Settled in 1.2.55: stays fully decoupled
+  (current behavior). Confirmed not the lag source either. See CHANGELOG.md.
 - **Static scenery/decal caching** — bake unchanging scenery and fully-dried blood into offscreen
   canvas layers instead of redrawing every visible item every frame, with explicit cache
   invalidation on clearing/spawning/map-expansion. Chunked (e.g. 256-512px world tiles) rather
@@ -59,10 +31,21 @@ being attempted, not from reading code alone:
   already resolves the loudest reported symptom (idle panning cost scaling with total world size
   rather than what's actually on screen) with much lower risk. Worth revisiting once `perfStats`
   shows culling alone isn't enough.
-- **Spatial-hash allocation churn** — `buildEnemyHash()`/`queryNearby()` allocate fresh
-  objects/arrays on every call during real combat (not just the idle case already fixed). Reusing
-  storage or switching to numeric cell keys would reduce GC pressure in dense waves — check
-  `perfStats.updateMs` during a dense wave first to see whether this is actually worth doing.
+- ~~**Spatial-hash allocation churn**~~ — re-audited in 1.2.52: `buildEnemyHash()` already reuses
+  `enemyHashBucketPool` and `queryNearby()` already reuses `queryNearbyScratch` on every call. This
+  entry was stale; already shipped in an earlier pass. See CHANGELOG.md's 1.2.52 entry.
+- **Spatial-hash cell keys are strings, not numbers** (new finding, full lag audit). `cellKey()`
+  builds a fresh `"x,y"` string for every active enemy on every hash rebuild, and for every cell
+  scanned inside every `queryNearby()` call (up to `(2*cellRadius+1)^2` string concats per call) —
+  real allocation in a path that runs many times per tick across towers/projectiles/cats/skeletons.
+  Numeric keys are the standard fix, but NOT attempted blind: (1) a packing formula that's even
+  slightly wrong risks a silent hash collision — two different cells mapping to the same key means
+  enemies becoming invisible to nearby targeting queries, a real and hard-to-notice gameplay bug,
+  not just a missed optimization; (2) genuinely uncertain whether this is a meaningful win in
+  practice vs. just the textbook-standard technique — small string concatenation is often cheap
+  enough in modern JS engines that this may not show up as real cost at all. Needs a debug-log-
+  confirmed hot spot (updateMs during a genuinely dense wave) before attempting, not just "this is
+  the known pattern."
 - **`MAX_TICKS_PER_FRAME = 90`** — a very high catch-up ceiling for the fixed-timestep loop.
   `perfStats.maxTicksSeen` now tracks this directly — check it after a long dense-wave session
   before deciding whether the ceiling is ever actually approached on real devices.
@@ -274,17 +257,13 @@ separate.
   height never actually changes from gold/lives/wave updates, only from a real resize/orientation-
   change (already separately handled) or the one-time reveal when the game starts (now handled
   explicitly at that one call site instead).
-- Five separate spatial-hash builds per simulation tick, each allocating fresh bucket storage —
-  count confirmed (`resolveSweptEnemyCollisions()`: 1, `resolveEnemyCollisions()`'s 3-pass
-  relaxation loop: 3, final targeting hash: 1). Deliberately not touched: the 3 builds inside
-  `resolveEnemyCollisions()` aren't redundant — its own comment explains the multi-pass design
-  exists specifically so a crowd can settle within one frame instead of visibly fighting over
-  several, and each pass moves enemies, so the hash genuinely goes stale between passes. Cutting
-  the rebuild count would risk exactly the "stale hash used across passes that move enemies"
-  regression the review itself warned against. A safe version of this optimization would need to
-  reuse the hash's bucket-array storage across builds (object pooling) rather than reduce how many
-  times it's built — a real but more invasive change than the other items in this list, and not
-  attempted here without a way to verify it under real load.
+- ~~**Five separate spatial-hash builds per simulation tick.**~~ Re-verified during a full
+  documentation sweep: the bucket-array pooling this entry described as still-needed
+  ("a real but more invasive change... not attempted") already exists — `enemyHashBucketPool` is
+  declared once at module scope and confirmed shared across all five builds, each call reusing
+  existing bucket arrays (`bucket.length = 0`) rather than allocating fresh ones. The only
+  remaining cost per build is one trivial empty `{}` object (the hash container itself) — five of
+  those per tick isn't worth tracking as an open item. This entry's own premise was stale.
 - ~~Barricade/pileup queue-assignment search quadratic even with nothing queued~~ — fixed in 1.1.66.
   The O(N²) catchment-matching loop can only ever succeed by matching against an already-blocked
   enemy, so a single `anyBlockedSeed` flag (set alongside the existing per-enemy pass that already
@@ -584,14 +563,8 @@ Builder NPC (Hammerman-proportioned, bright orange).
 ## implemented, kept separate from the code-review bug triage above since these are speculative
 ## design suggestions, not confirmed problems. Grounded in specific sections, not general vibes.
 
-- **Continuance (eye-flow along a line/direction) for the Next Wave button.** The book's example:
-  once a viewer's eye starts moving in one direction, it keeps going until something more dominant
-  interrupts it — used deliberately, this can guide attention toward a specific call-to-action (the
-  book's own Twitter example: the Sign Up button gets continuance + isolation + contrast all at
-  once). Right now Next Wave is just another top-bar button with no directional cue pointing at it.
-  A subtle idea worth trying: when the wave timer is idle and waiting on the player, a faint
-  pulsing arrow or directional glow leading toward it — cheap, reversible, easy to rip out if it
-  reads as nagging rather than helpful.
+- ~~**Continuance (eye-flow along a line/direction) for the Next Wave button.**~~ Shipped in
+  1.2.53 — see CHANGELOG.md.
 - **Placement — confirmed the game already gets the big one right, not a gap.** The book: center
   and top-left are where a viewer's eye goes first. Build sits top-left (correct instinct already),
   and the inspect panel opens bottom-left when a tower is selected (a deliberate, different zone,
@@ -602,13 +575,9 @@ Builder NPC (Hammerman-proportioned, bright orange).
   itself will appear larger... draws viewers' attention, as it seems out of place"). Worth
   confirming this extends to any future big/rare enemy variant — it already applies correctly to
   the existing "BIG!" variant spawn chance, which visibly scales the sprite up.
-- **Color psychology — a specific, narrow idea, not a broad repaint.** The book notes orange is
-  rare in nature and "tends to jump out" precisely because it's uncommon — currently unused as a
-  dedicated signal color anywhere in the UI (gold/red/blue are all already claimed for currency/
-  danger/info respectively). A "BIG!" variant enemy or a rare item drop could use orange
-  specifically *because* nothing else in the palette currently means anything with it — giving it
-  a genuinely unique signal rather than competing with an already-meaningful color. Speculative;
-  would need to check nothing else already implies orange=X elsewhere before touching it.
+- ~~**Color psychology — orange as a dedicated rare-signal color.**~~ Shipped in 1.2.53 — applied
+  to `LUCKY_BRANCH`'s ring/glow specifically (the one genuinely rare universal drop). See
+  CHANGELOG.md. A "BIG!" variant enemy using orange too is still an open, separate idea if wanted.
 - **Balance (symmetrical vs. asymmetrical) — worth a deliberate look, not yet done.** The book's
   asymmetrical-balance principle: a large element on one side can be balanced by several smaller
   elements on the other, and removing any one of them (its own three-stones example) makes the
@@ -660,23 +629,20 @@ Builder NPC (Hammerman-proportioned, bright orange).
   methods (keyboard shortcuts, gamepad) reuse the same game commands rather than each needing its
   own bespoke wiring. Not urgent — no current input method is blocked by this — but worth doing
   before adding a second input scheme.
-- **Page Visibility handling** — no `visibilitychange` listener exists; the fixed-timestep loop's
-  frame-time clamp and tick cap already prevent a catastrophic catch-up spike, but tab-switch
-  behavior is implicit rather than an intentional design choice (auto-pause vs. catch-up-on-return).
-  Worth a deliberate decision, not a default.
-- **Save-schema version separate from `GAME_VERSION`** — saves currently stamp `gameVersion` but
-  have no independent `schemaVersion`. These answer different questions (which release produced
-  this vs. which serialized structure is this) and will matter once a save-format change actually
-  needs migration logic, which hasn't happened yet.
+- ~~**Page Visibility handling.**~~ Shipped in 1.2.55: auto-pause on tab-switch/app-background.
+  See CHANGELOG.md.
+- ~~**Save-schema version separate from `GAME_VERSION`**~~ — shipped in 1.2.54. See CHANGELOG.md.
 
 - **Substrate-dependent spine/rupture on rough terrain (dirt/path vs. stone/wood)** — no tile-type
   lookup exists anywhere in the codebase currently (grepped for `getTileAt`/`tileType`/a grid array,
   found nothing). Would need new coordinate→tile-type plumbing built from scratch, not just a
   numbers tweak to existing decal code — scope this properly before attempting.
 
-- **Void patterns now built for Mage only (1.0.190)** — the `enemyHash` variable was identified and
-  hoisted to module scope to make this safe. Extending the same check to Archer/Blade/Blunt/Pierce's
-  own streak/satellite loops is a small, well-scoped follow-up now that the core plumbing exists.
+- ~~**Void patterns now built for Mage only (1.0.190)**~~ — 1.2.54 closed the actual gap: this
+  description assumed the follow-up was extending to Archer/Blade/Blunt/Pierce's own streak loops,
+  but grepping the real code found no such loops exist for those archetypes — the actual gap was
+  Mage's own second (death-time) streak loop lacking the check its hit-time sibling already had.
+  See CHANGELOG.md.
 
 - **Swordsman not attacking past a barricade** — reported multiple times with screenshots, but
   every screenshot provided so far either showed no enemies in range, or enemies not actually
@@ -717,14 +683,8 @@ Builder NPC (Hammerman-proportioned, bright orange).
     than a coordinate error (scale, timing relative to `swingProgress`, or how it reads at actual
     render size) — needs a real screenshot to diagnose further rather than another code re-read
     turning up the same correct math.
-  - Z-order layering issue (a tower's overhead "stats to spend" scroll can render behind an
-    adjacent tower above it) — still open, not attempted. The scroll is drawn as part of the same
-    single `draw()` call as the tower's body, sorted by the tower's own y-position — but the scroll
-    glyph extends well above the tower's head, so a single anchor point doesn't capture where the
-    *scroll* actually sits on screen relative to a neighboring tower. A real fix needs the scroll
-    sorted by its own screen position, separately from the tower body's — a genuine restructuring
-    of the depth-sort pass, not a one-off coordinate tweak, and risky to attempt without a way to
-    see the result.
+  - ~~Z-order layering issue (tower's overhead scroll could render behind a neighbor).~~ Fixed in
+    1.2.56 — became tractable once the depth-sort pooling infra existed. See CHANGELOG.md.
   - Dual Squirt Gun's hand anchor "sits on the muzzle instead of the grip" — still open, not
     attempted. The code uses `textAlign:'left'` so the 🔫 glyph is anchored at one end and extends
     toward the aim direction from there — but which end of the emoji's own internal artwork reads
@@ -773,10 +733,10 @@ Builder NPC (Hammerman-proportioned, bright orange).
     code: cast-off now travels as a curved arc tangent to a swing rather than a straight line,
     droplet elongation/size scales with travel distance, pool shape/size is now genuinely distinct
     per weapon archetype (melee/archer/mage/explosive), aging/skeletonization, footprint tracking,
-    and a local saturation cap so a heavily-fought corridor doesn't grow unboundedly. Pooling-to-
-    static-layer performance optimization (drawing settled decals onto a persistent background
-    canvas instead of keeping them all in the live decal array) is still open if decal count ever
-    becomes a real perf concern at the 2000-decal cap.
+    and a local saturation cap so a heavily-fought corridor doesn't grow unboundedly.
+    ~~Pooling-to-static-layer performance optimization~~ — shipped in 1.2.52 (settled-decal
+    offscreen baking). This was a third, independent mention of the same item that never got
+    cross-referenced when it closed — see CHANGELOG.md's 1.2.52 entry for the actual implementation.
   - Dota-style item economy: empty starting inventories shipped this session (item system reworked
     to one universal item + inter-tower drag-and-drop transfer, see below) — still open: on-death
     item drops, and a static Merchant NPC gated behind wave 5.
@@ -824,12 +784,9 @@ Reviewed against a couple of general HTML5 API reference books at the user's req
 what those cover (Canvas API basics, requestAnimationFrame, offscreen-canvas caching) is already
 in use correctly in this codebase. A few gaps and one piece of outdated advice worth flagging:
 
-- **No Page Visibility API usage** — the fixed-timestep loop already has a sane defensive cap
-  (`MAX_TICKS_PER_FRAME = 90`) so a backgrounded tab can't stall the game on one giant catch-up
-  frame, but there's no explicit pause when the tab is hidden — time keeps advancing and the game
-  just does a rapid multi-frame catch-up when the tab regains focus. Worth an intentional decision
-  either way (auto-pause on `visibilitychange`, vs. keeping the current "catch up on return"
-  behavior) rather than leaving it as an implicit side effect of the tick cap.
+- ~~**No Page Visibility API usage.**~~ Same item as the one already shipped in 1.2.55
+  (auto-pause on tab-switch) — this was a second, independent mention from an earlier review pass
+  that never got cross-referenced when the other one closed. See CHANGELOG.md's 1.2.55 entry.
 - **Offline support — outdated book advice worth correcting**: an HTML5-era reference recommends
   the `applicationCache`/manifest-file API for offline support. That API is deprecated and has been
   removed from modern browsers entirely — following it today would ship a feature that silently

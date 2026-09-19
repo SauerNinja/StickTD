@@ -1,5 +1,209 @@
 # Changelog
 
+## [1.2.58] - 2026-09-18 — Two new settings toggles (FPS counter, screen shake); FPS added to debug log
+- **FPS counter toggle** (Video settings, default off) — small top-right readout, color-coded
+  (green ≥50fps, amber ≥30fps, red below), driven by a new smoothed `perfStats.smoothedFps`
+  (exponential moving average, updated once per frame in `loop()` — avoids the jittery readout a
+  raw 1000/frameMs would produce). Separate from the full debug log, for a quick glance during play.
+- **Screen shake toggle** (Video settings, default on) — opt-out for motion sensitivity. Only gates
+  the actual shake (`screenShakeUntil`/`screenShakeMag`) on a BOSS kill; the separate 40ms hit-stop
+  freeze-frame on the same event is a different effect the checkbox doesn't mention, so it stays
+  ungated and still fires either way.
+- **FPS added to the debug log** — new line alongside the existing ms-based frame stats, same
+  `frameMsHistory` data just re-expressed in the more familiar unit (median/p5/p1/min — percentile
+  order flips since higher ms = lower fps). The ms breakdown stays the one actually used for
+  diagnosis; this is for a faster read.
+- Both new toggles persist the same two ways `showZoomControls` already does: immediately via
+  `localStorage` prefs, and also saved/restored with save files (using the more defensive
+  `!== undefined` check pattern `goreMode`/`graphicsQuality` already use, so an older save file
+  predating these fields can't silently clobber a currently-set preference with `false`).
+
+## [1.2.57] - 2026-09-18 — Debug log: session timing, real-world timestamps on worst-case events
+The log previously told you *which wave* the worst frame/wall-gap happened at, but not *when* —
+no way to tell if it happened 5 seconds or 20 minutes before you grabbed the log, or whether the
+session had been running a while when it hit. New `SESSION TIMING` section, right after the
+header: session start time and uptime (`sessionStartRealTime`, captured as early as possible in
+script execution — near the top of the file, not inside BOOT, so it's close to actual page-load
+time), cumulative time spent paused this session (manual pause and auto-pause both count, tracked
+via `totalPausedMs`/`pauseStartedAtReal`), and both the worst frame and worst wall-clock-gap events
+now stamped with a real `Date.now()` at the moment they happened — reported as both an absolute
+time and a relative "X ago" (`formatAgo()`), so a spike can actually be correlated against anything
+else going on at the time (a screen recording, a specific action) instead of just "wave 7."
+
+## [1.2.56] - 2026-09-18 — Tower stat-scroll now depth-sorted by its own position, not the tower body's
+Previously flagged as needing "a genuine restructuring of the depth-sort pass, risky to attempt
+without a way to see the result" — became tractable once 1.2.52's depth-sort pooling infrastructure
+existed, since adding a second sorted item per tower is now mechanical rather than a rewrite.
+The unspent-stat scroll (📜) used to draw inside `Tower.draw()` itself, sharing the tower body's
+single `sortY` (`t.y`) even though the scroll visually sits well above the tower's head — so a
+scroll could render in front of, or behind, a neighboring tower incorrectly, based on the wrong
+tower's screen position. Extracted into `drawTowerScroll()` with a shared `towerScrollY()` helper
+(single source of truth for the position, used both to decide sort order and to actually draw it,
+so the two can never drift apart) and pushed as its own depth-sort item at its own `scrollY`.
+Visual content, styling, and pulse animation are pixel-identical to before — only which pass
+draws it, and when relative to neighbors, changed. Same visibility-culling behavior preserved
+(the scroll is only pushed when its tower already passed the visibility check, exactly as before).
+
+## [1.2.55] - 2026-09-18 — Auto-pause on tab-switch (explicit decision); gore/graphics decoupling confirmed as final
+- **Auto-pause on tab-switch/app-background** — `visibilitychange` listener now pauses the game
+  the moment the tab is hidden, reusing the exact same pause path the button itself uses. Does not
+  auto-resume on return — resuming still needs the player's own tap, same as any manual pause.
+  Explicit decision, not the previous implicit default.
+- **Gore density vs. graphics quality — confirmed final, not changing.** Direct answer: gore stays
+  fully decoupled from graphics quality (current behavior kept as-is), and it's confirmed not the
+  lag source — closing this out as a settled decision rather than a still-open backlog item.
+
+## [1.2.54] - 2026-09-18 — Mage death-blow void-pattern gap closed; save schemaVersion added
+- **Void-pattern check extended to Mage's death-time streak loop.** BACKLOG.md described this as
+  "extending to Archer/Blade/Blunt/Pierce's own streak/satellite loops," but grepping for the
+  actual streak-loop pattern found only two sites, both belonging to Mage — no equivalent loop
+  exists for any other archetype. The real gap: Mage's hit-time streak loop already had the
+  void-pattern check (an absence of blood where another body physically blocked the spray,
+  BPA ch.9-10), its death-time streak loop (same physical phenomenon, same event, just on a kill)
+  didn't. Now it does, mirroring the hit-time implementation exactly.
+- **`schemaVersion` added to save files**, separate from `gameVersion` — answers "which serialized
+  structure is this" independently from "which release produced this save," per BACKLOG.md's own
+  reasoning. Starts at 1; nothing migrates yet, this just gives a future save-format change
+  somewhere to record that it happened without overloading `gameVersion`'s existing meaning.
+
+## [1.2.53] - 2026-09-18 — Two design-principles items shipped; three deliberately held back
+From design-principles.md's two proposed-but-not-implemented items:
+- **Continuance cue on Next Wave** — the trailing "▶" in the button label now nudges rightward in
+  a slow 1.1s loop (`continuanceNudge` keyframe) whenever the button is actionable, a literal
+  directional cue leading the eye into the button per the Continuance placement principle — not a
+  generic glow, which the palette already uses elsewhere (HUD gold/lives) for Isolation+Contrast.
+  Disabled automatically via `:disabled .continuanceArrow{animation:none}` when the button itself
+  is disabled, so it never nudges toward something unclickable.
+- **Orange reserved for a genuinely rare signal** — `LUCKY_BRANCH` (the one universal item that's
+  an actual rare drop, ~4% roll on scenery clear, vs. every other ground item being a guaranteed
+  pickup) now renders its ring/glow in `#ff9800` instead of the same green (`#8bc34a`) every other
+  ground item shares. Orange was confirmed unclaimed elsewhere in the palette before using it here.
+
+**Deliberately not attempted in this pass, holding back rather than guessing:**
+- **Gore-density/graphics-quality coupling** — BACKLOG.md flags this as a real either/or content
+  decision (keep gore fully independent of graphics quality, current behavior, vs. let Low graphics
+  also thin gore density while keeping the on/off toggle itself independent), not something to
+  silently pick one side of.
+- **Static scenery/decal caching (the bigger, chunked version)** — BACKLOG.md's own note on this
+  item explicitly weighs it as real visual-regression risk if rushed, and the narrower decal-baking
+  version already shipped in 1.2.52 is what actually resolved the reported panning lag — doing a
+  second, larger caching change now risks the thing that's currently confirmed working, for
+  marginal additional gain.
+- **Audio passes C through I** — the reference material's own master prompt explicitly says "DO NOT
+  IMPLEMENT EVERYTHING IN ONE PATCH" and lays out an 11-pass order for exactly this reason; batching
+  7 large, call-site-touching passes into one unverified patch is the specific thing that
+  instruction exists to prevent.
+
+## [1.2.52] - 2026-09-18 — All five open performance-backlog items: settled-decal baking, activeBarricades tracking, depth-sort pooling, BOSS spawn exception, spatial-hash re-audit
+Direct request to work through everything open in BACKLOG.md's performance section.
+
+- **Settled-decal offscreen baking** — the big one, and the actual fix for the per-frame decal
+  redraw cost that 1.2.51's color-caching only partially addressed. New `settledDecalCanvas`
+  (world-space/DPR-scaled identically to the existing `mapCanvas`) plus `rebuildSettledDecalCanvas()`,
+  which bakes every currently-eligible decal onto it in one pass. Eligible = the plain pool-blob
+  decal kind only (`d.blobs !== undefined`, same test `pushDecal()` already uses — isPeel/isLine/
+  isDripTrail/isPuncture/isDrop/isEmojiDrop/isWorm stay live-drawn, deliberately, rather than
+  reasoning about each of their distinct animations blind) AND `lifeT` 0.45–0.80. Lower bound
+  confirmed past 0.4167, where the skeletonization ring's own formula (see `drawOneDecal`) finishes
+  ramping to fully formed — nothing mid-animation gets frozen. Upper bound leaves a 90-real-second
+  buffer (`DECAL_LIFESPAN` is 30min) before fade-out actually starts at 0.85, against this rebuild's
+  own 500ms cadence — a decal is always safely re-classified as live again long before it would
+  ever need to visibly fade while wrongly marked baked. Runs on the same throttled cadence the
+  existing decal-expiry sweep already used (`DECAL_EXPIRY_SWEEP_INTERVAL`, 500ms) — full clear-and-
+  rebake each time rather than incremental, which is what makes removal (fade-approach or actual
+  expiry) correct without ever needing to erase one shape from a canvas. Blitted in `render()` right
+  after the map (one `drawImage` call); live `drawDecals()` loop now skips any `d.baked === true`
+  decal entirely. Two of the three risks BACKLOG.md flagged before attempting turned out to be
+  non-issues on inspection: `WORLD_MAX_W`/`WORLD_MAX_H` are a genuinely fixed extent (confirmed by
+  reading their own declaration comment) — `rebakeMap()` only re-runs on a DPR change, never on map
+  "expansion" (that concern in the backlog was based on a wrong assumption) — so no ring-expansion
+  survival logic was needed at all; DPR-scaling is handled by literally mirroring `mapCanvas`'s own
+  pattern. The real one (marking a decal "done" without freezing an in-progress animation) is what
+  the 0.45–0.80 window with its confirmed margins above addresses.
+- **`activeBarricades` tracking Set** — `findTouchingBarricade()` (runs once per active enemy,
+  every tick) now scans only this Set instead of the full `towerPool`. Populated at the single
+  point every tower's type is actually assigned (`Tower.create()`), covering all 4 creation call
+  sites without touching any of them individually. Removed on both individual-tower deactivation
+  paths (sell, store-as-ground-item) and cleared on both bulk "reset every tower" paths (new game,
+  load game) — all 4 mutation sites enumerated by grep before writing this, not assumed complete.
+- **`drawDepthSortedLayer()` per-frame allocation removed** — was allocating a fresh `items` array
+  plus one fresh wrapper object per visible enemy/tower/scenery/decal/flag, every single frame.
+  Replaced with a growable, reused wrapper-object pool (`depthSortPool`) and a working array whose
+  `.length` is reset to 0 each frame instead of being replaced (`depthSortItems`). Confirmed
+  `Array.prototype.sort()`'s stability guarantee (ES2019+) holds under reused, mutated objects
+  before relying on it, per BACKLOG.md's own stated precondition — not assumed.
+- **BOSS spawn-order exception** — 1.2.51's global small-before-big sort had one flagged, unresolved
+  consequence: a few waves deliberately lead with BOSS so its "periodically spawns GRUNT
+  reinforcements while active" ability has time to matter, but BOSS (largest radius in the roster)
+  was getting pushed to spawn last by the pure global sort instead. Decision made: BOSS entries now
+  keep their originally-authored slot/timing untouched; every other type in the wave still gets the
+  full global small-to-big sort built around it.
+- **Spatial-hash allocation churn — re-audited, found already fixed.** BACKLOG.md described
+  `buildEnemyHash()`/`queryNearby()` as still allocating fresh objects/arrays on every call during
+  real combat. Reading both directly: `buildEnemyHash()` already reuses `enemyHashBucketPool` per
+  bucket, and `queryNearby()` already reuses a single `queryNearbyScratch` array across every call
+  (a call-site comment there confirms this was already deliberate). This backlog entry was stale —
+  already shipped in an earlier pass that didn't get the backlog item removed. No code change made;
+  removed from BACKLOG.md below instead.
+
+## [1.2.51] - 2026-09-18 — Render-phase telemetry, wall-clock frame-gap tracking, global wave-size sort, decal color caching
+`GAME_VERSION` catches up here too — it had been left at `1.2.43` for several versions despite
+1.2.44–1.2.50's changes already being live in the code; this entry covers everything actually
+shipped since then plus what's new below.
+
+Four changes, all aimed at diagnosing/reducing the reported "insanely laggy when wave starts and
+panning around" issue:
+- **`RENDER() PHASE BREAKDOWN`** added to the debug log, mirroring the existing `UPDATE()` one —
+  `render()` previously reported one opaque `renderMs` total with no way to tell whether map blit,
+  `drawDecals()`, `drawDepthSortedLayer()`, minions/projectiles, particles/text, or the post-camera
+  overlays actually dominate a frame. Now broken into 7 named phases, each with current-frame ms,
+  % of frame, and session-worst-ever, same pattern as the update-phase breakdown.
+- **Wall-clock frame-gap tracking** (`perfStats.wallGapMsHistory`/`worstWallGapMs`) — the existing
+  `frameMs` only ever timed the `loop()` callback's own JS execution, which is blind to the browser
+  itself delaying the next `requestAnimationFrame` callback (touch/compositor contention during a
+  pan or pinch gesture is the prime suspect for exactly this bug report). Captured as
+  `rawWallGapMs` before the existing 100ms clamp, recorded into its own rolling history + session
+  worst, reported in the debug log with an explicit note: healthy `Frame/Update/Render ms` next to
+  a high wall-clock gap means the browser is the bottleneck, not this codebase.
+- **Wave spawn-order sort is now global, not windowed** — 1.2.49 sorted only within local 6-entry
+  windows (to preserve a wave's authored macro shape, e.g. a slow heavy climax unit at the end).
+  Direct repeated request: the smallest-type-leads guarantee should hold across the ENTIRE wave,
+  not just locally. Windowing removed; the whole `spawnQueue`'s types are now sorted as one by
+  radius ascending (speed descending as the tiebreak, unchanged). Only `.type` per slot changes —
+  the already-computed `.delay` timing slots, `MIN_GLOBAL_SPAWN_GAP`, and countdown offset are
+  untouched. **Known flagged consequence, not yet resolved either way:** a few waves intentionally
+  lead with `BOSS` (its own ability periodically spawns GRUNT reinforcements while it's active) —
+  BOSS has the largest radius in the roster, so it now spawns LAST in those waves instead of
+  leading, cutting into how long it's alive to use that mechanic. Waiting on a call: carve BOSS out
+  as an explicit exception, or accept last-is-fine.
+- **Settled bloodstain color caching** — `drawOneDecal()`'s color-aging math (several `Math.round`
+  calls + a fresh `rgba(...)` string build) is mathematically constant for the entire 0.40–0.85
+  `lifeT` window (transition-in finishes at 0.40, fade-out doesn't start until 0.85), but was being
+  recomputed every frame for every visible decal regardless. Now cached on the decal (`settledColor`
+  /`settledAlpha`) the first time it's computed in that window and reused until fade-out begins —
+  bit-identical output, zero visual change. Narrow fix: removes the color-math waste only, not the
+  actual per-decal canvas draw calls (`arc`/`ellipse` fills) themselves — see BACKLOG.md's
+  settled-decal offscreen-baking item for the larger, still-deferred win that would address those.
+
+## [1.2.50] - 2026-09-17 — Real bug fix: "-NaN" floating text / permanently corrupted Barricade HP
+Not a performance issue — confirmed from a live screenshot showing "-NaN" floating text and a
+Barricade whose HP could no longer be reduced. Root cause, fully traced: `Tower.takeDamage()`
+computes `amount * (1-this.shieldPct)`. `shieldPct` is set by `recomputeStats()`, which `create()`
+does call internally for every tower — but `recomputeStats()` has an early-return specifically for
+`BARRICADE` (`if(this.type==='BARRICADE'){ this.maxHp=10; return; }`, added for an earlier, separate
+bug) that returns *before* the line that sets `shieldPct`. So a Barricade's `shieldPct` stays
+`undefined` for its entire life — nothing ever gets a second chance to set it, since Barricades
+have no stat points or promotions to trigger a later recompute either. The first breakaway/escaped
+enemy to attack a Barricade directly (`takeDamage()` — a different path than the normal barricade-
+blocking queue mechanic, which doesn't use `shieldPct` at all) computed `amount*(1-undefined)` =
+NaN, which then permanently set `hp = Math.max(0, hp-NaN)` = NaN — visible as "-NaN" floating text,
+and an HP that can never reach 0 again (`NaN <= 0` is always false). Fixed at the source: `create()`
+now seeds `this.shieldPct = this.baseShieldPct` directly, before `recomputeStats()`'s own
+early-return can ever skip it. Also hardened `takeDamage()` itself with `(this.shieldPct||0)` as
+defense-in-depth, matching a guard the inspect-panel display code already had for the same field —
+so this specific calculation can't corrupt `hp` to NaN again even if a similar gap is reintroduced
+elsewhere later.
+
 ## [1.2.49] - 2026-09-17 — Spawn order: size is now the actual rule (small leads, big follows), not just a tiebreak
 Direct, repeated request: "first the smaller ones go then the bigger ones, need to ensure that."
 Last version only used size as a tiebreak when two types were already close in speed, with speed
