@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.2.64] - 2026-09-18 — CRITICAL FIX: game completely unplayable since 1.2.61, caused by my own earlier change
+This was a real, confirmed regression I introduced in 1.2.61's semantic-HTML change, and it sat
+undetected through six subsequent versions because every check I ran (syntax parsing, headless DOM
+execution, element-id cross-referencing, HTML5-spec parse validation) checks for *errors* — this
+bug produced none. It's a silent structural mistake, not a crash.
+
+**The bug:** in 1.2.61 I converted `<div id="inspect-panel">` to `<aside>`, but closed it with
+`</aside>` at the wrong location — I picked the closing tag right before `#shop-modal` (visually
+near the right spot) instead of the one immediately after `#inspect-panel`'s own actual last child
+(`#auraTooltip`). Because HTML doesn't require strict tag-name matching for implicit closure, this
+didn't produce a parse error — it silently nested `#tower-modal` AND `#start-screen` *inside* the
+still-open `<aside id="inspect-panel">`, which itself sits inside `#tower-modal`, a `display:none`
+element. Net effect: `#start-screen` — the entire title screen, Play button, everything — collapsed
+to zero width and height, permanently invisible, with the attract-mode background still rendering
+normally behind it. No console error, ever, on any of the six intermediate versions.
+
+**How it was actually found:** static analysis (syntax checks, id cross-referencing, parse5
+structural validation) all came back clean, same as they had every time before — they check for
+*errors*, and this had none. What actually caught it was running the real file in headless
+Chromium via Playwright, taking an actual screenshot, and inspecting the live computed
+`getBoundingClientRect()` of `#start-screen` — which reported `{w:0, h:0}` despite `display:flex`
+and `opacity:1`. Walking the real DOM parent chain from there showed `#start-screen`'s actual
+parent was `#tower-modal.hidden`, not `#game-wrapper` as intended.
+
+**The fix:** `</aside>` moved to `#inspect-panel`'s real closing point (right after `#auraTooltip`,
+before the separate `#inspTargetFrame` sibling element); the tag it displaced (`</div>`, closing
+`#tower-modal` itself) restored to its correct spot. Verified with the same real-browser method
+that found it: `#start-screen` now reports `{w:1280, h:720}`, Play button clicks through correctly,
+and the full in-game HUD (Build/Shop/gold/lives/wave counter) renders exactly as intended —
+confirmed visually via screenshot, not assumed from a clean syntax check this time.
+
+**Standing lesson, recorded for future sessions:** syntax validity and "zero parse errors" are not
+sufficient to confirm an HTML structural edit is correct. A tag-swap or reopen/reclose edit needs
+its *closing* location re-verified against the element's actual last child, and ideally confirmed
+against a real rendered DOM (computed layout, not just a parse tree), not just checked for the
+absence of errors.
+
+## [1.2.63] - 2026-09-18 — Fixed: loading a save left the game with no HUD bar
+Found while diagnosing a "stuck, blank top bar, no Build/Shop/gold visible" report. Traced every
+place `gameState` transitions to `'PLAYING'`: the Play button's own handler reveals `hud-top`
+(`style.display='flex'` + `fitHudTopToOneLine(true)` + `positionZoomControls()`) right alongside
+hiding the start screen — but `restoreGameState()` (the load-save-file path) only hid the start
+screen and never revealed `hud-top` at all. Confirmed genuinely unrelated to the recent `<header>`/
+`<aside>` semantic-HTML change (checked directly: no tag-name-dependent CSS or JS anywhere touches
+either element) — a real, pre-existing gap in the load-save path specifically, reproducible any time
+a save file is loaded rather than starting fresh. Fixed by mirroring the Play button's exact reveal
+sequence inside `restoreGameState()`. The other two `gameState = 'PLAYING'` transitions (pause/resume,
+restart-after-game-over) were checked too and don't need the same fix — in both cases `hud-top` was
+already visible the whole time, never hidden in the first place.
+
 ## [1.2.62] - 2026-09-18 — Axe throws now visually arc
 Previously flagged as entangled with the pre-roll hit/miss timing system, resolved safely: the
 thrown axe's real position (`this.x`/`this.y`) is still exactly the same constant-velocity straight

@@ -668,7 +668,7 @@
           <span id="auraTooltipText"></span>
         </div>
       </div>
-    </div>
+    </aside>
 
     <div id="inspTargetFrame">
       <div id="targetPortraitFrame"><span id="targetPortraitFace">👹</span></div>
@@ -715,7 +715,7 @@
         <div id="build-resources">🪵 <span id="woodVal">0</span> &nbsp; 🪨 <span id="stoneVal">0</span></div>
         <div id="tower-modal-grid"></div>
       </div>
-    </aside>
+    </div>
 
     <div id="shop-modal" class="hidden">
       <div id="shop-modal-inner">
@@ -935,7 +935,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.62'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.64'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -4594,6 +4594,15 @@ function restoreGameState(state){
   gameState = 'PLAYING';
   blowingLeaves = [];
   document.getElementById('start-screen').classList.add('hidden');
+  // Same hud-top reveal playBtn's own handler does — genuinely missing before. Loading a save
+  // file hid the start screen and entered PLAYING, but hud-top (display:none by default) was
+  // never told to show, leaving a loaded game with full gameplay visible and zero HUD bar. Only
+  // reachable via loadSaveFileText() -> here, never on a fresh Play, which is why this specific
+  // path had never been touched by the fresh-start reveal logic before.
+  const hudTopEl = document.getElementById('hud-top');
+  hudTopEl.style.display = 'flex';
+  fitHudTopToOneLine(true);
+  positionZoomControls();
   updateHUD();
   updateInspectPanel();
 }
