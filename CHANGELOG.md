@@ -1,5 +1,92 @@
 # Changelog
 
+## [1.2.62] - 2026-09-18 — Axe throws now visually arc
+Previously flagged as entangled with the pre-roll hit/miss timing system, resolved safely: the
+thrown axe's real position (`this.x`/`this.y`) is still exactly the same constant-velocity straight
+line it always was — collision detection and `missRevealAt` timing are completely untouched. Only
+the **drawn** sprite now lifts along a sine-shaped arc (`Math.sin(progress * Math.PI) * 14`) that
+peaks at the flight midpoint and returns to 0 at launch/impact, using the same `timeToImpact`
+already computed at launch for lead-prediction. Makes a thrown axe actually look thrown instead of
+flying dead-level like every other projectile, with zero risk to the hit-resolution logic it shares
+code with.
+
+## [1.2.61] - 2026-09-18 — Semantic HTML fix from an actual deep read of 5 more books
+User called out that 4 of the 8 books from the previous round were only TOC-scanned, not really
+read, and asked for a genuine pass. Went back and actually read real chapter content — not just
+tables of contents — in DOM Scripting, HTML & CSS (Duckett), Essential Guide to HTML5 (Meyer), WoW
+Programming, and re-checked Clean Code's Functions chapter against a real AST measurement. Full
+per-book findings in reference-library.md.
+- **Semantic HTML — a real, previously-missed gap, fixed.** Duckett's semantic-markup chapter,
+  checked directly against the live HTML: zero semantic sectioning elements anywhere (`<header>`,
+  `<nav>`, `<section>`, `<aside>`, `<footer>`, `<main>`) — every top-level region was a generic
+  `<div>`, despite an earlier session's own summary claiming this had already been corrected (it
+  hadn't — that summary caught a *false claim* about it, but the actual restructuring never
+  shipped). Verified safe first (no bare `div` CSS selectors, no tag-name-based JS queries anywhere
+  in the file), then converted the two clear cases: `#hud-top` is now a `<header>`, `#inspect-panel`
+  is now an `<aside>`. Deliberately did not touch the shop/settings/tower modals — converting those
+  to the native `<dialog>` element would change real behavior (focus trap, native ESC-to-close,
+  native backdrop) that could collide with the existing custom open/close JS; that's a separate
+  decision, not a safe tag swap.
+- **`drawStickman()` measured at 654 lines** — by far the largest single-function violation of
+  Clean Code's "do one thing, keep it small" principle in the codebase (next largest:
+  `updateInspectPanel()` at 234). Flagged, not touched — a blind decomposition of a 654-line
+  rendering function risks a coordinate-space or parameter mistake with no way to verify the
+  result still renders correctly.
+- **DOM Scripting, Essential Guide to HTML5, WoW Programming, and the rest of HTML5 Games** — all
+  read for real this pass (specific chapters chosen for genuine potential overlap: DOM Scripting's
+  event-binding chapter, Meyer's Mazes chapter against StickTD's own map generation, WoW's OnUpdate
+  performance chapter against the render loop). All confirmed either already fully implemented
+  (unobtrusive JS event binding: 0 inline `onclick`, 94 `addEventListener` calls) or genuinely not
+  applicable to this specific game's architecture — not TOC-skimmed assumptions this time.
+
+## [1.2.60] - 2026-09-18 — 8-book reference audit; magic missile now uses real additive compositing
+User uploaded 8 more technical books, asked for a full audit/scan cross-referenced against the live
+code, findings memorized for future sessions (see reference-library.md). Verified directly against
+each book's actual extracted text, not secondhand — same standard as the earlier Rettig-book pass.
+- **Magic missile orb core: additive ('lighter') compositing instead of shadowBlur.** Confirmed
+  real from Core HTML5 Canvas (David Geary, Ch.2) by direct extraction. Genuine additive color
+  summation against whatever's behind the bolt (true luminescence) instead of shadowBlur's blur
+  approximation — and cheaper to render. Scoped to the existing high-graphics branch only (Low
+  graphics already skips shadowBlur entirely, unaffected); the composite-mode change is entirely
+  inside the function's own existing `save()`/`restore()` pair, so it can't leak into any other draw.
+- **`</script>`-in-string risk, checked and clean.** The HTML parser treats `<script>` as a "raw
+  text element" — it ends at the literal sequence `</script` even inside a JS string or comment.
+  Genuinely relevant given StickTD is one large inline script full of string literals (tooltips,
+  riddles, help text). Grepped the whole file: all 6 occurrences of `</script` are real closing
+  tags, none accidental. Verified clean rather than assumed.
+- **Clean Code's Ch.17 smell-checklist, effectively already covered** — this session's earlier
+  AST-based audit (duplicate object keys, unreachable code, unused declarations via
+  acorn/acorn-walk) is a more rigorous automated version of the same manual checklist. Came back
+  clean both times.
+- Remaining 5 books (DOM Scripting, HTML & CSS/Duckett, Essential Guide to HTML5/Meyer, WoW
+  Programming, HTML5 Games/Seidelin) TOC-scanned and found low-relevance — fundamentals StickTD
+  already exceeds, a different tech stack (Lua/XML addons), or out of scope (WebGL). Not deep-read;
+  see reference-library.md for the specific reasoning on each.
+
+## [1.2.59] - 2026-09-18 — Particles/floating text now viewport-culled (real gap found and fixed)
+User pushed back on dismissing external AI-analysis material wholesale just because parts of it were
+stale/hallucinated — re-verified every concrete, checkable claim against the actual file rather than
+assuming they were all already covered.
+- **Particle and floating-text viewport culling — genuinely missing, now fixed.** Neither
+  `drawParticles()` nor `drawFloatingTexts()` had any camera-bounds check; every active one drew
+  regardless of position, confirmed by the debug log's own prior "NOT viewport-culled currently"
+  note (documented but never actually fixed). New `fxViewBounds()`/`fxVisible()` helpers, same
+  principle as the existing `decalViewBounds()`/`decalVisible()` pair. Stream-type particles check
+  both endpoints (`p.x/p.y` and `p.prevX/p.prevY`) since a stream can span meaningfully far in one
+  frame. `perfStats.visibleParticles`/`totalParticles` and `visibleFloatingTexts`/`totalFloatingTexts`
+  added, matching the existing decal/scenery tracking pattern; debug log's stale note replaced with
+  actual counts.
+- **Re-verified, already fixed (no change needed):** `acquireActive()`'s closure elimination,
+  `reserveVoiceSlot()`'s allocation-free compaction, and collision-mask prewarming at wave start
+  (`startNextWave()` already calls `getEnemyCollisionMask()` for the upcoming wave's types during
+  the countdown) — all three matched external-analysis claims exactly, but all three were already
+  shipped in earlier sessions. Confirms the analysis source was working from a stale view of the
+  code on these, not that real gaps existed.
+- **Swept all 49 `Math.hypot()` call sites** for the same squared-distance pattern already applied
+  to `findTouchingBarricade()` — found nothing else with that profile. Remaining calls either need
+  the real distance value for actual math (direction normalization, speed magnitude, divisors) or
+  are already throttled to a low-frequency timer, not hot per-tick paths.
+
 ## [1.2.58] - 2026-09-18 — Two new settings toggles (FPS counter, screen shake); FPS added to debug log
 - **FPS counter toggle** (Video settings, default off) — small top-right readout, color-coded
   (green ≥50fps, amber ≥30fps, red below), driven by a new smoothed `perfStats.smoothedFps`

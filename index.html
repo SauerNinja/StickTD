@@ -581,7 +581,7 @@
   <div id="canvas-frame">
     <canvas id="gameCanvas"></canvas>
 
-    <div id="hud-top">
+    <header id="hud-top">
       <button id="buildBtn" class="hud-action-btn">🏗️ Build</button>
       <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
@@ -604,9 +604,9 @@
         <button class="hud-btn" id="speedBtn" aria-label="Fast forward">1x</button>
       </div>
       <button id="nextWaveBtn">Next Wave <span class="continuanceArrow">▶</span></button>
-    </div>
+    </header>
 
-    <div id="inspect-panel" class="hidden">
+    <aside id="inspect-panel" class="hidden">
       <div id="inspNameplate">
         <div id="inspPortraitFrame"><span id="inspPortraitFace">🙂</span></div>
         <div id="inspNameplateMid">
@@ -715,7 +715,7 @@
         <div id="build-resources">🪵 <span id="woodVal">0</span> &nbsp; 🪨 <span id="stoneVal">0</span></div>
         <div id="tower-modal-grid"></div>
       </div>
-    </div>
+    </aside>
 
     <div id="shop-modal" class="hidden">
       <div id="shop-modal-inner">
@@ -935,7 +935,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.58'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.62'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -7137,6 +7137,13 @@ class Tower{
     p.angle = angle;
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0;
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this; p.isMagicMissile = false;
+    // Purely visual arc — real position (this.x/this.y) stays exactly the same constant-velocity
+    // straight line it always was, so collision detection and the pre-roll hit/miss timing system
+    // (missRevealAt, computed from this same timeToImpact) are completely untouched. Only the drawn
+    // sprite gets lifted along a sine arc as a function of flight progress, peaking at the midpoint —
+    // makes a thrown axe actually look thrown instead of flying dead-level like every other shot.
+    p.axeSpawnTime = gameTime;
+    p.axeFlightMs = Math.max(200, timeToImpact*1000);
     p.effectType = null; // reset — see fireProjectile()'s identical reset for why this must be unconditional on every fire path
     p.color = '#9aa0a6';
     // Same launch-time pre-roll as fireProjectile() — an axe throw is still a single-target shot
@@ -7710,8 +7717,10 @@ class Projectile{
       return;
     }
     if(this.isAxe){
+      const flightProgress = this.axeFlightMs ? Math.min(1, (gameTime - this.axeSpawnTime) / this.axeFlightMs) : 0;
+      const arcLift = Math.sin(flightProgress * Math.PI) * 14; // peaks mid-flight, back to 0 at launch/impact
       ctx.save();
-      ctx.translate(this.x, this.y);
+      ctx.translate(this.x, this.y - arcLift);
       ctx.rotate(this.spinAngle || 0);
       ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(6,0); ctx.stroke(); // handle
@@ -7746,10 +7755,19 @@ class Projectile{
       ctx.strokeStyle = trailGrad; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, 0); ctx.stroke();
       // glowing orb core
-      ctx.shadowColor = this.color || '#7dd3fc'; ctx.shadowBlur = 10;
+      // Additive ('lighter') compositing for the orb core instead of shadowBlur — genuine color
+      // summation against whatever's behind it (real luminescence), and cheaper than shadowBlur's
+      // blur pass. Confirmed real technique, verified directly against Geary's Core HTML5 Canvas
+      // (Ch.2, composite modes) rather than taken on an external summary's word. Safe here since
+      // it's entirely inside this function's own save()/restore() pair (line 7726/7757) — never
+      // leaks into any other draw call.
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = this.color || '#7dd3fc';
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill(); // soft outer bloom, additive
+      ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill();
-      ctx.shadowBlur = 0;
       ctx.fillStyle = this.color || '#7dd3fc';
       ctx.globalAlpha = 0.55;
       }
@@ -8569,6 +8587,20 @@ function decalViewBounds(){
   };
 }
 function decalVisible(d, b){ return d.x >= b.left && d.x <= b.right && d.y >= b.top && d.y <= b.bottom; }
+// Same viewport-culling principle, for particles and floating text — previously neither pass culled
+// at all (every active one drew regardless of camera position, confirmed by the debug log's own
+// "NOT viewport-culled currently" note on this exact gap). Margin is wider than decals' since
+// floating text jumps/scales up on spawn and particles carry real velocity between frames.
+function fxViewBounds(){
+  const cullMargin = TILE_SIZE * 2;
+  return {
+    left: (0 - camera.x) / camera.zoom - cullMargin,
+    right: (CANVAS_W - camera.x) / camera.zoom + cullMargin,
+    top: (0 - camera.y) / camera.zoom - cullMargin,
+    bottom: (CANVAS_H - camera.y) / camera.zoom + cullMargin
+  };
+}
+function fxVisible(x, y, b){ return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }
 function drawOneDecal(ctx, d){
     const age = realTime - d.spawnTime;
     const lifespan = d.lifespan || DECAL_LIFESPAN;
@@ -8898,8 +8930,14 @@ function spawnGibs(x, y, count){
   }
 }
 function drawParticles(ctx){
+  const fxBounds = fxViewBounds();
+  perfStats.totalParticles = 0;
+  perfStats.visibleParticles = 0;
   for(const p of particles){
     if(!p.active) continue;
+    perfStats.totalParticles++;
+    if(!fxVisible(p.x, p.y, fxBounds) && !(p.isStream && fxVisible(p.prevX, p.prevY, fxBounds))) continue;
+    perfStats.visibleParticles++;
     ctx.globalAlpha = Math.max(0, p.life/p.maxLife);
     ctx.fillStyle = p.color;
     if(p.isGib){
@@ -9004,8 +9042,14 @@ function updateFloatingTexts(dt){
 }
 function drawFloatingTexts(ctx){
   ctx.textAlign = 'center';
+  const fxBounds = fxViewBounds();
+  perfStats.totalFloatingTexts = 0;
+  perfStats.visibleFloatingTexts = 0;
   for(const t of floatingTexts){
     if(!t.active) continue;
+    perfStats.totalFloatingTexts++;
+    if(!fxVisible(t.x, t.y, fxBounds)) continue;
+    perfStats.visibleFloatingTexts++;
     if(t.isIcon){
       const p = 1 - t.life/t.maxLife; // 0 (just spawned) -> 1 (about to expire)
       // Jump: a quick overshoot-bounce scale-up in the first 20% of the animation, settling to 1x.
@@ -10949,6 +10993,7 @@ function drawBossCompass(ctx){
 // Inspect via the browser console: `perfStats`.
 const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
   visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0,
+  visibleParticles: 0, totalParticles: 0, visibleFloatingTexts: 0, totalFloatingTexts: 0,
   // Rolling-window percentile tracking — an average frame time can look perfectly healthy while
   // the game still stutters intermittently; a fixed-size window (2s at 60fps) of raw samples lets
   // the debug log report median/p95/p99/max instead of just "the last frame" or a running average
@@ -12542,8 +12587,9 @@ function generateDebugLog(){
   s += 'Decals visible/total: ' + perfStats.visibleDecals + '/' + perfStats.totalDecals + '\n';
   s += 'Enemies visible/active: ' + perfStats.visibleEnemies + '/' + perfStats.totalActiveEnemies + '\n';
   s += 'Towers visible/active: ' + perfStats.visibleTowers + '/' + perfStats.totalActiveTowers + '\n';
-  s += 'Particles/projectiles: NOT viewport-culled currently (every active one draws regardless ' +
-    'of camera position) — see Entity Pools below for active counts.\n\n';
+  s += 'Particles visible/total: ' + perfStats.visibleParticles + '/' + perfStats.totalParticles + '\n';
+  s += 'Floating texts visible/total: ' + perfStats.visibleFloatingTexts + '/' + perfStats.totalFloatingTexts +
+    '  (projectiles remain uncounted here — see Entity Pools below for their active count)\n\n';
 
   s += 'UPDATE() PHASE BREAKDOWN (ms spent this frame, across all ticks that ran)\n';
   s += '---------------------------------------------------------------------------\n';
