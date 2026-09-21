@@ -658,6 +658,7 @@
       <div id="inspFullOptions" class="hidden">
         <div class="insp-opt-row" id="inspUpgradeSellRow">
           <button id="inspUpgradeBtn">🆙 Promote <span id="inspUpgradeCost"></span></button>
+          <button id="inspRepairBtn" class="hidden">🔨 Repair <span id="inspRepairCost"></span></button>
           <span id="inspDpsBetween"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span></span>
           <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
@@ -980,7 +981,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.74'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.76'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1544,6 +1545,17 @@ function unlockTowerTypeBuild(type){
 // (deliberately simple); more can be added to this list later without touching anything else.
 const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, armor:1, cost:70, woodCost:15 };
 const BARRICADE_ITEM = { id:'BARRICADE_ITEM', name:'Barricade', icon:'🚧', cost:0, woodCost:600, stoneCost:300, isBarricade:true };
+// Repair cost scales with missing HP fraction, at a 50% discount against BARRICADE_ITEM's own
+// full-build cost — repairing an existing barricade should clearly beat scrapping (sell for a
+// fraction of value) and rebuilding fresh from scratch, not just be "another way to spend
+// resources." Direct request: repair to full HP using wood/stone.
+function barricadeRepairCost(t){
+  const missingFrac = 1 - (t.hp / t.maxHp);
+  return {
+    wood: Math.ceil(BARRICADE_ITEM.woodCost * missingFrac * 0.5),
+    stone: Math.ceil(BARRICADE_ITEM.stoneCost * missingFrac * 0.5)
+  };
+}
 const UNIVERSAL_ITEMS = [ LUCKY_BRANCH, BARRICADE_ITEM ];
 
 const PASSIVE_UPGRADES = [
@@ -2582,6 +2594,10 @@ const barricadeClaimedSlotsScratch = new Set();
 // physical spacing instead of getting a queue slot. Module-level (not local to the function) so
 // the debug log can report it alongside the live queue length, one source of truth for both.
 const MAX_QUEUE_DEPTH = 40;
+// Minimum real time between a barricade losing HP points — bumped from a hardcoded 2000 to 5000
+// per direct request: the starting barricade was breaking too fast for a brand-new player who
+// hasn't built any towers yet. Applies to every barricade, not just the auto-placed starting one.
+const BARRICADE_HIT_INTERVAL_MS = 5000;
 function updateBarricadesAndPileup(){
   perfStats.barricadeSnapCount = 0;
   const active = barricadeActiveScratch;
@@ -2614,7 +2630,7 @@ function updateBarricadesAndPileup(){
     if(attackerByBarricade.get(barricade) !== e) continue; // not the attacker — leave pileBlocked false here so the queue-catchment pass below finds this enemy and gives it a real, non-overlapping slot behind the attacker, instead of marking it blocked in-place and leaving it physically overlapping the attacker forever (the catchment pass skips anything already pileBlocked, assuming it already has a valid resting position)
     e.pileBlocked = true;
     e.touchingBarricade = true;
-    if(gameTime - barricade.lastBarricadeHitAt >= 2000){
+    if(gameTime - barricade.lastBarricadeHitAt >= BARRICADE_HIT_INTERVAL_MS){
       barricade.lastBarricadeHitAt = gameTime;
       barricade.hp = Math.max(0, barricade.hp - 1);
       spawnFloatingText(barricade.x, barricade.y - 24, '-1', '#e63946');
@@ -6370,7 +6386,7 @@ class Tower{
     this.baseMaxHp = this.maxHp; // snapshot — STR's HP bonus and the Legendary bonus both multiply on top of this, not on top of each other
     this.legendaryHpMult = 1;
     this.goldMult = 1; // 🍀 Luck — recalculated properly in recomputeStats() once DEX is known
-    this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the 2s rate limit
+    this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the BARRICADE_HIT_INTERVAL_MS rate limit
     this.lastFireTime = -99999; // used for brief post-fire flourish animations (e.g. Mage's wand cast)
     this.killCount = 0;      // total kills — each one grants a small amount of EXP toward the tower's level
     this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
@@ -11165,10 +11181,14 @@ function perfPercentile(arr, p){
 // travel to their target — rather than static idle poses. The dark vignette overlay is
 // #start-screen's own CSS and untouched here, only the content moving behind it changes.
 const ATTRACT_FORMATION = [
-  { xf: 0.50, yf: 0.32 }, // top-center archer
-  { xf: 0.28, yf: 0.62 }, // lower-left archer
-  { xf: 0.72, yf: 0.62 }  // lower-right archer
+  { xf: 0.50, yf: 0.32, element: 'FIRE' },     // top-center archer
+  { xf: 0.28, yf: 0.62, element: 'ICE' },      // lower-left archer
+  { xf: 0.72, yf: 0.62, element: 'ELECTRIC' }  // lower-right archer
 ];
+// Cosmetic-only color/glow per element, for the attract-mode archers below — matches the real
+// game's own attunement color language (FIRE/ICE/ELECTRIC) without touching the actual attunement
+// system or drawStickman() itself, which stays completely untouched.
+const ATTRACT_ELEMENT_COLOR = { FIRE: '#ff6b35', ICE: '#7dd3fc', ELECTRIC: '#f1c40f' };
 // Broad pool of ordinary enemy types for the attract mode's random mix — excludes BOSS (its huge
 // radius reads oddly at this decorative scale) and TROLL (has no independent wave presence, only
 // appears via a special mechanic elsewhere), everything else is fair game.
@@ -11179,9 +11199,9 @@ const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','TANK','RUNNER','FIRE','ICE','SPLITT
 // action, a short aftermath beat before the next loop. Total loop length ~19s, inside the
 // requested 15-25s window.
 const ATTRACT_PHASES = [
-  { name: 'CALM',      start: 0,     end: 3000,  spawnEvery: 1400, maxAlive: 2, enemySpeedMult: 0.75 },
-  { name: 'ACTION',    start: 3000,  end: 9500,  spawnEvery: 700,  maxAlive: 5, enemySpeedMult: 1.0  },
-  { name: 'INTENSE',   start: 9500,  end: 15000, spawnEvery: 380,  maxAlive: 9, enemySpeedMult: 1.25 },
+  { name: 'CALM',      start: 0,     end: 3000,  spawnEvery: 1400, maxAlive: 3, enemySpeedMult: 0.75 },
+  { name: 'ACTION',    start: 3000,  end: 9500,  spawnEvery: 650,  maxAlive: 7, enemySpeedMult: 1.0  },
+  { name: 'INTENSE',   start: 9500,  end: 15000, spawnEvery: 340,  maxAlive: 12, enemySpeedMult: 1.25 },
   { name: 'AFTERMATH', start: 15000, end: 18000, spawnEvery: Infinity, maxAlive: 0, enemySpeedMult: 1.0 },
   { name: 'FADE',      start: 18000, end: 19000, spawnEvery: Infinity, maxAlive: 0, enemySpeedMult: 1.0 }
 ];
@@ -11356,29 +11376,40 @@ function renderAttractMode(ctx, now){
   ctx.restore();
   ctx.globalAlpha = fadeT;
 
-  // Tower attack logic — each Archer periodically finds the nearest live enemy and goes through a
-  // real draw/fire cycle, spawning a travelling projectile that lands on arrival, rather than a
-  // frozen idle pose.
+  // Tower attack logic — each Archer periodically finds a live enemy and goes through a real
+  // draw/fire cycle, spawning a travelling projectile that lands on arrival, rather than a frozen
+  // idle pose.
   const liveEnemies = st.enemies.filter(e => !e.dead);
+  // Enemies already claimed by a tower that's mid-attack (phase !== 'idle') this frame — direct
+  // request: archers were all independently picking "nearest," which meant they frequently piled
+  // onto the same enemy while others walked through unchallenged. Preferring untargeted enemies
+  // spreads shots across more of the field; only falls back to overlap when every eligible enemy
+  // is already claimed (fewer live targets than towers).
+  const alreadyTargeted = new Set();
+  for(const ot of st.towers) if(ot.phase !== 'idle' && ot.targetIdx >= 0) alreadyTargeted.add(ot.targetIdx);
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
     if(t.phase === 'idle' && now >= t.nextAttackAt && liveEnemies.length){
       let bestIdx = -1, bestD = Infinity;
+      let bestIdxAny = -1, bestDAny = Infinity; // fallback candidate, including already-targeted enemies
       for(let i=0;i<st.enemies.length;i++){
         if(st.enemies[i].dead) continue;
         if(st.enemies[i].t < 0.45) continue; // not close enough to engage yet — towers only fire at enemies already well into their approach, so the ~720ms draw+projectile delay lands the kill visibly near the formation instead of off-screen early in the walk
         const p = attractEnemyScreenPos(st.enemies[i], st.enemies[i].t);
         const d = Math.hypot(p.xf*CANVAS_W - tx, p.yf*CANVAS_H - ty);
-        if(d < bestD){ bestD = d; bestIdx = i; }
+        if(d < bestDAny){ bestDAny = d; bestIdxAny = i; }
+        if(!alreadyTargeted.has(i) && d < bestD){ bestD = d; bestIdx = i; }
       }
-      if(bestIdx >= 0){
-        t.targetIdx = bestIdx; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480;
+      const chosenIdx = bestIdx >= 0 ? bestIdx : bestIdxAny; // prefer an untargeted enemy; only overlap if none is available
+      if(chosenIdx >= 0){
+        t.targetIdx = chosenIdx; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480;
+        alreadyTargeted.add(chosenIdx); // claimed for the rest of this same targeting pass too, so a later tower in this same loop doesn't also pick it
       }
     }
     if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
       const target = st.enemies[t.targetIdx];
       if(target && !target.dead){
-        st.projectiles.push({ fromX: tx, fromY: ty, targetIdx: t.targetIdx, startTime: now, duration: 240 });
+        st.projectiles.push({ fromX: tx, fromY: ty, targetIdx: t.targetIdx, startTime: now, duration: 240, element: t.element });
       }
       t.phase = 'idle';
       t.nextAttackAt = now + 700 + Math.random()*500;
@@ -11393,6 +11424,11 @@ function renderAttractMode(ctx, now){
         target.flashUntil = now + 150;
         target.dead = true;
         target.burstScale = 0.75 + Math.random()*0.9; // variance so bursts don't all look identical — some kills read as a bigger, more dramatic hit
+        // Elemental proc — "sometimes," not every hit, per direct request. 45% chance the burst
+        // shows the source tower's element instead of the plain gold spark, insinuating fire/ice/
+        // electric without a real status-effect system backing it (this is the menu screen, not
+        // live gameplay — purely a visual flourish matching the tower's own color-tint above).
+        target.procElement = (p.element && Math.random() < 0.45) ? p.element : null;
         st.killCount++;
       }
       st.projectiles.splice(i,1);
@@ -11419,17 +11455,55 @@ function renderAttractMode(ctx, now){
       const burstR = (8 + flashProgress * 24) * scale;
       const burstAlpha = 1 - flashProgress;
       const sparkCount = scale > 1.3 ? 10 : 7; // a bigger hit gets a few extra spark lines, reads as genuinely more dramatic rather than just scaled up
+      // Elemental proc — swaps color AND shape per element, not just a recolor, so fire/ice/
+      // electric actually read as distinct effects. No proc (procElement null/undefined) keeps
+      // the original plain gold spark burst exactly as before.
+      const burstColor = e.procElement ? ATTRACT_ELEMENT_COLOR[e.procElement] : '#f1c40f';
       ctx.save();
       ctx.globalAlpha = burstAlpha;
       ctx.fillStyle = 'rgba(255,255,255,0.8)';
       ctx.beginPath(); ctx.arc(ex, ey, (6 + flashProgress*4)*scale, 0, Math.PI*2); ctx.fill(); // bright core, shrinks slightly as it fades
-      ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2.5*Math.min(scale, 1.15);
+      ctx.strokeStyle = burstColor; ctx.fillStyle = burstColor; ctx.lineWidth = 2.5*Math.min(scale, 1.15);
       for(let s=0; s<sparkCount; s++){
         const ang = (s/sparkCount)*Math.PI*2 + e.spawnedAt*0.001; // per-enemy fixed rotation offset so bursts don't all look identical
-        ctx.beginPath();
-        ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
-        ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
-        ctx.stroke();
+        if(e.procElement === 'ELECTRIC'){
+          // Jagged zigzag instead of a straight line — a lightning-bolt shape, not just a yellow spark.
+          const midAng = ang + (Math.random()-0.5)*0.5;
+          ctx.beginPath();
+          ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
+          ctx.lineTo(ex + Math.cos(midAng)*burstR*0.78, ey + Math.sin(midAng)*burstR*0.78);
+          ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
+          ctx.stroke();
+        } else if(e.procElement === 'ICE'){
+          // Small diamond shard at the tip of each radiating line instead of a bare line end —
+          // reads as ice crystals scattering, not a generic spark.
+          ctx.beginPath();
+          ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
+          ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
+          ctx.stroke();
+          const shardX = ex + Math.cos(ang)*burstR, shardY = ey + Math.sin(ang)*burstR;
+          const shardSize = 3.5*scale;
+          ctx.beginPath();
+          ctx.moveTo(shardX, shardY-shardSize); ctx.lineTo(shardX+shardSize*0.6, shardY);
+          ctx.lineTo(shardX, shardY+shardSize); ctx.lineTo(shardX-shardSize*0.6, shardY);
+          ctx.closePath(); ctx.fill();
+        } else if(e.procElement === 'FIRE'){
+          // Slightly curved lick instead of a dead-straight line — reads as a flame tongue, not
+          // a ray. Quadratic curve bowed perpendicular to the radial direction.
+          const perpAng = ang + Math.PI/2;
+          const bow = burstR * 0.18;
+          const cx2 = ex + Math.cos(ang)*burstR*0.75 + Math.cos(perpAng)*bow;
+          const cy2 = ey + Math.sin(ang)*burstR*0.75 + Math.sin(perpAng)*bow;
+          ctx.beginPath();
+          ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
+          ctx.quadraticCurveTo(cx2, cy2, ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
+          ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
@@ -11463,6 +11537,20 @@ function renderAttractMode(ctx, now){
     }
     const extraAtk = { hasTarget: !!target };
     if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
+    // Element-tinted body — one archer each in fire/ice/electric colors, per direct request.
+    // Reuses drawStickman()'s existing skinMain/skinShade override params (already supported for
+    // other purposes elsewhere in the real game) rather than touching drawStickman() itself at
+    // all. Light/dark pairs picked to read clearly as the element while still looking like a body,
+    // not a flat color block.
+    const elementSkins = {
+      FIRE:     { skinMain: '#ff9466', skinShade: '#cc4a1f' },
+      ICE:      { skinMain: '#bfe8fd', skinShade: '#4fa8d8' },
+      ELECTRIC: { skinMain: '#fde68a', skinShade: '#d4a017' }
+    };
+    if(elementSkins[t.element]){
+      extraAtk.skinMain = elementSkins[t.element].skinMain;
+      extraAtk.skinShade = elementSkins[t.element].skinShade;
+    }
     // Scaled up around each tower's own position (an outer transform, composed with whatever
     // drawStickman() already does internally — its own code is completely untouched) for the
     // "bigger towers, closer camera" look, rather than changing the `level` parameter, which
@@ -13018,6 +13106,14 @@ function updateInspectPanel(){
   document.getElementById('inspStatsRow').classList.toggle('hidden', isBarricade);
   document.getElementById('inspItemsRow').classList.toggle('hidden', isBarricade);
   document.getElementById('inspUpgradeBtn').classList.toggle('hidden', isBarricade);
+  const repairBtn = document.getElementById('inspRepairBtn');
+  const needsRepair = isBarricade && t.hp < t.maxHp;
+  repairBtn.classList.toggle('hidden', !needsRepair);
+  if(needsRepair){
+    const cost = barricadeRepairCost(t);
+    document.getElementById('inspRepairCost').textContent = '(🪵' + cost.wood + ' 🪨' + cost.stone + ')';
+    repairBtn.disabled = wood < cost.wood || stone < cost.stone;
+  }
   document.getElementById('inspDpsBetween').classList.toggle('hidden', isBarricade);
   document.getElementById('inspTargetBtn').classList.toggle('hidden', isBarricade);
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
@@ -13260,6 +13356,17 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
   activeBarricades.delete(selectedTower);
   selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false;
+  updateHUD(); updateInspectPanel();
+});
+document.getElementById('inspRepairBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  if(!selectedTower || selectedTower.type !== 'BARRICADE' || selectedTower.hp >= selectedTower.maxHp) return;
+  const cost = barricadeRepairCost(selectedTower);
+  if(wood < cost.wood || stone < cost.stone) return;
+  wood -= cost.wood; stone -= cost.stone;
+  selectedTower.hp = selectedTower.maxHp;
+  playSound('ui_buy');
+  spawnFloatingText(selectedTower.x, selectedTower.y - 24, 'Repaired!', '#8bc34a');
   updateHUD(); updateInspectPanel();
 });
 document.getElementById('inspHpBarTrack').addEventListener('pointerdown', (e) => {

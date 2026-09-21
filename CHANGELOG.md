@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.2.76] - 2026-09-19 — Barricade damage rate slowed to 5s, repair feature added
+Two direct requests, both verified end-to-end in a real browser (not just code review):
+- **Barricade damage interval: 2s → 5s.** New named constant `BARRICADE_HIT_INTERVAL_MS` replaces
+  the old hardcoded `2000`, applies to every barricade (not just the auto-placed starting one).
+  Verified: after 9 seconds of real combat, the starting barricade lost only 2 HP (was previously
+  taking closer to 4-5 HP in the same window) — first wave no longer tears through it instantly.
+- **Repair barricades with wood/stone, to full HP.** New `🔨 Repair` button in the inspect panel,
+  visible only when a barricade is selected and damaged. Cost scales with missing HP at a 50%
+  discount against `BARRICADE_ITEM`'s own full-build cost (repairing existing structure should
+  clearly beat scrapping and rebuilding from scratch). Verified: a barricade at 3/5 HP correctly
+  showed a cost of 120 wood/60 stone, and clicking it deducted exactly that and restored HP to
+  5/5 — checked the actual before/after resource numbers, not just that the button didn't error.
+- **Bone-decal "phasing" — investigated, not yet fixed, documented honestly.** Directly tested
+  `decalVisible()` (the viewport-culling check) across 200 consecutive polls with a static camera:
+  100% stable, confirmed not the cause. What actually seems to produce this: bones cluster right
+  where enemies queue at barricades, and an enemy walking near a bone naturally crosses its
+  depth-sort Y position — a large enemy passing close to a small bone can legitimately duck behind
+  and reappear in front of it as part of normal (correct) occlusion sorting, which could read as
+  "phasing" in a busy scene. Not fixed this round — didn't want to guess at a fix for a rendering-
+  design tradeoff without confirming that's actually the behavior being seen, versus something
+  more specific (a screenshot or closer description would settle it).
+
+## [1.2.75] - 2026-09-19 — Attract-mode archers now visibly fire/ice/electric, more enemies on screen
+Direct request: one tower each blue (ice), red (fire), yellow (electric), with the elements
+sometimes procing visually, and more enemies since independent targeting lets them mow through
+faster. Found the formation data (`ATTRACT_FORMATION`'s `element` field, `ATTRACT_ELEMENT_COLOR`)
+and the target-exclusivity logic (towers already preferred an untargeted enemy over piling onto
+one) were both already built in an earlier round — but the element data was completely unused
+anywhere, a real gap, not something to re-verify and leave alone.
+- **Element-tinted towers** — each archer's body now tints via `drawStickman()`'s existing
+  `skinMain`/`skinShade` override params (already supported elsewhere, not touched itself):
+  fire = warm orange/red, ice = light/deep blue, electric = pale/deep gold.
+- **Elemental procs, "sometimes" not every hit** — each projectile now carries its source tower's
+  element; on a kill, a 45% roll decides whether the burst shows that element or the original
+  plain gold spark. When it procs, the burst is genuinely shaped differently per element, not just
+  recolored: electric gets jagged zigzag bolts, ice gets small diamond shards at each spark's tip,
+  fire gets curved flame-lick shapes — reusing the existing burst-scale/spark-count system from
+  1.2.74, not a separate effect.
+- **More enemies on screen** — `maxAlive` bumped across all phases (CALM 2→3, ACTION 5→7, INTENSE
+  9→12) and spawn rate tightened slightly, now that towers genuinely spread kills across the field
+  in parallel instead of one shared queue — more enemies reads as more action, not a pile-up.
+Verified across 8 frames in a real browser: zero console errors, all three element tints visibly
+distinct, enemy count and kill counter both confirm the faster, more active pace.
+
 ## [1.2.74] - 2026-09-19 — Attract-mode engagement pass: cinematic drift, kill counter, burst variety
 Follow-up to 1.2.73's visual overhaul — direct request to make the title screen actively hold
 attention and build curiosity, not just look nicer while static.
