@@ -3,6 +3,19 @@
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 
+- **Animated flora growth** — direct request: flora (seedlings especially) should bounce a little
+  and visually grow into a flower over time, rather than sitting static from the moment they spawn.
+  Real scope, not a value tweak: flora is currently baked into the static offscreen map background
+  (deliberately, for performance — see `drawMap()`'s own comment) with zero per-item state beyond
+  position/glyph/size. This needs (1) per-flora growth-stage state (spawn time, current stage,
+  maybe a target glyph to grow into — e.g. 🌱 → 🌷/🌻), (2) moving flora out of the static baked
+  layer into the dynamic per-frame depth-sorted layer so it can actually animate, and (3) a real
+  decision on what "bouncing" should look like (a small idle wobble? only right after spawning?)
+  and which flora types grow into which — not spelled out here on purpose, needs your call before
+  scoping further. Flora's current sparse coverage (9% of buildable tiles) makes moving it to the
+  dynamic layer probably fine performance-wise, but that should be confirmed via the debug log's
+  phase breakdown once actually attempted, not assumed.
+
 ## Performance — deferred from the 1.2.44 verified-fix pass
 
 All four items previously here shipped in 1.2.52 — see CHANGELOG.md for the full detail on each

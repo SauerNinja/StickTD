@@ -1,5 +1,166 @@
 # Changelog
 
+## [1.2.74] - 2026-09-19 — Attract-mode engagement pass: cinematic drift, kill counter, burst variety
+Follow-up to 1.2.73's visual overhaul — direct request to make the title screen actively hold
+attention and build curiosity, not just look nicer while static.
+- **"Ken Burns" camera drift** — a slow, subtle zoom (max ~3.5%) and pan (under 15px) applied to
+  the whole scene, tied to real elapsed time rather than the attract loop's own restart cycle so it
+  doesn't visibly snap back every ~19 seconds. Makes the screen read as alive rather than a locked-
+  off static shot.
+- **Running "defeated" counter** — small HUD-style badge, top-left, ticking up with every kill.
+  Gives the demo a sense of ongoing stakes/action, hinting at the real game's wave-and-kill-driven
+  progression without needing the actual gameplay HUD visible. Technically still inside the same
+  drift transform as the rest of the scene rather than reset to a fixed overlay — documented
+  honestly in the code rather than claiming a screen-space HUD element it isn't; the drift is
+  subtle enough this reads fine in practice.
+- **Burst variety** — each kill now rolls a random size variance (`burstScale`, 0.75–1.65×); bigger
+  hits also get extra spark lines (10 vs. 7), reading as genuinely more dramatic rather than just
+  a bigger circle. Enemies that "die" by silently reaching the formation (never actually shot)
+  correctly fall back to a normal-size burst.
+Verified across 6 frames spanning a full loop cycle (including the natural fade-out/restart) in a
+real browser — zero console errors, all elements composite correctly together including through
+the fade transition.
+
+## [1.2.73] - 2026-09-19 — Attract-mode visual overhaul
+Direct request to make the title screen "as amazing as possible." Five additive visual upgrades,
+all self-contained to `renderAttractMode()` (can't touch real gameplay rendering at all):
+- **Gradient night sky + moon + twinkling stars** — replaces the old flat dark-brown fill.
+  Deterministic per-index star placement (not re-randomized every frame) so they hold still.
+- **Ambient dust motes** — 18 soft, slow-drifting specks looping from bottom to top with a gentle
+  sway, same deterministic-placement approach as the stars, for depth without being distracting.
+- **Real death burst** — replaced the flat static white circle with a proper radiating effect: a
+  shrinking bright core plus 7 gold spark lines radiating outward, growing and fading over the
+  existing 150ms flash window. Progress derived from the already-set `flashUntil` timestamp, no
+  new state needed.
+- **Glowing projectile trail** — arrows now draw a gradient motion-trail back along their own
+  travel path (sampled from a slightly earlier point-in-flight, not stored history) plus a glowing
+  leading point, instead of a flat 2.5px dot.
+- **Vignette** — soft radial darkening toward the edges, drawn last on top of everything, for a
+  framed/cinematic look instead of gameplay filling the screen edge-to-edge.
+Verified across 5 frames over 10+ seconds in a real browser, zero console errors, all elements
+render cleanly together (moon, stars, dust, enemies, towers, projectiles, vignette).
+
+## [1.2.72] - 2026-09-19 — Attract-mode enemies actually bigger this time (relative-size fix)
+Same request repeated a second time verbatim — previous round's checks (walk speed, spawn padding,
+kill-timing gate) were all genuinely already fixed, but missed the real remaining issue: enemies
+were fixed at 46px while towers are separately scaled 1.8x (`ctx.scale(1.8, 1.8)` around each
+tower), so enemies read as small purely by *comparison* to the now-much-bigger towers, not in
+isolation — invisible when checking enemy size alone, which is exactly what the first pass did.
+- Base enemy size bumped 46px → 62px.
+- Added a perspective grow effect — enemies now scale from 65% size at spawn (still near the edge)
+  up to 100% by the time they reach the formation, composed with the existing bob/squash-stretch
+  walk animation rather than replacing it. Reinforces the walking-toward-camera motion throughout
+  the whole approach instead of a fixed size the entire way, matching the same low-angle
+  perspective logic already used for the ground plane.
+- Verified by watching multiple frames over 10 seconds in a real browser (not a single screenshot)
+  before and after, confirming the size actually reads correctly relative to the towers now.
+
+## [1.2.71] - 2026-09-19 — Attract-mode enemies: bigger, slower saunter, actual walk animation, die near the towers
+Direct request: enemies looked too small, moved too wildly/fast, most died off-screen, and there
+was no walking animation at all — just a flat straight-line translation. Traced the actual cause
+before changing anything: enemies spawned off-screen and moved at a fixed speed with zero targeting
+gate, so a tower's shot (which takes ~720ms to draw+travel) could land on an enemy still off-screen
+early in its approach; meanwhile the 32px enemy glyph sat next to towers rendered at 1.8x scale, a
+real size mismatch.
+- **Enemy size**: 32px → 46px, closer to matching the towers' own 1.8x-scaled presence.
+- **Walk speed roughly halved** (a full off-screen-to-formation crossing now takes ~6-7s instead
+  of ~3.3s) — a saunter, not a rush.
+- **Spawn padding tightened** (0.12 → 0.08 screen-fractions off-screen) — less of the walk happens
+  fully invisible before an enemy is on frame.
+- **Towers now only target enemies past 45% of their walk** — combined with the slower speed, this
+  reliably lands the kill visibly near the formation instead of off-screen early on or (for enemies
+  that slip through unengaged) reaching all the way on top of the towers uneventfully.
+- **New walk-bob animation** — since a flat emoji glyph has no leg/skeleton to actually animate,
+  this fakes a walk cycle the standard 2D way: a vertical bounce plus a subtle squash-stretch, both
+  driven by distance walked (not elapsed time), so the "step" rhythm speeds up or slows down
+  together with the enemy's own pace rather than drifting out of sync with it.
+Verified visually across multiple screenshots during actual attract-mode playback, not just
+syntax-checked.
+
+## [1.2.70] - 2026-09-19 — Kill XP bumped 4 → 6, killing hits more influential
+Direct request to make the killing hit itself more influential to tower growth. Continues an
+already-established, explicitly-documented direction rather than introducing a new one — the same
+`upgrade()` function already carries a comment explaining promotion was deliberately nerfed to a
+small, reliable +1 stat "so XP/kills should be the main way a tower grows," this round pushes
+further in that exact direction. A level-0 tower now hits its first level-up (14 XP) in ~2.3 kills
+instead of ~3.5. Killstreak-tier bursts (14 XP) and promotion's own +1 stat are unchanged — the
+request was specifically about the killing hit, not those other sources.
+
+## [1.2.69] - 2026-09-19 — "Press any key to continue" on the pause overlay, made functionally true
+Added the subtext line under PAUSED, and made it actually work — a new `keydown` listener resumes
+the game while `gameState === 'PAUSED'`, deliberately not filtered to a specific key since the
+overlay's own copy promises "any key," not one particular one. Resume logic extracted into a
+shared `resumeGame()` function so the pause button and the new keydown listener both call the
+exact same code rather than duplicating it. Verified no conflict exists: the game has no text
+`<input>` elements anywhere, and the one native `prompt()` dialog (Legendary tower naming) is a
+blocking browser-level modal, unaffected by page-level keydown listeners. Verified end-to-end in a
+real browser — pausing shows both lines, pressing a key resumes and hides the overlay.
+
+## [1.2.68] - 2026-09-19 — Starting barricade now actually adjacent to the finish carpet
+1.2.65 placed it one tile before the finish tile, leaving a visible empty-tile gap between the
+barricade and the checkered carpet — confirmed via screenshot, not assumed. Moved to the finish
+tile itself (`pathTiles[pathTiles.length - 1]` instead of `-2`); verified with another screenshot
+that the gap is actually gone this time before shipping.
+
+## [1.2.67] - 2026-09-19 — Flora ground accents shrunk
+Direct feedback: individual flora glyphs (a seedling especially) looked too large/prominent, like
+a randomly-plopped object rather than a subtle ground accent. `sizeFrac` range in `spawnFlora()`
+reduced from 75%-125% of the ~27px base size down to 45%-75%.
+**Deliberately not attempted this round**: making flora bounce/animate and grow into a flower over
+time. Flora is currently baked into the static offscreen map background (`drawMap()`'s comment is
+explicit: "no occlusion needs, unlike trees/rocks" — a deliberate performance choice, not an
+oversight), with zero per-item state beyond position/glyph/size. Real growth animation needs
+per-item growth-stage state and moving flora into the dynamic per-frame depth-sorted layer — a
+genuine architecture change, not a value tweak, and not something to bolt on carelessly alongside
+a simple size fix. Logged in BACKLOG.md as its own item.
+
+## [1.2.66] - 2026-09-19 — Classic pause overlay; camera panning now works while paused
+Direct request: pausing gave no clear visual indication, and the camera couldn't be moved at all
+while paused. Traced the second part to a real cause, not assumed: `pointerdown`'s blanket
+`if(gameState !== 'PLAYING') return` blocked camera-drag tracking from ever initiating while
+paused, so the pan-nudge code already sitting in `pointermove` (added for wheel/pinch) never had
+anything to act on for a plain drag.
+- **New `#pause-overlay`** — full-screen dim tint with a large, gently pulsing "⏸ PAUSED" in the
+  same gold serif style as the rest of the UI. `pointer-events:none`, so it never blocks camera
+  panning or the HUD buttons underneath/above it. Shown/hidden in all three places the game enters
+  or leaves PAUSED (the pause button's own toggle, auto-pause on tab-switch, and — a real edge
+  case worth covering — loading a save file while already paused, which sets `gameState='PLAYING'`
+  directly and would otherwise leave the overlay stuck visible).
+- **Camera panning and pinch-zoom now work while paused** — removed the blanket pause-block from
+  `pointerdown`; only ground-item pickup (a real gameplay action) stays gated to PLAYING there.
+  Everything else that used to rely on that same blanket block for protection now has its own
+  explicit gate instead: `handleTap()` (build placement, tower selection, and everything else a
+  tap can trigger) now checks pause state itself, since panning/zooming never route through that
+  function at all — they're handled entirely in `pointermove`/wheel, so this change only ever
+  restores camera movement, never gameplay interaction while paused.
+- Verified end-to-end in a real browser: pause shows the overlay, dragging visibly pans the camera
+  with the overlay still displayed throughout, tapping to place a tower while paused does nothing
+  (tower count unchanged), and unpausing correctly hides the overlay again.
+
+## [1.2.65] - 2026-09-19 — Gentler early waves, single starting barricade, first-time welcome tutorial
+Direct request: first rounds felt overwhelming (multiple pre-placed barricades, enemies piling up
+"stupidly," no explanation of what's happening). Three changes, verified end-to-end in a real
+browser (Playwright) this time, not just syntax-checked.
+- **Waves 1-3 eased down to 1-2 enemies each** (previously 4, 6, and 5+TANK) — scoped deliberately
+  to just "the first few rounds" as asked; wave 4 onward is untouched, still the existing tuned
+  curve. TANK's first appearance simply moves to wave 6, where it already existed in the curve —
+  not reintroduced anywhere new.
+- **Single starting barricade, placed right at the finish line** — `seedStartingBarricades()`
+  previously placed 2 barricades at random path tiles; now places exactly 1, at the path tile
+  immediately before the finish tile ("behind the end carpet," as asked). Also given reduced HP
+  (5 instead of the normal 10) via a direct override scoped only to this one auto-placed
+  barricade — player-built barricades later are untouched at their normal 10 HP. With only 1-2
+  enemies in early waves and likely no towers built yet, the normal ~20s break time (1 damage
+  every 2s) read as the single enemy just standing there; halving it keeps the "barricade buys
+  you time to build" mechanic legible instead of looking stuck.
+- **New first-time welcome modal** — shown automatically the very first time ever a player clicks
+  Play (tracked via its own `localStorage` flag, never shown again after being dismissed once).
+  Kept deliberately short: explains the path/goal, the Build button, what the barricade is doing
+  and why it'll eventually break, and the Next Wave button — then points to the existing, more
+  detailed `#help-modal` (❓) for deeper mechanics (stats, leveling, unlocks) rather than
+  duplicating that content. Reuses the exact same modal visual pattern as `#help-modal` and
+  `#barricade-help-modal` for consistency.
+
 ## [1.2.64] - 2026-09-18 — CRITICAL FIX: game completely unplayable since 1.2.61, caused by my own earlier change
 This was a real, confirmed regression I introduced in 1.2.61's semantic-HTML change, and it sat
 undetected through six subsequent versions because every check I ran (syntax parsing, headless DOM

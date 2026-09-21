@@ -94,6 +94,18 @@
   #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;}
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
 
+  #pause-overlay{position:absolute;inset:0;z-index:15;pointer-events:none;
+    background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;}
+  #pause-overlay.hidden{display:none;}
+  #pause-overlay-inner{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  #pauseOverlayText{color:var(--gold);font-family:Georgia,'Times New Roman',serif;font-weight:bold;
+    font-size:clamp(28px,7vw,56px);letter-spacing:3px;text-shadow:0 3px 0 #000, 0 0 24px rgba(0,0,0,0.8);
+    animation:pauseTextPulse 1.8s ease-in-out infinite;}
+  #pauseOverlaySubtext{color:var(--paper);font-family:'Trebuchet MS',Verdana,sans-serif;font-size:clamp(12px,2.4vw,16px);
+    letter-spacing:0.5px;text-shadow:0 2px 0 #000, 0 0 12px rgba(0,0,0,0.8);
+    animation:pauseSubtextBlink 1.8s ease-in-out infinite;}
+  @keyframes pauseTextPulse{0%,100%{opacity:0.85;transform:scale(1);}50%{opacity:1;transform:scale(1.04);}}
+  @keyframes pauseSubtextBlink{0%,100%{opacity:0.5;}50%{opacity:1;}}
   #hud-top{position:absolute;top:0;left:0;right:0;display:none;align-items:center;flex-wrap:nowrap;
     column-gap:3px;justify-content:center;padding:6px 8px;
     max-width:900px;margin:0 auto;transform-origin:top center;
@@ -270,6 +282,16 @@
     margin-bottom:8px;width:auto !important;}
   #about-expand-content{margin-top:10px;font-size:12px;line-height:1.6;opacity:0.9;}
   #about-expand-content.hidden{display:none;}
+
+  #welcome-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
+    display:flex;align-items:center;justify-content:center;padding:16px;}
+  #welcome-modal.hidden{display:none;}
+  #welcome-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
+    max-width:460px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
+    text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
+  #welcome-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
+  #welcome-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
+    border:none;border-radius:8px;padding:10px 22px;font-weight:bold;font-size:clamp(13px,2.2vw,16px);cursor:pointer;min-height:40px;}
 
   #help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
     display:flex;align-items:center;justify-content:center;padding:16px;}
@@ -606,6 +628,13 @@
       <button id="nextWaveBtn">Next Wave <span class="continuanceArrow">▶</span></button>
     </header>
 
+    <div id="pause-overlay" class="hidden">
+      <div id="pause-overlay-inner">
+        <div id="pauseOverlayText">⏸ PAUSED</div>
+        <div id="pauseOverlaySubtext">Press any key to continue</div>
+      </div>
+    </div>
+
     <aside id="inspect-panel" class="hidden">
       <div id="inspNameplate">
         <div id="inspPortraitFrame"><span id="inspPortraitFace">🙂</span></div>
@@ -803,6 +832,22 @@
       </div>
     </div>
 
+    <div id="welcome-modal" class="hidden">
+      <div id="welcome-modal-inner">
+        <h2>👋 Welcome, Commander!</h2>
+        <p>Enemies walk from the flag on the left to your base — the checkered carpet on the
+        right. Don't let them reach it, or you'll lose lives.</p>
+        <p>Tap <b>🛠️ Build</b> to place towers along the path. Swordsman, Archer, and Mage are
+        ready to build from the start.</p>
+        <p>See the <b>🚧 barricade</b> near the end? It slows enemies down and holds for a
+        while, giving your towers time to attack — but it'll eventually break, so use the time
+        it buys you rather than relying on it alone.</p>
+        <p>Tap <b>▶ Next Wave</b> whenever you're ready. Want the deeper mechanics — stats,
+        leveling, unlocks? Tap <b>❓</b> any time.</p>
+        <button id="welcome-modal-close">Let's go!</button>
+      </div>
+    </div>
+
     <div id="help-modal" class="hidden">
       <div id="help-modal-inner">
         <h2>❓ How Everything Works</h2>
@@ -935,7 +980,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.64'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.2.74'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1845,9 +1890,9 @@ const CONFIG = {
     MONARCH: { emoji:'🦋', baseHp:33,  speed:112, bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:3 }
   },
   WAVES: [
-    [{type:'GRUNT',count:4,spawnDelay:1300}],
-    [{type:'GRUNT',count:6,spawnDelay:1100}],
-    [{type:'GRUNT',count:5,spawnDelay:1000},{type:'TANK',count:1,spawnDelay:2000}], // new: TANK
+    [{type:'GRUNT',count:1,spawnDelay:1300}], // eased down from 4 — first wave should be genuinely gentle, a single enemy to learn the loop on
+    [{type:'GRUNT',count:2,spawnDelay:1300}], // eased down from 6
+    [{type:'GRUNT',count:2,spawnDelay:1100}], // eased down from 5+1 TANK — TANK's own first appearance simply moves to wave 6 below, where it already existed in the curve, rather than being reintroduced anywhere new
     [{type:'GRUNT',count:6,spawnDelay:900},{type:'SWARM',count:10,spawnDelay:260}], // new: SWARM — eased in alongside Grunt instead of a bare wall of 16
     [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}], // new: WOLF
     [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:8,spawnDelay:650},{type:'SWARM',count:10,spawnDelay:260}], // ZOMBIE removed from here — see the wave-15 comment below for why it moved much later
@@ -2829,7 +2874,9 @@ function spawnFlora(gx, gy){
     rotDeg: Math.round(Math.random()*360),
     offX: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
     offY: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
-    sizeFrac: 0.75 + Math.random()*0.5 // 75%-125% of the base glyph size, for scale variety
+    sizeFrac: 0.45 + Math.random()*0.3 // 45%-75% of the base glyph size — shrunk from 75%-125% per
+    // direct feedback that individual flora (a seedling especially) looked too large/prominent,
+    // like a randomly-plopped object rather than a subtle ground accent
   });
 }
 function generateFlora(){
@@ -2848,14 +2895,24 @@ function generateFlora(){
 // A handful of free Barricades pre-placed directly on the path within the starting region —
 // the smaller start leans on these for early chokepoints instead of needing to buy them right away.
 function seedStartingBarricades(){
+  // One barricade, right behind the finish line — the tile immediately before it in path order.
+  // Previously placed 2 barricades at random path tiles, which (combined with the old, heavier
+  // early wave counts) made the very first waves feel like a pileup of enemies queuing at random
+  // spots rather than a clean, readable choke point right where the player's eye is already
+  // drawn (the finish carpet). Direct request to simplify this.
   const pathTiles = pathWaypointTiles.filter(p => isInActiveRegion(p.x, p.y));
-  shuffleArray(pathTiles);
-  const count = Math.min(2, pathTiles.length);
-  for(let i=0; i<count; i++){
-    const t = acquireActive(towerPool);
-    if(!t) break;
-    t.create('BARRICADE', pathTiles[i].x, pathTiles[i].y);
-  }
+  if(pathTiles.length < 2) return;
+  const spot = pathTiles[pathTiles.length - 1]; // the finish tile itself — a screenshot confirmed the previous "-2" (one tile before it) left a visible empty-tile gap, not actually "by" the carpet as asked
+  const t = acquireActive(towerPool);
+  if(!t) return;
+  t.create('BARRICADE', spot.x, spot.y);
+  // Lower HP than a normal barricade (5 vs the usual 10), scoped to just this one auto-placed
+  // starting barricade via a direct override, not a change to BARRICADE's own base stats — a
+  // player-built barricade later keeps its full 10 HP. With only 1-2 enemies in the first few
+  // waves and likely no towers built yet, the normal ~20s break time (1 dmg per 2s) reads as the
+  // single enemy standing there doing nothing; halving it keeps the "barricades buy you time to
+  // build" mechanic legible instead of looking stuck.
+  t.hp = t.maxHp = 5;
 }
 
 // Scatter scenery only on the newly-revealed ring of tiles from a map expansion, leaving the
@@ -4415,7 +4472,13 @@ function gainTowerExp(tower, amount){
 function creditKill(tower, forStreak){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
-  gainTowerExp(tower, 4); // small, frequent XP per kill — bumped from 3, shifting more weight onto active kills vs. passive wave-survival XP below (evolution thresholds are the actual pacing lever now that they've doubled; this is a ratio rebalance between XP sources, not a pace change on its own). Already refreshes the inspect panel internally (if `tower` is the one currently selected) — nothing below needs to call updateInspectPanel() again.
+  gainTowerExp(tower, 6); // small, frequent XP per kill — bumped from 4 (originally 3), per direct
+  // request to make the killing hit itself more influential to a tower's growth. Continues the
+  // same established direction already documented on this project: promotion was deliberately
+  // nerfed to a small, reliable +1 specifically so XP/kills would be the main way a tower grows,
+  // not competing with a second large stat generator — this is a further step in that same
+  // direction, not a new one. Already refreshes the inspect panel internally (if `tower` is the
+  // one currently selected) — nothing below needs to call updateInspectPanel() again.
   if(!forStreak){ updateHUD(); return; } // e.g. splash kills beyond the first in one blast
   if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
     tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
@@ -4601,6 +4664,7 @@ function restoreGameState(state){
   // path had never been touched by the fresh-start reveal logic before.
   const hudTopEl = document.getElementById('hud-top');
   hudTopEl.style.display = 'flex';
+  document.getElementById('pause-overlay').classList.add('hidden'); // covers loading a save while paused — otherwise stuck visible, since gameState is set to PLAYING directly here rather than through the pause button's own toggle
   fitHudTopToOneLine(true);
   positionZoomControls();
   updateHUD();
@@ -11137,7 +11201,7 @@ function attractPhaseAt(loopMs){
 // looking scattered rather than attacking.
 function attractSpawnPoint(){
   const side = Math.floor(Math.random()*4);
-  const pad = 0.12;
+  const pad = 0.08; // was 0.12 — enemies now spend less of their walk fully off-screen before becoming visible
   let xf, yf;
   if(side === 0){ xf = Math.random(); yf = -pad; }               // top
   else if(side === 1){ xf = Math.random(); yf = 1 + pad; }        // bottom
@@ -11160,7 +11224,7 @@ function attractSpawnEnemy(now){
   return {
     type: ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)],
     fromXf: spawn.xf, fromYf: spawn.yf, toXf: targetXf, toYf: targetYf,
-    t: 0, speed: 0.00028 + Math.random()*0.00010, flashUntil: 0, spawnedAt: now, dead: false
+    t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false // halved from 0.00028-0.00038 — a saunter, not a rush, per direct request
   };
 }
 function initAttractLoop(now){
@@ -11172,7 +11236,8 @@ function initAttractLoop(now){
       ...f, nextAttackAt: 900 + i*350, phase: 'idle', phaseStart: 0, phaseDur: 0, targetIdx: -1
     })),
     enemies: [],
-    projectiles: []
+    projectiles: [],
+    killCount: 0 // running "defeated" tally, purely cosmetic display — resets each loop, see the HUD-style counter drawn near the top corner
   };
 }
 function attractEnemyScreenPos(e, t){
@@ -11216,6 +11281,16 @@ function renderAttractMode(ctx, now){
   st.enemies = st.enemies.filter(e => !e.dead || now - e.spawnedAt < 400); // keep briefly for flash
 
   ctx.save();
+  // Subtle "Ken Burns" camera drift — slow zoom + pan across the whole scene, tied to real time
+  // (not the attract loop's own restart cycle) so it doesn't visibly snap back at each loop reset.
+  // Small enough (max ~3.5% zoom, a few px of pan) to read as "alive" rather than distracting.
+  const driftT = now / 9000;
+  const driftZoom = 1 + 0.018 + 0.017*Math.sin(driftT);
+  const driftPanX = Math.sin(driftT*0.7 + 1.3) * 10;
+  const driftPanY = Math.cos(driftT*0.6) * 6;
+  ctx.translate(CANVAS_W/2 + driftPanX, CANVAS_H/2 + driftPanY);
+  ctx.scale(driftZoom, driftZoom);
+  ctx.translate(-CANVAS_W/2, -CANVAS_H/2);
   // Perspective checkerboard ground — rows compress toward a horizon near the top of the screen
   // and widen toward the bottom, approximating a ground plane viewed from a low, looking-up angle
   // (the "bigger towers, more dramatic low-angle perspective" request) — done entirely as ordinary
@@ -11223,8 +11298,32 @@ function renderAttractMode(ctx, now){
   // fully self-contained to this function and can't affect the real game's own rendering, layout,
   // or hit-testing at all.
   const horizonY = CANVAS_H * 0.12;
-  ctx.fillStyle = '#3a2c1a'; // dark sky/backdrop above the horizon — moodier than the old flat brown fill
+  // Gradient night sky instead of a flat fill, plus a moon and a handful of twinkling stars — cheap
+  // atmosphere that reads immediately as "moody dusk battlefield" rather than a plain dark rectangle.
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0, '#161022');
+  skyGrad.addColorStop(1, '#3a2c1a');
+  ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, CANVAS_W, horizonY);
+  const moonX = CANVAS_W * 0.82, moonY = horizonY * 0.35, moonR = 22;
+  ctx.save();
+  ctx.globalAlpha = fadeT * 0.9;
+  ctx.fillStyle = '#f5f0e6';
+  ctx.shadowColor = '#f5f0e6'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 18;
+  ctx.beginPath(); ctx.arc(moonX, moonY, moonR, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.fillStyle = '#f5f0e6';
+  for(let i=0; i<14; i++){
+    // Deterministic per-index placement (not re-randomized every frame) so stars hold still
+    // instead of jittering to a new position each render.
+    const sx = ((i*137.5) % 100)/100 * CANVAS_W;
+    const sy = ((i*71.3) % 100)/100 * horizonY * 0.9;
+    const twinkle = 0.35 + 0.5*Math.abs(Math.sin(now/900 + i*2.1));
+    ctx.globalAlpha = fadeT * twinkle;
+    ctx.beginPath(); ctx.arc(sx, sy, 1.4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
   const groundRows = 16, groundCols = 10;
   for(let i=0; i<groundRows; i++){
     const t0 = i/groundRows, t1 = (i+1)/groundRows;
@@ -11240,6 +11339,23 @@ function renderAttractMode(ctx, now){
   }
   ctx.globalAlpha = fadeT;
 
+  // Ambient dust motes — soft, slow-drifting specks for depth, same "deterministic per-index
+  // placement" approach as the stars above so they hold a consistent path instead of jumping
+  // around frame to frame.
+  ctx.save();
+  ctx.fillStyle = '#e8dfc8';
+  for(let i=0; i<18; i++){
+    const baseX = ((i*93.7) % 100)/100 * CANVAS_W;
+    const driftSpeed = 0.00002 + (i%5)*0.000006;
+    const driftY = ((now * driftSpeed) + (i*61.3)%100/100) % 1.15; // loops past the bottom edge back to the top
+    const my = CANVAS_H * (1.05 - driftY);
+    const sway = Math.sin(now/1400 + i*3.7) * 14;
+    ctx.globalAlpha = fadeT * (0.15 + 0.15*Math.sin(now/1100 + i*1.8));
+    ctx.beginPath(); ctx.arc(baseX + sway, my, 1.6, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+  ctx.globalAlpha = fadeT;
+
   // Tower attack logic — each Archer periodically finds the nearest live enemy and goes through a
   // real draw/fire cycle, spawning a travelling projectile that lands on arrival, rather than a
   // frozen idle pose.
@@ -11250,6 +11366,7 @@ function renderAttractMode(ctx, now){
       let bestIdx = -1, bestD = Infinity;
       for(let i=0;i<st.enemies.length;i++){
         if(st.enemies[i].dead) continue;
+        if(st.enemies[i].t < 0.45) continue; // not close enough to engage yet — towers only fire at enemies already well into their approach, so the ~720ms draw+projectile delay lands the kill visibly near the formation instead of off-screen early in the walk
         const p = attractEnemyScreenPos(st.enemies[i], st.enemies[i].t);
         const d = Math.hypot(p.xf*CANVAS_W - tx, p.yf*CANVAS_H - ty);
         if(d < bestD){ bestD = d; bestIdx = i; }
@@ -11272,7 +11389,12 @@ function renderAttractMode(ctx, now){
     const p = st.projectiles[i];
     if(now - p.startTime >= p.duration){
       const target = st.enemies[p.targetIdx];
-      if(target && !target.dead){ target.flashUntil = now + 150; target.dead = true; }
+      if(target && !target.dead){
+        target.flashUntil = now + 150;
+        target.dead = true;
+        target.burstScale = 0.75 + Math.random()*0.9; // variance so bursts don't all look identical — some kills read as a bigger, more dramatic hit
+        st.killCount++;
+      }
       st.projectiles.splice(i,1);
     }
   }
@@ -11280,15 +11402,55 @@ function renderAttractMode(ctx, now){
   // Enemies draw before towers, matching the real game's own draw order. Sized up from the old
   // flat 22px — bigger, closer-to-camera sprites, matching the low-angle ground plane above rather
   // than looking small and distant against it.
-  ctx.font = '32px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '62px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Base size bumped from 46px — towers are scaled 1.8x separately (drawStickman() below), so
+  // enemies at the old size read as small purely by comparison, not in isolation. Direct feedback,
+  // twice now, confirmed this was a real relative-size mismatch, not a stale-build misread.
   for(const e of st.enemies){
     const p = attractEnemyScreenPos(e, Math.min(e.t, 1));
     const ex = p.xf*CANVAS_W, ey = p.yf*CANVAS_H;
     if(now < e.flashUntil){
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.beginPath(); ctx.arc(ex, ey, 19, 0, Math.PI*2); ctx.fill();
+      // Radiating burst instead of a flat static circle — progress derived from flashUntil (always
+      // triggered as `now + 150` at the point of death, see the projectile-impact loop below), so
+      // no extra state needs storing just to animate this. Warm gold tone matching the game's own
+      // UI accent color, not gore — this is the menu screen, not live combat.
+      const flashProgress = 1 - (e.flashUntil - now)/150;
+      const scale = e.burstScale || 1; // enemies that "died" by reaching the formation silently (no projectile kill) never get burstScale set — falls back to a normal-size burst
+      const burstR = (8 + flashProgress * 24) * scale;
+      const burstAlpha = 1 - flashProgress;
+      const sparkCount = scale > 1.3 ? 10 : 7; // a bigger hit gets a few extra spark lines, reads as genuinely more dramatic rather than just scaled up
+      ctx.save();
+      ctx.globalAlpha = burstAlpha;
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.arc(ex, ey, (6 + flashProgress*4)*scale, 0, Math.PI*2); ctx.fill(); // bright core, shrinks slightly as it fades
+      ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2.5*Math.min(scale, 1.15);
+      for(let s=0; s<sparkCount; s++){
+        const ang = (s/sparkCount)*Math.PI*2 + e.spawnedAt*0.001; // per-enemy fixed rotation offset so bursts don't all look identical
+        ctx.beginPath();
+        ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
+        ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    if(!e.dead || now < e.flashUntil) ctx.fillText(CONFIG.ENEMIES[e.type].emoji, ex, ey);
+    if(!e.dead || now < e.flashUntil){
+      // Walk-bob "saunter" — a real leg/skeleton walk cycle isn't possible for a flat emoji glyph,
+      // so this fakes one the standard 2D way: a vertical bounce plus a subtle squash-stretch,
+      // both driven by distance walked (e.t) rather than elapsed time, so the step rhythm speeds
+      // up/slows down together with the enemy's own pace instead of drifting out of sync with it.
+      const stridePhase = (e.t * 14) % (Math.PI*2); // ~14 "steps" over a full off-screen-to-formation walk
+      const bob = Math.abs(Math.sin(stridePhase)) * 5; // always lifts up, never dips below the baseline — reads as a step, not a float
+      const squash = 1 + Math.sin(stridePhase) * 0.06;
+      // Perspective grow — smaller at spawn (still off-frame edge), full size by the time it
+      // reaches the formation, matching the same low-angle "approaching camera" logic already
+      // used for the ground plane above. Composed with the squash/stretch below, not replacing it.
+      const perspectiveScale = 0.65 + Math.min(e.t, 1) * 0.35;
+      ctx.save();
+      ctx.translate(ex, ey - bob);
+      ctx.scale(perspectiveScale/squash, perspectiveScale*squash); // wider+shorter at the bob's peak, taller+narrower at the trough — a step's weight shift
+      ctx.fillText(CONFIG.ENEMIES[e.type].emoji, 0, 0);
+      ctx.restore();
+    }
   }
 
   for(const t of st.towers){
@@ -11320,9 +11482,57 @@ function renderAttractMode(ctx, now){
     const tp = attractEnemyScreenPos(target, target.t);
     const px = p.fromX + (tp.xf*CANVAS_W - p.fromX)*pT;
     const py = p.fromY + (tp.yf*CANVAS_H - p.fromY)*pT;
-    ctx.fillStyle = '#f1c40f';
-    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, Math.PI*2); ctx.fill();
+    // Motion trail — a short line back along the same travel path (previous-t sample, not a
+    // separate stored history), plus a glow on the leading point. Reads as a real arrow shot
+    // rather than a static dot sliding across the screen.
+    const trailT = clampNum(pT - 0.12, 0, 1);
+    const tx0 = p.fromX + (tp.xf*CANVAS_W - p.fromX)*trailT;
+    const ty0 = p.fromY + (tp.yf*CANVAS_H - p.fromY)*trailT;
+    ctx.save();
+    const trailGrad = ctx.createLinearGradient(tx0, ty0, px, py);
+    trailGrad.addColorStop(0, 'rgba(241,196,15,0)');
+    trailGrad.addColorStop(1, 'rgba(241,196,15,0.85)');
+    ctx.strokeStyle = trailGrad; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.lineTo(px, py); ctx.stroke();
+    ctx.fillStyle = '#fff6d6';
+    ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8;
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
+  // Running "defeated" counter — small HUD-style badge, top-left. Conveys ongoing action/stakes
+  // (real gameplay has a wave counter and kill-driven progression; this hints at that without
+  // needing the actual HUD to be visible during attract mode). Technically still inside the same
+  // Ken Burns drift transform above (the outer save/restore hasn't closed yet) rather than reset
+  // to a fixed screen-space overlay — the drift itself is subtle enough (a few percent zoom, under
+  // 15px of pan) that this reads as fine in practice, not worth a transform-reset that risks
+  // getting DPR scaling wrong on a real high-DPI device without being able to verify it there.
+  ctx.save();
+  ctx.globalAlpha = fadeT;
+  ctx.font = 'bold 15px Trebuchet MS, Verdana, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const counterText = '💀 ' + st.killCount + ' defeated';
+  const counterW = ctx.measureText(counterText).width + 20;
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(14, 14, counterW, 30, 15) : ctx.rect(14, 14, counterW, 30);
+  ctx.fill();
+  ctx.fillStyle = '#f1c40f';
+  ctx.fillText(counterText, 24, 29);
+  ctx.restore();
+
+  // Vignette — soft darkening toward the edges for a framed, cinematic look rather than a flat
+  // rectangle of gameplay filling the whole title screen. Drawn last, on top of everything else.
+  ctx.save();
+  ctx.globalAlpha = fadeT;
+  const vignetteGrad = ctx.createRadialGradient(
+    CANVAS_W/2, CANVAS_H/2, Math.min(CANVAS_W, CANVAS_H)*0.35,
+    CANVAS_W/2, CANVAS_H/2, Math.max(CANVAS_W, CANVAS_H)*0.72
+  );
+  vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vignetteGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vignetteGrad;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.restore();
   ctx.restore();
 }
 function loop(now){
@@ -11648,6 +11858,12 @@ function pinchInfo(){
 }
 
 function handleTap(clientX, clientY){
+  // Build placement, tower selection, and every other tap-driven gameplay action below stays
+  // blocked while paused — this is the explicit version of the protection pointerdown's old
+  // blanket `if(gameState !== 'PLAYING') return` used to provide before camera pan/zoom needed
+  // to keep working through a pause. Panning/zooming themselves never reach this function at all
+  // (they're handled entirely in pointermove/wheel), so this only ever blocks real interaction.
+  if(gameState !== 'PLAYING') return;
   const {x,y} = toRawCanvasCoords(clientX, clientY);
   const worldX = (x - camera.x)/camera.zoom, worldY = (y - camera.y)/camera.zoom;
   const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
@@ -11748,7 +11964,6 @@ function exitMoveMode(){
 
 canvas.addEventListener('pointerdown', (e) => {
   unlockAudio();
-  if(gameState !== 'PLAYING') return;
   canvas.setPointerCapture(e.pointerId);
   activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
 
@@ -11759,12 +11974,20 @@ canvas.addEventListener('pointerdown', (e) => {
     dragPointerId = e.pointerId;
     dragStartClient = {x:e.clientX, y:e.clientY};
     isDragging = false;
-    const { x: worldX, y: worldY } = toCanvasCoords(e);
-    for(const gi of groundItems){
-      if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
-        draggingGroundItem = gi;
-        dragItemPos = { x: worldX, y: worldY };
-        break;
+    // Ground-item pickup is a real gameplay action (starts moving a physical dropped item) —
+    // stays gated to PLAYING. Everything above this (drag/pinch tracking for camera pan and
+    // zoom) is deliberately NOT gated — panning and zooming around the map while paused is
+    // exactly what a pause should still let you do; only actual gameplay interaction should
+    // freeze. handleTap() below carries its own explicit pause-gate for tap-driven actions
+    // (build placement, tower selection) for the same reason.
+    if(gameState === 'PLAYING'){
+      const { x: worldX, y: worldY } = toCanvasCoords(e);
+      for(const gi of groundItems){
+        if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
+          draggingGroundItem = gi;
+          dragItemPos = { x: worldX, y: worldY };
+          break;
+        }
       }
     }
   }
@@ -12337,6 +12560,14 @@ document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   document.getElementById('help-modal').classList.remove('hidden');
   playSound('ui_open');
+});
+document.getElementById('welcome-modal-close').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  document.getElementById('welcome-modal').classList.add('hidden');
+  playSound('ui_close');
+});
+document.getElementById('welcome-modal').addEventListener('pointerdown', (e) => {
+  if(e.target.id === 'welcome-modal'){ document.getElementById('welcome-modal').classList.add('hidden'); playSound('ui_close'); }
 });
 document.getElementById('help-modal-close').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -13114,6 +13345,14 @@ nextWaveBtn.addEventListener('pointerdown', (e) => {
 });
 
 const pauseBtn = document.getElementById('pauseBtn');
+function resumeGame(){
+  gameState = 'PLAYING';
+  lastTime = performance.now();
+  if(pauseStartedAtReal !== null){ totalPausedMs += Date.now() - pauseStartedAtReal; pauseStartedAtReal = null; }
+  pauseBtn.textContent = '⏸';
+  pauseBtn.classList.remove('active');
+  document.getElementById('pause-overlay').classList.add('hidden');
+}
 pauseBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
@@ -13122,13 +13361,20 @@ pauseBtn.addEventListener('pointerdown', (e) => {
     pauseStartedAtReal = Date.now(); // see totalPausedMs' own declaration — debug-log use only
     pauseBtn.textContent = '▶';
     pauseBtn.classList.add('active');
+    document.getElementById('pause-overlay').classList.remove('hidden');
+    render(ctx); // main loop won't render while paused — nudge one frame through now so the overlay actually appears immediately instead of waiting for the next pan/zoom to trigger a paint
   } else if(gameState === 'PAUSED'){
-    gameState = 'PLAYING';
-    lastTime = performance.now();
-    if(pauseStartedAtReal !== null){ totalPausedMs += Date.now() - pauseStartedAtReal; pauseStartedAtReal = null; }
-    pauseBtn.textContent = '⏸';
-    pauseBtn.classList.remove('active');
+    resumeGame();
   }
+});
+// "Press any key to continue" — matches the overlay's own text. Any actual key resumes, same
+// exact path the pause button's own un-pause branch uses (resumeGame()), so there's only one
+// place that logic lives. Deliberately not gated to a specific key (Escape/Space) since the
+// overlay's copy promises "any key," not one specific key — Tab and other keys that trigger
+// browser-native behavior are left alone rather than trying to guess which keys are "safe."
+document.addEventListener('keydown', (e) => {
+  if(gameState !== 'PAUSED') return;
+  resumeGame();
 });
 
 // Auto-pause on tab-switch/app-background, decided explicitly rather than left as the previous
@@ -13144,6 +13390,7 @@ document.addEventListener('visibilitychange', () => {
     pauseStartedAtReal = Date.now();
     pauseBtn.textContent = '▶';
     pauseBtn.classList.add('active');
+    document.getElementById('pause-overlay').classList.remove('hidden');
   }
 });
 
@@ -13233,6 +13480,15 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   lastTime = performance.now();
   blowingLeaves = [];
   updateHUD();
+  // First-ever Play click only — never shown again once dismissed, tracked via its own flag
+  // rather than piggybacking on savePrefs()'s bundled object, since this is a one-time "seen it"
+  // marker, not a live preference that needs to round-trip through the settings UI.
+  try{
+    if(!localStorage.getItem('stickTD_welcomeSeen')){
+      document.getElementById('welcome-modal').classList.remove('hidden');
+      localStorage.setItem('stickTD_welcomeSeen', '1');
+    }
+  }catch(e){ /* storage unavailable — just skip the one-time welcome, not worth failing over */ }
 });
 
 document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
