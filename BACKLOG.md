@@ -1,5 +1,18 @@
 # Backlog
 
+## Open from the 1.3.x wave-architecture handoff (StickTD_Claude_Complete_Handoff.pdf)
+- Melee/beam committed-damage tracking (1.3.3 tracks projectiles only).
+- Post-wave report: explicit overkill column (damage column shipped 1.3.3, already excludes overkill).
+- Mid-wave save of materialized plan + dispatch cursor (currently saves between waves only; plan
+  rebuilds deterministically from the seed).
+- Watch 1.3.5 (2 × 1-3 points per bar) in real play; if late combat balloons, add the diminishing effective-investment formula from the handoff.
+- Apprentice catch-up (+50% assist XP below 25% of leader).
+- Milestone reward choices every 10 waves; Danger Contract opt-in difficulty.
+- Chunked (dirty-region) settled-decal rebuild instead of full-world repaint on expiry.
+- Benchmark main canvas `alpha:false` and pointer-driven camera coalescing on Android Chrome
+  (measure raw rAF gaps before and after; keep only if measurably better).
+- Headless balance simulator (weak/typical/farm/late-carry profiles).
+
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 

@@ -92,6 +92,26 @@ look reasonable":
   garbage-collected normally); conversely, high synchronous render/update time in a profiler is
   not the same thing as low displayed FPS. Don't conflate either pair when diagnosing performance.
 
+### Wave and performance invariants (1.3.0+)
+- Physical wave order Tiny → Small → Standard → Large → Boss is a design invariant; phases may be
+  omitted, never reordered or reopened. Size is materialized in `buildWavePlan()`, never at spawn.
+- Batches are outcome-gated (`waveRouteObligationsOutstanding()`), never timer-released.
+- All gameplay wave randomness comes from `createSeededRandom(waveSeedFor(waveRunSeed, n))`.
+- Escaped enemies stay active and targetable but stop being route obligations; their deaths pay
+  only the cleanup pool.
+- Presentation (death anims, decals, particles, text) never blocks simulation or wave completion
+  and runs on `presentationTime`, not `realTime`.
+- Larger `SIZE_TIER_BANDS` entries must stay strictly slower, bigger, and higher-XP (boot-validated).
+- No unconditional full-world work in a per-frame or timer path: world caches are blitted through
+  `blitWorldLayer()` (viewport slice) and rebuilt only when dirty.
+- New features state their per-frame cost: actor count, draw calls, allocations, cleanup.
+- A cache-rebuild function that also *promotes* items into the cache cannot be made
+  dirty-only without a separate promotion path (1.3.1 regression). Baking = incremental stamp on
+  entry + coalesced full rebuild on exit (`sweepSettledDecals()`).
+- Any new decal/debris kind must declare whether it bakes (`isDecalBakeEligible()`); static
+  geometry must bake. Verify with the perf overlay: live-drawn decals should stay near ~100
+  regardless of total decal count.
+
 ## 5. Risk-based verification
 
 - **Match verification effort to actual risk.** A documentation-only change doesn't need a
@@ -343,6 +363,37 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
   canvas layers with explicit invalidation, spatial-hash allocation reduction in real combat (not
   just idle), and `MAX_TICKS_PER_FRAME` tuning — check `perfStats` numbers before attempting any
   of these rather than guessing from reading code.
+
+## Lag-creep prevention protocol (mandatory for every change)
+
+Lag in this project has repeatedly crept back through small, individually reasonable changes
+(history: 1.1.55 decal-heavy lag, 1.2.43–1.2.52 pan lag and baking, 1.3.1 → 1.3.7 bake regression,
+1.3.9 string-key GC churn). Follow all of these before shipping:
+
+1. **Measure, don't guess.** Get a debug log captured *during* the lag (Settings > About >
+   Download Debug Log). Compare raw rAF wall-gap vs Frame/Update/Render ms: a high wall gap with
+   healthy ms means browser/compositor contention, not game code.
+2. **State the cost of every new feature:** per-frame work, per-tick work (× up to 90 ticks/frame
+   at 10×), allocation, cleanup, and how it scales with enemy/decal count.
+3. **No allocation in hot paths.** No string building, array literals, closures, `.filter/.map`,
+   or object literals inside per-tick or per-enemy loops. Spatial keys are integers
+   (`spatialCellKey()`); pools are fixed-size and reused.
+4. **No unconditional full-world work** in per-frame or timer paths. World caches are blitted as
+   the visible slice (`blitWorldLayer()`) and rebuilt only when dirty, coalesced
+   (`SETTLED_DECAL_REBUILD_MIN_MS`).
+5. **Promotion and rebuild are separate paths.** A function that both promotes items into a cache
+   and rebuilds it must never be made dirty-only (the 1.3.1 regression). Bake = incremental stamp
+   on entry + coalesced full rebuild on exit.
+6. **Every new decal/debris kind declares whether it bakes** (`isDecalBakeEligible()`). Static
+   geometry must bake. Target: live-drawn decals ≈100 regardless of total count.
+7. **More enemies = more sequential content, not more simultaneous actors.** Waves scale through
+   batches; pools must never silently drop units; route gating keeps active counts bounded.
+8. **Input handlers never render synchronously.** Use `requestPausedRender()`; camera motion is
+   applied once per frame.
+9. **Verify with a stress test before shipping:** headless run of 400 kills (≈1,200 decals) and a
+   multi-wave 10× playthrough. Record render ms and live-decal count in the CHANGELOG entry.
+10. **Structural HTML/CSS edits require a real-browser render check** (Playwright), not only a
+    syntax check.
 
 ## Head block, consent, and SEO — don't casually reorder or trim
 

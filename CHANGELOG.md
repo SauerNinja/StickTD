@@ -1,5 +1,195 @@
 # Changelog
 
+## [1.4.2] - 2026-09-22 — Stat scaling rebalanced for the larger point economy
+- Past the first 25 points, `diminishingStatValue()` and `warriorStrDamageMult()` now use a
+  logarithmic tail (`statTailValue()`, softness 50) instead of a flat per-point rate. With
+  training bars (2–6 points) and promotion bonuses (2d6), a linear tail let a farmed carry reach
+  20×+ damage. Every point still helps; the first 25 points are unchanged.
+- Measured single-stat DPS (base tier, main stat only):
+  | Stat | Swordsman (STR) | Archer (DEX) | Mage (INT) |
+  |---|---|---|---|
+  | 0 | 13.3 | 17.4 | 13.3 |
+  | 25 | 39.3 | 63.6 | 30.0 |
+  | 100 | 61.5 | 106.8 | 40.3 |
+  | 400 | 88.9 | 173.5 | 53.2 |
+- Also softens attack speed (DEX), range bonus (INT) and HP scaling at high investment, which all
+  share the same curve. 16/16 self-tests.
+
+## [1.4.1] - 2026-09-22 — Promote / Target buttons always fit and stay flush
+- The Promote · DPS · Target row is now a full-width grid (`1fr auto 1fr`), so the Target button's
+  right edge lines up with the rows below instead of the whole row being scaled inward.
+- `fitOptRowToOneLine()` now shrinks each button's own label font (down to 9px) until it fits,
+  measuring the real rendered text width (`buttonLabelOverflows()`), since `scrollWidth` missed
+  overflow absorbed by ellipsis or inner spans. Also applied to the STR/DEX/INT buttons, which
+  were truncating large values ("STR 7…").
+- Target label shortened to "🎯 MODE" (tooltip: "Targeting priority").
+- Verified in-browser at level 10 with a 3,075-gold promote cost and UNCLAIMED mode: every label
+  fits, Target's right edge = 318px, same as the hint and the ? button.
+
+## [1.4.0] - 2026-09-22 — More small enemies, discreet XP numbers, promotion bonus points, stall fixes
+- **Much more small-enemy fodder:** Waves 2–15 carry ~1.5× the Tiny/Small counts (Wave 2: 24,
+  Wave 15: 189 little + 12 Standard + 25 Large); waves 16+ use `189 + 5.5 × (wave − 15)` little
+  enemies (Wave 50 ≈ 491 total). 5:1 little-to-big ratio still validated at boot.
+- **Discreet XP pops:** no more "LAST HIT / ASSIST / CLEANUP" words — just a small `+N` in gold
+  (last hit) or silver (assist / cleanup share), 9px, lasting 1.1 s so it can be read.
+- **Promote also grants 2d6 free stat points** to spend, on top of its automatic stat rolls.
+- **Attunement hint** now reads e.g. "❄️ 79 points till Ice" for the tower's leading stat only;
+  "Spend points to start training" before any stat is invested.
+- **Hint box no longer spills past the inspect panel:** it takes its own row, and the stat
+  containers are width-constrained (`min-width:0`). Measured: hint right edge 318 px inside a
+  328 px panel (was 339).
+- **Batches overlap within a size phase:** the next batch of the same size leaves once the current
+  one has died, escaped, or walked 35% of the route (`BATCH_RELEASE_PATH_FRACTION`), instead of
+  waiting for every unit to finish the whole path. Size phases (Tiny → Small → … → Boss) still
+  require full resolution; Wave 1 stays strictly one-at-a-time. Fixes waves taking 90–135 s at
+  10× on long paths with weak coverage.
+- **Stall safeguards:** camp guardians/huts no longer physically shove route-walking enemies
+  (`isCampRouteCrossing()`); the stall watchdog measures real displacement, not just the path
+  counter, and skips guardians/huts; entrance spacing tracks a per-spawn serial so a recycled
+  pool slot can't block dispatch.
+- **Spatial hash uses integer cell keys** instead of `"x,y"` strings — removes thousands of string
+  allocations per tick at 10× speed (GC stutter source).
+- 16/16 self-tests, zero page errors.
+
+## [1.3.8] - 2026-09-22 — Smoother enemy movement, correct assist credit for DoTs, flick-to-glide panning
+- **Corners no longer hitch.** On reaching a waypoint an enemy used to snap to it and discard the
+  rest of that step, so every turn cost a partial frame of movement (most visible at 5×/10×). The
+  leftover distance now carries around the corner toward the next waypoint.
+- **Pack bonus respects size tiers.** Wolf packs got up to +50% speed, which let a Large wolf
+  (band max 39) reach ~58 — faster than Small enemies (min 54). New `packedSpeed()` caps the pack
+  bonus at the unit's tier ceiling, so bigger is always slower. Verified: packed Large wolf = 39.
+- **Burn / poison / bleed damage now counts toward assists and the wave report.** DoT ticks
+  subtracted HP directly and bypassed the damage ledger, so a tower that softened an enemy with
+  poison got no assist share. All four damage paths now go through `recordContribution()`.
+- **Flick-to-glide panning.** Drag velocity is smoothed while panning; on release the camera glides
+  and decays exponentially (`applyPanInertia()`, once per rendered frame, no allocation). Any new
+  touch stops it instantly. Verified: a fast drag glided ~190 px after release, then stopped.
+- **Paused pan/pinch renders coalesced.** While paused, each pointermove rendered a full frame
+  synchronously — at 120–240 Hz touch rates that was several full renders per display frame.
+  `requestPausedRender()` now renders at most once per frame.
+- 16/16 self-tests, zero page errors, live Wave 1 run.
+
+## [1.3.7] - 2026-09-22 — Gore bake overhaul: fixes a 1.3.1 lag regression, bakes ~90% of decals
+- **Regression fixed (introduced in 1.3.1).** 1.3.1 made `rebuildSettledDecalCanvas()` run only
+  when a decal expired. But that rebuild was also the only place decals got *promoted* into the
+  baked cache — so from 1.3.1 on, new blood never baked until something expired 30+ minutes later,
+  and every stain was live-drawn every frame. Replaced by `sweepSettledDecals()`:
+  - decals entering the bake window are **stamped incrementally** onto the existing cache (no clear);
+  - a full clear-and-redraw happens only when a baked decal leaves the window, expires, or is
+    overwritten at capacity, coalesced to at most once per 10 s (`SETTLED_DECAL_REBUILD_MIN_MS`) —
+    safe because the window ends at lifeT 0.80, 90+ real seconds before fade-out begins.
+- **Satellite drops now bake** (measured ~75% of all decals). Their geometry is static; they bake
+  once past the bright-red phase (lifeT 0.033, ≥ ~70 s) and are restamped with their current aged
+  color every 20 s (`DECAL_AGING_RESTAMP_MS`) until the color settles at 0.40 — the oxidation curve
+  is shared via `agedBloodColor()`, so aging still shows.
+- **Bone / skull / rock debris now bakes** for its whole life. These were `fillText` emoji draws —
+  among the costliest Canvas2D calls — live-drawn every frame. The debris pass skips baked ones.
+- **Low graphics keeps a 1,200-decal budget** (`MAX_DECALS_LOW_QUALITY`); High stays 2,000. Waves
+  now resolve 5–10× more kills, so the cap is actually reached in normal play.
+- **Measured** (headless Chromium, 400 kills → 1,200 decals, all on screen): live-drawn decals
+  1,200 → ~110, render time 3.4–3.7 ms → 0.6–0.8 ms per frame. Screenshot confirmed baked blood
+  and bones draw in the correct world positions. 16/16 self-tests, zero page errors.
+
+## [1.3.6] - 2026-09-22 — Promotion stat rolls and exponential promotion cost
+- **Promote rolls stats:** 1d6 into each of STR, DEX, and INT, then a second 1d6 into the class's
+  favored stat (Warrior STR, Archer DEX, Mage INT) — 4–24 total, average 14. The roll is shown
+  as floating text over the tower. Replaces the flat +1 favored stat.
+- **Exponential cost:** `promotionCostFor()` = first priced tier cost × 1.5^(level − 1) (`firstPromotionCost()` falls back to 100 if a class has no priced tier). Matches the old
+  authored tier costs for the first promotions, then keeps compounding (e.g. Swordsman 80, 120,
+  180, 270, 405, 608, 911, 1,367, 2,050, 3,075 for the tenth promotion — verified in-browser).
+- **Promotion no longer caps at the tier table.** Past the last authored tier a tower keeps that
+  tier's baseline (`applyTierStats()` clamps the index) and grows through the rolls; hard cap 99.
+
+## [1.3.5] - 2026-09-22 — Training bars roll 2 × (1-3) stat points
+- Each completed 100-XP training bar now grants `rollTrainingBarPoints()`: two rolls of 1–3, so
+  2–6 points per bar (average 4) instead of a flat 1. At 50% weighted last hits a carry fills ~100
+  bars by Wave 15, averaging ~400 points to spend — close to the handoff's 500 target while
+  staying player-directed. Combat still runs every point through the existing diminishing-returns
+  stat curves, so this does not scale damage linearly.
+- Floating text now reads "+N STATS!"; the post-wave report's stat column counts points rolled
+  (`waveStatPoints`) rather than bars filled. In-game help and README updated.
+
+## [1.3.4] - 2026-09-22 — Publishing-standards compliance, in-game help updated for the new wave/XP systems
+- **In-game help text** (`getReadmeText()`) still described the old roster ("wave-15 Boss",
+  "procedurally scaled difficulty"). Rewritten for strict size-ordered waves, five-wave chapters,
+  the Expedition, last-hit/assist/cleanup XP, hold-to-spend stats, and FARM/ASSIST/UNCLAIMED.
+- **Byline credit** added in exactly two places per the standing publishing rule: README License
+  section (plus suggested citation with the full name) and the bottom of the start screen, linking
+  to github.com/SauerNinja. Verified with a repo-wide grep.
+- **README hero image** (`og-image.png`) added at the top.
+- Audited and already compliant: flat file structure, MIT LICENSE, no deployment/git instructions
+  in README, no query-string cache-busting, no "no ads"/"ad-free" wording, Next Wave continuance
+  arrow (design-principles backlog item) already shipped.
+
+## [1.3.3] - 2026-09-22 — Hold-to-spend stats, UNCLAIMED targeting, overkill prevention, damage report
+- **Press-and-hold stat spending.** Tap spends one point; holding repeats after 380 ms every 65 ms
+  until release, pointer leave/cancel, or no points remain (`spendStatPoint()`/`repeatStatHold()`).
+- **Committed-damage tracking.** `tallyCommittedProjectileDamage()` runs once per sim tick before
+  towers retarget, summing each in-flight rolled-hit projectile's damage onto its tracked enemy
+  (O(projectiles), zero allocation). FARM now skips enemies already doomed by shots in flight.
+- **UNCLAIMED targeting mode** (7th in the cycle): furthest-along enemy not already covered by
+  in-flight damage — stops several towers wasting shots on the same dying enemy.
+- **Post-wave report** adds ⚔ damage dealt (capped at the enemy's remaining HP, so overkill isn't
+  counted as useful damage).
+- **Large and Boss phase starts** use the full dramatic banner instead of the small toast.
+- Tower stat-button titles explain hold-to-spend.
+- Verified in a real browser: 16/16 self-tests, zero page errors across Waves 1–4 with a FARM
+  Swordsman and UNCLAIMED Archer, zero lives lost, report columns matched counters.
+
+## [1.3.2] - 2026-09-22 — Farm/Assist targeting, per-tower post-wave report
+- **Targeting modes FARM and ASSIST** added to the inspect-panel cycle (FIRST → CLOSEST → STRONGEST
+  → WEAKEST → FARM → ASSIST). FARM prefers an enemy the tower can finish with its next hit (lowest HP
+  first), else the weakest. ASSIST prefers the healthiest enemy, leaving last hits to other towers.
+  All scoring now goes through one `Tower.targetScore()` method, replacing three duplicated
+  if-chains (primary target, hysteresis check, secondary target). Credit is never faked — the hit
+  that removes the final HP owns the kill.
+- **Post-wave report per tower**: last hits 🎯, assists 🤝, escaped cleanups 🧹, XP gained, and stat
+  points earned this wave, sorted by XP. Built with `textContent` nodes instead of `innerHTML`.
+- Verified in a real browser: 16/16 self-tests, zero page errors across Waves 1–5 with a FARM
+  Swordsman and FARM Archer on the path. By Wave 5 the Archer had 42 last hits in one wave and 20
+  unspent stat points; the report matched the tower counters.
+
+## [1.3.1] - 2026-09-22 — Measured lag guards: viewport-cropped world blits, dirty-driven decal cache
+- **Full-world cache blits cropped to the viewport.** `mapCanvas` and `settledDecalCanvas` were each
+  copied at full world size (2048×1280 × DPR) every frame, even when the camera showed a fraction of
+  it. New `visibleWorldRect()`/`blitWorldLayer()` use the 9-argument `drawImage` to copy only the
+  on-screen slice (source rect scaled by each layer's own raster/world ratio). Blit cost now scales
+  with the viewport, not the world — the main per-frame bandwidth cost during mobile panning.
+- **Settled-decal cache rebuild is dirty-driven.** The expiry sweep called
+  `rebuildSettledDecalCanvas()` (a full-world repaint) on every sweep even when nothing expired. It
+  now rebuilds only when at least one decal actually expired.
+- Verified: syntax check, 16/16 self-tests, live Wave 1 run, and a rendered screenshot confirming the
+  cropped map and baked-decal layers draw in the correct world position.
+
+## [1.3.0] - 2026-09-22 — Wave architecture replacement: ordered size phases, outcome-gated batches, last-hit XP
+- **Wave plan replaces the timed spawn queue.** `buildWavePlan(n)` materializes every SpawnSpec
+  (family, size tier, jitter) up front from `waveRunSeed`, grouped Tiny → Small → Standard → Large →
+  Boss. `advanceWaveDispatch()` releases a batch only when every on-path enemy has died or escaped;
+  a larger phase can never start while a smaller unit is on the path. Removed: `CONFIG.WAVES`,
+  procedural generators, curated labels, `spawnEnemy()`, `BIG_VARIANT_CHANCE`, `MINI_VARIANT_CHANCE`.
+- **Populations per the handoff spec.** Wave 1 = ten single Tiny batches. Waves 1–15 authored
+  (Wave 10 Tiny 66→67 to hold the 5:1 ratio); 16–100 formula; Large only on waves divisible by 5,
+  Boss on tenth waves, always last; ≥5 little per big. Five-wave family chapters (Grunt 1, Swarm 6,
+  Wolf 11 … Monarch 86). Waves 101+ use a seeded Expedition theme bag with a farm wave every 4.
+- **Size tiers (`SIZE_TIER_BANDS`).** Non-overlapping speed bands — every Large is slower than every
+  Tiny/Small. Large: 2.8× HP, 2.5× gold, 40 XP. Family speed ranks inside the band. Splitter
+  children inherit the parent's tier.
+- **XP.** Flat 100-XP training bar → 1 stat point. Last hit = tier XP (17/20/25/40/50). Damage
+  ledger per enemy; other contributors split a 28% assist pool by damage share. Escaped kills pay
+  only a 25% shared cleanup pool (no last hit, no killstreak, 25% gold). Killstreak banners kept,
+  killstreak XP removed. Training cap 99 → 10000.
+- **Escaped corpse fix.** Death animations used `realTime`, frozen while IDLE, so an escapee killed
+  between waves froze on screen forever. New `presentationTime` advances every PLAYING frame (stops
+  only on pause). Wave completion no longer waits on death animations.
+- **Boss** no longer spawns smaller Grunts mid-fight (violated phase order); periodically rallies
+  for 3% HP instead.
+- **UI.** Stat buttons capped at 96px. Pre-attunement hint neutral (no more repeated "Ice" guess).
+  HUD `<output id="wavePhaseVal">` shows phase, batch, resolved count, active escapees. Tap/click on
+  the canvas while paused resumes (drag/pinch still pan/zoom paused).
+- **Skull layering.** Ground debris removed from the actor depth sort; drawn before actors.
+- **Save.** `waveRunSeed` saved/restored; older saves get a derived seed.
+- Verified: syntax, boot validation of waves 1–120, 16/16 self-tests, live Wave 1 dispatch.
+
 ## [1.2.76] - 2026-09-19 — Barricade damage rate slowed to 5s, repair feature added
 Two direct requests, both verified end-to-end in a real browser (not just code review):
 - **Barricade damage interval: 2s → 5s.** New named constant `BARRICADE_HIT_INTERVAL_MS` replaces

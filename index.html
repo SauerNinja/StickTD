@@ -403,7 +403,9 @@
   #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
-  .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;transform-origin:left center;}
+  .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;width:100%;box-sizing:border-box;}
+  #inspUpgradeSellRow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}
+  #inspUpgradeSellRow button{width:100%;overflow:hidden;}
   #inspUpgradeBtn, #inspSellBtn, #inspTargetBtn{flex:0 1 auto;min-width:0;white-space:nowrap;}
   #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
     justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
@@ -454,13 +456,18 @@
     gap:clamp(2px,0.8vw,5px);align-items:center;font-size:11px;line-height:1;color:var(--paper);
     margin:0 0 2px;font-weight:bold;transform-origin:left center;}
   #inspCombatRow>span{display:inline-flex;align-items:center;gap:1px;white-space:nowrap;flex-shrink:0;}
-  #inspStatHeaderRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  #inspStatHeaderRow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;}
+  #inspFullOptions, #inspStatsRow{min-width:0;max-width:100%;box-sizing:border-box;}
   #inspStatPoints{font-weight:bold;color:var(--gold);}
-  #inspStatButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-  #inspStatButtons button.stat-btn{width:100%;}
-  #inspEvoHint{flex:1 1 auto;font-size:0.85em;color:#bdeaff;background:rgba(125,211,252,0.12);
+  #inspStatButtons{display:grid;grid-template-columns:repeat(3,minmax(0,96px));justify-content:start;gap:6px;}
+  #inspStatButtons button.stat-btn{width:100%;max-width:96px;min-height:34px;max-height:48px;white-space:nowrap;overflow:hidden;}
+  #inspEvoHint{flex:1 1 100%;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85em;color:#bdeaff;background:rgba(125,211,252,0.12);
     border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:3px 8px;}
   #inspEvoHint.hidden{display:none;}
+  #startCredit{margin-top:14px;font-size:0.8em;opacity:0.75;}
+  #startCredit a{color:inherit;}
+  #wavePhaseVal{display:block;font-size:0.72em;color:var(--paper);opacity:0.9;white-space:nowrap;}
+  #wavePhaseVal[hidden]{display:none;}
   .info-btn{-webkit-appearance:none;appearance:none;background:transparent;border:none;outline:none;
     box-shadow:none;color:var(--gold);font-size:14px;cursor:pointer;padding:0;margin:0 2px 0 0;
     line-height:1;flex-shrink:0;}
@@ -618,6 +625,7 @@
           <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
           <div class="hud-stat">Wave <span id="waveVal">0/100</span>
             <progress id="waveProgress" min="0" max="100" value="0" aria-label="Wave progress"></progress>
+            <output id="wavePhaseVal" aria-live="polite" hidden></output>
           </div>
         </div>
       </div>
@@ -631,7 +639,7 @@
     <div id="pause-overlay" class="hidden">
       <div id="pause-overlay-inner">
         <div id="pauseOverlayText">⏸ PAUSED</div>
-        <div id="pauseOverlaySubtext">Press any key to continue</div>
+        <div id="pauseOverlaySubtext">Tap/click anywhere or press any key to continue</div>
       </div>
     </div>
 
@@ -660,7 +668,7 @@
           <button id="inspUpgradeBtn">🆙 Promote <span id="inspUpgradeCost"></span></button>
           <button id="inspRepairBtn" class="hidden">🔨 Repair <span id="inspRepairCost"></span></button>
           <span id="inspDpsBetween"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span></span>
-          <button id="inspTargetBtn">⚖️ Target: <span id="inspTargetMode"></span></button>
+          <button id="inspTargetBtn" title="Targeting priority">🎯 <span id="inspTargetMode"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
         </div>
         <div class="insp-opt-row" id="inspTargetMoveRow">
@@ -676,9 +684,9 @@
             <div id="inspEvoHint" class="hidden"></div>
           </div>
           <div id="inspStatButtons">
-            <button id="inspStrBtn" class="stat-btn" title="Strength">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
-            <button id="inspDexBtn" class="stat-btn" title="Dexterity">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
-            <button id="inspIntBtn" class="stat-btn" title="Intelligence">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
+            <button id="inspStrBtn" class="stat-btn" title="Strength — tap to spend one point, hold to keep spending">💪 STR <span id="inspStrVal">0</span><span class="plus-hint"> +</span></button>
+            <button id="inspDexBtn" class="stat-btn" title="Dexterity — tap to spend one point, hold to keep spending">🏃 DEX <span id="inspDexVal">0</span><span class="plus-hint"> +</span></button>
+            <button id="inspIntBtn" class="stat-btn" title="Intelligence — tap to spend one point, hold to keep spending">🧠 INT <span id="inspIntVal">0</span><span class="plus-hint"> +</span></button>
           </div>
         </div>
         <div id="inspItemsRow">
@@ -937,6 +945,7 @@
         <label id="goreLabel"><input type="checkbox" id="goreToggle" checked> I am 18+ — enable intense effects (🩸 Mature)</label>
       </div>
       <button class="big-btn" id="playBtn">▶ PLAY</button>
+      <p id="startCredit">Based on thoughts by Setvin Noether (<a href="https://github.com/SauerNinja" target="_blank" rel="noopener">@SauerNinja</a>)</p>
     </div>
 
     <div id="end-screen" class="hidden">
@@ -981,12 +990,11 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.2.76'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.2'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
-const BIG_VARIANT_CHANCE = 0.005; // 0.5% per enemy spawn — big/tanky/fast/rich golden variant
-const MINI_VARIANT_CHANCE = 0.55; // 55% per enemy spawn — minis are meant to be the visible MAJORITY of a wave's composition, not just a common minority (raised from 0.12 after direct feedback that there should be "more little guys than the big ones")
+
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
 const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
 const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose
@@ -1202,8 +1210,17 @@ function diminishingStatValue(points, perPoint){
   // same 0.25 multiplier — closed-form arithmetic instead of looping through it a tier at a time,
   // since a single stat can now realistically reach several hundred points (attunement's
   // SPECIALIZATION_THRESHOLD=500, Cleric's own Pope evolution at 750).
-  if(remaining > 0) total += remaining * perPoint * 0.25;
+  if(remaining > 0) total += statTailValue(remaining, perPoint * 0.25);
   return total;
+}
+// Past the first 25 points, investment follows a logarithmic tail instead of a flat per-point rate:
+// with training bars (2-6 points each) and promotion bonuses, a farmed carry reaches hundreds of
+// points, and a linear tail turned that into 20x+ damage. The tail still always rises — every point
+// helps — but 500 points is now ~4x the value of 50 instead of 10x. Tuned together with
+// rollTrainingBarPoints() and promotion's 2d6 bonus.
+const STAT_TAIL_SOFTNESS = 50;
+function statTailValue(points, perPointAtTailStart){
+  return perPointAtTailStart * STAT_TAIL_SOFTNESS * Math.log(1 + points / STAT_TAIL_SOFTNESS);
 }
 // WARRIOR archetype (Swordsman and its evolutions — Hammerman, Axeman, Spearman, Paladin) STR
 // damage specifically. A separate curve from the shared diminishingStatValue() above, not a
@@ -1215,13 +1232,13 @@ function diminishingStatValue(points, perPoint){
 // past 25 points instead of flattening to the shared curve's near-linear growth there (1.1.2).
 function warriorStrDamageMult(strEff){
   let total = 0, remaining = strEff, tier = 0;
-  while(remaining > 0){
+  while(remaining > 0 && tier < 5){
     const inTier = Math.min(5, remaining);
-    const tierMult = Math.max(0.4, 1 - tier*0.12);
-    total += inTier * 0.08 * tierMult;
+    total += inTier * 0.08 * (1 - tier*0.12);
     remaining -= inTier;
     tier++;
   }
+  if(remaining > 0) total += statTailValue(remaining, 0.08 * 0.4);
   return 1 + total;
 }
 // Some classes cap out early on a stat that doesn't fit their identity — investing further points
@@ -1274,7 +1291,7 @@ const ENEMY_INFO = {
   SWARM: { name:'Swarm', desc:'Fast and numerous, but very fragile.' },
   TANK: { name:'Tank', desc:'Slow, but tough and armored.' },
   RUNNER: { name:'Runner', desc:'Very fast, low HP — outruns most attack speeds.' },
-  BOSS: { name:'Boss', desc:'Massive HP and armor. Periodically spawns Grunt reinforcements while active.' },
+  BOSS: { name:'Boss', desc:'Massive HP and armor. Always arrives last in its wave and periodically rallies, restoring a little health.' },
   TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
   FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly.' },
   ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly.' },
@@ -1901,108 +1918,6 @@ const CONFIG = {
     ROCKLET: { emoji:'🪨', baseHp:108, speed:35, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:4 },
     MONARCH: { emoji:'🦋', baseHp:33,  speed:112, bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:3 }
   },
-  WAVES: [
-    [{type:'GRUNT',count:1,spawnDelay:1300}], // eased down from 4 — first wave should be genuinely gentle, a single enemy to learn the loop on
-    [{type:'GRUNT',count:2,spawnDelay:1300}], // eased down from 6
-    [{type:'GRUNT',count:2,spawnDelay:1100}], // eased down from 5+1 TANK — TANK's own first appearance simply moves to wave 6 below, where it already existed in the curve, rather than being reintroduced anywhere new
-    [{type:'GRUNT',count:6,spawnDelay:900},{type:'SWARM',count:10,spawnDelay:260}], // new: SWARM — eased in alongside Grunt instead of a bare wall of 16
-    [{type:'GRUNT',count:8,spawnDelay:700},{type:'SWARM',count:10,spawnDelay:250},{type:'WOLF',count:4,spawnDelay:600}], // new: WOLF
-    [{type:'TANK',count:4,spawnDelay:1400},{type:'GRUNT',count:8,spawnDelay:650},{type:'SWARM',count:10,spawnDelay:260}], // ZOMBIE removed from here — see the wave-15 comment below for why it moved much later
-    [{type:'GRUNT',count:10,spawnDelay:650},{type:'TANK',count:4,spawnDelay:1300},{type:'SKELETON',count:3,spawnDelay:1100}], // new: SKELETON (ZOMBIE removed from here — moved much later, see wave 15)
-    [{type:'GRUNT',count:12,spawnDelay:600},{type:'SKELETON',count:3,spawnDelay:1100},{type:'RUNNER',count:8,spawnDelay:400}], // new: RUNNER (was bundled with Splitter+Wraith) — ZOMBIE removed from here too, see wave 15
-    [{type:'GRUNT',count:8,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'SKELETON',count:4,spawnDelay:1000},{type:'SPLITTER',count:3,spawnDelay:900}], // new: SPLITTER
-    [{type:'RUNNER',count:12,spawnDelay:400},{type:'SPLITTER',count:3,spawnDelay:900},{type:'WRAITH',count:3,spawnDelay:700}], // new: WRAITH — ZOMBIE removed from here, see wave 15
-    [{type:'GRUNT',count:10,spawnDelay:600},{type:'RUNNER',count:8,spawnDelay:400},{type:'WRAITH',count:3,spawnDelay:700},{type:'FIRE',count:2,spawnDelay:1200}], // new: FIRE
-    [{type:'SWARM',count:16,spawnDelay:220},{type:'TANK',count:3,spawnDelay:1500},{type:'SKELETON',count:4,spawnDelay:1000},{type:'HEALER',count:2,spawnDelay:1300}], // new: HEALER
-    [{type:'RUNNER',count:12,spawnDelay:350},{type:'TANK',count:4,spawnDelay:1300},{type:'HEALER',count:2,spawnDelay:1200},{type:'SHIELDED',count:3,spawnDelay:1000}], // new: SHIELDED
-    [{type:'GRUNT',count:14,spawnDelay:500},{type:'SWARM',count:18,spawnDelay:200},{type:'RUNNER',count:10,spawnDelay:350},{type:'SHIELDED',count:3,spawnDelay:1000},{type:'ICE',count:2,spawnDelay:1300}], // new: ICE — the full basic roster is now introduced
-    [{type:'BOSS',count:1,spawnDelay:0},{type:'GRUNT',count:10,spawnDelay:600},{type:'WOLF',count:6,spawnDelay:500},{type:'ZOMBIE',count:4,spawnDelay:1000},{type:'FIRE',count:2,spawnDelay:1100},{type:'ICE',count:2,spawnDelay:1100}], // new: BOSS AND ZOMBIE — Zombie moved here from wave 6 by explicit request: armored/tanky enough that it should land only once it's plausible a dedicated Mage has actually reached Cleric (500 INT, past the 100 INT attunement minimum), not while the player's still on their very first few towers
-    [{type:'TANK',count:10,spawnDelay:900},{type:'RUNNER',count:14,spawnDelay:280},{type:'ZOMBIE',count:6,spawnDelay:1000},{type:'FIRE',count:4,spawnDelay:900}],
-    [{type:'SWARM',count:26,spawnDelay:160},{type:'WOLF',count:10,spawnDelay:350},{type:'ICE',count:4,spawnDelay:900},{type:'SHIELDED',count:5,spawnDelay:800}],
-    [{type:'ZOMBIE',count:8,spawnDelay:900},{type:'WRAITH',count:6,spawnDelay:600},{type:'SKELETON',count:8,spawnDelay:800},{type:'HEALER',count:4,spawnDelay:1000}],
-    [{type:'TANK',count:8,spawnDelay:800},{type:'SHIELDED',count:6,spawnDelay:800},{type:'SPLITTER',count:6,spawnDelay:750},{type:'WRAITH',count:5,spawnDelay:550},{type:'RUNNER',count:14,spawnDelay:250}],
-    [{type:'BOSS',count:2,spawnDelay:0},{type:'GRUNT',count:18,spawnDelay:400},{type:'TANK',count:8,spawnDelay:800},{type:'SWARM',count:20,spawnDelay:180},{type:'WOLF',count:10,spawnDelay:350}],
-    [{type:'GRUNT',count:10,spawnDelay:540},{type:'SWARM',count:13,spawnDelay:197},{type:'FIRE',count:1,spawnDelay:1190}],  // 21
-    [{type:'GRUNT',count:4,spawnDelay:700},{type:'SPLITTER',count:2,spawnDelay:500},{type:'TROLL',count:1,spawnDelay:300},{type:'TANK',count:2,spawnDelay:250},{type:'RUNNER',count:7,spawnDelay:150}],  // 22: 🃏 TRICK WAVE
-    [{type:'TANK',count:4,spawnDelay:1970},{type:'SHIELDED',count:2,spawnDelay:1770}],  // 23: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:24,spawnDelay:750},{type:'ZOMBIE',count:10,spawnDelay:900},{type:'RUNNER',count:12,spawnDelay:650}],  // 24: ⛏️ GRIND
-    [{type:'SWARM',count:45,spawnDelay:140},{type:'WOLF',count:17,spawnDelay:280},{type:'RUNNER',count:10,spawnDelay:280}],  // 25: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:7,spawnDelay:1052},{type:'SKELETON',count:7,spawnDelay:952},{type:'WRAITH',count:5,spawnDelay:664}],  // 26: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:6,spawnDelay:944},{type:'ICE',count:6,spawnDelay:944},{type:'GRUNT',count:13,spawnDelay:658}],  // 27: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:24,spawnDelay:470},{type:'SWARM',count:34,spawnDelay:176},{type:'TANK',count:6,spawnDelay:1180},{type:'RUNNER',count:16,spawnDelay:316},{type:'FIRE',count:5,spawnDelay:1120},{type:'ICE',count:5,spawnDelay:1120},{type:'SPLITTER',count:4,spawnDelay:936},{type:'HEALER',count:3,spawnDelay:1320}],  // 28
-    [{type:'GRUNT',count:7,spawnDelay:700},{type:'SPLITTER',count:4,spawnDelay:500},{type:'TROLL',count:1,spawnDelay:300},{type:'TANK',count:4,spawnDelay:250},{type:'RUNNER',count:10,spawnDelay:150}],  // 29: 🃏 TRICK WAVE
-    [{type:'TANK',count:10,spawnDelay:1300},{type:'BOSS',count:1,spawnDelay:0}],  // 30: 👑 BOSS WAVE
-    [{type:'GRUNT',count:38,spawnDelay:750},{type:'ZOMBIE',count:17,spawnDelay:900},{type:'RUNNER',count:19,spawnDelay:650}],  // 31: ⛏️ GRIND
-    [{type:'SWARM',count:73,spawnDelay:126},{type:'WOLF',count:28,spawnDelay:252},{type:'RUNNER',count:14,spawnDelay:252}],  // 32: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:10,spawnDelay:996},{type:'SKELETON',count:10,spawnDelay:896},{type:'WRAITH',count:7,spawnDelay:622}],  // 33: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:888},{type:'ICE',count:10,spawnDelay:888},{type:'GRUNT',count:20,spawnDelay:616}],  // 34: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 35
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 36: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 37: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 38: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 39: 🐜 SWARM SURGE
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 40: 👑 BOSS WAVE
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 41: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 42
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 43: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 44: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 45: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 46: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 47: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 48: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 49
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 50: 👑 BOSS WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 51: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 52: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 53: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 54: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 55: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 56
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 57: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 58: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 59: ⛏️ GRIND
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 60: 👑 BOSS WAVE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 61: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 62: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 63
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 64: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 65: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 66: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 67: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 68: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 69: 🔥 AMBUSH TACTICS
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 70: 👑 BOSS WAVE
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 71: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 72: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 73: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 74: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 75: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 76: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 77
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 78: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 79: 🛡️ ELITE VANGUARD
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 80: 👑 BOSS WAVE
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 81: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 82: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 83: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 84
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 85: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 86: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 87: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 88: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 89: 🧟 UNDEAD UPRISING
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 90: 👑 BOSS WAVE
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 91
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 92: 🃏 TRICK WAVE
-    [{type:'TANK',count:8,spawnDelay:1850},{type:'SHIELDED',count:5,spawnDelay:1650},{type:'ZOMBIE',count:5,spawnDelay:1650}],  // 93: 🛡️ ELITE VANGUARD
-    [{type:'GRUNT',count:46,spawnDelay:750},{type:'ZOMBIE',count:21,spawnDelay:900},{type:'RUNNER',count:23,spawnDelay:650}],  // 94: ⛏️ GRIND
-    [{type:'SWARM',count:85,spawnDelay:120},{type:'WOLF',count:32,spawnDelay:240},{type:'RUNNER',count:15,spawnDelay:240}],  // 95: 🐜 SWARM SURGE
-    [{type:'ZOMBIE',count:11,spawnDelay:980},{type:'SKELETON',count:11,spawnDelay:880},{type:'WRAITH',count:8,spawnDelay:610}],  // 96: 🧟 UNDEAD UPRISING
-    [{type:'FIRE',count:10,spawnDelay:880},{type:'ICE',count:10,spawnDelay:880},{type:'GRUNT',count:21,spawnDelay:610},{type:'TROLL',count:1,spawnDelay:0}],  // 97: 🔥 AMBUSH TACTICS
-    [{type:'GRUNT',count:38,spawnDelay:400},{type:'SWARM',count:55,spawnDelay:155},{type:'TANK',count:9,spawnDelay:1075},{type:'RUNNER',count:26,spawnDelay:260},{type:'FIRE',count:8,spawnDelay:1050},{type:'ICE',count:8,spawnDelay:1050},{type:'SPLITTER',count:7,spawnDelay:880},{type:'HEALER',count:4,spawnDelay:1250},{type:'BOSS',count:2,spawnDelay:0}],  // 98
-    [{type:'GRUNT',count:9,spawnDelay:700},{type:'SPLITTER',count:5,spawnDelay:500},{type:'TROLL',count:2,spawnDelay:300},{type:'TANK',count:5,spawnDelay:250},{type:'RUNNER',count:13,spawnDelay:150}],  // 99: 🃏 TRICK WAVE
-    [{type:'TANK',count:12,spawnDelay:1250},{type:'BOSS',count:1,spawnDelay:0}],  // 100: 👑 BOSS WAVE
-  ],
   SCENERY: {
     coverage: 0.16,          // fraction of buildable (non-path) tiles scattered with scenery at game start
     minScale: 0.6, maxScale: 1.6,   // 60%-160% size — widened from 100-130%, which left no room for genuinely small saplings/pebbles and barely any for large ones
@@ -2043,19 +1958,11 @@ function validateGameDefinitions(){
   const towerTypes = Object.keys(CONFIG.TOWERS);
   const enemyTypes = Object.keys(CONFIG.ENEMIES);
 
-  // CONFIG.WAVES — every enemy type referenced must exist, every count/delay must be sane
-  CONFIG.WAVES.forEach((wave, waveIdx) => {
-    if(!Array.isArray(wave) || wave.length === 0){
-      problems.push('CONFIG.WAVES[' + waveIdx + '] is empty or not an array');
-      return;
-    }
-    wave.forEach((group, groupIdx) => {
-      const where = 'CONFIG.WAVES[' + waveIdx + '][' + groupIdx + ']';
-      if(!enemyTypes.includes(group.type)) problems.push(where + '.type = "' + group.type + '" — not in CONFIG.ENEMIES');
-      if(!(Number.isFinite(group.count) && group.count > 0)) problems.push(where + '.count = ' + group.count + ' — must be a positive finite number');
-      if(!(Number.isFinite(group.spawnDelay) && group.spawnDelay >= 0)) problems.push(where + '.spawnDelay = ' + group.spawnDelay + ' — must be a nonnegative finite number');
-    });
-  });
+  // Wave plans — ascending size phases, 5:1 little-to-big ratio, chapter introductions, XP budget
+  for(const problem of validateSizeTierBands()) problems.push('SIZE_TIER_BANDS: ' + problem);
+  for(let waveNumber = 1; waveNumber <= CAMPAIGN_WAVE_COUNT + 20; waveNumber++){
+    for(const problem of validateWavePlan(buildWavePlan(waveNumber))) problems.push(problem);
+  }
 
   // CONFIG.TOWERS — every tier's core numeric fields must be finite
   for(const type of towerTypes){
@@ -2279,6 +2186,38 @@ function runDebugSelfTests(){
   // this doesn't touch enemyPool/applyDamage() at all, just the constant's own value.
   {
     check('BLOOD_ON_HIT_CHANCE is a valid probability strictly less than 1 (a real reduction, not a no-op)', typeof BLOOD_ON_HIT_CHANCE === 'number' && BLOOD_ON_HIT_CHANCE > 0 && BLOOD_ON_HIT_CHANCE < 1);
+  }
+
+  // 10. Wave plans rebuild identically from the same seed, and phases never reorder.
+  {
+    const planA = buildWavePlan(37), planB = buildWavePlan(37);
+    const flatten = plan => plan.phases.map(ph => ph.batches.map(b => b.units.map(u => u.family + u.sizeTier).join(',')).join('|')).join('/');
+    check('same seed and wave number rebuild an identical plan', flatten(planA) === flatten(planB));
+    check('wave 1 is ten sequential single Tiny batches', validateWavePlan(buildWavePlan(1)).length === 0 && buildWavePlan(1).phases[0].batches.length === 10);
+  }
+
+  // 11. Escaped kills never award last-hit XP; normal kills award full tier XP to the killer.
+  {
+    const killer = new Tower(); killer.active = true; killer.type = 'SWORDSMAN'; killer.xp = 0; killer.expLevel = 0; killer.statPoints = 0; killer.killCount = 0; killer.waveXp = 0; killer.x = 0; killer.y = 0;
+    const escapee = new Enemy(); escapee.spawn('GRUNT', 1, false); escapee.applySizeTier('TINY', 0.5, 1); escapee.escaped = true;
+    escapee.damageLedger.set(killer, 10);
+    awardKillExperience(escapee, killer, true);
+    check('escaped kill pays only the reduced cleanup pool', Math.abs(killer.xp - SIZE_TIER_BANDS.TINY.xp * ESCAPED_CLEANUP_FRACTION) < 0.001 && killer.killCount === 0);
+    killer.active = false;
+  }
+
+  // 12. Larger tiers are always slower, bigger, tougher, and worth more.
+  {
+    const tiny = new Enemy(); tiny.spawn('RUNNER', 1, false); tiny.applySizeTier('TINY', 0, 1);
+    const large = new Enemy(); large.spawn('RUNNER', 1, false); large.applySizeTier('LARGE', 1, 1);
+    check('Large Runner is slower, bigger, and tougher than a Tiny Runner', large.speed < tiny.speed && large.radius > tiny.radius && large.maxHp > tiny.maxHp);
+  }
+
+  // 13. Wave 1-15 focused-farm benchmark: half the weighted last hits fills 100+ training bars.
+  {
+    let budget = 0;
+    for(let waveNumber = 1; waveNumber <= 15; waveNumber++) budget += expectedXpBudget(waveNumber);
+    check('50% weighted last hits across waves 1-15 yields at least 100 training bars', budget * 0.5 / TRAINING_BAR_XP >= 100, Math.round(budget) + ' XP');
   }
 
   const passed = results.filter(r => r.pass).length;
@@ -3173,35 +3112,14 @@ function drawDepthSortedLayer(ctx){
   }
   perfStats.visibleEnemies = visibleEnemyCount; perfStats.totalActiveEnemies = totalActiveEnemyCount;
   perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
-  // Bone/skull/worm debris — depth-sorted by its own y like everything else here, replacing the
-  // old separate always-on-top pass (drawDebrisDecals(), removed). That pass was a real fix for a
-  // real bug (debris flickering out when an enemy walked directly onto its exact tile, since it
-  // used to draw BEFORE enemies), but "always above everything" overcorrected: a skull would
-  // render in front of an enemy that was actually further down/closer to the camera, which reads
-  // just as wrong as the flicker did. Depth-sorting by y — the same mechanism already proven for
-  // trees — fixes the general case. The exact-tie case (an enemy standing precisely on a bone's own
-  // tile) needed a separate small fix below — see the sortY epsilon on the debris push.
-  //
-  // Items are plain tagged objects dispatched through the switch below, not per-item closures —
-  // in a decal-heavy area (a lot of accumulated blood/bone debris, which now participates in this
-  // sort) that was potentially hundreds of throwaway arrow-function allocations every single
-  // frame just to be called once immediately after, for no behavioral difference. This was a real,
-  // measurable per-frame allocation cost in exactly the kind of cluttered scene reported as laggy.
+  // Bone/skull/worm/rock debris is ground-layer: drawn immediately, before the depth-sorted actor
+  // pass below, so a skull can never render over a living enemy or tower regardless of y ties.
   const debrisBounds = decalViewBounds();
   for(const d of decals){
-    if(!(d.isEmojiDrop || d.isWorm)) continue;
+    if(!(d.isEmojiDrop || d.isWorm) || d.baked) continue;
     if(!decalVisible(d, debrisBounds)) continue;
     perfStats.visibleDecals++;
-    // Tiny negative epsilon, not just d.y: Array.sort is stable, and debris is pushed into this
-    // array AFTER enemies/towers above — so an exact position tie (an enemy standing precisely on
-    // a bone's tile, which is the single most common case, since that's where bones actually drop)
-    // would otherwise keep the enemy earlier in the stable sort and the bone later, meaning the
-    // bone draws ON TOP of the enemy standing there — backwards from the intended fix, and
-    // invisible in normal play until an enemy is actually standing on the exact bone tile, which is
-    // exactly the scenario reported as still broken. This epsilon is far too small to affect
-    // ordering against anything at a real depth difference.
-    const o = getDepthSortItem(poolIdx++); o.sortY = d.y - 0.5; o.kind = 'd'; o.d = d;
-    depthSortItems.push(o);
+    drawOneDecal(ctx, d);
   }
   // Start-line flags — depth-sorted by their own "feet" (the pole's bottom, same point
   // drawFinishFlagPole() plants) exactly like scenery/enemies/towers/debris above, instead of
@@ -3223,7 +3141,6 @@ function drawDepthSortedLayer(ctx){
       case 'e': it.e.draw(ctx); break;
       case 't': it.t.draw(ctx, it.t === selectedTower); break;
       case 'r': drawTowerScroll(ctx, it.t, it.scrollY); break;
-      case 'd': drawOneDecal(ctx, it.d); break;
       case 'f': {
         const dx = it.pos.x-it.center.x, dy = it.pos.y-it.center.y;
         const dlen = Math.hypot(dx,dy) || 1;
@@ -4175,6 +4092,7 @@ let screenShakeEnabled = true; // gore-kill impact shake — opt-out for anyone 
 let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
+let presentationTime = 0; // advances every rendered PLAYING frame, including between waves — drives transient presentation (death animations) that must finish even while realTime is frozen
 let realTimeFrozen = false; // true while waveState is IDLE (between waves) — blood shouldn't age at all during the rest period between rounds
 // Ambient wind — 0 (calm) to 1 (max gust), a bounded random walk (each new target is a step away
 // from the CURRENT value, not an independent re-roll) so it can never jump straight to a wildly
@@ -4272,7 +4190,7 @@ loadPrefs();
   if(goreToggleSettings) goreToggleSettings.checked = goreMode;
 })();
 let waveIndex = 0;          // number of waves started
-let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (spawnQueue draining, see startNextWave()/update()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
+let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (activeWavePlan dispatching outcome-gated batches, see advanceWaveDispatch()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
 // Flat delay (added to every spawn's own already-tuned delay in startNextWave()) before the first
 // enemy of a new wave actually arrives — gives the round-start fanfare/countdown/leaf-gust/camera
 // pan a moment to land instead of the wave visually starting and spawning in the same instant. See
@@ -4280,15 +4198,6 @@ let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWN
 const WAVE_COUNTDOWN_MS = 3000;
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
-let spawnQueue = [];
-// Cursor into spawnQueue instead of repeatedly shift()ing it — shift() is O(n) per call (it
-// re-indexes the whole remaining array), which used to run once per spawned enemy. Harmless at
-// the wave sizes this game has shipped with so far, but a real, well-known anti-pattern worth
-// fixing cheaply now rather than after waves grow larger. spawnQueue itself is never trimmed
-// during a wave anymore — only this index advances — so every push()/sort() callsite (all in
-// startNextWave()) stays untouched; only the two places that used to read spawnQueue[0]/.length
-// as "what's left to spawn" needed to change, to spawnQueue[spawnQueueIndex]/the cursor comparison.
-let spawnQueueIndex = 0;
 let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
 let barricadeQueueStartedAt = 0; // when the current unbroken stretch of congestion began — drives the 15s force-resume safety valve so spawning can never pause permanently, even if the player has no way left to break the jam
 let waveTimer = 0;
@@ -4375,20 +4284,21 @@ document.getElementById('newEnemyCloseBtn').addEventListener('pointerdown', (e) 
   clearTimeout(showNewEnemyToast._t); // prevent a stale timeout from hiding a later toast that fires soon after
   document.getElementById('new-enemy-toast').classList.remove('show');
 });
-function showWaveSummary(waveNum, goldGained, xpByType){
+function showWaveSummary(waveNum, goldGained, towerReports){
   const el = document.getElementById('wave-summary-toast');
   document.getElementById('waveSummaryNum').textContent = waveNum;
   document.getElementById('waveSummaryGoldVal').textContent = goldGained;
   const list = document.getElementById('waveSummaryXpList');
-  list.innerHTML = '';
-  // sort by XP gained, highest first, so the towers that did the most work lead the list
-  const rows = Object.entries(xpByType).sort((a,b) => b[1]-a[1]);
-  for(const [type, xp] of rows){
-    const def = CONFIG.TOWERS[type];
-    if(!def) continue;
+  list.replaceChildren();
+  for(const report of towerReports.sort((a,b) => b.xp - a.xp)){
     const row = document.createElement('div');
     row.className = 'wave-summary-xp-row';
-    row.innerHTML = '<span>' + def.icon + ' ' + def.name + '</span><span>+' + Math.round(xp) + ' XP</span>';
+    const nameCell = document.createElement('span');
+    nameCell.textContent = report.icon + ' ' + report.name;
+    const statCell = document.createElement('span');
+    statCell.textContent = '⚔' + Math.round(report.damage) + ' 🎯' + report.lastHits + ' 🤝' + report.assists + (report.cleanups ? ' 🧹' + report.cleanups : '')
+      + ' · +' + Math.round(report.xp) + ' XP' + (report.statGain ? ' · +' + report.statGain + ' stat' : '');
+    row.append(nameCell, statCell);
     list.appendChild(row);
   }
   el.classList.add('show');
@@ -4456,19 +4366,45 @@ function checkLegendaryStatus(tower){
   }, 30);
 }
 const STREAK_TIMEOUT_MS = 1200; // tighter window — kills must be genuinely rapid to keep a streak alive
-const MAX_TOWER_LEVEL = 99; // Dota-style: high cap, each level is cheap and fast, deliberately smaller than the old "+4 per gold tier" lump sums
-function xpForNextLevel(level){ return Math.round(14 + level*5); } // XP required to advance FROM this level — grows gently so early levels fly by and late levels are a genuine grind
+// Training: every completed 100-XP bar grants one player-directed stat point. Last hits carry the
+// full size-tier XP (Tiny 17 / Small 20 / Standard 25 / Large 40 / Boss 50 — roughly 6 Tiny or
+// 2-3 Large per bar); every other damaging tower splits a much smaller assist pool by damage share.
+// An enemy that crossed the finish line only ever pays a reduced shared cleanup pool.
+const MAX_TOWER_LEVEL = 10000;
+const MAX_PROMOTION_LEVEL = 99;
+const PROMOTION_COST_GROWTH = 1.5; // matches the authored tier costs (~80 → 120 → 175 → 245), then keeps compounding
+function promotionCostFor(firstPromotionCost, currentLevel){ return Math.round(firstPromotionCost * Math.pow(PROMOTION_COST_GROWTH, currentLevel - 1)); }
+function firstPromotionCost(def){
+  const firstPricedTier = def.tiers.find(tier => Number.isFinite(tier.upgradeCost));
+  return firstPricedTier ? firstPricedTier.upgradeCost : 100;
+}
+function rollPromotionDie(){ return 1 + Math.floor(Math.random() * 6); }
+const TRAINING_BAR_XP = 100;
+const ASSIST_POOL_FRACTION = 0.28;
+const ESCAPED_CLEANUP_FRACTION = 0.25;
+const TRAINING_BAR_ROLLS = 2, TRAINING_ROLL_MIN = 1, TRAINING_ROLL_MAX = 3;
+function xpForNextLevel(){ return TRAINING_BAR_XP; }
+// Each completed training bar rolls 2 × (1-3) stat points: 2-6 per bar, average 4, so a farmed
+// carry climbs quickly while every point still passes through the existing diminishing-returns
+// stat curves (see statEffect callers) rather than scaling combat linearly.
+function rollTrainingBarPoints(){
+  let points = 0;
+  for(let i = 0; i < TRAINING_BAR_ROLLS; i++) points += TRAINING_ROLL_MIN + Math.floor(Math.random() * (TRAINING_ROLL_MAX - TRAINING_ROLL_MIN + 1));
+  return points;
+}
 function gainTowerExp(tower, amount){
   if(!tower.active || tower.type === 'BARRICADE' || tower.expLevel >= MAX_TOWER_LEVEL || amount <= 0) return;
   tower.xp += amount;
   tower.waveXp = (tower.waveXp || 0) + amount;
   let leveled = false;
   let pointsGainedThisCall = 0;
-  while(tower.expLevel < MAX_TOWER_LEVEL && tower.xp >= xpForNextLevel(tower.expLevel)){
-    tower.xp -= xpForNextLevel(tower.expLevel);
+  while(tower.expLevel < MAX_TOWER_LEVEL && tower.xp >= TRAINING_BAR_XP){
+    tower.xp -= TRAINING_BAR_XP;
     tower.expLevel++;
-    tower.statPoints++; // one point per level — small and frequent instead of big lump sums
-    pointsGainedThisCall++;
+    const barPoints = rollTrainingBarPoints();
+    tower.statPoints += barPoints;
+    tower.waveStatPoints = (tower.waveStatPoints || 0) + barPoints;
+    pointsGainedThisCall += barPoints;
     leveled = true;
   }
   if(tower.expLevel >= MAX_TOWER_LEVEL) tower.xp = 0;
@@ -4479,36 +4415,55 @@ function gainTowerExp(tower, amount){
     // Promote — see the inspect-panel fix). The player picks WHICH stat this point goes toward
     // separately via allocateStat(); this call site doesn't know that choice yet, so it reports
     // the point gained generically rather than naming a specific stat.
-    spawnFloatingText(tower.x, tower.y - 40, '+' + pointsGainedThisCall + ' Training!', '#ffd23f');
+    spawnFloatingText(tower.x, tower.y - 40, '+' + pointsGainedThisCall + ' STAT' + (pointsGainedThisCall === 1 ? '' : 'S') + '!', '#ffd23f');
     playSound('levelup');
     playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: 40 }); // bright, excited — an upward reaction
   }
   if(selectedTower === tower) updateInspectPanel();
 }
-function creditKill(tower, forStreak){
+function creditKill(tower, forStreak, lastHitXp){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
-  gainTowerExp(tower, 6); // small, frequent XP per kill — bumped from 4 (originally 3), per direct
-  // request to make the killing hit itself more influential to a tower's growth. Continues the
-  // same established direction already documented on this project: promotion was deliberately
-  // nerfed to a small, reliable +1 specifically so XP/kills would be the main way a tower grows,
-  // not competing with a second large stat generator — this is a further step in that same
-  // direction, not a new one. Already refreshes the inspect panel internally (if `tower` is the
-  // one currently selected) — nothing below needs to call updateInspectPanel() again.
-  if(!forStreak){ updateHUD(); return; } // e.g. splash kills beyond the first in one blast
+  gainTowerExp(tower, lastHitXp);
+  tower.waveLastHits = (tower.waveLastHits || 0) + 1;
+  spawnXpText(tower.x + 12, tower.y - 22, lastHitXp, true);
+  if(!forStreak){ updateHUD(); return; }
   if(gameTime - (tower.lastKillTime || 0) > STREAK_TIMEOUT_MS){
-    tower.killStreak = 0; tower.nextStreakTier = 0; // too long since the last kill — streak lapsed
+    tower.killStreak = 0; tower.nextStreakTier = 0;
   }
   tower.lastKillTime = gameTime;
   tower.killStreak++;
   while(tower.nextStreakTier < KILLSTREAK_TIERS.length && tower.killStreak >= KILLSTREAK_TIERS[tower.nextStreakTier].count){
-    const tier = KILLSTREAK_TIERS[tower.nextStreakTier];
+    showKillstreakBanner(KILLSTREAK_TIERS[tower.nextStreakTier].label);
     tower.nextStreakTier++;
-    gainTowerExp(tower, 14); // bigger XP burst for a killstreak milestone, still funneled through leveling rather than a direct stat point
-    showKillstreakBanner(tier.label);
   }
   checkLegendaryStatus(tower);
   updateHUD();
+}
+function distributeSharedXp(enemy, poolXp, excludedTower, label, color){
+  let totalDamage = 0;
+  for(const [tower, damage] of enemy.damageLedger){
+    if(tower !== excludedTower && tower.active && tower.type !== 'BARRICADE') totalDamage += damage;
+  }
+  if(totalDamage <= 0) return;
+  for(const [tower, damage] of enemy.damageLedger){
+    if(tower === excludedTower || !tower.active || tower.type === 'BARRICADE') continue;
+    const shareXp = poolXp * damage / totalDamage;
+    gainTowerExp(tower, shareXp);
+    if(label === 'CLEANUP') tower.waveCleanups = (tower.waveCleanups || 0) + 1;
+    else tower.waveAssists = (tower.waveAssists || 0) + 1;
+    if(shareXp >= 1) spawnXpText(tower.x - 12, tower.y - 22, Math.round(shareXp), false);
+  }
+}
+function awardKillExperience(enemy, killerTower, forStreak){
+  const tierXp = SIZE_TIER_BANDS[enemy.sizeTier || 'STANDARD'].xp;
+  if(enemy.escaped){
+    distributeSharedXp(enemy, tierXp * ESCAPED_CLEANUP_FRACTION, null, 'CLEANUP', '#aab4bd');
+    updateHUD();
+    return;
+  }
+  if(killerTower && killerTower.active) creditKill(killerTower, forStreak, tierXp);
+  distributeSharedXp(enemy, tierXp * ASSIST_POOL_FRACTION, killerTower, 'ASSIST', '#8fd3ff');
 }
 
 // --- Save / Load: a downloadable .txt file containing a random seed (cosmetic identifier) plus
@@ -4527,7 +4482,7 @@ function generateSaveSeed(){
 //                      Everything serializeGameState() actually writes out.
 //   RECONSTRUCTABLE — never saved, rebuilt fresh from PERSISTENT state on load: spatial hashes
 //                      (buildEnemyHash() et al.), the barricade scratch collections, waveTimer/
-//                      spawnQueue (a fresh wave always starts IDLE after a load, never mid-spawn),
+//                      activeWavePlan (a fresh wave always starts IDLE after a load, never mid-spawn — the plan rebuilds deterministically from waveRunSeed),
 //                      camera position, UI selection state.
 //   TRANSIENT       — never saved, never reconstructed, simply doesn't exist after a load:
 //                      projectiles, particles, floating text, decals, blowingLeaves, hit-stop,
@@ -4557,7 +4512,7 @@ function serializeGameState(){
     // just gives that a place to go the day it does, without touching every existing save's
     // gameVersion semantics. Starts at 1 — nothing to migrate yet, this only adds the field.
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
-    gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft,
+    gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
     goreMode, graphicsQuality, showZoomControls, showFpsCounter, screenShakeEnabled, seenEnemyTypes: [...seenEnemyTypes],
     unlockedTowerTypes: [...unlockedTowerTypes],
@@ -4608,6 +4563,7 @@ function restoreGameState(state){
   sceneryMap.clear();
 
   gold = state.gold; lives = state.lives; livesBought = state.livesBought || 0; waveIndex = state.waveIndex;
+  waveRunSeed = Number.isFinite(state.waveRunSeed) ? (state.waveRunSeed >>> 0) : waveSeedFor(state.waveIndex || 0, 7919);
   wavesCompleted = state.wavesCompleted; wood = state.wood; stone = state.stone;
   moveCharges = state.moveCharges; freeBarricadesLeft = state.freeBarricadesLeft || 0;
   globalPassiveCounts = state.globalPassiveCounts || {};
@@ -4626,8 +4582,8 @@ function restoreGameState(state){
     // older save from before this feature existed — reconstruct from every wave already passed,
     // so an in-progress run doesn't suddenly re-announce enemies the player has long since met
     seenEnemyTypes = new Set();
-    for(let i=0; i<state.waveIndex && i<CONFIG.WAVES.length; i++){
-      for(const group of CONFIG.WAVES[i]) seenEnemyTypes.add(group.type);
+    for(const family of Object.keys(FAMILY_INTRODUCTION_WAVE)){
+      if(FAMILY_INTRODUCTION_WAVE[family] <= state.waveIndex) seenEnemyTypes.add(family);
     }
   }
   rebuildPathCellsAndPx();
@@ -4666,7 +4622,7 @@ function restoreGameState(state){
   }
 
   expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
-  waveState = 'IDLE'; spawnQueue = []; spawnQueueIndex = 0;
+  waveState = 'IDLE'; resetWaveDispatch();
   screenShakeUntil = 0; screenShakeMag = 0;
   rebakeMap();
   centerCameraOnActiveRegion();
@@ -4829,6 +4785,40 @@ function updateCameraFollow(){
 let screenShakeUntil = 0, screenShakeMag = 0; // gore kills trigger a brief impact shake
 let hitStopUntil = 0; // brief physics freeze on Boss kills
 
+// Paused camera gestures can fire pointermove at 120-240 Hz; rendering synchronously on each one
+// ran several full renders per display frame. Coalesced to at most one render per frame.
+let pausedRenderQueued = false;
+function requestPausedRender(){
+  if(pausedRenderQueued) return;
+  pausedRenderQueued = true;
+  requestAnimationFrame(() => { pausedRenderQueued = false; if(gameState !== 'START') render(ctx); });
+}
+// Flick-to-glide panning: pointer velocity is smoothed during a drag, then decays exponentially
+// after release. Runs once per rendered frame from loop() — no timers, no allocation.
+const PAN_INERTIA_DECAY_PER_MS = 0.005;
+const PAN_INERTIA_MIN_SPEED = 0.02; // canvas px per ms
+const PAN_VELOCITY_SMOOTHING = 0.35;
+const panInertia = { vx: 0, vy: 0, active: false, lastMoveTime: 0 };
+function trackPanVelocity(dxCanvas, dyCanvas, eventTime){
+  const elapsed = Math.max(1, eventTime - panInertia.lastMoveTime);
+  panInertia.lastMoveTime = eventTime;
+  if(elapsed > 80){ panInertia.vx = 0; panInertia.vy = 0; return; }
+  panInertia.vx += (dxCanvas / elapsed - panInertia.vx) * PAN_VELOCITY_SMOOTHING;
+  panInertia.vy += (dyCanvas / elapsed - panInertia.vy) * PAN_VELOCITY_SMOOTHING;
+}
+function startPanInertia(eventTime){
+  panInertia.active = eventTime - panInertia.lastMoveTime < 60 && Math.hypot(panInertia.vx, panInertia.vy) > PAN_INERTIA_MIN_SPEED;
+}
+function stopPanInertia(){ panInertia.active = false; panInertia.vx = 0; panInertia.vy = 0; }
+function applyPanInertia(frameMs){
+  if(!panInertia.active) return;
+  camera.x += panInertia.vx * frameMs;
+  camera.y += panInertia.vy * frameMs;
+  clampCamera();
+  const decay = Math.exp(-PAN_INERTIA_DECAY_PER_MS * frameMs);
+  panInertia.vx *= decay; panInertia.vy *= decay;
+  if(Math.hypot(panInertia.vx, panInertia.vy) < PAN_INERTIA_MIN_SPEED) stopPanInertia();
+}
 function clampCamera(){
   const contentW = WORLD_MAX_W * camera.zoom;
   const contentH = WORLD_MAX_H * camera.zoom;
@@ -4922,7 +4912,7 @@ class Enemy{
     } else if(this.isMini){
       // Smaller "minion" filler variant — a much weaker, much cheaper version of the same enemy
       // type, meant to be common ordinary spawn composition rather than a rare event (see
-      // MINI_VARIANT_CHANCE), giving frequent easy last-hit opportunities without changing what
+      // SIZE_TIER_BANDS for wave-planned enemies), giving frequent easy last-hit opportunities without changing what
       // TYPE of enemy is on the path. No special-ability suppression needed here — every enemy
       // special ability in this game is keyed off `type`, not off variant flags, so a mini Splitter
       // still splits, a mini Fire enemy still ignites, etc. — it's simply a weaker, cheaper version
@@ -4977,6 +4967,7 @@ class Enemy{
     this.lastBleedSource = null;
     this.bloodProfile = rollBloodProfile(type); // cached once per spawn so this individual's blood stays a consistent shade across every hit, rather than re-randomizing per wound
     this.statusLabelTimer = 0; // periodic reminder text for active status effects
+    this.stallWatchX = null; this.stallWatchY = null;
     this.stallWatchTraveled = 0; // last-resort anti-bunching failsafe — see checkStallWatchdog()
     this.stallWatchTimer = 0;
     this.stallStrikes = 0;
@@ -5026,6 +5017,10 @@ class Enemy{
     // weight (WRAITH) disables footsteps entirely for a deliberately silent, ghostly glide.
     this.footstepWeight = FOOTSTEP_WEIGHT[type] !== undefined ? FOOTSTEP_WEIGHT[type] : 1;
     this.footstepDist = this.footstepWeight === null ? Infinity : (this.radius * 17);
+    this.sizeTier = 'STANDARD';
+    this.spawnSerial = ++enemySpawnSerial;
+    if(!this.damageLedger) this.damageLedger = new Map();
+    this.damageLedger.clear();
     this.enrageCueFired = false; // one-shot low-HP growl for Boss/Troll (see update())
     // Escaped/wandering state — see reachEnd()/updateEscaped(). Reset explicitly on every reuse
     // (pool slot could previously have belonged to an escaped enemy that was later cleared by
@@ -5140,6 +5135,7 @@ class Enemy{
       if(this.burnTickTimer <= 0){
         this.burnTickTimer = 500;
         const burnDmg = Math.max(1, Math.round(this.maxHp * 0.04));
+        this.recordContribution(this.lastBurnSource, burnDmg);
         this.hp -= burnDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, burnDmg+'🔥', '#ff8844');
         spawnParticles(this.x, this.y, '#ff6b35', 3);
@@ -5151,6 +5147,7 @@ class Enemy{
       if(this.poisonTickTimer <= 0){
         this.poisonTickTimer = 600;
         const poisonDmg = Math.max(1, Math.round(this.poisonDamagePerTick));
+        this.recordContribution(this.lastPoisonSource, poisonDmg);
         this.hp -= poisonDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, poisonDmg+'☠️', '#7cb518');
         spawnParticles(this.x, this.y, '#7cb518', 3);
@@ -5163,6 +5160,7 @@ class Enemy{
       this.bleedTickTimer -= dt;
       if(this.bleedTickTimer <= 0){
         const bleedDmg = Math.max(1, Math.round(this.bleedDamagePerTick));
+        this.recordContribution(this.lastBleedSource, bleedDmg);
         this.hp -= bleedDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, bleedDmg+'🩸', '#e63946');
         // the bleed tick is what makes an open wound visually read as still-active — richer and
@@ -5244,14 +5242,9 @@ class Enemy{
       this.bossSpawnTimer = (this.bossSpawnTimer||3000) - dt;
       if(this.bossSpawnTimer <= 0){
         this.bossSpawnTimer = 3500 + Math.random()*1500;
-        const child = acquireActive(enemyPool);
-        if(child){
-          child.spawn('GRUNT', 1 + (waveIndex-1)*0.20);
-          child.x = this.x + (Math.random()*20-10);
-          child.y = this.y + (Math.random()*20-10);
-          child.pathIndex = this.pathIndex;
-          child.traveled = this.traveled;
-        }
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.03);
+        spawnFloatingText(this.x, this.y - this.radius - 12, '📯 Rally!', '#ff8a65');
+        spawnParticles(this.x, this.y, '#ff8a65', 8);
       }
     }
     if(this.slowTimer > 0){
@@ -5270,7 +5263,7 @@ class Enemy{
         this.packSpeedBonus = 1 + Math.min(0.5, nearbyPack*0.15); // up to +50% speed with packmates nearby
       }
     }
-    let effectiveSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
+    let effectiveSpeed = this.packedSpeed() * this.slowMultiplier;
     // Don't try to walk faster than whatever's directly ahead of us on this single-file path — set
     // by updateBarricadesAndPileup() earlier this frame, only when something is genuinely close
     // ahead. Without this, a fast unit right behind a slow one kept computing its own full speed
@@ -5289,7 +5282,7 @@ class Enemy{
       if(!fl){ this.reachEnd(); return; } // degenerate/unset path — fail safe to the old immediate behavior rather than getting stuck with nowhere to walk
       const alongDist = (this.x - fl.edgeX)*fl.ux + (this.y - fl.edgeY)*fl.uy;
       if(alongDist >= this.radius){ this.reachEnd(); return; }
-      const finalSpeed = this.speed * this.slowMultiplier * (this.packSpeedBonus || 1);
+      const finalSpeed = this.packedSpeed() * this.slowMultiplier;
       this.vx = fl.ux*finalSpeed; this.vy = fl.uy*finalSpeed;
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       this.traveled += finalSpeed*dt/1000;
@@ -5311,6 +5304,19 @@ class Enemy{
       this.pathIndex++;
       this.traveled += dist;
       distMovedThisFrame = dist;
+      const cornerTarget = waypointsPx[this.pathIndex+1];
+      const leftover = moveDist - dist;
+      if(leftover > 0 && cornerTarget){
+        // Carry the unused step around the corner instead of discarding it, so units keep an
+        // even pace through turns rather than hitching at every waypoint (most visible at 5x/10x).
+        const cdx = cornerTarget.x - this.x, cdy = cornerTarget.y - this.y;
+        const cornerDist = Math.hypot(cdx, cdy) || 0.0001;
+        const carried = Math.min(leftover, cornerDist);
+        this.x += cdx / cornerDist * carried; this.y += cdy / cornerDist * carried;
+        this.vx = cdx / cornerDist * effectiveSpeed; this.vy = cdy / cornerDist * effectiveSpeed;
+        this.traveled += carried;
+        distMovedThisFrame += carried;
+      }
     } else {
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       this.traveled += moveDist;
@@ -5363,6 +5369,33 @@ class Enemy{
       this.shieldHp = Math.min(this.shieldMaxHp, this.shieldHp + this.shieldMaxHp*0.08);
     }
   }
+  // Pack bonus can never lift a unit past its size tier's speed ceiling — a Large wolf pack stays
+  // slower than any Small enemy, preserving "bigger always means slower".
+  packedSpeed(){
+    const packed = this.speed * (this.packSpeedBonus || 1);
+    const band = SIZE_TIER_BANDS[this.sizeTier];
+    return band ? Math.min(packed, Math.max(this.speed, band.speedMax)) : packed;
+  }
+  recordContribution(sourceTower, amount){
+    if(!sourceTower || !sourceTower.active || amount <= 0) return;
+    this.damageLedger.set(sourceTower, (this.damageLedger.get(sourceTower) || 0) + amount);
+    sourceTower.waveDamage = (sourceTower.waveDamage || 0) + Math.min(amount, Math.max(0, this.hp));
+  }
+  applySizeTier(sizeTier, sizeJitter, hpScale){
+    const band = SIZE_TIER_BANDS[sizeTier];
+    const def = CONFIG.ENEMIES[this.type];
+    const familySpeedRank = clampNum((def.speed - ENEMY_FAMILY_SPEED_MIN) / (ENEMY_FAMILY_SPEED_MAX - ENEMY_FAMILY_SPEED_MIN), 0, 1);
+    const sizeRank = clampNum(sizeJitter, 0, 1);
+    this.sizeTier = sizeTier;
+    this.isMini = sizeTier === 'TINY';
+    this.isBig = sizeTier === 'LARGE';
+    this.radius = Math.round(band.radiusMin + sizeRank * (band.radiusMax - band.radiusMin));
+    this.speed = band.speedMin + familySpeedRank * (band.speedMax - band.speedMin);
+    this.maxHp = Math.max(1, Math.round(def.baseHp * hpScale * band.hpMult * (0.95 + sizeRank * 0.1)));
+    this.hp = this.maxHp;
+    this.bounty = Math.max(1, Math.round(def.bounty * band.bountyMult));
+    this.footstepDist = this.footstepWeight === null ? Infinity : (this.radius * 17);
+  }
   spawnSplitChildren(){
     this.hasSplit = true;
     // Which child type a splitting enemy leaves behind — previously hardcoded to always spawn
@@ -5376,7 +5409,8 @@ class Enemy{
     for(let i=0; i<2; i++){
       const child = acquireActive(enemyPool);
       if(!child) break;
-      child.spawn(childType, 1 + (waveIndex-1)*0.20);
+      child.spawn(childType, waveHpScale(waveIndex));
+      child.applySizeTier(this.sizeTier === 'BOSS' ? 'LARGE' : this.sizeTier, Math.random(), waveHpScale(waveIndex) * 0.5);
       child.x = this.x + (Math.random()*16-8);
       child.y = this.y + (Math.random()*16-8);
       child.pathIndex = this.pathIndex;
@@ -5568,6 +5602,7 @@ class Enemy{
     for(let i=0;i<2;i++) spawnHutGuardian(this);
   }
   applyDamage(amount, sourceTower, forStreak, isHoly){
+    if(this.active) this.recordContribution(sourceTower, amount);
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
     // cosmetic overlay. Symmetric around 1.0, so average DPS over many hits lands exactly where
@@ -5943,7 +5978,7 @@ class Enemy{
       return; // not actually dead yet — no bounty, no kill credit, skip normal death handling
     }
     if(this.splits && !this.hasSplit) this.spawnSplitChildren();
-    if(sourceTower && sourceTower.active) creditKill(sourceTower, forStreak);
+    awardKillExperience(this, sourceTower, forStreak);
     spawnDeathAnim(this.x, this.y, this.emoji, this.radius); // brief squash-and-fade in place of an instant vanish
     this.active = false;
     // Creep-camp notifications — a dying guardian tells its hut the lane just got one emptier; the
@@ -5961,7 +5996,7 @@ class Enemy{
       this.respawnAt = null;
       spawnFloatingText(this.x, this.y - this.radius - 24, 'Camp cleared!', '#ffd23f');
     }
-    const bountyMult = (sourceTower && sourceTower.active && sourceTower.goldMult) ? sourceTower.goldMult : 1;
+    const bountyMult = ((sourceTower && sourceTower.active && sourceTower.goldMult) ? sourceTower.goldMult : 1) * (this.escaped ? ESCAPED_CLEANUP_FRACTION : 1);
     const bountyGold = Math.round(this.bounty * bountyMult);
     if(this.type === 'TANK'){
       const bountyStone = Math.round(14 * bountyMult);
@@ -6418,7 +6453,7 @@ class Tower{
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0;
     this.attunement = null; // null | 'FIRE' | 'ELECTRIC' | 'ICE' — permanently locked once set, see checkAttunementAndSpecialization()
     this.xp = 0; this.expLevel = 1; // Dota-style EXP level, separate from the gold-tier `level` above —
-    // grants 1 stat point per level, up to MAX_TOWER_LEVEL. Fed by kills, killstreaks, and round survival.
+    // grants 1 stat point per completed 100-XP training bar. Fed by last hits (full size-tier XP) and assists (shared fractional pool).
     this.waveXp = 0; // XP earned so far THIS wave only — reset each time a new wave starts, used for the wave-end summary popup
     this.baseDamage = 0; this.baseCooldown = 0; this.baseRange = 0;
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
@@ -6491,7 +6526,7 @@ class Tower{
     // that has no business surviving the evolution). Blowdart→Squirtgun was checked too and is
     // fine: both define poisonDamage/poisonDuration in every tier.
     this.splashRadius = 0; this.slowFactor = 0; this.slowDuration = 0;
-    Object.assign(this, this.def.tiers[this.level-1]);
+    Object.assign(this, this.def.tiers[Math.min(this.level, this.def.tiers.length) - 1]); // promotions past the authored tier table keep the top tier's baseline; growth comes from promotion stat rolls
     // snapshot the tier's numbers as the "base" that STR/DEX/INT bonuses layer on top of.
     // Damage specifically is dampened here: the raw tier table's damage growth (tier 1 -> max tier)
     // used to carry through in full, and compounding with recomputeStats()'s own primary-stat
@@ -6790,29 +6825,30 @@ class Tower{
     playSound('evolution');
     updateInspectPanel();
   }
-  canUpgrade(){ return this.type !== 'BARRICADE' && this.level < this.def.tiers.length; }
+  canUpgrade(){ return this.type !== 'BARRICADE' && this.level < MAX_PROMOTION_LEVEL; }
   // Named differently from the tier data's "upgradeCost" field on purpose — applyTierStats()
   // copies every tier field onto the instance via Object.assign, and a method with the exact
   // same name as a data field gets silently overwritten (shadowed) by that number after the
   // first upgrade, breaking every upgrade after that. This was a real, reproducible crash.
-  nextUpgradeCost(){ return this.canUpgrade() ? this.def.tiers[this.level].upgradeCost : 0; }
+  nextUpgradeCost(){ return this.canUpgrade() ? promotionCostFor(firstPromotionCost(this.def), this.level) : 0; }
   upgrade(){
     if(this.type === 'BARRICADE') return false; // obstacle, not a tower — see recomputeStats() for the full rationale; independent guard here rather than only trusting canUpgrade()
     if(!this.canUpgrade()) return false;
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
-    // Promotion is mostly a gold sink now, not a second source of big stat swings — the real
-    // reward for promoting is the tier's own baseline stat jump from applyTierStats() below
-    // (already tuned per-class in CONFIG.TOWERS), which this doesn't touch at all. Previously
-    // added 3 random 1-6 rolls plus a guaranteed 1-3 to the favored stat (~12.5 raw stats on
-    // average per promotion) — replaced with a small, predictable +1 to the favored stat only, by
-    // explicit request: XP/kills should be the main way a tower grows (see gainTowerExp()'s own
-    // player-chosen statPoints), promotion should be a modest, reliable bonus on top, not a second
-    // large, swingy stat generator competing with it.
+    // Promotion rolls 1d6 into each of STR/DEX/INT, then a second 1d6 into the class's favored
+    // stat. Cost grows exponentially (promotionCostFor), so repeated promotions stay a real
+    // gold decision while XP training remains the steady, player-directed growth source.
     const archetype = CLASS_ARCHETYPE[this.type];
     const favoredStat = archetype === 'WARRIOR' ? 'str' : archetype === 'ARCHER' ? 'dex' : archetype === 'MAGE' ? 'int' : null;
-    if(favoredStat) this[favoredStat] += 1;
+    const rolled = { str: rollPromotionDie(), dex: rollPromotionDie(), int: rollPromotionDie() };
+    if(favoredStat) rolled[favoredStat] += rollPromotionDie();
+    this.str += rolled.str; this.dex += rolled.dex; this.int += rolled.int;
+    const bonusPoints = rollPromotionDie() + rollPromotionDie();
+    this.statPoints += bonusPoints;
+    spawnFloatingText(this.x, this.y - 66, '+' + bonusPoints + ' STATS!', '#ffd23f');
+    spawnFloatingText(this.x, this.y - 52, '💪+' + rolled.str + ' 🏃+' + rolled.dex + ' 🧠+' + rolled.int, '#ffd700');
     this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
     this.applyTierStats();
     this.checkEvolution();
@@ -6865,21 +6901,13 @@ class Tower{
     for(const e of nearby){
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d > range) continue;
-      let score;
-      if(this.targetMode === 'FIRST') score = e.traveled;
-      else if(this.targetMode === 'STRONGEST') score = e.hp;
-      else if(this.targetMode === 'WEAKEST') score = -e.hp; // lowest HP wins — negated so the shared "higher score wins" comparison works the same way as every other mode
-      else score = -d; // CLOSEST
+      const score = this.targetScore(e, d);
       if(score > bestScore){ bestScore = score; best = e; }
     }
     if(this.target && this.target.active){
       const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
       if(d <= range){
-        let currentScore;
-        if(this.targetMode === 'FIRST') currentScore = this.target.traveled;
-        else if(this.targetMode === 'STRONGEST') currentScore = this.target.hp;
-        else if(this.targetMode === 'WEAKEST') currentScore = -this.target.hp;
-        else currentScore = -d;
+        const currentScore = this.targetScore(this.target, d);
         const threshold = currentScore >= 0 ? currentScore*hysteresisMult : currentScore*hysteresisMultNeg;
         if(!best || best === this.target || bestScore <= threshold) return;
       }
@@ -7312,14 +7340,28 @@ class Tower{
       if(e === this.target) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d > this.range) continue;
-      let score;
-      if(this.targetMode === 'FIRST') score = e.traveled;
-      else if(this.targetMode === 'STRONGEST') score = e.hp;
-      else if(this.targetMode === 'WEAKEST') score = -e.hp;
-      else score = -d;
+      const score = this.targetScore(e, d);
       if(score > bestScore){ bestScore = score; best = e; }
     }
     return best;
+  }
+  // FARM: prefer an enemy this tower can finish with its next hit (last-hit farming), lowest HP
+  // first; otherwise fall back to the weakest. ASSIST: prefer the healthiest enemy so the
+  // last hit is left to other towers. Neither fakes credit — the actual final hit owns the kill.
+  targetScore(e, distance){
+    switch(this.targetMode){
+      case 'FIRST': return e.traveled;
+      case 'STRONGEST': return e.hp;
+      case 'WEAKEST': return -e.hp;
+      case 'FARM': {
+        const remainingHp = e.hp - (e.incomingDamage || 0);
+        if(remainingHp <= 0) return -1e9;
+        return remainingHp <= this.damage ? 1e6 - remainingHp : -remainingHp;
+      }
+      case 'UNCLAIMED': return e.hp - (e.incomingDamage || 0) <= 0 ? -1e9 : e.traveled;
+      case 'ASSIST': return e.maxHp > 0 ? e.hp / e.maxHp * 1000 + e.traveled * 0.001 : 0;
+      default: return -distance;
+    }
   }
   swingOffset(t){
     const w = this.swingArc;
@@ -7892,6 +7934,14 @@ const towerPool = Array.from({length: 80}, () => new Tower());
 // entirely at the same point — see those two `for(const t of towerPool) t.active=false` sites.
 const activeBarricades = new Set();
 const projectilePool = Array.from({length: 150}, () => new Projectile());
+// Sums every in-flight rolled-hit projectile's damage onto its tracked enemy — O(projectiles) once
+// per tick, zero allocation — so FARM/UNCLAIMED targeting can skip enemies already doomed.
+function tallyCommittedProjectileDamage(){
+  for(const e of enemyPool) e.incomingDamage = 0;
+  for(const p of projectilePool){
+    if(p.active && p.trackedTarget && !p.isGuaranteedMiss && p.trackedTarget.active) p.trackedTarget.incomingDamage += p.damage || 0;
+  }
+}
 
 /* Lightweight pooled particles & floating text (rolling-index reuse, no allocation in loop) */
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
@@ -7902,6 +7952,8 @@ let particleIndex = 0;
 // through every call site — used for void-pattern detection (see MAGE's streak loop below).
 let enemyHash = null;
 const MAX_DECALS = 2000;
+const MAX_DECALS_LOW_QUALITY = 1200; // Low graphics keeps a smaller live gore budget — waves now resolve 5-10x more kills, so the cap is actually reached in normal play
+function decalCapacity(){ return graphicsQuality === 'low' ? MAX_DECALS_LOW_QUALITY : MAX_DECALS; }
 const decals = [];
 // Throttle for the decal-expiry sweep in drawDecals() below — expiry precision to the nearest
 // half-second is meaningless against a multi-minute decal lifespan (DECAL_LIFESPAN, 30min base
@@ -7983,16 +8035,16 @@ const deathAnims = []; // lightweight, fully decoupled from Enemy/enemyPool — 
 // captured at the moment of death, so it carries zero risk of a "dying but still targetable" bug
 // or any interaction with pathing/collision — it just draws on top for a moment, then disappears.
 function spawnDeathAnim(x, y, emoji, radius){
-  deathAnims.push({ x, y, emoji, radius, startTime: realTime, duration: 220 });
+  deathAnims.push({ x, y, emoji, radius, startTime: presentationTime, duration: 220 });
 }
 function updateDeathAnims(){
   for(let i = deathAnims.length-1; i>=0; i--){
-    if(realTime - deathAnims[i].startTime > deathAnims[i].duration) deathAnims.splice(i, 1);
+    if(presentationTime - deathAnims[i].startTime > deathAnims[i].duration) deathAnims.splice(i, 1);
   }
 }
 function drawDeathAnims(ctx){
   for(const d of deathAnims){
-    const t = clampNum((realTime - d.startTime) / d.duration, 0, 1);
+    const t = clampNum((presentationTime - d.startTime) / d.duration, 0, 1);
     const scale = 1 - t*0.75; // squashes down rather than vanishing outright
     const alpha = 1 - t;
     ctx.save();
@@ -8021,6 +8073,9 @@ function startDripSite(x, y, color, severity){
   }
 }
 let decalIndex = 0;
+const SETTLED_DECAL_REBUILD_MIN_MS = 10000;
+let settledDecalRebuildPending = false;
+let lastSettledDecalRebuild = 0;
 // A ground pool laid down while the enemy is actively on fire renders sooty and darkened rather
 // than the normal fresh blood tone — BPA ch.9 ("Effects of Fire and Soot on Bloodstains"): blood
 // exposed to active heat/soot appears distinctly darker than an ordinary stain, and the two are
@@ -8578,11 +8633,14 @@ function pushDecal(decal){
   // to the smaller accessory marks (streaks, drip trails, satellite drops, footprints) that
   // otherwise keep accumulating without bound over a long fight in one corridor.
   if(decal.blobs === undefined && isBloodAreaSaturated(decal.x, decal.y)) return;
-  if(decals.length < MAX_DECALS){
+  const capacity = decalCapacity();
+  if(decals.length < capacity){
     decals.push(decal);
   } else {
+    decalIndex %= capacity;
+    if(decals[decalIndex].baked) settledDecalRebuildPending = true; // its stamp must leave the baked cache on the next coalesced rebuild
     decals[decalIndex] = decal; // oldest stain gets overwritten once capped — stays performance-safe indefinitely
-    decalIndex = (decalIndex+1) % MAX_DECALS;
+    decalIndex = (decalIndex+1) % capacity;
   }
 }
 const DECAL_LIFESPAN = 1800000; // 1800s (30 min) — extended from 300s (5 min). High-wave games run long enough that old stains were being overwritten/expiring well before their timer, which read as blood "not lasting." Real bloodstains persist for hours without cleanup; this keeps pushing toward that while the 85%-of-life fade-out (see drawDecals) still guarantees old stains eventually clear so the map doesn't become unplayably cluttered. The color-aging curve is fraction-based, so it stretches proportionally with this change automatically.
@@ -8608,36 +8666,115 @@ function decalLifespanVariance(){
 // naturally stops being stamped on the very next rebuild — full clear-and-redraw each time, not an
 // incremental add, is what makes removal (fade-approach or actual expiry) correct without ever
 // needing to erase a single shape from the canvas.
-function rebuildSettledDecalCanvas(){
-  if(!settledDecalCanvasReady) return;
+// Bake eligibility per decal kind — only kinds whose geometry is static over the window:
+//  - bone/skull/rock debris: never animates or fades, so it bakes for its whole life (fillText of
+//    an emoji is one of the costliest Canvas2D calls; hundreds per wave were live-drawn each frame).
+//  - satellite drops (~75% of all decals): static geometry; baked once past the bright-red phase,
+//    restamped with their current aged color on a slow cadence until the color settles at 0.40.
+//  - pool blobs: after the skeletonization ring finishes forming (0.4167), as before.
+// Every kind leaves the cache by 0.80, 90+ real seconds before any fade-out starts at 0.85.
+const DROP_BAKE_START_LIFE_T = 0.033;
+const DECAL_AGING_RESTAMP_MS = 20000;
+function decalLifeT(d){ return (realTime - d.spawnTime) / (d.lifespan || DECAL_LIFESPAN); }
+function isDecalBakeEligible(d){
+  const lifeT = decalLifeT(d);
+  if(d.isEmojiDrop) return lifeT < 1;
+  if(d.isDrop) return lifeT >= DROP_BAKE_START_LIFE_T && lifeT <= 0.80;
+  if(d.blobs !== undefined) return lifeT >= 0.45 && lifeT <= 0.80;
+  return false;
+}
+// Same oxidation curve drawOneDecal() uses for lifeT <= 0.85 (no fade-out inside the bake window).
+function agedBloodColor(d, lifeT){
+  const rgb = d.rgb;
+  let r, g, b;
+  if(lifeT < 0.033){
+    const t = lifeT / 0.033;
+    r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
+  } else {
+    const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
+    r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
+  }
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + rgb.a + ')';
+}
+function stampSettledDebris(sctx, d){
+  sctx.save();
+  sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.font = Math.round(d.size) + 'px serif';
+  sctx.translate(d.x, d.y);
+  sctx.rotate(d.rot);
+  sctx.fillText(d.char, 0, 0);
+  sctx.restore();
+}
+function stampSettledDrop(sctx, d){
+  sctx.fillStyle = agedBloodColor(d, decalLifeT(d));
+  sctx.save();
+  sctx.translate(d.x, d.y);
+  sctx.rotate(d.angle);
+  sctx.beginPath(); sctx.ellipse(0, 0, d.len, d.width*0.5, 0, 0, Math.PI*2); sctx.fill();
+  sctx.beginPath();
+  sctx.moveTo(-d.len, 0);
+  sctx.lineTo(-d.len*1.8, -d.width*0.3);
+  sctx.lineTo(-d.len*1.8, d.width*0.3);
+  sctx.closePath(); sctx.fill();
+  sctx.restore();
+}
+function stampSettledDecal(sctx, d){
+  if(d.isEmojiDrop){ stampSettledDebris(sctx, d); return; }
+  if(d.isDrop){ stampSettledDrop(sctx, d); return; }
+  const rgb = d.rgb;
+  sctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + rgb.a + ')';
+  for(const b of d.blobs){ sctx.beginPath(); sctx.arc(d.x+b.dx, d.y+b.dy, b.r, 0, Math.PI*2); sctx.fill(); }
+  // Skeletonization ring — see drawOneDecal's own comment for the real-forensic reasoning; this
+  // reproduces that exact math at its fully-settled values (skeletonT is guaranteed 1 by lifeT
+  // 0.45), not an approximation of it.
+  const r = rgb.r, g = rgb.g, b2 = rgb.b, alpha = rgb.a;
+  sctx.strokeStyle = 'rgba(' + Math.round(r*0.55) + ',' + Math.round(g*0.55) + ',' + Math.round(b2*0.55) + ',' + (alpha*0.7).toFixed(2) + ')';
+  sctx.fillStyle = 'rgba(' + Math.round(r*1.12) + ',' + Math.round(g*1.05) + ',' + Math.round(b2*1.05) + ',' + (alpha*0.5).toFixed(2) + ')';
+  for(const blob of d.blobs){
+    const bx = d.x+blob.dx, by = d.y+blob.dy, br = blob.r;
+    sctx.lineWidth = Math.max(1, br*0.28);
+    sctx.beginPath(); sctx.arc(bx, by, br*0.86, 0, Math.PI*2); sctx.stroke();
+    sctx.beginPath(); sctx.arc(bx, by, br*0.62, 0, Math.PI*2); sctx.fill();
+  }
+}
+function settledDecalContext(){
   const sctx = settledDecalCanvas.getContext('2d');
   sctx.setTransform(dprValue,0,0,dprValue,0,0);
+  return sctx;
+}
+function rebuildSettledDecalCanvas(){
+  if(!settledDecalCanvasReady) return;
+  const sctx = settledDecalContext();
   sctx.clearRect(0,0,WORLD_MAX_W,WORLD_MAX_H);
   for(const d of decals){
-    if(d.blobs === undefined){ d.baked = false; continue; } // not the plain pool-blob kind — always live-drawn
-    const age = realTime - d.spawnTime;
-    const lifespan = d.lifespan || DECAL_LIFESPAN;
-    const lifeT = age / lifespan;
-    if(lifeT < 0.45 || lifeT > 0.80){ d.baked = false; continue; }
-    d.baked = true;
-    const rgb = d.rgb;
-    sctx.fillStyle = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + rgb.a + ')';
-    for(const b of d.blobs){ sctx.beginPath(); sctx.arc(d.x+b.dx, d.y+b.dy, b.r, 0, Math.PI*2); sctx.fill(); }
-    // Skeletonization ring — see drawOneDecal's own comment for the real-forensic reasoning; this
-    // reproduces that exact math at its fully-settled values (skeletonT is guaranteed 1 by lifeT
-    // 0.45, confirmed above), not an approximation of it.
-    const r = rgb.r, g = rgb.g, b2 = rgb.b, alpha = rgb.a;
-    const rimColor = 'rgba(' + Math.round(r*0.55) + ',' + Math.round(g*0.55) + ',' + Math.round(b2*0.55) + ',' + (alpha*0.7).toFixed(2) + ')';
-    const coreColor = 'rgba(' + Math.round(r*1.12) + ',' + Math.round(g*1.05) + ',' + Math.round(b2*1.05) + ',' + (alpha*0.5).toFixed(2) + ')';
-    sctx.strokeStyle = rimColor;
-    sctx.fillStyle = coreColor;
-    for(const blob of d.blobs){
-      const bx = d.x+blob.dx, by = d.y+blob.dy, br = blob.r;
-      sctx.lineWidth = Math.max(1, br*0.28);
-      sctx.beginPath(); sctx.arc(bx, by, br*0.86, 0, Math.PI*2); sctx.stroke();
-      sctx.beginPath(); sctx.arc(bx, by, br*0.62, 0, Math.PI*2); sctx.fill();
-    }
+    d.baked = isDecalBakeEligible(d);
+    if(d.baked) stampSettledDecal(sctx, d);
   }
+  settledDecalRebuildPending = false;
+  lastSettledDecalRebuild = realTime;
+}
+// Per sweep: decals newly entering the bake window are stamped incrementally onto the existing
+// cache (cheap, no clear). Only a baked decal leaving the window or expiring needs a full
+// clear-and-redraw, and those are coalesced to at most one per SETTLED_DECAL_REBUILD_MIN_MS —
+// safe because the window's upper edge (0.80) sits 90+ real seconds before fade-out begins.
+function sweepSettledDecals(expiredBakedCount){
+  if(!settledDecalCanvasReady) return;
+  let sctx = null;
+  let agingDropBaked = false;
+  if(expiredBakedCount > 0) settledDecalRebuildPending = true;
+  for(const d of decals){
+    const eligible = isDecalBakeEligible(d);
+    if(eligible && !d.baked){
+      if(!sctx) sctx = settledDecalContext();
+      stampSettledDecal(sctx, d);
+      d.baked = true;
+    } else if(!eligible && d.baked){
+      settledDecalRebuildPending = true;
+    }
+    if(d.baked && d.isDrop && decalLifeT(d) < 0.40) agingDropBaked = true;
+  }
+  const sinceRebuild = realTime - lastSettledDecalRebuild;
+  if((settledDecalRebuildPending && sinceRebuild >= SETTLED_DECAL_REBUILD_MIN_MS) || (agingDropBaked && sinceRebuild >= DECAL_AGING_RESTAMP_MS)) rebuildSettledDecalCanvas();
 }
 function drawDecals(ctx){
   // Expiry is a single authoritative pass over the real array (splice needs real indices),
@@ -8649,13 +8786,14 @@ function drawDecals(ctx){
   // exactly on schedule, against a lifespan measured in tens of minutes.
   if(realTime - lastDecalExpirySweep >= DECAL_EXPIRY_SWEEP_INTERVAL){
     lastDecalExpirySweep = realTime;
+    let expiredBakedCount = 0;
     for(let i = decals.length - 1; i >= 0; i--){
       const d = decals[i];
       const age = realTime - d.spawnTime;
       const lifespan = d.lifespan || DECAL_LIFESPAN;
-      if(age >= lifespan) decals.splice(i, 1); // actually expires now, not just capacity-recycled
+      if(age >= lifespan){ if(d.baked) expiredBakedCount++; decals.splice(i, 1); } // actually expires now, not just capacity-recycled
     }
-    rebuildSettledDecalCanvas(); // same infrequent cadence — see its own comment for why this is safe
+    sweepSettledDecals(expiredBakedCount);
   }
   const bounds = decalViewBounds();
   perfStats.totalDecals = decals.length;
@@ -8674,6 +8812,23 @@ function decalViewBounds(){
     top: (0 - camera.y) / camera.zoom - cullMargin,
     bottom: (CANVAS_H - camera.y) / camera.zoom + cullMargin
   };
+}
+// Only the on-screen slice of a full-world cached layer is copied each frame, so blit cost scales
+// with the viewport instead of the whole 2048x1280 world raster (x DPR) — the dominant per-frame
+// memory-bandwidth cost while panning on mobile.
+function visibleWorldRect(){
+  const left = Math.max(0, Math.floor(-camera.x / camera.zoom));
+  const top = Math.max(0, Math.floor(-camera.y / camera.zoom));
+  const right = Math.min(WORLD_MAX_W, Math.ceil((CANVAS_W - camera.x) / camera.zoom));
+  const bottom = Math.min(WORLD_MAX_H, Math.ceil((CANVAS_H - camera.y) / camera.zoom));
+  return { left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+}
+function blitWorldLayer(ctx, layerCanvas, view){
+  if(view.width <= 0 || view.height <= 0) return;
+  const rasterScale = layerCanvas.width / WORLD_MAX_W;
+  ctx.drawImage(layerCanvas,
+    view.left * rasterScale, view.top * rasterScale, view.width * rasterScale, view.height * rasterScale,
+    view.left, view.top, view.width, view.height);
 }
 function decalVisible(d, b){ return d.x >= b.left && d.x <= b.right && d.y >= b.top && d.y <= b.bottom; }
 // Same viewport-culling principle, for particles and floating text — previously neither pass culled
@@ -9099,7 +9254,16 @@ function spawnFloatingText(x,y,text,color){
   textIndex = (textIndex+1) % TEXT_COUNT;
   t.active = true; t.x = x; t.y = y; t.text = text; t.color = color;
   t.life = t.maxLife = 550;
-  t.isIcon = false;
+  t.isIcon = false; t.isXp = false;
+}
+// Small, number-only XP pop under the damage numbers: gold for a last hit, silver for an assist
+// or escaped cleanup share. Lives longer than combat text so it can actually be read.
+const XP_TEXT_LIFE_MS = 1100;
+function spawnXpText(x, y, amount, isLastHit){
+  spawnFloatingText(x, y, '+' + amount, isLastHit ? '#ffd23f' : '#c9d1d9');
+  const t = floatingTexts[(textIndex + TEXT_COUNT - 1) % TEXT_COUNT];
+  t.life = t.maxLife = XP_TEXT_LIFE_MS;
+  t.isXp = true;
 }
 // A distinct "still bleeding" reminder — jumps out, wiggles, then fades over 2 seconds, unlike the
 // plain rise-and-fade of a normal floating combat number. Reuses the same pooled floatingTexts
@@ -9157,7 +9321,7 @@ function drawFloatingTexts(ctx){
       ctx.fillText(t.text, 0, 0);
       ctx.restore();
     } else {
-      ctx.font = 'bold 13px Verdana';
+      ctx.font = t.isXp ? 'bold 9px Verdana' : 'bold 13px Verdana';
       ctx.globalAlpha = Math.max(0, t.life/t.maxLife);
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, t.x, t.y);
@@ -10084,12 +10248,27 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
 /* =========================================================
    SPATIAL HASH
    ========================================================= */
-function cellKey(x,y){ return Math.floor(x/TILE_SIZE)+','+Math.floor(y/TILE_SIZE); }
+// Integer spatial-hash keys. String keys ("12,7") allocated a fresh string for every enemy on every
+// hash build and for every cell probed by every queryNearby() call — thousands of short-lived
+// strings per tick, multiplied by up to 90 ticks per frame at 10x speed, feeding GC pauses that
+// show up as periodic stutter. Offset keeps cells slightly outside the world (wandering
+// escapees) unique and non-negative.
+const SPATIAL_CELL_OFFSET = 256, SPATIAL_CELL_STRIDE = 1024;
+function spatialCellKey(cx, cy){ return (cx + SPATIAL_CELL_OFFSET) * SPATIAL_CELL_STRIDE + (cy + SPATIAL_CELL_OFFSET); }
+function cellKey(x,y){ return spatialCellKey(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)); }
 // Pulled out because the exact same "is this enemy currently unable to move" check (stunned OR
 // blocked at a barricade) was independently duplicated across updateBarricadesAndPileup(),
 // resolveSweptEnemyCollisions(), and resolveEnemyCollisions() — same logic, same meaning, three
 // separate copies. Centralizing it doesn't change what any of them do; it just means there's one
 // definition to update if the notion of "frozen" ever needs to account for a new status effect.
+// Creep-camp guardians and huts are stationary scenery-like units; letting them physically shove a
+// route-walking wave unit could pin it in place forever (its velocity still pointed forward, so
+// `traveled` kept rising while its position didn't) and freeze the outcome-gated wave. Route
+// walkers pass through camp units instead.
+function isCampRouteCrossing(a, b){
+  const aCamp = a.isGuardian || a.isHutBuilding, bCamp = b.isGuardian || b.isHutBuilding;
+  return (aCamp && !bCamp && !b.escaped) || (bCamp && !aCamp && !a.escaped);
+}
 function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
 // Last-resort anti-bunching failsafe, independent of whatever the specific root cause of a given
 // stuck-cluster bug turns out to be. Every legitimate reason an enemy stops advancing (queued at
@@ -10102,15 +10281,17 @@ function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
 // Invisible in ordinary play; only ever fires when something has already gone wrong elsewhere.
 function checkStallWatchdog(dt){
   for(const e of enemyPool){
-    if(!e.active || e.isBreakaway || e.escaped) continue;
+    if(!e.active || e.isBreakaway || e.escaped || e.isGuardian || e.isHutBuilding) continue;
     if(isEnemyFrozen(e)){
       // legitimately blocked — not a bug, don't accumulate strikes while this is true
       e.stallWatchTimer = 0; e.stallStrikes = 0; e.stallWatchTraveled = e.traveled;
       continue;
     }
     e.stallWatchTimer += dt;
-    if(e.stallWatchTimer < 500) continue; // was 1000ms — checking twice as often catches a corner hang-up faster, especially in a mixed-size cluster where a stall can start and end within a couple of seconds
-    const progressed = e.traveled - e.stallWatchTraveled;
+    if(e.stallWatchTimer < 500) continue;
+    const displaced = Math.hypot(e.x - (e.stallWatchX ?? e.x), e.y - (e.stallWatchY ?? e.y));
+    e.stallWatchX = e.x; e.stallWatchY = e.y; // was 1000ms — checking twice as often catches a corner hang-up faster, especially in a mixed-size cluster where a stall can start and end within a couple of seconds
+    const progressed = Math.min(e.traveled - e.stallWatchTraveled, displaced); // real displacement, not just the path counter — collision push-back can keep `traveled` rising while the unit never actually moves
     e.stallWatchTimer = 0;
     e.stallWatchTraveled = e.traveled;
     if(progressed < e.radius*0.15){ // scaled to the enemy's own size rather than a flat 3px — a Boss/Tank crawling 3px in half a second might be genuinely fine, while a tiny fast Swarm doing the same is clearly stuck
@@ -10146,6 +10327,7 @@ function resolveSweptEnemyCollisions(){
     const nearby = queryNearby(hash, e.x, e.y, e.radius*3 + 40);
     for(const other of nearby){
       if(!other.active || other.prevX === undefined) continue;
+      if(isCampRouteCrossing(e, other)) continue;
       if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions
       const eFrozen = isEnemyFrozen(e);
       const otherFrozen = isEnemyFrozen(other);
@@ -10194,6 +10376,7 @@ function resolveEnemyCollisions(){
       const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
       for(const other of nearby){
         if(!other.active) continue;
+        if(isCampRouteCrossing(e, other)) continue;
         if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
         const dx = e.x - other.x, dy = e.y - other.y;
         const dist = Math.hypot(dx,dy);
@@ -10309,7 +10492,7 @@ function queryNearby(hash, x, y, range){
   const cx = Math.floor(x/TILE_SIZE), cy = Math.floor(y/TILE_SIZE);
   for(let dx=-cellRadius; dx<=cellRadius; dx++){
     for(let dy=-cellRadius; dy<=cellRadius; dy++){
-      const arr = hash[(cx+dx)+','+(cy+dy)];
+      const arr = hash[spatialCellKey(cx+dx, cy+dy)];
       if(arr){ for(let i=0;i<arr.length;i++) queryNearbyScratch.push(arr[i]); }
     }
   }
@@ -10318,122 +10501,356 @@ function queryNearby(hash, x, y, range){
 }
 
 /* =========================================================
-   WAVES
+   WAVE PLAN — ordered size phases, outcome-gated batches
+   Every wave is materialized up front into an immutable list of SpawnSpecs, grouped into size
+   phases that always run Tiny -> Small -> Standard -> Large -> Boss. A batch only dispatches once
+   every route obligation before it has died or crossed the finish line; a larger phase can never
+   start while a smaller unit is still on the path. All gameplay randomness comes from a seeded
+   generator keyed on (waveRunSeed, waveNumber), so a reload rebuilds the identical wave.
    ========================================================= */
-// Waves beyond the hand-authored 20 are generated procedurally — the game never hard-stops.
-// Enemy HP already scales indefinitely with waveIndex (see spawnEnemy), so difficulty keeps
-// climbing naturally; this just keeps composition/pacing varied as waves keep coming.
-const WAVE_TYPE_NAMES = ['', '🐜 SWARM SURGE', '🛡️ ELITE VANGUARD', '🧟 UNDEAD UPRISING', '🔥 AMBUSH TACTICS', '💪 SIEGE ASSAULT', '🪨 STONE PUSH', '🃏 TRICK RUSH', '⛏️ THE GRIND'];
-// hand-authored waves 21-100 also carry a type label, shown as a toast the same way procedural waves are
-const CURATED_WAVE_LABELS = {22:'🃏 TRICK WAVE', 23:'🛡️ ELITE VANGUARD', 24:'⛏️ GRIND', 25:'🐜 SWARM SURGE', 26:'🧟 UNDEAD UPRISING', 27:'🔥 AMBUSH TACTICS', 29:'🃏 TRICK WAVE', 30:'👑 BOSS WAVE', 31:'⛏️ GRIND', 32:'🐜 SWARM SURGE', 33:'🧟 UNDEAD UPRISING', 34:'🔥 AMBUSH TACTICS', 36:'🃏 TRICK WAVE', 37:'🛡️ ELITE VANGUARD', 38:'⛏️ GRIND', 39:'🐜 SWARM SURGE', 40:'👑 BOSS WAVE', 41:'🔥 AMBUSH TACTICS', 43:'🃏 TRICK WAVE', 44:'🛡️ ELITE VANGUARD', 45:'⛏️ GRIND', 46:'🐜 SWARM SURGE', 47:'🧟 UNDEAD UPRISING', 48:'🔥 AMBUSH TACTICS', 50:'👑 BOSS WAVE', 51:'🛡️ ELITE VANGUARD', 52:'⛏️ GRIND', 53:'🐜 SWARM SURGE', 54:'🧟 UNDEAD UPRISING', 55:'🔥 AMBUSH TACTICS', 57:'🃏 TRICK WAVE', 58:'🛡️ ELITE VANGUARD', 59:'⛏️ GRIND', 60:'👑 BOSS WAVE', 61:'🧟 UNDEAD UPRISING', 62:'🔥 AMBUSH TACTICS', 64:'🃏 TRICK WAVE', 65:'🛡️ ELITE VANGUARD', 66:'⛏️ GRIND', 67:'🐜 SWARM SURGE', 68:'🧟 UNDEAD UPRISING', 69:'🔥 AMBUSH TACTICS', 70:'👑 BOSS WAVE', 71:'🃏 TRICK WAVE', 72:'🛡️ ELITE VANGUARD', 73:'⛏️ GRIND', 74:'🐜 SWARM SURGE', 75:'🧟 UNDEAD UPRISING', 76:'🔥 AMBUSH TACTICS', 78:'🃏 TRICK WAVE', 79:'🛡️ ELITE VANGUARD', 80:'👑 BOSS WAVE', 81:'🐜 SWARM SURGE', 82:'🧟 UNDEAD UPRISING', 83:'🔥 AMBUSH TACTICS', 85:'🃏 TRICK WAVE', 86:'🛡️ ELITE VANGUARD', 87:'⛏️ GRIND', 88:'🐜 SWARM SURGE', 89:'🧟 UNDEAD UPRISING', 90:'👑 BOSS WAVE', 92:'🃏 TRICK WAVE', 93:'🛡️ ELITE VANGUARD', 94:'⛏️ GRIND', 95:'🐜 SWARM SURGE', 96:'🧟 UNDEAD UPRISING', 97:'🔥 AMBUSH TACTICS', 99:'🃏 TRICK WAVE', 100:'👑 BOSS WAVE'};
-function generateStandardWave(n){
-  const group = [];
-  group.push({ type:'GRUNT', count: 8 + n*2, spawnDelay: Math.max(250, 550 - n*10) });
-  group.push({ type:'SWARM', count: 10 + n*3, spawnDelay: Math.max(120, 200 - n*3) });
-  if(n >= 2) group.push({ type:'TANK', count: 2 + Math.floor(n/2), spawnDelay: Math.max(700, 1300 - n*15) });
-  if(n >= 3) group.push({ type:'RUNNER', count: 4 + Math.floor(n*1.5), spawnDelay: Math.max(180, 380 - n*8) });
-  if(n >= 1) group.push({ type:'FIRE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
-  if(n >= 2) group.push({ type:'ICE', count: 1 + Math.floor(n/2), spawnDelay: Math.max(700, 1200 - n*10) });
-  if(n >= 2) group.push({ type:'SPLITTER', count: 2 + Math.floor(n/3), spawnDelay: Math.max(600, 1000 - n*8) });
-  if(n >= 3) group.push({ type:'HEALER', count: 1 + Math.floor(n/4), spawnDelay: Math.max(900, 1400 - n*10) });
-  if(n % 5 === 0) group.push({ type:'BOSS', count: 1 + Math.floor(n/15), spawnDelay: 0 });
-  return group;
+const CAMPAIGN_WAVE_COUNT = 100;
+const SIZE_TIER_ORDER = ['TINY', 'SMALL', 'STANDARD', 'LARGE', 'BOSS'];
+// Non-overlapping speed bands: every tier's fastest unit is still slower than the slowest unit of
+// the tier below it, so size is an honest indicator of strength. Speeds are in this game's own
+// px/s scale (a baseline Grunt walks at 50).
+const SIZE_TIER_BANDS = {
+  TINY:     { label:'Tiny',     radiusMin:7,  radiusMax:10, speedMin:66, speedMax:80, hpMult:0.35, bountyMult:0.4, xp:17, batchGapMs:380 },
+  SMALL:    { label:'Small',    radiusMin:11, radiusMax:13, speedMin:54, speedMax:65, hpMult:0.65, bountyMult:0.7, xp:20, batchGapMs:500 },
+  STANDARD: { label:'Standard', radiusMin:14, radiusMax:18, speedMin:40, speedMax:53, hpMult:1.0,  bountyMult:1.0, xp:25, batchGapMs:650 },
+  LARGE:    { label:'Large',    radiusMin:21, radiusMax:27, speedMin:26, speedMax:39, hpMult:2.8,  bountyMult:2.5, xp:40, batchGapMs:900 },
+  BOSS:     { label:'Boss',     radiusMin:32, radiusMax:38, speedMin:16, speedMax:25, hpMult:1.0,  bountyMult:1.0, xp:50, batchGapMs:2200 }
+};
+const SIZE_PHASE_BANNERS = {
+  TINY:'🐜 TINY HORDE INCOMING', SMALL:'⚔️ SMALL ENEMIES INCOMING', STANDARD:'🛡️ STANDARD GUARD',
+  LARGE:'😡 LARGE ENEMIES APPROACHING', BOSS:'👹 BOSS APPROACHING'
+};
+const FAMILY_INTRODUCTION_WAVE = {
+  GRUNT:1, SWARM:6, BOSS:10, WOLF:11, RUNNER:16, SPLITTER:21, FIRE:26, ICE:31, HEALER:36, SHIELDED:41,
+  SKELETON:46, WRAITH:51, TANK:56, TROLL:61, ZOMBIE:66, REAPER:71, BOULDER:76, MONARCH:86
+};
+const FAMILY_TIER_ELIGIBILITY = {
+  GRUNT:['TINY','SMALL','STANDARD','LARGE'], SWARM:['TINY','SMALL'], WOLF:['TINY','SMALL','STANDARD','LARGE'],
+  RUNNER:['TINY','SMALL','STANDARD','LARGE'], SPLITTER:['SMALL','STANDARD','LARGE'], FIRE:['TINY','SMALL','STANDARD','LARGE'],
+  ICE:['TINY','SMALL','STANDARD','LARGE'], HEALER:['SMALL','STANDARD','LARGE'], SHIELDED:['SMALL','STANDARD','LARGE'],
+  SKELETON:['TINY','SMALL','STANDARD','LARGE'], WRAITH:['TINY','SMALL','STANDARD','LARGE'], TANK:['STANDARD','LARGE'],
+  TROLL:['STANDARD','LARGE'], ZOMBIE:['SMALL','STANDARD','LARGE'], REAPER:['STANDARD','LARGE'], BOULDER:['STANDARD','LARGE'],
+  MONARCH:['TINY','SMALL'], BOSS:['BOSS']
+};
+const FAMILY_NATIVE_TIER = { SWARM:'TINY', MONARCH:'TINY', BOSS:'BOSS' };
+const EARLY_WAVE_POPULATION = [
+  null,
+  { TINY:10 }, { TINY:24 }, { TINY:36 }, { TINY:45, SMALL:9 }, { TINY:54, SMALL:12, LARGE:8 },
+  { TINY:63, SMALL:15, STANDARD:2 }, { TINY:72, SMALL:18, STANDARD:3 }, { TINY:81, SMALL:21, STANDARD:4 },
+  { TINY:90, SMALL:24, STANDARD:5 }, { TINY:100, SMALL:27, STANDARD:6, LARGE:16, BOSS:1 },
+  { TINY:108, SMALL:30, STANDARD:7 }, { TINY:117, SMALL:33, STANDARD:8 }, { TINY:126, SMALL:36, STANDARD:9 },
+  { TINY:135, SMALL:39, STANDARD:10 }, { TINY:144, SMALL:45, STANDARD:12, LARGE:25 }
+];
+const EXPEDITION_THEMES = [
+  { label:'🌾 FARM EXPEDITION', families:['GRUNT','SWARM','MONARCH','WOLF'] },
+  { label:'🐜 SWARM EXPEDITION', families:['SWARM','MONARCH','RUNNER'] },
+  { label:'🧟 UNDEAD EXPEDITION', families:['SKELETON','ZOMBIE','WRAITH','REAPER'] },
+  { label:'🔥 ELEMENTAL EXPEDITION', families:['FIRE','ICE'] },
+  { label:'🛡️ ARMORED EXPEDITION', families:['SHIELDED','TANK','BOULDER'] },
+  { label:'🦠 SPLITTER EXPEDITION', families:['SPLITTER','BOULDER'] },
+  { label:'💉 SUSTAIN EXPEDITION', families:['HEALER','TROLL','SHIELDED'] },
+  { label:'🐺 VANGUARD EXPEDITION', families:['WOLF','RUNNER','WRAITH'] }
+];
+const FARM_THEME_INDEX = 0;
+const WAVE_POSITION_LABELS = ['Introduction', 'Reinforcement', 'Combination', 'Farming', 'Mastery'];
+const ENEMY_FAMILY_SPEED_MIN = Math.min(...Object.values(CONFIG.ENEMIES).map(def => def.speed));
+const ENEMY_FAMILY_SPEED_MAX = Math.max(...Object.values(CONFIG.ENEMIES).map(def => def.speed));
+let waveRunSeed = (Math.random() * 4294967296) >>> 0;
+let activeWavePlan = null;
+const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
+// Within a size phase, the next batch may leave once every unit of the current batch has died,
+// escaped, or walked BATCH_RELEASE_PATH_FRACTION of the route — so a weak defense doesn't turn a
+// long path into minutes of dead air per batch. Phase transitions (Tiny -> Small -> ...) still
+// require every smaller route obligation to be fully resolved. Wave 1 keeps strict one-at-a-time.
+const BATCH_RELEASE_PATH_FRACTION = 0.35;
+function routeLengthPx(){
+  let total = 0;
+  for(let i = 1; i < waypointsPx.length; i++) total += Math.hypot(waypointsPx[i].x - waypointsPx[i-1].x, waypointsPx[i].y - waypointsPx[i-1].y);
+  return total;
 }
-function generateSwarmWave(n){
-  // huge numbers, low individual threat, very fast spawn — a flood, not a fight
-  return [
-    { type:'SWARM', count: 25 + n*4, spawnDelay: Math.max(80, 150 - n*2) },
-    { type:'WOLF', count: 10 + Math.floor(n*1.5), spawnDelay: Math.max(150, 300 - n*4) },
-    { type:'RUNNER', count: 8 + Math.floor(n/2), spawnDelay: Math.max(150, 300 - n*4) },
-    { type:'MONARCH', count: 6 + Math.floor(n/2), spawnDelay: Math.max(140, 260 - n*4) }
-  ];
-}
-function generateEliteWave(n){
-  // few enemies, but each one is a real fight — tests sustained single-target damage
-  const group = [
-    { type:'TANK', count: 3 + Math.floor(n/3), spawnDelay: Math.max(1200, 2000 - n*10) },
-    { type:'SHIELDED', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1800 - n*10) }
-  ];
-  if(n >= 4) group.push({ type:'ZOMBIE', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1800 - n*10) });
-  if(n >= 3) group.push({ type:'BOULDER', count: 1 + Math.floor(n/5), spawnDelay: Math.max(1400, 2200 - n*10) });
-  return group;
-}
-function generateUndeadWave(n){
-  // all-undead — a real test for a Cleric's holy smite
-  const group = [
-    { type:'ZOMBIE', count: 4 + Math.floor(n/2), spawnDelay: Math.max(700, 1100 - n*8) },
-    { type:'SKELETON', count: 4 + Math.floor(n/2), spawnDelay: Math.max(600, 1000 - n*8) },
-    { type:'WRAITH', count: 3 + Math.floor(n/3), spawnDelay: Math.max(400, 700 - n*6) }
-  ];
-  if(n >= 3) group.push({ type:'REAPER', count: 1 + Math.floor(n/5), spawnDelay: Math.max(1000, 1500 - n*10) });
-  return group;
-}
-function generateAmbushWave(n){
-  // heavy on breakaway-prone types — the threat is your towers, not just the path
-  const group = [
-    { type:'FIRE', count: 3 + Math.floor(n/2), spawnDelay: Math.max(600, 1000 - n*8) },
-    { type:'ICE', count: 3 + Math.floor(n/2), spawnDelay: Math.max(600, 1000 - n*8) },
-    { type:'GRUNT', count: 6 + n, spawnDelay: Math.max(400, 700 - n*6) }
-  ];
-  if(n % 3 === 0) group.push({ type:'TROLL', count: 1, spawnDelay: 0 });
-  return group;
-}
-function generateBossRushWave(n){
-  // wall-to-wall heavy hitters
-  const group = [{ type:'TANK', count: 5 + Math.floor(n/2), spawnDelay: Math.max(900, 1400 - n*10) }];
-  if(n >= 10) group.push({ type:'BOSS', count: 1 + Math.floor(n/20), spawnDelay: 0 });
-  return group;
-}
-function generateTrickWave(n){
-  // looks like an easy opener, then springs a real threat partway through — punishes autopilot
-  return [
-    { type:'GRUNT', count: 4 + Math.floor(n/3), spawnDelay: 700 },
-    { type:'SPLITTER', count: 2 + Math.floor(n/4), spawnDelay: 500 },
-    { type:'TROLL', count: 1 + Math.floor(n/12), spawnDelay: 300 },
-    { type:'TANK', count: 2 + Math.floor(n/4), spawnDelay: 250 },
-    { type:'RUNNER', count: 6 + Math.floor(n/2), spawnDelay: 150 }
-  ];
-}
-function generateGrindWave(n){
-  // long, sustained, high total count — wide spacing rather than a fast burst, tests sustained
-  // DPS and economy over time rather than a reaction-check flood
-  return [
-    { type:'GRUNT', count: 16 + n*2, spawnDelay: 750 },
-    { type:'ZOMBIE', count: 6 + n, spawnDelay: 900 },
-    { type:'RUNNER', count: 8 + n, spawnDelay: 650 }
-  ];
-}
-function generateVanguardWave(n){
-  // heavily armored push — tests splash/AoE more than Elite's single-target focus, since Boulder
-  // splits and Reaper's armor punishes anything that isn't holy or high-impact
-  return [
-    { type:'SHIELDED', count: 3 + Math.floor(n/3), spawnDelay: Math.max(900, 1400 - n*8) },
-    { type:'BOULDER', count: 2 + Math.floor(n/4), spawnDelay: Math.max(1200, 1900 - n*10) },
-    { type:'REAPER', count: 1 + Math.floor(n/4), spawnDelay: Math.max(1300, 2000 - n*10) }
-  ];
-}
-function generateProceduralWave(n){
-  // Cycle widened from 7 to 9 — generateTrickWave() and generateGrindWave() were both fully
-  // implemented, using the exact same data format as every other working generator here, but were
-  // never actually wired into this rotation (confirmed zero call sites anywhere in the file before
-  // this fix). Purely additive: two more distinct wave flavors join the rotation, nothing existing
-  // is removed or altered. Honest note on the one real side effect — widening the modulo does shift
-  // which specific wave *number* lands on which flavor for waves generated after this change, since
-  // n % 9 gives different remainders than n % 7 did. That has no player-facing meaning attached to
-  // it (nothing tracks "wave 47 is always Elite type"), but it's a real change to the mapping, not
-  // just new content sitting alongside the old — recorded here rather than glossed over.
-  const waveType = n % 9; // deterministic cycle — guarantees variety, never repeats back to back
-  switch(waveType){
-    case 1: return generateSwarmWave(n);
-    case 2: return generateEliteWave(n);
-    case 3: return generateUndeadWave(n);
-    case 4: return generateAmbushWave(n);
-    case 5: return generateBossRushWave(n);
-    case 6: return generateVanguardWave(n);
-    case 7: return generateTrickWave(n);
-    case 8: return generateGrindWave(n);
-    default: return generateStandardWave(n);
+function currentBatchReleased(){
+  const releaseDistance = routeLengthPx() * BATCH_RELEASE_PATH_FRACTION;
+  for(let i = 0; i < waveDispatch.batchEnemies.length; i++){
+    const e = waveDispatch.batchEnemies[i];
+    if(e.spawnSerial !== waveDispatch.batchSerials[i] || !e.active || e.escaped) continue;
+    if(e.traveled < releaseDistance) return false;
   }
+  return true;
+}
+
+function createSeededRandom(seed){
+  let state = seed >>> 0;
+  return function nextSeededRandom(){
+    state = (state + 0x6D2B79F5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function waveSeedFor(runSeed, waveNumber){
+  return (Math.imul(runSeed ^ 0x9E3779B9, 2654435761) + Math.imul(waveNumber, 40503)) >>> 0;
+}
+function seededIntBetween(rng, min, max){ return min + Math.floor(rng() * (max - min + 1)); }
+function isMasteryWave(waveNumber){ return waveNumber % 5 === 0; }
+function bossCountForWave(waveNumber){
+  if(waveNumber % 10 !== 0) return 0;
+  if(waveNumber <= 10) return 1;
+  if(waveNumber <= 40) return 1;
+  if(waveNumber <= 70) return 2;
+  if(waveNumber <= 90) return 3;
+  return 4;
+}
+function tierPopulationForWave(waveNumber){
+  if(waveNumber < EARLY_WAVE_POPULATION.length) return Object.assign({ TINY:0, SMALL:0, STANDARD:0, LARGE:0, BOSS:0 }, EARLY_WAVE_POPULATION[waveNumber]);
+  const littleTotal = 189 + Math.round(5.5 * (waveNumber - 15)); // 1.5x the handoff curve — more small enemies to farm
+  const tinyCount = Math.round(littleTotal * 0.76);
+  const population = { TINY:tinyCount, SMALL:littleTotal - tinyCount, STANDARD:12 + Math.round(0.6 * (waveNumber - 15)), LARGE:0, BOSS:0 };
+  if(isMasteryWave(waveNumber)){
+    const totalBig = Math.floor(littleTotal / 5);
+    population.BOSS = bossCountForWave(waveNumber);
+    population.LARGE = totalBig - population.BOSS;
+  }
+  return population;
+}
+function batchSizeRangeForWave(waveNumber, sizeTier){
+  if(sizeTier === 'BOSS') return [1, 1];
+  if(waveNumber === 1) return [1, 1];
+  if(waveNumber === 2) return [1, 2];
+  if(waveNumber <= 5) return ({ TINY:[2,3], SMALL:[1,2], STANDARD:[1,1], LARGE:[1,1] })[sizeTier];
+  if(waveNumber <= 15) return ({ TINY:[3,5], SMALL:[2,3], STANDARD:[1,2], LARGE:[1,2] })[sizeTier];
+  if(waveNumber <= 50) return ({ TINY:[5,7], SMALL:[3,4], STANDARD:[2,3], LARGE:[1,2] })[sizeTier];
+  return ({ TINY:[6,10], SMALL:[4,6], STANDARD:[2,4], LARGE:[1,3] })[sizeTier];
+}
+function chapterFamilyForWave(waveNumber){
+  if(waveNumber > CAMPAIGN_WAVE_COUNT) return null;
+  const chapterStart = waveNumber - ((waveNumber - 1) % 5);
+  for(const family of Object.keys(FAMILY_INTRODUCTION_WAVE)){
+    if(family !== 'BOSS' && FAMILY_INTRODUCTION_WAVE[family] === chapterStart) return family;
+  }
+  return null;
+}
+function expeditionThemeIndex(waveNumber){
+  const expeditionDepth = waveNumber - CAMPAIGN_WAVE_COUNT;
+  if(expeditionDepth % 4 === 0) return FARM_THEME_INDEX;
+  const bagRound = Math.floor((expeditionDepth - 1) / 4);
+  const rng = createSeededRandom(waveSeedFor(waveRunSeed, 100000 + bagRound));
+  const bag = EXPEDITION_THEMES.map((_, i) => i).filter(i => i !== FARM_THEME_INDEX);
+  for(let i = bag.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+  return bag[(expeditionDepth - 1) % 4];
+}
+function learnedFamiliesForWave(waveNumber){
+  return Object.keys(FAMILY_INTRODUCTION_WAVE).filter(family => family !== 'BOSS' && FAMILY_INTRODUCTION_WAVE[family] <= waveNumber);
+}
+function familyWeightsForTier(waveNumber, sizeTier, partnerFamily, emphasisFamilies){
+  const chapterFamily = chapterFamilyForWave(waveNumber);
+  const position = (waveNumber - 1) % 5;
+  const weights = [];
+  for(const family of learnedFamiliesForWave(waveNumber)){
+    if(!FAMILY_TIER_ELIGIBILITY[family].includes(sizeTier)) continue;
+    if(family === chapterFamily && position === 0) continue;
+    let weight = 1;
+    if(family === chapterFamily) weight = position === 4 && sizeTier === 'LARGE' ? 6 : 3;
+    if(family === partnerFamily) weight = 3;
+    if(emphasisFamilies && emphasisFamilies.includes(family)) weight = 4;
+    weights.push({ family, weight });
+  }
+  return weights;
+}
+function pickWeightedFamily(rng, weights){
+  let total = 0;
+  for(const w of weights) total += w.weight;
+  let roll = rng() * total;
+  for(const w of weights){ roll -= w.weight; if(roll <= 0) return w.family; }
+  return weights[weights.length - 1].family;
+}
+function introductionSlotCount(tierCount){ return Math.min(6, Math.max(2, Math.round(tierCount * 0.15))); }
+function buildWavePlan(waveNumber){
+  const seed = waveSeedFor(waveRunSeed, waveNumber);
+  const rng = createSeededRandom(seed);
+  const population = tierPopulationForWave(waveNumber);
+  const chapterFamily = chapterFamilyForWave(waveNumber);
+  const position = (waveNumber - 1) % 5;
+  const learned = learnedFamiliesForWave(waveNumber);
+  const olderFamilies = learned.filter(family => family !== chapterFamily);
+  const partnerFamily = position === 2 && olderFamilies.length ? olderFamilies[Math.floor(rng() * olderFamilies.length)] : null;
+  const themeIndex = waveNumber > CAMPAIGN_WAVE_COUNT ? expeditionThemeIndex(waveNumber) : -1;
+  const emphasisFamilies = themeIndex >= 0 ? EXPEDITION_THEMES[themeIndex].families : null;
+  const introTier = chapterFamily && position === 0
+    ? (FAMILY_NATIVE_TIER[chapterFamily] || (population.STANDARD > 0 ? 'STANDARD' : FAMILY_TIER_ELIGIBILITY[chapterFamily][0]))
+    : null;
+  const phases = [];
+  let xpBudget = 0, goldBudget = 0, uniqueId = 0;
+  for(const sizeTier of SIZE_TIER_ORDER){
+    const tierCount = population[sizeTier];
+    if(!tierCount) continue;
+    const band = SIZE_TIER_BANDS[sizeTier];
+    const units = [];
+    const introSlots = sizeTier === introTier ? (chapterFamily === 'GRUNT' ? tierCount : introductionSlotCount(tierCount)) : 0;
+    const weights = sizeTier === 'BOSS' ? [{ family:'BOSS', weight:1 }] : familyWeightsForTier(waveNumber, sizeTier, partnerFamily, emphasisFamilies);
+    for(let i = 0; i < tierCount; i++){
+      const family = i < introSlots ? chapterFamily : (weights.length ? pickWeightedFamily(rng, weights) : 'GRUNT');
+      units.push({ uniqueId: uniqueId++, family, sizeTier, sizeJitter: rng(), phaseIndex: phases.length, batchIndex: 0 });
+      xpBudget += band.xp;
+      goldBudget += Math.max(1, Math.round(CONFIG.ENEMIES[family].bounty * band.bountyMult));
+    }
+    for(let i = units.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); [units[i], units[j]] = [units[j], units[i]]; }
+    const [minBatch, maxBatch] = batchSizeRangeForWave(waveNumber, sizeTier);
+    const batches = [];
+    for(let cursor = 0; cursor < units.length;){
+      const size = Math.min(units.length - cursor, seededIntBetween(rng, minBatch, maxBatch));
+      const batchUnits = units.slice(cursor, cursor + size);
+      for(const unit of batchUnits) unit.batchIndex = batches.length;
+      batches.push({ batchIndex: batches.length, units: Object.freeze(batchUnits), presentationGapMs: band.batchGapMs });
+      cursor += size;
+    }
+    phases.push({ sizeTier, totalUnits: tierCount, batches: Object.freeze(batches) });
+  }
+  const little = population.TINY + population.SMALL;
+  const big = population.LARGE + population.BOSS;
+  return Object.freeze({
+    waveNumber, seed, phases: Object.freeze(phases), xpBudget, goldBudget,
+    populationTotal: little + population.STANDARD + big,
+    littleToBigRatio: big ? little / big : Infinity,
+    newFamilyIntroduced: position === 0 ? chapterFamily : null,
+    label: themeIndex >= 0 ? EXPEDITION_THEMES[themeIndex].label
+      : (chapterFamily ? (CONFIG.ENEMIES[chapterFamily].emoji + ' ' + chapterFamily + ' · ' + WAVE_POSITION_LABELS[position]) : ('⚔️ MASTERY · ' + WAVE_POSITION_LABELS[position]))
+  });
+}
+function expectedXpBudget(waveNumber){
+  const population = tierPopulationForWave(waveNumber);
+  let total = 0;
+  for(const sizeTier of SIZE_TIER_ORDER) total += population[sizeTier] * SIZE_TIER_BANDS[sizeTier].xp;
+  return total;
+}
+function validateWavePlan(plan){
+  const problems = [];
+  const where = 'wave ' + plan.waveNumber;
+  let lastTierRank = -1;
+  for(const phase of plan.phases){
+    const rank = SIZE_TIER_ORDER.indexOf(phase.sizeTier);
+    if(rank <= lastTierRank) problems.push(where + ': phase ' + phase.sizeTier + ' out of ascending size order');
+    lastTierRank = rank;
+    for(const batch of phase.batches){
+      if(!batch.units.length) problems.push(where + ': empty batch in ' + phase.sizeTier);
+      for(const unit of batch.units){
+        if(unit.sizeTier !== phase.sizeTier) problems.push(where + ': unit tier ' + unit.sizeTier + ' inside ' + phase.sizeTier + ' phase');
+        if(!FAMILY_TIER_ELIGIBILITY[unit.family] || !FAMILY_TIER_ELIGIBILITY[unit.family].includes(unit.sizeTier)) problems.push(where + ': ' + unit.family + ' not eligible for ' + unit.sizeTier);
+        if(FAMILY_INTRODUCTION_WAVE[unit.family] > plan.waveNumber) problems.push(where + ': ' + unit.family + ' appears before its introduction wave');
+      }
+    }
+  }
+  const population = tierPopulationForWave(plan.waveNumber);
+  const big = population.LARGE + population.BOSS;
+  if(big && population.TINY + population.SMALL < 5 * big) problems.push(where + ': fewer than 5 little enemies per big enemy');
+  if(big && !isMasteryWave(plan.waveNumber)) problems.push(where + ': Large/Boss enemies on a non-mastery wave');
+  if(Math.abs(plan.xpBudget - expectedXpBudget(plan.waveNumber)) > expectedXpBudget(plan.waveNumber) * 0.05) problems.push(where + ': XP budget outside ±5%');
+  if(plan.waveNumber === 1){
+    const tinyPhase = plan.phases[0];
+    if(!tinyPhase || tinyPhase.sizeTier !== 'TINY' || tinyPhase.totalUnits !== 10 || tinyPhase.batches.some(b => b.units.length !== 1)) problems.push('wave 1: must be ten sequential single Tiny batches');
+  }
+  return problems;
+}
+function validateSizeTierBands(){
+  const problems = [];
+  for(let i = 1; i < SIZE_TIER_ORDER.length; i++){
+    const smaller = SIZE_TIER_BANDS[SIZE_TIER_ORDER[i-1]], larger = SIZE_TIER_BANDS[SIZE_TIER_ORDER[i]];
+    if(larger.speedMax >= smaller.speedMin) problems.push(SIZE_TIER_ORDER[i] + ' speed band overlaps ' + SIZE_TIER_ORDER[i-1]);
+    if(larger.radiusMin <= smaller.radiusMax) problems.push(SIZE_TIER_ORDER[i] + ' radius band overlaps ' + SIZE_TIER_ORDER[i-1]);
+    if(larger.xp <= smaller.xp) problems.push(SIZE_TIER_ORDER[i] + ' XP not above ' + SIZE_TIER_ORDER[i-1]);
+  }
+  return problems;
+}
+function waveHpScale(waveNumber){
+  const chapterIndex = Math.floor((waveNumber - 1) / 5);
+  return 1 + chapterIndex * 0.9 + ((waveNumber - 1) % 5) * 0.04;
+}
+function bossHpScale(waveNumber){ return waveNumber < 20 ? 0.4 : 1; }
+function waveRouteObligationsOutstanding(){
+  for(const e of enemyPool){
+    if(e.active && !e.escaped && !e.isGuardian && !e.isHutBuilding) return true;
+  }
+  return false;
+}
+function resetWaveDispatch(){
+  activeWavePlan = null;
+  waveDispatch.phaseIndex = 0; waveDispatch.batchIndex = 0; waveDispatch.unitIndex = 0;
+  waveDispatch.gapRemainingMs = 0; waveDispatch.resolvedUnits = 0;
+  waveDispatch.batchEnemies.length = 0; waveDispatch.batchSerials.length = 0;
+}
+// Entrance spacing tracks the last wave unit by its spawn serial, not just the pooled object: once
+// that enemy dies its slot can be reused by a camp guardian or hut that never walks the path, and
+// gating on the reused object's frozen `traveled` would block dispatch forever.
+let lastSpawnedEnemy = null;
+let lastSpawnedSerial = 0;
+let enemySpawnSerial = 0;
+function spawnWaveUnit(spec){
+  const incomingRadius = SIZE_TIER_BANDS[spec.sizeTier].radiusMax;
+  if(lastSpawnedEnemy && lastSpawnedEnemy.spawnSerial === lastSpawnedSerial && lastSpawnedEnemy.active && !lastSpawnedEnemy.escaped && !lastSpawnedEnemy.isBreakaway){
+    if(lastSpawnedEnemy.traveled < lastSpawnedEnemy.radius + incomingRadius + 8) return false;
+  }
+  const e = acquireActive(enemyPool);
+  if(!e) return false;
+  const hpScale = waveHpScale(waveIndex) * (spec.sizeTier === 'BOSS' ? bossHpScale(waveIndex) : 1);
+  e.spawn(spec.family, hpScale, false, false);
+  e.applySizeTier(spec.sizeTier, spec.sizeJitter, hpScale);
+  if(spec.sizeTier === 'LARGE') spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
+  lastSpawnedEnemy = e;
+  lastSpawnedSerial = e.spawnSerial;
+  return true;
+}
+function announceSizePhase(phase){
+  if(phase.sizeTier === 'LARGE' || phase.sizeTier === 'BOSS') showKillstreakBanner(SIZE_PHASE_BANNERS[phase.sizeTier]);
+  else showToast(SIZE_PHASE_BANNERS[phase.sizeTier]);
+  playSound(phase.sizeTier === 'BOSS' || phase.sizeTier === 'LARGE' ? 'wave' : 'click');
+}
+function advanceWaveDispatch(dt){
+  const plan = activeWavePlan;
+  if(!plan || waveTimer < WAVE_COUNTDOWN_MS) return;
+  const phase = plan.phases[waveDispatch.phaseIndex];
+  if(!phase){ waveState = 'ACTIVE'; updateHUD(); return; }
+  const batch = phase.batches[waveDispatch.batchIndex];
+  if(waveDispatch.unitIndex < batch.units.length){
+    if(spawnWaveUnit(batch.units[waveDispatch.unitIndex])){
+      waveDispatch.unitIndex++;
+      waveDispatch.batchEnemies.push(lastSpawnedEnemy);
+      waveDispatch.batchSerials.push(lastSpawnedSerial);
+    }
+    return;
+  }
+  const isLastBatchOfPhase = waveDispatch.batchIndex >= phase.batches.length - 1;
+  if(isLastBatchOfPhase || plan.waveNumber === 1 ? waveRouteObligationsOutstanding() : !currentBatchReleased()) return;
+  if(waveDispatch.gapRemainingMs > 0){ waveDispatch.gapRemainingMs -= dt; return; }
+  waveDispatch.resolvedUnits += batch.units.length;
+  waveDispatch.unitIndex = 0;
+  waveDispatch.batchEnemies.length = 0; waveDispatch.batchSerials.length = 0;
+  waveDispatch.batchIndex++;
+  if(waveDispatch.batchIndex >= phase.batches.length){
+    waveDispatch.batchIndex = 0;
+    waveDispatch.phaseIndex++;
+    const nextPhase = plan.phases[waveDispatch.phaseIndex];
+    if(nextPhase){
+      announceSizePhase(nextPhase);
+      waveDispatch.gapRemainingMs = nextPhase.sizeTier === 'BOSS' ? SIZE_TIER_BANDS.BOSS.batchGapMs : batch.presentationGapMs * 2;
+    }
+  } else {
+    waveDispatch.gapRemainingMs = batch.presentationGapMs;
+  }
+  updateHUD();
+}
+function wavePhaseStatusText(){
+  if(waveState !== 'SPAWNING' || !activeWavePlan) return '';
+  const phase = activeWavePlan.phases[waveDispatch.phaseIndex];
+  if(!phase) return '';
+  let escapedActive = 0;
+  for(const e of enemyPool) if(e.active && e.escaped) escapedActive++;
+  return SIZE_TIER_BANDS[phase.sizeTier].label + ' ' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length
+    + ' · ' + waveDispatch.resolvedUnits + '/' + activeWavePlan.populationTotal
+    + (escapedActive ? ' · 🏃' + escapedActive : '');
 }
 function startNextWave(){
   if(waveState !== 'IDLE') return;
@@ -10463,164 +10880,32 @@ function startNextWave(){
   for(const t of towerPool){
     if(t.active && t.type === 'NECROMANCER') raiseSkeletonsForTower(t);
   }
-  const isProcedural = waveIndex >= CONFIG.WAVES.length;
-  const proceduralN = waveIndex - CONFIG.WAVES.length + 1;
-  const waveDef = isProcedural ? generateProceduralWave(proceduralN) : CONFIG.WAVES[waveIndex];
+  const plan = buildWavePlan(waveIndex + 1);
   const newTypes = [];
-  for(const group of waveDef){
-    if(!seenEnemyTypes.has(group.type)){
-      seenEnemyTypes.add(group.type);
-      newTypes.push(group.type);
+  for(const phase of plan.phases){
+    for(const batch of phase.batches){
+      for(const unit of batch.units){
+        if(!seenEnemyTypes.has(unit.family)){
+          seenEnemyTypes.add(unit.family);
+          newTypes.push(unit.family);
+          getEnemyCollisionMask(unit.family);
+        }
+      }
     }
   }
   if(newTypes.length) showNewEnemyToast(newTypes);
-  // Prewarm this wave's collision masks now, during the pre-spawn countdown, instead of paying
-  // the cost on the first actual hit mid-combat. getEnemyCollisionMask() lazily builds and caches
-  // a per-type pixel mask on first call (buildEnemyCollisionMask() -> getImageData(), a synchronous
-  // GPU readback), so the very first hit landed on any enemy type new to this session used to
-  // incur that hitch at whatever moment combat happened to need it — often right as a new wave
-  // with a new type starts, which is close to the worst possible time for it. Every spawn in this
-  // wave still enters spawnQueue with WAVE_COUNTDOWN_MS added to its delay below, so this always
-  // has that whole window (currently a few seconds) before anything from this call could actually
-  // need to hit-test. getEnemyCollisionMask() is idempotent and cheap on every call after the
-  // first (cache hit), so repeating this for a type already seen this session costs nothing.
-  for(const group of waveDef) getEnemyCollisionMask(group.type);
-  if(isProcedural){
-    const typeName = WAVE_TYPE_NAMES[proceduralN % 9];
-    if(typeName) showToast(typeName);
-  } else if(CURATED_WAVE_LABELS[waveIndex+1]){
-    showToast(CURATED_WAVE_LABELS[waveIndex+1]);
-  }
-  spawnQueue = []; spawnQueueIndex = 0;
-  // Waves 45-99 in the fixed CONFIG.WAVES table were a repeating ~7-wave block copy-pasted roughly
-  // 7 times over with byte-identical counts every repetition — zero difficulty growth across more
-  // than half the fixed wave range, discovered while reworking wave pacing. The wave-type cadences
-  // (Boss every 10, Trick every 7-offset-by-1, etc.) overlap irregularly rather than forming one
-  // clean repeating unit, so hand-restructuring the raw literal data risked scrambling which wave
-  // gets which flavor. Safer fix: scale enemy COUNT smoothly with wave number for any wave in that
-  // flat range, applied here at read-time rather than to the stored data — every wave's composition,
-  // flavor, and label stays exactly as authored; only how many of each enemy actually spawn grows.
-  // Wave 45 gets the original count, wave 99 gets +65%, wave 100 (the actual milestone finale) and
-  // everything before 45 are completely unaffected.
-  const plateauWave = waveIndex+1;
-  const plateauScale = (!isProcedural && plateauWave >= 45 && plateauWave < 100)
-    ? 1 + ((plateauWave-45)/54)*0.65
-    : 1;
-  // A flat per-spawn delay bonus applied uniformly regardless of actual path congestion. Originally
-  // 2000ms — but wave spawning now also pauses reactively whenever anything is actually queued at a
-  // barricade (see anyBarricadeQueued), and there's a 350ms global minimum gap enforced below
-  // regardless of this value. With those two doing the real congestion control, keeping the full
-  // 2000ms flat tax on every single spawn was needlessly slow on a clear lane — enemies should be
-  // able to come in at a brisk pace when there's nothing backed up, and only get spaced out further
-  // when the reactive systems actually detect a jam.
-  const SPAWN_DELAY_BONUS = 400;
-  for(const group of waveDef){
-    const groupCount = Math.round(group.count * plateauScale);
-    for(let i=0;i<groupCount;i++){
-      let type = group.type;
-      if(type !== 'BOSS' && type !== 'TROLL' && seenEnemyTypes.has('TROLL') && Math.random() < 0.02) type = 'TROLL';
-      spawnQueue.push({ type, delay: i*(group.spawnDelay + SPAWN_DELAY_BONUS) });
-    }
-  }
-  spawnQueue.sort((a,b) => a.delay - b.delay);
-  // The per-group spacing above only staggers spawns WITHIN one enemy type's own group — it does
-  // nothing to prevent multiple concurrent groups in the same wave from overlapping each other.
-  // Every group's very first unit starts at delay 0, so a wave with several groups running at once
-  // (common in later/curated waves — some have 6-8 groups) dumped that many different enemy types
-  // onto the same spawn tile on the exact same tick, before pathing/collision had any chance to
-  // spread them out. This walks the fully merged, already-sorted queue and pushes any spawn that
-  // would land too close to the one before it (regardless of which group either came from) forward
-  // in time, guaranteeing real separation between every single spawn in the wave, not just within
-  // a type.
-  const MIN_GLOBAL_SPAWN_GAP = 350;
-  let lastSpawnDelay = -Infinity;
-  for(const entry of spawnQueue){
-    if(entry.delay - lastSpawnDelay < MIN_GLOBAL_SPAWN_GAP) entry.delay = lastSpawnDelay + MIN_GLOBAL_SPAWN_GAP;
-    lastSpawnDelay = entry.delay;
-  }
-  // Size determines spawn order now — EVERY small unit in the wave spawns before EVERY big unit,
-  // full stop, across the whole wave, not just within a local neighborhood (1.2.51). BOSS is the
-  // one explicit exception (1.2.52) — see the comment on bossSlots just below for why.
-  // Only the .type at each position is reassigned; the already-computed .delay timing slots below
-  // are left exactly as they are, so total wave duration and the MIN_GLOBAL_SPAWN_GAP/countdown
-  // work above and below this block are unaffected — only which type occupies which slot changes.
-  {
-    // BOSS is exempted from this sort — carved out per explicit decision, not silently. BOSS has
-    // the largest radius in the roster, so a pure global sort would always push it to spawn dead
-    // last; but a few waves deliberately lead with BOSS specifically so its own ability
-    // (periodically spawns GRUNT reinforcements while active) has time to actually matter. BOSS
-    // entries keep their originally-authored slot/timing untouched; every other type in the wave
-    // still gets the full small-to-big global sort around it.
-    const bossSlots = new Set();
-    const nonBossTypes = [];
-    for(let i=0; i<spawnQueue.length; i++){
-      if(spawnQueue[i].type === 'BOSS') bossSlots.add(i);
-      else nonBossTypes.push(spawnQueue[i].type);
-    }
-    // Radius ascending is the actual rule now; speed descending only breaks a tie between two
-    // same-radius types, so ordering among equal-size types still isn't arbitrary.
-    nonBossTypes.sort((a,b) => {
-      const radiusA = CONFIG.ENEMIES[a].radius||16, radiusB = CONFIG.ENEMIES[b].radius||16;
-      if(radiusA !== radiusB) return radiusA - radiusB;
-      return (CONFIG.ENEMIES[b].speed||0) - (CONFIG.ENEMIES[a].speed||0);
-    });
-    let ni = 0;
-    for(let i=0; i<spawnQueue.length; i++){
-      if(bossSlots.has(i)) continue; // BOSS stays exactly where it was authored
-      spawnQueue[i].type = nonBossTypes[ni++];
-    }
-  }
-  // Small, numerous enemy types (Swarm, Splitmini) still visibly bunch even with mixed-speed
-  // catch-up eliminated above — their tiny radius means many of them physically fit within
-  // collision-trigger range of each other at the same flat spacing that's plenty of room for a
-  // bigger enemy. Re-checked AFTER the speed reassignment so this reflects whatever type actually
-  // ended up in each slot, not the original pre-reassignment group. A radius near the ~16px
-  // average gets no extra gap; a Swarm at 9px gets a meaningfully wider one.
-  let prevDelay = -Infinity;
-  for(const entry of spawnQueue){
-    const r = (CONFIG.ENEMIES[entry.type]||{}).radius || 16;
-    const gap = MIN_GLOBAL_SPAWN_GAP + Math.max(0, (18-r)*45);
-    if(entry.delay - prevDelay < gap) entry.delay = prevDelay + gap;
-    prevDelay = entry.delay;
-  }
-  // A brief pre-spawn countdown — every already-tuned relative spacing above is untouched, this
-  // just shifts the whole finished timeline later by a flat amount, giving the leaf gust/camera
-  // pan/fanfare (see drawWaveCountdown()/'roundStart' below) a moment to actually land before the
-  // first enemy arrives, instead of the wave visually starting and spawning in the same instant.
-  for(const entry of spawnQueue) entry.delay += WAVE_COUNTDOWN_MS;
+  showToast(plan.label);
+  resetWaveDispatch();
+  activeWavePlan = plan;
   waveTimer = 0;
   waveIndex++;
   waveState = 'SPAWNING';
   startWaveStartCameraPan();
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
-  for(const t of towerPool) if(t.active) t.waveXp = 0;
+  for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
   playSound('roundStart');
   updateHUD();
-}
-let lastSpawnedEnemy = null; // entrance-gating state — see spawnEnemy()
-function spawnEnemy(type){
-  // Entrance gating, on top of (not instead of) the existing time-based spawn delay — time alone
-  // can still let two enemies materialize very close together at the shared spawn point if their
-  // scheduled delays are close relative to frame rate, since the delay is fixed in advance and
-  // doesn't check how far the actual enemy ahead of it has gotten. Checked against real path
-  // distance (traveled), not time. `lastSpawnedEnemy.active` naturally goes stale-safe on its
-  // own — once that enemy dies/despawns/escapes past this check mattering, the gate simply stops
-  // applying, no explicit reset needed between waves.
-  if(lastSpawnedEnemy && lastSpawnedEnemy.active){
-    const incomingRadius = (CONFIG.ENEMIES[type] && CONFIG.ENEMIES[type].radius) || 14;
-    const requiredGap = lastSpawnedEnemy.radius + incomingRadius + 8;
-    if(lastSpawnedEnemy.traveled < requiredGap) return false; // not enough room yet — the drain loop's own existing retry-next-frame behavior (see its comment) handles this identically to a pool-exhaustion false
-  }
-  const e = acquireActive(enemyPool);
-  if(!e) return false; // pool exhausted — caller must not treat this as a successful spawn
-  const hpMult = 1 + (waveIndex-1)*0.20;
-  const isBig = Math.random() < BIG_VARIANT_CHANCE;
-  const isMini = !isBig && Math.random() < MINI_VARIANT_CHANCE; // mutually exclusive — only rolled at all once the (much rarer) Big roll has already missed
-  e.spawn(type, hpMult, isBig, isMini);
-  if(isBig) spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
-  lastSpawnedEnemy = e;
-  return true;
 }
 // Creep camps (WC3-style): a stationary hut structure guarded by 2 enemies, placed off-path at
 // game start. Clear the guardians for an immediate bounty; the hut itself is tougher still and
@@ -10710,12 +10995,8 @@ function update(dt){
     // simply resumes exactly where it left off.
     if(!anyBarricadeQueued){
       waveTimer += dt;
-      while(spawnQueueIndex < spawnQueue.length && spawnQueue[spawnQueueIndex].delay <= waveTimer){
-        if(!spawnEnemy(spawnQueue[spawnQueueIndex].type)) break; // pool exhausted this frame — leave the entry queued and retry once a slot frees up, rather than losing it
-        spawnQueueIndex++;
-      }
+      advanceWaveDispatch(dt);
     }
-    if(spawnQueueIndex >= spawnQueue.length) waveState = 'ACTIVE';
   }
   phaseTime.spawning += performance.now() - __pt; __pt = performance.now();
 
@@ -10742,6 +11023,7 @@ function update(dt){
   const enemyHashLocal = anyActiveEnemies ? buildEnemyHash() : EMPTY_ENEMY_HASH;
   enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
   phaseTime.hashBuild += performance.now() - __pt; __pt = performance.now();
+  tallyCommittedProjectileDamage();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
   phaseTime.towerUpdate += performance.now() - __pt; __pt = performance.now();
   for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
@@ -10769,7 +11051,7 @@ function update(dt){
     // play. Without this, the very last kill of a wave triggered the wave-complete
     // popup/transition on the exact same frame the corpse started its animation, visibly cutting
     // it off mid-play.
-    if(!anyAlive && deathAnims.length === 0){
+    if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
       // Necromancer's skeletons exist only for the round that raised them — see startNextWave()'s
@@ -10821,9 +11103,12 @@ function update(dt){
         showMilestoneToast(wavesCompleted);
       }
       gold += 10 + Math.floor(wavesCompleted/2); // scaling reward — keeps pace with infinite waves
-      const xpByType = {};
-      for(const t of towerPool){ if(t.active && t.waveXp > 0) xpByType[t.type] = (xpByType[t.type]||0) + t.waveXp; }
-      showWaveSummary(waveIndex, gold - waveStartGold, xpByType);
+      const towerReports = towerPool.filter(t => t.active && t.type !== 'BARRICADE' && t.waveXp > 0).map(t => ({
+        icon: t.def.icon, name: t.legendaryName || t.def.name, xp: t.waveXp,
+        lastHits: t.waveLastHits || 0, damage: t.waveDamage || 0, assists: t.waveAssists || 0, cleanups: t.waveCleanups || 0,
+        statGain: t.waveStatPoints || 0
+      }));
+      showWaveSummary(waveIndex, gold - waveStartGold, towerReports);
       updateHUD();
     }
   }
@@ -10934,9 +11219,10 @@ function render(ctx){
   // transform (see setupCanvas()) scales that back up to match the display's physical pixels
   // 1:1, rather than upscaling a flat 1x raster and blurring it.
   let __rpt = performance.now();
-  ctx.drawImage(mapCanvas, 0, 0, WORLD_MAX_W, WORLD_MAX_H); // static map, pre-rendered once — see BOOT
+  const worldView = visibleWorldRect();
+  blitWorldLayer(ctx, mapCanvas, worldView); // static map, pre-rendered once — see BOOT
   renderPhaseTime.mapBlit += performance.now() - __rpt; __rpt = performance.now();
-  if(settledDecalCanvasReady) ctx.drawImage(settledDecalCanvas, 0, 0, WORLD_MAX_W, WORLD_MAX_H); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
+  if(settledDecalCanvasReady) blitWorldLayer(ctx, settledDecalCanvas, worldView); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
   // Blood decals draw BEFORE scenery (trees/rocks) rather than after — blood sits flat on the
   // ground, and a tree/rock is a physically taller object that should occlude any stain directly
   // behind it, not have blood rendered on top of it. The previous order drew stains over trees.
@@ -11087,7 +11373,7 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   // the game still stutters intermittently; a fixed-size window (2s at 60fps) of raw samples lets
   // the debug log report median/p95/p99/max instead of just "the last frame" or a running average
   // that smooths real spikes away. Small array, shift() cost here is negligible (120 elements max,
-  // unlike the spawnQueue case which scaled with wave size).
+  // unlike the old timed-queue approach, which scaled with wave size).
   frameMsHistory: [], updateMsHistory: [], renderMsHistory: [],
   // Barricade/pileup telemetry — this was previously invisible: no way to tell, from the debug
   // log alone, whether a lag spike during a pileup was the barricade system itself or something
@@ -11640,6 +11926,8 @@ function loop(now){
   lastTime = now;
   realTimeFrozen = waveState === 'IDLE';
   if(!realTimeFrozen) realTime += frameTime;
+  presentationTime += frameTime;
+  applyPanInertia(frameTime);
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
@@ -11849,21 +12137,36 @@ window.addEventListener('orientationchange', fitStatRowToOneLine);
 // used flex-shrink + ellipsis (which cut off Upgrade's cost text) or flex-wrap (which let Target/
 // Move drop to a second line) — this replaces both with the same guaranteed-single-line scaling
 // already proven on the stat row, so text always stays fully visible, just smaller if needed.
+// The row is a full-width grid, so its outer edges always line up with the rows below. Instead of
+// scaling the whole row (which pulled its right edge inward), each button's own label shrinks just
+// enough to fit when a price or target-mode name gets longer.
+const OPT_BUTTON_MIN_FONT_PX = 9;
+const labelMeasureRange = document.createRange();
+// scrollWidth can't see overflow once ellipsis or an inner flex span absorbs it, so the label's
+// real rendered text width is measured directly and compared with the button's content box.
+function buttonLabelOverflows(button){
+  labelMeasureRange.selectNodeContents(button);
+  const style = getComputedStyle(button);
+  const contentWidth = button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  return labelMeasureRange.getBoundingClientRect().width > contentWidth + 0.5;
+}
 function fitOptRowToOneLine(rowId){
   const row = document.getElementById(rowId);
-  const panel = document.getElementById('inspect-panel');
-  if(!row || !panel) return;
-  row.style.transform = 'scale(1)';
-  const naturalWidth = row.scrollWidth;
-  const availableWidth = panel.clientWidth - 16;
-  if(naturalWidth > availableWidth && availableWidth > 0){
-    const scale = availableWidth / naturalWidth;
-    row.style.transform = 'scale(' + scale.toFixed(3) + ')';
+  if(!row) return;
+  for(const button of row.querySelectorAll('button')){
+    button.style.fontSize = '';
+    if(button.offsetParent === null) continue;
+    let fontPx = parseFloat(getComputedStyle(button).fontSize);
+    while(buttonLabelOverflows(button) && fontPx > OPT_BUTTON_MIN_FONT_PX){
+      fontPx -= 0.5;
+      button.style.fontSize = fontPx + 'px';
+    }
   }
 }
 function fitOptRowsToOneLine(){
   fitOptRowToOneLine('inspUpgradeSellRow');
   fitOptRowToOneLine('inspTargetMoveRow');
+  fitOptRowToOneLine('inspStatButtons');
 }
 window.addEventListener('resize', fitOptRowsToOneLine);
 window.addEventListener('orientationchange', fitOptRowsToOneLine);
@@ -11951,6 +12254,7 @@ function handleTap(clientX, clientY){
   // blanket `if(gameState !== 'PLAYING') return` used to provide before camera pan/zoom needed
   // to keep working through a pause. Panning/zooming themselves never reach this function at all
   // (they're handled entirely in pointermove/wheel), so this only ever blocks real interaction.
+  if(gameState === 'PAUSED'){ resumeGame(); return; }
   if(gameState !== 'PLAYING') return;
   const {x,y} = toRawCanvasCoords(clientX, clientY);
   const worldX = (x - camera.x)/camera.zoom, worldY = (y - camera.y)/camera.zoom;
@@ -12051,6 +12355,8 @@ function exitMoveMode(){
 }
 
 canvas.addEventListener('pointerdown', (e) => {
+  stopPanInertia();
+  panInertia.lastMoveTime = e.timeStamp;
   unlockAudio();
   canvas.setPointerCapture(e.pointerId);
   activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
@@ -12090,7 +12396,7 @@ canvas.addEventListener('pointermove', (e) => {
     if(pinchStartDist){
       const raw = toRawCanvasCoords(mid.x, mid.y);
       zoomAt(raw.x, raw.y, camera.zoom * (dist/pinchStartDist));
-      if(gameState !== 'PLAYING') render(ctx); // paused — same reasoning as the wheel handler's own fix: nudge one frame through now or the zoom change stays invisible until unpausing
+      if(gameState !== 'PLAYING') requestPausedRender(); // paused — same reasoning as the wheel handler's own fix: nudge one frame through now or the zoom change stays invisible until unpausing
     }
     pinchStartDist = dist;
     return;
@@ -12104,11 +12410,13 @@ canvas.addEventListener('pointermove', (e) => {
     } else if(isDragging){
       const rect = getCanvasRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
-      camera.x += (e.clientX - prev.x)*scaleX;
-      camera.y += (e.clientY - prev.y)*scaleY;
+      const panDx = (e.clientX - prev.x)*scaleX, panDy = (e.clientY - prev.y)*scaleY;
+      camera.x += panDx;
+      camera.y += panDy;
+      trackPanVelocity(panDx, panDy, e.timeStamp);
       clampCamera();
       cancelCameraFollow();
-      if(gameState !== 'PLAYING') render(ctx); // paused — same reasoning as the wheel/pinch fixes: nudge one frame through now or the pan stays invisible until unpausing
+      if(gameState !== 'PLAYING') requestPausedRender(); // paused — same reasoning as the wheel/pinch fixes: nudge one frame through now or the pan stays invisible until unpausing
     }
   }
 
@@ -12137,6 +12445,7 @@ canvas.addEventListener('pointermove', (e) => {
 function onPointerEnd(e){
   const wasSinglePointer = activePointers.size === 1 && e.pointerId === dragPointerId;
   const isCancel = e.type === 'pointercancel';
+  if(wasSinglePointer && isDragging && !isCancel && !draggingGroundItem && gameState === 'PLAYING') startPanInertia(e.timeStamp);
   activePointers.delete(e.pointerId);
   if(activePointers.size < 2) pinchStartDist = null;
 
@@ -12183,7 +12492,7 @@ canvas.addEventListener('wheel', (e) => {
   const raw = toRawCanvasCoords(e.clientX, e.clientY);
   const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
   zoomAt(raw.x, raw.y, camera.zoom*factor);
-  if(gameState !== 'PLAYING') render(ctx); // paused — the main loop won't render on its own, so nudge one frame through now or the zoom change stays invisible until unpausing
+  if(gameState !== 'PLAYING') requestPausedRender(); // paused — the main loop won't render on its own, so nudge one frame through now or the zoom change stays invisible until unpausing
 }, { passive:false });
 
 /* =========================================================
@@ -12243,13 +12552,17 @@ function updateHUDImmediate(){
   document.getElementById('woodVal').textContent = wood;
   document.getElementById('stoneVal').textContent = stone;
   document.getElementById('moveVal').textContent = moveCharges;
-  waveVal.textContent = waveIndex < CONFIG.WAVES.length
-    ? waveIndex + '/' + CONFIG.WAVES.length
+  waveVal.textContent = waveIndex < CAMPAIGN_WAVE_COUNT
+    ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞';
+  const wavePhaseVal = document.getElementById('wavePhaseVal');
+  const phaseText = wavePhaseStatusText();
+  wavePhaseVal.textContent = phaseText;
+  wavePhaseVal.hidden = !phaseText;
   const waveProgress = document.getElementById('waveProgress');
   if(waveProgress){
-    if(waveIndex < CONFIG.WAVES.length){
-      waveProgress.max = CONFIG.WAVES.length;
+    if(waveIndex < CAMPAIGN_WAVE_COUNT){
+      waveProgress.max = CAMPAIGN_WAVE_COUNT;
       waveProgress.value = waveIndex;
       waveProgress.removeAttribute('data-indeterminate');
     } else {
@@ -12791,9 +13104,17 @@ function getReadmeText(){
 'freezes the first enemy that touches it (and anything queued behind it) for 10 seconds before breaking.\n\n' +
 'ENEMIES\n' +
 '-------\n' +
-'Grunt, Swarm, Tank, Runner, and the wave-15 Boss are the core roster; Fire and Ice enemies can break ' +
-'off the path entirely to 1v1 a tower directly, inflicting burn or a slow debuff on it. Waves continue ' +
-'indefinitely past 15 with procedurally scaled difficulty.\n\n' +
+'Every wave marches in strict size order: all Tiny enemies first, then Small, then Standard, and only on ' +
+'every fifth wave the Large enemies and Bosses at the very end. The next group waits until everything ' +
+'ahead of it has died or crossed the finish. Bigger always means slower, tougher, and worth more XP. ' +
+'Each new enemy family gets a five-wave chapter; the 100-wave campaign continues as a seeded infinite ' +
+'Expedition. Fire and Ice enemies can break off the path to 1v1 a tower, inflicting burn or a slow.\n\n' +
+'TRAINING XP\n' +
+'-----------\n' +
+'The killing blow earns full XP (Tiny 17, Small 20, Standard 25, Large 40, Boss 50); every 100 XP rolls ' +
+'2 × (1-3) stat points — tap a stat to spend one, hold to keep spending. Towers that only helped split a small ' +
+'assist share. Enemies that crossed the finish only pay a reduced cleanup share. FARM targeting chases ' +
+'last hits, ASSIST leaves them to others, UNCLAIMED avoids enemies already doomed by shots in flight.\n\n' +
 'ITEMS AND HEROES\n' +
 '----------------\n' +
 'Every tower starts with a free class-specific item. Buy better gear per class from the Shop, plus ' +
@@ -13153,31 +13474,27 @@ function updateInspectPanel(){
     document.getElementById('inspEvoBarFill').style.width = '100%';
     document.getElementById('inspEvoBarText').textContent = 'MAX TRAINING'; // was "MAX LEVEL" — expLevel is the XP counter, not the tower's actual displayed level (see inspLevel above, which now correctly reads tower.level instead)
   } else {
-    const need = xpForNextLevel(t.expLevel);
+    const need = xpForNextLevel();
     document.getElementById('inspEvoBarFill').style.width = Math.round(Math.min(1, t.xp/need)*100) + '%';
-    document.getElementById('inspEvoBarText').textContent = Math.round(t.xp) + '/' + need + ' XP';
+    document.getElementById('inspEvoBarText').textContent = Math.round(t.xp) + '/' + need + ' Training XP';
   }
   const evoHint = document.getElementById('inspEvoHint');
   if(BASE_ATTUNABLE_TYPES.includes(t.type)){
     if(!t.attunement){
-      // Pre-attunement: same "single clear leader" heuristic the old hint used — only call out a
-      // likely element when one stat is unambiguously ahead, not at the start or on a tie.
       const stats = ['str','dex','int'];
-      const values = stats.map(k => t[k]||0);
-      const maxVal = Math.max(...values);
-      const leaders = stats.filter(k => (t[k]||0) === maxVal);
-      if(maxVal > 0 && leaders.length === 1){
-        const statKey = leaders[0];
-        const remaining = Math.max(0, ATTUNEMENT_THRESHOLD - (t[statKey]||0));
-        const element = ATTUNEMENTS[statKey];
-        const elementLabel = element.charAt(0) + element.slice(1).toLowerCase();
-        evoHint.textContent = remaining > 0
-          ? (ATTUNEMENT_ICON[element] + ' ' + elementLabel + ' — ' + remaining + ' more ' + statKey.toUpperCase())
-          : (ATTUNEMENT_ICON[element] + ' Ready to attune!');
-        evoHint.classList.remove('hidden');
+      const bestValue = Math.max(...stats.map(k => t[k] || 0));
+      const readyStat = stats.find(k => (t[k] || 0) >= ATTUNEMENT_THRESHOLD);
+      if(readyStat){
+        const element = ATTUNEMENTS[readyStat];
+        evoHint.textContent = ATTUNEMENT_ICON[element] + ' Ready to attune!';
       } else {
-        evoHint.classList.add('hidden');
+        const leadingStat = stats.find(k => (t[k] || 0) === bestValue);
+        const leadingElement = ATTUNEMENTS[leadingStat];
+        evoHint.textContent = bestValue > 0
+          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ATTUNEMENT_THRESHOLD - bestValue) + ' points till ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase()
+          : '🎓 Spend points to start training';
       }
+      evoHint.classList.remove('hidden');
     } else {
       const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[t.attunement];
       const target = SPECIALIZATIONS[t.type] && SPECIALIZATIONS[t.type][t.attunement];
@@ -13391,7 +13708,7 @@ document.getElementById('inspStoreBtn').addEventListener('pointerdown', (e) => {
 inspTargetBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower) return;
-  const modes = ['FIRST','CLOSEST','STRONGEST','WEAKEST'];
+  const modes = ['FIRST','CLOSEST','STRONGEST','WEAKEST','FARM','ASSIST','UNCLAIMED'];
   const i = modes.indexOf(selectedTower.targetMode);
   selectedTower.targetMode = modes[(i+1)%modes.length];
   playSound('click');
@@ -13418,16 +13735,31 @@ document.getElementById('cancelMoveBtn').addEventListener('pointerdown', (e) => 
   exitMoveMode();
 });
 
+// Tap spends one point; holding repeats (after a short delay) until release or points run out —
+// with 100-XP training bars a farmed carry banks dozens of points per wave.
+const STAT_HOLD_DELAY_MS = 380, STAT_HOLD_REPEAT_MS = 65;
+let statHoldTimer = 0;
+function spendStatPoint(stat){
+  if(!selectedTower || !selectedTower.allocateStat(stat)) return false;
+  playSound('stat_spend');
+  checkLegendaryStatus(selectedTower);
+  updateInspectPanel();
+  return true;
+}
+function stopStatHold(){ clearTimeout(statHoldTimer); statHoldTimer = 0; }
+function repeatStatHold(stat){
+  if(!spendStatPoint(stat)){ stopStatHold(); return; }
+  statHoldTimer = setTimeout(() => repeatStatHold(stat), STAT_HOLD_REPEAT_MS);
+}
 ['str','dex','int'].forEach(stat => {
-  document.getElementById('insp' + stat[0].toUpperCase()+stat.slice(1) + 'Btn').addEventListener('pointerdown', (e) => {
+  const button = document.getElementById('insp' + stat[0].toUpperCase() + stat.slice(1) + 'Btn');
+  button.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    if(!selectedTower) return;
-    if(selectedTower.allocateStat(stat)){
-      playSound('stat_spend');
-      checkLegendaryStatus(selectedTower);
-      updateInspectPanel();
-    }
+    stopStatHold();
+    if(!spendStatPoint(stat)) return;
+    statHoldTimer = setTimeout(() => repeatStatHold(stat), STAT_HOLD_DELAY_MS);
   });
+  for(const endEvent of ['pointerup', 'pointerleave', 'pointercancel']) button.addEventListener(endEvent, stopStatHold);
 });
 
 document.getElementById('inspAuraBox').addEventListener('pointerdown', (e) => {
@@ -13616,7 +13948,7 @@ function endGame(){
 }
 
 function resetGame(){
-  gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; spawnQueue = []; spawnQueueIndex = 0; seenEnemyTypes = new Set();
+  gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; resetWaveDispatch(); waveRunSeed = (Math.random() * 4294967296) >>> 0; seenEnemyTypes = new Set();
   wood = 0; stone = 0;
   globalPassiveCounts = {};
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();

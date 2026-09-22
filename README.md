@@ -1,5 +1,7 @@
 # Stick Tower Defense
 
+![Stick Tower Defense gameplay](og-image.png)
+
 A free browser-based tower defense game with stickman towers that level up and evolve into
 distinct classes, an expanding spiral map, infinite waves, a hero item system, breakaway enemies
 that ambush your towers, path-blocking barricades, forensic-grade blood/gore effects, and full
@@ -293,70 +295,38 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
 
 ## Leveling
 
-Every tower has its own EXP level (1-99), separate from its gold-bought upgrade tier. **EXP comes
-only from landing kills** — a small amount per kill, a bigger burst at each killstreak milestone.
-Spending gold to promote a tower's tier and simply surviving a round to its end both used to grant
-some EXP too; both were removed on purpose, so leveling (and the stat points it grants) reflects
-active combat performance specifically, not gold spent or time survived. Each level-up grants
-exactly one stat point — small and frequent rather than big lump sums — for the player to allocate
-manually via the STR/DEX/INT buttons. Barricades don't fight, so they don't earn EXP. A tower that
-never lands a kill (out of range, badly placed, or simply outclassed) stays at level 1 — this is
-intentional now, not an oversight. (The "Lv." shown in the inspect panel is this tower's
-gold-bought tier, not its EXP level — EXP progress has its own separate bar and number just below.)
+Each tower has two separate progression tracks:
 
-Stat damage bonuses are class-exclusive, Dota-style, with no exceptions: STR only boosts damage
-for Warrior-archetype towers (Swordsman and its evolutions), DEX only for Archer-style towers
-(Archer, Gatling, Blowdart, Bomber, Dual Squirt Gun, Gunalinder, Sniper, Snap Caster, Marksman, Blow Gunner),
-and INT only for Mage-archetype towers (Mage, Cleric, Pope, Necromancer, Cat Snapper, Proton, Dark
-Matter, Quasar). STR's
-max-HP bonus and DEX's attack-speed/luck/accuracy bonus stay universal across every class — DEX-based
-accuracy in particular scales via the exact same curve for every tower regardless of archetype. A
-tower's primary stat is the dominant driver of how hard it hits, with Warriors using a separate,
-steeper damage curve from the other two archetypes specifically so heavy STR investment keeps
-compounding meaningfully into the deep endgame instead of flattening out.
+- **Training (XP).** The tower that lands the killing blow earns the enemy's full XP — Tiny 17,
+  Small 20, Standard 25, Large 40, Boss 50. Other towers that damaged it (including burn, poison
+  and bleed) split a smaller assist share by damage dealt. An enemy that already crossed the
+  finish only pays a reduced cleanup share when it dies. Every 100 XP fills a training bar and
+  rolls **2 × (1–3) stat points** to spend. XP pops appear as small gold (killing blow) or silver
+  (assist/cleanup) numbers. There is no training cap.
+- **Promotion (gold).** Each promotion rolls 1d6 into STR, DEX and INT, a second 1d6 into the
+  class's main stat, and awards **2 × (1–6) free stat points**. Cost grows ×1.5 per promotion
+  (80 → 120 → 180 → 270 → …), up to level 99.
 
-A Swordsman that reaches level 5 gets a one-time, permanent choice between two specializations —
-**Zweihander** (one massive two-handed blade, wider swing arc, heavier per-hit damage, longer
-cooldown — visibly trembles and glows more the longer it's been building toward its next swing) or
-**Dual Wield** (two swords, two independent swings, can strike two separate enemies at once). Once
-picked it can't be changed. Neither is a separate buildable class the way Cleric/Necromancer are —
-it's the same Swordsman, permanently specialized.
+**Spending points:** tap a stat to spend one, hold to keep spending. The hint above the stat
+buttons shows how far your leading stat is from its element (e.g. "❄️ 79 points till Ice").
 
-Promoting a tower's tier for gold is mostly a gold sink now, not a second stat generator — it
-grants a small, predictable +1 to the tower's own favored/main stat on top of its guaranteed tier
-stat bump, rather than the large random rolls it used to (3 independent 1-6 rolls plus a
-guaranteed 1-3, averaging around 12.5 raw stats per promotion). Kills and XP are the main way a
-tower actually grows — see the EXP section above — promotion is a modest, reliable bonus alongside
-that, not competing with it.
-
-Accuracy is deliberately front-loaded, RuneScape-style: a tower's miss chance at zero DEX
-investment differs by archetype (Mage misses the most at 45%, Archer 40%, Warriors — melee — the
-least at 30%, reflecting how forgiving each class's attack type is to land), but the first 100
-effective DEX brings any of them down to just 4% — almost all the achievable benefit for a
-comparatively small investment. Pushing from there to 500 effective DEX only trims that remaining
-4% down to a true 0% (a genuinely guaranteed hit), over four times the investment for a much
-smaller payoff — the same "cheap early progress, expensive last stretch" shape as an RPG leveling
-curve, applied to accuracy instead of XP cost.
-
-Ambient wind adds on top of that base miss chance for Archer- and Mage-archetype towers only —
-Warriors' melee swings aren't wind-affected. It gusts and calms gradually on its own over time (no
-fixed schedule, and never a sudden jump — it always ramps through the intermediate range on the
-way to a strong gust), visible directly in how hard the two flags near the map's spawn point are
-fluttering: barely moving on a calm day, whipping around during a real gust. How strong it's even
-able to get scales with progress — genuinely rare in the first several waves, climbing to a real
-regular possibility by wave 30 and beyond. Archers lose up to 25 percentage points of accuracy at
-max wind; Mages lose that same amount plus an extra penalty that grows faster the windier it gets,
-so a Mage suffers noticeably more than an Archer in a strong gust, not just the same flat hit every
-ranged class takes. The wind's own direction never factors into that miss-chance penalty — only
-how strong it currently is — though it does now drift and gently lean the flags' own flutter for a
-bit of visual variety.
-
-The inspect panel shows each tower's real min-max damage range (no separate flat number
-alongside it) and its actual DPS — average damage per hit times attacks per second, discounted by
-the tower's own miss chance, with burst-fire towers (Gunalinder, Snap Caster) using their real
-full attack-cycle time rather than just the reload cooldown.
+**Targeting modes:** First, Closest, Strongest, Weakest, **Farm** (chases killing blows it can
+land next hit), **Assist** (leaves killing blows to other towers) and **Unclaimed** (ignores
+enemies already doomed by shots in flight).
 
 ## Waves
+
+**Wave structure (1.3.0+).** Every wave marches in strict size order: all the Tiny enemies first,
+then Small, then Standard, and — only on every fifth wave — the Large enemies and Bosses at the very
+end. The next group never leaves the gate until everything ahead of it has been killed or has
+crossed the finish line. Bigger always means slower, tougher, and worth more XP, and there are at
+least five little enemies for every big one. Each new enemy family gets a five-wave chapter:
+introduction, reinforcement, combination, a big farming wave, and a mastery finale.
+
+**Training XP.** The tower that lands the killing blow gets the full XP (Tiny 17, Small 20,
+Standard 25, Large 40, Boss 50); every 100 XP fills a training bar and rolls two dice of 1–3 stat points (2–6 per bar, 4 on average). Towers
+that only helped split a small assist bonus. An enemy that already crossed the finish line only
+pays a reduced cleanup share when it finally dies.
 
 100 hand-authored waves, then infinite procedurally-generated ones cycling through 9 archetypes —
 Standard, Swarm Surge, Elite Vanguard, Undead Uprising, Ambush Tactics, Siege Assault (boss rush),
@@ -480,6 +450,19 @@ Line numbers drift as the file changes — treat these as a starting point to se
 than a permanently exact address, and if a link lands a little off, the section-header comment
 right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the line number itself.
 
+**Wave, XP and performance systems (1.3.0+)** — search for these names:
+- `buildWavePlan()` / `validateWavePlan()` / `SIZE_TIER_BANDS` — seeded wave construction, size
+  tiers, boot-time validation of waves 1–120.
+- `advanceWaveDispatch()` / `currentBatchReleased()` — phase-strict, batch-overlapping dispatch.
+- `Enemy.applySizeTier()` / `Enemy.packedSpeed()` / `Enemy.recordContribution()` — size stats,
+  tier speed ceiling, damage ledger.
+- `awardKillExperience()` / `creditKill()` / `distributeSharedXp()` / `gainTowerExp()` — XP.
+- `Tower.upgrade()` / `promotionCostFor()` / `Tower.targetScore()` — promotion and targeting.
+- `sweepSettledDecals()` / `isDecalBakeEligible()` / `blitWorldLayer()` — gore baking and
+  viewport-cropped world layers.
+- `buildEnemyHash()` / `spatialCellKey()` / `queryNearby()` — integer-keyed spatial hash.
+- `applyPanInertia()` / `requestPausedRender()` — camera glide and paused-render coalescing.
+
 **Major sections**
 - [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L700)
 - [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1212)
@@ -573,3 +556,7 @@ ideas not yet built.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Based on thoughts by Setvin Noether ([@SauerNinja](https://github.com/SauerNinja)).
+
+Suggested citation: Setvin Noether, *Stick Tower Defense* (StickTD), https://sauerninja.github.io/StickTD/
