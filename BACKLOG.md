@@ -928,3 +928,59 @@ than this pass.
   stylistic preference framed as a bug, or a large rearchitecting with no specific broken behavior
   driving it).
 
+
+## Open from the 2026-09-23 video/screenshot review
+
+- ~~Attunement-at-100 is easy to mistake for "nothing happened."~~ **RESOLVED in 1.4.48** — the
+  attunement floating text now names the actual unlock target and remaining distance instead of a
+  bare "Attuned!".
+- ~~Performance/lag over long sessions~~ **RESOLVED in 1.4.46** — root cause found via a real debug
+  export (not the guessed candidates listed here originally): decal bake-eligibility was a
+  *fraction* of the 30-minute DECAL_LIFESPAN, so decals stayed in the expensive live-draw pass for
+  13.5 real minutes. Now an absolute 4s age.
+- ~~"All towers down" as a distinct game-over trigger from "all fighters disabled"~~ **RESOLVED in
+  1.4.48** — added a real `everBuiltFighter` flag (set the moment any fighter is ever built) so a
+  genuine "sold/lost everything mid-wave" wipe now also ends the run, without risking a false
+  game-over on wave 1 before anything exists.
+- **Deep balance pass beyond the accuracy tweak** — still open. The user's report that Swordsman
+  "always wins rounds" solo may not be fully resolved by the miss-chance change alone
+  (damage/HP/cooldown weren't touched). Needs an actual playtest comparison (Swordsman alone vs.
+  Archer+Mage alone), not something to further guess at from code alone.
+
+## Big architecture ask from 2026-09-23 (in-place elemental transformation) — RESOLVED, no rewrite made
+
+An agent misread the owner's request and proposed reversing tower progression from "permanent
+stat-threshold unlock of the next separately-buildable tower" to "in-place elemental
+transformation" — a full rearchitecture that would have touched checkEvolution/
+checkAttunementAndSpecialization, the Build tray, CONFIG.TOWERS, save schema, and rendering, and
+risked discarding ~20 already-shipped evolved tower classes.
+
+**Owner confirmed the original mechanic was already correct as-is: a tower never transforms, it
+just permanently unlocks the next separately-buildable tower once its stats cross a threshold, and
+that next one can itself unlock a further one. No rewrite needed.**
+
+Getting to that answer took two more wrong turns, both corrected:
+- **1.4.49** flipped a doc claim ("Proton/Quasar/Dark Matter are element states, never buildable
+  towers") to say the opposite, reasoning from `CONFIG.TOWERS.QUASAR` existing in the code without
+  checking whether Quasar was actually *reachable* as a build. It was — but only because of a bug.
+- **1.4.50** found and removed that bug: one stray line
+  (`TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR = {...}`) had wrongly registered Quasar as a real
+  Build-tray unlock. Proton and Dark Matter never had this line and were always correctly
+  elemental-only. The original doc claim was right all along; 1.4.49's "fix" was the actual
+  regression, now reverted. Quasar's owner-confirmed final shape: an element state a tower carries
+  on its own existing attack (burn+slow+a small splash bonus), same as Proton/Dark Matter, never a
+  separate unit.
+
+See AGENTS.md section 1 for the standing rule this whole incident produced: never propose or start
+a core-mechanic rewrite without explicit confirmation, and verify a suspected doc/code mismatch by
+tracing whether the thing is actually reachable end-to-end, not by whether a data entry exists.
+
+
+
+## Other open items from 2026-09-23
+
+- **End-of-round item drops.** Currently only Lucky Branch exists in UNIVERSAL_ITEMS. Ask: a random
+  chance per wave-clear to drop a new item, more item types beyond Lucky Branch, and "random
+  events" at round-end/round-start/map-expansion. Not started — needs a first pass at what the new
+  item pool actually contains (stat items vs. one-off consumables vs. gold/resource drops) before
+  writing the drop-chance code.

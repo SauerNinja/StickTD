@@ -1,5 +1,131 @@
 # Changelog
 
+## [1.4.54] - 2026-09-23 — Huts wait for the map to grow, and their guardians actually stay close to home
+- The hut/creep-camp no longer spawns immediately on the tiny starting map. It now spawns the
+  first time the map reaches HUT_MIN_EXPANSION_LEVEL (3) expansions, so the earliest waves are
+  never sharing that small a space with one.
+- Guardian leash tightened from a 70px roam radius to 42px, and their bumble speed slowed (0.5x →
+  0.32x of a Grunt's speed) — they now read as genuinely glued to their hut, snapping back to it
+  after any knockback, rather than wandering a fairly wide patrol loop around it.
+
+## [1.4.53] - 2026-09-23 — Game Over message no longer orphans a single word on its own line
+- "Rebuild and try again." was wrapping with just "again." alone on the second line at the end
+  screen's default width. Non-breaking spaces now tie "Rebuild and try again." (and the default
+  message's "Rebuild your squad and try again.") together so the phrase always wraps as one unit,
+  never splitting off a lone trailing word.
+
+## [1.4.52] - 2026-09-23 — Countdown moves to the spawn marker, in red, and the exclamation mark is wider
+- The 3-2-1-GO countdown is now world-space, anchored directly above the pulsing ❗ spawn marker
+  instead of a fixed screen overlay — it now tracks the spawn tile through the camera pan the same
+  way the marker already does.
+- Countdown numbers (3, 2, 1) are now red; GO! keeps its own gold celebration color.
+- The ❗ spawn marker is now stretched wider (1.7x horizontally) while keeping its existing
+  pulse-in/pulse-out animation and height untouched.
+
+## [1.4.51] - 2026-09-23 — Build menu shows every tower from the start, locked or not — a complete map of the README
+- Deep-tier evolutions (Paladin, Squirt Gun, Bomber, Gunalinder, Sniper, Berserker, Lancer) used to
+  stay fully hidden — not even a locked row — until their own prerequisite class was unlocked
+  first. Every one of the 19 evolved tower types now shows a row immediately, unlocked or 🔒, so
+  the Build menu is a complete, always-visible map matching every tower documented in the README.
+- README: removed Proton/Dark Matter/Quasar from the tower table — they were listed there as if
+  they were separately buildable towers, contradicting the Leveling section's own (correct)
+  explanation that they're elements a tower carries on its own attack. A pointer to that section
+  replaces the three rows.
+
+## [1.4.50] - 2026-09-23 — Quasar is an element again, not a tower — the actual bug, this time found and fixed
+- Removed the one stray line (`TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR`) that wrongly registered
+  Quasar as its own separately-buildable Build-tray tower. Proton and Dark Matter never had this
+  bug — only Quasar did, which is why 1.4.49's comment fix (which assumed the code was right and
+  the doc was stale) was itself wrong. Quasar is now purely an ELEMENT STATE, exactly like Proton
+  and Dark Matter always correctly were: whichever tower (Swordsman/Archer/Mage or any evolution)
+  reaches DEX+INT 500 keeps being exactly what it is, and its own existing attack gains
+  burn+slow+a small splash radius (`QUASAR_ELEMENT_SPLASH_RADIUS`, 40px) — not a new unit to build.
+- `CONFIG.TOWERS.QUASAR` itself is kept, legacy-only, so a save made while the bug was live still
+  loads without error. Nothing else changed — Hammerman, Blowdart, Cleric and every other
+  single-element specialization are still separately buildable towers exactly as before; this was
+  scoped to the 3 hybrids only, and only Quasar actually needed a code change.
+
+## [1.4.49] - 2026-09-23 — Comment-only correction: Proton/Quasar/Dark Matter really are buildable towers
+- No gameplay change. A stale code comment claimed Proton/Quasar/Dark Matter were "NOT buildable
+  classes... mixed ELEMENT STATES" — that never matched the actual code (CONFIG.TOWERS has real
+  entries for all three, unlocked and built exactly like every other specialization) and was the
+  direct source of a confused session mistakenly proposing to rearchitect tower progression into
+  in-place elemental transformation. Confirmed with the owner: the existing stat-threshold-unlock
+  mechanic (a tower never transforms, it just permanently unlocks the next separately-buildable
+  tower) was already correct and needed no change — only this comment did. AGENTS.md's matching
+  invariant corrected the same way, plus a new standing rule there against proposing mechanic
+  changes without explicit confirmation.
+
+## [1.4.48] - 2026-09-23 — Backlog sweep: item drops, a real all-towers-down wipe, and a clearer attunement toast
+- End-of-round item drops: a 12% chance per wave clear to drop a random item (Lucky Branch, or two
+  new items — Iron Charm, a flat +3 armor piece, and Swift Feather, a DEX-leaning stat item) near
+  one of your active towers.
+- The "all towers down" loss condition now also fires if every fighter is sold/lost mid-wave
+  (previously only fired when every fighter was simultaneously disabled, deliberately not on
+  zero-fighters, to avoid a false game-over on wave 1 before anything is built). A new
+  everBuiltFighter flag distinguishes "hasn't built anything yet" from "had a squad and lost it."
+- The attunement floating text now names the actual next unlock and how far off it is (e.g.
+  "⚡ Attuned! — 240 more DEX to Blowdart") instead of a bare "Attuned!" — 100 in a stat only locks
+  in an element, the buildable unlock is at 500, and the old text was the direct cause of "100 DEX
+  did nothing" reports.
+
+## [1.4.47] - 2026-09-23 — Spawn warning marker, and the countdown no longer runs during the camera pan
+- A pulsing red ❗ now marks the wave's spawn point for the entire pre-spawn window (camera pan +
+  3-2-1-GO), so it's obvious where the camera is heading and where enemies are about to appear.
+  Gone the instant real spawning starts.
+- The 3-2-1-GO countdown (and the first real enemy spawn) previously started counting the instant
+  a wave began, running IN PARALLEL with the 1200ms camera pan to the spawn point — so "3" was
+  already on screen while the camera was still mid-swing. waveTimer is now frozen for the duration
+  of the pan, the same mechanism already used to freeze it during a barricade pile-up, so the
+  countdown only starts once the camera has actually arrived.
+
+## [1.4.46] - 2026-09-23 — The real fix for long-session lag: decals were taking 13.5 minutes to become cheap
+- Root cause, confirmed from a user-submitted debug export (drawDecals() at 75% of render time
+  with 0 enemies on screen, 633/637 decals still unbaked 8 minutes into the session): decal
+  bake-eligibility was written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45), which was harmless
+  when the lifespan was 5 minutes but silently became a 13.5-REAL-MINUTE delay once DECAL_LIFESPAN
+  was extended to 30 minutes in an earlier version so bloodstains would visually last longer. Until
+  a decal turned 13.5 minutes old it stayed in the expensive per-frame live-draw pass.
+- Baking now triggers off a small absolute age (DECAL_BAKE_MIN_AGE_MS, 4s) instead of a fraction of
+  however long the stain is set to visually persist. A decal is cheap to render within 4 seconds of
+  landing regardless of whether its total lifespan is 5 minutes or 30 — the two concerns (how long
+  it lasts vs. how soon it's cheap) are no longer coupled through the same number.
+
+## [1.4.45] - 2026-09-23 — Evolution hint shows only the nearest next unlock
+- An attuned tower's evolution hint used to always show its single-element specialization target
+  AND its nearest hybrid side by side, even when the hybrid was hundreds of points further off
+  (e.g. "54 more INT" shown right next to "350 more STR/INT for Dark Matter"). It now compares
+  every reachable next unlock — the single-element specialization and all three hybrids — and
+  shows only whichever is actually closest.
+
+## [1.4.44] - 2026-09-23 — Unlocks are permanent, promotion never changes a tower's class, and a wipe now ends the run
+- **Tower unlocks are now permanent, account-wide progress.** Crazy Chef, Cat Snapper, every
+  attunement/hybrid class including Quasar are stored in their own localStorage key, separate from
+  any save file, and are no longer wiped by resetGame()/starting a new run. This was the actual
+  cause of unlocks "not sticking" across playthroughs — `unlockedTowerTypes` was being reset to an
+  empty Set on every restart.
+- **Removed the level-5 Swordsman spec popup** that force-picked Zweihander/Dual Wield and silently
+  changed damage, cooldown, and swing arc. Promotion (the Promote button) was already meant to be
+  pure stat gain — that's now true with no exception. No promotion, for any class, ever changes
+  what a tower is; only the stat-threshold unlock system does that (and only by unlocking a new
+  buildable type, never by transforming the tower itself).
+- **New loss condition:** if every currently-built fighting tower (anything but Barricade) is
+  simultaneously overrun/disabled mid-wave, the run now ends immediately instead of continuing
+  with an empty, undefended board.
+- **Escaped enemies now stay inside the current expanded map region** instead of bouncing around
+  the full theoretical 32×20 grid — they no longer wander far outside the visible chessboard after
+  breaking through the last barricade.
+- **Barricade hits throw far less debris:** 1 stone chunk plus 1-2 wood chunks per hit, down from
+  7-12. A chip still reads clearly without burying the animation in flying rubble.
+- **Rebalanced base accuracy:** Mage miss chance 45%→38%, Archer 40%→34%, Warrior (Swordsman and
+  its evolutions) 30%→36%. Swordsman was meaningfully more accurate than Archer/Mage with no
+  in-fiction reason to be — this narrows the gap without eliminating Swordsman's melee identity.
+- **iOS: blocked the browser's own pinch-zoom and double-tap-zoom** at the event level. iOS Safari
+  ignores the viewport meta's `user-scalable=no`, and native page-level pinch-zoom is the actual
+  cause of the reported "menu bars go out of view when I zoom in" — WebKit detaches
+  `position:fixed` elements from the viewport during a native zoom. The game's own in-canvas
+  pinch-to-zoom (built on Pointer Events, not touch events) is unaffected.
+
 ## [1.4.43] - 2026-09-22 — Arrows fly stiff instead of homing
 - Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s),
   and correction is abandoned entirely once the target has swung more than

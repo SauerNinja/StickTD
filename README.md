@@ -13,8 +13,32 @@ Zero dependencies: no external images, no external audio, nothing to install. Ev
 weapon, and effect is drawn procedurally on an HTML5 Canvas, and every sound is synthesized live
 with the Web Audio API.
 
+## Core design principles
+
+These are the non-negotiable rules the whole tower/progression system is built on — stated
+plainly, in one place, so they can't drift or get reinterpreted (by a contributor, an AI agent, or
+anyone) into something else later.
+
+1. **A tower never transforms or changes class. Ever.** Reaching a stat threshold permanently
+   unlocks the *next* tower as separately buildable from the Build menu — the tower that earned
+   the unlock keeps being exactly what it was, forever. "Unlock the next thing," never "become the
+   next thing."
+2. **Unlocks are permanent and account-wide**, stored independently of any save file. Starting a
+   new game never resets what you've already unlocked — that permanence is the entire point, it's
+   what makes progress feel real across playthroughs.
+3. **Elements are states, not towers.** Fire/Electric/Ice (from a single stat at 100) and their
+   mixes Proton/Dark Matter/Quasar (from two stats at 500) are effects a tower carries on its own
+   existing attack. None of the six are ever separately buildable — if you see one show up as a
+   purchasable Build-menu row, that's a bug, not a feature.
+4. **Promotion is a pure stat-roll gold sink.** It never changes a tower's type, damage formula,
+   cooldown, range, or identity — only its STR/DEX/INT.
+5. **The Build menu is a complete, always-visible map of every tower.** Every buildable class
+   (starters plus all 19 evolutions) shows a row from the very start — unlocked, or 🔒 with a hint
+   — never hidden entirely pending some other prerequisite.
+
 ## Contents
 
+- [Core design principles](#core-design-principles)
 - [How to play](#how-to-play)
 - [Towers & evolutions](#towers--evolutions)
 - [Tower appearance](#tower-appearance)
@@ -154,6 +178,10 @@ that has one, Necromancer as a deliberate exception despite being only a first-t
 The Build-menu row shows "already on the field" and can't be selected again until that one is sold
 or dies, at which point the slot opens back up.
 
+**Proton, Dark Matter, and Quasar are not in the table below** — they're mixed elements a tower
+carries on its own existing attack (STR+DEX, STR+INT, and DEX+INT respectively, each stat at 500),
+not separately buildable towers. See **Elements** under [Leveling](#leveling) for how they work.
+
 | Tower | Role |
 |---|---|
 | ⚔️ Swordsman | Melee cone sweep — the starting warrior |
@@ -170,9 +198,6 @@ or dies, at which point the slot opens back up.
 | 🎯 Blowdart | *(unlocked by ⚡ Electric on an Archer, DEX 100/500)* Short range, fast fire rate, every dart poisons |
 | 🔫 Dual Squirt Gun | *(unlocked by a Blowdart reaching DEX 40)* Dual-wielded, deeper DEX specialization |
 | ♨️ Blow Gunner | *(unlocked on an Archer that pushes BOTH STR and INT to 500 — 🔥 Fire + ❄️ Ice = "Steam")* Every hit carries both a poison DoT and a brief chilling slow at once. The first dual-element hybrid class — doesn't replace Gatling/Marksman's own single-element unlocks, unlocks alongside them off the same stat growth. |
-| ☄️ Proton | *(unlocked on ANY base class — Swordsman, Archer, or Mage — that pushes BOTH STR and DEX to 500 — 🔥 Fire + ⚡ Electric)* Purple energy that burns on contact and briefly disrupts the target's speed. Unlike every other hybrid/specialization, not tied to one base class — whichever tower gets there first unlocks the same shared class. |
-| 🕳️ Dark Matter | *(unlocked on ANY base class that pushes BOTH DEX and INT to 500 — ⚡ Electric + ❄️ Ice)* Same shared-across-all-3-bases shape as Proton. Leans toward the slow more than the burn — a control identity rather than a damage one. |
-| 🌟 Quasar | *(unlocked on ANY base class that pushes STR, DEX, AND INT all to 500 — 🔥+⚡+❄️, all three)* The hardest unlock in the game by a wide margin — 1500 total stat points, not 1000. Hits everything in a small splash radius, not just its direct target, on top of the same burn+slow every hybrid carries. |
 | 🔫 Marksman | *(unlocked by ❄️ Ice on an Archer, INT 100/500)* One carefully aimed rifle shot at a time — longer range and harder-hitting than base Archer |
 | 🎯 Sniper | *(unlocked by a Marksman reaching INT 60)* The deepest INT investment in the game — one devastating shot at the longest range of any tower |
 | 🐈‍⬛ Cat Snapper | *(unlocked by an Archer reaching DEX 500 — a raw stat threshold, not gated through an element; all 3 of Archer's own element slots were already taken)* Throws a temporary shadow cat instead of dealing damage directly — the cat latches onto its target and scratches for a few seconds, up to 2 cats out at once |
@@ -404,13 +429,17 @@ beyond clearing rocks yourself.
 
 ## Huts
 
-A WarCraft 3-style creep camp: a stationary hut (🛖) placed off-path somewhere in the starting
-map area, guarded by 2 enemies. Nothing about it is on the timer or the path — towers in range
-simply fight it like anything else, on your own schedule. Kill both guardians for an immediate
-gold bounty each; the hut itself is far tankier and pays a much bigger one-time reward when
-destroyed. If you clear the guardians but leave the hut standing, it respawns 2 fresh guardians
-after a random 1-5 minute real-time wait — but only once the lane around it is actually empty, and
-never at all once the hut itself has been torn down. A cleared hut stays cleared permanently.
+A WarCraft 3-style creep camp: a stationary hut (🛖) placed off-path, guarded by 2 enemies. It
+doesn't appear on the tiny starting map — it spawns the first time your map has expanded enough
+(3 expansions in), so the earliest waves never have to deal with one. Guardians stay tightly
+clustered near their hut and snap back if knocked away — they don't roam or chase, only combat
+itself moves them off that spot. Nothing about the camp is on the timer or the path — towers in
+range simply fight it like anything else, on your own schedule. Kill both guardians for an
+immediate gold bounty each; the hut itself is far tankier and pays a much bigger one-time reward
+when destroyed. If you clear the guardians but leave the hut standing, it respawns 2 fresh
+guardians after a random 1-5 minute real-time wait — but only once the lane around it is actually
+empty, and never at all once the hut itself has been torn down. A cleared hut stays cleared
+permanently.
 
 ## Lives
 

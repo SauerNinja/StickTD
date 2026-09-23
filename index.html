@@ -629,6 +629,25 @@
   </div>
 </div>
 <script>
+  // Blocks the BROWSER's own pinch-zoom, independent of the game's own in-canvas zoom feature.
+  // The viewport meta's user-scalable=no is not honored by iOS Safari (Apple ignores it past
+  // iOS 10 for accessibility), so a two-finger pinch still zooms the actual page there — and
+  // WebKit's known behavior is that position:fixed elements (the header/nav HUD bars) visually
+  // detach from the viewport during that zoom, which is exactly the "menu bars go out of view
+  // when I zoom in" report. Preventing the gesture at the event level (rather than relying on the
+  // meta tag) stops the page-level zoom outright; the game's own pinch-to-zoom-the-map control
+  // reads touch positions directly and is unaffected.
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
+  document.addEventListener('touchmove', (e) => { if(e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTouchEndAt = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if(now - lastTouchEndAt <= 300) e.preventDefault(); // blocks double-tap-to-zoom too
+    lastTouchEndAt = now;
+  }, false);
+</script>
+<script>
   // Cookie-consent overlay — fully self-contained (its own markup/CSS/logic here), independent of
   // the main game script below, so it can never be affected by or interfere with anything
   // downstream. Drives Google Consent Mode v2 (defaulted to denied in <head> above): only actually
@@ -1072,7 +1091,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.43'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.54'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1346,7 +1365,7 @@ function warriorStrDamageMult(strEff){
 // punishing mechanic. CLERIC already maps to the MAGE archetype in CLASS_ARCHETYPE, so it gets
 // the Mage tier automatically. BARRICADE has no archetype entry at all and never attacks, so it
 // falls through to the WARRIOR-tier default below — moot, since its own value is never used.
-const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.45, ARCHER: 0.40, WARRIOR: 0.30 };
+const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.38, ARCHER: 0.34, WARRIOR: 0.36 };
 // Front-loaded accuracy curve, RuneScape-style: reaching 100 effective DEX gets almost all the
 // achievable accuracy benefit (miss chance drops from the archetype's base all the way down to
 // just 4%), while grinding from 100 to 500 effective DEX only trims that remaining sliver down to
@@ -1539,27 +1558,32 @@ const SPECIALIZATIONS = {
 // Only Fire+Ice ("Steam") → Blow Gunner on Archer is defined single-base-class; Fire+Electric
 // ("Proton") and Electric+Ice ("Dark Matter", black) are both defined reachable from ALL THREE
 // base classes, by explicit design choice — "all towers can turn into all elements with the right
-// stat combo." Whichever base class gets a given combo to 500/500 first unlocks that same shared
-// class; the target is identical regardless of source, matching how a hybrid unlock has always
-// meant "prove you can reach this once, from wherever," not "each base class gets its own
-// separate version." All three elements at once ("Quasar", white) isn't gated through this table
-// at all — it's checked as its own independent raw-triple-stat condition directly in
-// checkAttunementAndSpecialization(), the same way Cat Snapper's raw-DEX check bypasses this table
-// entirely — see the comment there for why "all three equally" needed a genuinely different check
-// shape than the pairKey system below, not a workaround of it.
-// Proton, Quasar and Dark Matter are NOT buildable classes — they are mixed ELEMENT STATES a
-// stickman earns by training two (or all three) stats deep enough. See MIXED_ELEMENT_RULES and
-// refreshElementState(). Only genuine class branches stay in this table.
+// stat combo." Whichever base class gets a given combo to 500/500 first earns that same shared
+// element state; the tower never transforms into anything, it just carries the element on its own
+// existing attack from then on (refreshElementState()/applyAttunementStatus()).
+// Proton, Quasar and Dark Matter are ELEMENT STATES, never separately buildable tower types —
+// confirmed by the owner. A previous version of this comment (and, separately, one stray line in
+// TOWER_UNLOCK_SOURCE_BY_TARGET) had Quasar wrongly registered as a real Build-tray unlock; that
+// registration is removed. CONFIG.TOWERS.QUASAR itself is kept, legacy-only, so a save made while
+// that bug was live still loads. Proton and Dark Matter never had this bug — they were always
+// correctly gated only through MIXED_ELEMENT_RULES/refreshElementState() below, nowhere else. Only
+// genuine class branches (an actual next-tier tower, like Blow Gunner) belong in this table.
 const HYBRID_SPECIALIZATIONS = {
   SWORDSMAN: {},
   ARCHER: { 'FIRE+ICE': 'BLOW_GUNNER' },
   MAGE: {}
 };
-// Mixed elements, checked in order — first match wins. Quasar is the balanced build (all three),
-// the pair mixes need both stats at the MIXED_PAIR_THRESHOLD.
-// Each pair of base elements mixes into one advanced element, and that is the only route: a mix
-// needs both of its stats at MIXED_PAIR_THRESHOLD, which spends the whole 1000-point budget.
+// Mixed elements, checked in order — first match wins. Quasar's pair here (DEX+INT) is what
+// actually gates it; the QUASAR_MIN_PER_STAT constant and any comment elsewhere describing a
+// "triple-stat, all three at 500" condition describe a design that was never actually wired up —
+// don't trust those over this table. Each pair needs both of its stats at MIXED_PAIR_THRESHOLD,
+// which spends the whole 1000-point budget.
 const MIXED_PAIR_THRESHOLD = 500;
+// Quasar's own extra effect beyond the burn/slow/stun every hybrid applies via
+// applyAttunementStatus() — a genuinely wider hit, not just another status effect. Added directly
+// onto whatever attack the tower carrying it already has (see fireProjectile()), never a separate
+// tower or a separate attack of its own.
+const QUASAR_ELEMENT_SPLASH_RADIUS = 40;
 const MIXED_ELEMENT_RULES = [
   { element:'PROTON',      test: t => t.str >= MIXED_PAIR_THRESHOLD && t.dex >= MIXED_PAIR_THRESHOLD },  // Fire + Electric
   { element:'DARK_MATTER', test: t => t.str >= MIXED_PAIR_THRESHOLD && t.int >= MIXED_PAIR_THRESHOLD },  // Fire + Ice
@@ -1657,24 +1681,48 @@ for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
 // threshold directly on Archer, not an element/hybrid slot), so it needs its own explicit entry
 // here rather than falling out of a loop over one of the unlock tables.
 TOWER_UNLOCK_SOURCE_BY_TARGET.CAT_SNAPPER = { kind: 'stat', baseType: 'ARCHER', stat: 'dex', threshold: SPECIALIZATION_THRESHOLD };
-// Quasar — same "not table-driven" reasoning as Cat Snapper above, but a genuinely different
-// trigger shape: all three raw stats each reaching SPECIALIZATION_THRESHOLD, not tied to any one
-// base class (see the check itself in checkAttunementAndSpecialization()).
-TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR = { kind: 'triple-stat', threshold: SPECIALIZATION_THRESHOLD };
+// Quasar (like Proton and Dark Matter) is a mixed ELEMENT STATE a tower earns and carries on its
+// own existing attack (see MIXED_ELEMENT_RULES/refreshElementState()/applyAttunementStatus()) — it
+// is deliberately NOT registered here. An earlier version incorrectly added Quasar as its own
+// separately-buildable Build-tray entry (this exact line, now removed), which was the actual
+// source of "Quasar shows up as a tower" confusion — Proton and Dark Matter never had this bug,
+// only Quasar did. Do not re-add any of the three hybrids here; the owner has confirmed none of
+// them are ever meant to be separately buildable, only Hammerman/Blowdart/Cleric-style
+// single-element specializations are.
 const UNLOCKABLE_TOWER_TYPES = Object.keys(TOWER_UNLOCK_SOURCE_BY_TARGET);
-// Permanently unlocked tower types for the current game — the whole point is "prove you can reach
-// this once, and it's yours to build directly from then on," for every tier, not just the first.
-let unlockedTowerTypes = new Set();
+// Permanently unlocked tower types — account-wide meta-progression, not tied to any one save or
+// run. The whole point is "prove you can reach this once, ever, on any playthrough, and it's
+// yours to build from then on" — so this is backed by its own localStorage key (independent of
+// the save-game file) and is never wiped by resetGame()/starting a new run. A save file still
+// carries its own snapshot (for older browsers/imports), but on load it's UNIONed into the
+// permanent set rather than replacing it — loading an old save can only ever add unlocks, never
+// take one away.
+const PERMANENT_UNLOCKS_KEY = 'stickTD_permanentTowerUnlocks';
+function loadPermanentUnlocks(){
+  try{
+    const raw = localStorage.getItem(PERMANENT_UNLOCKS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  }catch(err){ return new Set(); } // private mode/corrupt data — fall back to empty rather than throwing
+}
+function savePermanentUnlocks(){
+  try{ localStorage.setItem(PERMANENT_UNLOCKS_KEY, JSON.stringify([...unlockedTowerTypes])); }
+  catch(err){ /* storage unavailable — the run still works, it just won't remember past this session */ }
+}
+let unlockedTowerTypes = loadPermanentUnlocks();
 function unlockTowerTypeBuild(type){
   if(unlockedTowerTypes.has(type)) return; // already unlocked — no toast on a repeat reach
   unlockedTowerTypes.add(type);
+  savePermanentUnlocks();
   showUnlockToast([type]);
 }
 
 // All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any
-// tower can equip, unequip, or receive one dragged over from another tower. Just one item for now
-// (deliberately simple); more can be added to this list later without touching anything else.
+// tower can equip, unequip, or receive one dragged over from another tower. More added below
+// without touching anything else — itemStatLine(), the Shop grid, and the drag/equip system are
+// all already generic over UNIVERSAL_ITEMS.
 const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, armor:1, cost:70, woodCost:15 };
+const IRON_CHARM = { id:'IRON_CHARM', name:'Iron Charm', icon:'🧿', armor:3, cost:90, stoneCost:20 };
+const SWIFT_FEATHER = { id:'SWIFT_FEATHER', name:'Swift Feather', icon:'🪶', str:1, dex:2, int:1, cost:85 };
 const BARRICADE_ITEM = { id:'BARRICADE_ITEM', name:'Barricade', icon:'🚧', cost:0, woodCost:600, stoneCost:300, isBarricade:true };
 // Repair cost scales with missing HP fraction, at a 50% discount against BARRICADE_ITEM's own
 // full-build cost — repairing an existing barricade should clearly beat scrapping (sell for a
@@ -1687,7 +1735,13 @@ function barricadeRepairCost(t){
     stone: Math.ceil(BARRICADE_ITEM.stoneCost * missingFrac * 0.5)
   };
 }
-const UNIVERSAL_ITEMS = [ LUCKY_BRANCH, BARRICADE_ITEM ];
+const UNIVERSAL_ITEMS = [ LUCKY_BRANCH, IRON_CHARM, SWIFT_FEATHER, BARRICADE_ITEM ];
+// The subset that can drop as a random end-of-wave reward (see the wave-complete handler in
+// update()) — deliberately excludes BARRICADE_ITEM, which is a purchased build resource, not a
+// random find.
+const WAVE_DROP_ITEMS = [ LUCKY_BRANCH, IRON_CHARM, SWIFT_FEATHER ];
+const WAVE_DROP_CHANCE = 0.12;
+
 
 const PASSIVE_UPGRADES = [
   { id:'GLOBAL_STR', name:"Warrior's Blessing", icon:'💪', stat:'str', baseCost:100, costGrowth:1.6 },
@@ -1970,12 +2024,12 @@ const CONFIG = {
       ]
     },
     // All three elements ("Quasar", white) — the genuine capstone hybrid, gated on a much harder
-    // threshold than any other class in the game (all 3 of str/dex/int at 500, not 2), so it's
-    // noticeably stronger than Proton/Dark Matter/Blow Gunner in kind, not just tier level: adds
-    // splashRadius (AoE, already generic on impact — same field Bomber/Squirtgun use) on top of
-    // the same poisonDamage/slowFactor combo the other hybrids share, rather than a brand new
-    // mechanic. Not gated through HYBRID_SPECIALIZATIONS at all — see the triple-stat check in
-    // checkAttunementAndSpecialization() and its own comment for why.
+    // LEGACY ONLY — no longer reachable as a fresh build (removed from
+    // TOWER_UNLOCK_SOURCE_BY_TARGET; see that comment for why). Kept defined, not deleted, purely
+    // so a save file from before this fix that already has a QUASAR-typed tower on the board still
+    // loads and renders correctly. Quasar is now a pure elemental state applied to whichever
+    // tower's own existing attack earns it (MIXED_ELEMENT_RULES/applyAttunementStatus/
+    // QUASAR_ELEMENT_SPLASH_RADIUS), same as Proton and Dark Matter always correctly worked.
     QUASAR: {
       name: 'Quasar', icon: '🌟', baseCost: 0, unlocksAfterWave: 0,
       blurb: "The rarest unlock in the game — reachable from any base class, but only once STR, DEX, AND INT have each reached 500 (not just two). A blinding white burst that scorches and slows everything in a small radius, not just its direct target.",
@@ -2509,12 +2563,20 @@ function generateConflictFreePath(region, maxAttempts){
   return buildFallbackPath(region); // spiral couldn't leave enough room — guaranteed-safe straight path instead
 }
 let nextRingIsPath = true; // alternates each expansion — every other ring is pure buildable growth
+// Huts no longer spawn on the tiny starting region — they only start appearing once the map has
+// actually grown some, so the very first few waves (small map, still learning the basics) never
+// have to deal with one. hutsSpawnedThisGame guards against spawning a second one the next time
+// expansionLevel happens to cross the threshold again after a reset mid-comparison — it's reset
+// alongside expansionLevel in initRegionAndPath()/resetGame().
+const HUT_MIN_EXPANSION_LEVEL = 3;
+let hutsSpawnedThisGame = false;
 function initRegionAndPath(){
   const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
+  hutsSpawnedThisGame = false;
   nextRingIsPath = true;
   pathWaypointTiles = generateConflictFreePath(activeRegion); // only the base level uses the half/half comb split
   rebuildPathCellsAndPx();
@@ -2534,6 +2596,13 @@ function performExpansion(label, labelColor){
   } // else: leave the path exactly as-is — this ring is pure buildable space, no regeneration needed
   nextRingIsPath = !nextRingIsPath;
   rebuildPathCellsAndPx();
+  // The map has grown enough now — spawn the game's one hut/creep-camp for the first time, never
+  // on the original tiny starting region. Placed AFTER rebuildPathCellsAndPx() above so
+  // findHutPlacementTile()'s pathCells check reflects this expansion's path, not the previous one.
+  if(expansionLevel === HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
+    hutsSpawnedThisGame = true;
+    spawnHuts();
+  }
   // clear any pre-existing scenery that now happens to sit on the new spiral's route
   for(const tile of pathWaypointTiles){
     sceneryMap.delete(tile.x+','+tile.y);
@@ -4340,6 +4409,7 @@ loadPrefs();
 })();
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (activeWavePlan dispatching outcome-gated batches, see advanceWaveDispatch()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
+let everBuiltFighter = false; // true the moment the player has ever had an active non-Barricade tower — see checkAllFightersDown(), which uses this to distinguish "wiped mid-wave" from "hasn't built anything yet"
 // Flat delay (added to every spawn's own already-tuned delay in startNextWave()) before the first
 // enemy of a new wave actually arrives — gives the round-start fanfare/countdown/leaf-gust/camera
 // pan a moment to land instead of the wave visually starting and spawning in the same instant. See
@@ -4640,7 +4710,7 @@ const LAST_SEEN_VERSION_KEY = 'stickTD_lastSeenVersion';
 // Embedded changelog (generated from CHANGELOG.md at release time). The what's-new dialog shows
 // every entry newer than the version last played, scrollable, so returning players see exactly
 // what changed while they were away.
-const CHANGELOG_ENTRIES = [{"v": "1.4.43", "date": "2026-09-22", "title": "Arrows fly stiff instead of homing", "items": ["Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s), and correction is abandoned entirely once the target has swung more than PROJECTILE_HOMING_MAX_ANGLE (~11°) off the shot's heading. Past that the arrow commits to its line and misses geometrically, the way a real arrow does.", "Verified: a target darting hard off the line produced 0° of turn, where the old rate would have curved the shot around after it."]}, {"v": "1.4.42", "date": "2026-09-22", "title": "Gold pops on the HUD; wave line drops the size-tier name", "items": ["\"+N\" rises beside the gold counter whenever gold arrives, with a two-note coin sound. It is driven from the HUD update, so every source counts — kills, bounties, wave clear, mastery conversion, selling. Gains inside the same second stack into one pop instead of flickering (verified: +37 then +12 shows +49).", "Wave line no longer names the size tier (\"Tiny 9/10 · 8/10\" → \"8/10\"); it now shows only resolved/total plus the escapee count when there is one."]}, {"v": "1.4.41", "date": "2026-09-22", "title": "Bigger sends now that barricades hold a choke point", "items": ["Batch sizes raised: through wave 50 every tier sends 2-5 at a time (Tiny 3-5, Small 2-5, Standard 2-4, Large 2-3); from wave 51 it is 5-10 (Tiny 7-10, Small 6-9, Standard 5-8, Large 5-7). The old trickle (1-2 for Standard/Large, 1 for the first waves) existed because nothing reliably held enemies at a choke point.", "Wave 1 still walks its ten enemies out one at a time as the tutorial beat, and Bosses still arrive alone.", "Verified: wave 3 sends 3-5, wave 50 tops out at 5, wave 60 at 10; batch counts drop accordingly (wave 50 now 138 batches), so waves play denser without changing population."]}, {"v": "1.4.40", "date": "2026-09-22", "title": "Kills pay roughly double", "items": ["Tier bounty multipliers raised across the board: Tiny 0.4 → 0.9, Small 0.7 → 1.5, Standard 1.0 → 2.2, Large 2.5 → 5.5, Boss 1.0 → 2.2. These were tuned before waves carried hundreds of enemies and before barricades became a recurring cost.", "Per-kill gold for a Grunt now: Tiny 5, Small 9, Standard 13, Large 33 (was 2/4/6/15).", "Whole-wave gold budget: wave 5 pays 642 (was ~290), wave 20 pays 4,144 (was ~1,880).", "XP is untouched — this only changes the economy, not training pace."]}, {"v": "1.4.39", "date": "2026-09-22", "title": "Debris flicker: one source of truth", "items": ["Root cause of the flickering: baking rubble (1.4.37) gave every debris piece two possible homes — the cached ground layer and the live debris pass. Each transition between them (entering the bake window, leaving it for the fade, and the coalesced rebuild landing seconds later) was a frame where a piece was drawn twice or not at all.", "No ground debris is baked any more. Skulls, bones, worms and barricade rubble are always live-drawn, above the blood and below the actors, with a single draw path. Cost is small — debris is sparse and viewport-culled, unlike the thousands of blood decals that baking exists for.", "Rubble still holds full opacity and fades only over the final 10% of its 5-minute life; bone never fades.", "Measured over 10 samples with 50 debris pieces on screen: count and baked-count perfectly stable (50 / 0 every sample), where a flickering piece would have oscillated."]}, {"v": "1.4.38", "date": "2026-09-22", "title": "Skulls and bones stop popping in and out", "items": ["Found the cause: at the decal cap (1,200 on Low, 2,000 on High) pushDecal() recycled the oldest slot regardless of what it held, so a blood-heavy wave steadily overwrote skulls, bones and rubble — they vanished and only \"came back\" when a new kill dropped another one.", "Recycling now skips debris slots and takes a blood stain instead, with a bounded scan (one lap max) so it can never spin. Debris still expires on its own schedule.", "Measured: 79 debris pieces survived 4,000 fresh blood decals at the cap — previously they would have been overwritten."]}, {"v": "1.4.37", "date": "2026-09-22", "title": "Rubble bakes into the ground and lasts ~5 minutes", "items": ["Barricade rubble now bakes into the ground layer once it settles (isDecalBakeEligible() covers isRubble from 2% to 90% of its life) instead of being redrawn every frame — it becomes part of the scene, like the baked blood. Bone and skull stay live-drawn above the blood as before.", "Lifespan raised from 50s to 5 minutes (BARRICADE_RUBBLE_LIFESPAN), and it only fades over its final 10%, which is exactly the window where it leaves the baked layer and is drawn live again so the fade can animate.", "The debris pass skips baked pieces, so nothing is drawn twice.", "Verified: 7 pieces baked after settling, out of the cache again near end of life."]}, {"v": "1.4.36", "date": "2026-09-22", "title": "Ground debris never fades", "items": ["Bone, stone and barricade rubble now draw at full opacity for their entire life and simply expire — no fade-in, no fade-out. The flying chunks are solid the whole way through their arc too, so a piece lands rather than dissolving mid-air.", "Rubble still clears after ~50s; bone and skull debris remain permanent."]}, {"v": "1.4.35", "date": "2026-09-22", "title": "Rubble stays solid until it's actually old", "items": ["Landed timber and stone now hold full opacity for the first 80% of their 50s life and fade only over the last 20% (was fading across the final third, which read as \"spawns already faded\"). Measured: alpha 1.00 at 0% and 50% of life, 0.75 at 85%, 0.25 at 95%.", "Pieces bumped slightly (stone 6-9px, timber 7-10px) and the landed piece now keeps the chunk's full size instead of shrinking to 80%, so small pieces don't wash out against the ground."]}, {"v": "1.4.34", "date": "2026-09-22", "title": "Debris scatters in every direction, at a smaller scale", "items": ["Chunks now launch on a full 360° ground-plane spread instead of a narrow upward cone, with the vertical component squashed to 0.6 for the game's shallow top-down perspective, so pieces land all around the barricade rather than in a plume above it. The arc still comes from the separate vertical hop, so a piece thrown \"downward\" on screen still tumbles through the air.", "Piece size cut roughly in half (stone 5-8px, timber 6-9px, was 9-14/12-17) and launch speed widened to 60-180 px/s, so the burst reads as splinters and chips rather than whole logs."]}, {"v": "1.4.33", "date": "2026-09-22", "title": "More rubble per hit, and it clears after ~50s", "items": ["A barricade hit now throws 12 chunks (7 on Low, up from 7/4) in an even split of timber and stone, with the chunk pool raised to 64 slots.", "Landed rubble expires after 50s (BARRICADE_RUBBLE_LIFESPAN) and fades over its final third instead of standing forever. Bone and skull debris is untouched — that stays permanent scenery; only barricade litter clears.", "Verified: 7 chunks airborne on impact, ground pieces present after landing, and zero left once the 50s life elapsed."]}, {"v": "1.4.32", "date": "2026-09-22", "title": "Timber and stone actually fly off the barricade", "items": ["Replaced the instant scatter of ground pieces with a real throw: spawnBarricadeChunk() launches 7 chunks (4 on Low) up and outward with their own velocity, a vertical hop under gravity (BARRICADE_CHUNK_GRAVITY) and spin, arcing for about a second before landing. Each one lays down its permanent ground piece where it lands, so the debris trail matches the animation.", "Pooled (48 slots, round-robin), so a hit allocates nothing; drawn above the actors with a short fade-out at the end of flight.", "Verified in-browser: 4 chunks airborne mid-arc with 0 ground pieces, then 0 airborne and 4 ground pieces after landing."]}, {"v": "1.4.31", "date": "2026-09-22", "title": "Barricade damage text is just the number", "items": ["Dropped the 🪵 from the chip text: it now reads \"-1 (9/10)\". The flying timber and stone pieces already carry that read visually."]}, {"v": "1.4.30", "date": "2026-09-22", "title": "Stat-button glows matched in strength", "items": ["Gold (primary damage stat) and silver (support stats) now use the same glow size and opacity — 10px spread, 2px blur, 0.72 alpha — so they differ in hue only. Gold was 12px/3px/0.75 against silver's 8px/1px/0.55, which made the support stats look disabled rather than secondary."]}, {"v": "1.4.29", "date": "2026-09-22", "title": "A melee miss now looks like a miss", "items": ["Ranged shots already pre-roll: a rolled miss flies a deliberately offset path and never resolves a hit, so \"MISS\" always matches what you see. Melee had no equivalent — the blade swept through the enemy's position and \"MISS\" floated over an enemy the arc visibly passed through.", "dodgeEnemyFromSwing() now shoves a dodging enemy 7px perpendicular to the attacker, out of the arc, with a small scuff puff. The side is derived from the enemy and tower ids, so it is stable rather than jittering frame to frame.", "Verified: a dodged enemy moves exactly 7px out of the swing line; 16/16 self-tests."]}, {"v": "1.4.28", "date": "2026-09-22", "title": "Barricades take a full 10s of attacking before the first point, and shed timber/stone", "items": ["No instant first chip. An attacker now has to sustain contact for a full BARRICADE_HIT_INTERVAL_MS (10s) before the barricade loses its first point (barricadeContactSince, barricadeAttackReady()); every later point is on the same interval. Both damage paths — the pile-up attacker and direct takeDamage() — share one routine (chipBarricade()), so neither can bypass the wind-up.", "Wood and stone fly off on every point lost (spawnBarricadeDebris()): timber and grey particle bursts plus 5 scattered 🪵/🪨 pieces that settle as ground debris (2 on Low graphics), alongside the existing shake, red flash, impact sound and \"🪵 -1 (9/10)\" text.", "Verified: contact starting now does not chip; after 10s of attacking it drops to 9 and leaves debris; an immediate second attempt is correctly ignored."]}, {"v": "1.4.27", "date": "2026-09-22", "title": "Final casualty of the build bug restored; whole-file symbol check added", "items": ["STAT_TIER_STEP / STAT_TIER_NAMES (the rank ladder constants) were the last thing the changelog-embed generator had deleted — every kill crashed in refreshStatTier(). Restored.", "Added a whole-file symbol check to the ship process: every function and constant the recent work introduced is now evaluated in a real browser before shipping, so a missing declaration can't reach you again. Current result: none missing.", "Verified: three waves at 10x with Swordsman, Archer and Mage — zero page errors, zero console errors, 16/16 self-tests."]}, {"v": "1.4.26", "date": "2026-09-22", "title": "Restore the element system (second casualty of the same build bug) and re-roll the sky per visit", "items": ["Boot crash fixed: towerElement is not defined. The same changelog-embed generator that ate the update-notice functions in 1.4.25 had also deleted ELEMENT_VISUALS, ELEMENT_LABELS, towerElement(), towerDisplayName(), refreshElementState(), attunementProcChance() and applyAttunementStatus() — the whole elemental layer. All restored and verified: Fire/Ice attunements apply, mixes resolve (500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 → Quasar), and projectiles carry their element colour again.", "The attract sky now re-rolls per visit, not once per page load: day/night, moon phase and the moon's position re-roll when the screen is shown after being away (returning from a run, for example). Verified across six loads — phases 0, 4, 5 and 7 and positions spanning 19-81% of the sky."]}, {"v": "1.4.25", "date": "2026-09-22", "title": "Fix boot crash from the 1.4.24 build step", "items": ["1.4.24 failed to boot with \"maybeShowUpdateNotice is not defined\". My changelog-embed generator replaced from the start of CHANGELOG_ENTRIES to the wrong terminator and deleted the three functions that followed it (compareVersions(), maybeShowUpdateNotice(), dismissUpdateNotice()). Restored, with the duplicate LAST_SEEN_VERSION_KEY removed.", "No gameplay change. Verified: clean boot, 16/16 self-tests, boss tier intact (radius 48, speed 8), and the what's-new dialog lists 1.4.14-1.4.24 from a stored 1.4.13."]}, {"v": "1.4.24", "date": "2026-09-22", "title": "Moon moves and changes phase between visits", "items": ["The attract sky body is now placed per visit: horizontal position 12-88% across the sky and 22-67% down the sky band (attractSkyBodyT, attractSkyBodyHeight), instead of always sitting at the same top-right spot.", "Night rolls a moon phase (attractMoonPhase, 0 new through 4 full to 7 waning crescent). The phase is carved by painting the sky colour back over the disc with an offset, so a large offset leaves a crescent and a small one a gibbous — no extra assets, one extra arc fill.", "All three values roll once per visit alongside the day/night choice, so the scene holds still while the menu is on screen. Verified across crescent, gibbous and waning positions."]}, {"v": "1.4.23", "date": "2026-09-22", "title": "JRPG boss warning, bigger/slower bosses, what's-new shows only new versions", "items": ["Boss warning. When a Boss phase starts, the screen pulses red and a black band holds \"⚠ WARNING ⚠ / BOSS APPROACHING\" for 2.6s with a heavy screen shake and a sting (showBossWarning(), drawBossWarning()), replacing the generic phase banner.", "Bosses are properly huge and slow: radius 32-38 → 44-52, speed 12-19 → 8-13. Still strictly slower and larger than every other tier (band validation passes). Verified: a wave-10 Boss spawns at radius 48, speed 8, 2,281 HP.", "The what's-new dialog no longer replays old versions. A returning player sees only releases newer than their stored version; if nothing newer exists it shows just the current release instead of the whole archive. The whole changelog still shows on a first run.", "\"What's new since vX\" moved to the footer, just above the opt-out checkbox and OK button."]}, {"v": "1.4.22", "date": "2026-09-22", "title": "Attract screen: day or night, and no kill counter", "items": ["The attract backdrop now rolls day or night once per visit (attractIsDaytime, fixed for the session so it can't flicker between frames). Night keeps the moon and the fourteen twinkling stars; day gets a blue-to-haze sky, a warm sun with a wider glow, no stars, and a lighter checkerboard field so the change reads through the start screen's dimmer.", "Removed the \"💀 N defeated\" counter from the attract screen — it belongs in a run, not on the title screen."]}, {"v": "1.4.21", "date": "2026-09-22", "title": "What's-new dialog shows every missed version, full changelog on first run", "items": ["The embedded entry list is regenerated at ship time, so the dialog always includes the version being released (it previously lagged one entry behind — v1.4.18 showed only 1.4.17's notes).", "With no stored last-played version (first run or cleared storage) the dialog now shows the whole embedded changelog under the heading \"Full changelog\" instead of a single entry; the region scrolls, so length costs nothing.", "The last-played version is stored in localStorage (stickTD_lastSeenVersion) and only updated when the dialog is dismissed, so skipping several updates still shows all of them at once."]}, {"v": "1.4.20", "date": "2026-09-22", "title": "Starter barricade is 10 HP; losing a point is visible", "items": ["The auto-placed starting barricade no longer spawns at 5 HP. That override existed for the old 1-damage-per-2s rule; with the 1.4.3 rate limit (1 per 10s from any source) it just made the starter barricade break twice as fast as every other one. All barricades are 10 HP.", "Chip feedback on every point lost: a 260 ms shake and red flash on the barricade itself (barricadeChipUntil), wood-splinter particles, an impact sound, a small screen shake (honours the screen-shake setting), and floating text showing the remaining HP — \"🪵 -1 (9/10)\".", "Verified: starter barricade begins 10/10, one hit takes it to 9 with the chip state set, a second hit inside the 10s window is correctly ignored, and the next hit after the window lands."]}, {"v": "1.4.19", "date": "2026-09-22", "title": "Options moved out of the start screen's centre column", "items": ["The start-screen Options control is now a small ⚙️ button pinned to the top-left corner at 65% opacity (full on hover), instead of a full-width button under PLAY. Verified: 41px wide at 12,12, and it still opens the settings modal.", "Graphics already defaulted to Low (graphicsQuality = 'low'); confirmed unchanged."]}];
+const CHANGELOG_ENTRIES = [{"v": "1.4.54", "date": "2026-09-23", "title": "Huts wait for the map to grow, and their guardians actually stay close to home", "items": ["The hut/creep-camp no longer spawns immediately on the tiny starting map. It now spawns the first time the map reaches HUT_MIN_EXPANSION_LEVEL (3) expansions, so the earliest waves are never sharing that small a space with one.", "Guardian leash tightened from a 70px roam radius to 42px, and their bumble speed slowed (0.5x \u2192 0.32x of a Grunt's speed) \u2014 they now read as genuinely glued to their hut, snapping back to it after any knockback, rather than wandering a fairly wide patrol loop around it."]}, {"v": "1.4.53", "date": "2026-09-23", "title": "Game Over message no longer orphans a single word on its own line", "items": ["\"Rebuild and try again.\" was wrapping with just \"again.\" alone on the second line at the end screen's default width. Non-breaking spaces now tie \"Rebuild and try again.\" (and the default message's \"Rebuild your squad and try again.\") together so the phrase always wraps as one unit, never splitting off a lone trailing word."]}, {"v": "1.4.52", "date": "2026-09-23", "title": "Countdown moves to the spawn marker, in red, and the exclamation mark is wider", "items": ["The 3-2-1-GO countdown is now world-space, anchored directly above the pulsing \u2757 spawn marker instead of a fixed screen overlay \u2014 it now tracks the spawn tile through the camera pan the same way the marker already does.", "Countdown numbers (3, 2, 1) are now red; GO! keeps its own gold celebration color.", "The \u2757 spawn marker is now stretched wider (1.7x horizontally) while keeping its existing pulse-in/pulse-out animation and height untouched."]}, {"v": "1.4.51", "date": "2026-09-23", "title": "Build menu shows every tower from the start, locked or not \u2014 a complete map of the README", "items": ["Deep-tier evolutions (Paladin, Squirt Gun, Bomber, Gunalinder, Sniper, Berserker, Lancer) used to stay fully hidden \u2014 not even a locked row \u2014 until their own prerequisite class was unlocked first. Every one of the 19 evolved tower types now shows a row immediately, unlocked or \ud83d\udd12, so the Build menu is a complete, always-visible map matching every tower documented in the README.", "README: removed Proton/Dark Matter/Quasar from the tower table \u2014 they were listed there as if they were separately buildable towers, contradicting the Leveling section's own (correct) explanation that they're elements a tower carries on its own attack. A pointer to that section replaces the three rows."]}, {"v": "1.4.50", "date": "2026-09-23", "title": "Quasar is an element again, not a tower \u2014 the actual bug, this time found and fixed", "items": ["Removed the one stray line (TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR) that wrongly registered Quasar as its own separately-buildable Build-tray tower. Proton and Dark Matter never had this bug \u2014 only Quasar did, which is why 1.4.49's comment fix (which assumed the code was right and the doc was stale) was itself wrong. Quasar is now purely an ELEMENT STATE, exactly like Proton and Dark Matter always correctly were: whichever tower (Swordsman/Archer/Mage or any evolution) reaches DEX+INT 500 keeps being exactly what it is, and its own existing attack gains burn+slow+a small splash radius (QUASAR_ELEMENT_SPLASH_RADIUS, 40px) \u2014 not a new unit to build.", "CONFIG.TOWERS.QUASAR itself is kept, legacy-only, so a save made while the bug was live still loads without error. Nothing else changed \u2014 Hammerman, Blowdart, Cleric and every other single-element specialization are still separately buildable towers exactly as before; this was scoped to the 3 hybrids only, and only Quasar actually needed a code change."]}, {"v": "1.4.49", "date": "2026-09-23", "title": "Comment-only correction: Proton/Quasar/Dark Matter really are buildable towers", "items": ["No gameplay change. A stale code comment claimed Proton/Quasar/Dark Matter were \"NOT buildable classes... mixed ELEMENT STATES\" \u2014 that never matched the actual code (CONFIG.TOWERS has real entries for all three, unlocked and built exactly like every other specialization) and was the direct source of a confused session mistakenly proposing to rearchitect tower progression into in-place elemental transformation. Confirmed with the owner: the existing stat-threshold-unlock mechanic (a tower never transforms, it just permanently unlocks the next separately-buildable tower) was already correct and needed no change \u2014 only this comment did. AGENTS.md's matching invariant corrected the same way, plus a new standing rule there against proposing mechanic changes without explicit confirmation."]}, {"v": "1.4.48", "date": "2026-09-23", "title": "Backlog sweep: item drops, a real all-towers-down wipe, and a clearer attunement toast", "items": ["End-of-round item drops: a 12% chance per wave clear to drop a random item (Lucky Branch, or two new items \u2014 Iron Charm, a flat +3 armor piece, and Swift Feather, a DEX-leaning stat item) near one of your active towers.", "The \"all towers down\" loss condition now also fires if every fighter is sold/lost mid-wave (previously only fired when every fighter was simultaneously disabled, deliberately not on zero-fighters, to avoid a false game-over on wave 1 before anything is built). A new everBuiltFighter flag distinguishes \"hasn't built anything yet\" from \"had a squad and lost it.\"", "The attunement floating text now names the actual next unlock and how far off it is (e.g. '\u26a1 Attuned! \u2014 240 more DEX to Blowdart') instead of a bare 'Attuned!' \u2014 100 in a stat only locks in an element, the buildable unlock is at 500, and the old text was the direct cause of \"100 DEX did nothing\" reports."]}, {"v": "1.4.47", "date": "2026-09-23", "title": "Spawn warning marker, and the countdown no longer runs during the camera pan", "items": ["A pulsing red \u2757 now marks the wave's spawn point for the entire pre-spawn window (camera pan + 3-2-1-GO), so it's obvious where the camera is heading and where enemies are about to appear. Gone the instant real spawning starts.", "The 3-2-1-GO countdown (and the first real enemy spawn) previously started counting the instant a wave began, running IN PARALLEL with the 1200ms camera pan to the spawn point \u2014 so \"3\" was already on screen while the camera was still mid-swing. waveTimer is now frozen for the duration of the pan, the same mechanism already used to freeze it during a barricade pile-up, so the countdown only starts once the camera has actually arrived."]}, {"v": "1.4.46", "date": "2026-09-23", "title": "The real fix for long-session lag: decals were taking 13.5 minutes to become cheap", "items": ["Root cause, confirmed from a user-submitted debug export (drawDecals() at 75% of render time with 0 enemies on screen, 633/637 decals still unbaked 8 minutes into the session): decal bake-eligibility was written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45), which was harmless when the lifespan was 5 minutes but silently became a 13.5-REAL-MINUTE delay once DECAL_LIFESPAN was extended to 30 minutes in an earlier version so bloodstains would visually last longer. Until a decal turned 13.5 minutes old it stayed in the expensive per-frame live-draw pass.", "Baking now triggers off a small absolute age (DECAL_BAKE_MIN_AGE_MS, 4s) instead of a fraction of however long the stain is set to visually persist. A decal is cheap to render within 4 seconds of landing regardless of whether its total lifespan is 5 minutes or 30 \u2014 the two concerns (how long it lasts vs. how soon it's cheap) are no longer coupled through the same number."]}, {"v": "1.4.45", "date": "2026-09-23", "title": "Evolution hint shows only the nearest next unlock", "items": ["An attuned tower's evolution hint used to always show its single-element specialization target AND its nearest hybrid side by side, even when the hybrid was hundreds of points further off (e.g. '54 more INT' shown next to '350 more STR/INT for Dark Matter'). It now compares every reachable next unlock \u2014 the single-element specialization and all three hybrids \u2014 and shows only whichever is actually closest."]}, {"v": "1.4.44", "date": "2026-09-23", "title": "Unlocks are permanent, promotion never changes a tower's class, and a wipe now ends the run", "items": ["Tower unlocks (Crazy Chef, Cat Snapper, every attunement/hybrid including Quasar) are now stored in their own localStorage key, separate from any save file, and are never wiped by resetGame()/starting a new run. This was the actual cause of unlocks 'not sticking' \u2014 unlockedTowerTypes was reset to empty on every restart.", "Removed the level-5 Swordsman spec popup that force-picked Zweihander/Dual Wield and silently changed damage/cooldown/swing arc. Promotion (the Promote button) was already meant to be pure stat gain \u2014 that's now true with no exception; no promotion ever changes what a tower is.", "New loss condition: if every currently-built fighting tower (anything but Barricade) is simultaneously overrun/disabled mid-wave, the run ends immediately instead of playing on with an empty board.", "Escaped enemies now bounce within the current expanded map region instead of the full theoretical 32\u00d720 grid, so they no longer wander far outside the visible chessboard after breaking through.", "Barricade hits now throw 1 stone and 1-2 wood chunks (was 7-12) \u2014 a chip still reads clearly without burying the animation in debris.", "Rebalanced base accuracy: Mage 45%\u219238% miss chance, Archer 40%\u219234%, Warrior (Swordsman/evolutions) 30%\u219236% \u2014 Swordsman was meaningfully more accurate than Archer/Mage with no in-fiction reason to be; this narrows but doesn't erase that gap.", "iOS: blocked the browser's own pinch-zoom/double-tap-zoom gesture at the event level. iOS Safari ignores the viewport meta's user-scalable=no, and its pinch-zoom is the actual cause of the reported 'menu bars go out of view when I zoom in' \u2014 fixed-position HUD bars detach from the viewport during a native page zoom. The game's own in-canvas pinch-to-zoom (Pointer Events) is unaffected."]}, {"v": "1.4.43", "date": "2026-09-22", "title": "Arrows fly stiff instead of homing", "items": ["Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s), and correction is abandoned entirely once the target has swung more than PROJECTILE_HOMING_MAX_ANGLE (~11°) off the shot's heading. Past that the arrow commits to its line and misses geometrically, the way a real arrow does.", "Verified: a target darting hard off the line produced 0° of turn, where the old rate would have curved the shot around after it."]}, {"v": "1.4.42", "date": "2026-09-22", "title": "Gold pops on the HUD; wave line drops the size-tier name", "items": ["\"+N\" rises beside the gold counter whenever gold arrives, with a two-note coin sound. It is driven from the HUD update, so every source counts — kills, bounties, wave clear, mastery conversion, selling. Gains inside the same second stack into one pop instead of flickering (verified: +37 then +12 shows +49).", "Wave line no longer names the size tier (\"Tiny 9/10 · 8/10\" → \"8/10\"); it now shows only resolved/total plus the escapee count when there is one."]}, {"v": "1.4.41", "date": "2026-09-22", "title": "Bigger sends now that barricades hold a choke point", "items": ["Batch sizes raised: through wave 50 every tier sends 2-5 at a time (Tiny 3-5, Small 2-5, Standard 2-4, Large 2-3); from wave 51 it is 5-10 (Tiny 7-10, Small 6-9, Standard 5-8, Large 5-7). The old trickle (1-2 for Standard/Large, 1 for the first waves) existed because nothing reliably held enemies at a choke point.", "Wave 1 still walks its ten enemies out one at a time as the tutorial beat, and Bosses still arrive alone.", "Verified: wave 3 sends 3-5, wave 50 tops out at 5, wave 60 at 10; batch counts drop accordingly (wave 50 now 138 batches), so waves play denser without changing population."]}, {"v": "1.4.40", "date": "2026-09-22", "title": "Kills pay roughly double", "items": ["Tier bounty multipliers raised across the board: Tiny 0.4 → 0.9, Small 0.7 → 1.5, Standard 1.0 → 2.2, Large 2.5 → 5.5, Boss 1.0 → 2.2. These were tuned before waves carried hundreds of enemies and before barricades became a recurring cost.", "Per-kill gold for a Grunt now: Tiny 5, Small 9, Standard 13, Large 33 (was 2/4/6/15).", "Whole-wave gold budget: wave 5 pays 642 (was ~290), wave 20 pays 4,144 (was ~1,880).", "XP is untouched — this only changes the economy, not training pace."]}, {"v": "1.4.39", "date": "2026-09-22", "title": "Debris flicker: one source of truth", "items": ["Root cause of the flickering: baking rubble (1.4.37) gave every debris piece two possible homes — the cached ground layer and the live debris pass. Each transition between them (entering the bake window, leaving it for the fade, and the coalesced rebuild landing seconds later) was a frame where a piece was drawn twice or not at all.", "No ground debris is baked any more. Skulls, bones, worms and barricade rubble are always live-drawn, above the blood and below the actors, with a single draw path. Cost is small — debris is sparse and viewport-culled, unlike the thousands of blood decals that baking exists for.", "Rubble still holds full opacity and fades only over the final 10% of its 5-minute life; bone never fades.", "Measured over 10 samples with 50 debris pieces on screen: count and baked-count perfectly stable (50 / 0 every sample), where a flickering piece would have oscillated."]}, {"v": "1.4.38", "date": "2026-09-22", "title": "Skulls and bones stop popping in and out", "items": ["Found the cause: at the decal cap (1,200 on Low, 2,000 on High) pushDecal() recycled the oldest slot regardless of what it held, so a blood-heavy wave steadily overwrote skulls, bones and rubble — they vanished and only \"came back\" when a new kill dropped another one.", "Recycling now skips debris slots and takes a blood stain instead, with a bounded scan (one lap max) so it can never spin. Debris still expires on its own schedule.", "Measured: 79 debris pieces survived 4,000 fresh blood decals at the cap — previously they would have been overwritten."]}, {"v": "1.4.37", "date": "2026-09-22", "title": "Rubble bakes into the ground and lasts ~5 minutes", "items": ["Barricade rubble now bakes into the ground layer once it settles (isDecalBakeEligible() covers isRubble from 2% to 90% of its life) instead of being redrawn every frame — it becomes part of the scene, like the baked blood. Bone and skull stay live-drawn above the blood as before.", "Lifespan raised from 50s to 5 minutes (BARRICADE_RUBBLE_LIFESPAN), and it only fades over its final 10%, which is exactly the window where it leaves the baked layer and is drawn live again so the fade can animate.", "The debris pass skips baked pieces, so nothing is drawn twice.", "Verified: 7 pieces baked after settling, out of the cache again near end of life."]}, {"v": "1.4.36", "date": "2026-09-22", "title": "Ground debris never fades", "items": ["Bone, stone and barricade rubble now draw at full opacity for their entire life and simply expire — no fade-in, no fade-out. The flying chunks are solid the whole way through their arc too, so a piece lands rather than dissolving mid-air.", "Rubble still clears after ~50s; bone and skull debris remain permanent."]}, {"v": "1.4.35", "date": "2026-09-22", "title": "Rubble stays solid until it's actually old", "items": ["Landed timber and stone now hold full opacity for the first 80% of their 50s life and fade only over the last 20% (was fading across the final third, which read as \"spawns already faded\"). Measured: alpha 1.00 at 0% and 50% of life, 0.75 at 85%, 0.25 at 95%.", "Pieces bumped slightly (stone 6-9px, timber 7-10px) and the landed piece now keeps the chunk's full size instead of shrinking to 80%, so small pieces don't wash out against the ground."]}, {"v": "1.4.34", "date": "2026-09-22", "title": "Debris scatters in every direction, at a smaller scale", "items": ["Chunks now launch on a full 360° ground-plane spread instead of a narrow upward cone, with the vertical component squashed to 0.6 for the game's shallow top-down perspective, so pieces land all around the barricade rather than in a plume above it. The arc still comes from the separate vertical hop, so a piece thrown \"downward\" on screen still tumbles through the air.", "Piece size cut roughly in half (stone 5-8px, timber 6-9px, was 9-14/12-17) and launch speed widened to 60-180 px/s, so the burst reads as splinters and chips rather than whole logs."]}, {"v": "1.4.33", "date": "2026-09-22", "title": "More rubble per hit, and it clears after ~50s", "items": ["A barricade hit now throws 12 chunks (7 on Low, up from 7/4) in an even split of timber and stone, with the chunk pool raised to 64 slots.", "Landed rubble expires after 50s (BARRICADE_RUBBLE_LIFESPAN) and fades over its final third instead of standing forever. Bone and skull debris is untouched — that stays permanent scenery; only barricade litter clears.", "Verified: 7 chunks airborne on impact, ground pieces present after landing, and zero left once the 50s life elapsed."]}, {"v": "1.4.32", "date": "2026-09-22", "title": "Timber and stone actually fly off the barricade", "items": ["Replaced the instant scatter of ground pieces with a real throw: spawnBarricadeChunk() launches 7 chunks (4 on Low) up and outward with their own velocity, a vertical hop under gravity (BARRICADE_CHUNK_GRAVITY) and spin, arcing for about a second before landing. Each one lays down its permanent ground piece where it lands, so the debris trail matches the animation.", "Pooled (48 slots, round-robin), so a hit allocates nothing; drawn above the actors with a short fade-out at the end of flight.", "Verified in-browser: 4 chunks airborne mid-arc with 0 ground pieces, then 0 airborne and 4 ground pieces after landing."]}, {"v": "1.4.31", "date": "2026-09-22", "title": "Barricade damage text is just the number", "items": ["Dropped the 🪵 from the chip text: it now reads \"-1 (9/10)\". The flying timber and stone pieces already carry that read visually."]}, {"v": "1.4.30", "date": "2026-09-22", "title": "Stat-button glows matched in strength", "items": ["Gold (primary damage stat) and silver (support stats) now use the same glow size and opacity — 10px spread, 2px blur, 0.72 alpha — so they differ in hue only. Gold was 12px/3px/0.75 against silver's 8px/1px/0.55, which made the support stats look disabled rather than secondary."]}, {"v": "1.4.29", "date": "2026-09-22", "title": "A melee miss now looks like a miss", "items": ["Ranged shots already pre-roll: a rolled miss flies a deliberately offset path and never resolves a hit, so \"MISS\" always matches what you see. Melee had no equivalent — the blade swept through the enemy's position and \"MISS\" floated over an enemy the arc visibly passed through.", "dodgeEnemyFromSwing() now shoves a dodging enemy 7px perpendicular to the attacker, out of the arc, with a small scuff puff. The side is derived from the enemy and tower ids, so it is stable rather than jittering frame to frame.", "Verified: a dodged enemy moves exactly 7px out of the swing line; 16/16 self-tests."]}, {"v": "1.4.28", "date": "2026-09-22", "title": "Barricades take a full 10s of attacking before the first point, and shed timber/stone", "items": ["No instant first chip. An attacker now has to sustain contact for a full BARRICADE_HIT_INTERVAL_MS (10s) before the barricade loses its first point (barricadeContactSince, barricadeAttackReady()); every later point is on the same interval. Both damage paths — the pile-up attacker and direct takeDamage() — share one routine (chipBarricade()), so neither can bypass the wind-up.", "Wood and stone fly off on every point lost (spawnBarricadeDebris()): timber and grey particle bursts plus 5 scattered 🪵/🪨 pieces that settle as ground debris (2 on Low graphics), alongside the existing shake, red flash, impact sound and \"🪵 -1 (9/10)\" text.", "Verified: contact starting now does not chip; after 10s of attacking it drops to 9 and leaves debris; an immediate second attempt is correctly ignored."]}, {"v": "1.4.27", "date": "2026-09-22", "title": "Final casualty of the build bug restored; whole-file symbol check added", "items": ["STAT_TIER_STEP / STAT_TIER_NAMES (the rank ladder constants) were the last thing the changelog-embed generator had deleted — every kill crashed in refreshStatTier(). Restored.", "Added a whole-file symbol check to the ship process: every function and constant the recent work introduced is now evaluated in a real browser before shipping, so a missing declaration can't reach you again. Current result: none missing.", "Verified: three waves at 10x with Swordsman, Archer and Mage — zero page errors, zero console errors, 16/16 self-tests."]}, {"v": "1.4.26", "date": "2026-09-22", "title": "Restore the element system (second casualty of the same build bug) and re-roll the sky per visit", "items": ["Boot crash fixed: towerElement is not defined. The same changelog-embed generator that ate the update-notice functions in 1.4.25 had also deleted ELEMENT_VISUALS, ELEMENT_LABELS, towerElement(), towerDisplayName(), refreshElementState(), attunementProcChance() and applyAttunementStatus() — the whole elemental layer. All restored and verified: Fire/Ice attunements apply, mixes resolve (500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 → Quasar), and projectiles carry their element colour again.", "The attract sky now re-rolls per visit, not once per page load: day/night, moon phase and the moon's position re-roll when the screen is shown after being away (returning from a run, for example). Verified across six loads — phases 0, 4, 5 and 7 and positions spanning 19-81% of the sky."]}, {"v": "1.4.25", "date": "2026-09-22", "title": "Fix boot crash from the 1.4.24 build step", "items": ["1.4.24 failed to boot with \"maybeShowUpdateNotice is not defined\". My changelog-embed generator replaced from the start of CHANGELOG_ENTRIES to the wrong terminator and deleted the three functions that followed it (compareVersions(), maybeShowUpdateNotice(), dismissUpdateNotice()). Restored, with the duplicate LAST_SEEN_VERSION_KEY removed.", "No gameplay change. Verified: clean boot, 16/16 self-tests, boss tier intact (radius 48, speed 8), and the what's-new dialog lists 1.4.14-1.4.24 from a stored 1.4.13."]}, {"v": "1.4.24", "date": "2026-09-22", "title": "Moon moves and changes phase between visits", "items": ["The attract sky body is now placed per visit: horizontal position 12-88% across the sky and 22-67% down the sky band (attractSkyBodyT, attractSkyBodyHeight), instead of always sitting at the same top-right spot.", "Night rolls a moon phase (attractMoonPhase, 0 new through 4 full to 7 waning crescent). The phase is carved by painting the sky colour back over the disc with an offset, so a large offset leaves a crescent and a small one a gibbous — no extra assets, one extra arc fill.", "All three values roll once per visit alongside the day/night choice, so the scene holds still while the menu is on screen. Verified across crescent, gibbous and waning positions."]}, {"v": "1.4.23", "date": "2026-09-22", "title": "JRPG boss warning, bigger/slower bosses, what's-new shows only new versions", "items": ["Boss warning. When a Boss phase starts, the screen pulses red and a black band holds \"⚠ WARNING ⚠ / BOSS APPROACHING\" for 2.6s with a heavy screen shake and a sting (showBossWarning(), drawBossWarning()), replacing the generic phase banner.", "Bosses are properly huge and slow: radius 32-38 → 44-52, speed 12-19 → 8-13. Still strictly slower and larger than every other tier (band validation passes). Verified: a wave-10 Boss spawns at radius 48, speed 8, 2,281 HP.", "The what's-new dialog no longer replays old versions. A returning player sees only releases newer than their stored version; if nothing newer exists it shows just the current release instead of the whole archive. The whole changelog still shows on a first run.", "\"What's new since vX\" moved to the footer, just above the opt-out checkbox and OK button."]}, {"v": "1.4.22", "date": "2026-09-22", "title": "Attract screen: day or night, and no kill counter", "items": ["The attract backdrop now rolls day or night once per visit (attractIsDaytime, fixed for the session so it can't flicker between frames). Night keeps the moon and the fourteen twinkling stars; day gets a blue-to-haze sky, a warm sun with a wider glow, no stars, and a lighter checkerboard field so the change reads through the start screen's dimmer.", "Removed the \"💀 N defeated\" counter from the attract screen — it belongs in a run, not on the title screen."]}, {"v": "1.4.21", "date": "2026-09-22", "title": "What's-new dialog shows every missed version, full changelog on first run", "items": ["The embedded entry list is regenerated at ship time, so the dialog always includes the version being released (it previously lagged one entry behind — v1.4.18 showed only 1.4.17's notes).", "With no stored last-played version (first run or cleared storage) the dialog now shows the whole embedded changelog under the heading \"Full changelog\" instead of a single entry; the region scrolls, so length costs nothing.", "The last-played version is stored in localStorage (stickTD_lastSeenVersion) and only updated when the dialog is dismissed, so skipping several updates still shows all of them at once."]}, {"v": "1.4.20", "date": "2026-09-22", "title": "Starter barricade is 10 HP; losing a point is visible", "items": ["The auto-placed starting barricade no longer spawns at 5 HP. That override existed for the old 1-damage-per-2s rule; with the 1.4.3 rate limit (1 per 10s from any source) it just made the starter barricade break twice as fast as every other one. All barricades are 10 HP.", "Chip feedback on every point lost: a 260 ms shake and red flash on the barricade itself (barricadeChipUntil), wood-splinter particles, an impact sound, a small screen shake (honours the screen-shake setting), and floating text showing the remaining HP — \"🪵 -1 (9/10)\".", "Verified: starter barricade begins 10/10, one hit takes it to 9 with the chip state set, a second hit inside the 10s window is correctly ignored, and the next hit after the window lands."]}, {"v": "1.4.19", "date": "2026-09-22", "title": "Options moved out of the start screen's centre column", "items": ["The start-screen Options control is now a small ⚙️ button pinned to the top-left corner at 65% opacity (full on hover), instead of a full-width button under PLAY. Verified: 41px wide at 12,12, and it still opens the settings modal.", "Graphics already defaulted to Low (graphicsQuality = 'low'); confirmed unchanged."]}];
 function compareVersions(a, b){
   const left = a.split('.').map(Number), right = b.split('.').map(Number);
   for(let i = 0; i < 3; i++){ if((left[i]||0) !== (right[i]||0)) return (left[i]||0) - (right[i]||0); }
@@ -4959,7 +5029,10 @@ function restoreGameState(state){
   document.getElementById('zoom-controls').classList.toggle('show', showZoomControls);
   if(state.showFpsCounter !== undefined) showFpsCounter = state.showFpsCounter;
   if(state.screenShakeEnabled !== undefined) screenShakeEnabled = state.screenShakeEnabled;
-  unlockedTowerTypes = new Set(state.unlockedTowerTypes || []); // empty for a save from before this feature existed — nothing pre-unlocks retroactively, matches how a fresh game starts
+  // Union with the permanent (account-wide) set, never replace it — an older save simply has
+  // nothing to add here, it doesn't roll back unlocks already earned on other playthroughs.
+  for(const t of (state.unlockedTowerTypes || [])) unlockedTowerTypes.add(t);
+  savePermanentUnlocks();
   if(state.seenEnemyTypes){
     seenEnemyTypes = new Set(state.seenEnemyTypes);
   } else {
@@ -5962,13 +6035,17 @@ class Enemy{
     this.vx = this.wanderVx; this.vy = this.wanderVy;
     this.x += this.vx*dt/1000;
     this.y += this.vy*dt/1000;
-    // Soft bounce off the world bounds — keeps wandering enemies inside the generated map instead
-    // of drifting into never-rendered territory, without a hard "hit an invisible wall" stop.
+    // Soft bounce off the CURRENT PLAYABLE REGION (not the theoretical max world) — keeps
+    // escaped/wandering enemies inside the visible expanded chessboard instead of drifting off
+    // into unexpanded, never-rendered territory far past any stickman's reach. activeRegion is
+    // read live (not cached) since map expansion can grow it mid-run.
     const margin = this.radius + 20;
-    if(this.x < margin){ this.x = margin; this.wanderVx = Math.abs(this.wanderVx); }
-    else if(this.x > WORLD_MAX_W-margin){ this.x = WORLD_MAX_W-margin; this.wanderVx = -Math.abs(this.wanderVx); }
-    if(this.y < margin){ this.y = margin; this.wanderVy = Math.abs(this.wanderVy); }
-    else if(this.y > WORLD_MAX_H-margin){ this.y = WORLD_MAX_H-margin; this.wanderVy = -Math.abs(this.wanderVy); }
+    const boundX0 = activeRegion.x0*TILE_SIZE + margin, boundX1 = (activeRegion.x1+1)*TILE_SIZE - margin;
+    const boundY0 = activeRegion.y0*TILE_SIZE + margin, boundY1 = (activeRegion.y1+1)*TILE_SIZE - margin;
+    if(this.x < boundX0){ this.x = boundX0; this.wanderVx = Math.abs(this.wanderVx); }
+    else if(this.x > boundX1){ this.x = boundX1; this.wanderVx = -Math.abs(this.wanderVx); }
+    if(this.y < boundY0){ this.y = boundY0; this.wanderVy = Math.abs(this.wanderVy); }
+    else if(this.y > boundY1){ this.y = boundY1; this.wanderVy = -Math.abs(this.wanderVy); }
   }
   // Creep-camp guardian — stays near its hut's fixed anchor point (WC3-style: an off-path area
   // worth clearing for a reward, not something that ever threatens the lane). Reuses the exact
@@ -5980,14 +6057,14 @@ class Enemy{
     if(this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = 900 + Math.random()*1400;
       const ang = Math.random()*Math.PI*2;
-      const bumbleSpeed = this.speed * 0.5;
+      const bumbleSpeed = this.speed * 0.32; // slow, tight bumble — reads as "guarding," not patrolling
       this.wanderVx = Math.cos(ang)*bumbleSpeed;
       this.wanderVy = Math.sin(ang)*bumbleSpeed;
     }
     this.vx = this.wanderVx; this.vy = this.wanderVy;
     this.x += this.vx*dt/1000;
     this.y += this.vy*dt/1000;
-    const guardRadius = 70; // how far a guardian is allowed to stray from its hut before bouncing back — keeps the whole camp visually readable as one cluster
+    const guardRadius = 42; // tightened from 70 — a guardian should read as glued to its hut, not roaming the whole camp footprint, unless something actually engages it (combat knockback/hit-reactions still move it independently of this leash)
     const dx = this.x - this.hutAnchorX, dy = this.y - this.hutAnchorY;
     const dist = Math.hypot(dx,dy) || 0.0001;
     if(dist > guardRadius){
@@ -6885,6 +6962,7 @@ class Tower{
     this.rollSkinTones();
     this.rollBuild();
     this.active = true;
+    if(type !== 'BARRICADE') everBuiltFighter = true; // see checkAllFightersDown() — lets a genuine "sold/lost everything mid-wave" wipe end the run, without risking a false game-over before the player has built anything at all
     this.applyTierStats();
   }
   get def(){ return CONFIG.TOWERS[this.type]; }
@@ -7179,7 +7257,16 @@ class Tower{
       else if(this.dex >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
       else if(this.int >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.int;
       if(this.attunement){
-        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!', '#ffd700');
+        // The old plain "Attuned!" text was the exact source of the "100 DEX did nothing" report
+        // — attuning at 100 is real progress (it locks in the element) but doesn't unlock anything
+        // buildable by itself; SPECIALIZATION_THRESHOLD (500) in that same stat does. Naming the
+        // actual target and the remaining distance here means the first thing a player sees IS the
+        // "how far left" readout, not just a vague confirmation they then have to go find.
+        const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
+        const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
+        const remaining = Math.max(0, SPECIALIZATION_THRESHOLD - (this[attunedStat]||0));
+        const suffix = target ? (' — ' + remaining + ' more ' + attunedStat.toUpperCase() + ' to ' + CONFIG.TOWERS[target].name) : '';
+        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!' + suffix, '#ffd700');
         playSound('levelup');
       }
     }
@@ -7605,7 +7692,7 @@ class Tower{
     p.angle = angle;
     p.slowFactor = this.slowFactor || 0;
     p.slowDuration = this.slowDuration || 0;
-    p.splashRadius = this.splashRadius || 0;
+    p.splashRadius = (this.splashRadius || 0) + (towerElement(this) === 'QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
     p.isAxe = false;
     // Marks this shot for Projectile.onImpact()'s 'CAT' branch — the cat doesn't deal impact
     // damage itself, it spawns a CatCompanion that does the actual damage over its lifetime
@@ -9280,19 +9367,31 @@ function decalLifespanVariance(){
 //    restamped with their current aged color on a slow cadence until the color settles at 0.40.
 //  - pool blobs: after the skeletonization ring finishes forming (0.4167), as before.
 // Every kind leaves the cache by 0.80, 90+ real seconds before any fade-out starts at 0.85.
-const DROP_BAKE_START_LIFE_T = 0.033;
+const DROP_BAKE_START_LIFE_T = 0.033; // no longer used by isDecalBakeEligible() (see DECAL_BAKE_MIN_AGE_MS) — kept defined rather than removed
+// Baking eligibility used to be written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45) — harmless
+// back when the lifespan was 5 minutes (2.25min to bake), but DECAL_LIFESPAN was later extended to
+// 30 minutes so stains would visually last longer, and that silently dragged the bake delay along
+// with it to 13.5 REAL MINUTES. Until a decal turned 13.5 minutes old it stayed in the expensive
+// live-draw pass every single frame — the actual cause of "gets laggier the longer it goes"
+// (confirmed from a live debug export: drawDecals() at 75% of render time with 0 enemies active,
+// 633/637 decals still unbaked at 8 minutes in). Baking now triggers off a small ABSOLUTE age
+// instead, decoupled from however long the stain is set to visually persist — a decal looks fully
+// "dried" (see agedBloodColor's own curve) and is cheap to cache within seconds, regardless of
+// whether its total lifespan is 5 minutes or 30.
+const DECAL_BAKE_MIN_AGE_MS = 4000;
 const DECAL_AGING_RESTAMP_MS = 20000;
 function decalLifeT(d){ return (presentationTime - d.spawnTime) / (d.lifespan || DECAL_LIFESPAN); }
 function isDecalBakeEligible(d){
   const lifeT = decalLifeT(d);
+  const age = presentationTime - d.spawnTime;
   // NO ground debris is ever baked. Baking gave a piece two possible homes — the cached ground
   // layer and the live debris pass — and every transition between them (entering the bake window,
   // leaving it for the fade, a coalesced rebuild landing a few seconds later) was a frame where it
   // was drawn twice or not at all. That is the flicker. One source of truth: debris is always
   // live-drawn, above the blood and below the actors.
   if(d.isEmojiDrop || d.isWorm) return false;
-  if(d.isDrop) return lifeT >= DROP_BAKE_START_LIFE_T && lifeT <= 0.80;
-  if(d.blobs !== undefined) return lifeT >= 0.45 && lifeT <= 0.80;
+  if(d.isDrop) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
+  if(d.blobs !== undefined) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
   return false;
 }
 // Same oxidation curve drawOneDecal() uses for lifeT <= 0.85 (no fade-out inside the bake window).
@@ -10901,10 +11000,13 @@ function chipBarricade(barricade){
 // Timber splinters and stone chips thrown outward and upward from the impact, landing as ordinary
 // ground debris so the barricade visibly sheds material as it breaks.
 function spawnBarricadeDebris(barricade){
-  spawnParticles(barricade.x, barricade.y, '#b07a3a', 10);
-  spawnParticles(barricade.x, barricade.y, '#9aa0a6', 6);
-  const pieces = graphicsQuality === 'low' ? 7 : 12; // Low throws fewer chunks, same animation
-  for(let i = 0; i < pieces; i++) spawnBarricadeChunk(barricade.x, barricade.y - 6, i % 2 === 1); // even split of timber and stone
+  spawnParticles(barricade.x, barricade.y, '#b07a3a', 4);
+  spawnParticles(barricade.x, barricade.y, '#9aa0a6', 3);
+  // One stone, plus one or two wood pieces per hit — the old 7-12 chunk throw buried every impact
+  // in flying debris; a barricade losing a single HP point doesn't need a small explosion.
+  spawnBarricadeChunk(barricade.x, barricade.y - 6, true); // the 1 stone chunk
+  const woodPieces = 1 + (Math.random() < 0.5 ? 1 : 0); // 1-2 wood chunks
+  for(let i = 0; i < woodPieces; i++) spawnBarricadeChunk(barricade.x, barricade.y - 6, false);
 }
 // Shoves an enemy sideways out of a swing it just dodged, perpendicular to the attacker, and
 // leaves a small scuff so the dodge is readable at speed.
@@ -11685,9 +11787,27 @@ function loseLife(n){
 const FIXED_DT = 1000/60;
 let lastTime = 0, accumulator = 0;
 
+// Loss condition: every fighting stickman (Swordsman/Archer/Mage and every evolution — anything
+// that isn't a Barricade) simultaneously overrun/disabled at once. Only fires once at least one
+// fighter has actually been built (an empty-but-not-yet-started board doesn't count), and only
+// mid-run — never during IDLE between waves, so a full squad resting right after a wave clear
+// isn't mistaken for a wipe.
+function checkAllFightersDown(){
+  if(gameState !== 'PLAYING' || waveState === 'IDLE') return false;
+  if(!everBuiltFighter) return false; // nothing has ever been built yet — not a loss
+  const fighters = towerPool.filter(t => t.active && t.type !== 'BARRICADE');
+  if(fighters.length === 0){ // the last one was sold/never replaced after a wipe — same loss as every fighter being disabled
+    endGame('Your whole squad was overrun on wave ' + waveIndex + '. Rebuild and\u00A0try\u00A0again.');
+    return true;
+  }
+  if(fighters.some(t => t.disabledWavesLeft <= 0)) return false; // at least one is still standing
+  endGame('Your whole squad was overrun on wave ' + waveIndex + '. Rebuild and\u00A0try\u00A0again.');
+  return true;
+}
 function update(dt){
   gameTime += dt;
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
+  if(checkAllFightersDown()) return; // loss condition: every fighting stickman overrun at once — see checkAllFightersDown()
   // --- Per-tick phase timing instrumentation ---------------------------------------------
   // Answers "which subsystem is actually spending the time" instead of just "updateMs is high."
   // Accumulates into the module-scope phaseTime object (reset once per RENDERED frame, in loop(),
@@ -11704,7 +11824,12 @@ function update(dt){
     // letting it clear. waveTimer is frozen (not just the spawn check) while paused, so nothing
     // becomes "overdue" and there's no burst of catch-up spawns once the blockage clears — time
     // simply resumes exactly where it left off.
-    if(!anyBarricadeQueued){
+    // Also frozen for the duration of the wave-start camera pan (waveStartCameraPan) — the 3-2-1
+    // countdown and the first real spawn both read off this same waveTimer, and starting either
+    // one while the camera is still mid-swing toward the spawn point meant the countdown was
+    // half over (or enemies had already appeared) before the player had actually arrived at what
+    // it was counting down to. Same freeze mechanism as the barricade-pileup pause above.
+    if(!anyBarricadeQueued && !waveStartCameraPan){
       waveTimer += dt;
       advanceWaveDispatch(dt);
     }
@@ -11815,6 +11940,20 @@ function update(dt){
         showMilestoneToast(wavesCompleted);
       }
       gold += 10 + Math.floor(wavesCompleted/2); // scaling reward — keeps pace with infinite waves
+      // End-of-round item drop — a small chance (WAVE_DROP_CHANCE) at every wave clear to drop one
+      // random item from WAVE_DROP_ITEMS as a ground pickup, same mechanism scenery-clear drops
+      // already use (see LUCKY_BRANCH's own scenery-drop push). Placed near a random active
+      // fighter tower so it's somewhere the player is already looking, not off in empty space.
+      if(Math.random() < WAVE_DROP_CHANCE){
+        const fighters = towerPool.filter(t => t.active && t.type !== 'BARRICADE');
+        if(fighters.length){
+          const near = fighters[Math.floor(Math.random()*fighters.length)];
+          const angle = Math.random()*Math.PI*2, dist = 20 + Math.random()*20;
+          const drop = WAVE_DROP_ITEMS[Math.floor(Math.random()*WAVE_DROP_ITEMS.length)];
+          groundItems.push({ id: idCounter++, x: near.x + Math.cos(angle)*dist, y: near.y + Math.sin(angle)*dist - 4, itemDef: drop, spawnTime: gameTime });
+          showToast(drop.icon + ' ' + drop.name + ' dropped!');
+        }
+      }
       awardWaveClearExperience();
       const towerReports = towerPool.filter(t => t.active && t.type !== 'BARRICADE' && t.waveXp > 0).map(t => ({
         icon: t.def.icon, name: t.legendaryName || t.def.name, xp: t.waveXp,
@@ -11999,11 +12138,12 @@ function render(ctx){
   drawParticles(ctx);
   drawFloatingTexts(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
+  drawSpawnWarningMarker(ctx);
+  drawWaveCountdown(ctx);
 
   ctx.restore();
   drawBossCompass(ctx);
   updateAndDrawBlowingLeaves(ctx);
-  drawWaveCountdown(ctx);
   if(showFpsCounter) drawFpsCounter(ctx);
   drawBossWarning(ctx);
   if(debugOverlay) drawDebugOverlay(ctx);
@@ -12047,13 +12187,39 @@ function drawFpsCounter(ctx){
   ctx.fillText(fps + ' FPS', CANVAS_W - 8, 4);
 }
 // On-screen "3-2-1-GO" during the flat WAVE_COUNTDOWN_MS delay startNextWave() now adds before
-// spawning actually begins — screen-space overlay (drawn after the camera transform is already
-// popped above), purely cosmetic, reads waveTimer/waveState but never writes them.
+// spawning actually begins — WORLD-space now (drawn inside the camera transform, right above the
+// spawn marker below), not a fixed screen overlay, so it tracks the spawn tile through the pan.
+// Purely cosmetic, reads waveTimer/waveState but never writes them.
+// Pulsing red warning marker at the wave's spawn point, visible for the entire pre-spawn window
+// (camera pan + 3-2-1-GO countdown) — gone the instant real spawning begins, since enemies
+// visibly appearing there is its own signal at that point. World-space (drawn inside the camera
+// transform in render()), so it correctly tracks the spawn tile through the pan rather than
+// sitting at a fixed screen position.
+function drawSpawnWarningMarker(ctx){
+  if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
+  if(waveTimer >= WAVE_COUNTDOWN_MS) return;
+  const spawn = waypointsPx[0];
+  const pulse = 0.6 + Math.sin(gameTime/180)*0.4;
+  const bob = Math.sin(gameTime/220) * 4;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.35, pulse);
+  ctx.font = 'bold 30px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#e63946';
+  if(graphicsQuality !== 'low'){ ctx.shadowColor = '#e63946'; ctx.shadowBlur = 10; }
+  // Stretched horizontally only (translate to the anchor, scale X, draw at the origin) — a plain
+  // font-size bump would also grow it taller and shove it further from the spawn tile; this keeps
+  // the same height/position and just makes the glyph itself read as wider/bolder.
+  ctx.translate(spawn.x, spawn.y - 34 + bob);
+  ctx.scale(1.7, 1);
+  ctx.fillText('❗', 0, 0);
+  ctx.restore();
+}
 function drawWaveCountdown(ctx){
-  if(waveState !== 'SPAWNING') return;
+  if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
   const GO_HOLD_MS = 500;
   if(waveTimer >= WAVE_COUNTDOWN_MS + GO_HOLD_MS) return;
-  let label, scale, alpha;
+  let label, scale, alpha, isGo = false;
   if(waveTimer < WAVE_COUNTDOWN_MS){
     const secondsLeft = 3 - Math.floor(waveTimer/1000); // 3, 2, 1
     label = String(secondsLeft);
@@ -12061,18 +12227,20 @@ function drawWaveCountdown(ctx){
     scale = 1.3 - segT*0.3; // a little pop at the start of each second, settling down toward the next
     alpha = 0.9;
   } else {
+    isGo = true;
     label = 'GO!';
     const t = (waveTimer - WAVE_COUNTDOWN_MS) / GO_HOLD_MS;
     scale = 1.4 - t*0.4;
     alpha = 1 - t;
   }
+  const spawn = waypointsPx[0];
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.font = Math.round(72*scale) + 'px sans-serif';
+  ctx.font = 'bold ' + Math.round(44*scale) + 'px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillStyle = label === 'GO!' ? '#ffd700' : '#ffffff';
-  const cx = CANVAS_W/2, cy = CANVAS_H*0.32;
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillStyle = isGo ? '#ffd700' : '#ff3b3b'; // red numbers; GO! keeps its own gold celebration color
+  const cx = spawn.x, cy = spawn.y - 78; // above the exclamation marker (which sits at spawn.y - 34, plus its own bob)
   ctx.strokeText(label, cx, cy);
   ctx.fillText(label, cx, cy);
   ctx.restore();
@@ -13483,37 +13651,15 @@ function buildTowerModal(){
     CAT_SNAPPER:'🔒 A swift enough hand finds an unlikely companion...',
     PROTON:      '🔒 Push both raw power and swiftness to their limits — from any path — and the sky itself starts to answer...',
     DARK_MATTER: '🔒 Swiftness and a cold mind, together, from any path, start to bend light itself...',
-    QUASAR:      '🔒 Only when power, swiftness, AND wisdom all burn brightest at once — from any path — does something truly rare ignite...',
     BERSERKER:   '🔒 Raw strength, given to a two-bladed hand, forgets all restraint...',
     LANCER:      '🔒 A swift enough hand pushes reach past reason...'
   };
   for(const type of UNLOCKABLE_TOWER_TYPES){
-    // Deep-tier evolutions (EVOLUTIONS-driven, gated on reaching a stat threshold on ANOTHER
-    // evolved class — Paladin/Squirtgun/Bomber/Gunalinder/Sniper/Pope) don't even show a locked
-    // row until their own prerequisite class is actually unlocked. Without this, the Build tray
-    // dumped all ~20 evolutions on the player from wave 0 — including ones requiring investment
-    // in a class ("Cleric", "Gunalinder") that isn't buildable yet at all, which read exactly like
-    // the report this fixes: "unlock requires a locked character." Checks EVERY EVOLUTIONS entry
-    // that targets this type, not just one — Sniper specifically has TWO valid prerequisite paths
-    // (Gunalinder OR Marksman), and TOWER_UNLOCK_SOURCE_BY_TARGET only ever remembers the last one
-    // written, so reusing that here would have wrongly hidden Sniper behind just one of its two
-    // real paths. Element/hybrid/triple-stat unlocks (Hammerman, Blowdart, Gatling, Marksman,
-    // Snapcaster, Cleric, Necromancer, Blow Gunner, Cat Snapper, Proton, Dark Matter, Quasar) are
-    // never gated this way — they're all rooted directly at a base class, buildable from wave 0.
-    // hasSource/reachableNow tracked separately on purpose — an initial reachableNow=true would
-    // wrongly short-circuit on the very first EVOLUTIONS entry that doesn't even target this type
-    // at all (caught by an actual isolated test against the real EVOLUTIONS table before shipping,
-    // not just assumed correct from the logic reading right).
-    let hasSource = false, reachableNow = false;
-    for(const sourceType of Object.keys(EVOLUTIONS)){
-      for(const stat of Object.keys(EVOLUTIONS[sourceType])){
-        if(EVOLUTIONS[sourceType][stat].target !== type) continue;
-        hasSource = true;
-        if(unlockedTowerTypes.has(sourceType)) reachableNow = true;
-      }
-    }
-    if(!hasSource) reachableNow = true;
-    if(!reachableNow) continue;
+    // Every unlockable tower type gets a Build-tray row from the very start, locked or not —
+    // deliberately NOT gated on its own prerequisite class being unlocked first (a deep-tier
+    // evolution like Paladin used to stay fully hidden until Hammerman itself was unlocked). The
+    // owner wants the Build menu to be a complete, always-visible map of every tower documented in
+    // the README, with 🔒 doing the "not yet" work instead of the row simply not existing.
     const def = CONFIG.TOWERS[type];
     const unlocked = unlockedTowerTypes.has(type);
     const affordable = gold >= def.baseCost;
@@ -14393,22 +14539,39 @@ function updateInspectPanel(){
     } else {
       const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[t.attunement];
       const target = SPECIALIZATIONS[t.type] && SPECIALIZATIONS[t.type][t.attunement];
-      const elementLabel = t.attunement.charAt(0) + t.attunement.slice(1).toLowerCase();
+      // Show only the SINGLE nearest next unlock — comparing the single-element specialization
+      // (already attuned, just needs more of the attuned stat) against every hybrid this tower
+      // could still reach, and picking whichever is fewest points away. Previously this always
+      // showed the single-element target AND a hybrid note side by side, even when the hybrid was
+      // hundreds of points further off (e.g. "54 more INT" next to "350 more STR/INT for Dark
+      // Matter") — confusing since only the closer one is actually relevant right now.
+      let nearest = null;
       if(target){
         const remaining = Math.max(0, SPECIALIZATION_THRESHOLD - (t[attunedStat]||0));
         const targetDef = CONFIG.TOWERS[target];
-        evoHint.textContent = remaining > 0
+        nearest = { remaining, text: remaining > 0
           ? (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ' + remaining + ' more ' + attunedStat.toUpperCase())
-          : (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ready to evolve!');
+          : (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ready to evolve!') };
+      }
+      for(const rule of MIXED_ELEMENT_RULES){
+        const pairs = { PROTON:['str','dex'], DARK_MATTER:['str','int'], QUASAR:['dex','int'] }[rule.element];
+        if(!pairs) continue;
+        const missing = pairs.reduce((sum, stat) => sum + Math.max(0, MIXED_PAIR_THRESHOLD - (t[stat] || 0)), 0);
+        if(missing <= 0) continue; // already have this mix — covered by elementState elsewhere, not a "next" hint
+        if(!nearest || missing < nearest.remaining){
+          nearest = { remaining: missing, text: ELEMENT_LABELS[rule.element] + ' in ' + missing + ' more ' + pairs.map(p => p.toUpperCase()).join('/') };
+        }
+      }
+      if(nearest){
+        evoHint.textContent = nearest.text;
       } else {
-        // Attuned, but this base class has no defined specialization for this element yet
-        // (intentional — see SPECIALIZATIONS comments and BACKLOG.md) — say so plainly rather
-        // than hiding the hint or implying a further evolution is coming.
+        // Attuned, but this base class has no defined specialization for this element yet, and no
+        // hybrid is reachable either (intentional for some type/element pairs — see SPECIALIZATIONS
+        // comments and BACKLOG.md). Say so plainly rather than hiding the hint.
+        const elementLabel = t.attunement.charAt(0) + t.attunement.slice(1).toLowerCase();
         evoHint.textContent = ATTUNEMENT_ICON[t.attunement] + ' ' + elementLabel + ' Attuned';
       }
       evoHint.textContent += '  ·  ' + statTierNote(t);
-      const mixNote = nextElementMixNote(t);
-      if(mixNote) evoHint.textContent += '  ·  ' + mixNote;
       const milestoneNote = progressionMilestoneNote(t);
       if(milestoneNote) evoHint.textContent += '  ·  ' + milestoneNote;
       evoHint.classList.remove('hidden');
@@ -14565,9 +14728,10 @@ inspUpgradeBtn.addEventListener('pointerdown', (e) => {
   if(selectedTower.upgrade()){
     updateHUD(); updateInspectPanel();
     playSound('ui_buy');
-    if(selectedTower.type === 'SWORDSMAN' && selectedTower.level === 5 && !selectedTower.spec){
-      openSwordSpecModal(selectedTower);
-    }
+    // Promotion is a pure stat gain, same as every other class — it never changes what a tower
+    // IS. The old level-5 Swordsman spec popup (forcing a Zweihander/Dual Wield pick, which
+    // silently changed damage/cooldown/swing arc) has been removed; new tower types only ever
+    // come from the stat-threshold unlock system (checkEvolution()), the same rule for every class.
   }
 });
 inspSellBtn.addEventListener('pointerdown', (e) => {
@@ -14844,10 +15008,10 @@ document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   blowingLeaves = [];
 });
 
-function endGame(){
+function endGame(message){
   gameState = 'GAME_OVER';
   endTitle.textContent = 'Game Over';
-  endMessage.textContent = 'The horde broke through on wave ' + waveIndex + '. Rebuild your squad and try again.';
+  endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '. Rebuild your\u00A0squad\u00A0and\u00A0try\u00A0again.');
   playSound('lose');
   endScreen.classList.remove('hidden');
 }
@@ -14860,7 +15024,8 @@ function resetGame(){
   inspPanelExpanded = false; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
   windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0.15; windDirAngle = Math.random()*Math.PI*2; windDirTarget = windDirAngle; windDirRetargetTimer = 0; // fresh calm start rather than carrying over whatever gust (or wind cap) was mid-swing in the old session
-  unlockedTowerTypes = new Set();
+  unlockedTowerTypes = loadPermanentUnlocks(); // never wiped by a restart — permanent unlocks persist across every playthrough
+  everBuiltFighter = false;
   hitStopUntil = 0; // gates the ENTIRE simulation tick in the main loop (`if(gameTime < hitStopUntil) return;`) with no safety cap of its own — a stale value from a Boss kill in the previous session could otherwise freeze the whole new game until gameTime caught back up to it
   accumulator = 0; lastTime = performance.now(); // the fixed-tick loop's own time-tracking — already reset at other legitimate points elsewhere (pause-resume) but was missing here
   groundItems.length = 0; // stale dropped items from the old map — new coordinates don't even correspond to the freshly-generated map/path below
@@ -14889,7 +15054,8 @@ function resetGame(){
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   seedStartingBarricades();
-  spawnHuts();
+  // No spawnHuts() here anymore — the hut now spawns on reaching HUT_MIN_EXPANSION_LEVEL
+  // (see performExpansion()), never on the tiny starting region.
   updateHUD();
   updateInspectPanel();
 }

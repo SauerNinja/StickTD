@@ -7,6 +7,13 @@ session; open the reference doc only when a specific subsystem note is actually 
 
 ## 1. Scope and non-negotiable constraints
 
+- **Read `README.md`'s "Core design principles" section before touching any progression/unlock
+  code.** It is the single canonical statement of the owner's design vision (tower identity never
+  changes, unlocks are permanent and account-wide, elements are states not towers, promotion is a
+  pure stat-roll, the Build menu shows every tower from the start). It exists specifically because
+  an agent got two of these five wrong in the same session (see the incident note below) —
+  checking it first is now mandatory, not optional, for any change touching tower unlocks,
+  progression, promotion, or the Build menu.
 - **Single self-contained `index.html`.** No separate runtime JS/CSS files, no build step, no new
   runtime dependencies. Keep it that way regardless of how large the file gets.
 - **MIT license.**
@@ -18,6 +25,25 @@ session; open the reference doc only when a specific subsystem note is actually 
 - Existing owner-directed gameplay, balance, UX, audio, and integration decisions are constraints,
   not suggestions — don't revert or "improve" them without being asked. When one is non-obvious,
   the reasoning is in `AGENTS_REFERENCE.md` or `CHANGELOG.md`, not restated here.
+- **Never propose or start a core-mechanic rewrite on your own initiative — enforce the owner's
+  existing vision strictly, don't reinterpret it.** A real incident, in two parts: (1) an agent
+  misread the owner's own stat-threshold-unlock design ("a tower never transforms — reaching a
+  threshold permanently unlocks the NEXT tier as its own separately buildable tower") as a request
+  to change it to in-place elemental transformation, and started building a case for rewriting it
+  — Build tray, ~20 already-shipped evolved tower classes, save schema, rendering — before the
+  owner corrected course: the original mechanic was already correct, no rewrite needed. (2) While
+  "fixing" what it thought was a stale doc claim in this section ("Proton/Quasar/Dark Matter are
+  element states, never buildable towers"), the SAME agent flipped it to say they ARE buildable
+  towers — reasoning from the fact that `CONFIG.TOWERS.QUASAR` existed, without checking whether
+  Quasar was actually *reachable* through the Build tray's own unlock-source table. It was, but
+  only because of one stray line that never should have existed — the doc had been correct all
+  along, the code had the bug. Both mistakes share one root cause: treating "I found evidence for X
+  in the code" as proof, instead of tracing whether X is actually reachable end-to-end. The lesson:
+  when something reads as a design inconsistency, verify by tracing the real path (unlock source →
+  registration → UI → purchase, or the equivalent for whatever's in question), not by pattern-
+  matching a nearby data entry — and never spend a session building toward a rearchitecture the
+  owner hasn't explicitly confirmed. If a request sounds like it wants a mechanic changed, restate
+  it back in one sentence and get an explicit yes before writing any code toward it.
 
 ## 2. Evidence and intended behavior
 
@@ -117,6 +143,17 @@ look reasonable":
 - Any new decal/debris kind must declare whether it bakes (`isDecalBakeEligible()`); static
   geometry must bake. Verify with the perf overlay: live-drawn decals should stay near ~100
   regardless of total decal count.
+- **A bake/cache-promotion delay must be an absolute time (ms), never a fraction of a lifespan
+  constant.** Real incident (1.4.46): `isDecalBakeEligible()` baked at `lifeT >= 0.45` — fine at
+  the original 5-minute `DECAL_LIFESPAN`, but when that lifespan was later extended to 30 minutes
+  (so stains would visually persist longer), the SAME fraction silently became a 13.5-real-minute
+  bake delay, and every decal in a normal session stayed in the expensive live-draw path the whole
+  time. Two independent concerns — how long something visually lasts, and how soon it's cheap to
+  render — must never share one tunable number. Now `DECAL_BAKE_MIN_AGE_MS` (an absolute constant),
+  decoupled from `DECAL_LIFESPAN` on purpose. Applies to any future cache/bake timing, not just
+  this one: if a "when does X become cheap" check is ever written as `elapsed/someDuration >=
+  fraction`, treat that as a bug on sight, not a style choice — someDuration will get tuned later
+  for an unrelated reason and silently drag the fraction's real-time meaning with it.
 
 ## 5. Risk-based verification
 
@@ -383,6 +420,9 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
 
 ## Progression and balance invariants (1.4.x)
 
+See README.md's "Core design principles" for the plain-language vision these enforce; this section
+is the technical/numeric detail underneath it, not a competing statement of it.
+
 - Trained stats are capped at `STAT_EFFECT_CAP` (500) each and `STAT_TOTAL_CAP` (1,000) combined.
   Enforce in `allocateStat()`, promotion and save loading — never only in the UI.
 - Assigned stats and unspent points draw on the same 1,000 budget. Never award points that cannot
@@ -394,9 +434,23 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
 - Stat effects interpolate linearly to their value at the cap; no compounding curves, and no stat
   may drive two multiplicative combat terms at full strength (see `ARCHER_RATE_SHARE`).
 - Any new unlock requirement must be reachable under the caps — check before shipping.
-- Proton, Quasar and Dark Matter are ELEMENT STATES earned from stat pairs (`MIXED_ELEMENT_RULES`),
-  never buildable tower types. A mix requires both of its stats at `MIXED_PAIR_THRESHOLD`; there is
-  no balanced-triple route.
+- Proton, Quasar and Dark Matter are ELEMENT STATES a tower earns and carries on its OWN existing
+  attack (`MIXED_ELEMENT_RULES`, `refreshElementState()`, `applyAttunementStatus()`,
+  `QUASAR_ELEMENT_SPLASH_RADIUS`) — never separately buildable tower types, and never a
+  transformation of the tower that earned them; that tower stays exactly what it was. A mix
+  requires both stats at `MIXED_PAIR_THRESHOLD`.
+  This invariant has now been wrong in BOTH directions in this file within one day — first stated
+  correctly, then flipped to "ARE buildable towers" by an agent who found that `CONFIG.TOWERS.QUASAR`
+  literally existed and assumed the code was right and the doc was stale, without checking whether
+  the code path that made it *reachable* actually existed. It didn't: Quasar (and only Quasar, not
+  Proton or Dark Matter) had one stray line —
+  `TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR = { kind: 'triple-stat', ... }` — that wrongly registered it
+  as a real Build-tray unlock, contradicting the elemental system every other part of the codebase
+  (including Quasar's own `applyAttunementStatus()` case) already correctly used. Removed in 1.4.50;
+  `CONFIG.TOWERS.QUASAR` itself is kept, legacy-only, purely so a pre-existing save with one already
+  built still loads. The lesson for next time: when a doc/code mismatch is suspected, check whether
+  the thing is actually *reachable* end-to-end (unlock source → Build tray → purchase), not just
+  whether a data entry for it exists — a leftover/dead data entry proves nothing on its own.
 - Wave order, the 5:1 little-to-big ratio and seeded construction are invariants; validation runs
   at boot for waves 1–120.
 
