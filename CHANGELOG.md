@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.66] - 2026-09-23
+
+- Reduced sparse spatial-query work by visiting occupied cells instead of probing empty grid cells. Preserved candidate order, bucket order, and all collision passes; kept the dense fallback.
+- Fixed debug FPS to use callback gaps, and actual simulation speed to use unclamped elapsed time. Added cell-work counters and removed unsupported causal claims from frame-gap diagnostics.
+
+## [1.4.65] - 2026-09-23
+
+- Fixed boot failure by adding Crazy Chef’s missing strategy entry.
+- Avoided full scenery scans each simulation tick by tracking pending clearing jobs. Preserved clearing times, reward order and save compatibility; discard stale jobs after removal or replacement.
+
 ## [1.4.64] - 2026-09-23 — Death-proximity blood modifier, applied to every class (not just Mage)
 - New, deliberately slight modifier on top of the existing size system: how far along the path an
   enemy had traveled at the moment of death now nudges the death-burst size. Within the last
