@@ -108,6 +108,12 @@ look reasonable":
 - A cache-rebuild function that also *promotes* items into the cache cannot be made
   dirty-only without a separate promotion path (1.3.1 regression). Baking = incremental stamp on
   entry + coalesced full rebuild on exit (`sweepSettledDecals()`).
+- Decal ageing, expiry, sweep scheduling and baking all run on `presentationTime` (which keeps
+  running between waves), never `realTime` (which freezes while idle).
+- Ground debris (bones/skulls/rocks) is never baked into the blood layer — later blood stamps would
+  cover it. It is drawn live, above blood and below actors.
+- The FPS readout must be derived from the wall-clock gap between rAF callbacks, never from how
+  long the callback took.
 - Any new decal/debris kind must declare whether it bakes (`isDecalBakeEligible()`); static
   geometry must bake. Verify with the perf overlay: live-drawn decals should stay near ~100
   regardless of total decal count.
@@ -363,6 +369,36 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
   canvas layers with explicit invalidation, spatial-hash allocation reduction in real combat (not
   just idle), and `MAX_TICKS_PER_FRAME` tuning — check `perfStats` numbers before attempting any
   of these rather than guessing from reading code.
+
+## Versioning rule (hard constraint)
+
+- Bump ONLY the patch number (the third component) for every change: 1.4.9 -> 1.4.10 -> 1.4.11.
+- NEVER bump the minor or major component (1.4.x -> 1.5.0, 1.x -> 2.0.0) unless the user has
+  explicitly asked for that bump in this conversation. Scope of work, "feels like a big release",
+  or a round with several features is NOT a reason.
+- If a minor/major bump was made without instruction, roll it back to the next patch number and
+  correct the CHANGELOG headings in the same round.
+- The version appears in three places that must stay in sync: `GAME_VERSION`, the CHANGELOG entry
+  heading, and the save-file `gameVersion` field (written automatically from `GAME_VERSION`).
+
+## Progression and balance invariants (1.4.x)
+
+- Trained stats are capped at `STAT_EFFECT_CAP` (500) each and `STAT_TOTAL_CAP` (1,000) combined.
+  Enforce in `allocateStat()`, promotion and save loading — never only in the UI.
+- Assigned stats and unspent points draw on the same 1,000 budget. Never award points that cannot
+  be spent; hold the XP instead.
+- Milestones are identity only: naming at 500, trophy + XP-to-gold at 1,000. They must never grant
+  damage, HP, shields or heals.
+- Promotion buys stat rolls only. It must not call `applyTierStats()` or otherwise change damage,
+  cooldown or range.
+- Stat effects interpolate linearly to their value at the cap; no compounding curves, and no stat
+  may drive two multiplicative combat terms at full strength (see `ARCHER_RATE_SHARE`).
+- Any new unlock requirement must be reachable under the caps — check before shipping.
+- Proton, Quasar and Dark Matter are ELEMENT STATES earned from stat pairs (`MIXED_ELEMENT_RULES`),
+  never buildable tower types. A mix requires both of its stats at `MIXED_PAIR_THRESHOLD`; there is
+  no balanced-triple route.
+- Wave order, the 5:1 little-to-big ratio and seeded construction are invariants; validation runs
+  at boot for waves 1–120.
 
 ## Lag-creep prevention protocol (mandatory for every change)
 

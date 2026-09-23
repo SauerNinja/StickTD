@@ -1,5 +1,453 @@
 # Changelog
 
+## [1.4.43] - 2026-09-22 — Arrows fly stiff instead of homing
+- Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s),
+  and correction is abandoned entirely once the target has swung more than
+  PROJECTILE_HOMING_MAX_ANGLE (~11°) off the shot's heading. Past that the arrow commits to its
+  line and misses geometrically, the way a real arrow does.
+- Verified: a target darting hard off the line produced 0° of turn, where the old rate would have
+  curved the shot around after it.
+
+## [1.4.42] - 2026-09-22 — Gold pops on the HUD; wave line drops the size-tier name
+- **"+N" rises beside the gold counter whenever gold arrives**, with a two-note coin sound. It is
+  driven from the HUD update, so every source counts — kills, bounties, wave clear, mastery
+  conversion, selling. Gains inside the same second stack into one pop instead of flickering
+  (verified: +37 then +12 shows +49).
+- **Wave line no longer names the size tier** ("Tiny 9/10 · 8/10" → "8/10"); it now shows only
+  resolved/total plus the escapee count when there is one.
+
+## [1.4.41] - 2026-09-22 — Bigger sends now that barricades hold a choke point
+- Batch sizes raised: through wave 50 every tier sends 2-5 at a time (Tiny 3-5, Small 2-5,
+  Standard 2-4, Large 2-3); from wave 51 it is 5-10 (Tiny 7-10, Small 6-9, Standard 5-8, Large
+  5-7). The old trickle (1-2 for Standard/Large, 1 for the first waves) existed because nothing
+  reliably held enemies at a choke point.
+- Wave 1 still walks its ten enemies out one at a time as the tutorial beat, and Bosses still
+  arrive alone.
+- Verified: wave 3 sends 3-5, wave 50 tops out at 5, wave 60 at 10; batch counts drop accordingly
+  (wave 50 now 138 batches), so waves play denser without changing population.
+
+## [1.4.40] - 2026-09-22 — Kills pay roughly double
+- Tier bounty multipliers raised across the board: Tiny 0.4 → 0.9, Small 0.7 → 1.5, Standard
+  1.0 → 2.2, Large 2.5 → 5.5, Boss 1.0 → 2.2. These were tuned before waves carried hundreds of
+  enemies and before barricades became a recurring cost.
+- Per-kill gold for a Grunt now: Tiny 5, Small 9, Standard 13, Large 33 (was 2/4/6/15).
+- Whole-wave gold budget: wave 5 pays 642 (was ~290), wave 20 pays 4,144 (was ~1,880).
+- XP is untouched — this only changes the economy, not training pace.
+
+## [1.4.39] - 2026-09-22 — Debris flicker: one source of truth
+- **Root cause of the flickering:** baking rubble (1.4.37) gave every debris piece two possible
+  homes — the cached ground layer and the live debris pass. Each transition between them (entering
+  the bake window, leaving it for the fade, and the coalesced rebuild landing seconds later) was a
+  frame where a piece was drawn twice or not at all.
+- **No ground debris is baked any more.** Skulls, bones, worms and barricade rubble are always
+  live-drawn, above the blood and below the actors, with a single draw path. Cost is small — debris
+  is sparse and viewport-culled, unlike the thousands of blood decals that baking exists for.
+- Rubble still holds full opacity and fades only over the final 10% of its 5-minute life; bone
+  never fades.
+- Measured over 10 samples with 50 debris pieces on screen: count and baked-count perfectly stable
+  (50 / 0 every sample), where a flickering piece would have oscillated.
+
+## [1.4.38] - 2026-09-22 — Skulls and bones stop popping in and out
+- Found the cause: at the decal cap (1,200 on Low, 2,000 on High) `pushDecal()` recycled the oldest
+  slot regardless of what it held, so a blood-heavy wave steadily overwrote skulls, bones and rubble
+  — they vanished and only "came back" when a new kill dropped another one.
+- Recycling now skips debris slots and takes a blood stain instead, with a bounded scan (one lap
+  max) so it can never spin. Debris still expires on its own schedule.
+- Measured: 79 debris pieces survived 4,000 fresh blood decals at the cap — previously they would
+  have been overwritten.
+
+## [1.4.37] - 2026-09-22 — Rubble bakes into the ground and lasts ~5 minutes
+- Barricade rubble now bakes into the ground layer once it settles (`isDecalBakeEligible()` covers
+  `isRubble` from 2% to 90% of its life) instead of being redrawn every frame — it becomes part of
+  the scene, like the baked blood. Bone and skull stay live-drawn above the blood as before.
+- **Lifespan raised from 50s to 5 minutes** (`BARRICADE_RUBBLE_LIFESPAN`), and it only fades over
+  its final 10%, which is exactly the window where it leaves the baked layer and is drawn live
+  again so the fade can animate.
+- The debris pass skips baked pieces, so nothing is drawn twice.
+- Verified: 7 pieces baked after settling, out of the cache again near end of life.
+
+## [1.4.36] - 2026-09-22 — Ground debris never fades
+- Bone, stone and barricade rubble now draw at full opacity for their entire life and simply
+  expire — no fade-in, no fade-out. The flying chunks are solid the whole way through their arc
+  too, so a piece lands rather than dissolving mid-air.
+- Rubble still clears after ~50s; bone and skull debris remain permanent.
+
+## [1.4.35] - 2026-09-22 — Rubble stays solid until it's actually old
+- Landed timber and stone now hold full opacity for the first 80% of their 50s life and fade only
+  over the last 20% (was fading across the final third, which read as "spawns already faded").
+  Measured: alpha 1.00 at 0% and 50% of life, 0.75 at 85%, 0.25 at 95%.
+- Pieces bumped slightly (stone 6-9px, timber 7-10px) and the landed piece now keeps the chunk's
+  full size instead of shrinking to 80%, so small pieces don't wash out against the ground.
+
+## [1.4.34] - 2026-09-22 — Debris scatters in every direction, at a smaller scale
+- Chunks now launch on a full 360° ground-plane spread instead of a narrow upward cone, with the
+  vertical component squashed to 0.6 for the game's shallow top-down perspective, so pieces land
+  all around the barricade rather than in a plume above it. The arc still comes from the separate
+  vertical hop, so a piece thrown "downward" on screen still tumbles through the air.
+- Piece size cut roughly in half (stone 5-8px, timber 6-9px, was 9-14/12-17) and launch speed
+  widened to 60-180 px/s, so the burst reads as splinters and chips rather than whole logs.
+
+## [1.4.33] - 2026-09-22 — More rubble per hit, and it clears after ~50s
+- A barricade hit now throws 12 chunks (7 on Low, up from 7/4) in an even split of timber and
+  stone, with the chunk pool raised to 64 slots.
+- **Landed rubble expires after 50s** (`BARRICADE_RUBBLE_LIFESPAN`) and fades over its final third
+  instead of standing forever. Bone and skull debris is untouched — that stays permanent scenery;
+  only barricade litter clears.
+- Verified: 7 chunks airborne on impact, ground pieces present after landing, and zero left once
+  the 50s life elapsed.
+
+## [1.4.32] - 2026-09-22 — Timber and stone actually fly off the barricade
+- Replaced the instant scatter of ground pieces with a real throw: `spawnBarricadeChunk()` launches
+  7 chunks (4 on Low) up and outward with their own velocity, a vertical hop under gravity
+  (BARRICADE_CHUNK_GRAVITY) and spin, arcing for about a second before landing. Each one lays down
+  its permanent ground piece where it lands, so the debris trail matches the animation.
+- Pooled (48 slots, round-robin), so a hit allocates nothing; drawn above the actors with a short
+  fade-out at the end of flight.
+- Verified in-browser: 4 chunks airborne mid-arc with 0 ground pieces, then 0 airborne and 4 ground
+  pieces after landing.
+
+## [1.4.31] - 2026-09-22 — Barricade damage text is just the number
+- Dropped the 🪵 from the chip text: it now reads "-1 (9/10)". The flying timber and stone pieces
+  already carry that read visually.
+
+## [1.4.30] - 2026-09-22 — Stat-button glows matched in strength
+- Gold (primary damage stat) and silver (support stats) now use the same glow size and opacity —
+  10px spread, 2px blur, 0.72 alpha — so they differ in hue only. Gold was 12px/3px/0.75 against
+  silver's 8px/1px/0.55, which made the support stats look disabled rather than secondary.
+
+## [1.4.29] - 2026-09-22 — A melee miss now looks like a miss
+- Ranged shots already pre-roll: a rolled miss flies a deliberately offset path and never resolves
+  a hit, so "MISS" always matches what you see. **Melee had no equivalent** — the blade swept
+  through the enemy's position and "MISS" floated over an enemy the arc visibly passed through.
+- `dodgeEnemyFromSwing()` now shoves a dodging enemy 7px perpendicular to the attacker, out of the
+  arc, with a small scuff puff. The side is derived from the enemy and tower ids, so it is stable
+  rather than jittering frame to frame.
+- Verified: a dodged enemy moves exactly 7px out of the swing line; 16/16 self-tests.
+
+## [1.4.28] - 2026-09-22 — Barricades take a full 10s of attacking before the first point, and shed timber/stone
+- **No instant first chip.** An attacker now has to sustain contact for a full
+  BARRICADE_HIT_INTERVAL_MS (10s) before the barricade loses its first point
+  (`barricadeContactSince`, `barricadeAttackReady()`); every later point is on the same interval.
+  Both damage paths — the pile-up attacker and direct `takeDamage()` — share one routine
+  (`chipBarricade()`), so neither can bypass the wind-up.
+- **Wood and stone fly off on every point lost** (`spawnBarricadeDebris()`): timber and grey
+  particle bursts plus 5 scattered 🪵/🪨 pieces that settle as ground debris (2 on Low graphics),
+  alongside the existing shake, red flash, impact sound and "🪵 -1 (9/10)" text.
+- Verified: contact starting now does not chip; after 10s of attacking it drops to 9 and leaves
+  debris; an immediate second attempt is correctly ignored.
+
+## [1.4.27] - 2026-09-22 — Final casualty of the build bug restored; whole-file symbol check added
+- `STAT_TIER_STEP` / `STAT_TIER_NAMES` (the rank ladder constants) were the last thing the
+  changelog-embed generator had deleted — every kill crashed in `refreshStatTier()`. Restored.
+- **Added a whole-file symbol check to the ship process**: every function and constant the recent
+  work introduced is now evaluated in a real browser before shipping, so a missing declaration
+  can't reach you again. Current result: none missing.
+- Verified: three waves at 10x with Swordsman, Archer and Mage — zero page errors, zero console
+  errors, 16/16 self-tests.
+
+## [1.4.26] - 2026-09-22 — Restore the element system (second casualty of the same build bug) and re-roll the sky per visit
+- **Boot crash fixed:** `towerElement is not defined`. The same changelog-embed generator that ate
+  the update-notice functions in 1.4.25 had also deleted `ELEMENT_VISUALS`, `ELEMENT_LABELS`,
+  `towerElement()`, `towerDisplayName()`, `refreshElementState()`, `attunementProcChance()` and
+  `applyAttunementStatus()` — the whole elemental layer. All restored and verified: Fire/Ice
+  attunements apply, mixes resolve (500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 →
+  Quasar), and projectiles carry their element colour again.
+- **The attract sky now re-rolls per visit**, not once per page load: day/night, moon phase and the
+  moon's position re-roll when the screen is shown after being away (returning from a run, for
+  example). Verified across six loads — phases 0, 4, 5 and 7 and positions spanning 19-81% of the
+  sky.
+
+## [1.4.25] - 2026-09-22 — Fix boot crash from the 1.4.24 build step
+- 1.4.24 failed to boot with "maybeShowUpdateNotice is not defined". My changelog-embed generator
+  replaced from the start of `CHANGELOG_ENTRIES` to the wrong terminator and deleted the three
+  functions that followed it (`compareVersions()`, `maybeShowUpdateNotice()`,
+  `dismissUpdateNotice()`). Restored, with the duplicate `LAST_SEEN_VERSION_KEY` removed.
+- No gameplay change. Verified: clean boot, 16/16 self-tests, boss tier intact (radius 48, speed 8),
+  and the what's-new dialog lists 1.4.14-1.4.24 from a stored 1.4.13.
+
+## [1.4.24] - 2026-09-22 — Moon moves and changes phase between visits
+- The attract sky body is now placed per visit: horizontal position 12-88% across the sky and
+  22-67% down the sky band (`attractSkyBodyT`, `attractSkyBodyHeight`), instead of always sitting
+  at the same top-right spot.
+- **Night rolls a moon phase** (`attractMoonPhase`, 0 new through 4 full to 7 waning crescent).
+  The phase is carved by painting the sky colour back over the disc with an offset, so a large
+  offset leaves a crescent and a small one a gibbous — no extra assets, one extra arc fill.
+- All three values roll once per visit alongside the day/night choice, so the scene holds still
+  while the menu is on screen. Verified across crescent, gibbous and waning positions.
+
+## [1.4.23] - 2026-09-22 — JRPG boss warning, bigger/slower bosses, what's-new shows only new versions
+- **Boss warning.** When a Boss phase starts, the screen pulses red and a black band holds
+  "⚠ WARNING ⚠ / BOSS APPROACHING" for 2.6s with a heavy screen shake and a sting
+  (`showBossWarning()`, `drawBossWarning()`), replacing the generic phase banner.
+- **Bosses are properly huge and slow**: radius 32-38 → 44-52, speed 12-19 → 8-13. Still strictly
+  slower and larger than every other tier (band validation passes). Verified: a wave-10 Boss spawns
+  at radius 48, speed 8, 2,281 HP.
+- **The what's-new dialog no longer replays old versions.** A returning player sees only releases
+  newer than their stored version; if nothing newer exists it shows just the current release
+  instead of the whole archive. The whole changelog still shows on a first run.
+- **"What's new since vX" moved to the footer**, just above the opt-out checkbox and OK button.
+
+## [1.4.22] - 2026-09-22 — Attract screen: day or night, and no kill counter
+- **The attract backdrop now rolls day or night once per visit** (`attractIsDaytime`, fixed for the
+  session so it can't flicker between frames). Night keeps the moon and the fourteen twinkling
+  stars; day gets a blue-to-haze sky, a warm sun with a wider glow, no stars, and a lighter
+  checkerboard field so the change reads through the start screen's dimmer.
+- **Removed the "💀 N defeated" counter** from the attract screen — it belongs in a run, not on the
+  title screen.
+
+## [1.4.21] - 2026-09-22 — What's-new dialog shows every missed version, full changelog on first run
+- The embedded entry list is regenerated at ship time, so the dialog always includes the version
+  being released (it previously lagged one entry behind — v1.4.18 showed only 1.4.17's notes).
+- With no stored last-played version (first run or cleared storage) the dialog now shows the whole
+  embedded changelog under the heading "Full changelog" instead of a single entry; the region
+  scrolls, so length costs nothing.
+- The last-played version is stored in localStorage (`stickTD_lastSeenVersion`) and only updated
+  when the dialog is dismissed, so skipping several updates still shows all of them at once.
+
+## [1.4.20] - 2026-09-22 — Starter barricade is 10 HP; losing a point is visible
+- **The auto-placed starting barricade no longer spawns at 5 HP.** That override existed for the
+  old 1-damage-per-2s rule; with the 1.4.3 rate limit (1 per 10s from any source) it just made the
+  starter barricade break twice as fast as every other one. All barricades are 10 HP.
+- **Chip feedback on every point lost**: a 260 ms shake and red flash on the barricade itself
+  (`barricadeChipUntil`), wood-splinter particles, an impact sound, a small screen shake (honours
+  the screen-shake setting), and floating text showing the remaining HP — "🪵 -1 (9/10)".
+- Verified: starter barricade begins 10/10, one hit takes it to 9 with the chip state set, a second
+  hit inside the 10s window is correctly ignored, and the next hit after the window lands.
+
+## [1.4.19] - 2026-09-22 — Options moved out of the start screen's centre column
+- The start-screen Options control is now a small ⚙️ button pinned to the top-left corner at 65%
+  opacity (full on hover), instead of a full-width button under PLAY. Verified: 41px wide at
+  12,12, and it still opens the settings modal.
+- Graphics already defaulted to Low (`graphicsQuality = 'low'`); confirmed unchanged.
+
+## [1.4.18] - 2026-09-22 — The what's-new dialog embeds the real changelog
+- **The dialog now shows actual CHANGELOG entries**, not a hand-written highlight list:
+  `CHANGELOG_ENTRIES` is generated from CHANGELOG.md at release time, and `compareVersions()`
+  filters to every release newer than the version last played. Header reads "What's new since
+  v1.4.13".
+- **Scrollable embed** — the entry list is a bordered, scrollable region (max 46vh) with a heading
+  per version, so a player returning after several updates reads all of them in one dialog without
+  the OK button moving off screen.
+- Verified: with last-seen set to 1.4.13, the dialog lists 1.4.14 through 1.4.17 with full bullet
+  text and scrolls.
+
+## [1.4.17] - 2026-09-22 — Passive wave-clear XP, and a telemetry tab tucked into Settings
+- **Every surviving tower earns passive XP when a wave clears** (`awardWaveClearExperience()`):
+  8 + 1.5 per wave, shown as a silver pop. Deliberately small next to a last hit (Tiny 17, Large
+  40) so it never competes with killing blows — it's the floor that keeps a back-line or freshly
+  built unit progressing at all. Measured over wave 1 with two towers: 101 and 116 lifetime XP.
+- **Settings → 📊 Stats**: per-tower kills, damage and XP as bars relative to the best tower in
+  each column, with each unit's name, class emoji and rank. Lifetime damage and XP are now tracked
+  per tower (`lifetimeDamage`, `lifetimeXp`). It lives in Settings so it never competes with the
+  playfield.
+
+## [1.4.16] - 2026-09-22 — RPG rank ladder: a payout every 100 trained stats
+- **Ten named ranks**, one per 100 trained stats (`STAT_TIER_STEP`): Recruit, Trained, Seasoned,
+  Veteran, Elite, Champion, Master, Warlord, Ascendant, Legend. Crossing one pops a gold "⭐ Rank"
+  burst with particles and a sound, so the stretch between the big milestones (attunement 100,
+  element mixes and naming at 500, mastery at 1000) never goes quiet.
+- **Panel shows rank and distance to the next one** ("⭐ Trained · 50 to Seasoned"), alongside the
+  element-mix and milestone notes.
+- **Wave report lists each tower's rank** next to its damage and last hits, so a wave reads as
+  visible progress per unit rather than just numbers.
+
+## [1.4.15] - 2026-09-22 — Route lookups cached, collision passes cheaper (last two audit items)
+- **Route lookups are O(log n) instead of two full scans.** `getPositionAtTraveled()` and
+  `snapEnemyToTraveled()` each walked every segment from the start, re-computing hypotenuses — and
+  barricade queues call both per assigned enemy per tick, so cost grew with every route expansion.
+  New `ensureRouteLengthCache()` stores cumulative segment lengths (rebuilt only when the route
+  changes) and `routeSegmentIndexAt()` binary-searches it; both functions and `routeLengthPx()`
+  now share it. Corner-boundary behaviour is unchanged: a segment still owns distances up to and
+  including its far end.
+- **Collision relaxation does less work per tick.** Overlap tests use squared-distance rejection,
+  so `Math.sqrt` only runs for pairs that actually overlap; and a relaxation pass that corrected
+  nothing ends the loop, skipping the remaining passes *and* their spatial-hash rebuilds (was
+  always 3 passes = 3 rebuilds, multiplied by up to 10 simulation ticks per frame at 10x).
+- Regression: 9 waves at 10x, render 0.6-3.0 ms, update 0-0.2 ms, no behaviour change; 16/16
+  self-tests. This closes both remaining items from the source audit.
+
+## [1.4.14] - 2026-09-22 — Source-audit fixes: FPS truth, decal clock, debris layering, panel refits
+- **FPS readout was measuring the wrong thing** (confirmed bug): it derived FPS from how long the
+  rAF callback took, so a 2 ms callback read as ~500 FPS while frames stuttered. It now uses the
+  real wall-clock gap between callbacks (`rawWallGapMs`); update/render timings stay separate.
+- **Decal clock made consistent.** Ageing, expiry, sweep scheduling and baking used `realTime`,
+  which freezes between waves, so fresh blood could stay individually drawn through an entire idle
+  interval — exactly the panning case. All of it now runs on `presentationTime`. Re-measured with
+  1,200 on-screen decals: 888 baked after 3 minutes, live-drawn 1,200 → ~310, render 5.5 → 2.2 ms.
+- **Bones/skulls/rocks no longer bake into the blood layer.** Baking them let later blood stamps
+  paint over them, which is why blood looked like it was burying the bones. Debris is drawn live,
+  above blood and below actors.
+- **Inspect-panel refits coalesced to one per rendered frame** (`queueInspectPanelRefit()`). XP
+  awards call `updateInspectPanel()` repeatedly inside a single frame at 10x, and each refit read
+  layout and re-measured every button.
+- AGENTS records all four as invariants.
+- Still open from the audit: `getPositionAtTraveled()`/`snapEnemyToTraveled()` walk the route from
+  the start twice per queued enemy per tick (cache cumulative segment lengths), and the five
+  spatial-hash builds per tick at high game speed (squared-distance rejection, early-out relaxation).
+
+## [1.4.13] - 2026-09-22 — Element mixes are pair-only; docs updated
+- **The 250/250/250 route to Quasar is removed.** A mix now requires both of its stats at 500:
+  Fire+Electric → Proton, Fire+Ice → Dark Matter, Electric+Ice → Quasar. `QUASAR_BALANCED_THRESHOLD`
+  is gone. Verified: 250/250/250 yields no element; each pair yields its own.
+- **In-game help** gains an ELEMENTS section (attunement at 100, the three mixes, elements are not
+  towers, per-attack visuals, 8%→32% proc scaling), the Crazy Chef unlock, and a pointer to the
+  tap-to-explain DPS panel.
+- **README** documents elements and mixes, Crazy Chef, and adds the element/DPS/update-notice
+  functions to the code map.
+- **AGENTS** records the invariant: the three advanced elements are states from stat pairs, never
+  buildable tower types, with no balanced-triple route.
+
+## [1.4.12] - 2026-09-22 — Every element pair mixes; the three mixes balanced against each other
+- **Electric + Ice (500 DEX + 500 INT) now mixes into Quasar**, so all three pairs have a mix:
+  Fire+Electric → Proton, Fire+Ice → Dark Matter, Electric+Ice → Quasar. Training all three stats
+  to 250 still reaches Quasar as the balanced-build route; pairs are checked first.
+- **Mixes tuned to comparable value with different shapes** — Proton is damage over time (5s burn
+  plus 25% bonus damage, was 6s/35%), Quasar is sustained control (3s at 0.55x speed, was 4s at
+  0.45x), Dark Matter is a short hard stop (0.9s stun, was 1.2s).
+- **Panel shows the next mix and what's missing** (`nextElementMixNote()`), e.g. "🌟 Quasar in 100
+  more DEX/INT", so the elemental goal is visible while training. Once mixed it shows the element.
+- Verified: 500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 → Quasar, 250/250/250 → Quasar,
+  and none of the three appear as buildable towers. 16/16 self-tests.
+
+## [1.4.11] - 2026-09-22 — Elements show in the attack itself
+- **One palette for every elemental visual** (`ELEMENT_VISUALS`, `towerElement()`): Fire orange,
+  Ice blue, Electric yellow, Proton red-orange, Quasar violet, Dark Matter pale purple.
+- **Projectiles take their tower's element colour** and trail a short comet tail drawn opposite
+  travel direction (`Projectile.drawElementTrail()`), so an Ice archer's arrows read as ice in
+  flight. Splash shots tint too.
+- **Melee swings sweep an elemental arc** (`Tower.drawElementSwingArc()`): the same arc the weapon
+  travels, stroked in the element colour and fading across the 300 ms swing (550 ms for Spearman).
+- Both effects skip on Low graphics. Verified in-browser: an Ice-attuned Archer's live projectiles
+  carry `elementKey: 'ICE'` with the matching colour; 16/16 self-tests, zero page errors.
+
+## [1.4.10] - 2026-09-22 — Elements are mixes, not towers; Crazy Chef unlocks from Archer STR
+- **Proton, Quasar and Dark Matter are no longer buildable classes.** They are mixed ELEMENT
+  STATES a stickman earns from its own stat combination (`MIXED_ELEMENT_RULES`,
+  `refreshElementState()`), removed from `HYBRID_SPECIALIZATIONS` and `EVOLVED_TOWER_TYPES`:
+  - Quasar — 250+ in all three stats (balanced build), blinds: 0.45x speed for 4s.
+  - Proton — 500 STR + 500 DEX (Fire+Electric), melts: 6s burn plus 35% bonus damage.
+  - Dark Matter — 500 STR + 500 INT (Fire+Ice), stuns for 1.2s.
+  A mixed element supersedes the base attunement on every hit; the state is saved and restored.
+  Verified: 250/250/250 → Quasar, 500/500/0 → Proton, 500/0/500 → Dark Matter, and none of the
+  three appear in the buildable list.
+- **Crazy Chef** — new class, unlocked when any Archer-archetype tower reaches 100 STR. She is an
+  Archer who scales on STRENGTH (`PRIMARY_DAMAGE_STAT_OVERRIDE`), throwing a magazine of five
+  kitchen knives (`CHEF_MAGAZINE`) and then restocking for 10s (`CHEF_RELOAD_MS`). Verified:
+  unlocks at 100 STR, damage 16 → 23 at 300 STR, and the fifth knife triggers the 10s reload.
+- Not yet done for Crazy Chef: the bespoke long-haired stickwoman art and her knife-specific
+  blood-splatter profile — she currently uses the Archer figure and the standard projectile gore.
+
+## [1.4.9] - 2026-09-22 — Attunement elements act on every attack
+- **A tower's element now shows up in its attacks**, not just its name. `applyAttunementStatus()`
+  runs on every melee hit, projectile hit and splash hit: Fire burns, Ice chills (0.75x speed for
+  1.8s), Electric shocks (0.5s stun), Proton melts (6s burn plus 35% bonus damage, stacking with
+  bleed), Quasar blinds (0.45x speed for 4s), Dark Matter stuns hard (1.2s).
+- **Proc chance scales with the attuned stat** — 8% at attunement up to 32% at the 500 cap
+  (`ATTUNEMENT_PROC_MIN/MAX`), so deep investment shows as more frequent element procs rather than
+  more raw damage. Measured: 500 STR Fire tower procs 32% of hits.
+- Proton, Quasar and Dark Matter remain buildable classes; their element effects are now applied
+  through the same path, so the elemental layer works whether it comes from attunement or class.
+
+## [1.4.8] - 2026-09-22 — What's-new dialog, DPS breakdown, Options from the start screen, analytics tag
+- **Version update notice** on the attract screen: big silver version number and the headline
+  changes, shown once per new version (tracked in `stickTD_lastSeenVersion`). Dismiss with OK, opt
+  out in the dialog or Settings → Video. It waits until the consent banner is gone.
+- **Options button on the start screen** — the full settings modal, no need to start a run first.
+- **Tap the DPS readout** on a selected unit for a per-class damage breakdown: which stat feeds
+  damage and at what multiplier, damage band, attack rate and where it comes from, accuracy, crit,
+  range progress toward the class cap, max HP from STR, and a reminder that promotion rank never
+  affects damage. All values read from the tower's live state.
+- **Units answer when you select them** (the same voice used when they're built).
+- **Google Analytics:** the page now loads the Google Tag container `GT-TW5SNHS6` and configures
+  both it and the GA4 destination `G-B6H58BQ50N`. Consent Mode v2 still starts denied until
+  Accept. If you see no users: test in incognito with ad blockers off, accept the banner, and check
+  Realtime — standard reports lag 24-48h.
+- Verified in-browser: notice shows once then stays dismissed, breakdown numbers match the panel
+  (Archer DEX 200 → damage x1.30, rate x1.16), 16/16 self-tests, zero page errors.
+
+## [1.4.7] - 2026-09-22 — Wave pacing: batch spacing is absolute, phases don't wait for the full route
+- **Diagnosed the "wave 9 never ends" case.** Not a stall — sampled enemies were moving the whole
+  time. Batch release used 35% of the ROUTE, so as the map grew to an 88-waypoint path each batch
+  waited ~44 s of game time and a single wave ran for minutes over mostly empty path.
+- **`BATCH_RELEASE_SPACING_PX` (240 px)** replaces the route fraction: wave length now scales with
+  population, not with how long the map's path happens to be.
+- **`PHASE_RELEASE_PATH_FRACTION` (0.7):** a size phase may advance once its stragglers are past
+  70% of the route. They stay visibly ahead of anything the next phase spawns at the entrance, so
+  "smallest first" still reads correctly on screen, and they remain route obligations for wave
+  completion. Wave 1 keeps strict one-at-a-time.
+- Measured over 10 waves at 10x with two towers: wave 9 went from 120+ s (unfinished) to 44 s;
+  waves 1-8 now run 3-34 s each. Peak on-path enemies stayed at 10, no pool exhaustion.
+
+## [1.4.6] - 2026-09-22 — Archer rate double-dip fixed, docs brought up to date
+- **Archer rebalanced.** DEX was driving both its damage and its attack rate, so it out-scaled
+  every other class (61 vs 24 DPS at 400 points). Archers now receive `ARCHER_RATE_SHARE` (40%) of
+  DEX's attack-rate bonus. Measured at 400: Archer 42.6, Swordsman 23.7, Mage 23.3 — a ranged class
+  still ahead on paper, balanced against melee HP and positioning.
+- **Docs updated for the cap era:** README Leveling section rewritten (500/1,000 caps, held XP,
+  promotion-as-rolls, naming at 500, mastery at 1,000, XP-to-gold, what each stat buys at cap, new
+  Pope/Quasar requirements); code map extended; in-game help text updated; AGENTS gains a
+  "Progression and balance invariants" section.
+
+## [1.4.5] - 2026-09-22 — Cap-era correctness: no lost points, save fidelity, reachable Pope/Quasar
+- **Training no longer issues unspendable points.** Assigned stats + unspent points share the
+  STAT_TOTAL_CAP budget: a bar awards only what fits, and with no room the bar is not consumed —
+  the XP is held (`tower.trainingHeld`) until the player spends what they have.
+- **Promotion respects the same budget:** `promotionCapacity()` gates `canUpgrade()`, so a full
+  tower can't buy an empty promotion; the button reads "(SPEND POINTS)".
+- **Saves carry mastery state** — `isMastered`, `namingUnlocked` and `masteryXpRemainder` are
+  serialized, so fractional gold progress survives a reload.
+- **Legacy save migration:** stats above the new caps are clamped to 500 each, then trimmed from
+  the largest stat down to a 1,000 total; unspent points are clamped to the remaining capacity.
+- **Pope and Quasar are reachable again.** Pope: 500 INT (the cap) plus 750 total trained stats.
+  Quasar: 1,000 total with at least 300 in each stat (`QUASAR_MIN_PER_STAT`) — a balanced-build
+  route a 500/500/0 specialist cannot reach. Unlock copy updated to match.
+- **Cleric skullcap** now fills from the attunement threshold to the 500 INT cap, instead of a
+  500→750 range that can no longer complete.
+- **Panel milestone line:** silent until it matters — "Naming soon — 470/500" from 450, "Name unit"
+  at 500, "🏆 940/1000" from 900, "Fully trained — XP earns gold" at 1,000. The class/element
+  unlock hint keeps priority.
+- **Overhead label** shows the custom name with the class emoji ("MuhMan ⚔️").
+- Verified in-browser: caps hold at 500/500/1000 through allocation, promotion disables at the
+  cap, no points are granted when full, and 60 XP on a mastered tower pays 2 gold with a 10 XP
+  remainder kept. 16/16 self-tests.
+
+## [1.4.4] - 2026-09-22 — Debug overlay, blood-lust streak aura, killstreak camera pan, varied Mage spray
+- **Debug overlay** (Settings → Video → 🛠️, saved with your other prefs): version, graphics mode,
+  FPS, frame/update/render ms, wave + size phase + batch, enemies on path / escaped / dying, tower
+  and projectile counts, total vs live-drawn decals, zoom and camera position. Built for readable
+  screenshots and recorded clips.
+- **Auto camera pan on killstreaks** — the view snaps to the tower that just earned a tier.
+  Toggle: Settings → Video → 🎥 Auto camera pans.
+- **Blood-lust aura** replaces the flat gold circle on the streak holder: a pulsing red energy
+  glow with blood running off it, drawn beneath the stickman, lasting 12 s after each tier.
+- **Mage blood volume randomized:** the spray fan now rolls 0.5× / 1× / 1.5× volume (55/35/10),
+  so most hits spray modestly and only a minority really open up.
+- 16/16 self-tests, zero page errors, overlay verified in-browser.
+
+## [1.4.3] - 2026-09-22 — Grind-focused rebalance: stat caps, milestone split, weaker/slower enemies
+- **Stat curves rebuilt.** All stat effects now interpolate linearly to their value at
+  `STAT_EFFECT_CAP` (500) instead of compounding: primary-stat damage `1 + 0.0015 × points`
+  (+75% at 500), attack rate `1 + DEX/500` (2× at 500), range interpolates from base to the class
+  range cap at 500 INT (no more instant AoE/range cap at 25 points), max HP up to 3× at 500 STR.
+  Measured DPS at 400 primary: Swordsman 13.3 → 23.7, Archer 17.4 → 60.9, Mage 13.3 → 23.3.
+- **Trained-stat caps:** 500 per stat, 1,000 combined, enforced inside `allocateStat()` and
+  promotion (not just the buttons).
+- **Promotion is stat rolls only.** 1–3 per stat plus 1–3 into the primary, capped; no bonus stat
+  points, and `applyTierStats()` is no longer called on promotion, so rank never changes damage,
+  cooldown or range.
+- **Milestones split** (`refreshProgressionMilestones()`): naming unlocks at 500 trained stats,
+  trophy + XP→gold at 1,000. Neither grants HP, shield or a heal any more; legacy saves keep their
+  name but lose the old legendary combat bonuses.
+- **Mastery income:** a fully trained tower's own XP share converts at 25 XP = 1 gold, keeping the
+  fractional remainder.
+- **Killstreaks 10× harder** (100 → 1,000 kills) and only one tower holds a streak at a time.
+- **Enemies rebalanced for grinding:** speed bands ~25% slower (Tiny 50–60 … Boss 12–19), enemy
+  attack damage ×0.6, attack interval ×1.6, enemy HP ×0.85.
+- **Stat button glow:** gold for the class's primary (damage) stat, silver for the support stats;
+  capped stats disable. Hint names the preferred stat before any points are spent.
+- **Byline moved off the start screen** into Settings → About.
+- 16/16 self-tests, zero page errors.
+
 ## [1.4.2] - 2026-09-22 — Stat scaling rebalanced for the larger point economy
 - Past the first 25 points, `diminishingStatValue()` and `warriorStrDamageMult()` now use a
   logarithmic tail (`statTailValue()`, softness 50) instead of a flat per-point rate. With

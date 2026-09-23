@@ -295,24 +295,44 @@ biologically-flavored, forensic-style bloodstain effects rather than a generic h
 
 ## Leveling
 
-Each tower has two separate progression tracks:
+Each tower has two separate progression tracks, both capped: **500 per stat, 1,000 combined.**
 
-- **Training (XP).** The tower that lands the killing blow earns the enemy's full XP — Tiny 17,
-  Small 20, Standard 25, Large 40, Boss 50. Other towers that damaged it (including burn, poison
-  and bleed) split a smaller assist share by damage dealt. An enemy that already crossed the
-  finish only pays a reduced cleanup share when it dies. Every 100 XP fills a training bar and
-  rolls **2 × (1–3) stat points** to spend. XP pops appear as small gold (killing blow) or silver
-  (assist/cleanup) numbers. There is no training cap.
-- **Promotion (gold).** Each promotion rolls 1d6 into STR, DEX and INT, a second 1d6 into the
-  class's main stat, and awards **2 × (1–6) free stat points**. Cost grows ×1.5 per promotion
-  (80 → 120 → 180 → 270 → …), up to level 99.
+- **Training (XP).** The killing blow earns the enemy's full XP — Tiny 17, Small 20, Standard 25,
+  Large 40, Boss 50. Other towers that damaged it (burn, poison and bleed included) split a smaller
+  assist share by damage dealt; an enemy that already crossed the finish only pays a reduced
+  cleanup share. Every 100 XP fills a training bar and rolls **2 × (1–3) stat points**. A bar only
+  awards what still fits under the cap, and once a tower is full its XP is held until you spend the
+  points you have — nothing is lost.
+- **Promotion (gold).** Rolls 1–3 into each stat plus 1–3 into the class's main stat, capped, and
+  nothing else: promotion rank never changes damage, cooldown or range. Cost grows ×1.5 per
+  promotion (80 → 120 → 180 → 270 → …), and it's unavailable when there's no room left under the cap.
 
-**Spending points:** tap a stat to spend one, hold to keep spending. The hint above the stat
-buttons shows how far your leading stat is from its element (e.g. "❄️ 79 points till Ice").
+**Milestones.** At **500 total trained stats** you can name the unit (it shows as "MuhMan ⚔️").
+At **1,000** it is fully trained: it gains the trophy and its XP share becomes gold at 25 XP = 1.
+Neither milestone grants damage, HP or shields.
 
-**Targeting modes:** First, Closest, Strongest, Weakest, **Farm** (chases killing blows it can
-land next hit), **Assist** (leaves killing blows to other towers) and **Unclaimed** (ignores
-enemies already doomed by shots in flight).
+**What each stat buys at the 500 cap:** main stat +75% damage; DEX up to 2× attack rate (Archers
+get 40% of that, since DEX is already their damage stat); INT reaches the class range cap and
+improves accuracy and utility; STR up to 3× max HP, which is what keeps a tower alive in late waves.
+
+**Elements.** At 100 in a stat a stickman attunes — STR gives Fire (burn), DEX gives Electric
+(shock), INT gives Ice (chill). Training **two** stats to 500 mixes an advanced element:
+Fire+Electric = **Proton** (melts: burn plus bonus damage), Fire+Ice = **Dark Matter** (stuns),
+Electric+Ice = **Quasar** (blinds: a long slow). Proton, Quasar and Dark Matter are elements, not
+towers — you can't build them. Every attack carries your element: projectiles and melee swings take
+its colour, and the proc chance climbs from 8% at attunement to 32% at the 500 cap.
+
+**Class unlocks:** attunement at 100 in a stat; specializations at 500 in the attuned stat; an
+Archer that reaches 100 STR unlocks the **Crazy Chef**, a knife-thrower who scales on Strength and
+hurls five kitchen knives before restocking for ten seconds; Pope at 500 INT plus 750 total on a
+Cleric.
+
+**Spending points:** tap a stat to spend one, hold to keep spending. The hint above the buttons
+shows your next unlock, and adds a naming or mastery countdown only when one is close.
+
+**Targeting modes:** First, Closest, Strongest, Weakest, **Farm** (chases killing blows it can land
+next hit), **Assist** (leaves killing blows to others) and **Unclaimed** (skips enemies already
+doomed by shots in flight).
 
 ## Waves
 
@@ -457,7 +477,11 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 - `Enemy.applySizeTier()` / `Enemy.packedSpeed()` / `Enemy.recordContribution()` — size stats,
   tier speed ceiling, damage ledger.
 - `awardKillExperience()` / `creditKill()` / `distributeSharedXp()` / `gainTowerExp()` — XP.
-- `Tower.upgrade()` / `promotionCostFor()` / `Tower.targetScore()` — promotion and targeting.
+- `Tower.upgrade()` / `promotionCostFor()` / `promotionCapacity()` / `Tower.targetScore()` — promotion and targeting.
+- `STAT_EFFECT_CAP` / `STAT_TOTAL_CAP` / `refreshProgressionMilestones()` / `progressionMilestoneNote()` — stat caps, naming at 500, mastery at 1,000, XP-to-gold.
+- `MIXED_ELEMENT_RULES` / `refreshElementState()` / `applyAttunementStatus()` / `ELEMENT_VISUALS` — element mixes, on-hit status and the elemental projectile/swing visuals.
+- `dpsBreakdownText()` / `maybeShowUpdateNotice()` — the tap-to-explain DPS panel and the what's-new dialog.
+- `drawDebugOverlay()` / `panCameraToTower()` / `Tower.drawBloodLustAura()` — debug mode, killstreak pan and aura.
 - `sweepSettledDecals()` / `isDecalBakeEligible()` / `blitWorldLayer()` — gore baking and
   viewport-cropped world layers.
 - `buildEnemyHash()` / `spatialCellKey()` / `queryNearby()` — integer-keyed spatial hash.
