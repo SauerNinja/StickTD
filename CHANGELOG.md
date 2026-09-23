@@ -1,5 +1,63 @@
 # Changelog
 
+## [1.4.64] - 2026-09-23 — Death-proximity blood modifier, applied to every class (not just Mage)
+- New, deliberately slight modifier on top of the existing size system: how far along the path an
+  enemy had traveled at the moment of death now nudges the death-burst size. Within the last
+  quarter of the route, a 25% chance of a 12% bigger burst; within the first quarter (still near
+  spawn), a 35% chance of a 12% smaller one. Added directly into goreScale in the shared kill-burst
+  code, so it applies to every archetype's death splatter uniformly, not just Mage — per direct
+  request to balance this across all classes, not just the one that's been under discussion.
+
+## [1.4.63] - 2026-09-23 — Hut overhaul (targeting, HP, debris not blood, fire, fixed respawn), Mage blood reworked, wave HP smoothed, tier-1 attack speed slowed
+- Hut targeting panel was showing "Grunt" instead of naming the hut — it's spawned internally as a
+  GRUNT-type enemy with only its emoji overridden, and the name label read target.type directly.
+  Now shows "Hut"/"Hut Guardian".
+- Hut HP cut from a 40x GRUNT multiplier to 16x — still the toughest single thing on the board, not
+  absurdly so.
+- The hut no longer bleeds. Being a structure, it now sheds stone and timber on hit
+  (spawnBarricadeDebris(), the same effect a barricade uses) instead of ever entering the
+  blood-particle path.
+- The hut now visibly catches fire as it takes damage — no flame above 66% HP, growing
+  continuously (not just two fixed stages) the lower it gets, with a second smaller flame joining
+  once it's badly damaged. WC3-style burning-building read.
+- Guardian respawn changed from a random 1-5 minute wait to a fixed 60 seconds.
+- Mage blood reworked again per clarification: this was never about frequency (every hit already
+  sprayed something), only about typical size. Base particle counts cut further (10/6, was 20/12)
+  so an ordinary hit is genuinely small/thin, with a new rare crit-only multiplier (2.6x, crit
+  chance starts at 2.5% and scales with DEX) so a big, thick splatter still happens — just rarely,
+  as asked, not removed.
+- Per-wave enemy HP scaling smoothed: the within-chapter per-wave step was raised 0.04→0.09 (a
+  wave-2 Grunt was previously only 4% tougher than wave 1, with nearly all growth arriving as one
+  jump every 5th wave) — per direct feedback that waves felt a bit easy for a game meant to support
+  grinding.
+- Swordsman and Archer tier-1 (pre-promotion) cooldowns raised (1350→1550ms, 1150→1300ms) — "all
+  stickmen probably have too fast hit speed starting off." Mage's own 6000ms base was already
+  deliberately slow and left untouched. Later tiers, earned through promotion, are untouched on
+  both.
+- Path-triangle visual artifact: still not found after multiple real attempts (checked attract-mode
+  rendering, the map-rebake code, wave-summary CSS, scenery rendering, and the elemental swing-arc
+  effect — all ruled out). Not guessing at a fix this round; needs a DevTools element inspection to
+  actually locate.
+
+## [1.4.62] - 2026-09-23 — Crazy Chef was genuinely unbuildable since it was added — found by auditing every tower for a real unlock path
+- Traced every CONFIG.TOWERS entry back to its unlock source, per direct request. Found Crazy Chef
+  missing from EVOLVED_TOWER_TYPES and TOWER_UNLOCK_SOURCE_BY_TARGET entirely:
+  checkAttunementAndSpecialization() really does call unlockTowerTypeBuild('CRAZY_CHEF') at 100
+  STR on an Archer, and that really did add it to unlockedTowerTypes — but the Build tray only ever
+  shows rows for UNLOCKABLE_TOWER_TYPES, which is derived from that missing registration. It was
+  permanently unlocked internally and had no row to ever build it from, locked or unlocked. This is
+  the original bug report from weeks back ("100 str on archer and crazy chef not available in the
+  build menu") — never actually fixed until now.
+- Registered the same way Cat Snapper already is (a raw stat check outside the element/hybrid
+  tables), added to EVOLVED_TOWER_TYPES, and given its own Build-tray lock riddle. README's tower
+  table updated to include it (it was only ever mentioned in prose, in the Leveling section).
+- Strengthened validateGameDefinitions()'s boot-time self-test: it previously only verified that
+  every EVOLVED_TOWER_TYPES entry was reachable, which does nothing for a type missing from that
+  list entirely — exactly how this stayed hidden. It now checks every single CONFIG.TOWERS type is
+  accounted for as a starter, an evolved/unlockable class, or an explicitly-named legacy exception
+  (Proton/Dark Matter/Quasar), so a future tower with no wired-up unlock path fails loudly at boot
+  instead of sitting silently unbuildable.
+
 ## [1.4.61] - 2026-09-23 — One more per-tick allocation removed; audited every remaining .filter() in the file
 - checkAllFightersDown() ran every SIMULATION TICK (not just every rendered frame — several ticks
   can run per frame at high game speed) and allocated a new array via towerPool.filter() every

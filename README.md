@@ -195,6 +195,7 @@ not separately buildable towers. See **Elements** under [Leveling](#leveling) fo
 | 🎯 Lancer | *(unlocked by a Spearman reaching DEX 40)* Even longer reach than base Spearman — the longest-ranged melee class in the game |
 | ⚜️ Paladin | *(unlocked by a Hammerman reaching INT 40)* Every hit deals holy pure damage, bypassing armor entirely |
 | 🔫 Gatling | *(unlocked by 🔥 Fire on an Archer, STR 100/500)* Very fast, low damage per shot — shreds swarms |
+| 🔪 Crazy Chef | *(unlocked by an Archer reaching STR 100, same threshold as Gatling's Fire attunement — a raw stat check, not element-gated)* A knife-thrower who scales on Strength instead of DEX like every other Archer evolution |
 | 🎯 Blowdart | *(unlocked by ⚡ Electric on an Archer, DEX 100/500)* Short range, fast fire rate, every dart poisons |
 | 🔫 Dual Squirt Gun | *(unlocked by a Blowdart reaching DEX 40)* Dual-wielded, deeper DEX specialization |
 | ♨️ Blow Gunner | *(unlocked on an Archer that pushes BOTH STR and INT to 500 — 🔥 Fire + ❄️ Ice = "Steam")* Every hit carries both a poison DoT and a brief chilling slow at once. The first dual-element hybrid class — doesn't replace Gatling/Marksman's own single-element unlocks, unlocks alongside them off the same stat growth. |
@@ -431,15 +432,17 @@ beyond clearing rocks yourself.
 
 A WarCraft 3-style creep camp: a stationary hut (🛖) placed off-path, guarded by 2 enemies. It
 doesn't appear on the tiny starting map — it spawns the first time your map has expanded enough
-(3 expansions in), so the earliest waves never have to deal with one. Guardians stay tightly
-clustered near their hut and snap back if knocked away — they don't roam or chase, only combat
-itself moves them off that spot. Nothing about the camp is on the timer or the path — towers in
-range simply fight it like anything else, on your own schedule. Kill both guardians for an
-immediate gold bounty each; the hut itself is far tankier and pays a much bigger one-time reward
-when destroyed. If you clear the guardians but leave the hut standing, it respawns 2 fresh
-guardians after a random 1-5 minute real-time wait — but only once the lane around it is actually
-empty, and never at all once the hut itself has been torn down. A cleared hut stays cleared
-permanently.
+(3 expansions in), so the earliest waves never have to deal with one. Guardians actually retaliate:
+they stay tightly clustered near their hut until a tower damages the camp, then every living
+guardian focuses whichever tower has done the most damage to it, chasing out to a wider combat
+leash before returning home if the target dies or gets out of range. Nothing about the camp is on
+the timer or the path — towers in range simply fight it like anything else, on your own schedule.
+Being a structure, the hut sheds stone and timber when hit, the same as a barricade — never blood —
+and visibly catches fire as it takes damage, burning harder the lower its HP gets. Kill both
+guardians for an immediate gold bounty each; the hut itself is tankier and pays a much bigger
+one-time reward when destroyed. If you clear the guardians but leave the hut standing, it respawns
+2 fresh guardians 60 seconds later — but only once the lane around it is actually empty, and never
+at all once the hut itself has been torn down. A cleared hut stays cleared permanently.
 
 ## Lives
 

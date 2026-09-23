@@ -995,3 +995,20 @@ item at +2/+2/+2). Deliberately not built yet this round — it's a full feature
 rendering + save schema + a new item), not a small fix, and deserves its own dedicated pass rather
 than being rushed at the end of an already large session. Next session: confirm the loot table
 (Stick-only for now, per spec) and build it as its own focused version.
+
+## New requests from 2026-09-23 — deferred, not started this round
+
+- **Siege/catapult tower**: super slow reload, long range, AoE, 5x damage multiplier specifically
+  against buildings (huts, and any future buildings), a stick-figure trebuchet with a simple but
+  physically accurate arc for the thrown rock. This is a real, well-scoped new tower — not started
+  because it's a genuinely new unit (new projectile physics, a new "vs. buildings" damage
+  multiplier system that doesn't exist yet, new visuals) and the rest of this session's requests
+  were already large. Needs: where it slots into the unlock tree (a 4th starter? An evolution off
+  one of the existing 3? A separate raw-stat unlock like Crazy Chef/Cat Snapper?), and confirmation
+  the "5x vs buildings" multiplier is worth adding as its own general-purpose system now even
+  though the hut is the only building that exists yet.
+- **"250 int on archer unlock"** — incomplete as given: unlock *what*? Archer's existing INT-based
+  paths are the Fire/Electric/Ice attunement system (100 INT) and the Proton/Dark Matter/Quasar
+  hybrids (500 INT combined with another stat) — 250 doesn't currently correspond to a threshold
+  anywhere in the game (100 for attunement, 500 for specialization/hybrids). Needs clarification:
+  is this a new tower to add at that threshold, or a correction to an existing number?
