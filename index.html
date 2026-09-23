@@ -1091,7 +1091,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.54'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.61'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -2569,6 +2569,12 @@ let nextRingIsPath = true; // alternates each expansion — every other ring is 
 // expansionLevel happens to cross the threshold again after a reset mid-comparison — it's reset
 // alongside expansionLevel in initRegionAndPath()/resetGame().
 const HUT_MIN_EXPANSION_LEVEL = 3;
+// How far a guardian will chase the current camp-aggro leader before giving up and walking home —
+// deliberately much larger than the 42px idle-wander leash (updateGuardian()'s guardRadius), since
+// the whole point of retaliating is actually reaching the tower that's hurting the camp. TILE_SIZE
+// is 64, so this is a little over 4 tiles — enough to reach a tower placed just off the camp's own
+// footprint without letting a guardian wander the length of the map.
+const GUARDIAN_COMBAT_LEASH = 260;
 let hutsSpawnedThisGame = false;
 function initRegionAndPath(){
   const w = 2, h = 2;
@@ -3488,9 +3494,16 @@ function drawMap(ctx){
   // Subtle speckle texture on the path itself — a mix of small darker (packed dirt/pebble) and
   // lighter (dry/dusty patch) dots, sparse and low-opacity by design so it reads as ground detail
   // from a normal viewing distance rather than competing with blood decals or floating combat text
-  // during a fight. The path was otherwise a single flat fill plus the faint shading above — the
-  // largest, flattest surface in the whole game, and the one every enemy/tower/particle is seen
-  // against. Baked once here, same as everything else in this function, not a per-frame cost.
+  // during a fight. Baked here, not a per-frame cost on its own — but rebakeMap() runs this whole
+  // function on every map expansion (see performExpansion()), so its cost is still real and
+  // recurring, just infrequent. Batched into two path/fill calls total (one per color) instead of
+  // one beginPath+ellipse+fill per speckle — with up to ~100+ path tiles × 3-5 speckles each, that
+  // was potentially 500 separate fill() calls every expansion for what's genuinely one texture
+  // layer. The only visual difference is that two same-color speckles landing on top of each other
+  // no longer double-darken where they overlap (one continuous fill vs. two separate blended
+  // fills) — imperceptible at this size/opacity/sparsity, and this texture was never meant to be
+  // read at that level of detail.
+  const darkSpeckles = [], lightSpeckles = [];
   for(let gx=0; gx<COLS; gx++){
     for(let gy=0; gy<ROWS; gy++){
       if(!pathCells.has(gx+','+gy)) continue;
@@ -3499,13 +3512,25 @@ function drawMap(ctx){
       for(let i=0; i<speckleCount; i++){
         const sx = tx + Math.random()*TILE_SIZE, sy = ty + Math.random()*TILE_SIZE;
         const r = 1 + Math.random()*1.8;
-        const isDark = Math.random() < 0.6;
-        ctx.fillStyle = isDark ? 'rgba(0,0,0,0.10)' : 'rgba(255,235,200,0.08)';
-        ctx.beginPath(); ctx.ellipse(sx, sy, r, r*0.7, Math.random()*Math.PI, 0, Math.PI*2); ctx.fill();
+        const rot = Math.random()*Math.PI;
+        (Math.random() < 0.6 ? darkSpeckles : lightSpeckles).push([sx, sy, r, rot]);
       }
     }
   }
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  ctx.beginPath();
+  for(const [sx, sy, r, rot] of darkSpeckles) ctx.ellipse(sx, sy, r, r*0.7, rot, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,235,200,0.08)';
+  ctx.beginPath();
+  for(const [sx, sy, r, rot] of lightSpeckles) ctx.ellipse(sx, sy, r, r*0.7, rot, 0, Math.PI*2);
+  ctx.fill();
 
+  // Border strokes batched into one path/stroke call instead of one strokeRect() per tile — same
+  // reasoning as the speckle batching above, and applies every time this runs (boot + every map
+  // expansion). fillRect() itself is left as one call per tile since browsers already fast-path
+  // solid rect fills; the per-call overhead here was specifically in the separate stroke pass.
+  const gridStrokes = [];
   for(let gx=0; gx<COLS; gx++){
     for(let gy=0; gy<ROWS; gy++){
       if(pathCells.has(gx+','+gy)) continue;
@@ -3515,11 +3540,14 @@ function drawMap(ctx){
       const light = (gx+gy) % 2 === 0;
       ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
       ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
+      gridStrokes.push([tx+0.5, ty+0.5]);
     }
   }
+  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(const [x, y] of gridStrokes) ctx.rect(x, y, TILE_SIZE-1, TILE_SIZE-1);
+  ctx.stroke();
 
   // Finish-line carpet — a genuinely 2D checkered black/white strip (alternating along BOTH the
   // perpendicular and the thickness axis, not just one row of stripes down one axis — the
@@ -4447,6 +4475,8 @@ let hoveredSceneryKey = null; // "gx,gy" of scenery currently hovered/touched �
 let wavesCompleted = 0;
 let hasUnseenUnlock = false;
 let unlockToastTimer = null;
+const unlockToastEl = document.getElementById('unlock-toast');
+const unlockToastTextEl = document.getElementById('unlockToastText');
 let moveCharges = 1;      // free tower relocations; +1 every 2 waves completed, capped
 const MAX_MOVE_CHARGES = 3;
 let moveModeTower = null; // set while the player is choosing where to relocate a tower
@@ -4460,8 +4490,8 @@ function checkTowerUnlocks(){
   if(newlyUnlocked.length) showUnlockToast(newlyUnlocked);
 }
 function showToast(message){
-  const toast = document.getElementById('unlock-toast');
-  document.getElementById('unlockToastText').textContent = message;
+  const toast = unlockToastEl;
+  unlockToastTextEl.textContent = message;
   toast.classList.add('show');
   clearTimeout(unlockToastTimer);
   unlockToastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
@@ -4710,7 +4740,7 @@ const LAST_SEEN_VERSION_KEY = 'stickTD_lastSeenVersion';
 // Embedded changelog (generated from CHANGELOG.md at release time). The what's-new dialog shows
 // every entry newer than the version last played, scrollable, so returning players see exactly
 // what changed while they were away.
-const CHANGELOG_ENTRIES = [{"v": "1.4.54", "date": "2026-09-23", "title": "Huts wait for the map to grow, and their guardians actually stay close to home", "items": ["The hut/creep-camp no longer spawns immediately on the tiny starting map. It now spawns the first time the map reaches HUT_MIN_EXPANSION_LEVEL (3) expansions, so the earliest waves are never sharing that small a space with one.", "Guardian leash tightened from a 70px roam radius to 42px, and their bumble speed slowed (0.5x \u2192 0.32x of a Grunt's speed) \u2014 they now read as genuinely glued to their hut, snapping back to it after any knockback, rather than wandering a fairly wide patrol loop around it."]}, {"v": "1.4.53", "date": "2026-09-23", "title": "Game Over message no longer orphans a single word on its own line", "items": ["\"Rebuild and try again.\" was wrapping with just \"again.\" alone on the second line at the end screen's default width. Non-breaking spaces now tie \"Rebuild and try again.\" (and the default message's \"Rebuild your squad and try again.\") together so the phrase always wraps as one unit, never splitting off a lone trailing word."]}, {"v": "1.4.52", "date": "2026-09-23", "title": "Countdown moves to the spawn marker, in red, and the exclamation mark is wider", "items": ["The 3-2-1-GO countdown is now world-space, anchored directly above the pulsing \u2757 spawn marker instead of a fixed screen overlay \u2014 it now tracks the spawn tile through the camera pan the same way the marker already does.", "Countdown numbers (3, 2, 1) are now red; GO! keeps its own gold celebration color.", "The \u2757 spawn marker is now stretched wider (1.7x horizontally) while keeping its existing pulse-in/pulse-out animation and height untouched."]}, {"v": "1.4.51", "date": "2026-09-23", "title": "Build menu shows every tower from the start, locked or not \u2014 a complete map of the README", "items": ["Deep-tier evolutions (Paladin, Squirt Gun, Bomber, Gunalinder, Sniper, Berserker, Lancer) used to stay fully hidden \u2014 not even a locked row \u2014 until their own prerequisite class was unlocked first. Every one of the 19 evolved tower types now shows a row immediately, unlocked or \ud83d\udd12, so the Build menu is a complete, always-visible map matching every tower documented in the README.", "README: removed Proton/Dark Matter/Quasar from the tower table \u2014 they were listed there as if they were separately buildable towers, contradicting the Leveling section's own (correct) explanation that they're elements a tower carries on its own attack. A pointer to that section replaces the three rows."]}, {"v": "1.4.50", "date": "2026-09-23", "title": "Quasar is an element again, not a tower \u2014 the actual bug, this time found and fixed", "items": ["Removed the one stray line (TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR) that wrongly registered Quasar as its own separately-buildable Build-tray tower. Proton and Dark Matter never had this bug \u2014 only Quasar did, which is why 1.4.49's comment fix (which assumed the code was right and the doc was stale) was itself wrong. Quasar is now purely an ELEMENT STATE, exactly like Proton and Dark Matter always correctly were: whichever tower (Swordsman/Archer/Mage or any evolution) reaches DEX+INT 500 keeps being exactly what it is, and its own existing attack gains burn+slow+a small splash radius (QUASAR_ELEMENT_SPLASH_RADIUS, 40px) \u2014 not a new unit to build.", "CONFIG.TOWERS.QUASAR itself is kept, legacy-only, so a save made while the bug was live still loads without error. Nothing else changed \u2014 Hammerman, Blowdart, Cleric and every other single-element specialization are still separately buildable towers exactly as before; this was scoped to the 3 hybrids only, and only Quasar actually needed a code change."]}, {"v": "1.4.49", "date": "2026-09-23", "title": "Comment-only correction: Proton/Quasar/Dark Matter really are buildable towers", "items": ["No gameplay change. A stale code comment claimed Proton/Quasar/Dark Matter were \"NOT buildable classes... mixed ELEMENT STATES\" \u2014 that never matched the actual code (CONFIG.TOWERS has real entries for all three, unlocked and built exactly like every other specialization) and was the direct source of a confused session mistakenly proposing to rearchitect tower progression into in-place elemental transformation. Confirmed with the owner: the existing stat-threshold-unlock mechanic (a tower never transforms, it just permanently unlocks the next separately-buildable tower) was already correct and needed no change \u2014 only this comment did. AGENTS.md's matching invariant corrected the same way, plus a new standing rule there against proposing mechanic changes without explicit confirmation."]}, {"v": "1.4.48", "date": "2026-09-23", "title": "Backlog sweep: item drops, a real all-towers-down wipe, and a clearer attunement toast", "items": ["End-of-round item drops: a 12% chance per wave clear to drop a random item (Lucky Branch, or two new items \u2014 Iron Charm, a flat +3 armor piece, and Swift Feather, a DEX-leaning stat item) near one of your active towers.", "The \"all towers down\" loss condition now also fires if every fighter is sold/lost mid-wave (previously only fired when every fighter was simultaneously disabled, deliberately not on zero-fighters, to avoid a false game-over on wave 1 before anything is built). A new everBuiltFighter flag distinguishes \"hasn't built anything yet\" from \"had a squad and lost it.\"", "The attunement floating text now names the actual next unlock and how far off it is (e.g. '\u26a1 Attuned! \u2014 240 more DEX to Blowdart') instead of a bare 'Attuned!' \u2014 100 in a stat only locks in an element, the buildable unlock is at 500, and the old text was the direct cause of \"100 DEX did nothing\" reports."]}, {"v": "1.4.47", "date": "2026-09-23", "title": "Spawn warning marker, and the countdown no longer runs during the camera pan", "items": ["A pulsing red \u2757 now marks the wave's spawn point for the entire pre-spawn window (camera pan + 3-2-1-GO), so it's obvious where the camera is heading and where enemies are about to appear. Gone the instant real spawning starts.", "The 3-2-1-GO countdown (and the first real enemy spawn) previously started counting the instant a wave began, running IN PARALLEL with the 1200ms camera pan to the spawn point \u2014 so \"3\" was already on screen while the camera was still mid-swing. waveTimer is now frozen for the duration of the pan, the same mechanism already used to freeze it during a barricade pile-up, so the countdown only starts once the camera has actually arrived."]}, {"v": "1.4.46", "date": "2026-09-23", "title": "The real fix for long-session lag: decals were taking 13.5 minutes to become cheap", "items": ["Root cause, confirmed from a user-submitted debug export (drawDecals() at 75% of render time with 0 enemies on screen, 633/637 decals still unbaked 8 minutes into the session): decal bake-eligibility was written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45), which was harmless when the lifespan was 5 minutes but silently became a 13.5-REAL-MINUTE delay once DECAL_LIFESPAN was extended to 30 minutes in an earlier version so bloodstains would visually last longer. Until a decal turned 13.5 minutes old it stayed in the expensive per-frame live-draw pass.", "Baking now triggers off a small absolute age (DECAL_BAKE_MIN_AGE_MS, 4s) instead of a fraction of however long the stain is set to visually persist. A decal is cheap to render within 4 seconds of landing regardless of whether its total lifespan is 5 minutes or 30 \u2014 the two concerns (how long it lasts vs. how soon it's cheap) are no longer coupled through the same number."]}, {"v": "1.4.45", "date": "2026-09-23", "title": "Evolution hint shows only the nearest next unlock", "items": ["An attuned tower's evolution hint used to always show its single-element specialization target AND its nearest hybrid side by side, even when the hybrid was hundreds of points further off (e.g. '54 more INT' shown next to '350 more STR/INT for Dark Matter'). It now compares every reachable next unlock \u2014 the single-element specialization and all three hybrids \u2014 and shows only whichever is actually closest."]}, {"v": "1.4.44", "date": "2026-09-23", "title": "Unlocks are permanent, promotion never changes a tower's class, and a wipe now ends the run", "items": ["Tower unlocks (Crazy Chef, Cat Snapper, every attunement/hybrid including Quasar) are now stored in their own localStorage key, separate from any save file, and are never wiped by resetGame()/starting a new run. This was the actual cause of unlocks 'not sticking' \u2014 unlockedTowerTypes was reset to empty on every restart.", "Removed the level-5 Swordsman spec popup that force-picked Zweihander/Dual Wield and silently changed damage/cooldown/swing arc. Promotion (the Promote button) was already meant to be pure stat gain \u2014 that's now true with no exception; no promotion ever changes what a tower is.", "New loss condition: if every currently-built fighting tower (anything but Barricade) is simultaneously overrun/disabled mid-wave, the run ends immediately instead of playing on with an empty board.", "Escaped enemies now bounce within the current expanded map region instead of the full theoretical 32\u00d720 grid, so they no longer wander far outside the visible chessboard after breaking through.", "Barricade hits now throw 1 stone and 1-2 wood chunks (was 7-12) \u2014 a chip still reads clearly without burying the animation in debris.", "Rebalanced base accuracy: Mage 45%\u219238% miss chance, Archer 40%\u219234%, Warrior (Swordsman/evolutions) 30%\u219236% \u2014 Swordsman was meaningfully more accurate than Archer/Mage with no in-fiction reason to be; this narrows but doesn't erase that gap.", "iOS: blocked the browser's own pinch-zoom/double-tap-zoom gesture at the event level. iOS Safari ignores the viewport meta's user-scalable=no, and its pinch-zoom is the actual cause of the reported 'menu bars go out of view when I zoom in' \u2014 fixed-position HUD bars detach from the viewport during a native page zoom. The game's own in-canvas pinch-to-zoom (Pointer Events) is unaffected."]}, {"v": "1.4.43", "date": "2026-09-22", "title": "Arrows fly stiff instead of homing", "items": ["Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s), and correction is abandoned entirely once the target has swung more than PROJECTILE_HOMING_MAX_ANGLE (~11°) off the shot's heading. Past that the arrow commits to its line and misses geometrically, the way a real arrow does.", "Verified: a target darting hard off the line produced 0° of turn, where the old rate would have curved the shot around after it."]}, {"v": "1.4.42", "date": "2026-09-22", "title": "Gold pops on the HUD; wave line drops the size-tier name", "items": ["\"+N\" rises beside the gold counter whenever gold arrives, with a two-note coin sound. It is driven from the HUD update, so every source counts — kills, bounties, wave clear, mastery conversion, selling. Gains inside the same second stack into one pop instead of flickering (verified: +37 then +12 shows +49).", "Wave line no longer names the size tier (\"Tiny 9/10 · 8/10\" → \"8/10\"); it now shows only resolved/total plus the escapee count when there is one."]}, {"v": "1.4.41", "date": "2026-09-22", "title": "Bigger sends now that barricades hold a choke point", "items": ["Batch sizes raised: through wave 50 every tier sends 2-5 at a time (Tiny 3-5, Small 2-5, Standard 2-4, Large 2-3); from wave 51 it is 5-10 (Tiny 7-10, Small 6-9, Standard 5-8, Large 5-7). The old trickle (1-2 for Standard/Large, 1 for the first waves) existed because nothing reliably held enemies at a choke point.", "Wave 1 still walks its ten enemies out one at a time as the tutorial beat, and Bosses still arrive alone.", "Verified: wave 3 sends 3-5, wave 50 tops out at 5, wave 60 at 10; batch counts drop accordingly (wave 50 now 138 batches), so waves play denser without changing population."]}, {"v": "1.4.40", "date": "2026-09-22", "title": "Kills pay roughly double", "items": ["Tier bounty multipliers raised across the board: Tiny 0.4 → 0.9, Small 0.7 → 1.5, Standard 1.0 → 2.2, Large 2.5 → 5.5, Boss 1.0 → 2.2. These were tuned before waves carried hundreds of enemies and before barricades became a recurring cost.", "Per-kill gold for a Grunt now: Tiny 5, Small 9, Standard 13, Large 33 (was 2/4/6/15).", "Whole-wave gold budget: wave 5 pays 642 (was ~290), wave 20 pays 4,144 (was ~1,880).", "XP is untouched — this only changes the economy, not training pace."]}, {"v": "1.4.39", "date": "2026-09-22", "title": "Debris flicker: one source of truth", "items": ["Root cause of the flickering: baking rubble (1.4.37) gave every debris piece two possible homes — the cached ground layer and the live debris pass. Each transition between them (entering the bake window, leaving it for the fade, and the coalesced rebuild landing seconds later) was a frame where a piece was drawn twice or not at all.", "No ground debris is baked any more. Skulls, bones, worms and barricade rubble are always live-drawn, above the blood and below the actors, with a single draw path. Cost is small — debris is sparse and viewport-culled, unlike the thousands of blood decals that baking exists for.", "Rubble still holds full opacity and fades only over the final 10% of its 5-minute life; bone never fades.", "Measured over 10 samples with 50 debris pieces on screen: count and baked-count perfectly stable (50 / 0 every sample), where a flickering piece would have oscillated."]}, {"v": "1.4.38", "date": "2026-09-22", "title": "Skulls and bones stop popping in and out", "items": ["Found the cause: at the decal cap (1,200 on Low, 2,000 on High) pushDecal() recycled the oldest slot regardless of what it held, so a blood-heavy wave steadily overwrote skulls, bones and rubble — they vanished and only \"came back\" when a new kill dropped another one.", "Recycling now skips debris slots and takes a blood stain instead, with a bounded scan (one lap max) so it can never spin. Debris still expires on its own schedule.", "Measured: 79 debris pieces survived 4,000 fresh blood decals at the cap — previously they would have been overwritten."]}, {"v": "1.4.37", "date": "2026-09-22", "title": "Rubble bakes into the ground and lasts ~5 minutes", "items": ["Barricade rubble now bakes into the ground layer once it settles (isDecalBakeEligible() covers isRubble from 2% to 90% of its life) instead of being redrawn every frame — it becomes part of the scene, like the baked blood. Bone and skull stay live-drawn above the blood as before.", "Lifespan raised from 50s to 5 minutes (BARRICADE_RUBBLE_LIFESPAN), and it only fades over its final 10%, which is exactly the window where it leaves the baked layer and is drawn live again so the fade can animate.", "The debris pass skips baked pieces, so nothing is drawn twice.", "Verified: 7 pieces baked after settling, out of the cache again near end of life."]}, {"v": "1.4.36", "date": "2026-09-22", "title": "Ground debris never fades", "items": ["Bone, stone and barricade rubble now draw at full opacity for their entire life and simply expire — no fade-in, no fade-out. The flying chunks are solid the whole way through their arc too, so a piece lands rather than dissolving mid-air.", "Rubble still clears after ~50s; bone and skull debris remain permanent."]}, {"v": "1.4.35", "date": "2026-09-22", "title": "Rubble stays solid until it's actually old", "items": ["Landed timber and stone now hold full opacity for the first 80% of their 50s life and fade only over the last 20% (was fading across the final third, which read as \"spawns already faded\"). Measured: alpha 1.00 at 0% and 50% of life, 0.75 at 85%, 0.25 at 95%.", "Pieces bumped slightly (stone 6-9px, timber 7-10px) and the landed piece now keeps the chunk's full size instead of shrinking to 80%, so small pieces don't wash out against the ground."]}, {"v": "1.4.34", "date": "2026-09-22", "title": "Debris scatters in every direction, at a smaller scale", "items": ["Chunks now launch on a full 360° ground-plane spread instead of a narrow upward cone, with the vertical component squashed to 0.6 for the game's shallow top-down perspective, so pieces land all around the barricade rather than in a plume above it. The arc still comes from the separate vertical hop, so a piece thrown \"downward\" on screen still tumbles through the air.", "Piece size cut roughly in half (stone 5-8px, timber 6-9px, was 9-14/12-17) and launch speed widened to 60-180 px/s, so the burst reads as splinters and chips rather than whole logs."]}, {"v": "1.4.33", "date": "2026-09-22", "title": "More rubble per hit, and it clears after ~50s", "items": ["A barricade hit now throws 12 chunks (7 on Low, up from 7/4) in an even split of timber and stone, with the chunk pool raised to 64 slots.", "Landed rubble expires after 50s (BARRICADE_RUBBLE_LIFESPAN) and fades over its final third instead of standing forever. Bone and skull debris is untouched — that stays permanent scenery; only barricade litter clears.", "Verified: 7 chunks airborne on impact, ground pieces present after landing, and zero left once the 50s life elapsed."]}, {"v": "1.4.32", "date": "2026-09-22", "title": "Timber and stone actually fly off the barricade", "items": ["Replaced the instant scatter of ground pieces with a real throw: spawnBarricadeChunk() launches 7 chunks (4 on Low) up and outward with their own velocity, a vertical hop under gravity (BARRICADE_CHUNK_GRAVITY) and spin, arcing for about a second before landing. Each one lays down its permanent ground piece where it lands, so the debris trail matches the animation.", "Pooled (48 slots, round-robin), so a hit allocates nothing; drawn above the actors with a short fade-out at the end of flight.", "Verified in-browser: 4 chunks airborne mid-arc with 0 ground pieces, then 0 airborne and 4 ground pieces after landing."]}, {"v": "1.4.31", "date": "2026-09-22", "title": "Barricade damage text is just the number", "items": ["Dropped the 🪵 from the chip text: it now reads \"-1 (9/10)\". The flying timber and stone pieces already carry that read visually."]}, {"v": "1.4.30", "date": "2026-09-22", "title": "Stat-button glows matched in strength", "items": ["Gold (primary damage stat) and silver (support stats) now use the same glow size and opacity — 10px spread, 2px blur, 0.72 alpha — so they differ in hue only. Gold was 12px/3px/0.75 against silver's 8px/1px/0.55, which made the support stats look disabled rather than secondary."]}, {"v": "1.4.29", "date": "2026-09-22", "title": "A melee miss now looks like a miss", "items": ["Ranged shots already pre-roll: a rolled miss flies a deliberately offset path and never resolves a hit, so \"MISS\" always matches what you see. Melee had no equivalent — the blade swept through the enemy's position and \"MISS\" floated over an enemy the arc visibly passed through.", "dodgeEnemyFromSwing() now shoves a dodging enemy 7px perpendicular to the attacker, out of the arc, with a small scuff puff. The side is derived from the enemy and tower ids, so it is stable rather than jittering frame to frame.", "Verified: a dodged enemy moves exactly 7px out of the swing line; 16/16 self-tests."]}, {"v": "1.4.28", "date": "2026-09-22", "title": "Barricades take a full 10s of attacking before the first point, and shed timber/stone", "items": ["No instant first chip. An attacker now has to sustain contact for a full BARRICADE_HIT_INTERVAL_MS (10s) before the barricade loses its first point (barricadeContactSince, barricadeAttackReady()); every later point is on the same interval. Both damage paths — the pile-up attacker and direct takeDamage() — share one routine (chipBarricade()), so neither can bypass the wind-up.", "Wood and stone fly off on every point lost (spawnBarricadeDebris()): timber and grey particle bursts plus 5 scattered 🪵/🪨 pieces that settle as ground debris (2 on Low graphics), alongside the existing shake, red flash, impact sound and \"🪵 -1 (9/10)\" text.", "Verified: contact starting now does not chip; after 10s of attacking it drops to 9 and leaves debris; an immediate second attempt is correctly ignored."]}, {"v": "1.4.27", "date": "2026-09-22", "title": "Final casualty of the build bug restored; whole-file symbol check added", "items": ["STAT_TIER_STEP / STAT_TIER_NAMES (the rank ladder constants) were the last thing the changelog-embed generator had deleted — every kill crashed in refreshStatTier(). Restored.", "Added a whole-file symbol check to the ship process: every function and constant the recent work introduced is now evaluated in a real browser before shipping, so a missing declaration can't reach you again. Current result: none missing.", "Verified: three waves at 10x with Swordsman, Archer and Mage — zero page errors, zero console errors, 16/16 self-tests."]}, {"v": "1.4.26", "date": "2026-09-22", "title": "Restore the element system (second casualty of the same build bug) and re-roll the sky per visit", "items": ["Boot crash fixed: towerElement is not defined. The same changelog-embed generator that ate the update-notice functions in 1.4.25 had also deleted ELEMENT_VISUALS, ELEMENT_LABELS, towerElement(), towerDisplayName(), refreshElementState(), attunementProcChance() and applyAttunementStatus() — the whole elemental layer. All restored and verified: Fire/Ice attunements apply, mixes resolve (500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 → Quasar), and projectiles carry their element colour again.", "The attract sky now re-rolls per visit, not once per page load: day/night, moon phase and the moon's position re-roll when the screen is shown after being away (returning from a run, for example). Verified across six loads — phases 0, 4, 5 and 7 and positions spanning 19-81% of the sky."]}, {"v": "1.4.25", "date": "2026-09-22", "title": "Fix boot crash from the 1.4.24 build step", "items": ["1.4.24 failed to boot with \"maybeShowUpdateNotice is not defined\". My changelog-embed generator replaced from the start of CHANGELOG_ENTRIES to the wrong terminator and deleted the three functions that followed it (compareVersions(), maybeShowUpdateNotice(), dismissUpdateNotice()). Restored, with the duplicate LAST_SEEN_VERSION_KEY removed.", "No gameplay change. Verified: clean boot, 16/16 self-tests, boss tier intact (radius 48, speed 8), and the what's-new dialog lists 1.4.14-1.4.24 from a stored 1.4.13."]}, {"v": "1.4.24", "date": "2026-09-22", "title": "Moon moves and changes phase between visits", "items": ["The attract sky body is now placed per visit: horizontal position 12-88% across the sky and 22-67% down the sky band (attractSkyBodyT, attractSkyBodyHeight), instead of always sitting at the same top-right spot.", "Night rolls a moon phase (attractMoonPhase, 0 new through 4 full to 7 waning crescent). The phase is carved by painting the sky colour back over the disc with an offset, so a large offset leaves a crescent and a small one a gibbous — no extra assets, one extra arc fill.", "All three values roll once per visit alongside the day/night choice, so the scene holds still while the menu is on screen. Verified across crescent, gibbous and waning positions."]}, {"v": "1.4.23", "date": "2026-09-22", "title": "JRPG boss warning, bigger/slower bosses, what's-new shows only new versions", "items": ["Boss warning. When a Boss phase starts, the screen pulses red and a black band holds \"⚠ WARNING ⚠ / BOSS APPROACHING\" for 2.6s with a heavy screen shake and a sting (showBossWarning(), drawBossWarning()), replacing the generic phase banner.", "Bosses are properly huge and slow: radius 32-38 → 44-52, speed 12-19 → 8-13. Still strictly slower and larger than every other tier (band validation passes). Verified: a wave-10 Boss spawns at radius 48, speed 8, 2,281 HP.", "The what's-new dialog no longer replays old versions. A returning player sees only releases newer than their stored version; if nothing newer exists it shows just the current release instead of the whole archive. The whole changelog still shows on a first run.", "\"What's new since vX\" moved to the footer, just above the opt-out checkbox and OK button."]}, {"v": "1.4.22", "date": "2026-09-22", "title": "Attract screen: day or night, and no kill counter", "items": ["The attract backdrop now rolls day or night once per visit (attractIsDaytime, fixed for the session so it can't flicker between frames). Night keeps the moon and the fourteen twinkling stars; day gets a blue-to-haze sky, a warm sun with a wider glow, no stars, and a lighter checkerboard field so the change reads through the start screen's dimmer.", "Removed the \"💀 N defeated\" counter from the attract screen — it belongs in a run, not on the title screen."]}, {"v": "1.4.21", "date": "2026-09-22", "title": "What's-new dialog shows every missed version, full changelog on first run", "items": ["The embedded entry list is regenerated at ship time, so the dialog always includes the version being released (it previously lagged one entry behind — v1.4.18 showed only 1.4.17's notes).", "With no stored last-played version (first run or cleared storage) the dialog now shows the whole embedded changelog under the heading \"Full changelog\" instead of a single entry; the region scrolls, so length costs nothing.", "The last-played version is stored in localStorage (stickTD_lastSeenVersion) and only updated when the dialog is dismissed, so skipping several updates still shows all of them at once."]}, {"v": "1.4.20", "date": "2026-09-22", "title": "Starter barricade is 10 HP; losing a point is visible", "items": ["The auto-placed starting barricade no longer spawns at 5 HP. That override existed for the old 1-damage-per-2s rule; with the 1.4.3 rate limit (1 per 10s from any source) it just made the starter barricade break twice as fast as every other one. All barricades are 10 HP.", "Chip feedback on every point lost: a 260 ms shake and red flash on the barricade itself (barricadeChipUntil), wood-splinter particles, an impact sound, a small screen shake (honours the screen-shake setting), and floating text showing the remaining HP — \"🪵 -1 (9/10)\".", "Verified: starter barricade begins 10/10, one hit takes it to 9 with the chip state set, a second hit inside the 10s window is correctly ignored, and the next hit after the window lands."]}, {"v": "1.4.19", "date": "2026-09-22", "title": "Options moved out of the start screen's centre column", "items": ["The start-screen Options control is now a small ⚙️ button pinned to the top-left corner at 65% opacity (full on hover), instead of a full-width button under PLAY. Verified: 41px wide at 12,12, and it still opens the settings modal.", "Graphics already defaulted to Low (graphicsQuality = 'low'); confirmed unchanged."]}];
+const CHANGELOG_ENTRIES = [{"v": "1.4.61", "date": "2026-09-23", "title": "One more per-tick allocation removed; audited every remaining .filter() in the file", "items": ["checkAllFightersDown() ran every SIMULATION TICK (not just every rendered frame \u2014 several ticks can run per frame at high game speed) and allocated a new array via towerPool.filter() every single time, just to check two conditions and throw it away. Rewritten as a plain loop with an early break \u2014 same logic, zero allocation.", "Audited all 29 remaining .filter() call sites in the file. The two inside per-enemy update(dt) methods (CatCompanion, SkeletonMinion) looked like candidates but are both already correctly gated \u2014 CatCompanion only retargets (and filters) when its target is lost, SkeletonMinion only queries when its attack cooldown has actually elapsed \u2014 neither runs unconditionally every tick. Nothing else in the list runs on a hot path; the rest are one-time boot/save/load/UI-modal code."]}, {"v": "1.4.60", "date": "2026-09-23", "title": "Review pass: caught one flagged-but-unfixed DOM lookup, verified the rest", "items": ["showToast() (fires on nearly every wave start, unlock, milestone, and item drop) still had 2 uncached document.getElementById() calls \u2014 flagged during the checkTowerUnlocks() investigation a few versions back but never actually patched. Fixed now, same cached-const pattern as everywhere else.", "Verified via a full syntax recompile (node --check) plus a direct source scan of render() and update()'s own function bodies: zero remaining uncached DOM lookups in either the main render or update loop, or any of their now-fixed per-frame sub-functions (updateInspectPanel, updateTargetFrame, updateHUDImmediate, showToast). DECAL_BAKE_MIN_AGE_MS and the Low-graphics gate on drawBloodLustAura() both confirmed still in place and unmodified by any later change this session."]}, {"v": "1.4.59", "date": "2026-09-23", "title": "Two more per-frame DOM-caching fixes, sparser blood/bones, wave HUD decluttered", "items": ["Swept the whole file for the same bug class as the inspect-panel fix: updateTargetFrame() (runs every rendered frame, unconditionally, via render()) and updateHUDImmediate() (runs up to once per rendered frame) were both re-querying document.getElementById() every single call instead of caching. Both now use the same cached-const pattern as everything else \u2014 real 60fps-adjacent DOM cost removed, not just canvas-side cost.", "Blood decals made sparser and more realistic per direct feedback: spawnDecal()'s blob counts cut roughly in half across all three size tiers (rare-big 6-8\u21924-5, modest 4-6\u21923-4, ordinary 3-5\u21922-3) and the odds of landing a bigger splatter halved too (4%/16% thresholds \u2192 2%/10%). Fewer blobs per hit means the total decal count \u2014 which still drives array/cap/hit-testing cost even after the bake-speed fix \u2014 grows more slowly over a session, on top of reading closer to real spatter (mostly fine droplets, not a blob cluster).", "Bone/skull debris chances cut well back down (78%\u219230%, 45%\u219214%; these had crept up over two earlier feedback rounds asking for more) and bone count per kill reduced (1-3\u21921-2). This debris lives 45 minutes and essentially never expires in a normal session, so a high per-kill chance was permanent, ever-growing clutter in a way blood isn't.", "Removed the \"68/74\"-style unit-progress readout that showed next to the wave counter (\"Wave 5/100\") \u2014 direct feedback that it was excessive/messy information a player doesn't need mid-fight. The escapee warning that shared that same text slot is kept (now reads \"\ud83c\udffc N loose\"), since unlike the progress count it's an actual actionable signal, and only appears when something's actually loose past the barricades."]}, {"v": "1.4.58", "date": "2026-09-23", "title": "Map rebake cost cut on every expansion, without touching correctness", "items": ["Found a real, documented violation of this project's own lag-creep rule 4 (\"no unconditional full-world work\"): rebakeMap() redraws the ENTIRE static map on every map expansion (~every 4 waves), inside the same wave-complete transition that's shown up as a real frame spike in every debug log so far.", "The obvious fix (only repaint the new ring) is NOT done here \u2014 the finish-line carpet moves every expansion, and a ring-only repaint would leave the old carpet baked in twice without a real in-browser check I can't run blind. That risk, and the exact reasoning, is now written into AGENTS.md's lag-creep protocol so it isn't silently rediscovered or wrongly assumed fixed later.", "What IS done, safely: the path speckle texture (previously up to ~500 separate beginPath+ellipse+fill calls per rebake, one per speckle) is now 2 batched fill calls total (one per color). The checkerboard tile borders (previously one strokeRect() per tile) are now 1 batched stroke call. Both are real, verified reductions in the cost of the SAME full redraw \u2014 not a scope change, so no correctness risk to the carpet or anything else. Visual difference is limited to same-color speckles no longer double-darkening where they happen to overlap \u2014 imperceptible at this size/opacity/sparsity."]}, {"v": "1.4.57", "date": "2026-09-23", "title": "Inspect-panel DOM caching, Mage blood scaled to sane levels, stat-cap display", "items": ["Chased the inspect-panel lag lead: updateInspectPanel() was calling document.getElementById() 56 times PER CALL, uncached, and it's invoked on nearly every kill/XP event while a tower is selected \u2014 dozens of times inside one rendered frame at 3x+ speed. All 56 now use the same cached-at-boot const pattern the file already used for inspName/inspLevel (found and fixed two accidental duplicate declarations this introduced along the way). This is DOM cost, not canvas cost, so it never showed up in the render/update perf breakdown \u2014 exactly why it stayed hidden until actually reading the function.", "Mage blood output cut roughly in half: the two base per-hit particle counts were 46/26 (at hitPower=1), which is MORE particles than this game's own KILL-only gore burst for every other class (36-48) \u2014 on every ordinary non-kill Mage hit. Now 20/12, matching other classes' kill-tier burst on a regular hit \u2014 still the boldest per-hit spray in the game by design, no longer exceeding what a kill produces everywhere else.", "Verified: item-drop randomness (Math.random()) is already fully isolated from the seeded wave-plan RNG (buildWavePlan()'s own scoped rng()) \u2014 wave composition can't be affected by loot rolls. No code change needed, confirmed safe.", "Stat display now flags when a tower's total STR/DEX/INT (trained + items) has passed STAT_EFFECT_CAP (500) with a '(capped)' suffix \u2014 the number was already accurate, but nothing indicated that combat formulas stop scaling past it, so a 6th item's stat bonus could silently do nothing without any on-screen explanation.", "Checked and found NOT accurate for the current build: a prior report assumed towers get an auto-equipped starter item that takes one of the 6 item slots. Tower.create() starts equippedItems at [] \u2014 all 6 slots are open from the start. No starter-item/Hero-slot interaction exists to document."]}, {"v": "1.4.56", "date": "2026-09-23", "title": "Blood Lust aura gated to Low graphics, matching every other glow effect", "items": ["drawBloodLustAura() (the pulsing red aura on a tower under the Blood Lust buff) was creating a radial gradient plus 5 drip ellipses every single frame, with no Low-graphics gate \u2014 every other glow/gradient effect in the file already has one, this was the one exception. On Low it now draws a single flat-color ring instead. Checked the other gradient call sites in the file (element trails, arrow trails, particle beams, sky) \u2014 all already correctly gated or already low-frequency; this was the one real gap found."]}, {"v": "1.4.55", "date": "2026-09-23", "title": "Hut camp actually fights back, and the hut itself can no longer be shoved", "items": ["The hut was never supposed to move (spawnHut() sets speed=0), but isCampRouteCrossing() only skipped collisions between a camp object and an ordinary lane enemy \u2014 not between the hut and its own guardians \u2014 so the collision resolver could still push it. Both resolveEnemyCollisions() and resolveSweptEnemyCollisions() now treat isHutBuilding as immovable, the same way a frozen/stunned enemy already is: only the other object in the pair ever moves.", "Guardians now actually retaliate. Enemy.applyDamage() records post-mitigation HP damage from towers into a shared hut.campDamageLedger (a killing blow counts no more than the HP it took to finish the target). Every living guardian pursues and melees whichever active, non-disabled tower currently leads that ledger (campLeaderTower(), stable tie-break by tower id) using the same approach/engage/attack-timer pattern updateBreakaway() already uses against towers \u2014 they no longer just wander.", "A separate, longer combat leash (GUARDIAN_COMBAT_LEASH, 260px) governs how far a guardian will chase its target, distinct from the tight 42px idle-wander radius; going past it (or losing the target) walks the guardian back to the hut anchor at reduced speed before idle wander resumes, instead of snapping/teleporting home.", "The ledger belongs to the hut, not any one generation of guardians: it starts fresh when a hut first spawns and is deliberately never cleared when its guardians respawn, so a new pair immediately continues defending against whoever was already attacking the camp."]}, {"v": "1.4.54", "date": "2026-09-23", "title": "Huts wait for the map to grow, and their guardians actually stay close to home", "items": ["The hut/creep-camp no longer spawns immediately on the tiny starting map. It now spawns the first time the map reaches HUT_MIN_EXPANSION_LEVEL (3) expansions, so the earliest waves are never sharing that small a space with one.", "Guardian leash tightened from a 70px roam radius to 42px, and their bumble speed slowed (0.5x \u2192 0.32x of a Grunt's speed) \u2014 they now read as genuinely glued to their hut, snapping back to it after any knockback, rather than wandering a fairly wide patrol loop around it."]}, {"v": "1.4.53", "date": "2026-09-23", "title": "Game Over message no longer orphans a single word on its own line", "items": ["\"Rebuild and try again.\" was wrapping with just \"again.\" alone on the second line at the end screen's default width. Non-breaking spaces now tie \"Rebuild and try again.\" (and the default message's \"Rebuild your squad and try again.\") together so the phrase always wraps as one unit, never splitting off a lone trailing word."]}, {"v": "1.4.52", "date": "2026-09-23", "title": "Countdown moves to the spawn marker, in red, and the exclamation mark is wider", "items": ["The 3-2-1-GO countdown is now world-space, anchored directly above the pulsing \u2757 spawn marker instead of a fixed screen overlay \u2014 it now tracks the spawn tile through the camera pan the same way the marker already does.", "Countdown numbers (3, 2, 1) are now red; GO! keeps its own gold celebration color.", "The \u2757 spawn marker is now stretched wider (1.7x horizontally) while keeping its existing pulse-in/pulse-out animation and height untouched."]}, {"v": "1.4.51", "date": "2026-09-23", "title": "Build menu shows every tower from the start, locked or not \u2014 a complete map of the README", "items": ["Deep-tier evolutions (Paladin, Squirt Gun, Bomber, Gunalinder, Sniper, Berserker, Lancer) used to stay fully hidden \u2014 not even a locked row \u2014 until their own prerequisite class was unlocked first. Every one of the 19 evolved tower types now shows a row immediately, unlocked or \ud83d\udd12, so the Build menu is a complete, always-visible map matching every tower documented in the README.", "README: removed Proton/Dark Matter/Quasar from the tower table \u2014 they were listed there as if they were separately buildable towers, contradicting the Leveling section's own (correct) explanation that they're elements a tower carries on its own attack. A pointer to that section replaces the three rows."]}, {"v": "1.4.50", "date": "2026-09-23", "title": "Quasar is an element again, not a tower \u2014 the actual bug, this time found and fixed", "items": ["Removed the one stray line (TOWER_UNLOCK_SOURCE_BY_TARGET.QUASAR) that wrongly registered Quasar as its own separately-buildable Build-tray tower. Proton and Dark Matter never had this bug \u2014 only Quasar did, which is why 1.4.49's comment fix (which assumed the code was right and the doc was stale) was itself wrong. Quasar is now purely an ELEMENT STATE, exactly like Proton and Dark Matter always correctly were: whichever tower (Swordsman/Archer/Mage or any evolution) reaches DEX+INT 500 keeps being exactly what it is, and its own existing attack gains burn+slow+a small splash radius (QUASAR_ELEMENT_SPLASH_RADIUS, 40px) \u2014 not a new unit to build.", "CONFIG.TOWERS.QUASAR itself is kept, legacy-only, so a save made while the bug was live still loads without error. Nothing else changed \u2014 Hammerman, Blowdart, Cleric and every other single-element specialization are still separately buildable towers exactly as before; this was scoped to the 3 hybrids only, and only Quasar actually needed a code change."]}, {"v": "1.4.49", "date": "2026-09-23", "title": "Comment-only correction: Proton/Quasar/Dark Matter really are buildable towers", "items": ["No gameplay change. A stale code comment claimed Proton/Quasar/Dark Matter were \"NOT buildable classes... mixed ELEMENT STATES\" \u2014 that never matched the actual code (CONFIG.TOWERS has real entries for all three, unlocked and built exactly like every other specialization) and was the direct source of a confused session mistakenly proposing to rearchitect tower progression into in-place elemental transformation. Confirmed with the owner: the existing stat-threshold-unlock mechanic (a tower never transforms, it just permanently unlocks the next separately-buildable tower) was already correct and needed no change \u2014 only this comment did. AGENTS.md's matching invariant corrected the same way, plus a new standing rule there against proposing mechanic changes without explicit confirmation."]}, {"v": "1.4.48", "date": "2026-09-23", "title": "Backlog sweep: item drops, a real all-towers-down wipe, and a clearer attunement toast", "items": ["End-of-round item drops: a 12% chance per wave clear to drop a random item (Lucky Branch, or two new items \u2014 Iron Charm, a flat +3 armor piece, and Swift Feather, a DEX-leaning stat item) near one of your active towers.", "The \"all towers down\" loss condition now also fires if every fighter is sold/lost mid-wave (previously only fired when every fighter was simultaneously disabled, deliberately not on zero-fighters, to avoid a false game-over on wave 1 before anything is built). A new everBuiltFighter flag distinguishes \"hasn't built anything yet\" from \"had a squad and lost it.\"", "The attunement floating text now names the actual next unlock and how far off it is (e.g. '\u26a1 Attuned! \u2014 240 more DEX to Blowdart') instead of a bare 'Attuned!' \u2014 100 in a stat only locks in an element, the buildable unlock is at 500, and the old text was the direct cause of \"100 DEX did nothing\" reports."]}, {"v": "1.4.47", "date": "2026-09-23", "title": "Spawn warning marker, and the countdown no longer runs during the camera pan", "items": ["A pulsing red \u2757 now marks the wave's spawn point for the entire pre-spawn window (camera pan + 3-2-1-GO), so it's obvious where the camera is heading and where enemies are about to appear. Gone the instant real spawning starts.", "The 3-2-1-GO countdown (and the first real enemy spawn) previously started counting the instant a wave began, running IN PARALLEL with the 1200ms camera pan to the spawn point \u2014 so \"3\" was already on screen while the camera was still mid-swing. waveTimer is now frozen for the duration of the pan, the same mechanism already used to freeze it during a barricade pile-up, so the countdown only starts once the camera has actually arrived."]}, {"v": "1.4.46", "date": "2026-09-23", "title": "The real fix for long-session lag: decals were taking 13.5 minutes to become cheap", "items": ["Root cause, confirmed from a user-submitted debug export (drawDecals() at 75% of render time with 0 enemies on screen, 633/637 decals still unbaked 8 minutes into the session): decal bake-eligibility was written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45), which was harmless when the lifespan was 5 minutes but silently became a 13.5-REAL-MINUTE delay once DECAL_LIFESPAN was extended to 30 minutes in an earlier version so bloodstains would visually last longer. Until a decal turned 13.5 minutes old it stayed in the expensive per-frame live-draw pass.", "Baking now triggers off a small absolute age (DECAL_BAKE_MIN_AGE_MS, 4s) instead of a fraction of however long the stain is set to visually persist. A decal is cheap to render within 4 seconds of landing regardless of whether its total lifespan is 5 minutes or 30 \u2014 the two concerns (how long it lasts vs. how soon it's cheap) are no longer coupled through the same number."]}, {"v": "1.4.45", "date": "2026-09-23", "title": "Evolution hint shows only the nearest next unlock", "items": ["An attuned tower's evolution hint used to always show its single-element specialization target AND its nearest hybrid side by side, even when the hybrid was hundreds of points further off (e.g. '54 more INT' shown next to '350 more STR/INT for Dark Matter'). It now compares every reachable next unlock \u2014 the single-element specialization and all three hybrids \u2014 and shows only whichever is actually closest."]}, {"v": "1.4.44", "date": "2026-09-23", "title": "Unlocks are permanent, promotion never changes a tower's class, and a wipe now ends the run", "items": ["Tower unlocks (Crazy Chef, Cat Snapper, every attunement/hybrid including Quasar) are now stored in their own localStorage key, separate from any save file, and are never wiped by resetGame()/starting a new run. This was the actual cause of unlocks 'not sticking' \u2014 unlockedTowerTypes was reset to empty on every restart.", "Removed the level-5 Swordsman spec popup that force-picked Zweihander/Dual Wield and silently changed damage/cooldown/swing arc. Promotion (the Promote button) was already meant to be pure stat gain \u2014 that's now true with no exception; no promotion ever changes what a tower is.", "New loss condition: if every currently-built fighting tower (anything but Barricade) is simultaneously overrun/disabled mid-wave, the run ends immediately instead of playing on with an empty board.", "Escaped enemies now bounce within the current expanded map region instead of the full theoretical 32\u00d720 grid, so they no longer wander far outside the visible chessboard after breaking through.", "Barricade hits now throw 1 stone and 1-2 wood chunks (was 7-12) \u2014 a chip still reads clearly without burying the animation in debris.", "Rebalanced base accuracy: Mage 45%\u219238% miss chance, Archer 40%\u219234%, Warrior (Swordsman/evolutions) 30%\u219236% \u2014 Swordsman was meaningfully more accurate than Archer/Mage with no in-fiction reason to be; this narrows but doesn't erase that gap.", "iOS: blocked the browser's own pinch-zoom/double-tap-zoom gesture at the event level. iOS Safari ignores the viewport meta's user-scalable=no, and its pinch-zoom is the actual cause of the reported 'menu bars go out of view when I zoom in' \u2014 fixed-position HUD bars detach from the viewport during a native page zoom. The game's own in-canvas pinch-to-zoom (Pointer Events) is unaffected."]}, {"v": "1.4.43", "date": "2026-09-22", "title": "Arrows fly stiff instead of homing", "items": ["Mid-flight correction is now a trim, not a chase: turn rate cut from 1.5 to 0.45 rad/s (~26°/s), and correction is abandoned entirely once the target has swung more than PROJECTILE_HOMING_MAX_ANGLE (~11°) off the shot's heading. Past that the arrow commits to its line and misses geometrically, the way a real arrow does.", "Verified: a target darting hard off the line produced 0° of turn, where the old rate would have curved the shot around after it."]}, {"v": "1.4.42", "date": "2026-09-22", "title": "Gold pops on the HUD; wave line drops the size-tier name", "items": ["\"+N\" rises beside the gold counter whenever gold arrives, with a two-note coin sound. It is driven from the HUD update, so every source counts — kills, bounties, wave clear, mastery conversion, selling. Gains inside the same second stack into one pop instead of flickering (verified: +37 then +12 shows +49).", "Wave line no longer names the size tier (\"Tiny 9/10 · 8/10\" → \"8/10\"); it now shows only resolved/total plus the escapee count when there is one."]}, {"v": "1.4.41", "date": "2026-09-22", "title": "Bigger sends now that barricades hold a choke point", "items": ["Batch sizes raised: through wave 50 every tier sends 2-5 at a time (Tiny 3-5, Small 2-5, Standard 2-4, Large 2-3); from wave 51 it is 5-10 (Tiny 7-10, Small 6-9, Standard 5-8, Large 5-7). The old trickle (1-2 for Standard/Large, 1 for the first waves) existed because nothing reliably held enemies at a choke point.", "Wave 1 still walks its ten enemies out one at a time as the tutorial beat, and Bosses still arrive alone.", "Verified: wave 3 sends 3-5, wave 50 tops out at 5, wave 60 at 10; batch counts drop accordingly (wave 50 now 138 batches), so waves play denser without changing population."]}, {"v": "1.4.40", "date": "2026-09-22", "title": "Kills pay roughly double", "items": ["Tier bounty multipliers raised across the board: Tiny 0.4 → 0.9, Small 0.7 → 1.5, Standard 1.0 → 2.2, Large 2.5 → 5.5, Boss 1.0 → 2.2. These were tuned before waves carried hundreds of enemies and before barricades became a recurring cost.", "Per-kill gold for a Grunt now: Tiny 5, Small 9, Standard 13, Large 33 (was 2/4/6/15).", "Whole-wave gold budget: wave 5 pays 642 (was ~290), wave 20 pays 4,144 (was ~1,880).", "XP is untouched — this only changes the economy, not training pace."]}, {"v": "1.4.39", "date": "2026-09-22", "title": "Debris flicker: one source of truth", "items": ["Root cause of the flickering: baking rubble (1.4.37) gave every debris piece two possible homes — the cached ground layer and the live debris pass. Each transition between them (entering the bake window, leaving it for the fade, and the coalesced rebuild landing seconds later) was a frame where a piece was drawn twice or not at all.", "No ground debris is baked any more. Skulls, bones, worms and barricade rubble are always live-drawn, above the blood and below the actors, with a single draw path. Cost is small — debris is sparse and viewport-culled, unlike the thousands of blood decals that baking exists for.", "Rubble still holds full opacity and fades only over the final 10% of its 5-minute life; bone never fades.", "Measured over 10 samples with 50 debris pieces on screen: count and baked-count perfectly stable (50 / 0 every sample), where a flickering piece would have oscillated."]}, {"v": "1.4.38", "date": "2026-09-22", "title": "Skulls and bones stop popping in and out", "items": ["Found the cause: at the decal cap (1,200 on Low, 2,000 on High) pushDecal() recycled the oldest slot regardless of what it held, so a blood-heavy wave steadily overwrote skulls, bones and rubble — they vanished and only \"came back\" when a new kill dropped another one.", "Recycling now skips debris slots and takes a blood stain instead, with a bounded scan (one lap max) so it can never spin. Debris still expires on its own schedule.", "Measured: 79 debris pieces survived 4,000 fresh blood decals at the cap — previously they would have been overwritten."]}, {"v": "1.4.37", "date": "2026-09-22", "title": "Rubble bakes into the ground and lasts ~5 minutes", "items": ["Barricade rubble now bakes into the ground layer once it settles (isDecalBakeEligible() covers isRubble from 2% to 90% of its life) instead of being redrawn every frame — it becomes part of the scene, like the baked blood. Bone and skull stay live-drawn above the blood as before.", "Lifespan raised from 50s to 5 minutes (BARRICADE_RUBBLE_LIFESPAN), and it only fades over its final 10%, which is exactly the window where it leaves the baked layer and is drawn live again so the fade can animate.", "The debris pass skips baked pieces, so nothing is drawn twice.", "Verified: 7 pieces baked after settling, out of the cache again near end of life."]}, {"v": "1.4.36", "date": "2026-09-22", "title": "Ground debris never fades", "items": ["Bone, stone and barricade rubble now draw at full opacity for their entire life and simply expire — no fade-in, no fade-out. The flying chunks are solid the whole way through their arc too, so a piece lands rather than dissolving mid-air.", "Rubble still clears after ~50s; bone and skull debris remain permanent."]}, {"v": "1.4.35", "date": "2026-09-22", "title": "Rubble stays solid until it's actually old", "items": ["Landed timber and stone now hold full opacity for the first 80% of their 50s life and fade only over the last 20% (was fading across the final third, which read as \"spawns already faded\"). Measured: alpha 1.00 at 0% and 50% of life, 0.75 at 85%, 0.25 at 95%.", "Pieces bumped slightly (stone 6-9px, timber 7-10px) and the landed piece now keeps the chunk's full size instead of shrinking to 80%, so small pieces don't wash out against the ground."]}, {"v": "1.4.34", "date": "2026-09-22", "title": "Debris scatters in every direction, at a smaller scale", "items": ["Chunks now launch on a full 360° ground-plane spread instead of a narrow upward cone, with the vertical component squashed to 0.6 for the game's shallow top-down perspective, so pieces land all around the barricade rather than in a plume above it. The arc still comes from the separate vertical hop, so a piece thrown \"downward\" on screen still tumbles through the air.", "Piece size cut roughly in half (stone 5-8px, timber 6-9px, was 9-14/12-17) and launch speed widened to 60-180 px/s, so the burst reads as splinters and chips rather than whole logs."]}, {"v": "1.4.33", "date": "2026-09-22", "title": "More rubble per hit, and it clears after ~50s", "items": ["A barricade hit now throws 12 chunks (7 on Low, up from 7/4) in an even split of timber and stone, with the chunk pool raised to 64 slots.", "Landed rubble expires after 50s (BARRICADE_RUBBLE_LIFESPAN) and fades over its final third instead of standing forever. Bone and skull debris is untouched — that stays permanent scenery; only barricade litter clears.", "Verified: 7 chunks airborne on impact, ground pieces present after landing, and zero left once the 50s life elapsed."]}, {"v": "1.4.32", "date": "2026-09-22", "title": "Timber and stone actually fly off the barricade", "items": ["Replaced the instant scatter of ground pieces with a real throw: spawnBarricadeChunk() launches 7 chunks (4 on Low) up and outward with their own velocity, a vertical hop under gravity (BARRICADE_CHUNK_GRAVITY) and spin, arcing for about a second before landing. Each one lays down its permanent ground piece where it lands, so the debris trail matches the animation.", "Pooled (48 slots, round-robin), so a hit allocates nothing; drawn above the actors with a short fade-out at the end of flight.", "Verified in-browser: 4 chunks airborne mid-arc with 0 ground pieces, then 0 airborne and 4 ground pieces after landing."]}, {"v": "1.4.31", "date": "2026-09-22", "title": "Barricade damage text is just the number", "items": ["Dropped the 🪵 from the chip text: it now reads \"-1 (9/10)\". The flying timber and stone pieces already carry that read visually."]}, {"v": "1.4.30", "date": "2026-09-22", "title": "Stat-button glows matched in strength", "items": ["Gold (primary damage stat) and silver (support stats) now use the same glow size and opacity — 10px spread, 2px blur, 0.72 alpha — so they differ in hue only. Gold was 12px/3px/0.75 against silver's 8px/1px/0.55, which made the support stats look disabled rather than secondary."]}, {"v": "1.4.29", "date": "2026-09-22", "title": "A melee miss now looks like a miss", "items": ["Ranged shots already pre-roll: a rolled miss flies a deliberately offset path and never resolves a hit, so \"MISS\" always matches what you see. Melee had no equivalent — the blade swept through the enemy's position and \"MISS\" floated over an enemy the arc visibly passed through.", "dodgeEnemyFromSwing() now shoves a dodging enemy 7px perpendicular to the attacker, out of the arc, with a small scuff puff. The side is derived from the enemy and tower ids, so it is stable rather than jittering frame to frame.", "Verified: a dodged enemy moves exactly 7px out of the swing line; 16/16 self-tests."]}, {"v": "1.4.28", "date": "2026-09-22", "title": "Barricades take a full 10s of attacking before the first point, and shed timber/stone", "items": ["No instant first chip. An attacker now has to sustain contact for a full BARRICADE_HIT_INTERVAL_MS (10s) before the barricade loses its first point (barricadeContactSince, barricadeAttackReady()); every later point is on the same interval. Both damage paths — the pile-up attacker and direct takeDamage() — share one routine (chipBarricade()), so neither can bypass the wind-up.", "Wood and stone fly off on every point lost (spawnBarricadeDebris()): timber and grey particle bursts plus 5 scattered 🪵/🪨 pieces that settle as ground debris (2 on Low graphics), alongside the existing shake, red flash, impact sound and \"🪵 -1 (9/10)\" text.", "Verified: contact starting now does not chip; after 10s of attacking it drops to 9 and leaves debris; an immediate second attempt is correctly ignored."]}, {"v": "1.4.27", "date": "2026-09-22", "title": "Final casualty of the build bug restored; whole-file symbol check added", "items": ["STAT_TIER_STEP / STAT_TIER_NAMES (the rank ladder constants) were the last thing the changelog-embed generator had deleted — every kill crashed in refreshStatTier(). Restored.", "Added a whole-file symbol check to the ship process: every function and constant the recent work introduced is now evaluated in a real browser before shipping, so a missing declaration can't reach you again. Current result: none missing.", "Verified: three waves at 10x with Swordsman, Archer and Mage — zero page errors, zero console errors, 16/16 self-tests."]}, {"v": "1.4.26", "date": "2026-09-22", "title": "Restore the element system (second casualty of the same build bug) and re-roll the sky per visit", "items": ["Boot crash fixed: towerElement is not defined. The same changelog-embed generator that ate the update-notice functions in 1.4.25 had also deleted ELEMENT_VISUALS, ELEMENT_LABELS, towerElement(), towerDisplayName(), refreshElementState(), attunementProcChance() and applyAttunementStatus() — the whole elemental layer. All restored and verified: Fire/Ice attunements apply, mixes resolve (500/500/0 → Proton, 500/0/500 → Dark Matter, 0/500/500 → Quasar), and projectiles carry their element colour again.", "The attract sky now re-rolls per visit, not once per page load: day/night, moon phase and the moon's position re-roll when the screen is shown after being away (returning from a run, for example). Verified across six loads — phases 0, 4, 5 and 7 and positions spanning 19-81% of the sky."]}, {"v": "1.4.25", "date": "2026-09-22", "title": "Fix boot crash from the 1.4.24 build step", "items": ["1.4.24 failed to boot with \"maybeShowUpdateNotice is not defined\". My changelog-embed generator replaced from the start of CHANGELOG_ENTRIES to the wrong terminator and deleted the three functions that followed it (compareVersions(), maybeShowUpdateNotice(), dismissUpdateNotice()). Restored, with the duplicate LAST_SEEN_VERSION_KEY removed.", "No gameplay change. Verified: clean boot, 16/16 self-tests, boss tier intact (radius 48, speed 8), and the what's-new dialog lists 1.4.14-1.4.24 from a stored 1.4.13."]}, {"v": "1.4.24", "date": "2026-09-22", "title": "Moon moves and changes phase between visits", "items": ["The attract sky body is now placed per visit: horizontal position 12-88% across the sky and 22-67% down the sky band (attractSkyBodyT, attractSkyBodyHeight), instead of always sitting at the same top-right spot.", "Night rolls a moon phase (attractMoonPhase, 0 new through 4 full to 7 waning crescent). The phase is carved by painting the sky colour back over the disc with an offset, so a large offset leaves a crescent and a small one a gibbous — no extra assets, one extra arc fill.", "All three values roll once per visit alongside the day/night choice, so the scene holds still while the menu is on screen. Verified across crescent, gibbous and waning positions."]}, {"v": "1.4.23", "date": "2026-09-22", "title": "JRPG boss warning, bigger/slower bosses, what's-new shows only new versions", "items": ["Boss warning. When a Boss phase starts, the screen pulses red and a black band holds \"⚠ WARNING ⚠ / BOSS APPROACHING\" for 2.6s with a heavy screen shake and a sting (showBossWarning(), drawBossWarning()), replacing the generic phase banner.", "Bosses are properly huge and slow: radius 32-38 → 44-52, speed 12-19 → 8-13. Still strictly slower and larger than every other tier (band validation passes). Verified: a wave-10 Boss spawns at radius 48, speed 8, 2,281 HP.", "The what's-new dialog no longer replays old versions. A returning player sees only releases newer than their stored version; if nothing newer exists it shows just the current release instead of the whole archive. The whole changelog still shows on a first run.", "\"What's new since vX\" moved to the footer, just above the opt-out checkbox and OK button."]}, {"v": "1.4.22", "date": "2026-09-22", "title": "Attract screen: day or night, and no kill counter", "items": ["The attract backdrop now rolls day or night once per visit (attractIsDaytime, fixed for the session so it can't flicker between frames). Night keeps the moon and the fourteen twinkling stars; day gets a blue-to-haze sky, a warm sun with a wider glow, no stars, and a lighter checkerboard field so the change reads through the start screen's dimmer.", "Removed the \"💀 N defeated\" counter from the attract screen — it belongs in a run, not on the title screen."]}, {"v": "1.4.21", "date": "2026-09-22", "title": "What's-new dialog shows every missed version, full changelog on first run", "items": ["The embedded entry list is regenerated at ship time, so the dialog always includes the version being released (it previously lagged one entry behind — v1.4.18 showed only 1.4.17's notes).", "With no stored last-played version (first run or cleared storage) the dialog now shows the whole embedded changelog under the heading \"Full changelog\" instead of a single entry; the region scrolls, so length costs nothing.", "The last-played version is stored in localStorage (stickTD_lastSeenVersion) and only updated when the dialog is dismissed, so skipping several updates still shows all of them at once."]}, {"v": "1.4.20", "date": "2026-09-22", "title": "Starter barricade is 10 HP; losing a point is visible", "items": ["The auto-placed starting barricade no longer spawns at 5 HP. That override existed for the old 1-damage-per-2s rule; with the 1.4.3 rate limit (1 per 10s from any source) it just made the starter barricade break twice as fast as every other one. All barricades are 10 HP.", "Chip feedback on every point lost: a 260 ms shake and red flash on the barricade itself (barricadeChipUntil), wood-splinter particles, an impact sound, a small screen shake (honours the screen-shake setting), and floating text showing the remaining HP — \"🪵 -1 (9/10)\".", "Verified: starter barricade begins 10/10, one hit takes it to 9 with the chip state set, a second hit inside the 10s window is correctly ignored, and the next hit after the window lands."]}, {"v": "1.4.19", "date": "2026-09-22", "title": "Options moved out of the start screen's centre column", "items": ["The start-screen Options control is now a small ⚙️ button pinned to the top-left corner at 65% opacity (full on hover), instead of a full-width button under PLAY. Verified: 41px wide at 12,12, and it still opens the settings modal.", "Graphics already defaulted to Low (graphicsQuality = 'low'); confirmed unchanged."]}];
 function compareVersions(a, b){
   const left = a.split('.').map(Number), right = b.split('.').map(Number);
   for(let i = 0; i < 3; i++){ if((left[i]||0) !== (right[i]||0)) return (left[i]||0) - (right[i]||0); }
@@ -6048,11 +6078,56 @@ class Enemy{
     else if(this.y > boundY1){ this.y = boundY1; this.wanderVy = -Math.abs(this.wanderVy); }
   }
   // Creep-camp guardian — stays near its hut's fixed anchor point (WC3-style: an off-path area
-  // worth clearing for a reward, not something that ever threatens the lane). Reuses the exact
-  // same soft-bounce wander pattern updateEscaped() already uses, just anchored to hutAnchorX/Y
-  // with a small fixed radius instead of the whole world's bounds — deliberately the smallest
-  // possible reuse of proven movement code rather than a new wander algorithm.
+  // worth clearing for a reward, not something that ever threatens the lane) UNLESS a tower has
+  // damaged the camp, in which case every living guardian focuses whichever tower currently leads
+  // the shared damage ledger (see Enemy.applyDamage()'s campDamageLedger recording and
+  // campLeaderTower() below) — approach, engage in melee, return to guarding once the target is
+  // gone or too far. Idle wander reuses the exact same soft-bounce pattern updateEscaped() already
+  // uses, just anchored to hutAnchorX/Y with a small fixed radius instead of the whole world's
+  // bounds — deliberately the smallest possible reuse of proven movement code.
   updateGuardian(dt){
+    const hut = this.hutRef;
+    const leader = (hut && hut.active) ? campLeaderTower(hut) : null;
+    const guardRadius = 42; // idle leash — tight, reads as "guarding," not patrolling
+    if(leader){
+      const distFromHut = Math.hypot(this.x - this.hutAnchorX, this.y - this.hutAnchorY);
+      if(distFromHut <= GUARDIAN_COMBAT_LEASH){
+        // Actively engaging — a materially longer leash than idle wander, on purpose: chasing the
+        // tower that's actually hurting the camp all the way to melee range is the entire point,
+        // and clamping it to the idle radius would mean "retaliate" never visibly does anything.
+        this.guardianReturning = false;
+        const dx = leader.x - this.x, dy = leader.y - this.y;
+        const dist = Math.hypot(dx,dy) || 0.0001;
+        const engageRange = 26; // same engage range updateBreakaway() uses against a tower
+        if(dist > engageRange){
+          this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+          this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
+        } else {
+          this.vx = 0; this.vy = 0;
+          this.guardAttackTimer = (this.guardAttackTimer||0) - dt;
+          if(this.guardAttackTimer <= 0){
+            this.guardAttackTimer = Math.round(800 * ENEMY_ATTACK_INTERVAL_SCALE); // same cadence updateBreakaway() uses
+            leader.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE)), this.statusOnTower);
+          }
+        }
+        return;
+      }
+      // Beyond the combat leash — disengage and walk home below, same as "no target."
+    }
+    // No valid target (nothing has damaged the camp yet, the leader died/went inactive, or the
+    // combat leash was exceeded) — walk back toward the hut anchor at normal speed until back
+    // inside the idle radius, THEN resume the ordinary bumble-wander below. Without this a
+    // guardian that had chased out to the combat leash would otherwise be instantly snapped/
+    // teleported back the moment its target disappeared, which reads as a glitch, not a retreat.
+    const homeDx = this.hutAnchorX - this.x, homeDy = this.hutAnchorY - this.y;
+    const homeDist = Math.hypot(homeDx, homeDy);
+    if(homeDist > guardRadius){
+      this.guardianReturning = true;
+      this.vx = homeDx/homeDist*this.speed*0.6; this.vy = homeDy/homeDist*this.speed*0.6;
+      this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
+      return;
+    }
+    this.guardianReturning = false;
     this.wanderRepickTimer -= dt;
     if(this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = 900 + Math.random()*1400;
@@ -6064,7 +6139,6 @@ class Enemy{
     this.vx = this.wanderVx; this.vy = this.wanderVy;
     this.x += this.vx*dt/1000;
     this.y += this.vy*dt/1000;
-    const guardRadius = 42; // tightened from 70 — a guardian should read as glued to its hut, not roaming the whole camp footprint, unless something actually engages it (combat knockback/hit-reactions still move it independently of this leash)
     const dx = this.x - this.hutAnchorX, dy = this.y - this.hutAnchorY;
     const dist = Math.hypot(dx,dy) || 0.0001;
     if(dist > guardRadius){
@@ -6082,6 +6156,9 @@ class Enemy{
     if(this.guardiansAliveCount > 0 || !this.respawnAt) return; // lane isn't clear yet, or no respawn currently scheduled
     if(gameTime < this.respawnAt) return;
     this.respawnAt = null;
+    // this.campDamageLedger is deliberately left untouched here — respawning guardians doesn't
+    // reset camp aggro, see the comment where the ledger is created in spawnHut(). A fresh pair
+    // picks up campLeaderTower()'s result on their very first updateGuardian() tick.
     for(let i=0;i<2;i++) spawnHutGuardian(this);
   }
   applyDamage(amount, sourceTower, forStreak, isHoly){
@@ -6123,6 +6200,19 @@ class Enemy{
         this.flashTimer = 60;
         if(absorbed > 0) spawnFloatingText(this.x, this.y - this.radius, 'BLOCKED', '#7dd3fc');
         return; // shield fully absorbed this hit — no HP lost, no kill possible from it
+      }
+    }
+    // Camp aggro ledger — recorded here (post-armor, post-shield, clamped to remaining HP), NOT in
+    // recordContribution() above (which runs pre-mitigation for existing tower lifetime/wave
+    // stats and must stay untouched). Only towers count; only hits on a hut or one of its living
+    // guardians count. A killing blow contributes no more than the HP it actually took to finish
+    // the target, so overkill damage can't inflate a tower's standing in the ledger.
+    if(sourceTower && (this.isGuardian || this.isHutBuilding)){
+      const hut = this.isHutBuilding ? this : this.hutRef;
+      if(hut && hut.active){
+        if(!hut.campDamageLedger) hut.campDamageLedger = new Map();
+        const counted = Math.min(dmg, this.hp);
+        hut.campDamageLedger.set(sourceTower, (hut.campDamageLedger.get(sourceTower) || 0) + counted);
       }
     }
     this.hp -= dmg;
@@ -6239,8 +6329,15 @@ class Enemy{
         // the full circle. This also makes Mage visually distinct from Archer's cone (much
         // narrower, much smaller, low-energy puncture mist) by being wide, bold, and energetic.
         const mageConeWidth = 2.3; // ~132° — wide enough to read as a blast, not a pinpoint beam
-        spawnParticles(this.x, this.y, bio.bright, Math.round(46*hitPower), 420, 0.88, true, impactAngle, mageConeWidth);
-        spawnParticles(this.x, this.y, bio.spray, Math.round(26*hitPower), 460, 0.86, true, impactAngle, mageConeWidth);
+        // Particle counts halved-plus from their original 46/26 (kept in the comment history via
+        // CHANGELOG) — at hitPower=1 that was MORE particles than this same game's own kill-only
+        // gore burst for every other class (36-48, see the goreScale-driven calls below), on every
+        // ordinary non-kill Mage hit, not just kills. Real, reported complaint: "Mage blood output
+        // seems way overpowered." Now roughly matches other classes' KILL-tier burst on an ordinary
+        // hit — still visibly the boldest per-hit spray in the game (matching its wide-cone
+        // identity), just no longer exceeding what a kill produces everywhere else.
+        spawnParticles(this.x, this.y, bio.bright, Math.round(20*hitPower), 420, 0.88, true, impactAngle, mageConeWidth);
+        spawnParticles(this.x, this.y, bio.spray, Math.round(12*hitPower), 460, 0.86, true, impactAngle, mageConeWidth);
         if(!bio.isDust){
           spawnSatelliteDrops(this.x, this.y, hexToRgba(bio.dark, 0.7), Math.max(2, Math.round((9 + Math.floor(Math.random()*4))*hitPower)), impactAngle, 1.6);
           // Long radiating streaks, distinct from Warrior's single directional cut — a magical
@@ -6653,8 +6750,13 @@ class Enemy{
         // Skeletal remains — two independent rolls, not gated to any particular weapon/archetype
         // since bones are a property of the body, not of what killed it. Skipped for dust/
         // construct enemies (bio.isDust) since those don't have a skeleton to leave behind.
-        if(!bio.isDust && Math.random() < 0.78) spawnBoneDebris(this.x, this.y, this.radius); // increased again from 0.58 — still felt low per feedback
-        if(!bio.isDust && Math.random() < 0.45) spawnSkullDrop(this.x, this.y, this.radius); // increased again from 0.32 — still felt low per feedback
+        // Cut back down from 0.78/0.45 per direct feedback ("bone spawn seems just a bit too
+        // much") — those had crept up over two earlier rounds of "still felt low," but bone/skull
+        // debris lives for 45 MINUTES (BONE_LIFESPAN) and essentially never expires in a normal
+        // session, so a high per-kill chance means permanent, ever-growing clutter, unlike blood
+        // which actually fades. Landing meaningfully lower than either past value.
+        if(!bio.isDust && Math.random() < 0.30) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.14) spawnSkullDrop(this.x, this.y, this.radius);
         if(Math.random() < 0.55){
           // this was passing smallBias=true, which forces every death pool into the same narrow
           // "ordinary splatter" size band and skips the bigger-pool rolls entirely — meaning
@@ -7972,6 +8074,16 @@ class Tower{
     const pulse = 0.5 + 0.5 * Math.sin(gameTime / 160);
     const radius = 26 + pulse * 4;
     ctx.save();
+    // Gradient-free, drip-free path on Low — every other glow/gradient effect in this file is
+    // already gated behind graphicsQuality, this one was missed. A gradient allocation plus 5
+    // ellipse fills every frame, per tower carrying the buff, is real avoidable cost on the exact
+    // setting (Low, mobile) this game defaults new players into.
+    if(graphicsQuality === 'low'){
+      ctx.fillStyle = 'rgba(180,10,10,' + (0.28 + pulse * 0.14).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(this.x, this.y, radius * 0.82, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+      return;
+    }
     const glow = ctx.createRadialGradient(this.x, this.y, radius * 0.25, this.x, this.y, radius);
     glow.addColorStop(0, 'rgba(180,10,10,' + (0.35 + pulse * 0.2).toFixed(2) + ')');
     glow.addColorStop(1, 'rgba(120,0,0,0)');
@@ -8888,18 +9000,22 @@ function resolveWeaponSubtype(sourceTower){
 function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous, dmgRollT, sizeScale){
   const roll = Math.random();
   let sizeMult, blobCount;
-  if(!smallBias && roll < 0.04){
+  // Shifted further toward small/sparse per direct feedback: real blood spatter is mostly a handful
+  // of fine droplets, not a dense blob cluster on every hit — and fewer blobs per decal means the
+  // total decal count (which still drives array/cap/hit-testing cost even after 1.4.46's bake-speed
+  // fix) grows more slowly over a session, easing accumulation on top of reading more realistic.
+  if(!smallBias && roll < 0.02){
     // rare bigger pool — noticeably larger, but capped well short of dominating the screen
     sizeMult = 1.7 + Math.random()*0.9;
-    blobCount = 6 + Math.floor(Math.random()*3);
-  } else if(!smallBias && roll < 0.16){
+    blobCount = 4 + Math.floor(Math.random()*2);
+  } else if(!smallBias && roll < 0.10){
     // modest step up from ordinary
     sizeMult = 1.15 + Math.random()*0.55;
-    blobCount = 4 + Math.floor(Math.random()*3);
+    blobCount = 3 + Math.floor(Math.random()*2);
   } else {
     // ordinary splatter — the vast majority of decals, smallBias shrinks it further
     sizeMult = (0.55 + Math.random()*0.45) * (smallBias ? 0.6 : 1);
-    blobCount = (3 + Math.floor(Math.random()*3)) - (smallBias ? 1 : 0);
+    blobCount = (2 + Math.floor(Math.random()*2)) - (smallBias ? 1 : 0);
   }
   // Viscosity (bio.viscous — insect hemolymph, coagulated undead blood) is a non-Newtonian,
   // shear-thinning fluid: thicker at rest than standard flesh blood, so a viscous pool doesn't
@@ -9079,14 +9195,15 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult){
   };
   pushDecal(decal);
 }
-// Skeletal remains at a death site — 50%/25% independent rolls (spawnBoneDebris/spawnSkullDrop),
-// sized as a fraction of the enemy's own radius so bigger enemies leave bigger bones. Persist
+// Skeletal remains at a death site (spawnBoneDebris/spawnSkullDrop, independent per-kill rolls —
+// see their call site for the current chances, which have moved a few times based on feedback in
+// both directions; don't restate the numbers here, they'll just go stale again), sized as a fraction of the enemy's own radius so bigger enemies leave bigger bones. Persist
 // notably longer than blood (bones don't oxidize/dry the way fresh blood does, so there's no
 // reason for them to fade on the same short clock) via a fixed extended lifespan rather than the
 // standard DECAL_LIFESPAN*variance blood decals use.
 const BONE_LIFESPAN = 2700000; // 45 minutes — meaningfully longer than a blood stain's own ~30
 function spawnBoneDebris(x, y, enemyRadius){
-  const count = 1 + Math.floor(Math.random()*3); // 1 to 3
+  const count = 1 + Math.floor(Math.random()*2); // 1 to 2 (was 1-3) — same "reduce bones further" feedback
   for(let i=0; i<count; i++){
     const sizeFrac = 0.1 + Math.random()*0.1; // 1/10 to 1/5 of the enemy's own radius
     const scatterDist = Math.random()*enemyRadius*0.9;
@@ -11021,6 +11138,11 @@ function dodgeEnemyFromSwing(enemy, tower){
 }
 function isCampRouteCrossing(a, b){
   const aCamp = a.isGuardian || a.isHutBuilding, bCamp = b.isGuardian || b.isHutBuilding;
+  // NOTE: this only ever skips a camp-vs-lane-enemy pair — it does NOT skip a hut-vs-its-own-
+  // guardian pair (both aCamp), on purpose: they still need normal separation so a guardian can't
+  // stand inside the hut's sprite. What used to actually move the hut was resolveEnemyCollisions()/
+  // resolveSweptEnemyCollisions() not treating isHutBuilding as immovable — fixed at their eFrozen/
+  // otherFrozen checks, not here.
   return (aCamp && !bCamp && !b.escaped) || (bCamp && !aCamp && !a.escaped);
 }
 function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
@@ -11083,8 +11205,8 @@ function resolveSweptEnemyCollisions(){
       if(!other.active || other.prevX === undefined) continue;
       if(isCampRouteCrossing(e, other)) continue;
       if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions
-      const eFrozen = isEnemyFrozen(e);
-      const otherFrozen = isEnemyFrozen(other);
+      const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
+      const otherFrozen = isEnemyFrozen(other) || other.isHutBuilding;
       if(eFrozen && otherFrozen) continue; // both stationary this frame — nothing to tunnel through, and the regular pass already covers this pair
       const minDist = e.radius + other.radius + 2;
       const px = e.prevX - other.prevX, py = e.prevY - other.prevY;
@@ -11152,8 +11274,8 @@ function resolveEnemyCollisions(){
           const angle = ((e.id * 2654435761 + other.id * 40503) % 360) * Math.PI/180;
           pushX = Math.cos(angle); pushY = Math.sin(angle);
         }
-        const eFrozen = isEnemyFrozen(e);
-        const otherFrozen = isEnemyFrozen(other);
+        const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
+        const otherFrozen = isEnemyFrozen(other) || other.isHutBuilding;
         if(!eFrozen && !otherFrozen){
           // Bias the separation toward each enemy's own direction of travel (their vx/vy, which
           // already point at their next waypoint) rather than pushing purely radially. A pure
@@ -11610,6 +11732,10 @@ function drawBossWarning(ctx){
   ctx.restore();
 }
 function announceSizePhase(phase){
+  // No toast for SMALL specifically — by direct request ("we don't need a popup that says 'small
+  // enemies incoming'... wasn't very accurate either"). TINY/STANDARD/LARGE/BOSS banners are
+  // untouched; this was scoped to the one the owner actually flagged, not a blanket removal.
+  if(phase.sizeTier === 'SMALL') return;
   if(phase.sizeTier === 'BOSS') showBossWarning();
   else if(phase.sizeTier === 'LARGE') showKillstreakBanner(SIZE_PHASE_BANNERS[phase.sizeTier]);
   else showToast(SIZE_PHASE_BANNERS[phase.sizeTier]);
@@ -11661,9 +11787,12 @@ function wavePhaseStatusText(){
   if(!phase) return '';
   let escapedActive = 0;
   for(const e of enemyPool) if(e.active && e.escaped) escapedActive++;
-  // Just progress: the size-tier name meant nothing to a player mid-fight.
-  return waveDispatch.resolvedUnits + '/' + activeWavePlan.populationTotal
-    + (escapedActive ? ' · 🏃' + escapedActive : '');
+  // The resolvedUnits/populationTotal readout ("68/74" next to "Wave 5/100") is removed per direct
+  // feedback — a raw unit-progress count next to the wave counter read as excessive/messy, and
+  // isn't information a player needs mid-fight. The element still shows (and hides itself, see
+  // wavePhaseVal.hidden below) for the one case that's an actual actionable warning: enemies
+  // currently loose past the barricades.
+  return escapedActive ? '🏃' + escapedActive + ' loose' : '';
 }
 function startNextWave(){
   if(waveState !== 'IDLE') return;
@@ -11741,6 +11870,23 @@ function findHutPlacementTile(){
   const [gx,gy] = candidates[Math.floor(Math.random()*candidates.length)];
   return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
 }
+// The tower every living guardian of this hut currently focuses — whichever active, non-disabled
+// tower holds the highest total in hut.campDamageLedger (recorded in Enemy.applyDamage(), see its
+// own comment for exactly what counts). A stable tie-break (lowest tower.id wins) means guardians
+// don't flicker between two towers doing equal damage — same target every call until something
+// actually overtakes it. Returns null if the hut has no ledger yet (never been damaged) or every
+// tower that ever damaged it is now gone/disabled — that's "no valid target," not an error.
+function campLeaderTower(hut){
+  if(!hut.campDamageLedger || hut.campDamageLedger.size === 0) return null;
+  let best = null, bestAmount = -1;
+  for(const [tower, amount] of hut.campDamageLedger){
+    if(!tower.active || tower.disabledWavesLeft > 0) continue;
+    if(amount > bestAmount || (amount === bestAmount && best && tower.id < best.id)){
+      best = tower; bestAmount = amount;
+    }
+  }
+  return best;
+}
 function spawnHutGuardian(hutRef){
   const e = acquireActive(enemyPool);
   if(!e) return null; // pool exhausted — the hut just has fewer guardians than intended this time rather than blocking anything else
@@ -11765,6 +11911,12 @@ function spawnHut(x, y){
   hut.guardiansAliveCount = 0;
   hut.destroyed = false;
   hut.respawnAt = null;
+  // campDamageLedger deliberately starts fresh here (a brand-new hut has no attacker history yet)
+  // and is deliberately NEVER cleared on a guardian respawn (see updateHutBuilding()) — it belongs
+  // to the hut, not to any one generation of guardians, so a fresh pair immediately continues
+  // defending against whichever tower was already attacking the camp rather than "forgetting" and
+  // giving the player a free window. It's runtime-only state, not persisted in the save file.
+  hut.campDamageLedger = new Map();
   hut.bounty = Math.round(hut.bounty * 8); // the big one-time payout for actually clearing the whole camp, not just its guardians
   spawnHutGuardian(hut);
   spawnHutGuardian(hut);
@@ -11795,14 +11947,21 @@ let lastTime = 0, accumulator = 0;
 function checkAllFightersDown(){
   if(gameState !== 'PLAYING' || waveState === 'IDLE') return false;
   if(!everBuiltFighter) return false; // nothing has ever been built yet — not a loss
-  const fighters = towerPool.filter(t => t.active && t.type !== 'BARRICADE');
-  if(fighters.length === 0){ // the last one was sold/never replaced after a wipe — same loss as every fighter being disabled
+  // Rewritten from a .filter()+.some() pair to a plain loop — this runs every SIMULATION TICK
+  // (not just every rendered frame; several ticks can run per frame at high game speed), and the
+  // old version allocated a new array every single tick just to throw it away. Same logic, zero
+  // allocation: a running tally of fighters seen and whether any is still standing.
+  let fighterCount = 0, anyStanding = false;
+  for(const t of towerPool){
+    if(!t.active || t.type === 'BARRICADE') continue;
+    fighterCount++;
+    if(t.disabledWavesLeft <= 0){ anyStanding = true; break; }
+  }
+  if(fighterCount === 0 || !anyStanding){
     endGame('Your whole squad was overrun on wave ' + waveIndex + '. Rebuild and\u00A0try\u00A0again.');
     return true;
   }
-  if(fighters.some(t => t.disabledWavesLeft <= 0)) return false; // at least one is still standing
-  endGame('Your whole squad was overrun on wave ' + waveIndex + '. Rebuild and\u00A0try\u00A0again.');
-  return true;
+  return false;
 }
 function update(dt){
   gameTime += dt;
@@ -11967,6 +12126,13 @@ function update(dt){
   phaseTime.waveLogic += performance.now() - __pt;
 }
 
+const inspTargetFrame = document.getElementById('inspTargetFrame');
+const targetPortraitFace = document.getElementById('targetPortraitFace');
+const targetName = document.getElementById('targetName');
+const targetHpBarFill = document.getElementById('targetHpBarFill');
+const targetHpBarText = document.getElementById('targetHpBarText');
+const targetDefVal = document.getElementById('targetDefVal');
+const targetSpeedVal = document.getElementById('targetSpeedVal');
 // Dirty-check state for updateTargetFrame() — was doing two getBoundingClientRect() layout
 // reads plus several unconditional DOM writes every single render frame (60fps), regardless of
 // whether the target, its stats, or the panel geometry had actually changed. text/HP-bar content
@@ -11979,7 +12145,7 @@ let targetFrameLayoutDirty = true;
 let targetFrameLastTower = null; // #inspect-panel has no fixed height (rows are conditionally hidden per tower type), so switching to a different selected tower can change its geometry even while the target frame stays continuously visible throughout — this catches that case, which resize/visibility-transition alone don't
 window.addEventListener('resize', () => { targetFrameLayoutDirty = true; });
 function updateTargetFrame(){
-  const frame = document.getElementById('inspTargetFrame');
+  const frame = inspTargetFrame;
   const t = selectedTower;
   const target = t && t.active ? t.target : null;
   if(!target || !target.active || inspPanelExpanded){
@@ -11990,13 +12156,13 @@ function updateTargetFrame(){
   const contentKey = target.id + ':' + Math.round(hpPct) + ':' + Math.round(target.hp) + ':' + target.armor + ':' + Math.round(target.speed);
   if(contentKey !== targetFrameContentKey){
     targetFrameContentKey = contentKey;
-    document.getElementById('targetPortraitFace').textContent = target.emoji;
+    targetPortraitFace.textContent = target.emoji;
     const info = ENEMY_INFO[target.type];
-    document.getElementById('targetName').textContent = info ? info.name : target.type;
-    document.getElementById('targetHpBarFill').style.width = hpPct + '%';
-    document.getElementById('targetHpBarText').textContent = Math.round(target.hp) + '/' + target.maxHp;
-    document.getElementById('targetDefVal').textContent = target.armor;
-    document.getElementById('targetSpeedVal').textContent = Math.round(target.speed);
+    targetName.textContent = info ? info.name : target.type;
+    targetHpBarFill.style.width = hpPct + '%';
+    targetHpBarText.textContent = Math.round(target.hp) + '/' + target.maxHp;
+    targetDefVal.textContent = target.armor;
+    targetSpeedVal.textContent = Math.round(target.speed);
   }
   if(!targetFrameWasVisible){
     frame.classList.add('show');
@@ -13438,15 +13604,73 @@ canvas.addEventListener('wheel', (e) => {
 const livesVal = document.getElementById('livesVal');
 const goldVal = document.getElementById('goldVal');
 const waveVal = document.getElementById('waveVal');
+// Cached here too, same reasoning as the inspect-panel/target-frame fixes above — these were being
+// re-queried via document.getElementById() every single call to updateHUDImmediate(), which runs
+// (at most) once per rendered frame via the hudDirty flag, but that's still a real 60fps-adjacent
+// cost across a whole session.
+const livesMeter = document.getElementById('livesMeter');
+const shopLivesVal = document.getElementById('shopLivesVal');
+const shopBuyLifeCost = document.getElementById('shopBuyLifeCost');
+const woodVal = document.getElementById('woodVal');
+const stoneVal = document.getElementById('stoneVal');
+const moveVal = document.getElementById('moveVal');
+const wavePhaseVal = document.getElementById('wavePhaseVal');
 const nextWaveBtn = document.getElementById('nextWaveBtn');
 const inspectPanel = document.getElementById('inspect-panel');
 const inspName = document.getElementById('inspName');
 const inspLevel = document.getElementById('inspLevel');
-const inspUpgradeBtn = document.getElementById('inspUpgradeBtn');
+// Cached once here (same pattern as inspName/inspLevel above), NOT re-queried inside
+// updateInspectPanel() any more — that function was calling document.getElementById() 56
+// times per invocation, and it can be invoked many times within a single rendered frame at
+// high game speed (every kill/XP award while a tower is selected). 56 uncached DOM lookups x
+// dozens of calls x however many kills land in one frame was real, avoidable main-thread cost
+// that never showed up in the canvas render/update perf breakdown, since it's DOM work, not
+// canvas work — exactly the kind of cost the inspect-panel-open lag lead pointed at.
+const auraTooltip = document.getElementById('auraTooltip');
+const barricadeInfoBtn = document.getElementById('barricadeInfoBtn');
+const inspAtkRange = document.getElementById('inspAtkRange');
+const inspAtkVal = document.getElementById('inspAtkVal');
+const inspAuraBox = document.getElementById('inspAuraBox');
+const inspAxeModeBtn = document.getElementById('inspAxeModeBtn');
+const inspAxeModeVal = document.getElementById('inspAxeModeVal');
+const inspAxeSwitches = document.getElementById('inspAxeSwitches');
+const inspCombatRow = document.getElementById('inspCombatRow');
+const inspCritVal = document.getElementById('inspCritVal');
+const inspDefVal = document.getElementById('inspDefVal');
+const inspDexBtn = document.getElementById('inspDexBtn');
+const inspDexVal = document.getElementById('inspDexVal');
+const inspDpsBetween = document.getElementById('inspDpsBetween');
+const inspDpsVal = document.getElementById('inspDpsVal');
+const inspEvoBarFill = document.getElementById('inspEvoBarFill');
+const inspEvoBarText = document.getElementById('inspEvoBarText');
+const inspEvoBarTrack = document.getElementById('inspEvoBarTrack');
+const inspEvoHint = document.getElementById('inspEvoHint');
+const inspExpandChevron = document.getElementById('inspExpandChevron');
+const inspFullOptions = document.getElementById('inspFullOptions');
+const inspHpBarFill = document.getElementById('inspHpBarFill');
+const inspHpBarText = document.getElementById('inspHpBarText');
+const inspHpStatVal = document.getElementById('inspHpStatVal');
+const inspIntBtn = document.getElementById('inspIntBtn');
+const inspIntVal = document.getElementById('inspIntVal');
+const inspItemsRow = document.getElementById('inspItemsRow');
+const inspLuckRow = document.getElementById('inspLuckRow');
+const inspLuckVal = document.getElementById('inspLuckVal');
+const inspMoveBtn = document.getElementById('inspMoveBtn');
+const inspMoveCost = document.getElementById('inspMoveCost');
+const inspPortraitFace = document.getElementById('inspPortraitFace');
+const inspRangeVal = document.getElementById('inspRangeVal');
+const inspRepairBtn = document.getElementById('inspRepairBtn');
+const inspRepairCost = document.getElementById('inspRepairCost');
+const inspSpeedVal = document.getElementById('inspSpeedVal');
+const inspStatPointsVal = document.getElementById('inspStatPointsVal');
+const inspStatsRow = document.getElementById('inspStatsRow');
+const inspStoreBtn = document.getElementById('inspStoreBtn');
+const inspStrBtn = document.getElementById('inspStrBtn');
+const inspStrVal = document.getElementById('inspStrVal');
+const statsInfoBtn = document.getElementById('statsInfoBtn');
 const inspUpgradeCost = document.getElementById('inspUpgradeCost');
 const inspSellBtn = document.getElementById('inspSellBtn');
 const inspSellValue = document.getElementById('inspSellValue');
-const inspTargetBtn = document.getElementById('inspTargetBtn');
 const inspTargetMode = document.getElementById('inspTargetMode');
 const inspClose = document.getElementById('inspClose');
 
@@ -13490,7 +13714,7 @@ function updateHUDImmediate(){
   if(lastShownGold === null) lastShownGold = gold;
   if(gold > lastShownGold) showGoldGain(gold - lastShownGold);
   lastShownGold = gold;
-  goldVal.textContent = gold;  const livesMeter = document.getElementById('livesMeter');
+  goldVal.textContent = gold;
   if(livesMeter){
     const maxLives = 100 + livesBought;
     livesMeter.max = maxLives;
@@ -13500,19 +13724,17 @@ function updateHUDImmediate(){
     livesMeter.value = lives;
   }
   const lifeCost = buyLifeCost();
-  const shopLivesVal = document.getElementById('shopLivesVal');
   if(shopLivesVal){
     shopLivesVal.textContent = lives;
-    document.getElementById('shopBuyLifeCost').textContent = '+💰' + lifeCost;
-    document.getElementById('shopBuyLifeBtn').disabled = gold < lifeCost;
+    shopBuyLifeCost.textContent = '+💰' + lifeCost;
+    shopBuyLifeBtn.disabled = gold < lifeCost;
   }
-  document.getElementById('woodVal').textContent = wood;
-  document.getElementById('stoneVal').textContent = stone;
-  document.getElementById('moveVal').textContent = moveCharges;
+  woodVal.textContent = wood;
+  stoneVal.textContent = stone;
+  moveVal.textContent = moveCharges;
   waveVal.textContent = waveIndex < CAMPAIGN_WAVE_COUNT
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞';
-  const wavePhaseVal = document.getElementById('wavePhaseVal');
   const phaseText = wavePhaseStatusText();
   wavePhaseVal.textContent = phaseText;
   wavePhaseVal.hidden = !phaseText;
@@ -14456,68 +14678,68 @@ let hpBarShowPercent = false; // toggled by clicking the HP bar — see the clic
 function updateInspectPanel(){
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
   inspectPanel.classList.remove('hidden');
-  document.getElementById('inspFullOptions').classList.toggle('hidden', !inspPanelExpanded);
-  document.getElementById('inspExpandChevron').style.transform = inspPanelExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-  document.getElementById('inspExpandChevron').classList.toggle('has-points', selectedTower.statPoints > 0);
+  inspFullOptions.classList.toggle('hidden', !inspPanelExpanded);
+  inspExpandChevron.style.transform = inspPanelExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+  inspExpandChevron.classList.toggle('has-points', selectedTower.statPoints > 0);
   const t = selectedTower;
   const isBarricade = t.type === 'BARRICADE';
-  document.getElementById('inspEvoBarTrack').classList.toggle('hidden', isBarricade);
-  document.getElementById('inspCombatRow').classList.toggle('hidden', isBarricade);
-  document.getElementById('inspStatsRow').classList.toggle('hidden', isBarricade);
-  document.getElementById('inspItemsRow').classList.toggle('hidden', isBarricade);
-  document.getElementById('inspUpgradeBtn').classList.toggle('hidden', isBarricade);
-  const repairBtn = document.getElementById('inspRepairBtn');
+  inspEvoBarTrack.classList.toggle('hidden', isBarricade);
+  inspCombatRow.classList.toggle('hidden', isBarricade);
+  inspStatsRow.classList.toggle('hidden', isBarricade);
+  inspItemsRow.classList.toggle('hidden', isBarricade);
+  inspUpgradeBtn.classList.toggle('hidden', isBarricade);
+  const repairBtn = inspRepairBtn;
   const needsRepair = isBarricade && t.hp < t.maxHp;
   repairBtn.classList.toggle('hidden', !needsRepair);
   if(needsRepair){
     const cost = barricadeRepairCost(t);
-    document.getElementById('inspRepairCost').textContent = '(🪵' + cost.wood + ' 🪨' + cost.stone + ')';
+    inspRepairCost.textContent = '(🪵' + cost.wood + ' 🪨' + cost.stone + ')';
     repairBtn.disabled = wood < cost.wood || stone < cost.stone;
   }
-  document.getElementById('inspDpsBetween').classList.toggle('hidden', isBarricade);
-  document.getElementById('inspTargetBtn').classList.toggle('hidden', isBarricade);
+  inspDpsBetween.classList.toggle('hidden', isBarricade);
+  inspTargetBtn.classList.toggle('hidden', isBarricade);
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Zweihander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
   inspLevel.textContent = isBarricade ? '' : ('Lv.' + t.level + specLabel + heroLabel);
-  document.getElementById('inspPortraitFace').textContent = t.def.icon || '🙂';
+  inspPortraitFace.textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
-  document.getElementById('inspHpBarFill').style.width = hpPct + '%';
+  inspHpBarFill.style.width = hpPct + '%';
   // A disabled tower's HP bar shows its real recovered value (~30%, see takeDamage()) with no
   // indication that it's actually locked out of attacking, not just running low — read on its own
   // as "this tower is nearly dead" rather than "this tower already went down and is recovering."
   // Prefixing the rounds-remaining count makes that distinction explicit right where the number is.
   const disabledSuffix = (!isBarricade && t.disabledWavesLeft > 0) ? (' (DOWNED · ' + t.disabledWavesLeft + ' rounds)') : '';
-  document.getElementById('inspHpBarText').textContent = (hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp)) + disabledSuffix;
+  inspHpBarText.textContent = (hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp)) + disabledSuffix;
   if(isBarricade){
     // Obstacle, not a tower — deliberately simplified panel. Skips every combat/stat/XP/evolution
     // computation below entirely (not just hiding the resulting fields) since none of it is
     // meaningful for a Barricade; only durability (the HP bar above, already generic) plus
     // Move/Store/Sell/Help remain relevant, matching the requested simplified obstacle view.
     inspSellValue.textContent = '(💰' + t.sellValue() + ')';
-    document.getElementById('inspStoreBtn').classList.toggle('hidden', false);
-    const moveBtn = document.getElementById('inspMoveBtn');
-    const moveCost = document.getElementById('inspMoveCost');
+    inspStoreBtn.classList.toggle('hidden', false);
+    const moveBtn = inspMoveBtn;
+    const moveCost = inspMoveCost;
     moveBtn.disabled = moveCharges <= 0;
     moveCost.textContent = '(' + moveCharges + ' left)';
-    document.getElementById('inspAxeModeBtn').classList.add('hidden');
-    document.getElementById('statsInfoBtn').classList.add('hidden');
-    document.getElementById('barricadeInfoBtn').classList.remove('hidden');
-    document.getElementById('inspAuraBox').classList.add('hidden');
+    inspAxeModeBtn.classList.add('hidden');
+    statsInfoBtn.classList.add('hidden');
+    barricadeInfoBtn.classList.remove('hidden');
+    inspAuraBox.classList.add('hidden');
     queueInspectPanelRefit();
     return;
   }
-  const evoTrack = document.getElementById('inspEvoBarTrack');
+  const evoTrack = inspEvoBarTrack;
   evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
   if(t.expLevel >= MAX_TOWER_LEVEL){
-    document.getElementById('inspEvoBarFill').style.width = '100%';
-    document.getElementById('inspEvoBarText').textContent = 'MAX TRAINING'; // was "MAX LEVEL" — expLevel is the XP counter, not the tower's actual displayed level (see inspLevel above, which now correctly reads tower.level instead)
+    inspEvoBarFill.style.width = '100%';
+    inspEvoBarText.textContent = 'MAX TRAINING'; // was "MAX LEVEL" — expLevel is the XP counter, not the tower's actual displayed level (see inspLevel above, which now correctly reads tower.level instead)
   } else {
     const need = xpForNextLevel();
-    document.getElementById('inspEvoBarFill').style.width = Math.round(Math.min(1, t.xp/need)*100) + '%';
-    document.getElementById('inspEvoBarText').textContent = Math.round(t.xp) + '/' + need + ' Training XP';
+    inspEvoBarFill.style.width = Math.round(Math.min(1, t.xp/need)*100) + '%';
+    inspEvoBarText.textContent = Math.round(t.xp) + '/' + need + ' Training XP';
   }
-  const evoHint = document.getElementById('inspEvoHint');
+  const evoHint = inspEvoHint;
   if(BASE_ATTUNABLE_TYPES.includes(t.type)){
     if(!t.attunement){
       const stats = ['str','dex','int'];
@@ -14611,18 +14833,18 @@ function updateInspectPanel(){
   // Min-max damage range only — no separate flat number alongside it. Uses the exact same
   // half-width the actual damage roll in applyDamage() uses, so this is a real number, not a
   // cosmetic guess.
-  document.getElementById('inspAtkVal').textContent = '';
+  inspAtkVal.textContent = '';
   const dmgHalf = t.type === 'MAGE' ? 0.4 : 0.2; // must match applyDamage()'s varianceHalfWidth exactly — Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band
-  const dmgMinEl = document.getElementById('inspAtkRange');
+  const dmgMinEl = inspAtkRange;
   if(dmgMinEl) dmgMinEl.textContent = Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf));
-  document.getElementById('inspHpStatVal').textContent = Math.round((t.hpStat||0)*1000)/1000;
-  document.getElementById('inspDefVal').textContent = Math.round((t.shieldPct||0)*100);
-  document.getElementById('inspRangeVal').textContent = rng;
-  document.getElementById('inspSpeedVal').textContent = cd ? (cd/1000).toFixed(2) : '0';
+  inspHpStatVal.textContent = Math.round((t.hpStat||0)*1000)/1000;
+  inspDefVal.textContent = Math.round((t.shieldPct||0)*100);
+  inspRangeVal.textContent = rng;
+  inspSpeedVal.textContent = cd ? (cd/1000).toFixed(2) : '0';
   const luckPct = Math.round(((t.goldMult||1)-1)*100);
-  document.getElementById('inspLuckVal').textContent = luckPct + '%';
-  document.getElementById('inspLuckRow').classList.toggle('hidden', luckPct === 0);
-  document.getElementById('inspCritVal').textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
+  inspLuckVal.textContent = luckPct + '%';
+  inspLuckRow.classList.toggle('hidden', luckPct === 0);
+  inspCritVal.textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
   // Real single-target DPS — average damage per hit (the variance band above is symmetric, so
   // `atk` itself is already the average) times attacks/second, discounted by missChance: the same
   // "relative accuracy" mechanic driving every attack type (melee cone, projectile, Cleric smite)
@@ -14640,27 +14862,27 @@ function updateInspectPanel(){
   const dpsCycleMs = dpsShotsPerCycle > 1 ? (dpsShotsPerCycle-1)*(t.burstDelay||0) + cd : cd;
   const critExpectedMult = 1 + (t.critChance||0) * ((t.critMult||1.2) - 1);
   const dps = dpsCycleMs > 0 ? (dpsShotsPerCycle * atk * critExpectedMult * (1 - (t.missChance||0))) / (dpsCycleMs/1000) : 0;
-  document.getElementById('inspDpsVal').textContent = dps >= 100 ? Math.round(dps) : dps.toFixed(1);
+  inspDpsVal.textContent = dps >= 100 ? Math.round(dps) : dps.toFixed(1);
   fitStatRowToOneLine();
   fitNameplateToStatRow();
   const arch = CLASS_ARCHETYPE[t.type];
-  document.getElementById('inspStrBtn').title = arch === 'WARRIOR'
+  inspStrBtn.title = arch === 'WARRIOR'
     ? 'Strength: +8% damage (scales better at heavy investment) and +3% max HP per point'
     : 'Strength: +3% max HP per point (this class\'s damage stat is ' + (arch === 'ARCHER' ? 'DEX' : arch === 'MAGE' ? 'INT' : 'none') + ')';
-  document.getElementById('inspIntBtn').title = arch === 'MAGE'
+  inspIntBtn.title = arch === 'MAGE'
     ? 'Intelligence: +6 range, 💥 crit damage multiplier, and +6% damage per point'
     : 'Intelligence: +6 range and 💥 crit damage multiplier per point';
-  document.getElementById('inspDexBtn').title = arch === 'ARCHER'
+  inspDexBtn.title = arch === 'ARCHER'
     ? 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, 🍀 luck, and +6% damage per point'
     : 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, and 🍀 luck (bonus gold per kill) per point';
   // WC3-style aura box — icon-only, only for evolved/specialist towers (TOWER_STRATEGY), hidden
   // for Swordsman/Archer/Mage/Barricade. Any previously-open tooltip is closed on every panel
   // refresh so a stale strategy note from a different tower can't linger after switching selection.
-  const auraBox = document.getElementById('inspAuraBox');
+  const auraBox = inspAuraBox;
   const strategy = TOWER_STRATEGY[t.type];
   auraBox.classList.toggle('hidden', !strategy);
   if(strategy){ auraBox.textContent = strategy.icon; auraBox.title = strategy.text; }
-  document.getElementById('auraTooltip').classList.add('hidden');
+  auraTooltip.classList.add('hidden');
   if(t.canUpgrade()){
     const cost = t.nextUpgradeCost();
     inspUpgradeBtn.disabled = gold < cost;
@@ -14670,25 +14892,25 @@ function updateInspectPanel(){
     inspUpgradeCost.textContent = selectedTower.promotionCapacity() <= 0 ? '(SPEND POINTS)' : '(MAX)';
   }
   inspSellValue.textContent = '(💰' + t.sellValue() + ')';
-  document.getElementById('inspStoreBtn').classList.add('hidden'); // Barricade-only button; Barricade itself returned early above and set this visible there
+  inspStoreBtn.classList.add('hidden'); // Barricade-only button; Barricade itself returned early above and set this visible there
   inspTargetMode.textContent = t.targetMode;
-  const moveBtn = document.getElementById('inspMoveBtn');
-  const moveCost = document.getElementById('inspMoveCost');
+  const moveBtn = inspMoveBtn;
+  const moveCost = inspMoveCost;
   moveBtn.disabled = moveCharges <= 0;
   moveCost.textContent = '(' + moveCharges + ' left)';
 
-  const axeBtn = document.getElementById('inspAxeModeBtn');
+  const axeBtn = inspAxeModeBtn;
   if(t.type === 'AXEMAN'){
     axeBtn.classList.remove('hidden');
-    document.getElementById('inspAxeModeVal').textContent = t.axeMode === 'MELEE' ? 'Melee' : 'Range';
-    document.getElementById('inspAxeSwitches').textContent = '(' + t.axeSwitchesLeft + ' left)';
+    inspAxeModeVal.textContent = t.axeMode === 'MELEE' ? 'Melee' : 'Range';
+    inspAxeSwitches.textContent = '(' + t.axeSwitchesLeft + ' left)';
     axeBtn.disabled = t.axeSwitchesLeft <= 0;
   } else {
     axeBtn.classList.add('hidden');
   }
 
-  document.getElementById('statsInfoBtn').classList.remove('hidden');
-  document.getElementById('barricadeInfoBtn').classList.add('hidden');
+  statsInfoBtn.classList.remove('hidden');
+  barricadeInfoBtn.classList.add('hidden');
 
   const slots = document.querySelectorAll('.item-slot');
   slots.forEach((slot, i) => {
@@ -14704,10 +14926,15 @@ function updateInspectPanel(){
     }
   });
 
-  document.getElementById('inspStatPointsVal').textContent = t.statPoints;
-  document.getElementById('inspStrVal').textContent = t.str;
-  document.getElementById('inspDexVal').textContent = t.dex;
-  document.getElementById('inspIntVal').textContent = t.int;
+  inspStatPointsVal.textContent = t.statPoints;
+  // Once trained stats reach STAT_EFFECT_CAP on their own (500), item bonuses on top of that keep
+  // showing in the raw total here — accurate, since that's genuinely how many points the tower
+  // has — but every combat formula reads through cappedStatPoints() and stops growing at 500. A
+  // "(capped)" suffix past the cap keeps the number honest without hiding it or pretending a
+  // 6th Lucky Branch is being wasted below the cap.
+  inspStrVal.textContent = t.str + (t.str > STAT_EFFECT_CAP ? ' (capped)' : '');
+  inspDexVal.textContent = t.dex + (t.dex > STAT_EFFECT_CAP ? ' (capped)' : '');
+  inspIntVal.textContent = t.int + (t.int > STAT_EFFECT_CAP ? ' (capped)' : '');
   const noPoints = t.statPoints <= 0;
   const archetypeOfSelected = CLASS_ARCHETYPE[t.type];
   const primaryStatOfSelected = archetypeOfSelected === 'WARRIOR' ? 'str' : archetypeOfSelected === 'ARCHER' ? 'dex' : archetypeOfSelected === 'MAGE' ? 'int' : null;

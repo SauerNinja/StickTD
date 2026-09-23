@@ -984,3 +984,14 @@ tracing whether the thing is actually reachable end-to-end, not by whether a dat
   events" at round-end/round-start/map-expansion. Not started — needs a first pass at what the new
   item pool actually contains (stat items vs. one-off consumables vs. gold/resource drops) before
   writing the drop-chance code.
+
+## Lost Bag item system — NOT started (2026-09-23)
+
+A detailed, well-scoped spec exists (idempotent one-bag-per-wave spawn with a persistent
+"already granted" marker separate from the bag object itself, viewport-culled ground-item
+rendering, a spatial-bucket index for pointer/drag selection instead of a full groundItems scan,
+save/load of loose ground items with stable item IDs, isolation from the seeded wave RNG, a Stick
+item at +2/+2/+2). Deliberately not built yet this round — it's a full feature (spawn lifecycle +
+rendering + save schema + a new item), not a small fix, and deserves its own dedicated pass rather
+than being rushed at the end of an already large session. Next session: confirm the loot table
+(Stick-only for now, per spec) and build it as its own focused version.

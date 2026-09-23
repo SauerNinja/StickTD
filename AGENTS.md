@@ -485,6 +485,22 @@ Lag in this project has repeatedly crept back through small, individually reason
 10. **Structural HTML/CSS edits require a real-browser render check** (Playwright), not only a
     syntax check.
 
+**Known, documented exception to rule 4 — not yet fully resolved (2026-09-23):** `rebakeMap()` (via
+`drawMap()`) still redraws the ENTIRE `WORLD_MAX_W × WORLD_MAX_H` static map on every call, and
+`performExpansion()` calls it unconditionally on every map expansion (~every 4 waves) — real,
+recurring, unconditional full-world work in a timer-adjacent path, exactly what rule 4 exists to
+prevent. Its per-call cost was reduced (speckle ellipses and tile-border strokes batched into one
+path/fill or path/stroke call each, instead of one canvas call per tile/speckle — a real, verified,
+zero-risk reduction), but the call is still O(whole map) instead of O(new ring only).
+The obvious next fix — only repaint the new ring — is deliberately NOT done, because
+`computeFinishLine()`'s carpet moves to the new path end on every expansion, and scoping the
+repaint to just the new ring would leave the OLD carpet position un-cleared, baking two carpets
+onto the map. Fixing that correctly needs either explicitly clearing+redrawing the old carpet's
+footprint alongside the new ring, or accepting the full redraw — and either way it needs a real
+in-browser visual check across a couple of expansions before shipping, not just a syntax check,
+since a stray duplicate carpet is a real visible bug a static code read can't catch. Don't attempt
+the ring-only version without that check.
+
 ## Head block, consent, and SEO — don't casually reorder or trim
 
 `<head>` contains Google Analytics (`gtag.js`, ID `G-B6H58BQ50N`, gated behind Consent Mode v2)

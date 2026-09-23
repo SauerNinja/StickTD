@@ -1,5 +1,119 @@
 # Changelog
 
+## [1.4.61] - 2026-09-23 — One more per-tick allocation removed; audited every remaining .filter() in the file
+- checkAllFightersDown() ran every SIMULATION TICK (not just every rendered frame — several ticks
+  can run per frame at high game speed) and allocated a new array via towerPool.filter() every
+  single time, just to check two conditions and throw it away. Rewritten as a plain loop with an
+  early break — same logic, zero allocation.
+- Audited all 29 remaining .filter() call sites in the file. The two inside per-enemy update(dt)
+  methods (CatCompanion, SkeletonMinion) looked like candidates but are both already correctly
+  gated — CatCompanion only retargets (and filters) when its target is lost, SkeletonMinion only
+  queries when its attack cooldown has actually elapsed — neither runs unconditionally every tick.
+  Nothing else in the list runs on a hot path; the rest are one-time boot/save/load/UI-modal code.
+
+## [1.4.60] - 2026-09-23 — Review pass: caught one flagged-but-unfixed DOM lookup, verified the rest
+- showToast() (fires on nearly every wave start, unlock, milestone, and item drop) still had 2
+  uncached document.getElementById() calls — flagged during the checkTowerUnlocks() investigation
+  a few versions back but never actually patched. Fixed now, same cached-const pattern as
+  everywhere else.
+- Verified via a full syntax recompile (node --check) plus a direct source scan of render() and
+  update()'s own function bodies: zero remaining uncached DOM lookups in either the main render or
+  update loop, or any of their now-fixed per-frame sub-functions (updateInspectPanel,
+  updateTargetFrame, updateHUDImmediate, showToast). DECAL_BAKE_MIN_AGE_MS and the Low-graphics
+  gate on drawBloodLustAura() both confirmed still in place and unmodified by any later change this
+  session.
+
+## [1.4.59] - 2026-09-23 — Two more per-frame DOM-caching fixes, sparser blood/bones, wave HUD decluttered
+- Swept the whole file for the same bug class as the inspect-panel fix: updateTargetFrame() (runs
+  every rendered frame, unconditionally, via render()) and updateHUDImmediate() (runs up to once
+  per rendered frame) were both re-querying document.getElementById() every single call instead of
+  caching. Both now use the same cached-const pattern as everything else — real 60fps-adjacent DOM
+  cost removed, not just canvas-side cost.
+- Blood decals made sparser and more realistic per direct feedback: spawnDecal()'s blob counts cut
+  roughly in half across all three size tiers (rare-big 6-8→4-5, modest 4-6→3-4, ordinary 3-5→2-3)
+  and the odds of landing a bigger splatter halved too (4%/16% thresholds → 2%/10%). Fewer blobs
+  per hit means the total decal count — which still drives array/cap/hit-testing cost even after
+  the bake-speed fix — grows more slowly over a session, on top of reading closer to real spatter
+  (mostly fine droplets, not a blob cluster).
+- Bone/skull debris chances cut well back down (78%→30%, 45%→14%; these had crept up over two
+  earlier feedback rounds asking for more) and bone count per kill reduced (1-3→1-2). This debris
+  lives 45 minutes and essentially never expires in a normal session, so a high per-kill chance was
+  permanent, ever-growing clutter in a way blood isn't.
+- Removed the "68/74"-style unit-progress readout that showed next to the wave counter ("Wave
+  5/100") — direct feedback that it was excessive/messy information a player doesn't need
+  mid-fight. The escapee warning that shared that same text slot is kept (now reads "🏃N loose"),
+  since unlike the progress count it's an actual actionable signal, and only appears when
+  something's actually loose past the barricades.
+
+## [1.4.58] - 2026-09-23 — Map rebake cost cut on every expansion, without touching correctness
+- Found a real, documented violation of this project's own lag-creep rule 4 ("no unconditional
+  full-world work"): rebakeMap() redraws the ENTIRE static map on every map expansion (~every 4
+  waves), inside the same wave-complete transition that's shown up as a real frame spike in every
+  debug log so far.
+- The obvious fix (only repaint the new ring) is NOT done here — the finish-line carpet moves
+  every expansion, and a ring-only repaint would leave the old carpet baked in twice without a
+  real in-browser check I can't run blind. That risk, and the exact reasoning, is now written into
+  AGENTS.md's lag-creep protocol so it isn't silently rediscovered or wrongly assumed fixed later.
+- What IS done, safely: the path speckle texture (previously up to ~500 separate
+  beginPath+ellipse+fill calls per rebake, one per speckle) is now 2 batched fill calls total (one
+  per color). The checkerboard tile borders (previously one strokeRect() per tile) are now 1
+  batched stroke call. Both are real, verified reductions in the cost of the SAME full redraw —
+  not a scope change, so no correctness risk to the carpet or anything else. Visual difference is
+  limited to same-color speckles no longer double-darkening where they happen to overlap —
+  imperceptible at this size/opacity/sparsity.
+
+## [1.4.57] - 2026-09-23 — Inspect-panel DOM caching, Mage blood scaled to sane levels, stat-cap display
+- Chased the inspect-panel lag lead: updateInspectPanel() was calling document.getElementById()
+  56 times PER CALL, uncached, and it's invoked on nearly every kill/XP event while a tower is
+  selected — dozens of times inside one rendered frame at 3x+ speed. All 56 now use the same
+  cached-at-boot const pattern the file already used for inspName/inspLevel (found and fixed two
+  accidental duplicate declarations this introduced along the way). This is DOM cost, not canvas
+  cost, so it never showed up in the render/update perf breakdown — exactly why it stayed hidden
+  until actually reading the function.
+- Mage blood output cut roughly in half: the two base per-hit particle counts were 46/26 (at
+  hitPower=1), which is MORE particles than this game's own KILL-only gore burst for every other
+  class (36-48) — on every ordinary non-kill Mage hit. Now 20/12, matching other classes'
+  kill-tier burst on a regular hit — still the boldest per-hit spray in the game by design, no
+  longer exceeding what a kill produces everywhere else.
+- Verified: item-drop randomness (Math.random()) is already fully isolated from the seeded
+  wave-plan RNG (buildWavePlan()'s own scoped rng()) — wave composition can't be affected by loot
+  rolls. No code change needed, confirmed safe.
+- Stat display now flags when a tower's total STR/DEX/INT (trained + items) has passed
+  STAT_EFFECT_CAP (500) with a "(capped)" suffix — the number was already accurate, but nothing
+  indicated that combat formulas stop scaling past it.
+- Checked and found NOT accurate for the current build: a prior report assumed towers get an
+  auto-equipped starter item that takes one of the 6 item slots. Tower.create() starts
+  equippedItems at [] — all 6 slots are open from the start. No starter-item/Hero-slot interaction
+  exists to document.
+
+## [1.4.56] - 2026-09-23 — Blood Lust aura gated to Low graphics, matching every other glow effect
+- drawBloodLustAura() (the pulsing red aura on a tower under the Blood Lust buff) was creating a
+  radial gradient plus 5 drip ellipses every single frame, with no Low-graphics gate — every other
+  glow/gradient effect in the file already has one, this was the one exception. On Low it now draws
+  a single flat-color ring instead. Checked the other gradient call sites in the file (element
+  trails, arrow trails, particle beams, sky) — all already correctly gated or already
+  low-frequency; this was the one real gap found.
+
+## [1.4.55] - 2026-09-23 — Hut camp actually fights back, and the hut itself can no longer be shoved
+- The hut was never supposed to move (spawnHut() sets speed=0), but isCampRouteCrossing() only
+  skipped collisions between a camp object and an ordinary lane enemy — not between the hut and its
+  own guardians — so the collision resolver could still push it. Both resolveEnemyCollisions() and
+  resolveSweptEnemyCollisions() now treat isHutBuilding as immovable, the same way a frozen/stunned
+  enemy already is: only the other object in the pair ever moves.
+- Guardians now actually retaliate. Enemy.applyDamage() records post-mitigation HP damage from
+  towers into a shared hut.campDamageLedger (a killing blow counts no more than the HP it took to
+  finish the target). Every living guardian pursues and melees whichever active, non-disabled tower
+  currently leads that ledger (campLeaderTower(), stable tie-break by tower id) using the same
+  approach/engage/attack-timer pattern updateBreakaway() already uses against towers — they no
+  longer just wander.
+- A separate, longer combat leash (GUARDIAN_COMBAT_LEASH, 260px) governs how far a guardian will
+  chase its target, distinct from the tight 42px idle-wander radius; going past it (or losing the
+  target) walks the guardian back to the hut anchor at reduced speed before idle wander resumes,
+  instead of snapping/teleporting home.
+- The ledger belongs to the hut, not any one generation of guardians: it starts fresh when a hut
+  first spawns and is deliberately never cleared when its guardians respawn, so a new pair
+  immediately continues defending against whoever was already attacking the camp.
+
 ## [1.4.54] - 2026-09-23 — Huts wait for the map to grow, and their guardians actually stay close to home
 - The hut/creep-camp no longer spawns immediately on the tiny starting map. It now spawns the
   first time the map reaches HUT_MIN_EXPANSION_LEVEL (3) expansions, so the earliest waves are
