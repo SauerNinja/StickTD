@@ -1,5 +1,55 @@
 # Changelog
 
+## [1.4.82] - 2026-09-24 — Fixed Wave 4 6 FPS chokepoint collapse and the white-triangle map artifact (both confirmed against live v1.4.81 debug telemetry)
+- **Root cause of the giant translucent white/grey triangles across the map**: `drawMap()`'s
+  pebble-texture batch loops (`pebblesA`/`pebblesB`) chained `ctx.arc()` calls with no `moveTo()` in
+  between. Per the Canvas 2D spec, `arc()` draws an implicit connecting line from the end of the
+  previous subpath — with pebbles scattered across different path tiles, those implicit lines cut
+  across the whole map, and `fill()`'s non-zero winding rule filled the resulting polygon. This had
+  previously been misdiagnosed (see below) as an external GPU/driver overlay. Fixed by adding
+  `ctx.moveTo(sx + r, sy)` before each `arc()` call in both loops, isolating each pebble into its
+  own subpath.
+- **Correcting v1.4.71's misdiagnosis**: that entry attributed the same artifact to an
+  "NVIDIA/AMD/Xbox Game Bar overlay" after ruling out every render pass individually. The pass-level
+  audit was real, but it never considered subpath-connection behavior within a single already-correct
+  looking loop — the bug was inside the loop's path construction, not in which function called it.
+- **6 FPS collapse during dense waves (confirmed via live debug log: Wave 4 at 5x speed, 31 creeps
+  chokepointed at a barricade, 150-233ms wall-clock frame gaps, ticksThisFrame hitting 30/frame,
+  1,230 queryNearby() calls/frame, drawDecals() at 55.8% of render time)**:
+  - `loop()`: `MAX_TICKS_PER_FRAME` lowered from 90 to 8, and any leftover accumulator debt is now
+    discarded (`accumulator = 0`) once the cap is hit, instead of carrying into the next frame and
+    reproducing the same catch-up spiral one frame later. `realTime`/`presentationTime` are
+    untouched by this — only simulation debt is shed, so death bursts/floating text/camera
+    animation keep running smoothly regardless of how much sim catch-up gets dropped.
+  - `resolveEnemyCollisions()`: both-frozen pairs (typically two enemies queued behind a barricade)
+    no longer count toward `correctionsThisPass`. They still get their existing lateral anti-fuse
+    nudge every pass (that behavior — added specifically to stop queued units visually fusing
+    together — is unchanged), but once only that stable nudge remains, passes 2-3 now correctly
+    early-exit (`correctionsThisPass === 0` break) instead of unconditionally rebuilding the spatial
+    hash and re-running `queryNearby()` for the full 3 passes every tick regardless of whether
+    anything was actually still resolving.
+  - `Tower.update()`: added a `skipScan` gate — ranged towers (and Cleric/Pope, whose smite logic
+    already no-ops entirely while on cooldown) now skip `queryNearby()` entirely on ticks where
+    they're mid-cooldown with a target still active and in range, instead of re-scanning their full
+    radius every single tick regardless of cooldown state. If the held target falls out of range
+    mid-cooldown it's nulled immediately so the next tick re-scans for a real target rather than
+    firing on a stale one once cooldown expires. Melee towers (Swordsman family, Axeman) are
+    explicitly excluded — their attack logic reads the `nearby` list directly every tick for
+    adjacent-enemy detection, independent of the ranged cooldown/target system, so scanning was left
+    unthrottled for them.
+  - `MAX_DECALS_LOW_QUALITY` lowered from 1,200 to 400 (Low graphics only). Eviction already skips
+    permanent debris (`d.isEmojiDrop`/`d.isWorm`) before recycling blood-decal slots — unchanged,
+    just verified against this new lower cap.
+- **Explicitly not changed, with reasons** (both of these were proposed in the same audit pass and
+  rejected after checking the current code rather than applied on trust):
+  - A hard active-on-path enemy concurrency cap in `advanceWaveDispatch()` — `anyBarricadeQueued`
+    already pauses all spawning while any enemy is queued at a barricade, with the same 15s
+    force-resume safety valve that was being proposed as new. A second, overlapping cap would risk
+    reproducing the exact soft-lock class documented from v1.1.35 (queue logic silently stopping
+    once gated on the wrong condition).
+  - Squared-distance conversion in `findNearestActiveTower()` — its scoring formula
+    (`1/(d+40)` proximity weight) needs the real distance, not squared, and it iterates the small
+    tower pool, not the enemy chokepoint the telemetry actually flagged.
 ## [1.4.81] - 2026-09-23 — Debug log made significantly more verbose; audited layout-thrashing (getBoundingClientRect) for the first time this session
 - New tab-visibility tracking: count of times the tab was backgrounded this session, total time
   spent hidden, and time since it was last hidden — added specifically to stop leaving "was that

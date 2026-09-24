@@ -1092,7 +1092,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.81'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.82'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3587,11 +3587,11 @@ function drawMap(ctx){
   }
   ctx.fillStyle = 'rgba(120,108,92,0.55)';
   ctx.beginPath();
-  for(const [sx, sy, r] of pebblesA) ctx.arc(sx, sy, r, 0, Math.PI*2);
+  for(const [sx, sy, r] of pebblesA){ ctx.moveTo(sx + r, sy); ctx.arc(sx, sy, r, 0, Math.PI*2); }
   ctx.fill();
   ctx.fillStyle = 'rgba(160,148,128,0.5)';
   ctx.beginPath();
-  for(const [sx, sy, r] of pebblesB) ctx.arc(sx, sy, r, 0, Math.PI*2);
+  for(const [sx, sy, r] of pebblesB){ ctx.moveTo(sx + r, sy); ctx.arc(sx, sy, r, 0, Math.PI*2); }
   ctx.fill();
 
   // Border strokes batched into one path/stroke call instead of one strokeRect() per tile — same
@@ -7736,7 +7736,25 @@ class Tower{
     if(this.disabledUntil > gameTime || this.disabledWavesLeft > 0) return; // overrun by a breakaway enemy — can't act until it recovers
     const iceMult = this.iceSlowUntil > gameTime ? 0.5 : 1;
     this.cooldownTimer -= dt*iceMult;
-    const nearby = queryNearby(enemyHash, this.x, this.y, this.targetingRange);
+    // Melee towers (updateSwordsman/updateAxeman) read `nearby` directly every tick for
+    // adjacent-enemy detection, independent of the ranged targeting/cooldown system below — they
+    // always need a fresh scan. Every other tower only needs one when it's actually able to act:
+    // still charging its first shot, off cooldown, or its current target went stale/left range.
+    // Skipping the scan the rest of the time (mid-cooldown with a target still locked in range) was
+    // the single largest source of queryNearby()/spatial-hash-query volume during dense waves —
+    // every ranged tower was re-scanning its full radius on every tick regardless of cooldown state.
+    const isMeleeTower = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN' || this.type === 'BERSERKER' || this.type === 'LANCER' || this.type === 'AXEMAN';
+    let skipScan = false;
+    if(!isMeleeTower){
+      if(this.type === 'CLERIC' || this.type === 'POPE'){
+        skipScan = this.cooldownTimer > 0; // updateClericSmite/updatePopeSmite already no-op entirely in that state — no behavior change, just skips the scan that fed them nothing
+      } else if(this.cooldownTimer > 0 && this.target && this.target.active){
+        const dCur = Math.hypot(this.target.x-this.x, this.target.y-this.y);
+        if(dCur <= this.targetingRange) skipScan = true;
+        else this.target = null; // fell out of range mid-cooldown — drop it so the scan below finds a real target instead of the tower silently holding a dead aim until cooldown expires
+      }
+    }
+    const nearby = skipScan ? EMPTY_QUERY_RESULT : queryNearby(enemyHash, this.x, this.y, this.targetingRange);
     if(this.type === 'CLERIC'){ this.updateClericSmite(dt, nearby); return; }
     if(this.type === 'POPE'){ this.updatePopeSmite(dt, nearby); return; }
     this.findTarget(nearby);
@@ -8923,7 +8941,7 @@ let particleIndex = 0;
 // through every call site — used for void-pattern detection (see MAGE's streak loop below).
 let enemyHash = null;
 const MAX_DECALS = 2000;
-const MAX_DECALS_LOW_QUALITY = 1200; // Low graphics keeps a smaller live gore budget — waves now resolve 5-10x more kills, so the cap is actually reached in normal play
+const MAX_DECALS_LOW_QUALITY = 400; // lowered from 1200 — v1.4.81 telemetry showed drawDecals() alone consuming 55.8% (2.4ms) of total render time on Low graphics during a dense wave; eviction below already recycles blood before permanent debris (skulls/bones/worms), so this only shrinks the live blood-decal budget, not the debris that's actually meant to be sparse and persistent
 function decalCapacity(){ return graphicsQuality === 'low' ? MAX_DECALS_LOW_QUALITY : MAX_DECALS; }
 const decals = [];
 // Throttle for the decal-expiry sweep in drawDecals() below — expiry precision to the nearest
@@ -11498,7 +11516,6 @@ function resolveEnemyCollisions(){
         if(distSq >= minDist*minDist) continue; // squared-distance rejection: the sqrt only runs for pairs that actually overlap
         const dist = Math.sqrt(distSq);
         const overlap = minDist - dist;
-        correctionsThisPass++;
         let pushX, pushY;
         if(dist > 0.0001){
           pushX = dx/dist; pushY = dy/dist;
@@ -11513,6 +11530,15 @@ function resolveEnemyCollisions(){
         }
         const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
         const otherFrozen = isEnemyFrozen(other) || other.isHutBuilding;
+        // Both-frozen pairs (typically two enemies queued behind a barricade) don't count toward
+        // correctionsThisPass below. They still get their lateral anti-fuse nudge every pass they're
+        // found, but a big barricade queue's overlaps are otherwise permanent for as long as the
+        // queue holds — real physical enemies still occupying real overlapping space — so counting
+        // them meant correctionsThisPass never hit 0 while any queue existed, forcing all 3 passes
+        // (and their buildEnemyHash()+queryNearby() cost) to run every single tick even once the
+        // queue had long since settled into its lateral-nudge equilibrium. Only genuinely *movable*
+        // pairs (at least one side not frozen) now drive whether later passes are worth running.
+        if(!eFrozen || !otherFrozen) correctionsThisPass++;
         if(!eFrozen && !otherFrozen){
           // Bias the separation toward each enemy's own direction of travel (their vx/vy, which
           // already point at their next waypoint) rather than pushing purely radially. A pure
@@ -13284,7 +13310,7 @@ function loop(now){
   applyPanInertia(frameTime);
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
-  const MAX_TICKS_PER_FRAME = 90; // safety cap for high speed multipliers (5x/10x) — prevents a slow device from stalling on one giant catch-up frame; any leftover accumulator just carries into the next frame
+  const MAX_TICKS_PER_FRAME = 8; // safety cap for high speed multipliers (5x/10x) — lowered from 90: a slow/loaded frame at 5x-10x speed was piling up 30+ catch-up ticks in a single rAF callback (each tick re-running collision relaxation + spatial hash queries), which starved the render thread and produced a feedback loop that kept the game pinned at ~6 FPS until the wave cleared. Capping at 8 and discarding any leftover debt below keeps one rAF callback's simulation cost bounded — at extreme speed/density the game will now visibly slow down (fewer ticks per real second) instead of stalling the renderer.
   resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
   resetRenderPhaseTime(); // same pattern, for the render() breakdown below — see renderPhaseTime/resetRenderPhaseTime
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
@@ -13294,6 +13320,13 @@ function loop(now){
     accumulator -= FIXED_DT;
     ticksThisFrame++;
   }
+  // If the clamp above was hit, we're still over budget — rather than carrying that debt into next
+  // frame (which just reproduces the same catch-up spiral one frame later), drop it. This only
+  // discards accumulated SIMULATION time (gameTime advances FIXED_DT per tick actually run); it does
+  // NOT touch realTime or presentationTime, which are advanced by wall-clock frameTime above and stay
+  // untouched here — death bursts, floating text, and camera presentation keep animating smoothly on
+  // their own clock regardless of how much sim debt gets shed.
+  if(ticksThisFrame >= MAX_TICKS_PER_FRAME) accumulator = 0;
   perfStats.updateMs = performance.now() - updateStart;
   flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
