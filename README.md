@@ -16,8 +16,7 @@ with the Web Audio API.
 ## Core design principles
 
 These are the non-negotiable rules the whole tower/progression system is built on — stated
-plainly, in one place, so they can't drift or get reinterpreted (by a contributor, an AI agent, or
-anyone) into something else later.
+plainly, in one place, so they can't drift or get reinterpreted into something else later.
 
 1. **A tower never transforms or changes class. Ever.** Reaching a stat threshold permanently
    unlocks the *next* tower as separately buildable from the Build menu — the tower that earned

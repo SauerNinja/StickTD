@@ -468,6 +468,24 @@ Lag in this project has repeatedly crept back through small, individually reason
 3. **No allocation in hot paths.** No string building, array literals, closures, `.filter/.map`,
    or object literals inside per-tick or per-enemy loops. Spatial keys are integers
    (`spatialCellKey()`); pools are fixed-size and reused.
+   **Why, precisely** (V8 Orinoco GC design — Hannes Payer, Google/Chrome/V8): young-generation
+   collection assumes *"most objects will die young"* and is fast on exactly that case — a
+   throwaway object that dies within roughly the same collection cycle is nearly free. The
+   expensive case is the opposite: an object that survives just long enough to be copied and
+   promoted into the old generation, where it becomes Full-GC material (marking + sweeping +
+   compaction, plus a write-barrier cost on every pointer write into it from then on). This means
+   the danger isn't "allocation" as a blanket concept, it's allocation of things that *almost* die
+   immediately but don't quite — a scratch array rebuilt every tick that happens to survive past
+   one young-gen sweep is worse than either a true one-frame throwaway or a genuinely pooled object
+   that's never re-allocated at all. Pooling wins either way, but this is the actual mechanism, not
+   just a rule of thumb — cite it rather than restating "avoid allocation" without the reason.
+   **Ceiling on what's achievable**: a natively-compiled engine (e.g. a WC3 custom map) has no
+   generational garbage collector making scheduling decisions at all — fixed, pre-arranged memory
+   per object type, no GC pauses, ever. A browser tab running on V8 *will* periodically pause the
+   main thread for young-gen scavenging regardless of code quality, and a Full GC if enough
+   survives. Careful pooling can push that cost down close to negligible (plenty of JS/Canvas games
+   hold 60fps for hours), but "zero GC pauses" isn't an achievable target here the way it is in a
+   natively compiled engine — don't treat a nonzero GC cost alone as evidence of a code bug.
 4. **No unconditional full-world work** in per-frame or timer paths. World caches are blitted as
    the visible slice (`blitWorldLayer()`) and rebuilt only when dirty, coalesced
    (`SETTLED_DECAL_REBUILD_MIN_MS`).
