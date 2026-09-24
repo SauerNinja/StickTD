@@ -14,8 +14,17 @@ session; open the reference doc only when a specific subsystem note is actually 
   an agent got two of these five wrong in the same session (see the incident note below) —
   checking it first is now mandatory, not optional, for any change touching tower unlocks,
   progression, promotion, or the Build menu.
-- **Single self-contained `index.html`.** No separate runtime JS/CSS files, no build step, no new
-  runtime dependencies. Keep it that way regardless of how large the file gets.
+- **`index.html` holds the whole game; the one explicit exception is `CHANGELOG.md`.** No separate
+  runtime JS/CSS files, no build step, no new runtime dependencies for anything gameplay-related —
+  keep it that way regardless of how large the file gets. The single exception, changed by direct
+  owner decision (this doc previously said "single self-contained index.html" with no exceptions;
+  that changed because the owner explicitly decided the changelog-duplication problem mattered more
+  than that purity): the in-game "what's new" dialog does a same-origin `fetch('CHANGELOG.md')`
+  when it opens (see `loadChangelogEntries()`), never during gameplay. This requires the page to be
+  served over HTTP(S) with `CHANGELOG.md` alongside `index.html`; under `file://` the fetch fails
+  and the dialog shows a plain fallback message instead — expected behavior, not a bug, see
+  `maybeShowUpdateNotice()`'s catch block. Do not add further runtime fetches beyond this one
+  without the same kind of explicit confirmation this one required.
 - **MIT license.**
 - **Canonical reference:** live game at https://sauerninja.github.io/StickTD/, repo (source of
   truth) at https://github.com/SauerNinja/StickTD. Check the live URL or pull current repo state
@@ -176,8 +185,13 @@ look reasonable":
   change (fix, feature, balance change). Never jump more than one patch level at once; never bump
   minor/major without explicit instruction. Purely cosmetic no-op edits don't need a bump.
 - Every meaningful change gets a `CHANGELOG.md` entry the same turn — newest first, under its own
-  `## [x.y.z] - YYYY-MM-DD` heading, as a bullet list explaining what changed **and why**. Don't
-  batch multiple versions' worth of changes under one heading.
+  `## [x.y.z] - YYYY-MM-DD — title` heading, as a bullet list explaining what changed **and why**.
+  Don't batch multiple versions' worth of changes under one heading. This is the ONLY place a
+  changelog entry is written — `index.html` no longer embeds a duplicate copy (see §1's
+  `CHANGELOG.md` fetch exception); there is nothing to keep in sync by hand anymore, because there's
+  only one copy. If you ever find yourself editing changelog content inside `index.html` itself,
+  stop — that means the fetch-based loader broke or was reverted, not that this is the right place
+  to write it.
 - **Checking the changelog**: for a normal edit, check the current diff for a lost or duplicated
   heading and confirm the new version/date is correct — this catches the real failure mode (a
   `str_replace` whose `old_str` is just a bare heading line can consume and orphan the content that

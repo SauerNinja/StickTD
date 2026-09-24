@@ -1,5 +1,255 @@
 # Changelog
 
+## [1.4.81] - 2026-09-23 — Debug log made significantly more verbose; audited layout-thrashing (getBoundingClientRect) for the first time this session
+- New tab-visibility tracking: count of times the tab was backgrounded this session, total time
+  spent hidden, and time since it was last hidden — added specifically to stop leaving "was that
+  wall-clock gap a tab switch or something else" as a guess. Several debug logs this session had
+  large wall-clock gaps with no way to confirm the cause; this makes it checkable directly instead
+  of inferred from the gap size alone.
+- New TOWER COMPOSITION section: a count of each tower type currently on the board.
+- New HUT / CAMP STATE section: active hut HP, live guardian count, damage-ledger entry count, and
+  time to next guardian respawn — lets a debug log actually confirm the hut/guardian system (damage
+  ledger, retaliation, respawn timing) is behaving as designed, not just that it exists.
+- Ground items line upgraded from a bare count to count-vs-cap plus the oldest item's age against
+  its lifespan — directly validates the cap-and-expiry fix from v1.4.80 is actually working, rather
+  than trusting it silently.
+- Caught and fixed two real bugs in this same debug-log work before they shipped: a broken
+  string-escaping syntax error introduced while writing the tab-visibility line (caught by the
+  standard node --check pass, not skipped), and two separate places where gameTime (pausable
+  simulation time) was being incorrectly mixed with real wall-clock timestamps in a way that would
+  have shown nonsense numbers in the log — both caught by re-reading the logic rather than assuming
+  the first version was correct once it merely compiled.
+- Also did a first-time-this-session sweep for DOM layout thrashing (forced synchronous reflows
+  from getBoundingClientRect()/offsetWidth reads in hot paths) — a genuinely different mechanism
+  from the JS-heap allocation issues audited earlier. Every call site checked out already correctly
+  gated behind a dirty-flag or cached, consistent with how carefully-audited the rest of the render
+  path already was.
+
+## [1.4.80] - 2026-09-23 — Found the real answer to "does anything accumulate over a long session": dropped ground items had no cap and no expiry
+- groundItems (dropped loot — Lucky Branch, wave-clear drops, items pulled off a tower to move,
+  barricades sold for carrying) was pushed to from 4 separate call sites with NO cap check and NO
+  expiry anywhere in the file. spawnTime was recorded on every item but never actually read by
+  anything. Over a genuinely long session with infinite waves, any uncollected drop just sat there
+  forever — the array, and the per-frame cost of drawing everything in it, could grow without
+  bound for the entire session. This is the actual, concrete answer to "does anything cause lag to
+  accumulate" — not a per-frame cost, a per-session one.
+- Fixed with a shared spawnGroundItem(x, y, itemDef) that all 4 sites now go through: a real cap
+  (MAX_GROUND_ITEMS, 12) that evicts the oldest uncollected item when exceeded, and a 5-minute
+  expiry (GROUND_ITEM_LIFESPAN) swept every 10 real seconds in the main update loop — throttled,
+  not per-tick, and cheap regardless since the list is now capped at 12. Both the eviction and the
+  expiry sweep explicitly skip whichever item is currently being dragged, so an active drag
+  interaction can never have its own item despawn out from under it.
+- Also did a second full pass specifically hunting the "accumulates over session length" class of
+  bug (map/scenery growth: hard-capped by the fixed 32×20 grid, confirmed bounded regardless of
+  expansion count; per-wave history: searched for any array appended to once per wave with no
+  trim, found none; audio nodes: every oscillator schedules its own stop(), confirmed no dangling
+  nodes). groundItems was the one real gap found; everything else already checked out clean.
+
+## [1.4.79] - 2026-09-23 — Changelog is no longer duplicated: index.html fetches CHANGELOG.md instead of embedding it
+- Direct owner decision, explicitly overriding the previous "single self-contained index.html, zero
+  exceptions" constraint: the changelog was being hand-authored twice (a giant embedded
+  CHANGELOG_ENTRIES array in index.html, plus this file) and had already drifted out of sync more
+  than once this session alone — the only real fix is one source of truth, not a promise to sync
+  more carefully.
+- CHANGELOG.md is now that source. index.html's "what's new" dialog does a same-origin
+  fetch('CHANGELOG.md') when it actually opens (never during gameplay, never per-frame) and parses
+  the "## [version] - date — title" headings and their bullet items into the same shape the dialog
+  already used. The multi-hundred-KB embedded array is gone — file size dropped from ~1.04MB to
+  ~0.99MB just from this removal, and it can never grow from changelog content again.
+- The parser was tested against the real file, not assumed correct: it initially only matched 227 of
+  460 real headings (older entries use a shorter "## [version] - date" heading with no title, which
+  the first version of the regex didn't handle) and produced empty item lists for entries written as
+  prose paragraphs instead of bullet lists. Both fixed and re-verified against the actual file — all
+  460 entries now parse with non-empty content.
+- Real tradeoff, stated plainly rather than glossed over: this requires the page to be served over
+  HTTP(S) with CHANGELOG.md alongside index.html (true for the hosted GitHub Pages version).
+  Opening index.html directly via file:// — a real, demonstrated usage pattern for this project —
+  can't fetch a sibling file under the browser's same-origin policy, so that case now shows a plain
+  fallback message pointing at CHANGELOG.md instead of the actual release notes, rather than
+  failing silently or breaking the dialog.
+- README and AGENTS.md updated to state the new architecture honestly: no more "single
+  self-contained file" claim without qualification, a "Running locally" section explaining the
+  HTTP(S) requirement and the file:// fallback behavior, and AGENTS.md's own constraint section
+  rewritten to name this as the one explicit exception, with the reasoning for why it changed kept
+  alongside it rather than just the new rule with no context.
+
+## [1.4.78] - 2026-09-23 — Full lag audit: found and fixed one self-introduced allocation, confirmed everything else already clean
+- checkConeHits() (this session's own melee-sweep falloff fix) called nearby.slice().sort() on
+  every swing-check — a fresh array allocation on a hot per-tick melee path, found by applying
+  the same V8-GC lens documented in AGENTS.md to code added earlier this same session, not just
+  old code. Replaced with a zero-allocation closest-3 selection: two small fixed-size scratch
+  arrays cached on the tower instance itself (lazy-created once, reused for the tower's whole
+  lifetime), filled via insertion during a single pass — no array, object, or sort allocation at
+  any candidate-list size.
+- Re-swept the entire file for uncached document.getElementById() calls: zero remain in any per-
+  frame hot path. Everything still showing up (loadSaveFileText, syncSettingsUI, showWaveSummary,
+  etc.) is one-time boot/save/load/modal code — confirmed the earlier DOM-caching sweep fully
+  held, including through the adopted external continuation build.
+- Re-swept all 48 .filter()/.map() call sites in the file (up from 29 last audit — more code
+  since the adopted baseline). The only ones inside any update(dt) method are the two already-
+  confirmed-safe per-enemy cases (CatCompanion/SkeletonMinion, both gated to rare events) plus
+  two inside the main game loop's own update(dt) — both confirmed gated behind the once-per-wave-
+  clear branch, not per-tick.
+- Checked new Set()/new Map()/spread-operator usage for the first time this session: the only
+  per-attack allocation (hitSet = new Set() for melee swing-tracking) is correctly gated to fire
+  once per SWING START, not once per tick during the swing — a low-frequency, acceptable
+  allocation rate, left as-is.
+
+## [1.4.77] - 2026-09-23 — Ground-item ring: rainbow hue-cycle instead of a flat colored circle
+- The plain orange/green ring around dropped items (Lucky Branch, Iron Charm, etc.) is now a slow
+  rainbow hue-cycle (hsl-based, ~22s per full loop) instead of one flat color — direct feedback
+  that the plain ring read as generic. Lucky Branch keeps a distinguishing trait now that color
+  no longer signals rarity: its ring cycles visibly faster than an ordinary item's. Offset per
+  item so multiple drops on screen don't all cycle in lockstep.
+
+## [1.4.76] - 2026-09-23 — Build menu gold staleness: the real bug was the click handler, not just the display
+- Found something more important than the visual staleness you reported: both build-row click
+  handlers used the `affordable`/`atCapacity` values closed over from whenever the modal was last
+  opened, not live gold/board state — meaning tapping a row you could now genuinely afford could
+  silently do nothing at all until you closed and reopened the menu, not just show a stale label.
+  Both loops (starter towers, unlockable/evolved towers) now re-check live at click time instead
+  — a single comparison, no extra scanning.
+- Also fixed the visual staleness itself, the part you actually asked about — but deliberately
+  NOT by rebuilding the grid on every gold change, which is exactly the lag risk you flagged.
+  buildTowerModal()'s full rebuild (~20-25 rows, innerHTML + listeners each) now only re-runs
+  from inside updateHUDImmediate(), which is already coalesced to at most once per RENDERED frame
+  (the existing hudDirty flag), and only when the Build modal is actually open — a rare, paused-
+  to-browse state, not a per-kill combat cost. Bounded exactly the way you asked for.
+
+## [1.4.75] - 2026-09-23 — Two real bugs found from direct reports: rolled-hit shots that silently never connect, and blood surviving Play Again
+- Confirmed real: a rolled-HIT shot (not flagged isGuaranteedMiss) tracks its target with rate-
+  and angle-capped homing, but if the target moved enough (knockback, a fast enemy) the swept-
+  segment mask check can still fail to connect. The shot then just flew off-world and expired in
+  total silence — no MISS text (it wasn't rolled as one), no damage (never geometrically
+  touched). This is exactly "the archer can't even hit the enemy even though he's not actually
+  missing." Fixed: a committed shot that reaches world-boundary expiry while its target is still
+  alive and tracked now resolves as a hit right there instead of vanishing — snapped to the
+  target's position first so onImpact's cosmetic effects land correctly, not off-world at the
+  boundary.
+- resetGame() ('Play Again') cleared the live decals array but never touched settledDecalCanvas —
+  the persistent bitmap that most blood gets baked into within ~4 seconds of landing
+  (DECAL_BAKE_MIN_AGE_MS). A fresh run started with the ENTIRE previous session's baked blood
+  history still painted on it. rebuildSettledDecalCanvas() repaints strictly from the now-emptied
+  decals array, so calling it during reset produces a genuinely blank canvas.
+- Checked the reported "flashing red dot" against the two real candidates (drawBossCompass,
+  drawSpawnWarningMarker) — both are correctly gated on active-boss/active-spawn state, which
+  resetGame() does clear, so neither explains it. Not guessing further without more specifics
+  (does it move? pulse? sit in one spot?) — tell me what it looks like and I'll go find the
+  actual source instead.
+
+## [1.4.74] - 2026-09-23 — Melee sweeps capped at 3 targets with damage falloff, dual-wield second hit at 25%, blood/bones despawn faster
+- checkConeHits() (the shared melee-swing function used by Swordsman and every evolution,
+  Hammerman, Paladin, etc.) hit every enemy packed into the arc, all for full damage. Now capped
+  at MELEE_SWEEP_MAX_TARGETS (3) per swing, closest-first, with each successive target taking 35%
+  less than the one before it, compounding (100%/65%/42%) — a real blade losing momentum cutting
+  through multiple bodies, per direct feedback.
+- True two-weapon bursts (burstCount === 2 — Snap Caster's second wand; NOT Gunalinder's 6-round
+  revolver burst, a different mechanic) now do 25% damage on the second hit instead of an equal
+  blow — the off-hand strike is the follow-up, not a second full hit.
+- DECAL_LIFESPAN cut 30min→12min, BONE_LIFESPAN cut 45min→18min — both were long enough to
+  essentially never expire in a normal session, which was flagged repeatedly as a lag
+  contributor. Bones still meaningfully outlast blood, the pattern kept from earlier feedback.
+
+## [1.4.73] - 2026-09-23 — Damage range now shown under DPS too; confirmed Battle Mage already exists as Snapcaster
+- The inspect panel's DPS readout now shows the tower's min-max damage range directly beneath the
+  DPS number, per direct request. Reuses the exact same computed range already shown next to the
+  ⚔️ stat icon — one calculation, two display spots, so they can't drift apart.
+- Confirmed, not built new: a "two staffs, two hits" Mage evolution already exists — Snap Caster,
+  Mage's DEX-based evolution (100 DEX attunes Electric, 500 specializes), burstCount: 2,
+  described in its own blurb as dual-wielding a second wand for a two-bolt burst each cycle.
+- A broader stat-philosophy redesign was also proposed this round (STR→constitution/armor,
+  DEX→attack speed, INT→accuracy, main stat→damage, applied uniformly across every class) — not
+  implemented. This changes how every class's stats work, a real rebalance rather than a small
+  tweak, and this project's own protocol is to confirm scope before any mechanic change, not
+  guess at how far to take it.
+
+## [1.4.72] - 2026-09-23 — No, no new unlock was added — "Dual Wield" is leftover dead code from the removed v1.4.44 spec system
+- Direct question: does a 100 DEX Swordsman unlock exist? No. What's actually in the code is
+  leftover from the level-5 Zweihander/Dual Wield spec-choice popup that was explicitly removed
+  back in v1.4.44 ("promotion never changes a tower's class"). Confirmed by tracing every call
+  site: the function that would show that modal doesn't exist anymore, so it's 100% unreachable
+  in current play — not gated behind DEX or any other threshold, just dead.
+- A stale help-text tooltip ("Swordsman - melee cone sweep, can specialize into Zweihander (two-
+  handed) or Dual Wield at level 5") actively misinformed anyone who read it about a mechanic
+  that hasn't existed for dozens of versions. Fixed.
+- The modal's now-unreachable button listeners (specTwoHander/specDual) removed as dead code, per
+  this project's own no-dead-code rule. Tower.chooseSpec() itself is kept — restoreGameState()
+  still needs it to correctly apply a spec value an older save file might have recorded from
+  before the feature was removed.
+
+## [1.4.71] - 2026-09-23 — Leaf gust actually gated to 2% (was requested, never coded), "Recruit"/rank system fully removed, path-triangle investigation exhausted
+- startNextWave() was still calling spawnLeafGust() unconditionally, every wave — the 2% "Lucky
+  Wave" gate was discussed at length but never actually written to code. Fixed now: genuine 2%
+  roll, with a toast so the rare trigger reads as an event. Leaf speed also raised (30-70px/s →
+  220-360px/s) — the other half of the same request ("leaves don't leave the screen fast enough")
+  that was likewise never implemented.
+- The named stat-tier system (STAT_TIER_NAMES: Recruit/Trained/Seasoned/.../Legend) is fully
+  removed from every player-facing display — the inspect-panel hint line, the level-up floating
+  text, the wave-summary report row, and the Settings > Stats telemetry table (the exact "Archer
+  · Recruit" from the screenshot). The now-fully-unused STAT_TIER_NAMES array and statTierName()
+  function are deleted outright rather than left as dead code. Caught and fixed a real bug
+  introduced mid-edit: the inspect-panel call site would have appended a dangling "  ·  "
+  separator with nothing after it once statTierNote() started always returning '' — now guarded
+  the same way the milestone-note line right below it already was.
+- Path-triangle background pattern: every function in both the world-space and screen-space
+  render passes has now been individually opened and ruled out — this is a genuinely exhaustive
+  result across two sessions, not a partial one. Given that, flagging directly: this is
+  consistent with a GPU/driver overlay (NVIDIA/AMD overlay, Xbox Game Bar) or a screen-capture
+  tool artifact rendering on top of the browser, not something in StickTD's own draw calls. Worth
+  testing with all such overlays disabled, or in a different browser, before assuming more code
+  is at fault.
+
+## [1.4.70] - 2026-09-23 — Path texture replaced: pebbles instead of smudge/stain ellipses
+- The path's ground-detail texture was translucent, rotated ellipses in two colors — direct
+  feedback that it read as "random smudges and stains," not ground detail. Replaced with small
+  round, solid-filled pebbles in two grey tones (no rotation, no stretch), and made it genuinely
+  sparse: most path tiles now get none at all, only some get 1-2 pebbles — "sometimes," not a
+  continuous texture layer. Same batching approach as before (two path/fill calls total), so this
+  doesn't reopen the per-expansion cost that batching fixed.
+
+## [1.4.69] - 2026-09-23 — Opened Enemy.draw()/Tower.draw() (the still-unexamined drawDepthSortedLayer cost) and found real per-frame allocation
+- ctx.font = Math.round(x) + 'px serif' was rebuilding a fresh string via concatenation on EVERY
+  enemy body draw, EVERY tower body draw, and EVERY active status-effect icon, every single frame
+  — exactly the allocation-volume pattern AGENTS.md's V8-GC note now names explicitly. New shared
+  pxFont(size) cache (keyed by rounded pixel size, a small bounded set in practice) replaces
+  string concatenation with a lookup. The tower-body case was the most wasteful of the three:
+  28*STICKMAN_SCALE is a true constant that never changes at runtime, so it had been rebuilding
+  the literal same string forever, for every tower, every frame.
+- This is a genuine, previously-unopened part of drawDepthSortedLayer() — the single largest
+  still-unexamined render cost across every debug log sent this session (47-60% of render time).
+  Not the whole story by itself, but real, verified waste inside it.
+
+## [1.4.68] - 2026-09-23 — Verified three flagged lag bottlenecks against real code: two already fixed, one real and now fixed
+- Collision relaxation early-out (skip passes 2/3 once a pass corrects nothing): already
+  implemented at resolveEnemyCollisions()'s `if(correctionsThisPass === 0) break;`. The 90
+  buildEnemyHash() calls seen in debug logs at 5x/30 ticks reflect genuinely active collision
+  during dense combat, not wasted redundant work.
+- Accumulator burst clamping after a long stall: already implemented — frameTime itself is
+  clamped to 100ms BEFORE the gameSpeed multiplier, which is exactly why an 800ms wall-clock gap
+  produced 30 ticks at 5x (100×5) rather than a runaway pile-up. Functionally the same fix that
+  was flagged as missing.
+- The real one: getEnemyCollisionMask()'s synchronous getImageData() readback was already
+  correctly memoized per enemy TYPE (never rebuilt), but only built lazily on that type's first
+  appearance — which meant the one-time ~50ms cost landed live, mid-combat, the first time a new
+  enemy type showed up in a wave (confirmed in debug logs as "Wave spawning worst frame ever").
+  Now pre-built for every enemy type once at boot, so the cost happens during load instead of as
+  a surprise mid-wave hitch.
+
+## [1.4.67] - 2026-09-23 — Adopted the continuation build (v1.4.65/66) as baseline; README meta-language cleanup
+- Verified the externally-continued build already contains the exact Crazy Chef TOWER_STRATEGY
+  fix independently (same bug, same fix, confirmed via boot-time validateGameDefinitions()), plus
+  a scenery-scan optimization (1.4.65) and spatial-query/FPS-measurement fixes (1.4.66). Adopted
+  as the new working baseline rather than redoing the same fix separately.
+- README's "Core design principles" section read "...so they can't drift or get reinterpreted (by
+  a contributor, an AI agent, or anyone)" — a stray meta-reference to AI development process in
+  player-facing documentation. Removed; the README should read as pure, generalized game
+  documentation at all times, never referencing how it's built or by whom.
+
+## [1.4.65] - 2026-09-23 — Restore startup and avoid idle scenery scans
+- Added the missing Crazy Chef strategy entry required by startup validation.
+- Scenery updates visit only pending clearing jobs; rebuild the job list when clearing begins or
+  a save loads, preserve reward order, and discard removed or replaced scenery safely.
+
 ## [1.4.64] - 2026-09-23 — Death-proximity blood modifier, applied to every class (not just Mage)
 - New, deliberately slight modifier on top of the existing size system: how far along the path an
   enemy had traveled at the moment of death now nudges the death-burst size. Within the last

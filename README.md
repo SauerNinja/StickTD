@@ -5,13 +5,15 @@
 A free browser-based tower defense game with stickman towers that level up and evolve into
 distinct classes, an expanding spiral map, infinite waves, a hero item system, breakaway enemies
 that ambush your towers, path-blocking barricades, forensic-grade blood/gore effects, and full
-save/load. Single self-contained HTML file — no install, no build step, just open and play.
+save/load. One HTML file holds the whole game — no install, no build step, just open and play.
 
 **[Play it here](https://sauerninja.github.io/StickTD/)** · **[Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)**
 
 Zero dependencies: no external images, no external audio, nothing to install. Every stickman,
 weapon, and effect is drawn procedurally on an HTML5 Canvas, and every sound is synthesized live
-with the Web Audio API.
+with the Web Audio API. The one exception is the in-game "what's new" dialog, which fetches
+CHANGELOG.md from alongside index.html so the release notes have a single source of truth instead
+of being duplicated inside the game file — see "Running it" below.
 
 ## Core design principles
 
@@ -478,9 +480,9 @@ any other.
   drawn procedurally with `CanvasRenderingContext2D` calls, no sprite sheets or image assets.
 - **Vanilla JavaScript**, no framework, no bundler, no transpilation step.
 - **Web Audio API** for synthesized sound effects — no audio files.
-- **A single self-contained `index.html`** — HTML, CSS, and JS all live in one file by design (see
-  [Contributing](#contributing)), so the entire game is one download and one `<script>` tag away
-  from running.
+- **A single `index.html` holds the entire game** — HTML, CSS, and all game logic live in one file
+  by design (see [Contributing](#contributing)); the only thing it loads from outside itself is
+  `CHANGELOG.md`, for the in-game "what's new" dialog, and only when that dialog is actually opened.
 
 ## Project structure
 
@@ -488,7 +490,7 @@ any other.
 StickTD/
 ├── index.html      # the entire game — markup, styles, and all game logic
 ├── AGENTS.md        # workflow rules for AI agents/contributors making changes
-├── CHANGELOG.md      # full version history, newest first
+├── CHANGELOG.md      # full version history, newest first — the single source of truth; the in-game "what's new" dialog fetches this file directly
 ├── BACKLOG.md        # ideas and planned features not yet built
 ├── LICENSE            # MIT
 └── README.md          # this file
@@ -581,26 +583,30 @@ right above that spot (`/* ===== ... ===== */`) is the reliable anchor, not the 
 
 ## Running locally
 
-No build step, no package manager, no server required:
+No build step, no package manager:
 
-1. Clone or download the repo.
-2. Open `index.html` directly in any modern browser.
-
-That's it. If your browser restricts local-file features (some autoplay/audio policies behave
-differently under `file://`), serve it with any static file server instead, e.g.:
+1. Clone or download the repo — keep `index.html` and `CHANGELOG.md` together, same folder.
+2. Serve the folder with any static file server, e.g.:
 
 ```
 python3 -m http.server 8000
 # then visit http://localhost:8000/
 ```
 
+Opening `index.html` directly via `file://` (double-clicking it) still runs the game itself fine,
+but the in-game "what's new" dialog can't fetch `CHANGELOG.md` under `file://`'s same-origin
+restrictions — it'll show a plain message pointing at the file instead of the release notes. Serve
+it over HTTP(S) (the command above, or any static host — this is exactly how the hosted version at
+GitHub Pages already works) for that dialog to show real content.
+
 ## Contributing
 
-This repo deliberately stays a single-file, zero-dependency project — see
+This repo deliberately stays a small, dependency-free project — see
 [AGENTS.md](AGENTS.md) for the exact workflow any contributor (human or AI agent) follows when
 making a change: bumping `GAME_VERSION` by one patch level per meaningful change, adding a
-changelog entry that explains *why* something changed and not just what, and running a syntax
-check before finalizing. Check the [live version](https://sauerninja.github.io/StickTD/) and/or
+changelog entry to `CHANGELOG.md` (the single source of truth — the in-game dialog fetches it
+directly, nothing is duplicated inside index.html) that explains *why* something changed and not
+just what, and running a syntax check before finalizing. Check the [live version](https://sauerninja.github.io/StickTD/) and/or
 pull the current `main` before starting work, since this repo may be updated between sessions.
 
 ## Version History
