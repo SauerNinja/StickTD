@@ -1,5 +1,138 @@
 # Changelog
 
+## [1.4.88] - 2026-09-24 — Guarded against corner-stall pileups leaving an enemy's pathIndex out of sync with its actual position
+- **Investigated**: enemies bunched at a corner (crowd density, not a barricade — barricade-queued
+  enemies are explicitly exempt from this watchdog entirely, see `isEnemyFrozen()`'s check in
+  `checkStallWatchdog()`) reportedly ending up in the "escaped" state without having actually walked
+  the rest of the route. Traced `reachEnd()` — it only fires once `pathIndex` has run out of
+  waypoints (`waypointsPx[pathIndex+1]` is undefined) combined with a real geometric
+  distance-from-finish-line check on the enemy's actual x/y, not directly from `traveled`.
+- **Real gap found and closed**: `checkStallWatchdog()` (the existing anti-bunching system that
+  force-nudges a genuinely stuck enemy toward its next waypoint after ~1.5s of no real progress)
+  moved the enemy's `x`/`y` and `traveled` directly toward the target, but never advanced
+  `pathIndex` itself — it relied on the very next normal movement tick to notice the enemy was now
+  close enough and increment `pathIndex` on its own. A corner jammed enough to trigger the watchdog
+  once is exactly the kind of spot likely to jam it again right away, which could leave `pathIndex`
+  trailing behind where the enemy's `traveled`/`x`/`y` actually put it for another stall cycle —
+  and `pathIndex` is what `reachEnd()`'s "ran out of waypoints" check actually keys off of, not
+  `traveled` or position. Fixed by advancing `pathIndex` immediately whenever the watchdog's own
+  nudge actually reaches the target waypoint (nudge distance equals the full remaining distance),
+  mirroring the same snap the normal per-tick movement code already does — so a repeated corner
+  stall can no longer leave `pathIndex` lagging behind the enemy's real progress.
+- Honesty note: this closes a real, verified gap in the watchdog's own bookkeeping, and is the most
+  concrete mechanism I could trace from the code that plausibly connects "stuck at a corner" to
+  route-state confusion. I could not fully reproduce the exact reported symptom end-to-end from
+  static analysis alone (no live telemetry/session to confirm against) — worth confirming this
+  actually stops in the next play session rather than treating it as certain.
+
+## [1.4.87] - 2026-09-24 — Axeman/Hammerman scenery-clearing discounts; hut rubble cut down and fading faster
+- **New**: owning an active Axeman tower now discounts clearing a Tree scenery tile by 75% (25% of
+  its normal gold cost). Owning an active Hammerman discounts clearing a Rock scenery tile by 50%.
+  Presence-based, not stacking with multiple copies of the same tower — one is enough to unlock the
+  discount for that resource type. Implemented as a shared `sceneryClearCost(item)` helper used by
+  both the actual gold charge (`startClearingScenery()`) and the on-screen hover price label, so the
+  displayed cost always matches what's actually charged.
+- **Fixed**: too much stone/timber rubble accumulating around a Hut under prolonged attack, and
+  sitting around far longer than felt right. Root cause: hut hits route through the same
+  `spawnBarricadeDebris()` a Barricade uses (35% chance per hit, 2-3 rubble pieces each), sharing its
+  5-minute `BARRICADE_RUBBLE_LIFESPAN` that only starts fading in its final 10%. A Barricade has 10
+  HP and dies quickly, so it naturally only ever generates a small, bounded pile. A Hut has 16x a
+  normal enemy's HP, so a real fight against one lands far more hits over a far longer stretch — the
+  same per-hit chance produced a lot more total rubble, and none of it is eligible for the decal-cap
+  eviction that recycles everything else (rubble is explicitly protected there, same as bones/skulls,
+  since it's meant to be sparse, deliberate debris, not filler).
+  - Hut debris chance lowered from 0.35 to 0.15 per hit — noticeably less volume over a long fight.
+  - `BARRICADE_RUBBLE_LIFESPAN` lowered from 300000ms (5 min) to 90000ms (90s) — affects both hut and
+    barricade rubble equally (shared constant); barricade rubble was never the complaint, but there
+    was no case for it lingering any longer than the hut debris it shares code with.
+
+## [1.4.86] - 2026-09-24 — Softened the aged-blood-pool "skeletonization ring" so old pools don't read as near-black
+- **Root cause**: `drawOneDecal()`'s skeletonization/oxidation ring — the darker rim drawn around a
+  blood pool once it's aged past 2 minutes — was rendered at 55% of the pool's already-dark aged
+  color, at 70% of its alpha, layered directly on top of the base fill. In a long session (or at
+  higher speed, where in-game minutes pass quickly), most visible pools are well past that 2-minute
+  mark, so the rim effect was compounding with the already-dark base color into the near-black
+  masses seen in-game — not the intended subtle "this stain is older" cue.
+- Softened the rim to 78% of the aged color at 55% alpha. Old pools still read as visibly older than
+  fresh ones (the rim/core distinction is unchanged in shape, just gentler in intensity), but no
+  longer crosses into solid black.
+- Deliberately left the base pool-color aging curve (bright red → dried `bio.dark` tone) untouched —
+  that's a broader, shared color path used by every blood effect in the game (spurts, drips,
+  satellite drops), not just pools, and wasn't what was flagged as the problem.
+
+## [1.4.85] - 2026-09-24 — Fixed hut buildings visibly moving when a stunned guardian stands next to them
+- **Root cause**: `resolveEnemyCollisions()`'s "both frozen" branch — the small lateral anti-fuse
+  nudge meant for two enemies queued together behind a barricade — moved BOTH sides of the pair
+  unconditionally, with no check for whether either side was a hut building. A hut is always
+  "frozen" (`isHutBuilding` forces `eFrozen`/`otherFrozen` true regardless of `isEnemyFrozen()`),
+  and so is any Guardian currently stunned (`stunnedUntil > gameTime`) — e.g. right after a
+  stun-capable melee tower's (Swordsman-family) cone attack connects. When a stunned Guardian was
+  physically overlapping its own hut, both landed in the both-frozen branch together and the hut got
+  nudged along with it every tick the two stayed overlapping, even though a hut is meant to be a
+  permanent, never-moving structure.
+- Fixed by gating each side of that branch's nudge on `!e.isHutBuilding`/`!other.isHutBuilding`
+  individually — a hut now never has its position touched by this branch under any circumstance,
+  while the non-hut frozen partner (a stunned Guardian, or a normal queued enemy) still gets its
+  existing anti-fuse nudge as before.
+- Verified `resolveSweptEnemyCollisions()` was already correct and needed no change — it early-exits
+  a pair entirely (`if(eFrozen && otherFrozen) continue`) whenever both sides are frozen, so it never
+  reaches any position-mutating code for a hut-involved frozen pair in the first place.
+- Not a performance fix — this branch does the same amount of work either way, just skips writing to
+  the hut's `x`/`y` when it shouldn't. Purely a visual-correctness bug (buildings jittering/creeping
+  that shouldn't move at all), unrelated to frame time.
+
+## [1.4.84] - 2026-09-24 — Barricades removed as a breakaway/escaped-attack target; live barricades now physically block breakaway/escaped movement instead of being walkable-around
+- **Barricades are no longer a valid target for breakaway, troll-swing, or post-escape wandering
+  attacks** (`findNearestActiveTower()` now skips `t.type === 'BARRICADE'`). This was previously
+  intentional design (an enemy could "soak the hit" on a barricade instead of a real tower — see the
+  old Barricade shop blurb), but per direct request enemies should only ever break off to target
+  actual towers.
+- **Root cause of enemies being able to reach the finish line despite a live barricade sitting in
+  their way**: `isBreakaway` (and post-escape wandering) enemies are deliberately excluded from
+  `updateBarricadesAndPileup()`'s queue/contact system — that function only tracks enemies still on
+  their normal forward path. While breaking away to chase a tower, an enemy had zero barricade
+  awareness at all: nothing stopped it from freely walking straight through or around a live
+  barricade's physical position to reach a tower positioned past it. Once the breakaway ended, the
+  enemy resumed normal forward movement from wherever it physically ended up — potentially already
+  beyond the barricade, and since barricade contact detection is purely proximity-based
+  (`findTouchingBarricade()`), it would never register as blocked again for the rest of its route,
+  even though the barricade was never destroyed.
+- Fixed by giving `updateBreakaway()` and `updateEscaped()`'s engage-target movement a live-barricade
+  override: each tick, `findTouchingBarricade(this)` is checked first, and a live barricade found
+  there temporarily replaces the enemy's actual target for movement/attack purposes — the enemy
+  stops right at the barricade and attacks it (reusing the exact same `takeDamage()` call already
+  used for towers, which already internally routes barricade hits through its own
+  `barricadeAttackReady()`/`chipBarricade()` rate limiter regardless of caller, so this can't deal
+  extra damage beyond the normal 1 HP/10s cap). Only once the barricade is gone does `t` resolve back
+  to the enemy's real original target on the next tick, so the chase resumes rather than aborting.
+  `endBreakaway()`/clearing `escapedAttackTarget` now only fires once the enemy's *actual* original
+  target is the one defeated, not an incidental blocking barricade along the way.
+- Updated the Barricade shop blurb to describe the corrected behavior instead of the old
+  "breakaway enemies will target it" design.
+- Scope note: this fixes the breakaway/escaped-wander bypass specifically, which is the mechanism
+  that had zero barricade awareness. Normal forward-path enemies were already correctly blocked by
+  `updateBarricadesAndPileup()`'s existing queue system and are unaffected by this change.
+
+## [1.4.83] - 2026-09-24 — 3-2-1-GO pre-wave countdown now always takes exactly 3 real seconds, independent of gameSpeed
+- `waveTimer` (which drives both the on-screen "3-2-1-GO" countdown and the gate that delays the
+  first real spawn until it finishes) was previously advanced by `dt` inside the per-tick simulation
+  loop in `update()` — since more ticks fire per real second at higher `gameSpeed`, the countdown
+  raced by in a fraction of a second at 5x/10x instead of reading as 3 actual seconds. Speed
+  multipliers are meant to speed up the wave itself (dispatch pacing, combat), not the pre-wave
+  countdown players are supposed to actually read.
+- Fixed by moving `waveTimer`'s increment out of the scaled tick loop entirely: it's now advanced
+  once per rendered frame in `loop()`, using the real unscaled wall-clock frame delta (the same
+  `frameTime` used for `realTime`, captured before it gets multiplied by `gameSpeed` for the physics
+  accumulator). The exact same freeze conditions (barricade pileup, wave-start camera pan) that
+  gated the old per-tick increment gate this one too, so pause behavior is unchanged.
+- `advanceWaveDispatch()` itself is untouched — still called once per simulation tick from `update()`,
+  so actual wave pacing after the countdown finishes still scales normally with `gameSpeed`, same as
+  before. Only the countdown/first-spawn gate is now speed-independent.
+- Hoisted `GO_HOLD_MS` (the "GO!" label's lingering duration after 3-2-1 finishes) out of
+  `drawWaveCountdown()`'s local scope into a module-level `WAVE_COUNTDOWN_GO_HOLD_MS` constant, since
+  `loop()`'s new real-time increment needs the same upper bound the draw function already used, and a
+  second duplicated `500` would have been one more place to keep in sync by hand.
+
 ## [1.4.82] - 2026-09-24 — Fixed Wave 4 6 FPS chokepoint collapse and the white-triangle map artifact (both confirmed against live v1.4.81 debug telemetry)
 - **Root cause of the giant translucent white/grey triangles across the map**: `drawMap()`'s
   pebble-texture batch loops (`pebblesA`/`pebblesB`) chained `ctx.arc()` calls with no `moveTo()` in

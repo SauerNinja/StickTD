@@ -1092,7 +1092,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.82'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.88'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1942,7 +1942,7 @@ const CONFIG = {
     },
     BARRICADE: {
       name: 'Barricade', icon: '🚧', baseCost: 0, woodCost: 600, stoneCost: 300, unlocksAfterWave: 0,
-      blurb: "Doesn't attack — just a tough obstacle. Bought directly from Build, not Shop — tap Barricade in the Build menu, then tap a valid path tile to place it. Costs wood and stone (or free, using a banked free-barricade charge). Breakaway enemies will target it if it's their nearest option, soaking the hit instead of a real tower.",
+      blurb: "Doesn't attack — just a tough obstacle. Bought directly from Build, not Shop — tap Barricade in the Build menu, then tap a valid path tile to place it. Costs wood and stone (or free, using a banked free-barricade charge). Enemies never deliberately target it, but it physically blocks the path — nothing can push past a live one to reach your base, breakaway enemies included.",
       tiers: [
         { range: 0, damage: 0, cooldown: 999999 }
       ]
@@ -2720,7 +2720,7 @@ function findNearestActiveTower(x, y, maxDist){
   // every other stat effect, so this stays meaningful but doesn't spiral out of control.
   const candidates = [];
   for(const t of towerPool){
-    if(!t.active || t.disabledWavesLeft > 0) continue; // a downed/disabled tower shouldn't be picked as a NEW breakaway/escaped-attack target — it's already defenseless, and re-targeting it would just re-trigger takeDamage()'s own disable-and-recover cycle indefinitely, keeping it locked out forever instead of ever getting a real chance to recover
+    if(!t.active || t.disabledWavesLeft > 0 || t.type === 'BARRICADE') continue; // Barricades are obstacles, not attackable "real towers" — breakaway/troll-swing/escaped-wander targeting must never pick one as its destination. A live barricade can still physically block a breakaway enemy's path (see updateBreakaway()'s own blocker check), just never be the thing it deliberately walks toward.
     const d = Math.hypot(t.x-x, t.y-y);
     if(d > (maxDist || Infinity)) continue;
     const tauntWeight = 1 + diminishingStatValue(t.str || 0, 0.08);
@@ -3184,13 +3184,23 @@ function maybeSpawnMoreScenery(){
   for(let i=0; i<n; i++) spawnScenery(empties[i][0], empties[i][1]);
 }
 
+// Presence-based discount, not stacking with multiple copies of the same tower — owning a single
+// active Axeman/Hammerman is enough to unlock the reduced clear cost for that resource type. Shared
+// by startClearingScenery() (the actual gold charge) and drawScenery()'s cost label below so the
+// displayed price always matches what's actually charged.
+function sceneryClearCost(item){
+  if(item.type === 'TREE' && towerPool.some(t => t.active && t.type === 'AXEMAN')) return Math.ceil(item.clearCost * 0.25); // Axeman: cutting trees 75% off
+  if(item.type === 'ROCK' && towerPool.some(t => t.active && t.type === 'HAMMERMAN')) return Math.ceil(item.clearCost * 0.5); // Hammerman: mining rocks 50% off
+  return item.clearCost;
+}
 function startClearingScenery(item){
   if(item.isClearing) return;
-  if(gold < item.clearCost){
+  const cost = sceneryClearCost(item);
+  if(gold < cost){
     spawnFloatingText(item.x, item.y - 20, 'Not enough gold', '#e63946');
     return;
   }
-  gold -= item.clearCost;
+  gold -= cost;
   item.isClearing = true;
   item.clearStart = gameTime;
   rebuildClearingScenery();
@@ -3298,8 +3308,9 @@ function drawOneSceneryItem(ctx, key, item, size){
     // cost label only shown while hovered/tapped, not cluttering the map at all times
     ctx.font = 'bold 10px Verdana';
     ctx.textAlign = 'center';
-    const costStr = item.clearCost > 0 ? '💰'+item.clearCost : 'FREE';
-    ctx.fillStyle = item.clearCost > 0 ? '#fff' : '#7dd3fc';
+    const displayCost = sceneryClearCost(item); // reflects the Axeman/Hammerman discount, if any — see sceneryClearCost()
+    const costStr = displayCost > 0 ? '💰'+displayCost : 'FREE';
+    ctx.fillStyle = displayCost > 0 ? '#fff' : '#7dd3fc';
     ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
   }
 }
@@ -4511,6 +4522,7 @@ let everBuiltFighter = false; // true the moment the player has ever had an acti
 // pan a moment to land instead of the wave visually starting and spawning in the same instant. See
 // drawWaveCountdown() for the on-screen "3-2-1-GO" and the 'roundStart' sound case for the fanfare.
 const WAVE_COUNTDOWN_MS = 3000;
+const WAVE_COUNTDOWN_GO_HOLD_MS = 500; // how long the "GO!" label lingers after the 3-2-1 finishes, before drawWaveCountdown() stops drawing it — hoisted here (was a local const inside drawWaveCountdown()) so loop()'s real-time countdown advance uses the exact same upper bound
 let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the wave-end summary popup's gold-gained readout
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
@@ -6116,7 +6128,16 @@ class Enemy{
     spawnFloatingText(this.x, this.y - this.radius - 6, '⚡ Breaking off!', '#ff8844');
   }
   updateBreakaway(dt){
-    const t = this.breakawayTarget;
+    // A live Barricade physically in the way overrides the enemy's actual breakaway target while
+    // it's blocking — a breakaway enemy chasing a tower must still respect a barricade sitting
+    // between it and that tower exactly like normal on-path movement does, not freely walk around
+    // or through it. Without this, breaking away toward a tower positioned past a live barricade
+    // let the enemy end up beyond it entirely unblocked (isBreakaway enemies are excluded from
+    // updateBarricadesAndPileup()'s queue/contact system while breaking away — see that function's
+    // own active-enemy filter), able to resume forward path movement and reach the finish line
+    // despite the barricade never having been destroyed.
+    const blocker = findTouchingBarricade(this);
+    const t = (blocker && blocker.active && blocker.hp > 0) ? blocker : this.breakawayTarget;
     if(!t || !t.active || t.disabledWavesLeft > 0){ this.endBreakaway(); return; } // drop the target the instant it goes down, not just when it's fully destroyed — an already-disabled tower is defenseless and shouldn't keep getting re-hit/re-disabled by the same attacker
     const dx = t.x - this.x, dy = t.y - this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
@@ -6139,7 +6160,11 @@ class Enemy{
           spawnFloatingText(this.x, this.y - this.radius - 10, '✝️ +'+healed, '#ffe9a8');
           spawnParticles(t.x, t.y, '#ffe9a8', 6);
         }
-        if(defeated) this.endBreakaway();
+        // Only actually ends the breakaway once the enemy's ORIGINAL target is defeated — clearing
+        // a blocking barricade along the way (t !== this.breakawayTarget here) just lets t resolve
+        // back to that original target on the very next tick, so it resumes the chase instead of
+        // stopping short.
+        if(defeated && t === this.breakawayTarget) this.endBreakaway();
       }
     }
   }
@@ -6169,7 +6194,11 @@ class Enemy{
   updateEscaped(dt){
     this.attackBumpTarget = null; // recomputed fresh below every tick — never left stale if the target changes or drops
     if(this.escapedAttackTarget && this.escapedAttackTarget.active && !(this.escapedAttackTarget.disabledWavesLeft > 0)){
-      const t = this.escapedAttackTarget;
+      // Same live-Barricade override as updateBreakaway() — an escaped enemy chasing a tower must
+      // still respect a barricade physically in its way rather than freely walking around/through
+      // one, for the same reason: isBreakaway/escaped movement has no other barricade awareness.
+      const blocker = findTouchingBarricade(this);
+      const t = (blocker && blocker.active && blocker.hp > 0) ? blocker : this.escapedAttackTarget;
       const dx = t.x-this.x, dy = t.y-this.y;
       const dist = Math.hypot(dx,dy) || 0.0001;
       const engageRange = 26;
@@ -6186,7 +6215,10 @@ class Enemy{
         if(this.escapedAttackTimer <= 0){
           this.escapedAttackTimer = 800; // same cadence as the normal on-path breakaway attack
           const defeated = t.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE)), this.statusOnTower);
-          if(defeated){ this.escapedAttackTarget = null; this.attackBumpTarget = null; }
+          // Only actually clears escapedAttackTarget once the ORIGINAL target is defeated — same
+          // reasoning as updateBreakaway(): clearing a blocking barricade (t !== escapedAttackTarget
+          // here) just lets t resolve back to the real target next tick instead of abandoning it.
+          if(defeated && t === this.escapedAttackTarget){ this.escapedAttackTarget = null; this.attackBumpTarget = null; }
         }
       }
       return; // skip the aimless-wander movement below while actively engaging a tower
@@ -6413,7 +6445,7 @@ class Enemy{
     // throw debris). Checked BEFORE the blood gate below, not inside it, so the hut never touches
     // goreMode or BLOOD_ON_HIT_CHANCE at all.
     if(this.isHutBuilding){
-      if(Math.random() < 0.35) spawnBarricadeDebris(this);
+      if(Math.random() < 0.15) spawnBarricadeDebris(this); // lowered from 0.35 — a hut's 16x-normal HP means a long fight lands far more hits than a barricade ever takes, so the same per-hit chance produced a lot more accumulated rubble around a hut than around a barricade dying quickly
     } else if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE){
       const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
@@ -9031,7 +9063,7 @@ function spawnDeathAnim(x, y, emoji, radius){
 // never allocates; the permanent ground debris is spawned separately when they land.
 const BARRICADE_CHUNK_GRAVITY = 900;   // px/s^2
 const BARRICADE_CHUNK_LIFE_MS = 1100;
-const BARRICADE_RUBBLE_LIFESPAN = 300000; // timber/stone lies in the dirt for ~5 minutes, then fades out over its final 10%
+const BARRICADE_RUBBLE_LIFESPAN = 90000; // timber/stone lies in the dirt for ~90s, then fades out over its final 10% — cut down from 5 minutes: a hut fight (16x a normal enemy's HP, so many more hits land over its lifetime than a 10-HP barricade ever takes) was piling up rubble far faster than it could clear, and the pieces are explicitly protected from the decal-cap eviction that recycles everything else (see pushDecal()'s isEmojiDrop skip), so nothing else was ever going to thin them out either
 const barricadeChunks = Array.from({ length: 64 }, () => ({ active:false }));
 let barricadeChunkIndex = 0;
 function spawnBarricadeChunk(x, y, isStone){
@@ -10092,9 +10124,14 @@ function drawOneDecal(ctx, d){
       // into its dried color by 40% of life) and intensifying gradually, so long-lived pools from
       // the extended DECAL_LIFESPAN visibly read as older than fresh ones instead of all looking
       // identical once past the initial color transition.
+      // Rim darkness softened from 0.55/0.7-alpha to 0.78/0.55-alpha — the old values compounded
+      // with the base pool color (itself already a dark aged red) into near-black masses on any
+      // pool older than a few minutes, which in a long session at speed is most of the visible
+      // pools on screen. Still noticeably darker than the fresher core (keeps the "this stain is
+      // older" read the effect exists for), just not crossing into solid black.
       const skeletonT = lifeT > (120000/lifespan) ? Math.min(1, (lifeT - 120000/lifespan) / 0.35) : 0;
       if(skeletonT > 0 && d.blobs.length){
-        const rimColor = 'rgba(' + Math.round(r*0.55) + ',' + Math.round(g*0.55) + ',' + Math.round(b*0.55) + ',' + (alpha*0.7*skeletonT).toFixed(2) + ')';
+        const rimColor = 'rgba(' + Math.round(r*0.78) + ',' + Math.round(g*0.78) + ',' + Math.round(b*0.78) + ',' + (alpha*0.55*skeletonT).toFixed(2) + ')';
         const coreColor = 'rgba(' + Math.round(r*1.12) + ',' + Math.round(g*1.05) + ',' + Math.round(b*1.05) + ',' + (alpha*0.5*skeletonT).toFixed(2) + ')';
         ctx.strokeStyle = rimColor;
         ctx.fillStyle = coreColor;
@@ -11435,6 +11472,15 @@ function checkStallWatchdog(dt){
           const nudge = Math.min(dist, 32); // slightly stronger than before — enough to actually clear a mixed-size pileup at a corner, not just inch forward
           e.x += (dx/dist)*nudge; e.y += (dy/dist)*nudge;
           e.traveled += nudge;
+          // If this nudge actually reached the waypoint (nudge === dist, capped by the Math.min
+          // above), advance pathIndex right here instead of waiting for the next normal movement
+          // tick to notice and do it — a corner jammed enough to trigger this watchdog once is
+          // exactly the situation likely to jam it again immediately after, which could otherwise
+          // leave pathIndex trailing behind where the enemy actually is for another stall cycle.
+          // pathIndex is what everything else (reachEnd()'s "ran out of waypoints" check included)
+          // actually keys off of — traveled/x/y being correct isn't enough on their own if
+          // pathIndex never catches up to match them.
+          if(nudge >= dist - 0.01) e.pathIndex++;
         }
         e.stallStrikes = 0;
       }
@@ -11569,15 +11615,19 @@ function resolveEnemyCollisions(){
         } else if(!otherFrozen){
           other.x -= pushX*overlap; other.y -= pushY*overlap;
         } else {
-          // both blocked at a chokepoint (e.g. queued behind a barricade) — the old code skipped
-          // separation entirely here, which is exactly the case every queued unit hits, so physics
-          // shut off right where crowding is worst. A gentle lateral-only nudge (perpendicular to the
-          // push vector, small magnitude) keeps queued units from visually fusing without fighting
-          // the queue-slot system's own positioning.
+          // Both sides "frozen" this tick — typically two enemies queued behind a barricade. A
+          // gentle lateral-only nudge (perpendicular to the push vector, small magnitude) keeps
+          // queued units from visually fusing, without fighting the queue-slot system's own
+          // positioning. BUT a hut building must never actually move, under any circumstance — it's
+          // a permanent structure, not a queued unit. Without this guard, a stunned Guardian
+          // standing right next to its hut (isEnemyFrozen via stunnedUntil — e.g. after a
+          // stun-capable melee tower's cone hit) would land in this same both-frozen branch
+          // together with the hut, and the hut would get visibly nudged along with it every tick
+          // the two stayed overlapping. Each side only gets the nudge if it isn't the hut.
           const lateralX = -pushY, lateralY = pushX;
           const nudge = Math.min(overlap, 1.5) * 0.5;
-          e.x += lateralX*nudge; e.y += lateralY*nudge;
-          other.x -= lateralX*nudge; other.y -= lateralY*nudge;
+          if(!e.isHutBuilding){ e.x += lateralX*nudge; e.y += lateralY*nudge; }
+          if(!other.isHutBuilding){ other.x -= lateralX*nudge; other.y -= lateralY*nudge; }
         }
       }
     }
@@ -12271,8 +12321,13 @@ function update(dt){
     // one while the camera is still mid-swing toward the spawn point meant the countdown was
     // half over (or enemies had already appeared) before the player had actually arrived at what
     // it was counting down to. Same freeze mechanism as the barricade-pileup pause above.
+    // waveTimer itself is now advanced once per rendered frame in loop() using real unscaled
+    // wall-clock time (see the comment there) rather than per tick here — the 3-2-1-GO countdown
+    // must always take the same 3 real seconds no matter what gameSpeed is set to, since speed
+    // multipliers are only meant to speed up the wave itself, not the pre-wave countdown. Only
+    // the actual dispatch call remains here, still running once per simulation tick so wave
+    // pacing after the countdown continues to scale with gameSpeed exactly as before.
     if(!anyBarricadeQueued && !waveStartCameraPan){
-      waveTimer += dt;
       advanceWaveDispatch(dt);
     }
   }
@@ -12672,8 +12727,7 @@ function drawSpawnWarningMarker(ctx){
 }
 function drawWaveCountdown(ctx){
   if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
-  const GO_HOLD_MS = 500;
-  if(waveTimer >= WAVE_COUNTDOWN_MS + GO_HOLD_MS) return;
+  if(waveTimer >= WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS) return;
   let label, scale, alpha, isGo = false;
   if(waveTimer < WAVE_COUNTDOWN_MS){
     const secondsLeft = 3 - Math.floor(waveTimer/1000); // 3, 2, 1
@@ -12684,7 +12738,7 @@ function drawWaveCountdown(ctx){
   } else {
     isGo = true;
     label = 'GO!';
-    const t = (waveTimer - WAVE_COUNTDOWN_MS) / GO_HOLD_MS;
+    const t = (waveTimer - WAVE_COUNTDOWN_MS) / WAVE_COUNTDOWN_GO_HOLD_MS;
     scale = 1.4 - t*0.4;
     alpha = 1 - t;
   }
@@ -13308,6 +13362,21 @@ function loop(now){
   if(!realTimeFrozen) realTime += frameTime;
   presentationTime += frameTime;
   applyPanInertia(frameTime);
+  // The 3-2-1-GO pre-wave countdown must always take the same real 3 seconds regardless of
+  // gameSpeed — previously waveTimer was advanced by `dt` inside the scaled simulation tick loop
+  // in update(), so at 5x/10x it raced past in a fraction of a second (more ticks fire per real
+  // second at higher speed, and every tick added a fixed FIXED_DT). Speed multipliers are only
+  // meant to speed up the wave itself (dispatch/combat), never the pre-wave countdown. Advanced
+  // here using frameTime (real, unscaled wall-clock ms, captured above BEFORE the gameSpeed
+  // multiply below) once per rendered frame — not per simulation tick — so it's now completely
+  // independent of gameSpeed and of how many ticks run this frame. Mirrors the exact same
+  // freeze conditions (barricade pileup / wave-start camera pan) the old per-tick increment used,
+  // so pausing behavior is unchanged. advanceWaveDispatch() itself is untouched and still runs
+  // once per simulation tick inside update() — actual wave pacing after the countdown still scales
+  // normally with gameSpeed, only the countdown display/gate no longer does.
+  if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
+    waveTimer += frameTime;
+  }
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
   const MAX_TICKS_PER_FRAME = 8; // safety cap for high speed multipliers (5x/10x) — lowered from 90: a slow/loaded frame at 5x-10x speed was piling up 30+ catch-up ticks in a single rAF callback (each tick re-running collision relaxation + spatial hash queries), which starved the render thread and produced a feedback loop that kept the game pinned at ~6 FPS until the wave cleared. Capping at 8 and discarding any leftover debt below keeps one rAF callback's simulation cost bounded — at extreme speed/density the game will now visibly slow down (fewer ticks per real second) instead of stalling the renderer.
