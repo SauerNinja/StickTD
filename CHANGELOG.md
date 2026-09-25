@@ -1,5 +1,208 @@
 # Changelog
 
+## [1.4.95] - 2026-09-25 — Axeman/Hammerman unlock waves moved, tree/rock scenery surge windows, flags blow one fixed direction again
+- **Changed**: Axeman now unlocks after wave 5 (was wave 2); Hammerman now unlocks after wave 10
+  (was wave 4). Per direct request.
+- **New**: waves 3-5 get a heavy TREE scenery surge (4-7 extra trees instead of the normal 1-2,
+  every idle period in that window) and waves 8-10 the same for ROCK — timed so the surge lands
+  right as Axeman (wave 5, cheap tree-clearing) and Hammerman (wave 10, cheap rock-clearing)
+  actually unlock, giving the player a real reason to want them. Both surges share one rule: never
+  let the last spawn take the very last buildable tile in the active region — `maybeSpawnMoreScenery()`
+  caps its batch size to `empties.length - 1` during a surge, so the player is never fully walled
+  out of building even during the heaviest window. `spawnScenery()` now takes an optional
+  `forceType` param so a surge can force TREE/ROCK specifically instead of rolling the normal
+  CHEST/ITEM/TREE/ROCK mix.
+- **Fixed**: flags stopped visibly blowing once wind was neutralized (1.4.91) — the flag flutter's
+  directional lean was driven by the SAME `windStrength`/`windDirAngle` pair as the (now removed)
+  Archer/Mage miss-chance penalty, so zeroing that system out for gameplay also silently zeroed the
+  flags' lean to a symmetric, directionless ripple. Per direct feedback ("I love the wind effect on
+  the flags, it's clean"), flags now use their own fixed, constant breeze direction/strength
+  (`FLAG_BREEZE_DIR_ANGLE`/`FLAG_BREEZE_STRENGTH`), completely independent of the gameplay wind
+  system — every flag leans the same consistent way for the whole game, rather than the old
+  slowly-drifting direction.
+
+## [1.4.94] - 2026-09-25 — HOTFIX: boot crash, "Cannot access 'decalBudgetOverride' before initialization"
+- **Fixed a real regression that's been breaking boot since 1.4.89**: `let decalBudgetOverride`
+  was declared way down near `decalCapacity()`/`MAX_DECALS`, but `loadPrefs()` (called immediately
+  at script load) and the Settings-panel sync IIFE both read/write it during that same initial,
+  synchronous script execution — long before the script ever reached the line that declared it.
+  `let`/`const` bindings are in the temporal dead zone until their own declaration line actually
+  runs, so this threw immediately on every page load: `Uncaught ReferenceError: Cannot access
+  'decalBudgetOverride' before initialization`, which is exactly the boot-error screenshot. My own
+  syntax check after adding this in 1.4.89 only parsed the script (`new Function()`), which can't
+  catch a TDZ ordering bug like this — it only shows up when the code actually runs. Moved the
+  declaration up to right before `PREFS_KEY`, ahead of everything that touches it; `decalCapacity()`
+  itself stays where it was (a function declaration, fine regardless of position since it's only
+  ever called much later, during actual gameplay). Audited every other module-level state this
+  session added (the spiral-expansion ring state, wind's ceiling) for the same class of bug — all
+  were already declared early enough to be safe.
+- Sorry — this should have been caught before delivery. I don't have a way to actually execute the
+  full game script in this environment (no browser), so a syntax-only check missed it; if you ever
+  see a screen like that boot-error box again, the exact error text (like the one in your
+  screenshot) is exactly what I need to find and fix it fast.
+
+## [1.4.93] - 2026-09-25 — Santa final boss, GA4 custom events, Santa-themed cookie-consent banner
+- **New**: Santa (`SANTA`) is the true final boss — replaces the generic Boss specifically on wave
+  100 (`CAMPAIGN_WAVE_COUNT`), via a weight override in `buildWavePlan()`'s BOSS-slot selection.
+  6710 base HP (2.5x a regular Boss's 2684, same wave-scaling curve applied on top) — the highest
+  HP in the game by a wide margin. His own periodic ability (mirrors the regular Boss's existing
+  rally-heal timer) summons 2-3 fast `COOKIE` minions near himself every 5-7s instead of healing —
+  Cookies run at 118 speed, faster than Runner (108), the previous fastest enemy in the game.
+  Boss-slot HP scaling, the boss warning banner (now "🎅 SANTA APPROACHING" instead of the generic
+  text), the enrage sound at low HP, the screen-shake/hit-stop weight on landing hits, and the
+  off-screen boss compass all now recognize Santa specifically — three of those were previously
+  gated on `type === 'BOSS'` literally rather than "is this a boss-tier enemy," which would have
+  silently left Santa without them. Added a proper bestiary entry (`ENEMY_INFO.SANTA`/`.COOKIE`) so
+  the "new enemy" intro toast and target portrait show "Santa"/"Cookie" instead of the raw type
+  string, and pre-warm Cookie's collision mask on Santa's first summon rather than building it
+  lazily mid-fight. The game continues past wave 100 into its existing endless expedition mode as
+  before — there's no separate "victory" screen to update, so this doesn't end the run, it's simply
+  the one scripted named boss at the campaign's designated last numbered wave.
+- **New**: added real custom GA4 events — previously this page only ever sent GA4's own automatic
+  events (page_view, session_start, first_visit), nothing about actual gameplay. A new
+  `window.trackEvent()` wrapper (consent-safe via the existing Consent Mode v2 setup, and
+  try/caught so analytics can never break the game) now fires `game_start`, `game_over` (with wave
+  reached), `wave_milestone` (every 5th wave, to avoid noise), `map_expanded`, and
+  `santa_boss_encountered` specifically for the final-boss wave.
+- **Changed**: the cookie-consent banner now has a big 🎅 face and Santa's own snide voice — "Ho,
+  ho, ho. I need your cookies — not the eating kind, the browser kind... no cookies, no memory of
+  anything you've done" — plus a line pointing out the game is open source
+  (github.com/SauerNinja/StickTD) for anyone who'd rather build from source and skip tracking
+  entirely. Accept button now reads "🍪 Fine, Accept". Still Accept-only, same Consent Mode v2
+  behavior underneath — this is copy and layout only, not a consent-logic change.
+
+## [1.4.92] - 2026-09-25 — Spiral map expansion: buildable rings now reveal 1-3 tiles per wave instead of instantly
+- **New**: a purchased map expansion no longer instantly reveals the WHOLE new ring in one frame
+  (full path-extend + scenery-scatter + a full-world `rebakeMap()`, all at once) — per your own
+  reference sketch, a buildable-only ring's perimeter now drips in 1-3 tiles at a time, once per
+  wave cleared (`ringRevealQueue`/`advanceRingReveal()`, driven from the ACTIVE→IDLE wave-complete
+  transition), continuing automatically for free even without buying another expansion, and also
+  nudged forward immediately by 1-3 more on each purchase for instant feedback. Revealed tiles are
+  already fully buildable (`isInActiveRegion()` now also checks a `ringRevealed` set) and drawn
+  as normal grass on top of the static map each frame (`drawPendingRingReveal()`, a cheap
+  perimeter-only overlay) — but the genuinely expensive one-time work (`activeRegion` commit, path
+  extension, hut-milestone check, scenery/flora scatter, and above all the full-world
+  `rebakeMap()`) still only runs ONCE per ring, exactly as often as before, just spread across
+  several waves instead of a single frame. This is the actual lag-spike fix: the expensive part
+  didn't get cheaper, it got rarer per unit of visible map growth.
+- **Design note — path rings are the one exception**: every other ring alternates between "pure
+  buildable space" and "the path extends through it" (`nextRingIsPath`). A path-ring's entire new
+  band becomes path, not buildable space, so it can't safely half-reveal as tentative buildable
+  ground (a tower could get built on a tile about to become path) — those still finalize in one
+  shot, same as before. Only the buildable-only rings (still half of all expansions) spiral in
+  gradually. Net effect: roughly half the old per-expansion cost is now spread out; the other half
+  was already atomic-safe and stays atomic.
+- **Fixed a gap this change would otherwise have opened**: `scatterSceneryInRing()`/
+  `scatterFloraInRing()` now skip any tile that already has a player-built tower on it — previously
+  impossible (scenery always scattered before a new ring's tiles were ever buildable), but now a
+  buildable ring can sit revealed-and-buildable for several waves before its scenery actually
+  lands.
+- **Fixed**: a save/load taken mid-spiral now round-trips correctly — `ringCandidateRegion` and the
+  revealed-tile set are now part of the save file (only when a ring is actually in progress) and
+  restored on load, so a tower built on a mid-spiral tile doesn't end up outside `isInActiveRegion`
+  after reloading.
+
+## [1.4.91] - 2026-09-25 — Correction: melee cleave already existed; bleed now first-hit-only; wind and Luck neutralized
+- **Correction, not a new feature**: last round I incorrectly told you no melee tower hit multiple
+  enemies. That was wrong — `checkConeHits()` (used by Swordsman and every other melee tower via
+  `updateSwordsman()`) already caps a swing to `MELEE_SWEEP_MAX_TARGETS` (3), closest-first, with
+  each successive target taking `MELEE_SWEEP_FALLOFF` (35%) less damage than the one before it,
+  compounding (100% / 65% / 42.25%). That's exactly the "limit targets + falloff" behavior you
+  described — it was already shipped, I'd just missed it searching the file. Sorry for the
+  confusion.
+- **New**: what genuinely wasn't there — bleed (the ticking DOT wound, not the cosmetic drip/spray)
+  now only triggers on the FIRST, full-damage target of a melee swing. `Enemy.applyDamage()` takes
+  a new `allowBleed` parameter (defaults `true` everywhere else); `checkConeHits()` passes it `true`
+  only for the first target hit each swing, `false` for the reduced-damage 2nd/3rd. Per direct
+  feedback ("only the first gets bleeding"). The 2nd/3rd targets can still bruise/drip cosmetically
+  — only the actual bleed-DOT status is restricted.
+- **Removed**: wind (the ambient Archer/Mage miss-chance penalty and its flag-lean visual) and 🍀
+  Luck (DEX's bonus-gold-per-kill effect) are both neutralized per direct feedback ("too confusing,
+  suggest removing for now, can always add later"). `windCeilingForWave` is now permanently forced
+  to 0 (was a 0.15→1 progression curve), so `windStrength` always converges to 0 and every
+  downstream reader (`windMissPenalty()`, the banner-lean draw code) goes fully inert without
+  needing to touch each of their several call sites individually. `Tower.goldMult` is now always a
+  flat `1` instead of a DEX-scaled bonus — the inspect panel's Luck row already auto-hides at 0%, so
+  it disappears from the UI on its own. Both DEX tooltip strings updated to drop the now-dead 🍀
+  Luck mention. This is a neutralization, not a physical deletion of the wind/luck code — the
+  plumbing (variables, functions, `goldMult`-reading call sites) is left in place and harmless
+  rather than ripped out across ~20 scattered call sites in one pass; happy to do a real cleanup
+  pass to delete the dead code outright if you'd rather not carry it, or to re-enable either system
+  later by reverting these two lines.
+
+## [1.4.90] - 2026-09-25 — Skewed crit-tied blood scale, DEX attack-speed diminishing returns, stat-scaled damage spread, glow instead of ring, drag-drop snap, rarer bones
+- **Balance**: blood-spray volume (`hitPower`, and the matching `cutSize` for Blade cuts) is now a
+  skewed sliding scale instead of a flat ±20%-ish roll — direct feedback ("less than 10% of max is
+  most common, then scale up, only way to hit max is on a crit, but not all crits give the full
+  amount, like a double luck roll"). Non-crit hits are cubed (`Math.pow(rand,3)`) and hard-capped at
+  55% of the range, so they cluster hard toward small and can never reach the true top; a crit adds
+  a second, separately-rolled shot at the remaining 55%-100% band (itself still a roll, not a
+  guarantee) — landing the crit is the first rare event, where it lands above that floor is the
+  second. Applies identically across every archetype (previously only Mage had a distinct "always
+  looks maxed out" burst; the old flat 9%-chance "anomalous minimal" special case is folded into
+  this same curve rather than sitting beside it).
+- **Balance**: DEX's attack-speed bonus switched from an uncapped linear ramp (flat +100% attack
+  rate at 500 DEX) to the same `diminishingStatValue()` curve crit chance and 🍀 Luck already use —
+  direct feedback ("dex increases attack speed too fast... too overpowered... should be more
+  precious"). Attack rate directly multiplies every other DPS source, so the old linear ramp scaled
+  total DPS out ahead of every other stat at high investment; a fully-trained 500-DEX tower now
+  tops out around +66% attack rate instead of +100%. Low/mid investment is close to unchanged — the
+  cut specifically targets late-game stacking.
+- **Balance**: investing in a tower's primary damage stat (STR/DEX/INT per archetype) now also
+  widens its own per-hit min-max damage spread, not just the average — direct feedback ("increasing
+  the primary stat should increase the gap between the min and max as well"). New
+  `Tower.primaryStatEff` (set in `recomputeStats()`) feeds a diminishing-returns bonus onto
+  `applyDamage()`'s existing variance band, capped at +0.15 extra half-width (so Mage's ±40% base
+  can reach ±55% at full investment, everyone else's ±20% can reach ±35%). The inspect panel's
+  shown damage range (`dmgHalf`) now matches this exactly instead of just the old flat per-archetype
+  base.
+- **Changed**: the rainbow-hued ring around draggable ground items is now a soft radial-gradient
+  glow instead of a stroked circle outline — direct feedback ("literally a glow, not a ring, I hate
+  that ring"). Same hue-cycle and pulse timing as before, just rendered as a fading radial gradient.
+- **New**: dragging a ground item onto a tower now snaps to the nearest eligible tower once the
+  pointer is within 40px, instead of trailing the raw cursor — makes it visually unambiguous who's
+  about to receive the item before release. The actual drop hit-test reads the same (now-snapped)
+  position, so the drop always matches what's shown.
+- **Balance**: bone/skull debris spawn chance cut again, 30%/14% → 12%/5% per kill — direct feedback
+  ("bones pile up a bit too much"). This debris lives 45 minutes and essentially never expires in a
+  normal session, so even a "moderate" per-kill chance compounds into permanent clutter over a
+  session's worth of kills; this is the second cut to these numbers (see 1.4.x history above).
+
+## [1.4.89] - 2026-09-25 — Lighter blood dark-tone, Space-to-pause, per-tier decal budgets, wave-scaled hut/camp
+- **Fixed**: standard-flesh blood palette's `dark` tone (`getBloodProfile()`) was `#7a0f0f`, which
+  reads near-black once several decals layer up — the "dark blood I don't like" feedback. Lightened
+  to `#a3241a`, a clear shade step down from the `bright` tone (`#c0392b`) without going muddy.
+  Undead/zombie/insect/rock palettes untouched — only the default human palette changed.
+- **New**: pressing Space now pauses (mirrors the pause button exactly — same `gameState`,
+  same overlay). Only fires while `gameState === 'PLAYING'` and never while a text input/textarea
+  has focus, so it can't fire from the start screen or a name field. The existing "any key resumes
+  from pause" listener is unaffected.
+- **New**: Settings > Video has a new "Max blood decals" control — Low (250) / High (750) /
+  Royal (1500) / Insane (2500) / Custom (typed number). This is independent of the start screen's
+  Low/High graphics toggle (which still governs glow/shadow layers) — `decalCapacity()` now checks
+  a separate `decalBudgetOverride` first and only falls back to the old Low→250/High→750 behavior
+  if the player has never touched the new control. Persisted the same way graphics quality already
+  is (`sticktd:prefs:v1` in localStorage). Start screen intentionally left at its existing
+  binary High/Low choice per direct feedback ("perfect balance" for the up-front choice) — the
+  extra tiers live in the in-game menu instead.
+- **Balance**: hut/creep-camp HP no longer fixed-strength regardless of when the camp spawns.
+  `spawnHut()`/`spawnHutGuardian()` now multiply their existing 16x/3x HP multipliers by
+  `waveHpScale(waveIndex)` — the same curve every regular wave enemy scales on — so a camp that
+  spawns at `HUT_MIN_EXPANSION_LEVEL` early in a game is an early-game-appropriate fight instead of
+  fixed mid-game strength. Per direct feedback ("thats mid tier strenght early waves lower
+  strength").
+- **Debug**: the debug overlay's decal line now reads the live `decalCapacity()` (which now
+  reflects the new per-tier/custom setting) instead of the old flat `MAX_DECALS` constant.
+- Everything else from this round's feedback — the corner-stall/finish-line-escape recurrence,
+  spiral-style map expansion, wave-pacing/spacing slowdown, glow instead of a ring on drag-drop
+  targets, hut loot-chest drop, element-emoji attack animations, first-escape/first-death alert
+  popups with a cookie-backed "introduction text" opt-out, drag-and-drop snap-to-target, the
+  crit-tied blood-spray sliding scale, DEX/attack-speed rebalance, stat min/max-gap scaling,
+  Swordsman cleave-with-falloff, and the wind/luck removal suggestion — is logged in BACKLOG.md
+  with reasoning, since none of them are safely scoped as a same-round edit alongside everything
+  above on a 15.7k-line single file. See BACKLOG.md for the full breakdown and the questions I need
+  answered before touching the riskier ones (spiral expansion, Swordsman cleave, wind/luck).
+
 ## [1.4.88] - 2026-09-24 — Guarded against corner-stall pileups leaving an enemy's pathIndex out of sync with its actual position
 - **Investigated**: enemies bunched at a corner (crowd density, not a barricade — barricade-queued
   enemies are explicitly exempt from this watchdog entirely, see `isEnemyFrozen()`'s check in

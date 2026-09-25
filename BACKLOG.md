@@ -1,5 +1,45 @@
 # Backlog
 
+## From the 2026-09-25 lag-audit/screenshot round — triaged, not yet built
+Shipped this round (see CHANGELOG.md 1.4.89-1.4.92): blood dark-tone lightened, Space-to-pause,
+per-tier decal budget setting, hut/camp HP scaled to wave, crit-tied blood scale, DEX/stat-spread
+rebalance, glow/snap on drag-drop, bleed-first-hit-only, wind/luck neutralized, spiral map
+expansion. Everything below is still open. Grouped by risk — the file is 16k lines in one script,
+so anything touching a shared system (targeting, movement, the settings-quality gate) gets scoped
+and confirmed before being changed, rather than guessed at alongside a dozen other simultaneous
+changes.
+
+**Clearly scoped, queued for next round (no open question):**
+- **Finish-line escape recurrence** — your screenshots/video are all captured at v1.4.88, the same
+  version that shipped a real fix for a `pathIndex`-lagging-behind-the-watchdog bug in the corner-
+  stall system (see CHANGELOG 1.4.88). That changelog entry was honest that it couldn't be fully
+  confirmed from static analysis alone. If it's still happening on 1.4.89, next step is pulling the
+  debug overlay's `enemies X path / Y escaped` numbers at the moment it happens (visible in your
+  own screenshots' debug box, top-left) so I can trace which specific corner and confirm whether
+  it's the same code path recurring or a second, different gap.
+- **Wave pacing/spacing slowdown** — units slower, more spacing between spawns, gentler early-wave
+  ramp to match the slower map expansion. Straightforward multiplier work in `buildWavePlan()`/
+  `waveHpScale()`-adjacent spawn-interval code once the spiral-expansion shape (above) is settled,
+  since pacing should be tuned against whatever the new expansion cadence actually is, not the old one.
+- **Hut loot-chest drop** — on hut-building death, spawn a chest that bursts into several
+  gold/XP pickups flung onto nearby path/grass tiles, alongside the existing bounty payout. Real
+  feature (new pickup-entity spawn + scatter/physics), not a tuning number.
+- **Element emoji + skin-tint on elemental attacks** — show a small themed emoji on a tower's own
+  attack animation once it's carrying an element, and tint the stickman's skin toward that
+  element's color on top of its native skin color. Needs the actual per-element emoji list
+  confirmed (fire/electric/ice/etc.) before implementing.
+- **First-escape / first-stickman-death alert popups** — one-time popups ("an enemy escaped and is
+  wandering — it'll attack your towers if left alone", "your Swordsman died") the first time each
+  happens per player. Ties directly into the next item (they're meant to be togglable "introduction
+  text").
+- **"Introduction text" opt-out setting, cookie-backed** — turn the above (plus any other first-time
+  tutorial-style popups already in the game) into one togglable category in Settings, persisted via
+  cookies specifically (rather than the existing `localStorage`-based prefs system) per your own
+  wording — worth confirming you want a second, separate persistence mechanism just for this
+  category rather than folding it into the existing `sticktd:prefs:v1` localStorage blob, which
+  every other toggle already uses and which cookies have no real advantage over in a same-origin
+  single-page game.
+
 ## Open from the 1.3.x wave-architecture handoff (StickTD_Claude_Complete_Handoff.pdf)
 - Melee/beam committed-damage tracking (1.3.3 tracks projectiles only).
 - Post-wave report: explicit overkill column (damage column shipped 1.3.3, already excludes overkill).

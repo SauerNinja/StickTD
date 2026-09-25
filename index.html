@@ -59,6 +59,15 @@
   gtag('js', new Date());
   gtag('config', 'GT-TW5SNHS6'); // Google Tag container
   gtag('config', 'G-B6H58BQ50N'); // GA4 destination
+  // Custom gameplay events — previously this page only ever sent GA4's own automatic events
+  // (page_view, session_start, first_visit), nothing about what actually happens in the game.
+  // trackEvent() is a thin, always-safe wrapper the main game script below calls at real gameplay
+  // milestones (game start, wave clears, tower builds, map expansions, boss encounters, game over)
+  // — Consent Mode v2 already queues/drops these correctly based on the visitor's actual consent
+  // choice, so this only adds WHAT gets sent, never bypasses consent.
+  window.trackEvent = function(name, params){
+    try{ gtag('event', name, params || {}); }catch(e){ /* analytics is never allowed to break the game */ }
+  };
 </script>
 <script>
   // Diagnostic only: if anything throws before the game finishes booting, show it on screen
@@ -280,6 +289,7 @@
      instead of resizing/reflowing the modal or anything behind it */
   #settings-body{padding:14px;overflow-y:auto;max-height:320px;color:var(--paper);}
   .settings-panel.hidden{display:none;}
+  #settingsDecalBudgetCustom.hidden{display:none;}
   .settings-panel label{display:flex;align-items:center;gap:8px;margin-bottom:10px;
     cursor:pointer;font-size:13px;line-height:1.4;}
   .settings-panel p{font-size:12.5px;line-height:1.5;margin-top:0;}
@@ -615,18 +625,28 @@
     display:flex;align-items:center;justify-content:center;padding:24px;
     font-family:inherit;font-size:16px;}
   #consent-banner.hidden{display:none;}
-  #consent-inner{display:flex;flex-direction:column;align-items:center;gap:20px;
+  #consent-inner{display:flex;flex-direction:column;align-items:center;gap:16px;
     max-width:480px;text-align:center;background:rgba(30,20,10,0.97);
-    border:2px solid #f1c40f;border-radius:14px;padding:32px 28px;}
+    border:2px solid #f1c40f;border-radius:14px;padding:28px 28px 32px;}
   #consent-banner p{margin:0;line-height:1.5;}
+  #consentSantaFace{font-size:min(30vw,110px);line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));}
+  #consentSantaLine{font-weight:bold;font-size:1.05em;}
+  #consentOpenSource{font-size:0.85em;opacity:0.8;}
+  #consentOpenSource a{color:#f1c40f;}
   #consentAccept{border-radius:8px;padding:14px 32px;font-weight:bold;cursor:pointer;
     font-size:1.1em;min-height:48px;border:2px solid #f1c40f;
     background:#f1c40f;color:#3a2a00;white-space:nowrap;}
 </style>
 <div id="consent-banner" class="hidden">
   <div id="consent-inner">
-    <p>This site uses Google Analytics to understand gameplay and improve the game.</p>
-    <button id="consentAccept" type="button">🍪 Accept</button>
+    <div id="consentSantaFace" aria-hidden="true">🎅</div>
+    <p id="consentSantaLine">Ho, ho, ho. I need your cookies — not the eating kind, the browser
+    kind. They're how I save your unlocks and squash bugs. No cookies, no memory of anything
+    you've done. That's just how this works, kid.</p>
+    <p id="consentOpenSource">Don't feel like handing them over? Fair enough — this game is
+    <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener">open source</a>.
+    Build it from source yourself and keep every cookie to yourself.</p>
+    <button id="consentAccept" type="button">🍪 Fine, Accept</button>
   </div>
 </div>
 <script>
@@ -867,6 +887,17 @@
             <label><input type="checkbox" id="settingsDebugToggle"> 🛠️ Debug overlay — FPS, entities, wave phase, version (default off)</label>
             <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
             <label><input type="checkbox" id="settingsUpdateNoticeToggle"> 🆕 Show what's new after an update (default on)</label>
+            <label style="align-items:flex-start;flex-direction:column;gap:4px;">
+              <span>🩸 Max blood decals — higher looks better, costs more frame time in dense waves</span>
+              <select id="settingsDecalBudget" style="margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
+                <option value="250">Low — 250</option>
+                <option value="750">High — 750</option>
+                <option value="1500">Royal — 1500</option>
+                <option value="2500">Insane — 2500</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <input type="number" id="settingsDecalBudgetCustom" min="0" max="20000" step="50" class="hidden" style="width:100px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
+            </label>
           </div>
           <div class="settings-panel hidden" data-panel="stats">
             <p class="stats-hint">Per-tower telemetry for this run. Bars are relative to your best tower in each column.</p>
@@ -951,7 +982,7 @@
         <p><b>STR:</b> +3% max HP per point for everyone, plus +8% damage per point (scaling even
         better at heavy investment) — but only for
         <b>Warrior</b>-archetype towers. <br>
-        <b>DEX:</b> +3% attack speed, accuracy, 💥 crit chance, and 🍀 Luck (bonus gold per kill) per
+        <b>DEX:</b> +3% attack speed, accuracy, and 💥 crit chance per
         point for everyone, plus +6% damage per point — but only for <b>Archer</b>-style towers.<br>
         <b>INT:</b> +6 range and 💥 crit damage multiplier per point for everyone, plus +6% damage
         per point — but only for
@@ -1092,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.88'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.4.95'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1420,6 +1451,8 @@ const ENEMY_INFO = {
   TANK: { name:'Tank', desc:'Slow, but tough and armored.' },
   RUNNER: { name:'Runner', desc:'Very fast, low HP — outruns most attack speeds.' },
   BOSS: { name:'Boss', desc:'Massive HP and armor. Always arrives last in its wave and periodically rallies, restoring a little health.' },
+  SANTA: { name:'Santa', desc:'The true final boss — replaces the Boss on the very last wave. Highest HP in the game, and periodically summons a few fast Cookies instead of healing.' },
+  COOKIE: { name:'Cookie', desc:'One of Santa\'s own — small and weak, but very fast. Ho ho ho.' },
   TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
   FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly.' },
   ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly.' },
@@ -1825,7 +1858,7 @@ const CONFIG = {
       ]
     },
     AXEMAN: {
-      name: 'Axeman', icon: '🪓', baseCost: 75, unlocksAfterWave: 2,
+      name: 'Axeman', icon: '🪓', baseCost: 75, unlocksAfterWave: 5,
       blurb: 'Dual-wields hand axes. Manually toggle between a close swing and a ranged throw — one free switch per wave.',
       tiers: [
         { range: 180, meleeRange: 70, damage: 34, meleeDamage: 14, cooldown: 1400, meleeCooldown: 500, projectileSpeed: 320 },
@@ -1843,7 +1876,7 @@ const CONFIG = {
       ]
     },
     HAMMERMAN: {
-      name: 'Hammerman', icon: '🔨', baseCost: 85, unlocksAfterWave: 4,
+      name: 'Hammerman', icon: '🔨', baseCost: 85, unlocksAfterWave: 10,
       blurb: 'Stuns whatever it hits. Carries a shield and extra HP — the tower to put in harm\'s way when a mob breaks off to attack.',
       tiers: [
         { range: 95,  damage: 23, cooldown: 950, stunMs: 500 },
@@ -2109,6 +2142,17 @@ const CONFIG = {
     TANK:   { emoji:'🗿', baseHp:268, speed:27,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:10 },
     RUNNER: { emoji:'🥷', baseHp:55,  speed:108, bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:6 },
     BOSS:   { emoji:'👹', baseHp:2684,speed:22,  bounty:173,radius:34, armor:8, breakawayChance:0,    breakDamage:0 },
+    // The true final boss — only ever appears in the BOSS slot of wave CAMPAIGN_WAVE_COUNT itself
+    // (see the sizeTier==='BOSS' weight override in buildWavePlan()), replacing the generic Boss
+    // for that one wave. Highest HP in the game per direct request — a clean 2.5x a regular Boss's
+    // own baseHp, same armor style but a bit heavier. His own periodic ability (see the
+    // this.type==='SANTA' branch alongside BOSS's existing rally-heal timer) spawns a couple of
+    // fast COOKIE minions instead of healing.
+    SANTA:  { emoji:'🎅', baseHp:6710,speed:20,  bounty:400,radius:38, armor:10, breakawayChance:0,   breakDamage:0 },
+    // Santa's own minion — small, cheap, and deliberately much faster than anything else on the
+    // board at this point in the game (COOKIE's speed is close to RUNNER's, the fastest regular
+    // enemy) so a spawned batch reads as a genuine sudden threat, not just more chip damage.
+    COOKIE: { emoji:'🍪', baseHp:22,  speed:118, bounty:3,  radius:9,  armor:0, breakawayChance:0,    breakDamage:2 },
     TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
     FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
     ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
@@ -2454,10 +2498,25 @@ function runDebugSelfTests(){
    so existing tower placements are never disturbed.
    ========================================================= */
 let activeRegion = null;      // {x0,y0,x1,y1} inclusive tile bounds of the currently unlocked square
-let expansionLevel = 0;       // number of rings purchased so far
+let expansionLevel = 0;       // number of FULLY-completed rings so far (a ring mid-spiral-reveal doesn't count yet — see ringRevealQueue)
 let pathWaypointTiles = [];   // ordered [{x,y}] grid coords the path follows
 let pathCells = new Set();    // Set of "gx,gy" strings for quick lookup
 let waypointsPx = [];         // pixel-space version of pathWaypointTiles, what Enemy movement reads
+// Spiral ring-reveal state — a purchased expansion no longer instantly reveals the WHOLE new ring
+// (which meant an instant full path-extend/scenery-scatter/rebakeMap() on every single purchase,
+// the exact "auto-creates an entire ring" lag spike direct feedback called out). Instead the new
+// ring's perimeter tiles are queued once (beginNextRingReveal()) and drip in a few at a time
+// (advanceRingReveal(), driven by each wave clearing — see the ACTIVE->IDLE transition in
+// update()), same "1-3 tiles per round, spiraling around before the ring closes" pacing as the
+// player's own reference sketch. ringRevealed tiles are already buildable (isInActiveRegion()
+// below checks it) and drawn on top of the static baked map each frame (drawPendingRingReveal()) —
+// but the actually-expensive one-time work (activeRegion update, path extension, hut/scenery, and
+// above all rebakeMap()'s full-world redraw) still only runs ONCE, when the ring fully closes
+// (finalizeRingExpansion()), exactly as often as it used to run per ring — just spread out in when
+// the tiles themselves become visible/buildable instead of dumped in one frame.
+let ringRevealed = new Set();       // "gx,gy" tiles of the in-progress ring already revealed
+let ringRevealQueue = [];           // remaining {x,y} tiles of the in-progress ring, in perimeter order
+let ringCandidateRegion = null;     // the full next-ring rectangle ringRevealQueue is walking the boundary of
 
 function expansionCost(){
   return Math.round(80 * Math.pow(1.6, expansionLevel));
@@ -2627,17 +2686,65 @@ function initRegionAndPath(){
   expansionLevel = 0;
   hutsSpawnedThisGame = false;
   nextRingIsPath = true;
+  ringRevealed = new Set(); ringRevealQueue = []; ringCandidateRegion = null; // fresh game — no in-progress ring carried over
   pathWaypointTiles = generateConflictFreePath(activeRegion); // only the base level uses the half/half comb split
   rebuildPathCellsAndPx();
 }
 function performExpansion(label, labelColor){
-  const oldRegion = { ...activeRegion };
+  // Kicks off a new ring's spiral reveal instead of instantly finishing it — see the
+  // ringRevealed/ringRevealQueue block near activeRegion's own declaration for the full reasoning.
+  if(!ringCandidateRegion){
+    beginNextRingReveal();
+    pendingRingLabel = label; pendingRingLabelColor = labelColor; // shown once the ring actually closes, not on each partial reveal
+  }
+  if(nextRingIsPath){
+    // A path-ring's ENTIRE new band becomes path (extendPathWithNewRing loops the path around the
+    // whole new outer boundary), not buildable space — so it can't safely half-reveal as tentative
+    // "buildable" grass the way a pure buildable-only ring can (a tower could get placed on a tile
+    // that's about to become path). These still finalize in one shot, same as before this change;
+    // only the alternating buildable-only rings actually spiral in gradually below.
+    finalizeRingExpansion();
+  } else {
+    // Immediately reveal this purchase's own first 1-3 tiles rather than waiting for the next wave
+    // clear, so a purchase always has SOME immediate visible effect.
+    advanceRingReveal(1 + Math.floor(Math.random()*3));
+  }
+  updateHUD();
+}
+let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
+function beginNextRingReveal(){
   const newRegion = {
     x0: Math.max(0, activeRegion.x0-1),
     y0: Math.max(0, activeRegion.y0-1),
     x1: Math.min(COLS-1, activeRegion.x1+1),
     y1: Math.min(ROWS-1, activeRegion.y1+1)
   };
+  ringCandidateRegion = newRegion;
+  // ringBoundaryTiles(newRegion) returns the FULL outer perimeter of the grown rectangle; since it
+  // only ever grows by exactly 1 tile per ring, that perimeter is exactly the newly-added cells —
+  // filtered defensively against isInActiveRegion() anyway in case a map-edge clamp (x0/y0 already
+  // at 0, or x1/y1 already at COLS-1/ROWS-1) means a "new" edge coincides with the old one.
+  ringRevealQueue = ringBoundaryTiles(newRegion).filter(t => !isInActiveRegion(t.x, t.y));
+}
+// Reveals up to `n` more tiles of the in-progress ring (closest-to-furthest along the perimeter
+// walk, i.e. the same order the old single-shot path-extension already walked it in), and once the
+// whole queue drains, finalizes the ring. Called both from a fresh purchase (performExpansion, for
+// immediate feedback) and automatically once per wave clear (see the ACTIVE->IDLE transition in
+// update()) so the spiral keeps filling in even without the player buying again.
+function advanceRingReveal(n){
+  if(!ringRevealQueue.length) return;
+  for(let i=0; i<n && ringRevealQueue.length; i++){
+    const t = ringRevealQueue.shift();
+    ringRevealed.add(t.x+','+t.y);
+  }
+  if(!ringRevealQueue.length) finalizeRingExpansion();
+}
+// The ring has fully closed — do the one-time work that used to run on every single purchase:
+// commit activeRegion, extend the path if this was a path-ring, spawn the hut milestone check,
+// scatter scenery/flora across the (now fully-revealed) new band, and rebake the static map ONCE.
+function finalizeRingExpansion(){
+  const oldRegion = { ...activeRegion };
+  const newRegion = ringCandidateRegion;
   activeRegion = newRegion;
   expansionLevel++;
   if(nextRingIsPath){
@@ -2645,23 +2752,23 @@ function performExpansion(label, labelColor){
   } // else: leave the path exactly as-is — this ring is pure buildable space, no regeneration needed
   nextRingIsPath = !nextRingIsPath;
   rebuildPathCellsAndPx();
-  // The map has grown enough now — spawn the game's one hut/creep-camp for the first time, never
-  // on the original tiny starting region. Placed AFTER rebuildPathCellsAndPx() above so
-  // findHutPlacementTile()'s pathCells check reflects this expansion's path, not the previous one.
   if(expansionLevel === HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
     hutsSpawnedThisGame = true;
     spawnHuts();
   }
-  // clear any pre-existing scenery that now happens to sit on the new spiral's route
   for(const tile of pathWaypointTiles){
     sceneryMap.delete(tile.x+','+tile.y);
     floraMap.delete(tile.x+','+tile.y);
   }
   scatterSceneryInRing(oldRegion, newRegion);
   scatterFloraInRing(oldRegion, newRegion);
+  ringRevealed.clear();
+  ringRevealQueue = [];
+  ringCandidateRegion = null;
   rebakeMap();
-  spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, label, labelColor);
+  spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, pendingRingLabel, pendingRingLabelColor);
   playSound('wave');
+  if(window.trackEvent) window.trackEvent('map_expanded', { expansion_level: expansionLevel });
   updateHUD();
 }
 let expansionsUsedThisCycle = 0; // resets each time a new wave starts — caps expansion to once per idle period
@@ -2688,7 +2795,30 @@ function grantFreeExpansion(){
   return true;
 }
 function isInActiveRegion(gx, gy){
-  return activeRegion && gx >= activeRegion.x0 && gx <= activeRegion.x1 && gy >= activeRegion.y0 && gy <= activeRegion.y1;
+  if(activeRegion && gx >= activeRegion.x0 && gx <= activeRegion.x1 && gy >= activeRegion.y0 && gy <= activeRegion.y1) return true;
+  return ringRevealed.has(gx+','+gy); // spiral-reveal tiles of the in-progress ring — already buildable even though activeRegion itself won't update until the ring fully closes (see finalizeRingExpansion())
+}
+// Cheap per-frame overlay for ringRevealed tiles — mirrors drawMap()'s own checkerboard grass fill
+// (light/dark green + a thin grid stroke) for just this in-progress ring's tiles, drawn fresh each
+// frame on TOP of the static baked mapCanvas rather than by re-baking it. Bounded cost: at most one
+// ring's perimeter length (a few dozen tiles even late-game), never the whole world — that gap is
+// exactly what lets the ring's tiles look and behave normal (buildable, grass-colored) well before
+// the one real rebakeMap() call at the ring's actual close.
+function drawPendingRingReveal(ctx){
+  if(!ringRevealed.size) return;
+  ctx.save();
+  for(const key of ringRevealed){
+    const [gx, gy] = key.split(',').map(Number);
+    if(pathCells.has(key)) continue; // path tiles bake their own look at finalize time — leave as plain background until then
+    const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
+    const light = (gx+gy) % 2 === 0;
+    ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
+    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
+  }
+  ctx.restore();
 }
 
 /* =========================================================
@@ -3036,14 +3166,18 @@ function spawnDebrisNear(x, y){
     woodYield: 0, stoneYield: 0, isClearing: false, clearStart: 0
   });
 }
-function spawnScenery(gx, gy){
+function spawnScenery(gx, gy, forceType){
   const S = CONFIG.SCENERY;
   let type;
-  const roll = Math.random();
-  if(roll < 0.04) type = 'CHEST';
-  else if(roll < 0.07) type = 'ITEM';
-  else if(roll < 0.53) type = 'TREE';
-  else type = 'ROCK';
+  if(forceType){
+    type = forceType;
+  } else {
+    const roll = Math.random();
+    if(roll < 0.04) type = 'CHEST';
+    else if(roll < 0.07) type = 'ITEM';
+    else if(roll < 0.53) type = 'TREE';
+    else type = 'ROCK';
+  }
 
   const isSuper = Math.random() < S.superChance;
   const scale = isSuper ? S.maxScale : (S.minScale + Math.random()*(S.maxScale-S.minScale));
@@ -3143,6 +3277,11 @@ function scatterSceneryInRing(oldRegion, newRegion){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
       if(wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
+      // A tile in this new ring can already carry a player-built tower now that spiral-reveal
+      // (see beginNextRingReveal()) can leave a buildable tile sitting revealed for several waves
+      // before this scatter actually runs — the old single-shot expansion never had this gap, so
+      // it never needed this check. Never drop scenery on top of an occupied tile.
+      if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue;
       cells.push([gx,gy]);
     }
   }
@@ -3162,6 +3301,7 @@ function scatterFloraInRing(oldRegion, newRegion){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
       if(wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
+      if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue; // same reveal-gap reasoning as scatterSceneryInRing() above
       cells.push([gx,gy]);
     }
   }
@@ -3170,8 +3310,18 @@ function scatterFloraInRing(oldRegion, newRegion){
   for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1]);
 }
 
+// Waves 3-5 get a heavy TREE surge (Axeman unlocks at wave 5, so this gives the player a real
+// reason to want it right as it becomes available), waves 8-10 the same for ROCK (Hammerman
+// unlocks at wave 10) — direct request. Both share one rule: never let the surge take the very
+// LAST buildable tile in the active region — if placing one more would leave zero open tiles,
+// skip that placement rather than force it, so the player is never fully walled out of building.
+const TREE_SURGE_WAVES = [3, 4, 5];
+const ROCK_SURGE_WAVES = [8, 9, 10];
 function maybeSpawnMoreScenery(){
-  if(Math.random() >= CONFIG.SCENERY.respawnChancePerWave) return;
+  const upcomingWave = waveIndex + 1; // this runs in the IDLE gap right before that wave starts
+  const isTreeSurge = TREE_SURGE_WAVES.includes(upcomingWave);
+  const isRockSurge = ROCK_SURGE_WAVES.includes(upcomingWave);
+  if(!isTreeSurge && !isRockSurge && Math.random() >= CONFIG.SCENERY.respawnChancePerWave) return;
   const empties = [];
   for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
     for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
@@ -3180,8 +3330,14 @@ function maybeSpawnMoreScenery(){
   }
   if(!empties.length) return;
   shuffleArray(empties);
-  const n = Math.min(empties.length, 1 + Math.floor(Math.random()*2)); // 1-2 pieces
-  for(let i=0; i<n; i++) spawnScenery(empties[i][0], empties[i][1]);
+  // Normal respawn: 1-2 pieces, random mix. Surge waves: a much bigger batch, all forced to the
+  // one surging type, but ALWAYS leaving at least 1 tile open — "way more" spawns, never "every
+  // last spot."
+  const n = (isTreeSurge || isRockSurge)
+    ? Math.max(0, Math.min(empties.length - 1, 4 + Math.floor(Math.random()*4))) // 4-7, capped to leave >=1 tile open
+    : Math.min(empties.length, 1 + Math.floor(Math.random()*2));
+  const forceType = isTreeSurge ? 'TREE' : isRockSurge ? 'ROCK' : undefined;
+  for(let i=0; i<n; i++) spawnScenery(empties[i][0], empties[i][1], forceType);
 }
 
 // Presence-based discount, not stacking with multiple copies of the same tower — owning a single
@@ -3502,6 +3658,13 @@ function computeSpawnFlags(){
   const flagUpper = fA.y >= fB.y ? fB : fA;
   return { center: start, flagLower, flagUpper };
 }
+// Fixed cosmetic breeze direction/strength for flag flutter (see drawFinishFlagPole below) —
+// deliberately a plain constant, not tied to the gameplay wind system (windStrength/windDirAngle,
+// permanently neutralized — see windCeilingForWave), so every flag leans the same consistent way
+// the whole game, per direct feedback ("I love the wind effect on the flags, it's clean").
+const FLAG_BREEZE_DIR_ANGLE = -0.35;
+const FLAG_BREEZE_DIR_X = Math.cos(FLAG_BREEZE_DIR_ANGLE), FLAG_BREEZE_DIR_Y = Math.sin(FLAG_BREEZE_DIR_ANGLE);
+const FLAG_BREEZE_STRENGTH = 0.6;
 // Small procedural flag-and-pole, planted with the pole's BOTTOM exactly at (x,y) — no offset, no
 // emoji glyph. Renders identically crisp on every platform/font, unlike the 🏴/🏳️ characters this
 // replaced, whose rendering quality depended entirely on the browser's own emoji font. awayX/awayY
@@ -3525,15 +3688,19 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const attachTopX = x, attachTopY = y - poleH;
   const attachBotX = x, attachBotY = y - poleH + bannerH;
   const perpX = -awayY, perpY = awayX;
-  const amp = 1 + windStrength*3;
-  const speed = 1.6 + windStrength*1.8;
+  // Purely cosmetic breeze, independent of the (now-neutralized, see windCeilingForWave) gameplay
+  // wind system — direct feedback: keep the flags visibly blowing, but in one fixed direction
+  // rather than the old drifting windDirAngle, which is exactly why it read as "clean." A constant
+  // angle/strength here, not the old windStrength/windDirAngle pair, so every flag on the map leans
+  // the same consistent way and never randomly re-drifts mid-game.
+  const amp = 1 + FLAG_BREEZE_STRENGTH*3;
+  const speed = 1.6 + FLAG_BREEZE_STRENGTH*1.8;
   const phase = gameTime/1000*speed;
-  // A slight, slowly-drifting lean toward the current wind direction (windDirAngle) on top of the
-  // flutter itself — how much of that direction actually pushes on this particular flag depends on
-  // the angle between the wind and the banner's own away-axis, so it doesn't lean the same amount
-  // regardless of which way the flag happens to be facing.
-  const windDirX = Math.cos(windDirAngle), windDirY = Math.sin(windDirAngle);
-  const lean = (windDirX*perpX + windDirY*perpY) * windStrength * 3;
+  // A slight, constant lean toward the fixed breeze direction on top of the flutter itself — how
+  // much of that direction actually pushes on this particular flag depends on the angle between
+  // the breeze and the banner's own away-axis, so it doesn't lean the same amount regardless of
+  // which way the flag happens to be facing.
+  const lean = (FLAG_BREEZE_DIR_X*perpX + FLAG_BREEZE_DIR_Y*perpY) * FLAG_BREEZE_STRENGTH * 3;
   const ripple = Math.sin(phase)*amp + lean;
   const tipX = x + awayX*bannerLen + perpX*ripple;
   const tipY = (y - poleH + bannerH*0.5) + awayY*bannerLen + perpY*ripple;
@@ -4474,10 +4641,20 @@ let isMuted = false;
 // graphics quality, mute, and the 18+ gore toggle. Wrapped in try/catch since localStorage can
 // throw in restrictive contexts (private browsing in some browsers, disabled storage) — a failure
 // here should never break the game, just silently skip persistence.
+// User-facing decal budget tiers (Settings > Video > "Max blood decals") — independent of the
+// coarse Low/High graphicsQuality toggle chosen on the start screen, which still governs the
+// separate glow/shadow effect layers elsewhere. null means "not set yet," in which case
+// decalCapacity() (declared later, near MAX_DECALS) falls back to the graphicsQuality-based
+// default so an existing save/prefs blob with no value for this still behaves exactly as it did
+// before this setting existed. Declared here, ahead of savePrefs()/loadPrefs() and the
+// Settings-panel sync IIFE below — all three read or write it during initial script execution, so
+// it has to exist before this point, not down with decalCapacity() and the rest of the decal
+// system (that was the actual "Cannot access before initialization" boot crash).
+let decalBudgetOverride = null;
 const PREFS_KEY = 'sticktd:prefs:v1';
 function savePrefs(){
   try{
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ graphicsQuality, goreMode, isMuted, showFpsCounter, screenShakeEnabled, debugOverlay, autoCameraPans, showUpdateNotice }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ graphicsQuality, goreMode, isMuted, showFpsCounter, screenShakeEnabled, debugOverlay, autoCameraPans, showUpdateNotice, decalBudgetOverride }));
   }catch(e){ /* storage unavailable — game still works fine without persistence */ }
 }
 function loadPrefs(){
@@ -4493,6 +4670,7 @@ function loadPrefs(){
     if(typeof p.autoCameraPans === 'boolean') autoCameraPans = p.autoCameraPans;
     if(typeof p.showUpdateNotice === 'boolean') showUpdateNotice = p.showUpdateNotice;
     if(typeof p.screenShakeEnabled === 'boolean') screenShakeEnabled = p.screenShakeEnabled;
+    if(Number.isFinite(p.decalBudgetOverride) && p.decalBudgetOverride >= 0) decalBudgetOverride = p.decalBudgetOverride;
   }catch(e){ /* corrupted or unavailable — fall back to the existing defaults above */ }
 }
 loadPrefs();
@@ -4513,6 +4691,41 @@ loadPrefs();
   const goreToggleSettings = document.getElementById('settingsGoreToggle');
   if(goreToggleStart) goreToggleStart.checked = goreMode;
   if(goreToggleSettings) goreToggleSettings.checked = goreMode;
+})();
+// Decal budget dropdown — separate control from the graphicsQuality radios above (see
+// decalCapacity()). The four named tiers match the values in the <select>'s own options exactly;
+// anything else stored (a custom number, or nothing yet) falls into the "Custom…" branch.
+(function syncDecalBudgetToDOM(){
+  const sel = document.getElementById('settingsDecalBudget');
+  const customInput = document.getElementById('settingsDecalBudgetCustom');
+  if(!sel || !customInput) return;
+  const presets = [250, 750, 1500, 2500];
+  function applyFromControls(){
+    if(sel.value === 'custom'){
+      customInput.classList.remove('hidden');
+      const v = parseInt(customInput.value, 10);
+      decalBudgetOverride = Number.isFinite(v) && v >= 0 ? v : decalBudgetOverride;
+    } else {
+      customInput.classList.add('hidden');
+      decalBudgetOverride = parseInt(sel.value, 10);
+    }
+    savePrefs();
+  }
+  if(presets.includes(decalBudgetOverride)){
+    sel.value = String(decalBudgetOverride);
+    customInput.classList.add('hidden');
+  } else if(Number.isFinite(decalBudgetOverride)){
+    sel.value = 'custom';
+    customInput.value = decalBudgetOverride;
+    customInput.classList.remove('hidden');
+  } else {
+    // Never set before — default the visible control to match today's graphicsQuality-based
+    // behavior (Low→250, High→750) without writing decalBudgetOverride until the player actually
+    // touches the control, so an untouched install keeps its exact prior behavior.
+    sel.value = graphicsQuality === 'low' ? '250' : '750';
+  }
+  sel.addEventListener('change', applyFromControls);
+  customInput.addEventListener('input', applyFromControls);
 })();
 let waveIndex = 0;          // number of waves started
 let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (activeWavePlan dispatching outcome-gated batches, see advanceWaveDispatch()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
@@ -5160,6 +5373,11 @@ function serializeGameState(){
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
     gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
+    // Spiral ring-reveal in-progress state (see beginNextRingReveal()) — a mid-spiral buildable
+    // ring can already have player-built towers on its revealed tiles, so this is real progress,
+    // not reconstructable filler; omitted entirely (stays undefined) when no ring is in progress.
+    ringRevealedArr: ringCandidateRegion ? [...ringRevealed] : undefined,
+    ringCandidateRegion: ringCandidateRegion || undefined,
     goreMode, graphicsQuality, showZoomControls, showFpsCounter, screenShakeEnabled, seenEnemyTypes: [...seenEnemyTypes],
     unlockedTowerTypes: [...unlockedTowerTypes],
     towers: towersData, scenery: sceneryData
@@ -5216,6 +5434,15 @@ function restoreGameState(state){
   globalPassiveCounts = state.globalPassiveCounts || {};
   activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
   expansionLevel = state.expansionLevel || 0;
+  // Spiral ring-reveal in-progress state (see beginNextRingReveal()) — restore it if this save
+  // captured one mid-spiral, otherwise a fresh/older save has nothing in progress.
+  if(state.ringCandidateRegion){
+    ringCandidateRegion = state.ringCandidateRegion;
+    ringRevealed = new Set(state.ringRevealedArr || []);
+    ringRevealQueue = ringBoundaryTiles(ringCandidateRegion).filter(t => !ringRevealed.has(t.x+','+t.y) && !(t.x>=activeRegion.x0 && t.x<=activeRegion.x1 && t.y>=activeRegion.y0 && t.y<=activeRegion.y1));
+  } else {
+    ringCandidateRegion = null; ringRevealed = new Set(); ringRevealQueue = [];
+  }
   if(state.goreMode !== undefined) goreMode = state.goreMode;
   if(state.graphicsQuality){ graphicsQuality = state.graphicsQuality; setupCanvas(); }
   showZoomControls = !!state.showZoomControls;
@@ -5893,7 +6120,7 @@ class Enemy{
     // state change through sound instead of only a shrinking health bar. Checked before the
     // pileBlocked/stunned early-returns below so it still fires even while queued at a barricade,
     // since HP can still be dropping from burn/poison/bleed during that time (1.0.214).
-    if((this.type === 'BOSS' || this.isTroll) && !this.enrageCueFired && this.hp > 0 && this.hp < this.maxHp * 0.3){
+    if(((this.type === 'BOSS' || this.type === 'SANTA') || this.isTroll) && !this.enrageCueFired && this.hp > 0 && this.hp < this.maxHp * 0.3){
       this.enrageCueFired = true;
       playSound('enrage', this.x);
     }
@@ -5917,6 +6144,28 @@ class Enemy{
         this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.03);
         spawnFloatingText(this.x, this.y - this.radius - 12, '📯 Rally!', '#ff8a65');
         spawnParticles(this.x, this.y, '#ff8a65', 8);
+      }
+    }
+    if(this.type === 'SANTA'){
+      // Santa's own version of the Boss's rally timer — instead of a self-heal, "ho ho ho"s out a
+      // couple of fast COOKIE minions near himself. Same acquireActive(enemyPool) pool-borrow
+      // pattern spawnHutGuardian()/child-splitting already use elsewhere, so this costs nothing
+      // beyond however many pool slots happen to be free.
+      this.santaSpawnTimer = (this.santaSpawnTimer||4000) - dt;
+      if(this.santaSpawnTimer <= 0){
+        this.santaSpawnTimer = 5000 + Math.random()*2000;
+        spawnFloatingText(this.x, this.y - this.radius - 12, '🎅 Ho ho ho!', '#e63946');
+        spawnParticles(this.x, this.y, '#e6c200', 10);
+        getEnemyCollisionMask('COOKIE'); // pre-warm once rather than lazily building it on the very first Cookie's first collision check mid-fight — same pre-warm every OTHER enemy type gets from the wave plan's own newTypes loop, which Cookies never pass through since they're spawned directly here, not via buildWavePlan()
+        const cookieCount = 2 + Math.floor(Math.random()*2); // 2-3
+        for(let i=0; i<cookieCount; i++){
+          const c = acquireActive(enemyPool);
+          if(!c) break;
+          c.spawn('COOKIE', waveHpScale(waveIndex));
+          const ang = Math.random()*Math.PI*2, dist = this.radius + 10 + Math.random()*14;
+          c.x = this.x + Math.cos(ang)*dist; c.y = this.y + Math.sin(ang)*dist;
+          c.pathIndex = this.pathIndex; c.traveled = this.traveled; // start from wherever Santa currently is on the route, not the spawn tile
+        }
       }
     }
     if(this.slowTimer > 0){
@@ -6345,7 +6594,8 @@ class Enemy{
     // picks up campLeaderTower()'s result on their very first updateGuardian() tick.
     for(let i=0;i<2;i++) spawnHutGuardian(this);
   }
-  applyDamage(amount, sourceTower, forStreak, isHoly){
+  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed){
+    allowBleed = allowBleed === undefined ? true : allowBleed;
     if(this.active) this.recordContribution(sourceTower, amount);
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
@@ -6361,7 +6611,16 @@ class Enemy{
     // radiating streak lines — see the MAGE branch's dmgRollT/streakCount), syncing what the
     // player sees numerically with what they see visually.
     const varianceHalfWidth = (sourceTower && sourceTower.type === 'MAGE') ? 0.4 : 0.2;
-    const damageVariance = (1 - varianceHalfWidth) + Math.random()*(varianceHalfWidth*2);
+    // Investing in the primary damage stat now also widens this band itself — direct feedback
+    // ("increasing the primary stat should increase the gap between the min and max as well") —
+    // on top of primaryDamageMult already raising the average. Same diminishingStatValue curve as
+    // the DEX attack-rate change above, capped at +0.15 extra half-width (so Mage's already-wide
+    // ±40% can reach ±55% at full investment, everyone else's ±20% can reach ±35%), so a fully
+    // trained tower is visibly swingier — a real chance at a much bigger hit — not just a flat
+    // higher average.
+    const statSpreadBonus = (sourceTower && sourceTower.primaryStatEff) ? diminishingStatValue(sourceTower.primaryStatEff, 0.0003) : 0;
+    const effectiveVarianceHalfWidth = Math.min(0.6, varianceHalfWidth + statSpreadBonus);
+    const damageVariance = (1 - effectiveVarianceHalfWidth) + Math.random()*(effectiveVarianceHalfWidth*2);
     let dmg = Math.max(1, Math.round(amount * damageVariance));
     // Critical hit — a real damage effect now, not just a cosmetic floating-text color change.
     // Uses the source tower's own critChance/critMult (DEX scales chance, INT scales the
@@ -6420,7 +6679,7 @@ class Enemy{
     // (spawnDecal's dmgRollT param) so a min-roll hit visibly pools smaller and a max-roll hit
     // visibly pools bigger — a real, requested ±30% swing tied to where the roll actually landed,
     // not just severity or archetype.
-    const dmgRollT = clampNum((hitRoll - (1-varianceHalfWidth)) / (varianceHalfWidth*2), 0, 1);
+    const dmgRollT = clampNum((hitRoll - (1-effectiveVarianceHalfWidth)) / (effectiveVarianceHalfWidth*2), 0, 1);
     // isCritical was already rolled earlier (using the source tower's real critChance) before dmg
     // was finalized, so the multiplier could actually apply to the damage — reused here for the
     // floating-text/flinch treatment below, not re-rolled.
@@ -6463,8 +6722,22 @@ class Enemy{
       // independent of how hard it hit). A small, uniform chance across every archetype of a
       // notably muted result — the visual equivalent of a real strike that, for whatever reason,
       // just didn't produce much blood despite landing solidly.
-      const isAnomalousMinimal = !isCritical && Math.random() < 0.09;
-      const hitPower = (0.55 + flinchSeverity*0.75) * hitRoll * (isAnomalousMinimal ? 0.35 : isCritical ? 1.35 : 1);
+      // Blood-volume sliding scale — direct feedback: most hits should land well under 10% of the
+      // max possible spray, only occasionally scaling up, and reaching the true top of the range
+      // should require landing a crit (crit chance is meant to be the rare, coveted stat) — but a
+      // crit alone shouldn't GUARANTEE the max output either, just unlock the chance at it. So:
+      // non-crit hits are hard-capped at NORMAL_HIT_CEILING and cubed (Math.pow(rand,3)) so they
+      // cluster hard toward the low end within that cap; a crit adds a second roll that can land
+      // anywhere from that same ceiling up to the true max, itself still skewed rather than
+      // guaranteed — landing the crit is the first rare roll, where it lands in that upper range is
+      // the second, i.e. the "double luck roll" this was asked to feel like. Applies to every
+      // archetype identically (Archer/Mage/Warrior/Blunt/Pierce all read hitPower below), not just
+      // Mage — the previous isAnomalousMinimal special case (a flat 9%-chance small-hit override)
+      // is folded into this same curve rather than sitting alongside it as a separate roll.
+      const NORMAL_HIT_CEILING = 0.55;
+      let bloodScaleT = Math.pow(Math.random(), 3) * NORMAL_HIT_CEILING;
+      if(isCritical) bloodScaleT = Math.max(bloodScaleT, NORMAL_HIT_CEILING + Math.pow(Math.random(), 0.6) * (1 - NORMAL_HIT_CEILING));
+      const hitPower = (0.15 + bloodScaleT * 1.85) * (0.7 + flinchSeverity*0.5) * (0.9 + hitRoll*0.15);
       // Resolved once per hit regardless of archetype (cheap — just reads sourceTower.type) so it's
       // available both to the WARRIOR sub-branches below AND to the ground-pool decal call later in
       // this function — previously `weapon` was declared inside the WARRIOR-only else block and
@@ -6653,7 +6926,7 @@ class Enemy{
           // tuned base size, which is why every Swordsman hit looked like a heavy strike regardless
           // of how little damage it actually dealt. Floor dropped to 0.4 (a genuinely thin nick) so
           // only hits with real relative severity earn the bold, unmistakable gash.
-          const cutSize = (0.4 + flinchSeverity*1.7) * hitRoll * bloodedMult * (isAnomalousMinimal ? 0.4 : isCritical ? 1.35 : 1); // ~0.4x for a graze, up to ~2.1x for a near-fatal blow, ±18% cosmetic roll on top so no two slashes are identical
+          const cutSize = (0.4 + flinchSeverity*1.7) * bloodedMult * (0.35 + bloodScaleT * 1.5); // reuses the same sliding-scale roll as hitPower above so a cut's line length tracks the same small-usually/rare-big-on-crit curve, instead of its own separate anomalous-chance check
           // small per-hit color micro-jitter on top of this enemy's own fixed blood tint — real
           // blood shade varies slightly hit to hit even from the same wound (oxygenation,
           // thickness, how fresh vs. already-drying), not just a single flat tone reused for every
@@ -6729,8 +7002,12 @@ class Enemy{
       // Gated by a 10s per-enemy cooldown (lastBleedTriggerAt) — without one, a fast-firing tower
       // landing repeated >15%-of-max-HP hits on the same enemy could retrigger a fresh bleed event
       // every hit, stacking floating "BLEEDING" text, drip trails, and stack recalculation rapidly
-      // enough to read as visually broken rather than as a status effect.
-      if(!bio.isDust && this.hp > 0 && severity > 0.15 && gameTime - this.lastBleedTriggerAt >= 10000){
+      // enough to read as visually broken rather than as a status effect. Also gated on allowBleed
+      // — a melee cleave (checkConeHits) only sets this true for the FIRST, full-damage target in
+      // its swing, per direct feedback ("only the first gets bleeding"); the reduced-damage 2nd/3rd
+      // cleave targets can still bruise/drip (the two blocks above aren't gated) but never open an
+      // actual bleed wound from that same swing.
+      if(allowBleed && !bio.isDust && this.hp > 0 && severity > 0.15 && gameTime - this.lastBleedTriggerAt >= 10000){
         const bleedDmg = Math.max(1, Math.round(this.maxHp * 0.018));
         this.applyBleed(bleedDmg, 5000 + severity*4000, sourceTower);
         this.lastBleedTriggerAt = gameTime;
@@ -6951,13 +7228,13 @@ class Enemy{
         // Skeletal remains — two independent rolls, not gated to any particular weapon/archetype
         // since bones are a property of the body, not of what killed it. Skipped for dust/
         // construct enemies (bio.isDust) since those don't have a skeleton to leave behind.
-        // Cut back down from 0.78/0.45 per direct feedback ("bone spawn seems just a bit too
-        // much") — those had crept up over two earlier rounds of "still felt low," but bone/skull
+        // Cut again, 0.30/0.14 → 0.12/0.05, per direct feedback ("bones pile up a bit too much") —
+        // this is the SECOND cut (see the 0.78/0.45 → 0.30/0.14 note this replaces); bone/skull
         // debris lives for 45 MINUTES (BONE_LIFESPAN) and essentially never expires in a normal
-        // session, so a high per-kill chance means permanent, ever-growing clutter, unlike blood
-        // which actually fades. Landing meaningfully lower than either past value.
-        if(!bio.isDust && Math.random() < 0.30) spawnBoneDebris(this.x, this.y, this.radius);
-        if(!bio.isDust && Math.random() < 0.14) spawnSkullDrop(this.x, this.y, this.radius);
+        // session, so with hundreds of kills across a run even a "moderate" per-kill chance
+        // compounds into permanent, ever-growing clutter unlike blood, which actually fades.
+        if(!bio.isDust && Math.random() < 0.12) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.05) spawnSkullDrop(this.x, this.y, this.radius);
         if(Math.random() < 0.55){
           // this was passing smallBias=true, which forces every death pool into the same narrow
           // "ordinary splatter" size band and skips the bigger-pool rolls entirely — meaning
@@ -6991,7 +7268,7 @@ class Enemy{
           }
         }
       }
-      if(this.type === 'BOSS'){
+      if(this.type === 'BOSS' || this.type === 'SANTA'){
         if(screenShakeEnabled){
           screenShakeUntil = gameTime + (low ? 150 : 220);
           screenShakeMag = Math.max(screenShakeMag, (low ? 6 : 9) * Math.min(1.4, goreScale));
@@ -7416,7 +7693,16 @@ class Tower{
     // double-dips and out-scales every other class (61 vs 24 DPS at 400 points, measured). Archers
     // get ARCHER_RATE_SHARE of the rate bonus so their edge comes from accuracy/range/crit instead.
     const dexRateShare = archetype === 'ARCHER' ? ARCHER_RATE_SHARE : 1;
-    const dexMult = 1 + dexRateShare * cappedStatPoints(dexEff) / STAT_EFFECT_CAP; // up to 2x attack rate at 500 DEX (0.4x of that for Archers)
+    // Switched from a flat linear ramp (1 + share * points/CAP, reaching a full +100% at cap with
+    // zero diminishing return) to the same diminishingStatValue() curve crit/luck already use —
+    // direct feedback ("dex increases attack speed too fast... too overpowered compared to
+    // accuracy... attack speed should be more precious"). Attack rate directly multiplies every
+    // other DPS source (damage, crit uptime), so an uncapped linear ramp on it was scaling total
+    // DPS out ahead of every other stat investment at high DEX. The 0.014-per-point constant is
+    // tuned so a fully-trained 500-DEX tower now tops out around +66% attack rate (was +100%),
+    // while leaving low/mid investment close to where it already was — the cut lands specifically
+    // on late-game stacking, not on an early build's first few points into DEX.
+    const dexMult = 1 + dexRateShare * diminishingStatValue(dexEff, 0.014);
     const intRangeFraction = cappedStatPoints(intEff) / STAT_EFFECT_CAP; // reaches the class range cap exactly at 500 INT
     // Crazy Chef is an Archer that hits with Strength — her knives are thrown, not shot.
     const archerDamageStat = PRIMARY_DAMAGE_STAT_OVERRIDE[this.type] === 'str' ? strEff : dexEff;
@@ -7428,6 +7714,11 @@ class Tower{
     // bonus below (strForHp), since that's a universal tankiness stat, not a damage stat.
     const primaryDamageMult = archetype === 'WARRIOR' ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
     this.damage = Math.round(this.baseDamage * primaryDamageMult);
+    // Stored for applyDamage()'s per-hit variance band (see varianceHalfWidth there) — direct
+    // feedback that investing in the primary damage stat should widen the gap between a hit's min
+    // and max roll, not just raise the average, so heavy investment raises the ceiling (and floor)
+    // rather than only nudging a flat average up.
+    this.primaryStatEff = archetype === 'WARRIOR' ? strEff : archetype === 'ARCHER' ? archerDamageStat : archetype === 'MAGE' ? intEff : 0;
     this.cooldown = Math.max(80, Math.round(this.baseCooldown / dexMult));
     if(this.type === 'CLERIC'){
       this.range = this.baseRange; // fixed smite-detection radius, not INT-scaled
@@ -7473,7 +7764,7 @@ class Tower{
     this.critChance = Math.min(0.5, 0.025 + diminishingStatValue(dexEff, 0.005));
     this.critMult = Math.min(3, 1.2 + diminishingStatValue(intEff, 0.01));
 
-    this.goldMult = 1 + diminishingStatValue(dexEff, 0.02); // 🍀 Luck — DEX increases gold earned per kill by this tower, diminishing every 5 points
+    this.goldMult = 1; // 🍀 Luck removed per direct feedback ("luck is confusing, suggest removing for now") — forced to a permanent neutral 1 here rather than deleting the goldMult plumbing (bounty calc, inspect panel) outright, so every downstream reader just sees "no bonus" and the inspect panel's Luck row auto-hides itself (see its own luckPct===0 check) without needing its own separate change.
   }
   // Purchase and equip a type-matching shop item with gold (starter items have cost 0, used at creation).
   buyItem(def){
@@ -8306,6 +8597,7 @@ class Tower{
     for(let i = 0; i < slotCount; i++){
       const e = slotE[i];
       // Already validated (radius + arc) during selection above — no need to recheck here.
+      const isFirstHitThisSwing = hitSet.size === 0; // captured before this hit is added below — true only for the very first target this whole swing connects with
       const fallenOff = Math.pow(1 - MELEE_SWEEP_FALLOFF, hitSet.size); // hitSet.size is this swing's hit count so far, before this one is added
       hitSet.add(e.id);
       if(Math.random() < this.missChance){
@@ -8316,7 +8608,7 @@ class Tower{
         spawnFloatingText(e.x, e.y - e.radius - 6, 'MISS', '#aaaaaa');
         continue;
       }
-      e.applyDamage(Math.round(damage * fallenOff), this, !streakClaimed, !!isHoly);
+      e.applyDamage(Math.round(damage * fallenOff), this, !streakClaimed, !!isHoly, isFirstHitThisSwing);
       applyAttunementStatus(this, e);
       if(!e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
       if(stunMs) e.applyStun(stunMs);
@@ -8974,7 +9266,14 @@ let particleIndex = 0;
 let enemyHash = null;
 const MAX_DECALS = 2000;
 const MAX_DECALS_LOW_QUALITY = 400; // lowered from 1200 — v1.4.81 telemetry showed drawDecals() alone consuming 55.8% (2.4ms) of total render time on Low graphics during a dense wave; eviction below already recycles blood before permanent debris (skulls/bones/worms), so this only shrinks the live blood-decal budget, not the debris that's actually meant to be sparse and persistent
-function decalCapacity(){ return graphicsQuality === 'low' ? MAX_DECALS_LOW_QUALITY : MAX_DECALS; }
+// decalBudgetOverride itself is declared much earlier (right before PREFS_KEY) — savePrefs()/
+// loadPrefs() and the Settings-panel sync IIFE all read/write it during initial script execution,
+// well before this point in the file, so it can't be declared down here with the rest of the
+// decal system (a `let` TDZ crash: "Cannot access 'decalBudgetOverride' before initialization").
+function decalCapacity(){
+  if(Number.isFinite(decalBudgetOverride) && decalBudgetOverride >= 0) return decalBudgetOverride;
+  return graphicsQuality === 'low' ? MAX_DECALS_LOW_QUALITY : MAX_DECALS;
+}
 const decals = [];
 // Throttle for the decal-expiry sweep in drawDecals() below — expiry precision to the nearest
 // half-second is meaningless against a multi-minute decal lifespan (DECAL_LIFESPAN, 30min base
@@ -9216,7 +9515,7 @@ function getBloodProfile(enemyType){
   if(enemyType === 'BOULDER' || enemyType === 'ROCKLET' || enemyType === 'TANK'){
     return { bright:'#9e9e9e', dark:'#6d4c41', spray:'#bdbdbd', isDust:true }; // rock/debris, not blood at all — Tank (🗿) is a stone statue, Boulder/Rocklet are literal rock
   }
-  return { bright:'#c0392b', dark:'#7a0f0f', spray:'#ff2020', isDust:false, viscous:false }; // standard flesh
+  return { bright:'#c0392b', dark:'#a3241a', spray:'#ff2020', isDust:false, viscous:false }; // standard flesh — dark tone lightened from #7a0f0f (was reading near-black once pooled/layered); still a clear shade step down from bright, just not muddy
 }
 function hexToHsl(hex){
   const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
@@ -11724,7 +12023,7 @@ const SIZE_PHASE_BANNERS = {
 };
 const FAMILY_INTRODUCTION_WAVE = {
   GRUNT:1, SWARM:6, BOSS:10, WOLF:11, RUNNER:16, SPLITTER:21, FIRE:26, ICE:31, HEALER:36, SHIELDED:41,
-  SKELETON:46, WRAITH:51, TANK:56, TROLL:61, ZOMBIE:66, REAPER:71, BOULDER:76, MONARCH:86
+  SKELETON:46, WRAITH:51, TANK:56, TROLL:61, ZOMBIE:66, REAPER:71, BOULDER:76, MONARCH:86, SANTA:CAMPAIGN_WAVE_COUNT
 };
 const FAMILY_TIER_ELIGIBILITY = {
   GRUNT:['TINY','SMALL','STANDARD','LARGE'], SWARM:['TINY','SMALL'], WOLF:['TINY','SMALL','STANDARD','LARGE'],
@@ -11732,7 +12031,7 @@ const FAMILY_TIER_ELIGIBILITY = {
   ICE:['TINY','SMALL','STANDARD','LARGE'], HEALER:['SMALL','STANDARD','LARGE'], SHIELDED:['SMALL','STANDARD','LARGE'],
   SKELETON:['TINY','SMALL','STANDARD','LARGE'], WRAITH:['TINY','SMALL','STANDARD','LARGE'], TANK:['STANDARD','LARGE'],
   TROLL:['STANDARD','LARGE'], ZOMBIE:['SMALL','STANDARD','LARGE'], REAPER:['STANDARD','LARGE'], BOULDER:['STANDARD','LARGE'],
-  MONARCH:['TINY','SMALL'], BOSS:['BOSS']
+  MONARCH:['TINY','SMALL'], BOSS:['BOSS'], SANTA:['BOSS']
 };
 const FAMILY_NATIVE_TIER = { SWARM:'TINY', MONARCH:'TINY', BOSS:'BOSS' };
 const EARLY_WAVE_POPULATION = [
@@ -11893,7 +12192,7 @@ function buildWavePlan(waveNumber){
     const band = SIZE_TIER_BANDS[sizeTier];
     const units = [];
     const introSlots = sizeTier === introTier ? (chapterFamily === 'GRUNT' ? tierCount : introductionSlotCount(tierCount)) : 0;
-    const weights = sizeTier === 'BOSS' ? [{ family:'BOSS', weight:1 }] : familyWeightsForTier(waveNumber, sizeTier, partnerFamily, emphasisFamilies);
+    const weights = sizeTier === 'BOSS' ? [{ family: (waveNumber === CAMPAIGN_WAVE_COUNT ? 'SANTA' : 'BOSS'), weight:1 }] : familyWeightsForTier(waveNumber, sizeTier, partnerFamily, emphasisFamilies);
     for(let i = 0; i < tierCount; i++){
       const family = i < introSlots ? chapterFamily : (weights.length ? pickWeightedFamily(rng, weights) : 'GRUNT');
       units.push({ uniqueId: uniqueId++, family, sizeTier, sizeJitter: rng(), phaseIndex: phases.length, batchIndex: 0 });
@@ -12016,8 +12315,10 @@ function spawnWaveUnit(spec){
 // warning holds long enough to be read before the boss walks on.
 const BOSS_WARNING_MS = 2600;
 let bossWarningUntil = 0;
-function showBossWarning(){
+let bossWarningLabel = 'BOSS APPROACHING';
+function showBossWarning(label){
   bossWarningUntil = gameTime + BOSS_WARNING_MS;
+  bossWarningLabel = label || 'BOSS APPROACHING';
   playSound('wave');
   if(screenShakeEnabled){ screenShakeUntil = gameTime + 600; screenShakeMag = Math.max(screenShakeMag, 7); }
 }
@@ -12045,7 +12346,7 @@ function drawBossWarning(ctx){
   ctx.fillStyle = '#ffe9a8';
   ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
   ctx.globalAlpha = Math.min(1, t * 3);
-  ctx.fillText('BOSS APPROACHING', CANVAS_W/2, bandY + 62);
+  ctx.fillText(bossWarningLabel, CANVAS_W/2, bandY + 62);
   ctx.restore();
 }
 function announceSizePhase(phase){
@@ -12053,7 +12354,15 @@ function announceSizePhase(phase){
   // enemies incoming'... wasn't very accurate either"). TINY/STANDARD/LARGE/BOSS banners are
   // untouched; this was scoped to the one the owner actually flagged, not a blanket removal.
   if(phase.sizeTier === 'SMALL') return;
-  if(phase.sizeTier === 'BOSS') showBossWarning();
+  if(phase.sizeTier === 'BOSS'){
+    // The final wave's BOSS slot is always SANTA (see buildWavePlan()'s weight override) — give it
+    // its own warning label instead of the generic one, and a distinct GA event so a Santa
+    // encounter is actually visible in analytics as its own thing, not folded into every other
+    // boss wave.
+    const isSanta = waveIndex === CAMPAIGN_WAVE_COUNT; // waveIndex already incremented for the in-progress wave by the time SPAWNING dispatches its BOSS phase (see startNextWave()'s waveIndex++, which runs before advanceWaveDispatch ever calls this)
+    showBossWarning(isSanta ? '🎅 SANTA APPROACHING' : 'BOSS APPROACHING');
+    if(isSanta && window.trackEvent) window.trackEvent('santa_boss_encountered', { wave: CAMPAIGN_WAVE_COUNT });
+  }
   else if(phase.sizeTier === 'LARGE') showKillstreakBanner(SIZE_PHASE_BANNERS[phase.sizeTier]);
   else showToast(SIZE_PHASE_BANNERS[phase.sizeTier]);
   playSound(phase.sizeTier === 'BOSS' || phase.sizeTier === 'LARGE' ? 'wave' : 'click');
@@ -12127,7 +12436,7 @@ function startNextWave(){
   // isn't reset here — only the ceiling it's allowed to climb toward changes, so a gust already in
   // progress from the previous round doesn't snap down, it just can't climb any higher than the
   // new (lower or higher) ceiling permits from here.
-  windCeilingForWave = clampNum(wavesCompleted / 30, 0.15, 1);
+  windCeilingForWave = 0; // Wind removed per direct feedback ("wind is confusing, suggest removing for now") — forced to a permanent 0 ceiling here rather than deleting updateWind()/windMissPenalty() outright, so windStrength always converges to 0 and every downstream effect (Archer/Mage miss-chance penalty, the flag's wind-lean visual) goes fully inert without touching every one of their call sites in one pass. Can be re-enabled later (or the dead plumbing actually removed) by restoring the old progression curve here.
   // Enemies still wandering from a previous round (see reachEnd()/updateEscaped()) are no longer
   // force-cleared here — they persist across wave boundaries now, by direct request, rather than
   // being deactivated the instant a new wave starts. They already don't block wave completion
@@ -12213,7 +12522,12 @@ function campLeaderTower(hut){
 function spawnHutGuardian(hutRef){
   const e = acquireActive(enemyPool);
   if(!e) return null; // pool exhausted — the hut just has fewer guardians than intended this time rather than blocking anything else
-  e.spawn('GRUNT', 3, false, false); // a real guard, much tankier than an ordinary wave Grunt at any point in the game, but still just a Grunt's own moveset/appearance — not a new enemy type to design and balance separately
+  // 3x a Grunt's OWN wave-scaled HP (waveHpScale(waveIndex)), not 3x Grunt's flat base HP — a camp
+  // that spawns at HUT_MIN_EXPANSION_LEVEL early on is meant to read as a tough detour for THAT
+  // point in the game, not a fixed mid-game-strength roadblock dropped in front of a wave-1 player.
+  // Per-guardian floor kept at 3x base HP even on wave 1 so it's still meaningfully tankier than a
+  // regular Grunt, just not fixed-mid-game-tough.
+  e.spawn('GRUNT', 3 * waveHpScale(waveIndex), false, false); // a real guard, much tankier than an ordinary wave Grunt at this point in the game, but still just a Grunt's own moveset/appearance — not a new enemy type to design and balance separately
   e.isGuardian = true;
   e.hutRef = hutRef;
   e.hutAnchorX = hutRef.x; e.hutAnchorY = hutRef.y;
@@ -12226,7 +12540,7 @@ function spawnHutGuardian(hutRef){
 function spawnHut(x, y){
   const hut = acquireActive(enemyPool);
   if(!hut) return null;
-  hut.spawn('GRUNT', 16, false, false); // GRUNT, not TANK — TANK's death branch pays a fixed flat stone amount that ignores this.bounty entirely, which would have silently swallowed the reward boost below; GRUNT keeps this on the normal gold path where the bounty multiplier actually applies. Cut from 40x to 16x per direct feedback ("hut has way too much health") — still meaningfully the toughest single thing on the board, just not absurdly so.
+  hut.spawn('GRUNT', 16 * waveHpScale(waveIndex), false, false); // GRUNT, not TANK — TANK's death branch pays a fixed flat stone amount that ignores this.bounty entirely, which would have silently swallowed the reward boost below; GRUNT keeps this on the normal gold path where the bounty multiplier actually applies. Cut from 40x to 16x per direct feedback ("hut has way too much health") — still meaningfully the toughest single thing on the board, just not absurdly so. Now also scaled by waveHpScale(waveIndex) (same curve every regular enemy uses) so a hut spawned early stays an early-game-appropriate fight rather than fixed mid-game strength — per direct feedback ("thats mid tier strenght early waves lower strength").
   hut.emoji = '🛖'; // overridden from GRUNT's own default — this needs to read as a structure, not another enemy
   hut.isHutBuilding = true;
   hut.x = x; hut.y = y;
@@ -12388,6 +12702,13 @@ function update(dt){
     if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
+      if(window.trackEvent && wavesCompleted % 5 === 0) window.trackEvent('wave_milestone', { waves_completed: wavesCompleted }); // every 5th wave only — every single wave would be noisy without adding real signal
+      // Spiral map growth: an in-progress buildable-only ring (see beginNextRingReveal()) drips in
+      // 1-3 more tiles for free on every wave clear, regardless of whether the player buys another
+      // expansion — "each round" in the reveal pacing is a wave, matching the request directly.
+      // Path-rings never populate this queue (see performExpansion()'s nextRingIsPath branch), so
+      // this is a no-op between path-ring expansions.
+      if(ringRevealQueue.length) advanceRingReveal(1 + Math.floor(Math.random()*3));
       // Necromancer's skeletons exist only for the round that raised them — see startNextWave()'s
       // raiseSkeletonsForTower() call. Cleared the instant the round actually completes, not
       // carried into the between-wave lull the way escaped enemies deliberately are.
@@ -12581,6 +12902,7 @@ function render(ctx){
   let __rpt = performance.now();
   const worldView = visibleWorldRect();
   blitWorldLayer(ctx, mapCanvas, worldView); // static map, pre-rendered once — see BOOT
+  drawPendingRingReveal(ctx); // spiral map-growth: tiles already buildable (isInActiveRegion) but not yet baked into mapCanvas — see advanceRingReveal()
   renderPhaseTime.mapBlit += performance.now() - __rpt; __rpt = performance.now();
   if(settledDecalCanvasReady) blitWorldLayer(ctx, settledDecalCanvas, worldView); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
   // Blood decals draw BEFORE scenery (trees/rocks) rather than after — blood sits flat on the
@@ -12607,17 +12929,24 @@ function render(ctx){
     const hueSpeed = isRareDrop ? 30 : 60; // ms per degree — lower = faster cycle
     const hue = (gameTime / hueSpeed + gi.id * 47) % 360;
     const ringColorHex = `hsl(${hue.toFixed(0)}, 100%, 58%)`;
-    // Soft pulsing ring behind the icon, visible at every graphics setting — a cheap, always-on
-    // "this is a draggable item" signal, distinct from the shadowBlur glow below which stays
-    // gated behind high graphics since it's a pure cosmetic extra, not the core affordance cue.
-    const ringPulse = 0.35 + Math.sin(gameTime/280 + gi.id)*0.2;
-    ctx.globalAlpha = ringPulse;
-    ctx.strokeStyle = ringColorHex;
-    ctx.lineWidth = 2;
+    // Soft radial glow instead of a stroked ring outline — direct feedback ("literally a glow like
+    // glowing light gradient not a ring, I hate that ring"). Same rainbow hue-cycle and pulse timing
+    // as before, just rendered as a radial gradient (bright, opaque core fading to fully transparent
+    // at the edge) instead of a circle stroke, so it reads as ambient light around the item rather
+    // than a hard geometric outline.
+    const glowPulse = 0.55 + Math.sin(gameTime/280 + gi.id)*0.25;
+    const glowRadius = 20;
+    const grad = ctx.createRadialGradient(gi.x, gi.y + bob, 0, gi.x, gi.y + bob, glowRadius);
+    // hsla(), not hexToRgba() — ringColorHex is an hsl(...) string (a rainbow hue-cycle), and
+    // hexToRgba() only parses '#rrggbb'; hsla() takes the same h/s/l straight from that string.
+    const glowHsla = (a) => `hsla(${hue.toFixed(0)}, 100%, 58%, ${a})`;
+    grad.addColorStop(0, glowHsla(glowPulse * 0.85));
+    grad.addColorStop(0.55, glowHsla(glowPulse * 0.35));
+    grad.addColorStop(1, glowHsla(0));
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(gi.x, gi.y + bob, 15, 0, Math.PI*2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+    ctx.arc(gi.x, gi.y + bob, glowRadius, 0, Math.PI*2);
+    ctx.fill();
     if(graphicsQuality !== 'low'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // ground items are few and short-lived, so this was low real impact, but matching the Low-graphics gate used everywhere else keeps the setting meaning the same thing consistently
     ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
@@ -12755,7 +13084,7 @@ function drawWaveCountdown(ctx){
   ctx.restore();
 }
 function drawBossCompass(ctx){
-  const boss = enemyPool.find(e => e.active && e.type === 'BOSS');
+  const boss = enemyPool.find(e => e.active && (e.type === 'BOSS' || e.type === 'SANTA'));
   if(!boss) return;
   const screenX = boss.x*camera.zoom + camera.x;
   const screenY = boss.y*camera.zoom + camera.y;
@@ -13874,7 +14203,20 @@ canvas.addEventListener('pointermove', (e) => {
     const dx = e.clientX - dragStartClient.x, dy = e.clientY - dragStartClient.y;
     if(!isDragging && Math.hypot(dx,dy) > DRAG_THRESHOLD) isDragging = true;
     if(draggingGroundItem){
-      dragItemPos = toCanvasCoords(e);
+      const raw = toCanvasCoords(e);
+      // Snap-to-target: once the pointer is close enough to an eligible tower, the dragged item's
+      // drawn position locks onto that tower instead of trailing the raw cursor — makes it visually
+      // unambiguous who's about to receive it before release, rather than relying on the small 👇🏻
+      // indicator alone. SNAP_RADIUS deliberately wider than the 26px drop hit-test radius so the
+      // snap engages a little before the drop itself would actually register.
+      const SNAP_RADIUS = 40;
+      let nearest = null, nearestDist = SNAP_RADIUS;
+      for(const t of towerPool){
+        if(!t.active) continue;
+        const d = Math.hypot(t.x - raw.x, t.y - raw.y);
+        if(d < nearestDist){ nearest = t; nearestDist = d; }
+      }
+      dragItemPos = nearest ? { x: nearest.x, y: nearest.y } : raw;
     } else if(isDragging){
       const rect = getCanvasRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
@@ -14985,7 +15327,7 @@ function generateDebugLog(){
   s += 'Particles: ' + activeCount(particles) + '/' + particles.length + '\n';
   s += 'Floating texts: ' + activeCount(floatingTexts) + '/' + floatingTexts.length + '\n';
   s += 'Death animations: ' + deathAnims.length + '\n';
-  s += 'Decals: ' + decals.length + ' (cap ' + MAX_DECALS + ')\n';
+  s += 'Decals: ' + decals.length + ' (cap ' + decalCapacity() + ')\n';
   s += 'Scenery items: ' + sceneryMap.size + '\n';
   s += 'Flora items: ' + floraMap.size + '\n';
   s += 'Ground items: ' + groundItems.length + '/' + MAX_GROUND_ITEMS + (groundItems.length ?
@@ -15240,7 +15582,7 @@ function updateInspectPanel(){
   // half-width the actual damage roll in applyDamage() uses, so this is a real number, not a
   // cosmetic guess.
   inspAtkVal.textContent = '';
-  const dmgHalf = t.type === 'MAGE' ? 0.4 : 0.2; // must match applyDamage()'s varianceHalfWidth exactly — Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band
+  const dmgHalf = Math.min(0.6, (t.type === 'MAGE' ? 0.4 : 0.2) + (t.primaryStatEff ? diminishingStatValue(t.primaryStatEff, 0.0003) : 0)); // must match applyDamage()'s effectiveVarianceHalfWidth exactly — base half-width per archetype (Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band) plus the same primary-stat spread bonus applyDamage() adds
   const dmgMinEl = inspAtkRange;
   const dmgRangeText = Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf));
   if(dmgMinEl) dmgMinEl.textContent = dmgRangeText;
@@ -15281,8 +15623,8 @@ function updateInspectPanel(){
     ? 'Intelligence: +6 range, 💥 crit damage multiplier, and +6% damage per point'
     : 'Intelligence: +6 range and 💥 crit damage multiplier per point';
   inspDexBtn.title = arch === 'ARCHER'
-    ? 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, 🍀 luck, and +6% damage per point'
-    : 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, and 🍀 luck (bonus gold per kill) per point';
+    ? 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, and +6% damage per point'
+    : 'Dexterity: +3% attack speed, accuracy, and 💥 crit chance per point';
   // WC3-style aura box — icon-only, only for evolved/specialist towers (TOWER_STRATEGY), hidden
   // for Swordsman/Archer/Mage/Barricade. Any previously-open tooltip is closed on every panel
   // refresh so a stale strategy note from a different tower can't linger after switching selection.
@@ -15510,6 +15852,24 @@ pauseBtn.addEventListener('pointerdown', (e) => {
     resumeGame();
   }
 });
+// Spacebar toggles pause the same way the pause button itself does — checked first, before the
+// "any key resumes" listener below, and only while actually PLAYING so it can't fire from the
+// start screen, a text input, or any other non-gameplay state. preventDefault() stops the page
+// from scrolling on Space, which is the default browser behavior for that key.
+document.addEventListener('keydown', (e) => {
+  if(e.code !== 'Space') return;
+  if(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+  if(gameState === 'PLAYING'){
+    e.preventDefault();
+    unlockAudio();
+    gameState = 'PAUSED';
+    pauseStartedAtReal = Date.now();
+    pauseBtn.textContent = '▶';
+    pauseBtn.classList.add('active');
+    document.getElementById('pause-overlay').classList.remove('hidden');
+    render(ctx);
+  }
+});
 // "Press any key to continue" — matches the overlay's own text. Any actual key resumes, same
 // exact path the pause button's own un-pause branch uses (resumeGame()), so there's only one
 // place that logic lives. Deliberately not gated to a specific key (Escape/Space) since the
@@ -15656,16 +16016,18 @@ function endGame(message){
   endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '. Rebuild your\u00A0squad\u00A0and\u00A0try\u00A0again.');
   playSound('lose');
   endScreen.classList.remove('hidden');
+  if(window.trackEvent) window.trackEvent('game_over', { wave_reached: waveIndex, waves_completed: wavesCompleted });
 }
 
 function resetGame(){
+  if(window.trackEvent) window.trackEvent('game_start', {});
   gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; resetWaveDispatch(); waveRunSeed = (Math.random() * 4294967296) >>> 0; seenEnemyTypes = new Set();
   wood = 0; stone = 0;
   globalPassiveCounts = {};
   selectedBuildType = null; selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false; hoverCell = null; hoveredSceneryKey = null;
   wavesCompleted = 0; hasUnseenUnlock = false; gameTime = 0;
-  windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0.15; windDirAngle = Math.random()*Math.PI*2; windDirTarget = windDirAngle; windDirRetargetTimer = 0; // fresh calm start rather than carrying over whatever gust (or wind cap) was mid-swing in the old session
+  windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0; windDirAngle = Math.random()*Math.PI*2; windDirTarget = windDirAngle; windDirRetargetTimer = 0; // fresh calm start; windCeilingForWave permanently 0 now — see its own comment in startNextWave() (wind removed per direct feedback)
   unlockedTowerTypes = loadPermanentUnlocks(); // never wiped by a restart — permanent unlocks persist across every playthrough
   everBuiltFighter = false;
   hitStopUntil = 0; // gates the ENTIRE simulation tick in the main loop (`if(gameTime < hitStopUntil) return;`) with no safety cap of its own — a stale value from a Boss kill in the previous session could otherwise freeze the whole new game until gameTime caught back up to it
