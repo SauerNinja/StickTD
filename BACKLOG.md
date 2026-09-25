@@ -1,13 +1,30 @@
 # Backlog
 
 ## From the 2026-09-25 lag-audit/screenshot round — triaged, not yet built
-Shipped this round (see CHANGELOG.md 1.4.89-1.4.92): blood dark-tone lightened, Space-to-pause,
-per-tier decal budget setting, hut/camp HP scaled to wave, crit-tied blood scale, DEX/stat-spread
+Shipped this round (see CHANGELOG.md 1.4.89-1.4.98): blood dark-tone lightened, Space-to-pause,
+per-tier decal budget setting (now with a fixed 250/750 Low/High default), hut/camp HP scaled to
+wave, crit-tied blood scale with HP-reserve/multi-attacker split/size-gating, DEX/stat-spread
 rebalance, glow/snap on drag-drop, bleed-first-hit-only, wind/luck neutralized, spiral map
-expansion. Everything below is still open. Grouped by risk — the file is 16k lines in one script,
-so anything touching a shared system (targeting, movement, the settings-quality gate) gets scoped
-and confirmed before being changed, rather than guessed at alongside a dozen other simultaneous
-changes.
+expansion, accelerating decal fade, per-tower telemetry, Santa final boss, Merchant + Shop-gate
+mechanic, Glaive anti-structure tower, Castle + chess-piece guardians, coin pickups, the
+wave-unlock-toast/permanence bugfix. Everything below is still open. Grouped by risk — the file is
+over 16k lines in one script, so anything touching a shared system (targeting, movement, the
+settings-quality gate) gets scoped and confirmed before being changed, rather than guessed at
+alongside a dozen other simultaneous changes.
+
+**Needs your answer before I touch it:**
+- **Stage 4 (1000 stats) — a genuinely new deepest tier** — stage 1 (100), stage 2 (250, the
+  generic Veteran bonus), and stage 3 (500) are now all real and implemented (see CHANGELOG.md
+  1.5.3). Stage 4 is different in kind: it means inventing an entirely new deepest-tier class (or
+  ability) beyond Pope, Sniper, Gunalinder, Berserker, Lancer, etc. — not a threshold number, real
+  new content per lineage you'd need to actually specify.
+
+**Clearly scoped, queued next — none of these need a real investigation before starting, they just
+weren't reached this round:**
+- **1:1 dirt-to-grass path ratio** — a new requirement for the path generator itself (distinct from
+  the ring-expansion system above), not previously requested.
+- **Corner padding at the finish-line escape spot** — pad the specific corner where an enemy has
+  been seen cutting into the finish line with an extra grass/buffer tile.
 
 **Clearly scoped, queued for next round (no open question):**
 - **Finish-line escape recurrence** — your screenshots/video are all captured at v1.4.88, the same

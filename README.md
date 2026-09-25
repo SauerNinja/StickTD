@@ -142,12 +142,12 @@ they don't have a specialized niche yet to explain.
 
 ## Towers & evolutions
 
-> **Note for anyone editing this file or the code:** everything below is documented exactly, the
-> way a technical reference should be — but the game itself deliberately does NOT show players this
-> exact mapping. The in-game help modal and the Build menu's locked-row messages both use vague,
-> thematic riddles instead (see `TOWER_UNLOCK_RIDDLE` in `buildTowerModal()`), on purpose, so
-> discovering which stat/element leads where is part of the game. If you're tempted to make the
-> in-game UI this precise to "match the docs" — don't; that's the opposite of the intent.
+> **Note:** everything below is documented exactly, the way a technical reference should be — but
+> the game itself deliberately does NOT show players this exact mapping. The in-game help modal and
+> the Build menu's locked-row messages both use vague, thematic riddles instead (see
+> `TOWER_UNLOCK_RIDDLE` in `buildTowerModal()`). Discovering which stat/element leads where is part
+> of the game, so the in-game UI should stay at that same riddle-level vagueness — this document's
+> precision is for reference, not a template for what players see.
 
 A tower never transforms into a new class — it keeps its own identity forever and just keeps
 growing its own stats. What reaching certain thresholds *does* do: permanently unlock a different,

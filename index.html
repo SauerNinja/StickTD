@@ -14,6 +14,9 @@
 <meta property="og:title" content="StickTD — Stick Tower Defense">
 <meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
 <meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="StickTD — Stick Tower Defense gameplay screenshot">
 <meta property="og:url" content="https://sauerninja.github.io/StickTD/">
 <meta property="og:site_name" content="StickTD">
 <meta property="og:locale" content="en_US">
@@ -21,6 +24,8 @@
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
 <meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
 <meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<meta name="theme-color" content="#8a5a2a">
+<link rel="manifest" href="manifest.json">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -33,7 +38,10 @@
   "genre": ["Tower Defense", "Strategy"],
   "gamePlatform": "Web Browser",
   "applicationCategory": "Game",
+  "applicationSubCategory": "Tower Defense",
   "operatingSystem": "Any",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
   "author": { "@type": "Person", "name": "Setvin Noether" },
   "creator": { "@type": "Person", "name": "Setvin Noether" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
@@ -178,6 +186,10 @@
     padding:7px 10px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:38px;
     pointer-events:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
   #settingsBtn.hud-action-btn{padding:8px 9px;min-width:40px;}
+  .hud-action-btn.shop-locked{background:linear-gradient(180deg, #8a8a8a 0%, #6b6b6b 45%, #4a4a4a 100%);color:#dcdcdc;filter:grayscale(0.4);}
+  .shop-lock-badge{position:absolute;top:-6px;right:-6px;font-size:14px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));}
+  .shop-lock-badge.hidden{display:none;}
+  #shopBtn{position:relative;}
   .hud-action-btn.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
   .hud-action-btn.has-unlock{position:relative;}
   .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
@@ -619,6 +631,20 @@
 </style>
 </head>
 <body>
+<!-- Crawlable page content — the game itself is a <canvas>, which Google can render but can't
+     read as text, so search engines otherwise see a nearly-empty page beyond the <head> meta tags.
+     Visually hidden with a standard accessible off-screen technique (not display:none/visibility:
+     hidden, which some crawlers discount as likely spam/cloaking) so this reads correctly for
+     screen readers and search engines alike without affecting the game's visual layout at all. -->
+<div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+  <h1>StickTD — Stick Tower Defense</h1>
+  <p>A free browser-based stick figure tower defense game. Place and evolve stickman towers —
+  Swordsman, Archer, Mage, Axeman, Spearman, Hammerman, Bomber, Gatling, and more — across 100
+  waves of enemies plus an endless expedition mode beyond that. Features a growing spiral map,
+  procedural blood and combat effects, a stat-training and evolution system, and a final boss
+  fight against Santa. No download or install required — runs entirely in your browser. Created
+  by SauerNinja (Setvin Noether). Open source on <a href="https://github.com/SauerNinja/StickTD">GitHub</a>.</p>
+</div>
 <style>
   #consent-banner{position:fixed;inset:0;z-index:999;
     background:rgba(8,6,3,0.96);color:#f5f0e6;
@@ -644,7 +670,7 @@
     kind. They're how I save your unlocks and squash bugs. No cookies, no memory of anything
     you've done. That's just how this works, kid.</p>
     <p id="consentOpenSource">Don't feel like handing them over? Fair enough — this game is
-    <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener">open source</a>.
+    <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener" onclick="if(window.trackEvent) window.trackEvent('outbound_click', {destination:'github'});">open source</a>.
     Build it from source yourself and keep every cookie to yourself.</p>
     <button id="consentAccept" type="button">🍪 Fine, Accept</button>
   </div>
@@ -707,7 +733,7 @@
 
     <header id="hud-top">
       <button id="buildBtn" class="hud-action-btn">🏗️ Build</button>
-      <button id="shopBtn" class="hud-action-btn">🛒 Shop</button>
+      <button id="shopBtn" class="hud-action-btn">🛒 Shop<span id="shopLockBadge" class="shop-lock-badge hidden">🔒</span></button>
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
       <div id="hud-stats-stack">
         <div class="hud-stat-row">
@@ -1123,7 +1149,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.4.95'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.5.5'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1263,6 +1289,8 @@ const JOB_QUOTES = {
   MAGE:      ["Arcane forces, obey!", "The cold does the work for me.", "Knowledge is my weapon.", "Let the spell begin.", "Power, unleashed."],
   BOMBER:    ["Fire in the hole!", "Stand back — way back.", "Boom first, questions later.", "Lit and ready.", "Clear the blast radius!"],
   GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum.", "Barrels hot!", "Keep 'em coming."],
+  MERCHANT:  ["Business is business.", "Everything has a price.", "Gold well spent, gold well earned.", "Step right up.", "I never miss a sale."],
+  GLAIVE:    ["Structures fall, one by one.", "No wall stands forever.", "Reload's worth the wait.", "Foundations crack under this.", "Precision over speed."],
   CLERIC:    ["None shall fall today.", "Be still, and be healed.", "The undead have no place here.", "Grace and judgment.", "Faith mends what's broken."],
   POPE:      ["Let all be judged as one.", "The light spares no evil.", "By my word, be cleansed.", "None escape this grace.", "The faithful stand eternal."],
   BLOWDART:  ["One prick is all it takes.", "The poison does the rest.", "Fast hands, sharp aim.", "A little sting, a lot of damage.", "Silent and precise."],
@@ -1311,6 +1339,8 @@ const TOWER_STRATEGY = {
   BLOWDART:  { icon: '🧪', text: 'Poison DoT specialist: modest hit damage, but the poison keeps ticking after the shot lands. Strong against tanky single targets that will stay in range a while.' },
   SQUIRTGUN: { icon: '💧', text: 'Dual-gun acid DoT, Blowdart\'s bigger sibling. Two independent damage-over-time stacks instead of one — thrives the same way, just harder.' },
   BOMBER:    { icon: '💣', text: 'The only splash-damage tower — one shot hits every enemy in its blast radius. Built for dense clumps (Swarm, Elite Vanguard), wasted on a single isolated target.' },
+  MERCHANT:  { icon: '👳', text: 'Keeps the Shop open while alive — downed, and it locks until another one is standing. Deliberately the worst combat tower in the game; his real value is Shop access and passive gold from Money Bag coin bursts, not his damage.' },
+  GLAIVE:    { icon: '⚙️', text: 'Anti-structure specialist — 5x damage against Hut/Castle/Grave buildings specifically, unremarkable against ordinary enemies. Huge reload; save him for the buildings, not the horde.' },
   GUNALINDER:{ icon: '🔄', text: 'Burst-fire revolver: several fast shots, then a longer reload. Real DPS is high but lumpy — check its 🥈 DPS stat, not just the per-shot number, to judge it fairly.' },
   SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
   MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Evolves further into Sniper." },
@@ -1453,6 +1483,7 @@ const ENEMY_INFO = {
   BOSS: { name:'Boss', desc:'Massive HP and armor. Always arrives last in its wave and periodically rallies, restoring a little health.' },
   SANTA: { name:'Santa', desc:'The true final boss — replaces the Boss on the very last wave. Highest HP in the game, and periodically summons a few fast Cookies instead of healing.' },
   COOKIE: { name:'Cookie', desc:'One of Santa\'s own — small and weak, but very fast. Ho ho ho.' },
+  CHESS: { name:'Chess Piece', desc:'A Castle guardian — a random chess piece each time, black or white. Breaks off to attack a tower far more often than anything else on the board.' },
   TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
   FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly.' },
   ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly.' },
@@ -1483,7 +1514,7 @@ const FOOTSTEP_WEIGHT = {
 };
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
-  ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER',
+  ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER', MERCHANT:'ARCHER', GLAIVE:'ARCHER',
   GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER', BLOW_GUNNER:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE', NECROMANCER:'MAGE',
   // Not a Mage evolution — it's an Archer unlock (see SPECIALIZATIONS' comment on the raw-DEX
@@ -1679,7 +1710,7 @@ const EVOLUTIONS = {
   CLERIC: { int: {target:'POPE', threshold:STAT_EFFECT_CAP} } // 500 INT (the per-stat cap) plus POPE_TOTAL_REQUIREMENT combined — 750 INT is unreachable under the caps
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
-const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','BERSERKER','LANCER','CRAZY_CHEF']; // reachable only via evolution, never built directly
+const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','BERSERKER','LANCER','CRAZY_CHEF','MERCHANT','GLAIVE']; // reachable via evolution OR a pure wave gate (Merchant/Glaive have no evolution path at all, same as this list already accommodates for the wave-gate side of Axeman/Spearman/Hammerman) — never built directly before being unlocked one way or the other
 // The deepest evolution tier in each lineage that actually has one beyond its own base
 // specialization — Paladin (Hammerman's own 2nd tier), Squirtgun (Blowdart's), Sniper (shared
 // deepest tier for both the Gatling→Bomber→Gunalinder AND Marksman chains), Pope (Cleric's).
@@ -1744,6 +1775,14 @@ TOWER_UNLOCK_SOURCE_BY_TARGET.CAT_SNAPPER = { kind: 'stat', baseType: 'ARCHER', 
 // report ("100 str on archer and crazy chef not available in the build menu") was correct, and
 // this specific registration gap is why; fixed here.
 TOWER_UNLOCK_SOURCE_BY_TARGET.CRAZY_CHEF = { kind: 'stat', baseType: 'ARCHER', stat: 'str', threshold: ATTUNEMENT_THRESHOLD };
+// Merchant has no evolution/stat path at all — a plain wave gate (CONFIG.TOWERS.MERCHANT's own
+// unlocksAfterWave, actually enforced now by checkTowerUnlocks() — see that function), same as
+// Cat Snapper/Crazy Chef above needed their own explicit registration purely so the Build tray
+// actually gets a row for it (that's all UNLOCKABLE_TOWER_TYPES/this table is used for — see the
+// comment on TOWER_UNLOCK_SOURCE_BY_TARGET's own declaration).
+TOWER_UNLOCK_SOURCE_BY_TARGET.MERCHANT = { kind: 'wave', baseType: null };
+// Same reasoning as Merchant directly above — a plain wave gate, no evolution/stat path.
+TOWER_UNLOCK_SOURCE_BY_TARGET.GLAIVE = { kind: 'wave', baseType: null };
 // Quasar (like Proton and Dark Matter) is a mixed ELEMENT STATE a tower earns and carries on its
 // own existing attack (see MIXED_ELEMENT_RULES/refreshElementState()/applyAttunementStatus()) — it
 // is deliberately NOT registered here. An earlier version incorrectly added Quasar as its own
@@ -1964,6 +2003,35 @@ const CONFIG = {
         { range: 246, damage: 54, cooldown: 1200, projectileSpeed: 300, splashRadius: 78, upgradeCost: 155 }
       ]
     },
+    // The Shop-key tower — direct request. Low-to-mid range, the biggest splash radius in the
+    // game, and a deliberately huge cooldown (his whole identity is "one big lob, then a long
+    // wait," not a DPS class) — throws a Money Bag that bursts into 1-7 Coins on impact (visual
+    // only; the actual splash damage/targeting reuses the same proven splashRadius AOE system
+    // every other splash tower already uses, see Projectile.onImpact()). As long as an active,
+    // non-disabled Merchant is on the board, the item Shop is unlocked (see shopMerchantGate()) —
+    // downed or removed, the Shop locks again until another Merchant is alive.
+    MERCHANT: {
+      name: 'Merchant', icon: '👳', baseCost: 140, unlocksAfterWave: 15,
+      blurb: 'Keeps the Shop open — while he\'s alive, you can spend gold there. Downed, and it locks until another one is standing. Deliberately the worst combat tower in the game — his value is entirely the Shop access and gold, not his damage. Lobs a Money Bag that bursts into coins over a huge blast radius, but reloads extremely slowly.',
+      tiers: [
+        { range: 170, damage: 40, cooldown: 35000, projectileSpeed: 200, splashRadius: 110 },
+        { range: 185, damage: 55, cooldown: 32000, projectileSpeed: 210, splashRadius: 125, upgradeCost: 160 },
+        { range: 200, damage: 75, cooldown: 29000, projectileSpeed: 220, splashRadius: 140, upgradeCost: 220 }
+      ]
+    },
+    // Anti-structure specialist — direct request. A single heavy single-target shot (not splash)
+    // with a huge reload, and 5x damage specifically against Hut/Castle buildings (see
+    // fireProjectile()'s own GLAIVE check) — against a normal enemy he's a slow, middling hitter;
+    // against a building he's the hardest single hit in the game.
+    GLAIVE: {
+      name: 'Glaive', icon: '⚙️', baseCost: 130, unlocksAfterWave: 20,
+      blurb: 'A heavy anti-structure gun — 5x damage against Huts and Castles specifically, unremarkable against anything else. Huge reload.',
+      tiers: [
+        { range: 220, damage: 60,  cooldown: 8000, projectileSpeed: 340 },
+        { range: 235, damage: 85,  cooldown: 7200, projectileSpeed: 360, upgradeCost: 175 },
+        { range: 250, damage: 115, cooldown: 6500, projectileSpeed: 380, upgradeCost: 240 }
+      ]
+    },
     GATLING: {
       name: 'Gatling', icon: '🔫', baseCost: 80, unlocksAfterWave: 9,
       blurb: 'Very fast, low damage per shot — shreds through swarms.',
@@ -2153,6 +2221,11 @@ const CONFIG = {
     // board at this point in the game (COOKIE's speed is close to RUNNER's, the fastest regular
     // enemy) so a spawned batch reads as a genuine sudden threat, not just more chip damage.
     COOKIE: { emoji:'🍪', baseHp:22,  speed:118, bounty:3,  radius:9,  armor:0, breakawayChance:0,    breakDamage:2 },
+    // Castle's own guardian type (see spawnCastleGuardian()) — a random chess piece per spawn
+    // (this.emojiOverride, not this base emoji — see the CHESS_PIECE_EMOJIS list near
+    // spawnCastleGuardian). Deliberately the highest breakawayChance in the game (the existing max
+    // was FIRE/ICE at 0.6) — direct request ("aggro stickmen at higher rates than normal pieces").
+    CHESS:  { emoji:'♟', baseHp:130, speed:38,  bounty:14, radius:14, armor:3, breakawayChance:0.9,  breakDamage:9 },
     TROLL:  { emoji:'🧌', baseHp:159, speed:47,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
     FIRE:   { emoji:'🔥', baseHp:67,  speed:65,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
     ICE:    { emoji:'🧊', baseHp:73,  speed:54,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
@@ -2693,22 +2766,23 @@ function initRegionAndPath(){
 function performExpansion(label, labelColor){
   // Kicks off a new ring's spiral reveal instead of instantly finishing it — see the
   // ringRevealed/ringRevealQueue block near activeRegion's own declaration for the full reasoning.
+  // Path-rings used to finalize in one instant shot here — the actual root cause of the persistent
+  // "spiral doesn't really spiral" feedback, since the path is the single most visually obvious
+  // thing on the map and every other expansion (the path-ring half) still snapped instantly. Fixed
+  // now that beginNextRingReveal() commits a path-ring's walkability immediately at the START of
+  // its reveal (see there) rather than waiting for the ring to close — the world's own default
+  // background tile is already the same plain dirt color a path tile uses (see drawMap()), so an
+  // enemy walking across a still-revealing path tile was never actually going to look wrong, just
+  // missing its decorative pebble/shading texture until the ring finishes. That made the earlier
+  // "enemies could walk on a not-yet-baked-looking tile" concern smaller than it first appeared —
+  // safe to spiral both ring types the same way now.
   if(!ringCandidateRegion){
     beginNextRingReveal();
     pendingRingLabel = label; pendingRingLabelColor = labelColor; // shown once the ring actually closes, not on each partial reveal
   }
-  if(nextRingIsPath){
-    // A path-ring's ENTIRE new band becomes path (extendPathWithNewRing loops the path around the
-    // whole new outer boundary), not buildable space — so it can't safely half-reveal as tentative
-    // "buildable" grass the way a pure buildable-only ring can (a tower could get placed on a tile
-    // that's about to become path). These still finalize in one shot, same as before this change;
-    // only the alternating buildable-only rings actually spiral in gradually below.
-    finalizeRingExpansion();
-  } else {
-    // Immediately reveal this purchase's own first 1-3 tiles rather than waiting for the next wave
-    // clear, so a purchase always has SOME immediate visible effect.
-    advanceRingReveal(1 + Math.floor(Math.random()*3));
-  }
+  // Immediately reveal this purchase's own first 1-3 tiles rather than waiting for the next wave
+  // clear, so a purchase always has SOME immediate visible effect.
+  advanceRingReveal(1 + Math.floor(Math.random()*3));
   updateHUD();
 }
 let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
@@ -2720,6 +2794,14 @@ function beginNextRingReveal(){
     y1: Math.min(ROWS-1, activeRegion.y1+1)
   };
   ringCandidateRegion = newRegion;
+  // Path-ring walkability commits HERE, at the very start of the reveal, not at finalize — a tower
+  // must never be placeable on a tile that's about to become path, so pathCells (via
+  // rebuildPathCellsAndPx()) has to already exclude these tiles from the first frame of the reveal
+  // onward, well before the ring visually finishes spiraling in.
+  if(nextRingIsPath){
+    pathWaypointTiles = extendPathWithNewRing(pathWaypointTiles, newRegion); // spiral winds one more loop outward
+    rebuildPathCellsAndPx();
+  }
   // ringBoundaryTiles(newRegion) returns the FULL outer perimeter of the grown rectangle; since it
   // only ever grows by exactly 1 tile per ring, that perimeter is exactly the newly-added cells —
   // filtered defensively against isInActiveRegion() anyway in case a map-edge clamp (x0/y0 already
@@ -2740,16 +2822,14 @@ function advanceRingReveal(n){
   if(!ringRevealQueue.length) finalizeRingExpansion();
 }
 // The ring has fully closed — do the one-time work that used to run on every single purchase:
-// commit activeRegion, extend the path if this was a path-ring, spawn the hut milestone check,
-// scatter scenery/flora across the (now fully-revealed) new band, and rebake the static map ONCE.
+// commit activeRegion, spawn the hut milestone check, scatter scenery/flora across the (now
+// fully-revealed) new band, and rebake the static map ONCE. Path extension itself already happened
+// at beginNextRingReveal() for a path-ring — not repeated here.
 function finalizeRingExpansion(){
   const oldRegion = { ...activeRegion };
   const newRegion = ringCandidateRegion;
   activeRegion = newRegion;
   expansionLevel++;
-  if(nextRingIsPath){
-    pathWaypointTiles = extendPathWithNewRing(pathWaypointTiles, newRegion); // spiral winds one more loop outward
-  } // else: leave the path exactly as-is — this ring is pure buildable space, no regeneration needed
   nextRingIsPath = !nextRingIsPath;
   rebuildPathCellsAndPx();
   if(expansionLevel === HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
@@ -2809,7 +2889,7 @@ function drawPendingRingReveal(ctx){
   ctx.save();
   for(const key of ringRevealed){
     const [gx, gy] = key.split(',').map(Number);
-    if(pathCells.has(key)) continue; // path tiles bake their own look at finalize time — leave as plain background until then
+    if(pathCells.has(key)) continue; // already committed to pathCells at beginNextRingReveal() — the world's plain dirt background (drawMap()'s base fill) already matches a real path tile's base color, it just won't have the decorative pebble/shading texture until rebakeMap() actually runs at this ring's close
     const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
     const light = (gx+gy) % 2 === 0;
     ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
@@ -3174,8 +3254,9 @@ function spawnScenery(gx, gy, forceType){
   } else {
     const roll = Math.random();
     if(roll < 0.04) type = 'CHEST';
-    else if(roll < 0.07) type = 'ITEM';
-    else if(roll < 0.53) type = 'TREE';
+    else if(roll < 0.06) type = 'COIN_POUCH'; // direct request — a rare scenery spawn that gives gold via the same coin-burst mechanic as Merchant's Money Bag
+    else if(roll < 0.09) type = 'ITEM';
+    else if(roll < 0.55) type = 'TREE';
     else type = 'ROCK';
   }
 
@@ -3192,6 +3273,7 @@ function spawnScenery(gx, gy, forceType){
   let goldYield = 0;
   if(type === 'CHEST'){ clearCost = 0; clearMs = 500; goldYield = 40 + Math.floor(Math.random()*90); }
   if(type === 'ITEM'){ clearCost = 0; clearMs = 500; }
+  if(type === 'COIN_POUCH'){ clearCost = 0; clearMs = 500; }
 
   sceneryMap.set(gx+','+gy, {
     gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2,
@@ -3384,6 +3466,13 @@ function updateScenery(dt){
           spawnGroundItem(item.x, item.y - 4, LUCKY_BRANCH);
           spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');
         }
+      } else if(item.type === 'COIN_POUCH'){
+        // Direct request: "pops out just like the coins from Merchant's bag" — reuses the exact
+        // same spawnCoinBurst() Merchant's Money Bag uses, so this reads as the same mechanic in a
+        // second place, not a different one that happens to look similar.
+        spawnCoinBurst(item.x, item.y, 3 + Math.floor(Math.random()*5)); // 3-7
+        spawnParticles(item.x, item.y, '#ffd700', 10);
+        playSound('wave');
       } else if(item.type === 'ITEM'){
         const p = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
         globalPassiveCounts[p.id] = (globalPassiveCounts[p.id]||0) + 1;
@@ -3428,7 +3517,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   ctx.font = Math.round(size) + 'px serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
-  const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : '💎';
+  const emoji = item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '🪎' : '💎';
   const stretch = item.tallStretch || 1;
   if(stretch !== 1){
     // Non-uniform vertical-only scale, anchored at the tree's base (the bottom of its glyph,
@@ -4651,6 +4740,7 @@ let isMuted = false;
 // it has to exist before this point, not down with decalCapacity() and the rest of the decal
 // system (that was the actual "Cannot access before initialization" boot crash).
 let decalBudgetOverride = null;
+let builtTowerTypesThisSession = new Set(); // which tower types have been built this session — see the tower_built GA event
 const PREFS_KEY = 'sticktd:prefs:v1';
 function savePrefs(){
   try{
@@ -4800,9 +4890,24 @@ function isTowerUnlocked(type){
   return wavesCompleted >= CONFIG.TOWERS[type].unlocksAfterWave;
 }
 function checkTowerUnlocks(){
-  const newlyUnlocked = STARTER_TOWER_TYPES
-    .filter(type => CONFIG.TOWERS[type].unlocksAfterWave === wavesCompleted && wavesCompleted > 0);
-  if(newlyUnlocked.length) showUnlockToast(newlyUnlocked);
+  // Scans every CONFIG.TOWERS entry with a real wave gate (unlocksAfterWave > 0) — not just
+  // STARTER_TOWER_TYPES (which are all wave 0 anyway, so that old filter never actually matched
+  // anything). Newly-qualifying types are folded into unlockedTowerTypes — the SAME permanent,
+  // localStorage-persisted set evolution-based unlocks already use — so a wave-gated class becomes
+  // a genuine PERMANENT unlock the first time its wave is reached, with one combined toast (not one
+  // per tower, in case two land on the same wave), per direct feedback ("these are permanent
+  // unlocks... the first time should alert the player"). Skips anything already in the set so this
+  // is safe to run every wave clear.
+  const newlyUnlocked = [];
+  for(const type in CONFIG.TOWERS){
+    const gate = CONFIG.TOWERS[type].unlocksAfterWave;
+    if(gate > 0 && wavesCompleted >= gate && !unlockedTowerTypes.has(type)) newlyUnlocked.push(type);
+  }
+  if(newlyUnlocked.length){
+    for(const type of newlyUnlocked) unlockedTowerTypes.add(type);
+    savePermanentUnlocks();
+    showUnlockToast(newlyUnlocked);
+  }
 }
 function showToast(message){
   const toast = unlockToastEl;
@@ -6302,6 +6407,13 @@ class Enemy{
     this.damageLedger.set(sourceTower, (this.damageLedger.get(sourceTower) || 0) + amount);
     sourceTower.lifetimeDamage = (sourceTower.lifetimeDamage || 0) + Math.min(amount, Math.max(0, this.hp));
     sourceTower.waveDamage = (sourceTower.waveDamage || 0) + Math.min(amount, Math.max(0, this.hp));
+    // Per-tower telemetry — direct request. Centralized here rather than at each individual fire
+    // site since literally every damage instance in the game already flows through this one
+    // function with sourceTower known, regardless of archetype/splash/melee.
+    if(sourceTower.telemetry){
+      sourceTower.telemetry.hitsLanded++;
+      if(this.hp <= 0) sourceTower.telemetry.killsSecured++;
+    }
   }
   applySizeTier(sizeTier, sizeJitter, hpScale){
     const band = SIZE_TIER_BANDS[sizeTier];
@@ -6592,12 +6704,25 @@ class Enemy{
     // this.campDamageLedger is deliberately left untouched here — respawning guardians doesn't
     // reset camp aggro, see the comment where the ledger is created in spawnHut(). A fresh pair
     // picks up campLeaderTower()'s result on their very first updateGuardian() tick.
-    for(let i=0;i<2;i++) spawnHutGuardian(this);
+    for(let i=0;i<2;i++){
+      if(this.buildingKind === 'CASTLE') spawnCastleGuardian(this);
+      else if(this.buildingKind === 'GRAVE') spawnGraveGuardian(this);
+      else spawnHutGuardian(this);
+    }
   }
   applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed){
     allowBleed = allowBleed === undefined ? true : allowBleed;
-    if(this.active) this.recordContribution(sourceTower, amount);
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
+    // Zombie Grave and its guardians shrug off anything that isn't Holy (Cleric/Pope) — direct
+    // request ("only holy attacks do a lot of damage, meaning much harder without cleric or pope").
+    // Checked on both the grave building itself (isHutBuilding + buildingKind GRAVE) and its zombie
+    // guardians (isGuardian + hutRef.buildingKind GRAVE) — same 95% reduction either way, since the
+    // guardians are the grave's whole reason for being undead-tough in the first place. Applied
+    // BEFORE recordContribution() below so telemetry/lifetime-damage tracking reflects the real,
+    // reduced damage actually dealt, not the pre-resistance amount.
+    const isGraveTarget = (this.isHutBuilding && this.buildingKind === 'GRAVE') || (this.isGuardian && this.hutRef && this.hutRef.buildingKind === 'GRAVE');
+    if(isGraveTarget && !isHoly) amount = Math.max(1, Math.round(amount * 0.05));
+    this.recordContribution(sourceTower, amount);
     // Real per-hit damage variance — a genuine min/max roll on the base damage, not just a
     // cosmetic overlay. Symmetric around 1.0, so average DPS over many hits lands exactly where
     // each tower's tuned base numbers already put it — this only adds hit-to-hit spread, it never
@@ -6736,8 +6861,30 @@ class Enemy{
       // is folded into this same curve rather than sitting alongside it as a separate roll.
       const NORMAL_HIT_CEILING = 0.55;
       let bloodScaleT = Math.pow(Math.random(), 3) * NORMAL_HIT_CEILING;
-      if(isCritical) bloodScaleT = Math.max(bloodScaleT, NORMAL_HIT_CEILING + Math.pow(Math.random(), 0.6) * (1 - NORMAL_HIT_CEILING));
-      const hitPower = (0.15 + bloodScaleT * 1.85) * (0.7 + flinchSeverity*0.5) * (0.9 + hitRoll*0.15);
+      // Big splatters are further restricted to LARGE/BOSS enemies only — direct feedback ("splatter
+      // needs to be on a larger enemy, never happens on smaller"). A crit on a TINY/SMALL/STANDARD
+      // enemy still gets a real bump over its own non-crit roll (still meaningfully bigger), it just
+      // can't reach all the way to the true top of the scale the way a crit on something LARGE/BOSS
+      // can — a Swarm has nowhere near the blood volume to physically produce a top-tier spray.
+      const canSplatterBig = this.sizeTier === 'LARGE' || this.sizeTier === 'BOSS';
+      if(isCritical){
+        const critCeiling = canSplatterBig ? 1 : NORMAL_HIT_CEILING + (1-NORMAL_HIT_CEILING)*0.4;
+        bloodScaleT = Math.max(bloodScaleT, NORMAL_HIT_CEILING + Math.pow(Math.random(), 0.6) * (critCeiling - NORMAL_HIT_CEILING));
+      }
+      // Unit blood reserve — direct feedback: blood output should scale with how much the enemy has
+      // ALREADY lost (a near-dead unit can't still spray full volume), and splitting a hit across
+      // several simultaneous attackers should divide the blood between them rather than each landing
+      // a full, independent splatter on the same target. hpFrac uses this.hp (already post-damage at
+      // this point in applyDamage) over maxHp, floored so a killing blow never rounds all the way to
+      // zero visible blood. concurrentAttackers counts distinct towers that hit THIS enemy within the
+      // last 400ms (this.recentAttackers, a tiny Map cleaned inline here rather than a separate timer)
+      // — 2 attackers within that window halves each one's share, 3 splits it three ways, and so on.
+      const hpFrac = Math.max(0.15, this.hp / this.maxHp);
+      if(!this.recentAttackers) this.recentAttackers = new Map();
+      if(sourceTower) this.recentAttackers.set(sourceTower, gameTime);
+      for(const [tw, t] of this.recentAttackers){ if(gameTime - t > 400) this.recentAttackers.delete(tw); }
+      const concurrentAttackers = Math.max(1, this.recentAttackers.size);
+      const hitPower = (0.15 + bloodScaleT * 1.85) * (0.7 + flinchSeverity*0.5) * (0.9 + hitRoll*0.15) * hpFrac / concurrentAttackers;
       // Resolved once per hit regardless of archetype (cheap — just reads sourceTower.type) so it's
       // available both to the WARRIOR sub-branches below AND to the ground-pool decal call later in
       // this function — previously `weapon` was declared inside the WARRIOR-only else block and
@@ -6926,7 +7073,7 @@ class Enemy{
           // tuned base size, which is why every Swordsman hit looked like a heavy strike regardless
           // of how little damage it actually dealt. Floor dropped to 0.4 (a genuinely thin nick) so
           // only hits with real relative severity earn the bold, unmistakable gash.
-          const cutSize = (0.4 + flinchSeverity*1.7) * bloodedMult * (0.35 + bloodScaleT * 1.5); // reuses the same sliding-scale roll as hitPower above so a cut's line length tracks the same small-usually/rare-big-on-crit curve, instead of its own separate anomalous-chance check
+          const cutSize = (0.4 + flinchSeverity*1.7) * bloodedMult * (0.35 + bloodScaleT * 1.5) * hpFrac / concurrentAttackers; // reuses the same sliding-scale roll, size-gating, HP-proportional reserve, and concurrent-attacker split as hitPower above
           // small per-hit color micro-jitter on top of this enemy's own fixed blood tint — real
           // blood shade varies slightly hit to hit even from the same wound (oxygenation,
           // thickness, how fresh vs. already-drying), not just a single flat tone reused for every
@@ -7530,6 +7677,9 @@ class Tower{
     this.shieldPct = this.baseShieldPct;
     this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
     this.disabledWavesLeft = 0; // reaching 0 HP locks the tower out for the next 2 waves, not just a short timer
+    // Per-tower telemetry — direct request ("include per tower telemetry in the debug log"). Purely
+    // additive counters, read by drawDebugOverlay()'s telemetry block; never affects gameplay.
+    this.telemetry = { shotsFired: 0, misses: 0, hitsLanded: 0, killsSecured: 0 }; // damage itself reuses the existing lifetimeDamage/waveDamage fields rather than a duplicate counter
     this.burnUntil = 0;       // FIRE breakaway status
     this.burnTickTimer = 0;
     this.iceSlowUntil = 0;    // ICE breakaway status — halves effective attack speed
@@ -7719,6 +7869,19 @@ class Tower{
     // and max roll, not just raise the average, so heavy investment raises the ceiling (and floor)
     // rather than only nudging a flat average up.
     this.primaryStatEff = archetype === 'WARRIOR' ? strEff : archetype === 'ARCHER' ? archerDamageStat : archetype === 'MAGE' ? intEff : 0;
+    // Stage-2 "Veteran" tier — direct request for a real checkpoint at 250 trained stats, one rung
+    // above the 100-point evolution unlock and one below the 500-point specialization cap. Scoped
+    // to evolution-reached towers only (EVOLVED_TOWER_TYPES) since the 100/500 rungs on either side
+    // of it are themselves evolution concepts; a starter class training past 250 already gets its
+    // own smooth continuous scaling from the stat curves elsewhere, it doesn't need a discrete
+    // checkpoint bonus on top. Permanent once reached (never revoked), +10% damage — a flat,
+    // uniform bonus rather than inventing distinct new content per lineage, which would be real,
+    // unscoped design work I'm not doing on a guess (see BACKLOG.md).
+    if(!this.isVeteran && EVOLVED_TOWER_TYPES.includes(this.type) && this.primaryStatEff >= 250){
+      this.isVeteran = true;
+      spawnFloatingText(this.x, this.y - this.radius - 18, '⭐ Veteran!', '#ffd700');
+    }
+    if(this.isVeteran) this.damage = Math.round(this.damage * 1.1);
     this.cooldown = Math.max(80, Math.round(this.baseCooldown / dexMult));
     if(this.type === 'CLERIC'){
       this.range = this.baseRange; // fixed smite-detection radius, not INT-scaled
@@ -8312,11 +8475,26 @@ class Tower{
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
     if(!p) return false; // pool exhausted — caller must not treat this as a fired shot
+    if(this.telemetry) this.telemetry.shotsFired++;
     p.active = true;
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
     p.vy = Math.sin(angle)*this.projectileSpeed;
+    // Flight-time budget for the world-boundary hit-resolution failsafe below (see update()) —
+    // direct feedback ("the projectile goes past the enemy then it dies a second later"): a
+    // committed-hit shot that never geometrically connects used to fly all the way to the WORLD
+    // EDGE before snapping back to resolve the hit, which on a large map could take seconds and
+    // look badly broken. 1.8x this shot's own original straight-line flight time (floored at
+    // 600ms so a short shot still gets real homing-correction leeway) means the snap-back now
+    // happens almost immediately after it was clear the shot wasn't going to connect, not after a
+    // long visible overshoot.
+    p.spawnTime = gameTime;
+    p.maxFlightMs = Math.max(600, (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000 * 1.8);
     p.damage = this.damage;
+    // Glaive's whole identity — direct request ("5x damage to buildings"). Rolled once here against
+    // the actual locked target (this.target), not generically at impact, since a single-target shot
+    // is already committed to a specific enemy the moment it's fired.
+    if(this.type === 'GLAIVE' && this.target && this.target.isHutBuilding) p.damage = Math.round(p.damage * 5);
     // Dual-wield taper: for a true two-weapon burst (burstCount === 2 — Snap Caster's second wand,
     // not Gunalinder's 6-round revolver burst, a different mechanic), the second hit only does 25%
     // of the first. this.burstShotsLeft still holds its pre-decrement value here (fireProjectile()
@@ -8328,6 +8506,15 @@ class Tower{
     p.slowDuration = this.slowDuration || 0;
     p.splashRadius = (this.splashRadius || 0) + (towerElement(this) === 'QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
     p.isAxe = false;
+    // Money Bag — Merchant's own splash shot, drawn as an arcing lob (same axeFlightMs/
+    // axeSpawnTime timing pattern the thrown-axe visual already uses) instead of the generic
+    // splash-shot dot, and bursts into coins instead of the generic orange splash particles on
+    // impact (see Projectile.draw()'s isMoneyBag branch and onImpact()'s splashRadius branch).
+    p.isMoneyBag = this.type === 'MERCHANT';
+    if(p.isMoneyBag){
+      p.axeSpawnTime = gameTime;
+      p.axeFlightMs = (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000;
+    }
     // Marks this shot for Projectile.onImpact()'s 'CAT' branch — the cat doesn't deal impact
     // damage itself, it spawns a CatCompanion that does the actual damage over its lifetime
     // instead (see onImpact() below). Set unconditionally on every fire, like isAxe above, so a
@@ -8360,6 +8547,7 @@ class Tower{
         p.vy = Math.sin(missAngle)*this.projectileSpeed;
         p.angle = missAngle;
         p.isGuaranteedMiss = true;
+        if(this.telemetry) this.telemetry.misses++;
         p.missRevealAt = gameTime + (distToTarget/this.projectileSpeed)*1000;
       }
     }
@@ -8417,10 +8605,21 @@ class Tower{
     const spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
     const p = acquireActive(projectilePool);
     if(!p) return false; // pool exhausted — caller must not treat this as a fired shot
+    if(this.telemetry) this.telemetry.shotsFired++;
     p.active = true;
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
     p.vy = Math.sin(angle)*this.projectileSpeed;
+    // Flight-time budget for the world-boundary hit-resolution failsafe below (see update()) —
+    // direct feedback ("the projectile goes past the enemy then it dies a second later"): a
+    // committed-hit shot that never geometrically connects used to fly all the way to the WORLD
+    // EDGE before snapping back to resolve the hit, which on a large map could take seconds and
+    // look badly broken. 1.8x this shot's own original straight-line flight time (floored at
+    // 600ms so a short shot still gets real homing-correction leeway) means the snap-back now
+    // happens almost immediately after it was clear the shot wasn't going to connect, not after a
+    // long visible overshoot.
+    p.spawnTime = gameTime;
+    p.maxFlightMs = Math.max(600, (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000 * 1.8);
     p.damage = this.damage;
     p.angle = angle;
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0;
@@ -8447,6 +8646,7 @@ class Tower{
       p.vy = Math.sin(missAngle)*this.projectileSpeed;
       p.angle = missAngle;
       p.isGuaranteedMiss = true;
+      if(this.telemetry) this.telemetry.misses++;
       p.missRevealAt = gameTime + (dist/this.projectileSpeed)*1000;
     }
     this.renderSwordAngle = angle;
@@ -8600,12 +8800,14 @@ class Tower{
       const isFirstHitThisSwing = hitSet.size === 0; // captured before this hit is added below — true only for the very first target this whole swing connects with
       const fallenOff = Math.pow(1 - MELEE_SWEEP_FALLOFF, hitSet.size); // hitSet.size is this swing's hit count so far, before this one is added
       hitSet.add(e.id);
+      if(this.telemetry) this.telemetry.shotsFired++; // melee "shot" = one swing actually connecting with one target, hit or miss — see checkConeHits' own per-target roll below
       if(Math.random() < this.missChance){
         // A melee miss has to LOOK like a miss: the blade sweeps through the enemy's position,
         // so the enemy visibly ducks out of the arc instead of standing in it while "MISS"
         // floats overhead. Same principle as a ranged shot's pre-rolled offset path.
         dodgeEnemyFromSwing(e, this);
         spawnFloatingText(e.x, e.y - e.radius - 6, 'MISS', '#aaaaaa');
+        if(this.telemetry) this.telemetry.misses++;
         continue;
       }
       e.applyDamage(Math.round(damage * fallenOff), this, !streakClaimed, !!isHoly, isFirstHitThisSwing);
@@ -8954,15 +9156,23 @@ class Projectile{
     const prevX = this.x, prevY = this.y;
     this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     if(this.isAxe) this.spinAngle = (this.spinAngle||0) + dt*0.018;
-    if(this.x < -20 || this.x > WORLD_MAX_W+20 || this.y < -20 || this.y > WORLD_MAX_H+20){
+    if(this.x < -20 || this.x > WORLD_MAX_W+20 || this.y < -20 || this.y > WORLD_MAX_H+20 || (this.maxFlightMs && gameTime - this.spawnTime >= this.maxFlightMs)){
       // A rolled-HIT shot (not isGuaranteedMiss) that reaches here never geometrically connected —
-      // the target moved enough (knockback, a fast enemy) that even homing correction (rate- and
-      // angle-capped, see above) couldn't keep the swept segment crossing its actual mask. Direct
-      // feedback: this reads as "the archer can't even hit the enemy even though he's not actually
-      // missing" — the roll said hit, but the shot just vanishes off-world with zero feedback, no
-      // MISS text (wasn't flagged as one) and no damage (never geometrically connected). Since the
-      // roll already committed to a hit, resolve it as one now rather than waste it in silence —
-      // same "the roll's outcome is always honored" principle already used for guaranteed misses.
+      // the target moved enough (knockback, a fast enemy, a sharp turn) that even homing correction
+      // (rate- and angle-capped, see above) couldn't keep the swept segment crossing its actual
+      // mask. Direct feedback: this reads as "the archer can't even hit the enemy even though he's
+      // not actually missing" — the roll said hit, but the shot just vanishes with zero feedback,
+      // no MISS text (wasn't flagged as one) and no damage (never geometrically connected). Since
+      // the roll already committed to a hit, resolve it as one now rather than waste it in silence
+      // — same "the roll's outcome is always honored" principle already used for guaranteed misses.
+      // Triggers on EITHER the world boundary OR this shot's own flight-time budget (maxFlightMs,
+      // set at launch — see fireProjectile()) running out, whichever comes first: the time budget
+      // is what actually fires in the overwhelmingly common case (a shot that lost its target
+      // mid-map), so the snap-back happens within a fraction of a second instead of after however
+      // long it takes to reach the literal edge of a large map — direct feedback ("the projectile
+      // goes past the enemy then it dies a second later"). The boundary check stays as a backstop
+      // for the rare case a shot is fired from very near the edge with an unusually long
+      // maxFlightMs.
       if(this.trackedTarget && this.trackedTarget.active && !this.isGuaranteedMiss && !this.splashRadius){
         this.x = this.trackedTarget.x; this.y = this.trackedTarget.y; // so onImpact's few this.x/this.y-based cosmetic effects (not just the correctly hitEnemy-anchored ones) land on the enemy, not off-world at the boundary
         this.onImpact(this.trackedTarget);
@@ -9070,6 +9280,11 @@ class Projectile{
       }
       spawnParticles(this.x, this.y, '#ffb347', 14);
       playSound('death');
+      // Money Bag bursts into 1-7 Coins on landing — direct request. Purely additive on top of the
+      // generic splash particles above (kept as-is so the impact still reads the same for every
+      // other splash tower); the coins themselves are the actual gold pickup (see spawnCoinBurst()
+      // and updateCoinPickups() — auto-collected by any nearby tower, expire after 15-30s).
+      if(this.isMoneyBag) spawnCoinBurst(this.x, this.y, 1 + Math.floor(Math.random()*7));
     } else {
       const impactAngle = Math.atan2(this.vy, this.vx);
       hitEnemy.applyDamage(this.damage, this.sourceTower);
@@ -9155,6 +9370,19 @@ class Projectile{
   draw(ctx){
     if(this.elementColor) this.drawElementTrail(ctx);
     if(this.splashRadius > 0){
+      // Money Bag (Merchant) draws as an arcing lob, checked BEFORE the generic splash-shot dot
+      // below so it never falls into that plain-dot rendering. Same lift-curve shape as the
+      // thrown-axe visual (Math.sin(progress*PI)), just a bigger peak height for a heavier lob.
+      if(this.isMoneyBag){
+        const flightProgress = this.axeFlightMs ? Math.min(1, (gameTime - this.axeSpawnTime) / this.axeFlightMs) : 0;
+        const arcLift = Math.sin(flightProgress * Math.PI) * 30;
+        ctx.save();
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('💰', this.x, this.y - arcLift);
+        ctx.restore();
+        return;
+      }
       ctx.fillStyle = this.elementColor || this.color || '#3a2a1a';
       ctx.beginPath(); ctx.arc(this.x, this.y, 5, 0, Math.PI*2); ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1; ctx.stroke();
@@ -9264,8 +9492,8 @@ let particleIndex = 0;
 // Enemy.prototype.applyDamage()/die() can query nearby bodies without threading a new parameter
 // through every call site — used for void-pattern detection (see MAGE's streak loop below).
 let enemyHash = null;
-const MAX_DECALS = 2000;
-const MAX_DECALS_LOW_QUALITY = 400; // lowered from 1200 — v1.4.81 telemetry showed drawDecals() alone consuming 55.8% (2.4ms) of total render time on Low graphics during a dense wave; eviction below already recycles blood before permanent debris (skulls/bones/worms), so this only shrinks the live blood-decal budget, not the debris that's actually meant to be sparse and persistent
+const MAX_DECALS = 750; // High graphics default — direct feedback ("low 250, high 750... that's the perfect balance for the two starting tiers"); Royal(1500)/Insane(2500)/Custom live only in the Settings dropdown (decalBudgetOverride), not as this constant
+const MAX_DECALS_LOW_QUALITY = 250; // Low graphics default — was 400 (itself already lowered from 1200 in 1.4.81); direct feedback said 250 specifically and that never actually landed as the real default, only as a selectable option in the Settings dropdown — this is the fix
 // decalBudgetOverride itself is declared much earlier (right before PREFS_KEY) — savePrefs()/
 // loadPrefs() and the Settings-panel sync IIFE all read/write it during initial script execution,
 // well before this point in the file, so it can't be declared down here with the rest of the
@@ -10299,9 +10527,12 @@ function drawOneDecal(ctx, d){
         const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
         r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
       }
-      // holds steady until 85% of life, then fades to fully transparent — so old stains clear out
-      // instead of accumulating indefinitely
-      const fadeOut = lifeT > 0.85 ? Math.max(0, 1 - (lifeT - 0.85)/0.15) : 1;
+      // holds steady until 85% of life, then fades to fully transparent — accelerating as it goes
+      // (quadratic, not linear) so a stain barely dims for most of that window and then visibly
+      // rushes out right at the end, instead of a flat linear fade the whole time. Direct feedback:
+      // "the more the blood fades the faster it should fade out, don't need to linger."
+      const fadeT = lifeT > 0.85 ? (lifeT - 0.85)/0.15 : 0;
+      const fadeOut = 1 - fadeT*fadeT;
       alpha = rgb.a * fadeOut;
       color = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
       if(lifeT >= 0.40 && lifeT <= 0.85){ d.settledColor = color; d.settledAlpha = alpha; }
@@ -10716,6 +10947,72 @@ function updateFloatingTexts(dt){
     if(!t.isIcon) t.y -= 22*dt/1000; // plain combat text drifts upward; icons stay put and animate in place instead
   }
 }
+// Coin pickups — spawned by Merchant's Money Bag splash (see Projectile.onImpact's isMoneyBag
+// branch) and by the rare COIN_POUCH scenery item. A small pooled array, same pattern as
+// floatingTexts above: coins burst outward from a point, settle under friction, then either get
+// auto-collected (any active tower within COIN_COLLECT_RADIUS) or, after a random 15-30s if
+// nothing ever comes close enough, convert straight into gold anyway — never just lost, per direct
+// clarification ("they turn into gold in the player's inv"). Auto-collect rather than a click
+// target: Merchant's whole identity is passive gold generation near wherever he's landed a shot,
+// not one more thing to click.
+const COIN_COUNT = 40;
+const COIN_COLLECT_RADIUS = 46;
+const coinPickups = Array.from({length: COIN_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,value:0,age:0,lifespan:0}));
+let coinIndex = 0;
+function spawnCoinBurst(x, y, count){
+  for(let i=0; i<count; i++){
+    const c = coinPickups[coinIndex];
+    coinIndex = (coinIndex+1) % COIN_COUNT;
+    const ang = Math.random()*Math.PI*2, speed = 40 + Math.random()*90;
+    c.active = true; c.x = x; c.y = y;
+    c.vx = Math.cos(ang)*speed; c.vy = Math.sin(ang)*speed;
+    c.value = 3 + Math.floor(Math.random()*6); // 3-8 gold each
+    c.age = 0;
+    c.lifespan = 15000 + Math.random()*15000; // 15-30s, per direct request
+  }
+}
+function updateCoinPickups(dt){
+  for(const c of coinPickups){
+    if(!c.active) continue;
+    c.age += dt;
+    if(c.age >= c.lifespan){
+      // Never just lost — a coin nothing collected in time still converts straight to gold in the
+      // player's own total instead of vanishing. Per direct clarification ("they turn into gold in
+      // the player's inv"). Same gold-add as the proximity-collect branch below, just a distinct
+      // floating text/color so it still reads as "expired, not manually collected."
+      gold += c.value;
+      spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#e6c200');
+      c.active = false;
+      continue;
+    }
+    // Bursts outward, then friction brings it to rest — same shape as the particle system's own
+    // ground-settle behavior, just on a much longer timescale since these persist for seconds, not
+    // a fraction of one.
+    c.vx *= Math.pow(0.003, dt/1000); c.vy *= Math.pow(0.003, dt/1000);
+    c.x += c.vx*dt/1000; c.y += c.vy*dt/1000;
+    for(const t of towerPool){
+      if(!t.active || t.disabledWavesLeft > 0) continue;
+      if(Math.hypot(t.x-c.x, t.y-c.y) <= COIN_COLLECT_RADIUS){
+        gold += c.value;
+        spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#ffd700');
+        c.active = false;
+        break;
+      }
+    }
+  }
+}
+function drawCoinPickups(ctx){
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const c of coinPickups){
+    if(!c.active) continue;
+    const remainFrac = 1 - c.age/c.lifespan;
+    ctx.globalAlpha = remainFrac < 0.15 ? remainFrac/0.15 : 1; // only fades in the final 15% of its life, stays fully visible otherwise
+    ctx.font = '16px sans-serif';
+    ctx.fillText('🪙', c.x, c.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawFloatingTexts(ctx){
   ctx.textAlign = 'center';
   const fxBounds = fxViewBounds();
@@ -12023,7 +12320,7 @@ const SIZE_PHASE_BANNERS = {
 };
 const FAMILY_INTRODUCTION_WAVE = {
   GRUNT:1, SWARM:6, BOSS:10, WOLF:11, RUNNER:16, SPLITTER:21, FIRE:26, ICE:31, HEALER:36, SHIELDED:41,
-  SKELETON:46, WRAITH:51, TANK:56, TROLL:61, ZOMBIE:66, REAPER:71, BOULDER:76, MONARCH:86, SANTA:CAMPAIGN_WAVE_COUNT
+  SKELETON:46, WRAITH:51, TANK:56, TROLL:61, ZOMBIE:30, REAPER:71, BOULDER:76, MONARCH:86, SANTA:CAMPAIGN_WAVE_COUNT
 };
 const FAMILY_TIER_ELIGIBILITY = {
   GRUNT:['TINY','SMALL','STANDARD','LARGE'], SWARM:['TINY','SMALL'], WOLF:['TINY','SMALL','STANDARD','LARGE'],
@@ -12564,6 +12861,131 @@ function spawnHuts(){
   if(!tile) return; // no valid off-path tile found (a tiny starting region) — simply no camp this game rather than forcing a bad placement
   spawnHut(tile.x, tile.y);
 }
+// Black/white pairs, one random piece per spawn — direct request ("any chess piece randomly white
+// or black"). Unicode has genuine distinct glyphs for both colors of each piece, so this is real
+// color variety, not just a re-tint.
+const CHESS_PIECE_EMOJIS = ['♟','♙','♞','♘','♝','♗','♜','♖','♛','♕','♚','♔'];
+function spawnCastleGuardian(castleRef){
+  const e = acquireActive(enemyPool);
+  if(!e) return null;
+  e.spawn('CHESS', 1.4 * waveHpScale(waveIndex), false, false);
+  e.emoji = CHESS_PIECE_EMOJIS[Math.floor(Math.random()*CHESS_PIECE_EMOJIS.length)]; // per-instance override of CHESS's own default ♟ — same pattern spawnHut() already uses for 🛖
+  e.isGuardian = true;
+  e.hutRef = castleRef;
+  e.hutAnchorX = castleRef.x; e.hutAnchorY = castleRef.y;
+  e.x = castleRef.x + (Math.random()-0.5)*60;
+  e.y = castleRef.y + (Math.random()-0.5)*60;
+  e.bounty = Math.round(e.bounty * 3);
+  castleRef.guardiansAliveCount = (castleRef.guardiansAliveCount||0) + 1;
+  return e;
+}
+// Castle — a second, tougher building alongside Hut (direct request: "new hut like building").
+// Reuses isHutBuilding for EVERY mechanical purpose (collision/freeze/movement/path-progress
+// counting all already key off that one flag in over a dozen places — see its own comments) so
+// none of that proven code needs touching; buildingKind is the only thing that actually
+// distinguishes a Castle from a Hut (display label, and which guardian type it spawns).
+function spawnCastle(x, y){
+  const castle = acquireActive(enemyPool);
+  if(!castle) return null;
+  castle.spawn('GRUNT', 26 * waveHpScale(waveIndex), false, false); // meaningfully tougher than Hut's 16x — the upgrade building, not a reskin
+  castle.emoji = '🏰';
+  castle.isHutBuilding = true;
+  castle.buildingKind = 'CASTLE';
+  castle.x = x; castle.y = y;
+  castle.speed = 0;
+  castle.guardiansAliveCount = 0;
+  castle.destroyed = false;
+  castle.respawnAt = null;
+  castle.campDamageLedger = new Map();
+  castle.bounty = Math.round(castle.bounty * 10);
+  spawnCastleGuardian(castle);
+  spawnCastleGuardian(castle);
+  return castle;
+}
+// Zombie Grave — direct request: "a grave with two zombies like the hut... only holy attacks do a
+// lot of damage (5x), meaning much harder without cleric or pope." Guardians are real ZOMBIE-family
+// enemies (already in CONFIG.ENEMIES, isUndead:true) rather than a bespoke type, so they carry their
+// own existing undead identity (blood palette, etc.) for free. The building itself and its
+// guardians both take the 95% non-Holy reduction — see applyDamage()'s isGraveTarget check.
+function spawnGraveGuardian(graveRef){
+  const e = acquireActive(enemyPool);
+  if(!e) return null;
+  e.spawn('ZOMBIE', 1.2 * waveHpScale(waveIndex), false, false);
+  e.isGuardian = true;
+  e.hutRef = graveRef;
+  e.hutAnchorX = graveRef.x; e.hutAnchorY = graveRef.y;
+  e.x = graveRef.x + (Math.random()-0.5)*60;
+  e.y = graveRef.y + (Math.random()-0.5)*60;
+  e.bounty = Math.round(e.bounty * 3);
+  graveRef.guardiansAliveCount = (graveRef.guardiansAliveCount||0) + 1;
+  return e;
+}
+function spawnGrave(x, y){
+  const grave = acquireActive(enemyPool);
+  if(!grave) return null;
+  grave.spawn('GRUNT', 20 * waveHpScale(waveIndex), false, false); // between Hut (16x) and Castle (26x) — its real toughness is the 95% non-Holy damage reduction, not raw HP
+  grave.emoji = '🪦';
+  grave.isHutBuilding = true;
+  grave.buildingKind = 'GRAVE';
+  grave.x = x; grave.y = y;
+  grave.speed = 0;
+  grave.guardiansAliveCount = 0;
+  grave.destroyed = false;
+  grave.respawnAt = null;
+  grave.campDamageLedger = new Map();
+  grave.bounty = Math.round(grave.bounty * 8);
+  spawnGraveGuardian(grave);
+  spawnGraveGuardian(grave);
+  return grave;
+}
+// One-time tutorial tips, shown at a specific wave and never again after that — direct request
+// ("all these warnings suggestions and tips should only happen once, after first time it's
+// presumed player knows"). Persisted the same way every other standing preference already is
+// (localStorage, sticktd:seenTips:v1) rather than a genuinely separate cookie mechanism — this is
+// the same consistency call made for the Shop-lock/decal-budget settings earlier: one persistence
+// system, not two, for the same kind of "remember this across sessions" data.
+const SEEN_TIPS_KEY = 'sticktd:seenTips:v1';
+let seenTutorialTips = new Set();
+(function loadSeenTips(){
+  try{ seenTutorialTips = new Set(JSON.parse(localStorage.getItem(SEEN_TIPS_KEY) || '[]')); }catch(e){ /* fresh start */ }
+})();
+function showTutorialTipOnce(id, message){
+  if(seenTutorialTips.has(id)) return;
+  seenTutorialTips.add(id);
+  try{ localStorage.setItem(SEEN_TIPS_KEY, JSON.stringify([...seenTutorialTips])); }catch(e){ /* private-mode/storage-full — tip just shows again next time, not the end of the world */ }
+  showToast(message);
+  playSound('wave');
+}
+function maybeShowWaveTutorialTip(){
+  if(wavesCompleted === 25){
+    showTutorialTipOnce('zombies_incoming', '🧟 Zombies arrive at Wave 30 — only Holy damage (Cleric/Pope) hurts them well. Train a Mage\'s INT to 100 to unlock Cleric.');
+  }
+  if(wavesCompleted === 30){
+    showTutorialTipOnce('zombie_graves', '🧟 Zombies are here. Watch for Zombie Graves (🪦) — non-Holy attacks barely scratch them or their guardians.');
+  }
+}
+// wave 20, balance them"). Hut only ever spawned once per game before (at HUT_MIN_EXPANSION_LEVEL);
+// this adds a periodic SECOND source, gated well past that: capped to at most
+// MAX_EXTRA_BUILDINGS_ON_BOARD live at once (so it can't snowball into a wall of buildings), rolled
+// once per wave clear from wave 20 on, chance rising slowly with wave number so it stays rare right
+// at 20 and becomes a real recurring feature by the deep game. Grave joins the rotation only from
+// wave 30 on ("sometimes spawns after wave 30") — before that it's just Hut/Castle, 50/50.
+const MAX_EXTRA_BUILDINGS_ON_BOARD = 3;
+function maybeSpawnExtraBuilding(){
+  if(waveIndex < 20) return;
+  const liveBuildings = enemyPool.filter(e => e.active && e.isHutBuilding && !e.destroyed).length;
+  if(liveBuildings >= MAX_EXTRA_BUILDINGS_ON_BOARD) return;
+  const chance = Math.min(0.5, 0.08 + (waveIndex - 20) * 0.01); // 8% at wave 20, capped at 50%
+  if(Math.random() >= chance) return;
+  const tile = findHutPlacementTile();
+  if(!tile) return;
+  if(waveIndex >= 30){
+    const roll = Math.random();
+    if(roll < 0.34) spawnHut(tile.x, tile.y);
+    else if(roll < 0.67) spawnCastle(tile.x, tile.y);
+    else spawnGrave(tile.x, tile.y);
+  } else if(Math.random() < 0.5) spawnHut(tile.x, tile.y); else spawnCastle(tile.x, tile.y);
+}
 function loseLife(n){
   lives -= n;
   if(lives <= 0){ lives = 0; endGame(); }
@@ -12683,6 +13105,7 @@ function update(dt){
   updateBarricadeChunks(dt);
   updateWalkingBlood(dt);
   updateFloatingTexts(dt);
+  updateCoinPickups(dt);
   phaseTime.particles += performance.now() - __pt; __pt = performance.now();
 
 
@@ -12717,6 +13140,8 @@ function update(dt){
       expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
       maybeSpawnMoreScenery();
+      maybeSpawnExtraBuilding();
+      maybeShowWaveTutorialTip();
       if(wavesCompleted % 2 === 0 && moveCharges < MAX_MOVE_CHARGES){
         moveCharges++;
       }
@@ -12821,7 +13246,7 @@ function updateTargetFrame(){
     // as a structure) — ENEMY_INFO[target.type] would show "Grunt" here otherwise, which is exactly
     // what "not showing the hut as a target" meant: the portrait icon was already right, only the
     // name label wasn't.
-    targetName.textContent = target.isHutBuilding ? 'Hut' : target.isGuardian ? 'Hut Guardian' : (info ? info.name : target.type);
+    targetName.textContent = target.isHutBuilding ? (target.buildingKind === 'CASTLE' ? 'Castle' : target.buildingKind === 'GRAVE' ? 'Zombie Grave' : 'Hut') : target.isGuardian ? (target.hutRef && target.hutRef.buildingKind === 'CASTLE' ? 'Castle Guardian' : target.hutRef && target.hutRef.buildingKind === 'GRAVE' ? 'Grave Zombie' : 'Hut Guardian') : (info ? info.name : target.type);
     targetHpBarFill.style.width = hpPct + '%';
     targetHpBarText.textContent = Math.round(target.hp) + '/' + target.maxHp;
     targetDefVal.textContent = target.armor;
@@ -12976,6 +13401,7 @@ function render(ctx){
   renderPhaseTime.minionsProjectiles += performance.now() - __rpt; __rpt = performance.now();
   drawParticles(ctx);
   drawFloatingTexts(ctx);
+  drawCoinPickups(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
   drawSpawnWarningMarker(ctx);
   drawWaveCountdown(ctx);
@@ -13006,10 +13432,28 @@ function drawDebugOverlay(ctx){
     'towers ' + countActive(towerPool) + '  proj ' + countActive(projectilePool) + '  decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)',
     'zoom ' + camera.zoom.toFixed(2) + '  cam ' + Math.round(camera.x) + ',' + Math.round(camera.y)
   ];
+  // Per-tower telemetry — direct request ("include per tower telemetry in the debug log, add as
+  // much to the debug log capacity as we can"). Sorted by lifetime damage (the towers actually
+  // worth looking at), capped to the top 10 so the overlay can't grow unbounded with a large
+  // board — a "+N more" line covers the rest without listing every single one.
+  const liveTowers = towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
+  if(liveTowers.length){
+    lines.push('--- tower telemetry (top ' + Math.min(10, liveTowers.length) + ' by dmg) ---');
+    for(let i=0; i<Math.min(10, liveTowers.length); i++){
+      const t = liveTowers[i];
+      const tel = t.telemetry;
+      const acc = tel.shotsFired > 0 ? Math.round((tel.hitsLanded/tel.shotsFired)*100) : 0;
+      lines.push(
+        '#' + t.id + ' ' + t.type + ' L' + t.level + '  shots ' + tel.shotsFired + ' hit ' + tel.hitsLanded +
+        ' miss ' + tel.misses + ' (' + acc + '%)  dmg ' + Math.round(t.lifetimeDamage||0) + '  kills ' + tel.killsSecured
+      );
+    }
+    if(liveTowers.length > 10) lines.push('+' + (liveTowers.length - 10) + ' more towers not shown');
+  }
   ctx.save();
   ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(6, 30, 264, lines.length * 14 + 8);
+  ctx.fillRect(6, 30, 340, lines.length * 14 + 8);
   ctx.fillStyle = '#7ee787';
   lines.forEach((line, i) => ctx.fillText(line, 12, 34 + i * 14));
   ctx.restore();
@@ -14105,6 +14549,13 @@ function handleTap(clientX, clientY){
       gold -= currentBuildCost(selectedBuildType);
     }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
+    // Which tower types actually get used, tracked once per type per session (not every single
+    // build — that would be noisy and isn't the useful signal; "did anyone ever build a Merchant
+    // this session" is).
+    if(window.trackEvent && !builtTowerTypesThisSession.has(selectedBuildType)){
+      builtTowerTypesThisSession.add(selectedBuildType);
+      window.trackEvent('tower_built', { tower_type: selectedBuildType });
+    }
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
     playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type]);
     selectedBuildType = null;
@@ -14418,6 +14869,12 @@ function showGoldGain(amount){
   clearTimeout(goldGainHideTimer);
   goldGainHideTimer = setTimeout(() => { goldGainHideTimer = 0; pop.dataset.pending = 0; pop.classList.remove('pop'); }, 900);
 }
+// Shop-key mechanic — direct request: the item Shop only opens while an active, non-disabled
+// Merchant tower is on the board. Reused by both the click-gate below and the HUD's visual lock
+// indicator, so they can never disagree about whether the Shop is actually open right now.
+function merchantShopOpen(){
+  return towerPool.some(t => t.active && t.type === 'MERCHANT' && t.disabledWavesLeft <= 0);
+}
 function updateHUDImmediate(){
   livesVal.textContent = lives;
   if(lastShownGold === null) lastShownGold = gold;
@@ -14441,6 +14898,19 @@ function updateHUDImmediate(){
   woodVal.textContent = wood;
   stoneVal.textContent = stone;
   moveVal.textContent = moveCharges;
+  // Shop lock indicator — grayed + a clear tooltip when no Merchant is alive to keep it open,
+  // rather than silently doing nothing on tap. Cheap: one boolean check against towerPool, same
+  // one the click-gate below uses.
+  const shopBtnEl = document.getElementById('shopBtn');
+  if(shopBtnEl){
+    const shopOpen = merchantShopOpen();
+    shopBtnEl.classList.toggle('shop-locked', !shopOpen);
+    const badge = document.getElementById('shopLockBadge');
+    if(badge) badge.classList.toggle('hidden', shopOpen);
+    shopBtnEl.title = shopOpen ? '' : (unlockedTowerTypes.has('MERCHANT') || wavesCompleted >= CONFIG.TOWERS.MERCHANT.unlocksAfterWave
+      ? '🔒 Build a Merchant (👳) and keep him alive to open the Shop'
+      : '🔒 Unlocks a Merchant tower at Wave ' + CONFIG.TOWERS.MERCHANT.unlocksAfterWave + ' — keep him alive to open the Shop');
+  }
   waveVal.textContent = waveIndex < CAMPAIGN_WAVE_COUNT
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞';
@@ -14598,7 +15068,12 @@ function buildTowerModal(){
     PROTON:      '🔒 Push both raw power and swiftness to their limits — from any path — and the sky itself starts to answer...',
     DARK_MATTER: '🔒 Swiftness and a cold mind, together, from any path, start to bend light itself...',
     BERSERKER:   '🔒 Raw strength, given to a two-bladed hand, forgets all restraint...',
-    LANCER:      '🔒 A swift enough hand pushes reach past reason...'
+    LANCER:      '🔒 A swift enough hand pushes reach past reason...',
+    // Plain wave-count text, deliberately breaking from the cryptic-riddle convention above — a
+    // simple wave gate (not a stat/element threshold) isn't riddle-worthy, and direct feedback was
+    // to make new unlocks CLEAR, not cryptic.
+    MERCHANT:    '🔒 Unlocks at Wave ' + 15,
+    GLAIVE:      '🔒 Unlocks at Wave ' + 20
   };
   for(const type of UNLOCKABLE_TOWER_TYPES){
     // Every unlockable tower type gets a Build-tray row from the very start, locked or not —
@@ -14673,6 +15148,7 @@ function openShopModal(){
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
   playSound('ui_open');
+  if(window.trackEvent) window.trackEvent('shop_opened', {});
 }
 function closeShopModal(){
   document.getElementById('shop-modal').classList.add('hidden');
@@ -14797,6 +15273,10 @@ document.getElementById('shopBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   if(gameState !== 'PLAYING') return;
   if(moveModeTower) exitMoveMode();
+  if(!merchantShopOpen()){
+    showToast('🔒 Shop needs a living Merchant');
+    return;
+  }
   openShopModal();
 });
 document.getElementById('shopModalClose').addEventListener('pointerdown', (e) => {
@@ -16021,6 +16501,7 @@ function endGame(message){
 
 function resetGame(){
   if(window.trackEvent) window.trackEvent('game_start', {});
+  builtTowerTypesThisSession = new Set(); // fresh per game — see the tower_built GA event at the build-confirm site
   gold = 150; lives = 100; livesBought = 0; waveIndex = 0; waveState = 'IDLE'; resetWaveDispatch(); waveRunSeed = (Math.random() * 4294967296) >>> 0; seenEnemyTypes = new Set();
   wood = 0; stone = 0;
   globalPassiveCounts = {};
