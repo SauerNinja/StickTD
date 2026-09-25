@@ -1149,7 +1149,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.5.5'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.5.6'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -13452,8 +13452,15 @@ function drawDebugOverlay(ctx){
   }
   ctx.save();
   ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  // Box width now measured against the actual longest line instead of a flat guess — the old fixed
+  // 340px was sized for the overlay before per-tower telemetry existed, so a telemetry row (often
+  // 60+ monospace characters) regularly overflowed past the dark backdrop's right edge. Padded a
+  // little past the true max so text never sits flush against the box's own edge.
+  let maxLineWidth = 0;
+  for(const line of lines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+  const boxWidth = Math.max(220, maxLineWidth + 18);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(6, 30, 340, lines.length * 14 + 8);
+  ctx.fillRect(6, 30, boxWidth, lines.length * 14 + 8);
   ctx.fillStyle = '#7ee787';
   lines.forEach((line, i) => ctx.fillText(line, 12, 34 + i * 14));
   ctx.restore();

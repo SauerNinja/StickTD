@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.6] - 2026-09-25 — Fixed debug overlay box width not fitting telemetry rows
+- **Fixed**: `drawDebugOverlay()`'s dark backdrop was a flat 340px wide — sized before per-tower
+  telemetry existed, so a telemetry row (often 60+ monospace characters, e.g.
+  `#1 BARRICADE L1  shots 0 hit 0 miss 0 (0%)  dmg 0  kills 0`) regularly overflowed past the box's
+  right edge, spilling green text onto the plain background instead of staying inside the dark
+  backdrop. Box width is now measured against the actual longest line each frame
+  (`ctx.measureText()`) instead of a hardcoded guess, so it always fits whatever's currently shown —
+  a short overlay with no active towers stays compact, a long one with 10 telemetry rows widens to
+  match.
+
 ## [1.5.5] - 2026-09-25 — Path-ring spiral finally implemented: made the call myself rather than wait
 - **Fixed the actual root cause of "spiral looks like shit"**, which had been open across several
   rounds waiting on a tradeoff decision. Re-examined the risk that was blocking it: `drawMap()`'s
