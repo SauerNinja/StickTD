@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.6.3] - 2026-09-25 — Restored a lost fix: debug overlay box width not fitting telemetry rows
+- **Context**: this session's file chain was built starting from a `1.5.5` commit fetched from
+  GitHub at the very start. `main` had moved forward with other real work in between that this
+  session never saw — specifically a `[1.5.6]` fix titled "Fixed debug overlay box width not
+  fitting telemetry rows." When this session's files were committed over that history, that fix
+  was silently overwritten — caught via a GitHub Desktop diff showing it as a real deletion, then
+  confirmed live on `main` after the commit. Restored here from the diff's own description rather
+  than lost.
+- **Fixed**: `drawDebugOverlay()`'s dark backdrop was a flat 340px wide — sized before per-tower
+  telemetry existed, so a telemetry row (often 60+ monospace characters, e.g.
+  `#1 BARRICADE L1  shots 0 hit 0 miss 0 (0%)  dmg 0  kills 0`) regularly overflowed past the box's
+  right edge, spilling green text onto the plain background instead of staying inside the dark
+  backdrop. Box width is now measured against the actual longest line each frame
+  (`ctx.measureText()`) instead of a hardcoded guess, so it always fits whatever's currently shown —
+  a short overlay with no active towers stays compact, a long one with 10 telemetry rows widens to
+  match.
+- `node --check` passed clean.
+
 ## [1.6.2] - 2026-09-25 — Download-debug-log-on-death, and Play Again now does a real page reload
 - **New**: a "📋 Download Debug Log" button on the Game Over screen itself, direct request after a
   death screenshot — no more digging into Settings to grab the log after a loss before the state
