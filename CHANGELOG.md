@@ -1,14 +1,184 @@
 # Changelog
 
-## [1.5.6] - 2026-09-25 — Fixed debug overlay box width not fitting telemetry rows
-- **Fixed**: `drawDebugOverlay()`'s dark backdrop was a flat 340px wide — sized before per-tower
-  telemetry existed, so a telemetry row (often 60+ monospace characters, e.g.
-  `#1 BARRICADE L1  shots 0 hit 0 miss 0 (0%)  dmg 0  kills 0`) regularly overflowed past the box's
-  right edge, spilling green text onto the plain background instead of staying inside the dark
-  backdrop. Box width is now measured against the actual longest line each frame
-  (`ctx.measureText()`) instead of a hardcoded guess, so it always fits whatever's currently shown —
-  a short overlay with no active towers stays compact, a long one with 10 telemetry rows widens to
-  match.
+## [1.6.2] - 2026-09-25 — Download-debug-log-on-death, and Play Again now does a real page reload
+- **New**: a "📋 Download Debug Log" button on the Game Over screen itself, direct request after a
+  death screenshot — no more digging into Settings to grab the log after a loss before the state
+  that mattered is gone. Reuses the exact same log/file-naming as the existing Settings button
+  (factored into a shared `downloadDebugLogFile()` so both call sites stay identical, not two copies
+  of the same blob/anchor code).
+- **Changed**: "Play Again" now calls `window.location.reload()` instead of `resetGame()`. Direct
+  request — "needs to refresh the page like a full refresh... too many artifacts remain." `resetGame()`
+  was a ~35-line manual reset touching dozens of separate pieces of state (pools, canvases, DOM
+  elements, scratch buffers, camera, wind, decals...) — its own comments already admitted gaps
+  being patched in over time ("already reset elsewhere... but was missing here"), which is exactly
+  the kind of accumulating incompleteness that leaves stray artifacts behind. A real reload
+  guarantees a genuinely clean JS context instead of trusting that reset function to have zeroed
+  everything this 16,000+ line engine accumulates over a run. Permanent progress (tower unlocks,
+  settings) is unaffected — that lives in `localStorage`, which a reload doesn't touch.
+- **Removed**: `resetGame()` itself — dead code once nothing calls it. Confirmed the very first
+  "Play" button never used it either (a fresh page load already starts every variable at its initial
+  value), so nothing else depended on it.
+- `node --check` passed clean.
+
+## [1.6.1] - 2026-09-25 — Balance pass: enemies +15% HP, -25% speed, +40% queued-lane spacing
+- **Direct request**: "enemies need 15% more health, 25% slower, 40% more distance between each
+  unit in lane — too close and too fast makes it too laggy and unenjoyable."
+- **Changed**: every `baseHp` in `CONFIG.ENEMIES` (all 23 enemy types, GRUNT through MONARCH) is
+  now +15% of its original value; every `speed` is -25%. Both are the single source of truth every
+  size tier and wave-scaling multiplier already builds on top of, so the change applies uniformly
+  across every wave, size variant, and difficulty scaling without touching that scaling math itself.
+- **Changed**: `queueGap()` — the spacing formula for enemies piled up behind a barricade or each
+  other — now multiplies its existing `Math.max(radius*2+10, 26)` result by a new
+  `QUEUE_GAP_MULTIPLIER` (1.4), directly answering the "40% more distance between each unit in
+  lane" request. This is specifically the queued/blocked-lane spacing system (`updateBarricadesAndPileup()`),
+  the one actually visible as units stacking up tight in the footage from earlier in this session.
+- `node --check` passed clean; all 23 `baseHp:` entries confirmed present and updated.
+
+## [1.6.0] - 2026-09-25 — Real fix for the spiral SHAPE itself: 2-3 tiles per expansion, not a whole ring at once
+- **The remaining half of the original pathing request**, deliberately deferred out of the 1.5.9
+  hotfix so it could get its own focused pass rather than being bolted onto an unrelated timing
+  fix in the same system: "every expansion should add 2-3 squares to the path, winding outward
+  like a circle" — not the old alternating "every OTHER expansion, the ENTIRE new ring's boundary
+  becomes path in one shot" behavior (`nextRingIsPath`, now removed entirely).
+- **Changed**: `extendPathWithNewRing()` now takes an `arcLength` parameter and only claims that
+  many tiles from the new ring's boundary — walking BACKWARD from the point closest to the current
+  spawn, in the ring's own existing fixed traversal order (same order the old full-ring version
+  used, just truncated), so a short arc winds the same direction a full ring always did. Called
+  from `beginNextRingReveal()` on every single expansion now (`PATH_GROWTH_TILES_MIN/MAX` = 2/3,
+  matching the original request exactly), not just alternating ones.
+- **Verified with a standalone simulation** run against the actual extracted path-generation
+  functions (not a re-implementation) across 40 consecutive expansions on a 60x60 map: path
+  connectivity held at every step (every consecutive waypoint pair stayed orthogonally adjacent,
+  zero breaks), the spawn point stayed in-bounds and inside that expansion's own new region every
+  time, and per-expansion growth landed at 1-3 tiles throughout (1 only in the final few expansions
+  once the region hit the map's hard edge and had less room left to grow into — expected, not a
+  bug). Buildable area was also logged across 25 expansions: it grows quadratically with the
+  region while path tiles grow by a steady ~2.5/expansion, so buildable space outpaces path tiles
+  by a wide and growing margin (path:buildable ratio trending from 0.45 down toward 0.02) — plenty
+  of "green squares" available at every stage, though this is NOT a literal global 1:1 ratio.
+- **Honest limitation, not attempted**: a literal global 1:1 dirt-to-grass tile ratio is
+  mathematically incompatible with "only 2-3 path tiles per expansion" once the region is growing
+  quadratically — satisfying both at once would need either far more path tiles added per
+  expansion (contradicting the 2-3 request) or the region growing far more slowly (a much bigger,
+  unrelated change to the whole expansion-cost/pacing system). The more specific and repeated
+  request — small, steady, circular per-expansion growth — was prioritized. `node --check` passed
+  clean.
+
+## [1.5.9] - 2026-09-25 — Real fix for the spiral-reveal pacing bug ("path not actually growing" / "enemies spawning outside the path")
+- **Root cause found**: `advanceRingReveal()` — the function that visually unveils an in-progress
+  ring's tiles a few at a time — was only ever called from two places: once per
+  `expandRegion()`/`grantFreeExpansion()` trigger (revealing 1-3 tiles), and once more at each
+  wave's ACTIVE→IDLE transition (another 1-3 tiles, only if the queue was still non-empty). A
+  ring's boundary can easily be dozens of tiles for anything past the first few expansions —
+  meaning the visual reveal could take MANY WAVES to actually finish, while `pathWaypointTiles`/
+  `waypointsPx` (what enemies actually walk) already commits the new path instantly at the ring's
+  start (see `beginNextRingReveal()` — correct and necessary, so a tower can never be built on a
+  tile about to become path). Net effect: enemies could spawn and walk on a path segment the map
+  hadn't visually caught up to for several waves running — reading exactly as "spawning outside the
+  path," and reading as "the path isn't growing" since most of a new ring sat unbaked for so long.
+- **The fix**: a new `driveRingReveal()` runs every simulation tick (from `update()`), advancing
+  the current ring's reveal by real elapsed time instead of only at trigger/wave-boundary moments.
+  Tiles-per-tick scales with the ring's own total size (`ringRevealTotalTiles`) so a huge late-game
+  ring and a small early one both finish in the same target ~1.2s of real time
+  (`RING_REVEAL_TARGET_MS`) — confirmed by simulation: an 84-tile ring finishes in 1133ms, a 6-tile
+  ring in 250ms. That's comfortably faster than a player can expand and then reach the next wave,
+  so the visual bake is always done before any enemy could walk that stretch. The existing
+  trigger/wave-boundary calls to `advanceRingReveal()` are left in place as a harmless immediate
+  kick and catch-up safety net. Save/load resuming mid-ring now also seeds `ringRevealTotalTiles`
+  so a resumed ring reveals at the same target pace, not the original ring's pace. `node --check`
+  passed clean, and a standalone timing simulation confirmed both ring sizes land inside budget.
+- **Deliberately not attempted this round**: the separate "1:1 dirt-to-grass path ratio, 2-3 path
+  tiles added per expansion" request from the very start of this session. That's a real redesign of
+  how `buildSpiralPathTiles()`/`extendPathWithNewRing()` allocate path tiles within a ring — not a
+  timing fix — and touches the same path-generation system a softlock/bad-path bug could hide in.
+  Doing it properly deserves its own focused pass with real testing, not bolting it onto a
+  same-round fix for a different bug in the same system. Logged, not guessed at.
+
+## [1.5.8] - 2026-09-25 — HOTFIX: Archer/Marksman/Sniper shots overshooting and resolving late
+- **Fixed a regression from 1.5.6's own WC3 optimization pass**: found via a gameplay video —
+  arrows visibly flying straight past their target into open space, then the enemy taking damage
+  a beat later with no visible connecting shot. 1.5.6 added `calculateLeadIntercept()` for exact
+  initial aim on Archer/Marksman/Sniper, which was a real improvement — but it also set
+  `p.exactIntercept = true` on their shots specifically to SKIP `Projectile.update()`'s continuous
+  rate-capped mid-flight homing correction, on the reasoning that an exact launch-time intercept
+  wouldn't need it. That reasoning missed why the homing correction exists in the first place: it's
+  the safety net for a target that changes velocity AFTER launch — which is the normal case on this
+  map's barricade queues, where the next enemy in line starts moving the instant the one ahead of
+  it dies. An exact intercept computed against the target's velocity AT LAUNCH is still just a
+  prediction; without the mid-flight correction, a shot aimed at a queued enemy that started moving
+  a moment later just sailed on past it in a dead straight line until the existing `maxFlightMs`/
+  world-boundary failsafe (see 1.4.99) kicked in and resolved the hit off in empty space — the
+  exact "goes past the enemy then it dies a second later" symptom that failsafe was originally
+  built to paper over, not eliminate.
+- **The fix**: `p.exactIntercept` is removed entirely. Archer/Marksman/Sniper keep the exact
+  launch-time intercept for their INITIAL aim (still a real improvement over the old linear
+  extrapolation), but their shots now go through the same continuous rate-capped homing correction
+  as every other tracked-target shot in the game, same as before 1.5.6. `node --check` passed clean
+  after the fix.
+
+## [1.5.7] - 2026-09-25 — Comment-discipline pass: index.html comments now point at this file instead of explaining themselves inline
+- **Changed**: every standalone comment block of 2+ lines in index.html (794 of them, 4,080 lines
+  total — roughly a quarter of the file) was exported verbatim into a new "Code Archaeology"
+  section at the bottom of this file, keyed by a `CA0XX` id. Each one's original spot in the code
+  now holds a single-line pointer comment (`// CA0XX — see CHANGELOG.md § Code Archaeology`)
+  instead of the multi-paragraph rationale that used to live there. Nothing was rewritten or
+  summarized — this is a straight export, so no history or reasoning was lost, just relocated.
+  Single-line comments and section-header banners were left alone; only the multi-line "why"
+  blocks moved.
+- **New standing rule** (also saved to project memory): from here forward, index.html comments
+  stay terse and reference this file for the "why" — this file is where the detailed reasoning,
+  direct-feedback quotes, and tradeoff writeups belong, not inline in the code.
+- `node --check` passed clean on the extracted script after the strip.
+
+## [1.5.6] - 2026-09-25 — WC3 engine optimization pass
+- **Map cache patching**: `finalizeRingExpansion()` no longer calls a full `rebakeMap()` on every
+  single map expansion — that re-draws the ENTIRE world (every path tile's speckle pass, every
+  buildable tile's checkerboard, the full grid stroke) regardless of how much of the map actually
+  changed, which is real, recurring, unbounded-with-map-size cost. Only two things about the baked
+  bitmap actually change per expansion: the newly-revealed ring's own tiles, and the finish carpet
+  moving to the new path terminus. `finalizeRingExpansion()` now captures the OLD finish line via
+  `computeFinishLine()` before the path moves, repaints just that carpet's old footprint back to
+  its correct underlying terrain (`repaintFinishCarpetFootprint()` — walks the actual tile range
+  under the stale carpet rather than assuming plain dirt, since the carpet's 16px thickness can
+  straddle a tile boundary), paints only the delta of new-region-minus-old-region ring tiles
+  (`paintNewRingTiles()`), then draws the new carpet at its new position (`drawFinishCarpet()`).
+  `drawMap()`'s own inline carpet-drawing block was factored into that same `drawFinishCarpet()`
+  function rather than duplicated, so there's one source of truth for the carpet's geometry.
+  `rebakeMap()` itself is untouched and stays the correct, necessary call for anything that
+  genuinely invalidates the WHOLE canvas (a DPR change or window resize — see
+  `resizeMapCanvasForDpr()`), since those can't be patched incrementally.
+- **Spring-damped collision relaxation**: `resolveEnemyCollisions()`'s displacement math no longer
+  snaps a colliding pair's full overlap apart in one frame. A new `COLLISION_RELAX_FACTOR` (0.7)
+  is the total fraction of overlap a single relaxation pass resolves — split 0.35/0.35 across both
+  bodies when both are free to move, or applied whole (0.7) when only one side can move — instead
+  of the old instant 1.0/0.5-split correction. This is exactly what a damped elastic spring does:
+  it lets a dense cluster settle gradually across the existing 3-pass relaxation loop instead of
+  fully separating every overlapping pair in a single frame, which is what read as jittery in a
+  big swarm. The squared-distance early rejection before any `Math.sqrt` call
+  (`distSq >= minDist*minDist`) was already in place from an earlier pass — confirmed intact, not
+  re-added.
+- **Zero-allocation ballistic intercept**: added `calculateLeadIntercept()` — a pure quadratic
+  time-of-flight solve (no object allocation, every intermediate value a local number) that
+  computes the EXACT angle needed to intercept a target moving at constant velocity, instead of
+  the simpler linear extrapolation `MAX_LEAD_PREDICT_TIME` already used elsewhere. Capped at a new
+  `LEAD_INTERCEPT_MAX_TIME` (0.25s), same reasoning as the existing cap: a target still "on
+  course" that far out on this winding spiral path may already have turned a corner the exact math
+  has no way to know about. Wired into `Tower.update()` for Archer/Marksman/Sniper specifically —
+  `fireProjectile()` still reuses `this.angle` unchanged, so the visible weapon aim and the actual
+  shot stay guaranteed in sync exactly as before. Shots from these three archetypes are now marked
+  (`p.exactIntercept`) to skip `Projectile.update()`'s continuous rate-capped mid-flight homing
+  correction — an exact intercept computed once at launch has no unnatural homing curve left to
+  correct, eliminating the visible mid-flight curve specifically for these three ranged classes.
+  Every other ranged archetype (Gatling, Blowdart, Mage, etc.) is untouched and keeps its existing
+  linear-lead + mid-flight homing-correction behavior.
+- **Verification**: `node --check` passed clean on the extracted inline script. Added self-test
+  #14 to `runDebugSelfTests()` covering `calculateLeadIntercept()` directly — a stationary target
+  is aimed at without any lead, and a target moving perpendicular to the shot gets a real positive
+  lead angle, not a straight shot at its current position.
+- **Fixed**: Barricade no longer gets a `telemetry` object at all (was `null`-checked everywhere
+  it's read/written already, so this is a clean removal, not a display-only filter) — it never
+  attacks, so its shots/hits/misses/kills sat at a permanent 0, wasting a line in the debug
+  overlay's per-tower telemetry block every single game. Direct request.
 
 ## [1.5.5] - 2026-09-25 — Path-ring spiral finally implemented: made the call myself rather than wait
 - **Fixed the actual root cause of "spiral looks like shit"**, which had been open across several
@@ -8999,3 +9169,2388 @@ First versioned release. Baseline snapshot of the full feature set built up to t
   past the first one; a Barricade HP display bug caused by a generic regen system applying to a
   tower type it shouldn't have; map generation that could leave zero buildable tiles in a small
   starting region).
+## Code Archaeology — full comment history exported from index.html
+Every standalone multi-line comment block that used to live inline in index.html, verbatim, keyed by the ID now left in its place in the code (`// CA0XX — see CHANGELOG.md § Code Archaeology`). index.html itself only keeps single-line comments and these pointer IDs from here forward — see the [1.5.7] entry above for the policy this enforces.
+
+#### CA001 — `gtag` (was lines 58-60)
+Google Consent Mode v2 — analytics starts denied by default; only actually granted once the visitor accepts via the cookie-consent banner near the top of <body>. Order matters here: this default must be pushed before gtag('config', ...) below for Consent Mode to apply correctly.
+
+#### CA002 — `gtag` (was lines 70-75)
+Custom gameplay events — previously this page only ever sent GA4's own automatic events (page_view, session_start, first_visit), nothing about what actually happens in the game. trackEvent() is a thin, always-safe wrapper the main game script below calls at real gameplay milestones (game start, wave clears, tower builds, map expansions, boss encounters, game over) — Consent Mode v2 already queues/drops these correctly based on the visitor's actual consent choice, so this only adds WHAT gets sent, never bypasses consent.
+
+#### CA003 — `gtag` (was lines 81-82)
+Diagnostic only: if anything throws before the game finishes booting, show it on screen instead of leaving a silent blank page. Safe to remove once the mobile issue is found.
+
+#### CA004 — `gtag` (was lines 91-95)
+This handler is installed inside <head>, ~400 lines before <body> is even parsed — an error thrown early enough in boot means document.body is still null at this point, and .appendChild would throw inside the handler meant to report the ORIGINAL error, silently swallowing both. Falls back to documentElement (<html>), which always exists once the parser has reached this <script> tag.
+
+#### CA005 — `top-level` (was lines 679-686)
+Blocks the BROWSER's own pinch-zoom, independent of the game's own in-canvas zoom feature. The viewport meta's user-scalable=no is not honored by iOS Safari (Apple ignores it past iOS 10 for accessibility), so a two-finger pinch still zooms the actual page there — and WebKit's known behavior is that position:fixed elements (the header/nav HUD bars) visually detach from the viewport during that zoom, which is exactly the "menu bars go out of view when I zoom in" report. Preventing the gesture at the event level (rather than relying on the meta tag) stops the page-level zoom outright; the game's own pinch-to-zoom-the-map control reads touch positions directly and is unaffected.
+
+#### CA006 — `top-level` (was lines 698-706)
+Cookie-consent overlay — fully self-contained (its own markup/CSS/logic here), independent of the main game script below, so it can never be affected by or interfere with anything downstream. Drives Google Consent Mode v2 (defaulted to denied in <head> above): only actually grants analytics_storage once the visitor clicks Accept, and remembers the choice so the overlay doesn't reappear on later visits. Full-screen by request — covers the entire viewport so nothing underneath (including Play) is reachable until Accept is clicked, rather than a dismissable bottom bar. Accept-only — no Decline button; consent stays denied (the default) unless/until Accept is clicked, but there's no explicit "no" action for a visitor who wants to actively refuse rather than just leave the overlay up.
+
+#### CA007 — `top-level` (was lines 1161-1170)
+Each job has a fixed color identity (not random) so you can tell towers apart by class at a glance, plus a distinct body build — some classes read as taller/lankier, others shorter/stouter. Explicit-lightness color helper used by Tower.rollSkinTones() — parses hue/saturation from an hsl() string and re-renders it at a caller-supplied absolute lightness, rather than jittering around the source color's own baseline. Lets skinMain/skinShade/faceColor all be driven off one shared per-tower toneOffset so the three layers stay tonally coherent instead of rolling independent randomness against each other. Human hair-color variants — used for the STR mustache (see rollSkinTones()/drawStickman()). Real hair colors, not arbitrary hues: black, dark brown, brown, blonde, ginger/red, gray/white, auburn.
+
+#### CA008 — `colorAtLightness` (was lines 1179-1186)
+A shared cache for canvas emoji-glyph font strings, keyed by the rounded pixel size. Several hot per-frame draw paths (every enemy's body, every tower's body, status-effect icons) were building a fresh string via concatenation — `Math.round(x) + 'px serif'` — on every single call, even though the same handful of sizes repeat constantly (most enemies of one type share a radius, and a tower's own size never changes at all). Real allocation volume at 100+ enemies/60fps, and exactly the class of thing AGENTS.md's V8-GC note describes: individually tiny, but enough volume to matter. Bounded in practice — actual sizes only ever span a small range (roughly 10-90px), so this cache never meaningfully grows.
+
+#### CA009 — `pxFont` (was lines 1192-1197)
+Cheap "grounded" shadow — a single flat translucent ellipse, not ctx.shadowBlur (which is one of the most expensive Canvas2D operations). Only called when graphicsQuality is 'high'. Small icon-based status effect overlay — frost crystals drifting around a slowed/frozen body, flickering flames around a burning one, lightning bolts orbiting above a stunned one's head. Themed per-effect instead of every status effect looking identical (a flat colored circle wash), so what's actually affecting a unit reads at a glance instead of needing the floating text label.
+
+#### CA010 — `drawGroundShadow` (was lines 1241-1244)
+Fully desaturated (0% saturation) rather than a preset hue — unlike every other class, whose rolled skin/pants lightness (see rollSkinTones()) still reads as a tint of that class's own hue, Cat Snapper stays grayscale/black-and-white at any rolled lightness, so it never accidentally reads as "colorful" the way a lightness roll on a saturated hue would.
+
+#### CA011 — `top-level` (was lines 1312-1316)
+Tiny "no immediate repeat" helper — pure uniform Math.random() can and does pick the same index twice in a row, which reads as a bug/glitch for a spoken line even though it's mathematically "random." Tracks the last index per history key so the same quip never plays twice consecutively for the same tower type. Verified real gap: randomJobQuote() previously had zero repeat protection (1.1.23 fix).
+
+#### CA012 — `randomJobQuote` (was lines 1329-1331)
+WC3-style "aura box" content — one icon + one strategy line per evolved/specialist tower (EVOLVED_TOWER_TYPES). Deliberately NOT covering Swordsman/Archer/Mage/Barricade — the aura box itself is hidden for those, since a basic class doesn't have a specialized niche to explain yet.
+
+#### CA013 — `randomJobQuote` (was lines 1360-1362)
+Hero items — bought from the shop, type-restricted (a Swordsman can only equip Swordsman gear). Every tower auto-equips a free "starter" (wood-tier) item. Up to 3 items total; filling all 3 slots awakens the tower into a Hero (visual crown/aura + flat stat bonus on top of everything else).
+
+#### CA014 — `randomJobQuote` (was lines 1365-1367)
+Max range any point investment can reach, by weapon type — the shorter/heavier the weapon, the lower its ceiling. Ranged casters/shooters cap highest (Mage the very highest of all), and among melee weapons, reach determines the order: Spearman > Swordsman, Axeman > Hammerman.
+
+#### CA015 — `randomJobQuote` (was lines 1373-1375)
+Diminishing returns: every 5 points invested, the next tier of 5 is worth progressively less — tier 0 (points 1-5) at full value, tier 1 (6-10) at 85%, tier 2 (11-15) at 70%, and so on down to a 25% floor so heavy investment is never completely worthless, just increasingly inefficient.
+
+#### CA016 — `diminishingStatValue` (was lines 1378-1379)
+Tiers 0-4 (the first 25 points) each have a genuinely different multiplier and must be iterated individually.
+
+#### CA017 — `while` (was lines 1387-1390)
+Beyond 25 points, the Math.max(0.25, ...) floor means every further tier computes the exact same 0.25 multiplier — closed-form arithmetic instead of looping through it a tier at a time, since a single stat can now realistically reach several hundred points (attunement's SPECIALIZATION_THRESHOLD=500, Cleric's own Pope evolution at 750).
+
+#### CA018 — `while` (was lines 1394-1398)
+Past the first 25 points, investment follows a logarithmic tail instead of a flat per-point rate: with training bars (2-6 points each) and promotion bonuses, a farmed carry reaches hundreds of points, and a linear tail turned that into 20x+ damage. The tail still always rises — every point helps — but 500 points is now ~4x the value of 50 instead of 10x. Tuned together with rollTrainingBarPoints() and promotion's 2d6 bonus.
+
+#### CA019 — `statTailValue` (was lines 1414-1421)
+WARRIOR archetype (Swordsman and its evolutions — Hammerman, Axeman, Spearman, Paladin) STR damage specifically. A separate curve from the shared diminishingStatValue() above, not a change to it — every other stat-driven effect in the game (DEX accuracy/luck, INT range, HP, Archer/Mage damage) keeps using the shared curve exactly as before. Buffed per feedback that Warriors felt weak and didn't scale well into late game: base rate raised 0.06 -> 0.08 per point (+33%), and — the actual late-game fix — the per-tier floor raised 0.25 -> 0.4 and the per-tier falloff slowed 0.15 -> 0.12, so heavy STR investment keeps compounding meaningfully past 25 points instead of flattening to the shared curve's near-linear growth there (1.1.2).
+
+#### CA020 — `while` (was lines 1433-1443)
+Some classes cap out early on a stat that doesn't fit their identity — investing further points stops improving that specific aspect, though the stat's OTHER effects (e.g. DEX's attack speed) keep scaling normally past the cap. Baseline (zero DEX investment) miss chance, by archetype — explicit balance hierarchy: Mage misses the most (least precise, all its identity is in one devastating hit), Archer misses a moderate amount (a precision class, but starts unrefined), melee (Warrior) misses the least (a sword swing/cone sweep is far more forgiving to land than a ranged shot or a spell). None severe on their own — this is a relative ordering to tune future accuracy work against, not a punishing mechanic. CLERIC already maps to the MAGE archetype in CLASS_ARCHETYPE, so it gets the Mage tier automatically. BARRICADE has no archetype entry at all and never attacks, so it falls through to the WARRIOR-tier default below — moot, since its own value is never used.
+
+#### CA021 — `while` (was lines 1445-1455)
+Front-loaded accuracy curve, RuneScape-style: reaching 100 effective DEX gets almost all the achievable accuracy benefit (miss chance drops from the archetype's base all the way down to just 4%), while grinding from 100 to 500 effective DEX only trims that remaining sliver down to a true 0% — the same "early progress is cheap, the last stretch costs disproportionately more for a smaller gain" shape RuneScape's XP curve uses (1-92 costs the same total XP as 92-99), applied here to accuracy-gained-per-DEX-point rather than XP-cost-per-level. Two straight segments hit both anchor points exactly rather than approximating them with a generic diminishing-returns formula. Effective DEX (dexEff) already includes each archetype's own preferred-stat multiplier (see PREFERRED_STAT_MULT) — so Archer, whose preferred stat IS DEX, reaches both milestones at a lower RAW dex investment than Warrior/Mage, same as everywhere else DEX/STR/INT specialization already pays off faster for a class's own preferred stat.
+
+#### CA022 — `if` (was lines 1474-1477)
+Every fighting tower belongs to one of three archetypes, each with a natural affinity for one stat — that stat is simply more effective per point invested for towers of that kind. This is a broad multiplier on the stat's effective point count, layered underneath all the other class-specific bonuses (Mage's INT damage, Archer's DEX damage, Blowdart's poison, etc).
+
+#### CA023 — `if` (was lines 1503-1505)
+Which child type each splitting enemy leaves behind on death — the single source of truth spawnSplitChildren() reads from, instead of a hardcoded type buried in that function. Adding a new splitting enemy in the future is just one more line here, not a new branch in the method.
+
+#### CA024 — `if` (was lines 1507-1509)
+Footstep weight class for playFootstepSound() — 0 light/small, 1 medium (the default for any type not listed here), 2 heavy/armored. WRAITH is explicitly `null`, not a weight — a silent, ghostly glide is a deliberate distinct identity for it, not an oversight.
+
+#### CA025 — `if` (was lines 1520-1525)
+Not a Mage evolution — it's an Archer unlock (see SPECIALIZATIONS' comment on the raw-DEX check for it), but archetype-tagged MAGE, not ARCHER, purely so its damage/range/HP scaling follows the same INT-preferred generic formulas every archetype-driven calculation in this file already uses, kept as originally built rather than re-tuned to DEX scaling just because its unlock source changed. Its own unique mechanic (the companion cats) is handled separately in Tower.fireProjectile()/Projectile.onImpact()/CatCompanion, not through the archetype system.
+
+#### CA026 — `top-level` (was lines 1527-1531)
+Reachable from any of the 3 base classes (see HYBRID_SPECIALIZATIONS), so archetype-tagged MAGE independent of whichever one actually unlocked it — same pattern Cat Snapper already established just above. A Swordsman that unlocks Proton doesn't keep STR-scaled damage; the class itself is always INT-scaled once built, regardless of source. Same reasoning for Dark Matter and Quasar below.
+
+#### CA027 — `top-level` (was lines 1533-1537)
+Berserker/Lancer are deep-tier Swordsman-lineage classes (Axeman/Spearman's own second tier — see EVOLUTIONS), archetype-tagged WARRIOR exactly like their parents, unlike the MAGE-tagged hybrids just above: these grow from a cross-stat (STR/DEX respectively) but the class itself stays a melee Warrior, same as Paladin staying WARRIOR despite unlocking via INT growth on a Hammerman.
+
+#### CA028 — `top-level` (was lines 1540-1542)
+HP stat (see Tower.recomputeStats()) — archetype-differentiated base "heart" count and STR growth rate, per explicit spec: Warrior starts heaviest and grows fastest, Mage starts lightest and grows slowest. Each "heart" is worth 10 flat bonus HP (hpStatBonus = hpStat * 10).
+
+#### CA029 — `top-level` (was lines 1546-1554)
+Caps how far into the future a ranged tower's lead-prediction aim extrapolates a target's CURRENT velocity. Without this, a tower at max range/min projectile speed (Archer: up to ~0.8s of flight time) aims at where the target would be if it kept going perfectly straight for that whole time — but this map's spiral path turns every 1-3 tiles, so the target routinely changes direction long before a slow shot arrives, and the arrow flies straight past the corner it turned on. Originally capped at 0.35s (1.1.2); reduced further to 0.2s per direct feedback that towers still aimed noticeably too far ahead even with that cap — trading away more of the "technically correct" lead on long straight stretches (the less common case on this winding path) for meaningfully less overshoot near the frequent turns (the more common case).
+
+#### CA030 — `top-level` (was lines 1556-1560)
+WC3 Optimization & Performance Patch (1.5.6) — exact time-of-flight intercept cap for calculateLeadIntercept() below, used only by Archer/Marksman/Sniper (see Tower.update()). Same reasoning as MAX_LEAD_PREDICT_TIME's own cap, kept as its own named constant since the two prediction methods are different (exact quadratic solve vs. linear extrapolation) and were tuned independently.
+
+#### CA031 — `top-level` (was lines 1562-1573)
+Zero-allocation exact ballistic intercept — WC3 Optimization pass. Solves for the exact time-of-flight t at which a projectile fired from (originX, originY) at projectileSpeed can geometrically reach a target moving at constant (targetVx, targetVy) from (targetX, targetY): |targetPos + targetVel*t - originPos| = projectileSpeed * t which reduces to a plain quadratic in t (a*t^2 + b*t + c = 0). Every intermediate value here is a local primitive number — nothing is boxed into an object or pushed onto a pool — so this can run once per shot for every ranged tower with zero GC pressure, exactly like the rest of this engine's hot per-frame paths. Falls back to the target's current position (t=0) when there's no real positive-time solution (target already outrunning the projectile in every direction). Capped at LEAD_INTERCEPT_MAX_TIME for the same reason MAX_LEAD_PREDICT_TIME is capped — a target still "on course" 0.25s from now on this winding spiral path may already have turned a corner the exact math has no way to know about.
+
+#### CA032 — `calculateLeadIntercept` (was lines 1581-1582)
+Degenerate case (target speed ~= projectile speed) — the quadratic term vanishes, so solve the remaining linear equation directly instead of dividing by a near-zero `a`.
+
+#### CA033 — `if` (was lines 1589-1590)
+Smallest positive root — the FIRST moment the shot can actually connect, not a later crossing further down the target's projected path.
+
+#### CA034 — `if` (was lines 1600-1612)
+Max angular correction rate (radians/sec) applied to a committed (pre-rolled hit) single-target projectile's heading each frame — see Projectile.update()'s intercept-correction block. Kept deliberately small: it exists only as a safety net for the rare case where a target changes direction after launch, not as a visible flight-path adjustment. At the original 7 rad/s this was clearly visible as arrows curving toward their target mid-flight, especially from Archer (slow ~320-400px/s arrows by design, giving a long flight time for the correction to compound over) — reported as "arrows following enemies like homing missiles." Lowered to 1.5, and Archer's own projectile speed increased separately (see CONFIG.TOWERS.ARCHER) so shots also simply spend less time in flight for any drift to accumulate over. 1.4.43: still too loose — a shot could keep curving through a wide angle and read as a homing missile. Now a stiff trim only: a slow turn rate, and correction is abandoned entirely once the target has moved more than PROJECTILE_HOMING_MAX_ANGLE off the shot's heading. Past that the arrow flies straight and simply misses geometrically, which is what a real arrow does.
+
+#### CA035 — `if` (was lines 1616-1633)
+Only Swordsman, Archer, and Mage are the ROOT of an evolution tree — every other fighting class (besides Cat Snapper, see below) is reached by investing 10+ points into a specific stat on one of those three, a one-way transformation. Grouped so a base class only ever evolves into classes matching its own archetype family: Swordsman (WARRIOR) branches into the other three WARRIOR classes, Archer (ARCHER-style) branches into the other three ARCHER-style classes, Mage (MAGE) branches into Cleric, its one magic-aligned sibling. Barricade sits outside this tree entirely — it's a utility piece, not a fighter with a stat identity. Cat Snapper is also directly buildable (see STARTER_TOWER_TYPES) but, like Barricade, sits outside this tree entirely too — it doesn't evolve into anything and nothing evolves into it; it's just a 4th fighting starter with its own separate summon mechanic (see CatCompanion) rather than a 4th root of a stat-driven branch. Elemental attunement — replaces the old flat "threshold:20" first-tier evolution for the 3 base classes (Swordsman/Archer/Mage) with a two-stage design, per a detailed external design review (2026-09-13, see CHANGELOG for the full session). A base tower's FIRST stat to cross ATTUNEMENT_THRESHOLD permanently locks its element — it never changes afterward even if a different stat later overtakes it (Tower.attunement, set once in checkAttunementAndSpecialization(), never cleared). Crossing SPECIALIZATION_THRESHOLD in that SAME attuned stat then evolves the tower into that base class's specialization for that element, if SPECIALIZATIONS defines one.
+
+#### CA036 — `if` (was lines 1635-1638)
+Melee cone-sweep target cap and per-target falloff — direct feedback that hitting every enemy packed into the arc, all for full damage, wasn't realistic. Applies to every melee class that uses checkConeHits() (Swordsman and its evolutions, Hammerman, Paladin, etc.), not just Swordsman specifically, since they all share the same swing mechanic.
+
+#### CA037 — `top-level` (was lines 1648-1667)
+Only cells with a genuinely well-established mechanical/thematic fit are filled — matching the review's own explicit instruction not to fabricate a class just to complete the matrix. SWORDSMAN: identical targets to the old first-tier evolutions (Fire→raw heavy impact fits Hammerman's stun-and-shield identity, Electric→speed fits Axeman's dual-wield agility, Ice→control/reach fits Spearman's long precise thrust) — just re-gated behind attunement+500 instead of a flat threshold:20. ARCHER: Fire→Gatling and Electric→Blowdart are the same existing targets; Ice→MARKSMAN is a genuinely new class (see CONFIG.TOWERS.MARKSMAN) replacing the old int→BOMBER mapping, which the review flagged as wrong ("INT Archer is the gun-precision path... do NOT map INT Archer to Bomber"). Bomber/Gunalinder remain fully functional for any existing save that already has one, just no longer reachable via a fresh Archer's evolution — see BACKLOG.md. MAGE: Electric→Snapcaster is an exceptionally clean fit (Snapcaster's kit is already built almost entirely around proc'ing chain lightning/shock). Ice→Cleric is kept only because reassigning Cleric's whole holy/anti-undead identity is out of scope here — it's a known imperfect thematic fit, flagged rather than hidden (see BACKLOG.md). Fire/STR was intentionally left undefined for a while (no existing evolution fit a heavy-impact identity, and the guidance at the time was not to invent one just to fill the cell) — now filled, by explicit request, with Necromancer: a genuinely new class built for this slot, structurally parallel to Cleric (a single Mage specialization tier, same attack+support-ability kit shape) but STR-gated instead of INT-gated, and raising temporary skeleton minions each round instead of healing.
+
+#### CA038 — `top-level` (was lines 1673-1699)
+Cat Snapper is a special case, not a 4th entry in ARCHER's own element map above: all 3 of Archer's slots are already taken (Gatling/Blowdart/Marksman), so it can't be gated through the normal attunement system at all. Instead it's a raw stat-threshold unlock directly on the base class — any Archer reaching SPECIALIZATION_THRESHOLD (500) DEX unlocks it, independent of which element that Archer ends up attuning to (or even whether it's attuned yet at all). Checked as its own explicit condition in checkAttunementAndSpecialization(), not through this table. Dual-element hybrids (see BACKLOG.md's "Phase 2" for the full design history). A tower already locked into one element (this.attunement) that ALSO pushes the OTHER element's own stat to SPECIALIZATION_THRESHOLD unlocks a hybrid class — checked in checkAttunementAndSpecialization() right alongside the single-element check above, additively (a tower can unlock both its own single-element specialization AND a hybrid off the same stat growth; neither blocks the other). Reuses the exact same two thresholds single-element specialization already uses — no new numeric design invented for the trigger itself, since that part of the open design question was answerable by extending the existing pattern rather than inventing a new one. Only Fire+Ice ("Steam") → Blow Gunner on Archer is defined single-base-class; Fire+Electric ("Proton") and Electric+Ice ("Dark Matter", black) are both defined reachable from ALL THREE base classes, by explicit design choice — "all towers can turn into all elements with the right stat combo." Whichever base class gets a given combo to 500/500 first earns that same shared element state; the tower never transforms into anything, it just carries the element on its own existing attack from then on (refreshElementState()/applyAttunementStatus()). Proton, Quasar and Dark Matter are ELEMENT STATES, never separately buildable tower types — confirmed by the owner. A previous version of this comment (and, separately, one stray line in TOWER_UNLOCK_SOURCE_BY_TARGET) had Quasar wrongly registered as a real Build-tray unlock; that registration is removed. CONFIG.TOWERS.QUASAR itself is kept, legacy-only, so a save made while that bug was live still loads. Proton and Dark Matter never had this bug — they were always correctly gated only through MIXED_ELEMENT_RULES/refreshElementState() below, nowhere else. Only genuine class branches (an actual next-tier tower, like Blow Gunner) belong in this table.
+
+#### CA039 — `top-level` (was lines 1705-1709)
+Mixed elements, checked in order — first match wins. Quasar's pair here (DEX+INT) is what actually gates it; the QUASAR_MIN_PER_STAT constant and any comment elsewhere describing a "triple-stat, all three at 500" condition describe a design that was never actually wired up — don't trust those over this table. Each pair needs both of its stats at MIXED_PAIR_THRESHOLD, which spends the whole 1000-point budget.
+
+#### CA040 — `top-level` (was lines 1711-1714)
+Quasar's own extra effect beyond the burn/slow/stun every hybrid applies via applyAttunementStatus() — a genuinely wider hit, not just another status effect. Added directly onto whatever attack the tower carrying it already has (see fireProjectile()), never a separate tower or a separate attack of its own.
+
+#### CA041 — `top-level` (was lines 1722-1723)
+Deep-tier evolutions beyond a base class's own specialization — unrelated to attunement, unchanged from before.
+
+#### CA042 — `top-level` (was lines 1726-1730)
+Axeman/Spearman's own deep tiers — the last two Swordsman-lineage branches that were dead ends (every sibling already had one). Cross-stat, matching the pattern Hammerman's own STR->INT jump already set, cycled rather than reusing the same pairing twice: DEX-locked Axeman grows STR for Berserker, INT-locked Spearman grows DEX for Lancer — STR->INT->DEX->(back to STR), a full cycle across the three Swordsman branches rather than an arbitrary pick each time.
+
+#### CA043 — `top-level` (was lines 1733-1741)
+Gatling's own deep-tier unlock into Bomber — the design's long-stated intent ("Gatling → Bomber"), previously deferred as needing a real threshold decision rather than an invented one. Decided now: reuses the same threshold:40 convention every sibling deep-tier unlock already uses (Hammerman→Paladin, Blowdart→Squirtgun), not a new arbitrary number. This closes the last gap where a buildable class had no traceable unlock path at all — Bomber was previously unreachable by design (nothing fed it after Archer's old int→Bomber mapping was intentionally removed), and Gunalinder was unreachable transitively as a result. Both are now reachable through this one connected Fire-Archer chain: Gatling (STR 40) unlocks Bomber, which can then grind its own existing int:40 path into Gunalinder below.
+
+#### CA044 — `top-level` (was lines 1745-1747)
+Marksman's own deeper evolution reuses Gunalinder's already-established int:60/Sniper target exactly (same destination class, same relative threshold) — the review's carve-out for reusing "an existing explicit threshold... finalized elsewhere" rather than inventing a new one.
+
+#### CA045 — `top-level` (was lines 1749-1753)
+Cleric's own deep-tier evolution — requested as "250 more INT after becoming Cleric." Cleric itself already requires 500 INT (SPECIALIZATIONS.MAGE.ICE), and every EVOLUTIONS threshold is checked against the tower's raw cumulative int (not "since this evolution"), so the actual number here has to be 500+250=750, not a bare 250 — a bare 250 would already be satisfied the instant Cleric is reached and would fire immediately rather than after further investment.
+
+#### CA046 — `top-level` (was lines 1758-1767)
+The deepest evolution tier in each lineage that actually has one beyond its own base specialization — Paladin (Hammerman's own 2nd tier), Squirtgun (Blowdart's), Sniper (shared deepest tier for both the Gatling→Bomber→Gunalinder AND Marksman chains), Pope (Cleric's). Axeman/Spearman/Snapcaster have no deeper evolution at all — they ARE their lineage's endpoint, not a "hyper-rare" tier the way these four are. Necromancer is the one deliberate exception — it's only a first-tier Mage specialization (like Cleric itself), not a deepest-tier class, but explicitly requested to be capped the same way regardless, for its own reasons (a full-board skeleton-raising army being the actual rarity concern, not evolution depth). Capped at one ACTIVE copy on the board at a time — see towerCountOnBoard()/isTowerTypeAvailable() — rather than a one-time purchase limit, so selling or losing one frees up the slot again.
+
+#### CA047 — `top-level` (was lines 1769-1773)
+The 3 base classes stay genuinely unlimited in count, but each additional copy already on the board makes the next one cost more — see currentBuildCost(). Deliberately NOT applied to any evolved/specialized type (those already gate progress through their own unlock requirement, not gold) or to Barricade (wood/stone economy, not gold, and it has its own separate free-charge system already).
+
+#### CA048 — `top-level` (was lines 1776-1787)
+Progression unlocks — a tower never transforms into a new class (see checkEvolution()/checkAttunementAndSpecialization()); reaching a threshold only permanently unlocks the NEXT tier as a separately buildable tower in the Build menu, for the rest of the current game (survives save/load, resets on a genuinely new game — same precedent as the existing wave-gated starter unlocks). Two kinds of unlock, both derived from the tables that already define them rather than duplicating thresholds a second time: - "element" unlocks (from SPECIALIZATIONS): reach 500 in the attuned stat on a base class. - "stat" unlocks (from EVOLUTIONS): reach a flat raw-stat threshold on a specific source class. Every buildable evolved class now traces to a real, reachable unlock — confirmed by checking EVOLVED_TOWER_TYPES against this derived list directly, not assumed. This used to exclude BOMBER and GUNALINDER (nothing unlocked Bomber itself, so nothing could reach Gunalinder either) until EVOLUTIONS.GATLING was added above specifically to close that gap.
+
+#### CA049 — `top-level` (was lines 1800-1803)
+HYBRID_SPECIALIZATIONS targets were missing from this derivation entirely until now — meaning Blow Gunner (the one hybrid actually implemented) was unlockable in principle but never actually appeared in the Build tray at all, locked OR unlocked, since UNLOCKABLE_TOWER_TYPES below is derived purely from this object's keys. Found and fixed while adding Cat Snapper's own entry.
+
+#### CA050 — `top-level` (was lines 1809-1811)
+Cat Snapper isn't table-driven at all (see the comment above SPECIALIZATIONS — a raw DEX threshold directly on Archer, not an element/hybrid slot), so it needs its own explicit entry here rather than falling out of a loop over one of the unlock tables.
+
+#### CA051 — `top-level` (was lines 1813-1820)
+Same reasoning, same fix as Cat Snapper directly above: Crazy Chef is also a raw stat check (Archer STR >= ATTUNEMENT_THRESHOLD, in checkAttunementAndSpecialization()) that calls unlockTowerTypeBuild('CRAZY_CHEF') directly rather than going through a table — the CALL was always correct and really does add it to unlockedTowerTypes, but with no entry here it was NEVER added to UNLOCKABLE_TOWER_TYPES, so the Build tray had no row to ever show it from, unlocked or locked. Genuinely unreachable from the Build menu since it was introduced — the original bug report ("100 str on archer and crazy chef not available in the build menu") was correct, and this specific registration gap is why; fixed here.
+
+#### CA052 — `top-level` (was lines 1822-1826)
+Merchant has no evolution/stat path at all — a plain wave gate (CONFIG.TOWERS.MERCHANT's own unlocksAfterWave, actually enforced now by checkTowerUnlocks() — see that function), same as Cat Snapper/Crazy Chef above needed their own explicit registration purely so the Build tray actually gets a row for it (that's all UNLOCKABLE_TOWER_TYPES/this table is used for — see the comment on TOWER_UNLOCK_SOURCE_BY_TARGET's own declaration).
+
+#### CA053 — `top-level` (was lines 1830-1837)
+Quasar (like Proton and Dark Matter) is a mixed ELEMENT STATE a tower earns and carries on its own existing attack (see MIXED_ELEMENT_RULES/refreshElementState()/applyAttunementStatus()) — it is deliberately NOT registered here. An earlier version incorrectly added Quasar as its own separately-buildable Build-tray entry (this exact line, now removed), which was the actual source of "Quasar shows up as a tower" confusion — Proton and Dark Matter never had this bug, only Quasar did. Do not re-add any of the three hybrids here; the owner has confirmed none of them are ever meant to be separately buildable, only Hammerman/Blowdart/Cleric-style single-element specializations are.
+
+#### CA054 — `top-level` (was lines 1839-1845)
+Permanently unlocked tower types — account-wide meta-progression, not tied to any one save or run. The whole point is "prove you can reach this once, ever, on any playthrough, and it's yours to build from then on" — so this is backed by its own localStorage key (independent of the save-game file) and is never wiped by resetGame()/starting a new run. A save file still carries its own snapshot (for older browsers/imports), but on load it's UNIONed into the permanent set rather than replacing it — loading an old save can only ever add unlocks, never take one away.
+
+#### CA055 — `unlockTowerTypeBuild` (was lines 1865-1868)
+All towers share one universal item pool, WC3/Dota-style — items aren't class-specific, and any tower can equip, unequip, or receive one dragged over from another tower. More added below without touching anything else — itemStatLine(), the Shop grid, and the drag/equip system are all already generic over UNIVERSAL_ITEMS.
+
+#### CA056 — `unlockTowerTypeBuild` (was lines 1873-1876)
+Repair cost scales with missing HP fraction, at a 50% discount against BARRICADE_ITEM's own full-build cost — repairing an existing barricade should clearly beat scrapping (sell for a fraction of value) and rebuilding fresh from scratch, not just be "another way to spend resources." Direct request: repair to full HP using wood/stone.
+
+#### CA057 — `barricadeRepairCost` (was lines 1885-1887)
+The subset that can drop as a random end-of-wave reward (see the wave-complete handler in update()) — deliberately excludes BARRICADE_ITEM, which is a purchased build resource, not a random find.
+
+#### CA058 — `top-level` (was lines 1979-1983)
+An Axeman pushed to the STR extreme — raw power rather than the technique Axeman's own throw-toggle represents. Wider cleave (swingArc override in the Tower constructor, matching TWOHANDER Swordsman's own precedent for a per-type arc override) plus higher damage, catching more of a crowd per swing instead of hitting harder per single target — a brute-force AoE identity, distinct from Lancer's own precision/range identity below.
+
+#### CA059 — `top-level` (was lines 1993-1995)
+A Spearman pushed to the DEX extreme — precision and reach rather than Berserker's raw power. Longer range than any other Warrior-archetype melee class, keeping enemies at arm's length even longer than base Spearman already does.
+
+#### CA060 — `top-level` (was lines 2014-2022)
+Unlocked by an Archer reaching 500 DEX (see SPECIALIZATIONS' raw-DEX check comment) — not a starter anymore, and not gated through an element/attunement slot either, since all 3 of Archer's own element slots are already taken (Gatling/Blowdart/Marksman). Archetype-tagged MAGE regardless — see CLASS_ARCHETYPE's note on why that stayed as originally built rather than switching to DEX scaling just because the unlock source changed. `damage` here drives each individual cat scratch identically to how it drives a normal projectile hit elsewhere — deliberately reused rather than a separate catDamage field, so a cat's damage always matches whatever this tower's own (tier-scaled) damage stat actually displays, with no second number that could quietly drift out of sync with it.
+
+#### CA061 — `top-level` (was lines 2050-2056)
+The Shop-key tower — direct request. Low-to-mid range, the biggest splash radius in the game, and a deliberately huge cooldown (his whole identity is "one big lob, then a long wait," not a DPS class) — throws a Money Bag that bursts into 1-7 Coins on impact (visual only; the actual splash damage/targeting reuses the same proven splashRadius AOE system every other splash tower already uses, see Projectile.onImpact()). As long as an active, non-disabled Merchant is on the board, the item Shop is unlocked (see shopMerchantGate()) — downed or removed, the Shop locks again until another Merchant is alive.
+
+#### CA062 — `top-level` (was lines 2066-2069)
+Anti-structure specialist — direct request. A single heavy single-target shot (not splash) with a huge reload, and 5x damage specifically against Hut/Castle buildings (see fireProjectile()'s own GLAIVE check) — against a normal enemy he's a slow, middling hitter; against a building he's the hardest single hit in the game.
+
+#### CA063 — `top-level` (was lines 2104-2109)
+Mage's STR/Fire specialization — structurally Cleric's mirror (attack + one support ability, same evolution tier depth) but STR-gated instead of INT-gated, and raising temporary skeleton minions each round instead of healing. See raiseSkeletonsForTower()/SkeletonMinion for the actual mechanic — skeletonCount of them are raised near this tower at the start of every round and destroyed the instant that round completes. Capped at one active Necromancer on the board at a time (MAX_ONE_PER_BOARD_TYPES), by explicit request.
+
+#### CA064 — `top-level` (was lines 2155-2161)
+Archer's Fire+Ice hybrid ("Steam" — see HYBRID_SPECIALIZATIONS). Reached by pushing BOTH STR and INT to 500 (either order), not just the one that locked the attunement first — a genuinely harder unlock than a single-element specialization, since it needs two stats maxed instead of one. Combines poisonDamage (Blowdart/Squirtgun's own scald-like DoT) with slowFactor/slowDuration (Mage's own chill) on the same hit — both fields already apply fully generically on impact (see Projectile.onImpact()), so this needed no new status-effect code, just the two existing mechanics defined together on one class for the first time.
+
+#### CA065 — `top-level` (was lines 2171-2177)
+Fire+Electric hybrid ("Proton", purple) — unlike Blow Gunner, reachable from ANY of the 3 base classes (see HYBRID_SPECIALIZATIONS), by explicit design choice: whichever tower gets both STR and DEX to 500 first unlocks this same class, regardless of which one it was. Archetype-tagged MAGE (below) independent of the unlock source, same pattern Cat Snapper already established. Burn (poisonDamage, reskinned) plus a brief electrical slow (slowFactor) on every hit — the same dual-existing-mechanic-reuse shape Blow Gunner already uses, just recolored/reflavored, so this needed no new status-effect code either.
+
+#### CA066 — `top-level` (was lines 2187-2191)
+Electric+Ice hybrid ("Dark Matter", black) — same all-3-base-classes shape as Proton, same dual-mechanic-reuse pattern (poisonDamage/slowFactor, both already generic on impact), but biased toward the slow rather than the DoT — Electric and Ice both connote control/disable more than damage-over-time, so the differentiation from Proton/Blow Gunner is in the ratio between the two shared fields, not a new mechanic.
+
+#### CA067 — `top-level` (was lines 2201-2207)
+All three elements ("Quasar", white) — the genuine capstone hybrid, gated on a much harder LEGACY ONLY — no longer reachable as a fresh build (removed from TOWER_UNLOCK_SOURCE_BY_TARGET; see that comment for why). Kept defined, not deleted, purely so a save file from before this fix that already has a QUASAR-typed tower on the board still loads and renders correctly. Quasar is now a pure elemental state applied to whichever tower's own existing attack earns it (MIXED_ELEMENT_RULES/applyAttunementStatus/ QUASAR_ELEMENT_SPLASH_RADIUS), same as Proton and Dark Matter always correctly worked.
+
+#### CA068 — `top-level` (was lines 2246-2251)
+Radius widened into clear size tiers so the type-level hierarchy (ants smaller than Grunts, Tank/Boulder bigger than Grunts, etc.) reads reliably even with individual per-spawn size variance layered on top (see Enemy.spawn()) — mini(8-9) / small(11-14) / standard(14-16) / big(19-23) / huge(34, Boss). Previously everything but Boss was squeezed into a narrow 10-20 band, which the individual variance ended up overlapping across almost the whole roster.
+
+#### CA069 — `top-level` (was lines 2257-2262)
+The true final boss — only ever appears in the BOSS slot of wave CAMPAIGN_WAVE_COUNT itself (see the sizeTier==='BOSS' weight override in buildWavePlan()), replacing the generic Boss for that one wave. Highest HP in the game per direct request — a clean 2.5x a regular Boss's own baseHp, same armor style but a bit heavier. His own periodic ability (see the this.type==='SANTA' branch alongside BOSS's existing rally-heal timer) spawns a couple of fast COOKIE minions instead of healing.
+
+#### CA070 — `top-level` (was lines 2264-2266)
+Santa's own minion — small, cheap, and deliberately much faster than anything else on the board at this point in the game (COOKIE's speed is close to RUNNER's, the fastest regular enemy) so a spawned batch reads as a genuine sudden threat, not just more chip damage.
+
+#### CA071 — `top-level` (was lines 2268-2271)
+Castle's own guardian type (see spawnCastleGuardian()) — a random chess piece per spawn (this.emojiOverride, not this base emoji — see the CHESS_PIECE_EMOJIS list near spawnCastleGuardian). Deliberately the highest breakawayChance in the game (the existing max was FIRE/ICE at 0.6) — direct request ("aggro stickmen at higher rates than normal pieces").
+
+#### CA072 — `top-level` (was lines 2302-2308)
+Purely cosmetic ground-texture accents — never clearable, never yield resources, never occupy a tile (a tower or Barricade can still be built right on top of one; it's just a background paint detail). Two tiers, deliberately imbalanced in frequency: COMMON is the low-key green/ brown ground texture that can appear fairly often, ACCENT is saturated color (red/orange/ yellow/pink) held to a small fraction of that — color used sparingly reads as an intentional focal point against a calm green field, the same "isolation + contrast creates a focal point, keep the palette otherwise limited" principle real design references use for photos/layouts.
+
+#### CA073 — `top-level` (was lines 2317-2323)
+Boot-time integrity check across every data-driven table above. JavaScript gives none of these cross-references (a wave naming an enemy type, an evolution naming a tower type) any static checking — a typo just becomes a silent `undefined` deep inside gameplay, often many waves after the actual mistake was made. This collects every problem found (not just the first) and throws one descriptive error, which the existing window.onerror handler in <head> already displays on-screen — no new error-reporting infrastructure needed. Called once, at boot, before anything else touches these tables (1.0.212).
+
+#### CA074 — `for` (was lines 2368-2371)
+SPECIALIZATIONS — every base class must be attunable, every element key must be a real attunement element, and every target tower must actually exist. A base class with fewer than 3 elements defined is fine (see the intentional gaps noted above SPECIALIZATIONS itself) — this only catches typos and dangling references, not incompleteness.
+
+#### CA075 — `for` (was lines 2383-2385)
+HYBRID_SPECIALIZATIONS — every base class must be attunable, every pair key must be two real attunement elements joined with '+' in sorted order (matching how checkAttunementAndSpecialization() actually builds the key), and every target must exist.
+
+#### CA076 — `top-level` (was lines 2415-2421)
+Every EVOLVED_TOWER_TYPES entry must actually be reachable — present in TOWER_UNLOCK_SOURCE_BY_TARGET (and therefore UNLOCKABLE_TOWER_TYPES, which the Build tray's locked/unlocked row loop is driven by directly). This is exactly the check that would have caught Blow Gunner never appearing in the Build tray at all, locked or unlocked, because HYBRID_SPECIALIZATIONS targets weren't being folded into TOWER_UNLOCK_SOURCE_BY_TARGET — found by inspection while adding Cat Snapper's own entry, not by this check (which didn't exist yet), but added now so the next gap like it fails loudly instead of silently.
+
+#### CA077 — `for` (was lines 2425-2432)
+The gap ABOVE this line only catches a type once it's already listed in EVOLVED_TOWER_TYPES — it does nothing for a type that's missing from that list entirely, which is exactly how Crazy Chef went unreachable from the Build menu for a long time: unlockTowerTypeBuild('CRAZY_CHEF') was really being called on 100 STR, but the type was never added to EVOLVED_TOWER_TYPES OR TOWER_UNLOCK_SOURCE_BY_TARGET, so this check never even looked at it. Closes that hole: every CONFIG.TOWERS type must be accounted for SOMEWHERE — a starter, an evolved/unlockable class, or an explicitly-known legacy/element exception — so a brand-new tower with no unlock path wired up fails loudly at boot instead of silently sitting unbuildable for however long.
+
+#### CA078 — `for` (was lines 2439-2441)
+MAX_ONE_PER_BOARD_TYPES / SCALING_COST_TYPES — every listed type must exist, and the two lists must be mutually exclusive (a hyper-rare capped-at-one type scaling its own cost by count-on-board would be contradictory — it can never have more than 1 to scale against).
+
+#### CA079 — `for` (was lines 2451-2453)
+JOB_QUOTES — every non-Barricade tower type should have a spawn-quip entry (a missing one silently means that class gets no quip at all — this is exactly how SNAPCASTER was found missing before this check existed)
+
+#### CA080 — `for` (was lines 2458-2459)
+TOWER_STRATEGY — every evolved/specialist tower type needs an aura-box entry, or that class's aura box would silently render empty
+
+#### CA081 — `if` (was lines 2468-2475)
+Debug self-test harness — NEVER called automatically anywhere; exists purely for manual invocation from the browser console (runDebugSelfTests()) during development. Checks real invariants of THIS codebase's actual mechanics, not a generic tower-defense checklist — several items from the external review that inspired this (e.g. "downed towers," "repeated damage while downed") describe a different game's mechanics and don't apply here at all, so aren't included. Uses standalone `new Enemy()`/`new Tower()` instances or pure-function calls throughout, deliberately never touching enemyPool/towerPool/projectilePool — safe to run at any time, including mid-game, without disturbing a real session.
+
+#### CA082 — `runDebugSelfTests` (was lines 2480-2485)
+1. Dead/inactive enemies never turn up in a targeting query. Tests the actual filter predicate buildEnemyHash()/queryNearby() apply (`e.active`) directly against standalone instances, rather than injecting them into the real enemyPool to run the real functions — buildEnemyHash() reads straight from the global enemyPool with no parameter, so calling it for real here would have meant touching live pool state, contradicting this harness's whole "never touches enemyPool/towerPool" safety guarantee.
+
+#### CA083 — `runDebugSelfTests` (was lines 2493-2494)
+2. Pooled Enemy fields reset cleanly on reuse — an escaped/wandering enemy's fields must never leak into whatever that pool slot becomes next.
+
+#### CA084 — `runDebugSelfTests` (was lines 2512-2513)
+4. Wind respects its per-wave ceiling and stays within [0,1] — same check verified in isolation during the 1.2.21 pass, re-run here as a standing regression test rather than a one-off.
+
+#### CA085 — `runDebugSelfTests` (was lines 2524-2525)
+5. windMissPenalty() stays archetype-scoped — Warriors never get a wind penalty, Mage always exceeds Archer's penalty once wind is high enough for the quadratic term to matter.
+
+#### CA086 — `top-level` (was lines 2537-2538)
+6. Barricade unlock/hybrid tables stay internally consistent — same shape as validateGameDefinitions()'s own checks, re-asserted here as a quick standalone smoke test.
+
+#### CA087 — `top-level` (was lines 2549-2550)
+7. Every EVOLVED_TOWER_TYPES entry is actually reachable from the Build tray (the exact bug class found and fixed in the 1.2.20 pass — Blow Gunner never showing up at all).
+
+#### CA088 — `top-level` (was lines 2556-2557)
+8. Mini/Big enemy variants stay mutually exclusive — a spawn roll never produces both, and Mini's stat reduction actually reduces (regression coverage for the 1.2.33 pass).
+
+#### CA089 — `top-level` (was lines 2566-2567)
+9. BLOOD_ON_HIT_CHANCE is a real, sane probability (regression coverage for the 1.2.34 pass) — this doesn't touch enemyPool/applyDamage() at all, just the constant's own value.
+
+#### CA090 — `top-level` (was lines 2604-2606)
+14. calculateLeadIntercept() (WC3 Optimization pass, 1.5.6) — a stationary target should be aimed at directly (t=0 collapses to its current position), and a target moving PERPENDICULAR to the shooter should be led somewhere ahead of its current position, not straight at it.
+
+#### CA091 — `top-level` (was lines 2634-2645)
+Spiral ring-reveal state — a purchased expansion no longer instantly reveals the WHOLE new ring (which meant an instant full path-extend/scenery-scatter/rebakeMap() on every single purchase, the exact "auto-creates an entire ring" lag spike direct feedback called out). Instead the new ring's perimeter tiles are queued once (beginNextRingReveal()) and drip in a few at a time (advanceRingReveal(), driven by each wave clearing — see the ACTIVE->IDLE transition in update()), same "1-3 tiles per round, spiraling around before the ring closes" pacing as the player's own reference sketch. ringRevealed tiles are already buildable (isInActiveRegion() below checks it) and drawn on top of the static baked map each frame (drawPendingRingReveal()) — but the actually-expensive one-time work (activeRegion update, path extension, hut/scenery, and above all rebakeMap()'s full-world redraw) still only runs ONCE, when the ring fully closes (finalizeRingExpansion()), exactly as often as it used to run per ring — just spread out in when the tiles themselves become visible/buildable instead of dumped in one frame.
+
+#### CA092 — `rebuildPathCellsAndPx` (was lines 2662-2666)
+Winds back and forth through every OTHER row (or column, whichever axis is longer — maximizes total walk length), connecting each used row/column to the next via a single bridge tile through the skipped one. This isn't probabilistic: by construction roughly half the region is path and half stays open to build on, and every step is to an adjacent tile so it can never disconnect. A little organic jaggy variation is layered on top without breaking either guarantee.
+
+#### CA093 — `if` (was lines 2701-2702)
+dedupe and guarantee every consecutive pair is a single adjacent step (organic jag can create a diagonal-looking jump otherwise — this bridges any such gap exactly like before)
+
+#### CA094 — `countDistinctTiles` (was lines 2730-2731)
+Ordered walk around the full outer boundary of a region — used to extend the path as a genuine connected loop when the map expands, instead of regenerating the whole thing from scratch.
+
+#### CA095 — `bridgeTiles` (was lines 2756-2758)
+Prepends a full loop around the new outer ring to the existing path, entering near wherever the path currently starts. The old path (and everything built around it) is never touched — this is pure addition, which is also what makes it read as the spiral continuing outward, loop by loop.
+
+#### CA096 — `for` (was lines 2777-2778)
+Guaranteed-minimal fallback: a single straight line across the middle row. Leaves every other tile in the region open — used only if the spiral genuinely can't leave enough room to build.
+
+#### CA097 — `generateConflictFreePath` (was lines 2797-2801)
+Huts no longer spawn on the tiny starting region — they only start appearing once the map has actually grown some, so the very first few waves (small map, still learning the basics) never have to deal with one. hutsSpawnedThisGame guards against spawning a second one the next time expansionLevel happens to cross the threshold again after a reset mid-comparison — it's reset alongside expansionLevel in initRegionAndPath()/resetGame().
+
+#### CA098 — `generateConflictFreePath` (was lines 2803-2807)
+How far a guardian will chase the current camp-aggro leader before giving up and walking home — deliberately much larger than the 42px idle-wander leash (updateGuardian()'s guardRadius), since the whole point of retaliating is actually reaching the tower that's hurting the camp. TILE_SIZE is 64, so this is a little over 4 tiles — enough to reach a tower placed just off the camp's own footprint without letting a guardian wander the length of the map.
+
+#### CA099 — `performExpansion` (was lines 2823-2834)
+Kicks off a new ring's spiral reveal instead of instantly finishing it — see the ringRevealed/ringRevealQueue block near activeRegion's own declaration for the full reasoning. Path-rings used to finalize in one instant shot here — the actual root cause of the persistent "spiral doesn't really spiral" feedback, since the path is the single most visually obvious thing on the map and every other expansion (the path-ring half) still snapped instantly. Fixed now that beginNextRingReveal() commits a path-ring's walkability immediately at the START of its reveal (see there) rather than waiting for the ring to close — the world's own default background tile is already the same plain dirt color a path tile uses (see drawMap()), so an enemy walking across a still-revealing path tile was never actually going to look wrong, just missing its decorative pebble/shading texture until the ring finishes. That made the earlier "enemies could walk on a not-yet-baked-looking tile" concern smaller than it first appeared — safe to spiral both ring types the same way now.
+
+#### CA100 — `if` (was lines 2839-2840)
+Immediately reveal this purchase's own first 1-3 tiles rather than waiting for the next wave clear, so a purchase always has SOME immediate visible effect.
+
+#### CA101 — `beginNextRingReveal` (was lines 2853-2856)
+Path-ring walkability commits HERE, at the very start of the reveal, not at finalize — a tower must never be placeable on a tile that's about to become path, so pathCells (via rebuildPathCellsAndPx()) has to already exclude these tiles from the first frame of the reveal onward, well before the ring visually finishes spiraling in.
+
+#### CA102 — `if` (was lines 2861-2864)
+ringBoundaryTiles(newRegion) returns the FULL outer perimeter of the grown rectangle; since it only ever grows by exactly 1 tile per ring, that perimeter is exactly the newly-added cells — filtered defensively against isInActiveRegion() anyway in case a map-edge clamp (x0/y0 already at 0, or x1/y1 already at COLS-1/ROWS-1) means a "new" edge coincides with the old one.
+
+#### CA103 — `if` (was lines 2867-2871)
+Reveals up to `n` more tiles of the in-progress ring (closest-to-furthest along the perimeter walk, i.e. the same order the old single-shot path-extension already walked it in), and once the whole queue drains, finalizes the ring. Called both from a fresh purchase (performExpansion, for immediate feedback) and automatically once per wave clear (see the ACTIVE->IDLE transition in update()) so the spiral keeps filling in even without the player buying again.
+
+#### CA104 — `for` (was lines 2880-2883)
+The ring has fully closed — do the one-time work that used to run on every single purchase: commit activeRegion, spawn the hut milestone check, scatter scenery/flora across the (now fully-revealed) new band, and rebake the static map ONCE. Path extension itself already happened at beginNextRingReveal() for a path-ring — not repeated here.
+
+#### CA105 — `for` (was lines 2905-2912)
+WC3 Optimization & Performance Patch (1.5.6) — resolves the AGENTS.md §4 rule 4 exception: rebakeMap() re-draws the ENTIRE world (every path tile's speckle pass, every buildable tile's checkerboard, the full grid stroke) on every single expansion, which is real, recurring, unbounded-with-map-size cost. Only two things about the baked bitmap actually changed this call — the newly-revealed ring's own tiles, and the finish carpet moving to the new terminus — so only those get repainted. rebakeMap() itself is untouched and stays the correct, necessary call for anything that genuinely invalidates the WHOLE canvas (a DPR change or window resize — see resizeMapCanvasForDpr()), since those can't be patched incrementally.
+
+#### CA106 — `isInActiveRegion` (was lines 2950-2955)
+Cheap per-frame overlay for ringRevealed tiles — mirrors drawMap()'s own checkerboard grass fill (light/dark green + a thin grid stroke) for just this in-progress ring's tiles, drawn fresh each frame on TOP of the static baked mapCanvas rather than by re-baking it. Bounded cost: at most one ring's perimeter length (a few dozen tiles even late-game), never the whole world — that gap is exactly what lets the ring's tiles look and behave normal (buildable, grass-colored) well before the one real rebakeMap() call at the ring's actual close.
+
+#### CA107 — `for` (was lines 2978-2979)
+Only clearing scenery needs simulation work. Rebuild on a clear request or load, preserving sceneryMap order so simultaneous rewards keep the same random-roll order.
+
+#### CA108 — `findNearestActiveTower` (was lines 2996-2999)
+Weighted by both proximity and each candidate's "taunt" pull from STR investment — higher STR makes a tower more likely to draw a breakaway attacker's aggro, regardless of archetype (a heavily-STR Mage can still out-taunt a low-STR Warrior). Same diminishing-returns curve as every other stat effect, so this stays meaningful but doesn't spiral out of control.
+
+#### CA109 — `findTouchingBarricade` (was lines 3017-3019)
+Squared-distance comparison instead of Math.hypot() — this runs once per active enemy every tick (up to ~200+ in a dense wave), so the sqrt in hypot() is pure waste when all we need is "within this radius or not". Same threshold, same result, no square root.
+
+#### CA110 — `findTouchingBarricade` (was lines 3022-3023)
+Scans activeBarricades (see its own declaration) instead of the full towerPool — skips every non-barricade tower's distance check entirely rather than filtering them out one by one.
+
+#### CA111 — `for` (was lines 3031-3036)
+Run once per tick, before enemies move: figures out who's physically touching a Barricade (freezing it for a 10s window on first contact, breaking the barricade once that expires), then propagates that stop backward to anything close behind on the path — the "pile up". Cumulative distance to each waypoint, rebuilt only when the route itself changes. Both route lookups below used to walk every segment from the start and re-hypot each one — twice per queued enemy per tick, so cost grew with route length on every expansion. Now it's one binary search.
+
+#### CA112 — `for` (was lines 3049-3050)
+Index of the segment containing `dist` — the same boundary rule the old linear scans used (a segment owns distances up to and including its far end).
+
+#### CA113 — `getPositionAtTraveled` (was lines 3076-3079)
+Reusable scratch collections for updateBarricadesAndPileup() — previously a fresh array/Map/Set were allocated every single call (every simulation tick), which is exactly the kind of per-frame garbage a hot path shouldn't create. Cleared at the top of each call instead of reallocated; nothing outside this function ever reads them between calls, so reuse is safe.
+
+#### CA114 — `getPositionAtTraveled` (was lines 3083-3088)
+Safety cap on how long one barricade queue chain can grow — none of the invariants in updateBarricadesAndPileup() actually bound this (a huge simultaneous pile-up was always theoretically possible even though the existing logic already prevents overlap/duplication within it); past this depth, further enemies just fall back to resolveEnemyCollisions()'s normal physical spacing instead of getting a queue slot. Module-level (not local to the function) so the debug log can report it alongside the live queue length, one source of truth for both.
+
+#### CA115 — `getPositionAtTraveled` (was lines 3090-3095)
+Minimum real time between a barricade losing HP points — bumped from a hardcoded 2000 to 5000 per direct request: the starting barricade was breaking too fast for a brand-new player who hasn't built any towers yet. Applies to every barricade, not just the auto-placed starting one. A barricade never loses a point the instant something reaches it: the attacker has to finish a full BARRICADE_HIT_INTERVAL_MS wind-up first (the clock starts when contact begins), and every later point is on the same interval.
+
+#### CA116 — `for` (was lines 3109-3114)
+Only the single front-most enemy touching a given barricade is its "attacker" — contact range is generous enough (radius+14px) that two or three enemies squeezed together on a wide tile could all register as touching the same barricade at once, each independently playing the contact-bump animation and looking like several enemies were hitting it simultaneously. Real single-file contact means exactly one body is actually pressed against it; everyone else who happens to be in range is queued waiting their turn, not also attacking.
+
+#### CA117 — `for` (was lines 3133-3136)
+barricade contact transfer smear — a lateral wipe/swipe stain directly on the barricade tile, distinct from the generic radial splatter beneath the enemy, matching real forensic contact-transfer patterns left when a bleeding body is pressed and dragged against a surface rather than freely spattering onto it
+
+#### CA118 — `if` (was lines 3152-3157)
+Enemies vary a lot in radius (SWARM 12 up to BOSS 30) — a flat spacing constant was either too tight for big units (immediately re-triggering resolveEnemyCollisions' overlap check every single frame right after being snapped, which read as jittery/"stuck" queued units fighting their own queue slot) or too loose for small ones. Deriving spacing from the actual enemy's own radius, with enough margin over resolveEnemyCollisions' minDist (radius sum + 2) that a fresh queue snap is never immediately flagged as overlapping, removes that fight entirely.
+
+#### CA119 — `if` (was lines 3160-3163)
+path-position gate for QUEUE_CATCHMENT: 64px path tiles mean parallel lanes on a spiral/hairpin turn can sit well within the 70px catchment radius while being on a totally different segment of track — without this, an enemy rounding a corner falsely detects a blocked unit on an adjacent, unrelated lane and snaps sideways across tracks to "join" that queue
+
+#### CA120 — `for` (was lines 3169-3170)
+Both of these are independent per-enemy, order-agnostic operations — merged into one pass rather than two separate loops over the same freshly-sorted array right after each other.
+
+#### CA121 — `for` (was lines 3174-3178)
+The catchment assignment loop below can only ever pull an enemy into a queue by matching it against an already-pileBlocked enemy — with none blocked this frame (the common case, no barricade currently under contact), it's guaranteed to do N*(N-1)/2 iterations of pure wasted work, every one of them immediately hitting the `!ahead.pileBlocked` skip below. Skipping the whole loop here changes no behavior — it would have assigned nobody to a queue anyway.
+
+#### CA122 — `for` (was lines 3186-3189)
+only enemies earlier in the (already-sorted, further-along) order are eligible — since the array is sorted by traveled descending, everything at j<i is guaranteed resolved (either originally blocked, or already assigned a queue slot) by the time we reach i, so this needs only one forward pass, no repeated convergence loop
+
+#### CA123 — `if` (was lines 3201-3204)
+two enemies can independently pick the same nearest-neighbor anchor (e.g. both closer to the very front of the line than to each other) and land on an identical slot — walk further back until a genuinely free one is found, guaranteeing no two enemies ever share a spot regardless of which anchor each one happened to attach to
+
+#### CA124 — `if` (was lines 3212-3221)
+Enemies not caught up in an actual barricade queue are left alone here — resolveEnemyCollisions() and resolveSweptEnemyCollisions() (run later this same frame, after movement) already enforce spacing between them using real physical (x,y) distance. A previous version of this function also teleport-snapped any enemy whose raw path-distance ("traveled") to the one ahead of it fell under the queue spacing, with no spatial check at all — which is true for essentially every normally marching column of enemies on every single frame (that's what a column IS), so it was fighting ordinary forward movement continuously and was the main source of jittery pathing. It could also misfire entirely across separate lanes, since two enemies can have similar `traveled` while being physically far apart on a looping/spiral path. Removed — the physics-based collision passes below are the correct place for this and don't have either problem.
+
+#### CA125 — `if` (was lines 3223-3228)
+Speed-following: a faster unit directly behind a slower one on the same single-file path shouldn't keep trying to walk faster than the unit ahead of it — there's no lane to pass in, so every frame it would just ram into the slower unit's back at full speed, and resolveEnemyCollisions() would have to keep fighting that push right back, which is exactly what read as jittery bumping. Only kicks in once something is genuinely close ahead (near actual contact distance) — far-apart units on the same path are unaffected and move at full speed.
+
+#### CA126 — `for` (was lines 3233-3237)
+Proportional to the pair's own size instead of a flat 14px — a flat buffer is trivial for a Tank/Boss but is a huge fraction of a Swarm's entire diameter (radius 9), meaning dense clusters of small, fast enemies triggered the cap far too eagerly on units that still had plenty of room, cascading a "stop and wait" chain through an entire tightly-packed group even when nothing was actually blocking them. Capped at 14 so larger units keep the original buffer.
+
+#### CA127 — `if` (was lines 3240-3248)
+The cap must reflect what `ahead` is ACTUALLY limited to right now, not just its own base speed/slow debuff — otherwise a stun or slow only propagated back one unit: if a stunned unit froze the one directly behind it (via followSpeedCap = 0), a THIRD unit further back would only check that second unit's own stunnedUntil/pileBlocked (both false — it's not itself stunned, just capped) and miss the inherited block entirely, breaking the chain after a single hop. Since `active` is processed front-to-back, `ahead.followSpeedCap` (if already set this same pass) already carries forward whatever it inherited from further ahead — folding it in here lets a stun or slow cascade back through the entire queue, not just to the immediate follower.
+
+#### CA128 — `if` (was lines 3259-3264)
+Safety valve against a permanent soft-lock: if a barricade jam persists too long — most critically if the player is out of gold and simply can't afford anything that would break it — spawning must never stay paused forever, or the wave (and the whole run) can never finish. Once congestion has held continuously for 15s, spawning is force-resumed regardless of whether the jam actually cleared, guaranteeing forward progress is always possible no matter the player's economic state.
+
+#### CA129 — `if` (was lines 3273-3279)
+Snaps an enemy's rendered position AND its path-progress state (traveled + pathIndex) together, atomically. Previously only x/y were snapped here, leaving `traveled` and `pathIndex` pointing at the enemy's old, further-along position — on the very next Enemy.prototype.update() tick, movement integration recomputed a target from the stale pathIndex and immediately pulled the enemy back toward it, fighting the snap and producing the backtrack-then-clump/corner-hangup behavior. Recomputing pathIndex here from the same waypointsPx walk getPositionAtTraveled() already does keeps both values consistent with the new position on every snap.
+
+#### CA130 — `if` (was lines 3338-3339)
+Stone costs more to remove than wood — a flat multiplier on top of the existing size-based formula, so a rock is always pricier than an equivalently-sized tree, not just at one scale.
+
+#### CA131 — `if` (was lines 3350-3353)
+Some trees additionally stretch taller/thinner on top of the normal size variance — a distinct silhouette from just "a bigger tree," like a young growth reaching for light vs. a broad old one. Rolled independently of `scale` so a tree can be both small AND tall, or large AND stretched, rather than tallness just being another flavor of "bigger."
+
+#### CA132 — `for` (was lines 3375-3377)
+Purely cosmetic ground-texture accent — see CONFIG.FLORA. Rolls COMMON vs. the much rarer ACCENT tier, then a small random rotation/offset/size jitter within the tile so a cluster of the same glyph never looks like a stamped grid — organic scatter rather than a repeating pattern.
+
+#### CA133 — `spawnFlora` (was lines 3389-3390)
+direct feedback that individual flora (a seedling especially) looked too large/prominent, like a randomly-plopped object rather than a subtle ground accent
+
+#### CA134 — `for` (was lines 3406-3407)
+A handful of free Barricades pre-placed directly on the path within the starting region — the smaller start leans on these for early chokepoints instead of needing to buy them right away.
+
+#### CA135 — `seedStartingBarricades` (was lines 3409-3413)
+One barricade, right behind the finish line — the tile immediately before it in path order. Previously placed 2 barricades at random path tiles, which (combined with the old, heavier early wave counts) made the very first waves feel like a pileup of enemies queuing at random spots rather than a clean, readable choke point right where the player's eye is already drawn (the finish carpet). Direct request to simplify this.
+
+#### CA136 — `seedStartingBarricades` (was lines 3422-3423)
+Scatter scenery only on the newly-revealed ring of tiles from a map expansion, leaving the already-active interior (and anything built on it) completely untouched.
+
+#### CA137 — `for` (was lines 3431-3434)
+A tile in this new ring can already carry a player-built tower now that spiral-reveal (see beginNextRingReveal()) can leave a buildable tile sitting revealed for several waves before this scatter actually runs — the old single-shot expansion never had this gap, so it never needed this check. Never drop scenery on top of an occupied tile.
+
+#### CA138 — `for` (was lines 3443-3447)
+Same ring-only pattern as scatterSceneryInRing() — every expansion gives the freshly-revealed ring its own random flora, but ground the player has already seen keeps whatever it had, exactly like real scenery already behaves. This is how "the board grows more unique every expansion" reads as an ever-larger, ever-more-detailed world rather than the existing ground visibly re-rolling under the player's own built towers.
+
+#### CA139 — `for` (was lines 3464-3468)
+Waves 3-5 get a heavy TREE surge (Axeman unlocks at wave 5, so this gives the player a real reason to want it right as it becomes available), waves 8-10 the same for ROCK (Hammerman unlocks at wave 10) — direct request. Both share one rule: never let the surge take the very LAST buildable tile in the active region — if placing one more would leave zero open tiles, skip that placement rather than force it, so the player is never fully walled out of building.
+
+#### CA140 — `for` (was lines 3484-3486)
+Normal respawn: 1-2 pieces, random mix. Surge waves: a much bigger batch, all forced to the one surging type, but ALWAYS leaving at least 1 tile open — "way more" spawns, never "every last spot."
+
+#### CA141 — `for` (was lines 3494-3497)
+Presence-based discount, not stacking with multiple copies of the same tower — owning a single active Axeman/Hammerman is enough to unlock the reduced clear cost for that resource type. Shared by startClearingScenery() (the actual gold charge) and drawScenery()'s cost label below so the displayed price always matches what's actually charged.
+
+#### CA142 — `for` (was lines 3521-3522)
+Path expansion or replacement can remove an item before its timer finishes. Never award its resources or delete the replacement at the same tile.
+
+#### CA143 — `if` (was lines 3539-3541)
+Direct request: "pops out just like the coins from Merchant's bag" — reuses the exact same spawnCoinBurst() Merchant's Money Bag uses, so this reads as the same mechanic in a second place, not a different one that happens to look similar.
+
+#### CA144 — `if` (was lines 3592-3596)
+Non-uniform vertical-only scale, anchored at the tree's base (the bottom of its glyph, roughly item.y + size*0.5) rather than its center — stretching from the center would sink the trunk into the ground as the canopy grew upward. Anchoring at the base keeps the trunk correctly planted while only the canopy extends taller, which is what actually reads as "a taller tree" instead of "a distorted one".
+
+#### CA145 — `if` (was lines 3631-3637)
+Reused across frames by drawDepthSortedLayer() below — a growable pool of generic wrapper objects (never shrinks) plus a working array whose .length is reset to 0 each frame rather than replaced with a fresh array. Previously a brand-new items array AND a brand-new wrapper object per visible enemy/tower/scenery/decal were allocated every single frame just to feed one Y-sort, pure garbage in a decal/entity-heavy scene. Array.prototype.sort() is spec-guaranteed stable (ES2019+) even when comparing reused, mutated objects, so reusing these across frames changes nothing about sort correctness — confirmed before relying on it, not assumed.
+
+#### CA146 — `getDepthSortItem` (was lines 3645-3648)
+Single source of truth for a tower's unspent-stat scroll (📜) screen position — used both to decide its depth-sort position (drawDepthSortedLayer() below) and to actually draw it (drawTowerScroll()), so the two can never drift apart. Identical math to what used to live inline in Tower.draw() before the scroll was pulled out to sort independently.
+
+#### CA147 — `for` (was lines 3697-3700)
+The selected tower is the only one that ever draws a range circle (gated by isSelected inside Tower.draw() — confirmed, not assumed), which can extend far beyond its own body, so it's never culled regardless of position. Every other tower gets the same actor-bounds check as enemies above.
+
+#### CA148 — `if` (was lines 3713-3714)
+Bone/skull/worm/rock debris is ground-layer: drawn immediately, before the depth-sorted actor pass below, so a skull can never render over a living enemy or tower regardless of y ties.
+
+#### CA149 — `for` (was lines 3722-3727)
+Start-line flags — depth-sorted by their own "feet" (the pole's bottom, same point drawFinishFlagPole() plants) exactly like scenery/enemies/towers/debris above, instead of being baked into the static map layer where they'd always draw behind every enemy and blood decal regardless of actual position. A flag has real height (like a tree), so it needs the same occlusion treatment — an enemy standing in front of it should cover it, one standing behind it should be covered by it, which a flat baked layer can never do correctly.
+
+#### CA150 — `roundedRectPath` (was lines 3766-3776)
+Single authoritative source for where the finish line's carpet actually sits, in world pixel space — used both by the carpet render in drawMap() below and by Enemy's own final-stretch movement/escape check (see update()'s `if(!target)` branch and reachEnd()), so the two can never drift out of sync with each other. `edgeX/edgeY` is the true outer boundary of the last path tile (the last waypoint sits at that tile's CENTER — see rebuildPathCellsAndPx() — so the edge is exactly one half-tile further out, in the direction of travel), not the waypoint's own center point. `ux/uy` is the unit direction of travel at that edge. `lowerP`/`upperP` are the two corners of that edge, split by absolute screen Y (further +Y = "lower", further -Y = "upper") regardless of which literal compass direction the path happens to be exiting toward, since the spiral path can end pointing any direction. The finish flags live on the SPAWN tile instead (see computeSpawnFlags() below), not here — this function is carpet-only now.
+
+#### CA151 — `computeFinishLine` (was lines 3793-3796)
+Paints one buildable tile's checkerboard + border look directly into ctx — the exact same per-tile visual drawMap()'s own bulk bake produces for a buildable tile, factored out so finalizeRingExpansion()'s incremental WC3 patch (see paintNewRingTiles() below) can paint just the newly-added ring tiles without re-baking the whole world.
+
+#### CA152 — `paintBuildableTileBase` (was lines 3806-3810)
+Paints one path tile's dirt shading + pebble speckle look directly into ctx — the same visual drawMap()'s own batched bulk-bake pass produces per path tile, just drawn individually instead of batched across the whole map. Only ever called for a handful of tiles at once (one ring's worth), where the extra fill()/beginPath() calls this costs over the batched approach are negligible — drawMap()'s batching exists for the hundreds-of-tiles full-bake case, not this one.
+
+#### CA153 — `for` (was lines 3832-3834)
+Draws the finish-line carpet itself — factored out of drawMap() so the incremental WC3 patch in finalizeRingExpansion() can redraw just the carpet at its new position without re-baking the whole world. Identical geometry/output to what drawMap() used to inline directly.
+
+#### CA154 — `for` (was lines 3859-3866)
+Repaints the tiles under a (now-stale) finish-carpet footprint back to their correct underlying terrain — path shading for a path tile, checkerboard for a buildable tile, plain dirt for anything outside the active region — instead of assuming plain dirt like a naive erase would. The carpet's own thickness (16px) means its footprint can straddle a tile boundary right at the path's outer edge, so a blind "paint dirt over the old carpet's bounding box" could wipe out a sliver of a real buildable/path tile's texture right next to it; walking the actual tile range under that bbox and repainting each one correctly avoids that entirely. Small and cheap — the footprint is only ever a couple of tiles wide.
+
+#### CA155 — `for` (was lines 3885-3888)
+Paints only the tiles present in `newRegion` but not `oldRegion` — the actual newly-added outer ring — instead of re-baking the whole world (see finalizeRingExpansion()'s WC3 patch below). Every delta tile is either a fresh path tile or a fresh buildable tile; each gets exactly the look drawMap()'s bulk bake would already give it.
+
+#### CA156 — `for` (was lines 3900-3909)
+The two flags mark the SPAWN tile instead — where enemies actually appear — not the finish tile, per direct request: they should move with wherever enemies currently spawn from, round to round, rather than sit fixed by the carpet. Mirrors computeFinishLine()'s own geometry exactly, just anchored at the path's FIRST waypoint instead of its last, using the initial direction of travel (leaving the spawn) instead of the final one. Both flags land on the spawn tile's own far edge — the side facing away from that initial direction of travel, i.e. "behind" where enemies first appear — reading as a start line rather than sitting in the middle of the tile. Recomputed fresh from the current path every call, exactly like computeFinishLine() — already correctly follows the spawn point if the path itself changes between rounds (map expansion, reroll), with no caching or extra wave-change handling needed.
+
+#### CA157 — `computeSpawnFlags` (was lines 3926-3929)
+Fixed cosmetic breeze direction/strength for flag flutter (see drawFinishFlagPole below) — deliberately a plain constant, not tied to the gameplay wind system (windStrength/windDirAngle, permanently neutralized — see windCeilingForWave), so every flag leans the same consistent way the whole game, per direct feedback ("I love the wind effect on the flags, it's clean").
+
+#### CA158 — `computeSpawnFlags` (was lines 3933-3939)
+Small procedural flag-and-pole, planted with the pole's BOTTOM exactly at (x,y) — no offset, no emoji glyph. Renders identically crisp on every platform/font, unlike the 🏴/🏳️ characters this replaced, whose rendering quality depended entirely on the browser's own emoji font. awayX/awayY is the direction the banner points away from the pole (typically away from the finish tile's own center) — direction of the WIND itself never drives the underlying gameplay effect (windMissPenalty() stays strength-only), but it does now lean the flutter a little for visual variety — see windDirAngle below.
+
+#### CA159 — `drawFinishFlagPole` (was lines 3945-3951)
+A real long-triangle pennant: the hoist edge (the side actually sewn to the pole) is a straight vertical segment running down from the pole's own top — same x-coordinate as the pole line drawn above, never offset or rippled, since a real seam doesn't wave. Only the free tip flutters, tapering the whole banner to a single point rather than staying a parallelogram with a wavy edge — that parallelogram shape (both edges rippling in parallel) is what read as a kite/diamond before, not a flag. Both black and white flags use this exact same construction — only the fill/outline color differs — so they're attached "the same way" by definition.
+
+#### CA160 — `drawFinishFlagPole` (was lines 3956-3960)
+Purely cosmetic breeze, independent of the (now-neutralized, see windCeilingForWave) gameplay wind system — direct feedback: keep the flags visibly blowing, but in one fixed direction rather than the old drifting windDirAngle, which is exactly why it read as "clean." A constant angle/strength here, not the old windStrength/windDirAngle pair, so every flag on the map leans the same consistent way and never randomly re-drifts mid-game.
+
+#### CA161 — `drawFinishFlagPole` (was lines 3964-3967)
+A slight, constant lean toward the fixed breeze direction on top of the flutter itself — how much of that direction actually pushes on this particular flag depends on the angle between the breeze and the banner's own away-axis, so it doesn't lean the same amount regardless of which way the flag happens to be facing.
+
+#### CA162 — `drawFinishFlagPole` (was lines 3978-3980)
+Both flags get a contrasting outline now — white banner on black, black banner on white — rather than only the white one, so each reads clearly regardless of what's behind it (a dark path tile behind the black flag, a light buildable tile behind the white one).
+
+#### CA163 — `for` (was lines 3997-4016)
+Subtle speckle texture on the path itself — a mix of small darker (packed dirt/pebble) and lighter (dry/dusty patch) dots, sparse and low-opacity by design so it reads as ground detail from a normal viewing distance rather than competing with blood decals or floating combat text during a fight. Baked here, not a per-frame cost on its own — but rebakeMap() runs this whole function on every map expansion (see performExpansion()), so its cost is still real and recurring, just infrequent. Batched into two path/fill calls total (one per color) instead of one beginPath+ellipse+fill per speckle — with up to ~100+ path tiles × 3-5 speckles each, that was potentially 500 separate fill() calls every expansion for what's genuinely one texture layer. The only visual difference is that two same-color speckles landing on top of each other no longer double-darken where they overlap (one continuous fill vs. two separate blended fills) — imperceptible at this size/opacity/sparsity, and this texture was never meant to be read at that level of detail. Small pebbles scattered on the path, replacing an earlier translucent-ellipse "speckle" texture that read as smudgy dark/tan stains rather than ground detail — direct feedback ("random smudges and stains... maybe some pebbles sometimes"). Round, solid-filled (not stretched ellipses, no rotation) so they read as small stones rather than blots, in two grey tones for a little natural variation, and only some tiles get any at all rather than every tile — sparser and more like scattered pebbles than a continuous texture. Still batched into two path/fill calls total (one per tone), same reasoning as before: rebakeMap() runs this on every map expansion, so the batching still matters even though the per-tile density is now lower.
+
+#### CA164 — `for` (was lines 4040-4043)
+Border strokes batched into one path/stroke call instead of one strokeRect() per tile — same reasoning as the speckle batching above, and applies every time this runs (boot + every map expansion). fillRect() itself is left as one call per tile since browsers already fast-path solid rect fills; the per-call overhead here was specifically in the separate stroke pass.
+
+#### CA165 — `for` (was lines 4063-4072)
+Finish-line carpet — a genuinely 2D checkered black/white strip (alternating along BOTH the perpendicular and the thickness axis, not just one row of stripes down one axis — the previous version only alternated one way, which read as plain stripes rather than a checkerboard at this aspect ratio) laid flush against the true outer edge of the last path tile (where an enemy's entire body must actually clear before it counts as having crossed — see computeFinishLine()/Enemy.update()'s final-stretch branch). The strip's outer boundary sits exactly ON that edge and extends back INWARD (toward the path) by its own thickness, so it reads as flush with the boundary rather than overhanging past it into unrendered space. The flags themselves are no longer drawn here — see computeSpawnFlags() below, on the spawn tile instead.
+
+#### CA166 — `for` (was lines 4075-4078)
+The start-line flags are NOT drawn here — they now live in the dynamic depth-sorted layer (see drawDepthSortedLayer()'s 'f' case), same as trees/rocks, so enemies and blood decals can properly occlude/be occluded by them based on actual position instead of a flag always drawing behind every dynamic entity regardless of where either one actually is.
+
+#### CA167 — `for` (was lines 4080-4082)
+Flora — sparse cosmetic ground-cover accents (CONFIG.FLORA). Baked here rather than drawn per-frame since it's flat ground texture with no occlusion needs, unlike trees/rocks (which stay in the dynamic depth-sorted layer specifically so they can occlude/be occluded by actors).
+
+#### CA168 — `rebakeMap` (was lines 4094-4097)
+mapCanvas's raster resolution is dprValue-scaled (see resizeMapCanvasForDpr()), but drawMap() itself is written entirely in world-pixel coordinates — scaling this context by dprValue here lets drawMap() stay coordinate-system-agnostic while the actual baked bitmap ends up at the display's real device-pixel density instead of a flat 1x raster later stretched to fit it.
+
+#### CA169 — `rebakeMap` (was lines 4102-4105)
+Resizes the offscreen static-map canvas to match the current dprValue and re-bakes it — called once at BOOT and again whenever setupCanvas() detects dprValue actually changed (graphics-quality toggle, or a cross-monitor DPI change). WORLD_MAX_W/H (the fixed map extent) never change, only how many raster pixels represent them.
+
+#### CA170 — `acquireActive` (was lines 4142-4146)
+Indexed scan instead of Array.prototype.find(item => !item.active) — find() allocates a new closure on every single call. This runs on every particle/projectile/decal spawn, so at combat-heavy moments (a 40+ particle Mage burst, a swarm death) that's dozens of throwaway closures per frame feeding V8's young-generation GC. Same return semantics (first inactive item, or null), zero closures.
+
+#### CA171 — `constructor` (was lines 4159-4165)
+Global voice budget — a real CPU/audio-thread safeguard, not a mix-quality nicety. Without this, a 40-enemy swarm death or a cluster of simultaneous splash-damage hits could each independently spawn their own full oscillator/buffer/filter graph with zero coordination, and the browser's audio thread has no built-in concept of "too many voices" — it will simply keep constructing nodes until something chokes. Tracked here as expiry timestamps rather than real node handles, since most call sites don't keep a reference to what they triggered — cheap to check, no call-site changes required anywhere else in the file.
+
+#### CA172 — `constructor` (was lines 4168-4173)
+Per-weapon-family cooldown for playImpactSound() — the family-level concurrency limit recommended before any complex voice-stealing system: at most one impact sound per weapon family (BLADE/BLUNT/PIERCE/ARCHER/MAGE/EXPLOSIVE) within a short window, so a dense swarm/ Gatling fight doesn't stack many acoustically-identical impact voices at once. Crits and unusually hard hits always bypass this — an "important" event should never be silently dropped by a routine-event throttle (1.1.21).
+
+#### CA173 — `constructor` (was lines 4175-4177)
+Lightweight, always-on telemetry (near-zero cost — a few integer increments) rather than a gated debug build, so real usage data is available without a separate dev mode. Inspect via the browser console: `audioEngine.debugCounters`.
+
+#### CA174 — `constructor` (was lines 4180-4189)
+Prunes expired entries and reports whether a new voice is allowed to start right now. Called from tone()/noise() themselves (the two lowest-level synthesis primitives everything in the game funnels through, including playImpactSound() which bypasses the play() dispatcher entirely) — so this protects the whole engine without needing per-call-site priority tagging, which would have meant touching dozens of scattered call sites for a first pass. `delay` (seconds, default 0) must match whatever delay the caller will actually schedule the voice at (tone()'s own `delay` param). Previously this always reserved `now + duration`, but tone() can schedule a note at `currentTime + delay` and stop it at `delay + duration` later — so a delayed note's real end time was undercounted, letting its reservation expire while the oscillator was still scheduled or actively playing (1.0.208 fix).
+
+#### CA175 — `reserveVoiceSlot` (was lines 4192-4195)
+In-place compaction instead of .filter(t => t > now) — filter() allocates a brand-new array (plus a closure) on every single sound attempt. This runs on every footstep/impact/projectile sound, so at 5x-10x speed with dozens of sounds/sec it's continuous small-array garbage on the audio bookkeeping path. Same result (only unexpired timestamps remain), zero allocation.
+
+#### CA176 — `unlock` (was lines 4207-4212)
+An already-constructed AudioContext can be suspended by the browser (backgrounding a tab, mobile audio lifecycle policies) independently of whether it was ever "unlocked" once before. Previously this returned immediately whenever `unlocked` was true, with no path to resume() an existing-but-suspended context — a later user gesture couldn't bring audio back for the rest of the session. Now: only construct a fresh context the first time; on every later call, attempt resume() if the existing one isn't already running (1.0.209 fix).
+
+#### CA177 — `if` (was lines 4224-4229)
+Master saturation — a real WaveShaperNode with a hyperbolic-tangent soft-clip curve, the standard analog-style saturation transfer function. This is what makes a mix feel "glued" and produced rather than just loud: it rounds off peaks smoothly (unlike hard digital clipping, which squares them off harshly) and adds subtle warmth/harmonic content. Kept gentle (k=1.5) so it's felt on the loudest simultaneous moments rather than coloring every quiet sound.
+
+#### CA178 — `for` (was lines 4240-4244)
+Master "boxiness" cut — a gentle peaking EQ notch around 350 Hz. That band is where overlapping mid-range sounds (impacts, voices, most of this engine's oscillator/noise content) accumulates into mud when many play at once; carving a shallow dip there gives sub-bass punch and upper-mid transient clarity room to actually cut through instead of everything blurring into the same crowded register.
+
+#### CA179 — `for` (was lines 4256-4261)
+Lazily-built reverb send — a real ConvolverNode fed a procedurally-generated impulse response (exponentially-decaying noise, same buffer-synthesis technique already used in noise() below), not a pre-recorded file. Kept separate from the dry master path with its own small gain so most sounds stay dry/punchy; only genuinely weighty moments (crits, Mage casts) route through it via `reverbSend` on tone()/noise(), giving those specific hits real spatial depth instead of every sound in the game being flat and roomless.
+
+#### CA180 — `for` (was lines 4275-4283)
+Two real bugs, both fixed here. (1) Every reverbSend call site connected the DRY source straight into reverbGain, completely bypassing reverbNode (the actual ConvolverNode) — the convolver had zero input, so nothing was ever actually being reverberated despite the impulse response existing and being generated correctly. (2) reverbGain connected directly to compressor, bypassing this.master entirely — since mute works by zeroing master.gain, any sound using reverbSend (critical hits, Mage, explosions) was inaudible to mute's dry path but NOT to this bypassed wet path, meaning reverbed sounds could still be faintly audible while "muted." Now reverbGain routes through master like every other sound, and the wet-send call sites (below) connect into reverbNode itself, not around it.
+
+#### CA181 — `for` (was lines 4286-4289)
+Normalizes a world X coordinate to a -1..1 stereo pan value relative to the camera's current view — a hit on the left edge of the screen now genuinely sounds more in the left ear. Purely additive: every existing call site that doesn't pass a worldX still plays dead-center exactly as before.
+
+#### CA182 — `panFor` (was lines 4295-4303)
+Briefly dips the whole master bus so a genuinely important moment (wave clear, level-up, losing a life, evolution) reads as more prominent against whatever combat clutter is playing at that instant — cheap, real ducking rather than just making the cue itself louder. Skips entirely while muted: there's no clutter to duck out of silence, and scheduling automation here while muted risked exactly the interaction bug found before building this — the mute toggle does a plain `gain.value =` assignment with no cancelScheduledValues(), so a duck recovery ramp queued while muted could un-mute the game later on its own. Always recovers toward the CURRENT baseline (reads isMuted live) rather than a hardcoded 0.5, so a mute that happens mid-duck is still respected once the recovery ramp completes.
+
+#### CA183 — `tone` (was lines 4321-4331)
+Optional `stablePitch` skips the random ±6% detune below — combat/gore sounds want it (real instances shouldn't sound like exact clones), but UI confirmation sounds should not: pitch randomization on button feedback can make the intended state ("did that work or not?") read as ambiguous rather than clear. Every UI case (click/ui_open/ui_close/ui_deny/ui_buy) passes this now (1.1.22 fix) — every other existing call site is unaffected, since this only changes behavior when explicitly opted into. Cent-based (logarithmic) detune, not linear — verified before changing this: the previous `1 + (Math.random()-0.5)*0.12` swing produced +100.9 cents up but -107.1 cents down for the same ±6% input range, since pitch perception is logarithmic and a linear percentage isn't symmetric around the center frequency. ±100 cents keeps roughly the same audible magnitude as before, now properly symmetric (1.1.23 fix).
+
+#### CA184 — `tone` (was lines 4333-4338)
+Optional `delay` (seconds) schedules this note against the actual audio hardware clock (audioCtx.currentTime) instead of a caller using JS setTimeout() to fire a second tone() call later — setTimeout is the wrong clock for tight audio timing, since it's subject to JS event-loop jitter/throttling (background tabs, heavy simulation frames, etc.), where audio automation scheduled up front is sample-accurate regardless of what the JS thread is doing in the meantime. Omitting delay behaves exactly as before (starts immediately).
+
+#### CA185 — `noise` (was lines 4359-4367)
+Previously allocated a brand-new AudioBuffer and filled it sample-by-sample with Math.random() on EVERY single call — noise() fires extremely often (gore, impacts, explosions, UI), so this was real repeated allocation/CPU work for something that doesn't need to be unique each time. One shared 2-second white-noise buffer is generated once, lazily, and each call just plays a random-offset slice of it — the actual audible noise still differs call to call (different random offset = different noise content), so this is a pure performance win with no audible behavior change. The original per-sample linear fade-out (baked directly into the old buffer's data) is replicated here via a GainNode envelope instead, since a shared buffer can't have a custom per-call fade baked into it.
+
+#### CA186 — `if` (was lines 4379-4384)
+Optional `delay` (seconds), same convention as tone() — schedules this burst against the audio hardware clock instead of firing immediately, for layered/staged envelopes (a quiet pre-transient tick, then the main hit slightly later). Omitting delay behaves exactly as before (1.0.214). Optional `gainMult` (default 1) scales this burst's peak amplitude down — added specifically for ambient sounds like footsteps that need to sit well under combat volume even before accounting for how many of them can overlap (1.0.216).
+
+#### CA187 — `switch` (was lines 4410-4416)
+A distinct sound specifically for an enemy's actual death, separated out from the shared generic 'death' case above — that one is also reused for barricades breaking and scenery (trees/rocks) being cleared, so making IT wetter/more visceral would have made a barricade sound like a splat too. Layered: a wet, slightly muffled noise body (the actual "splat"), a low falling tone underneath for finality/weight, and a very brief bandpass crack on top for texture — scales a touch wetter/heavier for a bigger kill via the same goreScale already driving the rest of the death event's visuals.
+
+#### CA188 — `switch` (was lines 4425-4429)
+A foot's first contact with a fresh pool — BPA ch.5 specifically discusses stepping into a pool as a real physical contact event ("blood is splashed from one shoe to the other"), grounding this as worth its own distinct sound rather than silent like every other footstep. `intensity` here is the pool's own size bonus (0-3) — a bigger puddle sounds a touch wetter/heavier than a light scuff through a small splatter.
+
+#### CA189 — `switch` (was lines 4438-4442)
+drawWaveCountdown()) — a real short-short-short-LONG bugle-call rhythm on a brassier sawtooth voice, deliberately distinct in timbre from the sine-based 'evolution'/'hero'/ 'legendary' motif family so it reads as "a round is starting," not as one more member of that unlock-fanfare vocabulary. stablePitch/force throughout — a state-confirmation cue every player hears every single round should be crisp and unwobbling, never throttled.
+
+#### CA190 — `switch` (was lines 4458-4468)
+the game (previously played on a tower transforming into a new class; that no longer happens at all, but this is the event that replaced it and arguably deserves the fanfare even more, since the unlock is permanent for the rest of the game, not a one-off). A real 3-note ascending fanfare, deliberately bigger than both 'wave' (one tone) and 'levelup' (two tones), with a sparkle harmonic and reverb for real weight. stablePitch since this is a state-confirmation cue that should read unambiguously as "something new just unlocked," not wobble (1.1.22). Ducks the master bus (1.1.24) so this genuinely rare moment gets real headroom against combat clutter. Root of a shared A-based ascending motif family — see 'hero' and 'legendary' below, which reuse and extend this same vocabulary rather than inventing disconnected new ones (1.1.25).
+
+#### CA191 — `top-level` (was lines 4476-4480)
+'wave' (the same one-tone blip as a routine wave clear or chest pickup), despite being a genuine permanent milestone. Quick, bright 2-note "ding" on the same A-root language as 'evolution' — a lesser sibling of that motif family, not a disconnected new sound: this is the smaller of the game's two real achievement tiers, 'legendary' below is the bigger one (1.1.25).
+
+#### CA192 — `top-level` (was lines 4486-4491)
+single rarest, most significant milestone a tower can reach in the entire game. Reuses 'evolution's exact 4-note opening verbatim, then extends it further with a 5th rising note and a sustained "double-stop" (two notes held together) for a conclusive finish — recontextualizing the same shared motif into its grandest form, rather than building a disconnected new fanfare. The deepest duck in the game, since this is the rarest moment possible (1.1.25).
+
+#### CA193 — `top-level` (was lines 4503-4507)
+2600Hz highpass noise burst + a 720Hz triangle spike (0.06s/0.05s total) — user feedback confirmed it read as too high-pitched and too quick for an actual sword slash. Widened and lowered the whoosh to a mid bandpass sweep (more like air being cut than a hiss), dropped and lengthened the metallic ring, and staged the ring slightly after the whoosh's onset so it reads as the blade landing, not one simultaneous spike (1.0.215).
+
+#### CA194 — `top-level` (was lines 4517-4519)
+the crushing impact itself, then an extended low tail so the hit's weight lingers instead of cutting off the instant the transient ends (1.0.214, prototyping the staged envelope idea against a real attack rather than every sound at once).
+
+#### CA195 — `top-level` (was lines 4550-4551)
+faint anticipation shimmer, then the existing blast, then an extended bass tail so the cast's weight lingers into the shot rather than cutting off abruptly (1.0.214).
+
+#### CA196 — `top-level` (was lines 4561-4569)
+---- ambient enemy sounds ---- `intensity` here is a coarse weight class (0 light/small, 1 medium, 2 heavy/armored) — see FOOTSTEP_WEIGHT for how each enemy type is classified. Two things keep this from ever becoming a wall of noise during a big swarm wave (1.0.216 fix — previously it did, with dozens of Swarm ants all requesting a step around the same time, each at noise()'s untouched default gain of 1, the same loudness as a real combat impact): (1) `lastFootstepAt` throttles actual playback to at most one every ~70ms engine-wide, regardless of how many enemies call this in the same frame; (2) a real gainMult keeps even a single step well under combat volume, which the pre-1.0.216 version never actually had.
+
+#### CA197 — `top-level` (was lines 4581-4582)
+pitch-drop, once per enemy, telegraphing a state change through sound rather than only a health bar (1.0.214).
+
+#### CA198 — `top-level` (was lines 4587-4595)
+---- dedicated menu/UI sounds, distinct from combat ---- Every case below passes stablePitch=true to tone() — UI confirmation sounds shouldn't randomize pitch, since that can make the intended state ("did that work?") read as ambiguous rather than clear (1.1.22 fix; previously inherited tone()'s default ±6% random detune like every other sound in the game). Also verified the deny/confirm/open/close acoustic grammar while making this change: ui_buy is already bright/rising/sine, ui_deny already low/falling/buzzy-square, ui_open already expanding-upward, ui_close already contracting-downward — exactly the "confirm bright & up, deny dark & down" pattern the reference material recommends. Confirmed correct, not changed.
+
+#### CA199 — `top-level` (was lines 4602-4604)
+a plain 'click': a soft sine glide up a perfect fourth, with a higher, slightly delayed harmonic a third above for shimmer, both sent to reverb for a smooth, satisfying tail rather than the short, dry blip every other menu tap uses.
+
+#### CA200 — `top-level` (was lines 4609-4615)
+"spoken" as a cute Simlish-style burst of gibberish rather than real speech, with two short phrase parts (like two words) and a pitch step between them so it reads as actual speech intonation rather than one flat continuous babble. `intensity` carries the tower's archetype ('WARRIOR'/'ARCHER'/'MAGE') so each family has a genuinely distinct register: Archer highest pitch, Warrior medium, Mage lowest AND slowest to talk — `tempoMult` stretches Mage's syllable duration and gaps too, not just its pitch, so it genuinely reads as a slower, more deliberate voice (1.1.31, corrected 1.1.32).
+
+#### CA201 — `for` (was lines 4643-4648)
+from spawn_chatter's full 2-part phrase: one short burst instead of two, so it reads as a brief reaction rather than a full quip. Same per-archetype register/tempo system. `pitchBias` (also carried via intensity, alongside the archetype — see the two call sites) shifts the whole burst up or down within that register: a hit reaction sits lower (a startled "oof"), a level-up sits higher (an excited "yes!") — same tower, same archetype range, genuinely different reaction (1.1.31, corrected 1.1.32).
+
+#### CA202 — `playSound` (was lines 4672-4690)
+Impact sound now scales with the SAME hitPower/isCritical roll already driving the blood visuals (hitRoll/damageVariance) — previously combat sound was purely static per weapon type regardless of how hard a hit actually landed, the one place the "sync numbers/visuals/audio to the same roll" pattern hadn't reached yet. Distinct timbre per archetype, physically reasoned from the same kinetic-energy framing used throughout (Physics for JS Games — energy scales with v², so sharper/higher-velocity impacts get brighter high-frequency noise content, heavier/slower ones get more low-end weight) rather than just louder copies of one generic sound. `worldX` feeds the new stereo panner so a hit's sound comes from roughly the right side of the screen. Cheap deterministic hash for stable per-tower audio bias — same tower always gets the same small pitch/brightness offset (derived from its own persistent `id`, assigned once at creation), so six Swordsmen don't sound like exact clones without needing fresh randomness on every hit. Returns a value in roughly [0.97, 1.03] — deliberately small; class identity must stay intact. A clean classification seam for future audio-priority work (voice stealing, distance-based culling exceptions, etc. — none of that exists yet, deliberately deferred; see BACKLOG.md's "Audio mastery — deferred passes"). Recognizes the four cases the reference material's own priority framing calls "important": a boss-related event, the currently-selected tower, a critical hit, and an evolution. Not wired into deep logic today — this exists so a future pass has one place to ask "does this event matter more than routine background noise?" instead of four different ad-hoc checks scattered through the file.
+
+#### CA203 — `playImpactSound` (was lines 4709-4712)
+Family-level concurrency suppression — at most one impact sound per weapon family within a short window, so a dense Gatling/swarm fight doesn't stack many acoustically-identical impact voices at once. Crits and hard hits always bypass this: an "important" event should never be silently dropped by a routine-event throttle.
+
+#### CA204 — `if` (was lines 4723-4726)
+At 5x/10x, routine (non-crit, non-hard) hits drop their secondary layer — the game is executing every attack regardless, but at that density individual secondary layers are no longer perceptually distinct from each other, so thinning them keeps the mix legible instead of turning into an undifferentiated wall of noise.
+
+#### CA205 — `if` (was lines 4729-4730)
+sharp, bright, short — a real cutting edge, higher-frequency noise content matching a thin, fast-moving contact surface
+
+#### CA206 — `if` (was lines 4738-4739)
+thin, fast, focused — a narrow puncture concentrates force into a small contact area, reads as a tight high crack rather than a broad noisy impact
+
+#### CA207 — `if` (was lines 4743-4744)
+soft, understated — matches the entry-wound forensic point (real puncture wounds show modest external signs despite real damage): a quiet thwack, not a dramatic crack
+
+#### CA208 — `if` (was lines 4748-4749)
+layered — bright shimmer plus real low-end weight, scaling hardest of any archetype since Mage already has the widest damage variance band (±40%) in the game
+
+#### CA209 — `buyLifeCost` (was lines 4767-4769)
+Free-barricade milestone charges — granted periodically (see the wave-completion handler), capped so they can't stockpile indefinitely. Consumed at build time before wood/stone are ever checked or deducted.
+
+#### CA210 — `buyLifeCost` (was lines 4772-4775)
+Shared affordability check for the build tray/hover/placement handlers. Every other Build-menu tower costs gold (checked in the fallback branch below); Barricade is the one exception — it's bought directly from Build with wood/stone (or a free charge), not gold, since the 1.1.47 fix moved it out of the Shop's confusing buy-into-inventory-then-drag flow.
+
+#### CA211 — `towerCountOnBoard` (was lines 4781-4785)
+Single authoritative cost calculation — used by canAffordTower(), the actual gold deduction at placement, and every build-tray cost label, so none of them can drift out of sync with each other. Returns the flat CONFIG.TOWERS baseCost unchanged for every type except the 3 in SCALING_COST_TYPES, where it compounds by SCALING_COST_GROWTH per already-active copy of that same type on the board.
+
+#### CA212 — `currentBuildCost` (was lines 4791-4793)
+The MAX_ONE_PER_BOARD_TYPES cap — distinct from affordability, since a player could easily have enough gold for a second Pope and still be blocked. Selling/losing the existing one frees the slot again (this checks live board state, not a one-time-ever flag).
+
+#### CA213 — `if` (was lines 4808-4815)
+Per-hit chance that a landed hit actually produces blood at all, on top of the goreMode toggle itself — every hit produced blood unconditionally before this (goreMode being on meant a 100% per-hit rate), which read as excessive: real damage doesn't always visibly draw blood every single time it connects. Reduced by ~30% from that implicit 100% baseline, applied identically across every archetype (Warrior/Archer/Mage/dust) rather than singling one out, since the "too much blood" report wasn't archetype-specific. Purely a frequency gate — it decides whether the existing blood-generation code in applyDamage() runs at all for a given hit, and changes nothing about what that code actually does on the hits that do pass it.
+
+#### CA214 — `if` (was lines 4828-4837)
+Ambient wind — 0 (calm) to 1 (max gust), a bounded random walk (each new target is a step away from the CURRENT value, not an independent re-roll) so it can never jump straight to a wildly different level — always ramps through the intermediate range on the way there. Capped per-wave by windCeilingForWave (see startNextWave()), which itself scales with progress — rough wind is genuinely rare in the early game and becomes a real possibility later, not present from wave 1. Direction (windDirAngle) is a separate, independently-walking value — cosmetic only, purely for the flag's flutter lean; the gameplay effect (windMissPenalty()) stays direction-agnostic, only strength matters there. Both advance via gameTime's own dt (already scaled by gameSpeed), so gusts and their gameplay effect speed up consistently with the game rather than gusting in real-time while their effect lags behind at high speed.
+
+#### CA215 — `if` (was lines 4864-4871)
+Current wind's added miss-chance penalty for a tower's own ranged attack roll — Archer- and Mage-archetype classes only, never Warriors (a melee swing isn't meaningfully wind-affected the way an arrow or bolt actually in flight is). Mage gets an extra, quadratic-in-wind term on top of the shared base penalty — "even more when very windy," not just the same flat amount every archetype gets — since a slower, heavier magic bolt spends more time in flight for a gust to actually throw it off than a faster arrow does. Direction of the wind never enters into this — only its strength — matching the underlying gameplay effect, though the flag's visual flutter now does lean with windDirAngle for a bit of variety.
+
+#### CA216 — `windMissPenalty` (was lines 4880-4894)
+Lightweight UI-preference persistence — deliberately separate from the file-based full game save system (serializeGameState/restoreGameState), which stays exactly as-is. This is only for the three settings a returning player would otherwise have to re-toggle every single session: graphics quality, mute, and the 18+ gore toggle. Wrapped in try/catch since localStorage can throw in restrictive contexts (private browsing in some browsers, disabled storage) — a failure here should never break the game, just silently skip persistence. User-facing decal budget tiers (Settings > Video > "Max blood decals") — independent of the coarse Low/High graphicsQuality toggle chosen on the start screen, which still governs the separate glow/shadow effect layers elsewhere. null means "not set yet," in which case decalCapacity() (declared later, near MAX_DECALS) falls back to the graphicsQuality-based default so an existing save/prefs blob with no value for this still behaves exactly as it did before this setting existed. Declared here, ahead of savePrefs()/loadPrefs() and the Settings-panel sync IIFE below — all three read or write it during initial script execution, so it has to exist before this point, not down with decalCapacity() and the rest of the decal system (that was the actual "Cannot access before initialization" boot crash).
+
+#### CA217 — `loadPrefs` (was lines 4920-4923)
+Sync the actual DOM controls to whatever loadPrefs() just applied — the variables above are updated, but the checkboxes/radio buttons/selected-class styling still default to their hardcoded HTML state until told otherwise. Wrapped defensively since this runs before the rest of boot; if any element genuinely doesn't exist yet, skip it rather than throw.
+
+#### CA218 — `if` (was lines 4938-4940)
+Decal budget dropdown — separate control from the graphicsQuality radios above (see decalCapacity()). The four named tiers match the values in the <select>'s own options exactly; anything else stored (a custom number, or nothing yet) falls into the "Custom…" branch.
+
+#### CA219 — `if` (was lines 4965-4967)
+Never set before — default the visible control to match today's graphicsQuality-based behavior (Low→250, High→750) without writing decalBudgetOverride until the player actually touches the control, so an untouched install keeps its exact prior behavior.
+
+#### CA220 — `if` (was lines 4976-4979)
+Flat delay (added to every spawn's own already-tuned delay in startNextWave()) before the first enemy of a new wave actually arrives — gives the round-start fanfare/countdown/leaf-gust/camera pan a moment to land instead of the wave visually starting and spawning in the same instant. See drawWaveCountdown() for the on-screen "3-2-1-GO" and the 'roundStart' sound case for the fanfare.
+
+#### CA221 — `if` (was lines 4987-4991)
+Real-world (Date.now()) session start — captured here, near the top of script execution, so it's as close as possible to actual page-load time rather than whenever some later system happens to initialize. Used only for debug-log reporting (session uptime, and timestamping when a worst-case frame/wall-gap actually happened in real time, not just which wave) — never read by simulation logic, so it can't affect gameplay.
+
+#### CA222 — `if` (was lines 4993-4995)
+Tab-visibility history — directly answers "was that wall-clock gap actually a tab switch?" instead of leaving it as an inference from a high gap number alone, which several debug logs this session left ambiguous.
+
+#### CA223 — `if` (was lines 4997-4999)
+Cumulative time spent paused this session (manual pause + auto-pause both count), plus when the current pause (if any) began — same real-world clock as sessionStartRealTime above, for the debug log's own use only.
+
+#### CA224 — `if` (was lines 5004-5006)
+The only item in the game right now: a rare universal drop, works on any tower (Dota-style shared item pool, not the old per-class shop gear), picked up by dragging it onto a tower. LUCKY_BRANCH (defined earlier, alongside UNIVERSAL_ITEMS) doubles as this rare scenery-clear drop — same universal item either way it's obtained.
+
+#### CA225 — `if` (was lines 5013-5014)
+Evict the oldest item that isn't the one currently being dragged — never yank an item out from under an active drag interaction.
+
+#### CA226 — `checkTowerUnlocks` (was lines 5046-5053)
+Scans every CONFIG.TOWERS entry with a real wave gate (unlocksAfterWave > 0) — not just STARTER_TOWER_TYPES (which are all wave 0 anyway, so that old filter never actually matched anything). Newly-qualifying types are folded into unlockedTowerTypes — the SAME permanent, localStorage-persisted set evolution-based unlocks already use — so a wave-gated class becomes a genuine PERMANENT unlock the first time its wave is reached, with one combined toast (not one per tower, in case two land on the same wave), per direct feedback ("these are permanent unlocks... the first time should alert the player"). Skips anything already in the set so this is safe to run every wave clear.
+
+#### CA227 — `showWaveSummary` (was lines 5130-5131)
+Once per round (wave completion): every active Cleric heals one damaged tower, always picking the lowest-HP-fraction target not already claimed by another Cleric this same round.
+
+#### CA228 — `for` (was lines 5152-5154)
+--- Kill streaks, stat gains from kills, and Legendary units --- 10x harder than 1.4.2, and only ONE tower holds a streak at a time — the one currently taking the last hits.
+
+#### CA229 — `showKillstreakBanner` (was lines 5177-5180)
+Naming (500 trained stats) and mastery (1000) are identity milestones only — no damage, HP, shield or heal. The trained stats themselves are the combat reward. Secondary progression line — deliberately silent until the milestone is actually near, so it never competes with the tower's next unlock hint.
+
+#### CA230 — `showKillstreakBanner` (was lines 5182-5186)
+Which mix this stickman is closest to, and what's still missing — so the elemental goal is visible while training instead of a surprise at 500. Elemental status on hit. A tower's locked attunement (or the mixed element it earned from its stat pair) makes its attacks carry that element. Proc chance scales with the attuned stat, from ATTUNEMENT_PROC_MIN up to ATTUNEMENT_PROC_MAX at the 500 cap.
+
+#### CA231 — `switch` (was lines 5237-5238)
+The three mixes are tuned to comparable value with different shapes: Proton is damage over time, Quasar is sustained control, Dark Matter is a short hard stop.
+
+#### CA232 — `statTierNote` (was lines 5267-5270)
+Direct feedback: "I don't know what an archer recruit is... don't need to show recruits." This whole named-tier system (STAT_TIER_NAMES) was undocumented/unrequested UI on top of the real stat system — removed from every player-facing display; the underlying stats themselves are completely untouched.
+
+#### CA233 — `progressionMilestoneNote` (was lines 5281-5282)
+Per-class damage explanation. Every number here is read from the tower's live state, so it can never drift from recomputeStats().
+
+#### CA234 — `dpsBreakdownText` (was lines 5311-5312)
+Version-update notice: shown once per new version on the attract screen, with the headline changes for that release. Opt out in the dialog or in Settings > Video.
+
+#### CA235 — `dpsBreakdownText` (was lines 5314-5325)
+Embedded changelog (generated from CHANGELOG.md at release time). The what's-new dialog shows every entry newer than the version last played, scrollable, so returning players see exactly what changed while they were away. CHANGELOG_ENTRIES used to be a multi-hundred-KB array hand-duplicated from CHANGELOG.md in the repo, authored twice and prone to drifting out of sync (it did, more than once). CHANGELOG.md is now the single source of truth: this fetches it same-origin when the what's-new dialog actually opens (never during gameplay) and parses just the "## [version] - date — title" headings and their "- " bullet items into the same {v, date, title, items} shape the dialog already expects. Requires the page to be served over HTTP(S) with CHANGELOG.md alongside index.html at the same origin (true for GitHub Pages) — opening index.html directly via file:// can't fetch a sibling file under the browser's same-origin policy, so that case shows a plain fallback instead (see maybeShowUpdateNotice() below) rather than silently failing.
+
+#### CA236 — `dpsBreakdownText` (was lines 5333-5338)
+Two heading shapes exist across the project's history: "## [v] - date — title" (current) and plain "## [v] - date" with no title (older entries, before titles were added) — the title group is optional to catch both. Item lines are almost always "- " bullets, but a handful of entries predate that convention and are a single prose paragraph instead; those fall back to one item holding the whole paragraph so the dialog still shows something rather than an empty section.
+
+#### CA237 — `compareVersions` (was lines 5375-5379)
+Same-origin fetch of a sibling file fails under file:// (no server, no same-origin context to fetch against) — a real, expected case for anyone who downloaded index.html directly rather than running it from the hosted repo. Fail visibly and plainly rather than silently: still show the dialog (so version-tracking/dismissal still works), just with a pointer instead of content.
+
+#### CA238 — `dismissUpdateNotice` (was lines 5413-5414)
+RPG-style tier feedback: every STAT_TIER_STEP trained points is a visible, audible rank-up, so the long grind between the big milestones still pays out regularly.
+
+#### CA239 — `dismissUpdateNotice` (was lines 5416-5419)
+STAT_TIER_NAMES and statTierName() removed — the named-tier display ("⭐ Recruit") was pulled from every UI site above; nothing calls this anymore, so per this project's own dead-code rule it's deleted, not left orphaned. STAT_TIER_STEP (the tier-crossing threshold itself) is still used by refreshStatTier()'s milestone particle/sound celebration.
+
+#### CA240 — `refreshStatTier` (was lines 5425-5426)
+Floating text naming the tier ("⭐ Recruit") removed along with the rest of STAT_TIER_NAMES — kept the particle burst + sound as a plain, unnamed "milestone reached" cue.
+
+#### CA241 — `checkLegendaryStatus` (was lines 5447-5450)
+Training: every completed 100-XP bar grants one player-directed stat point. Last hits carry the full size-tier XP (Tiny 17 / Small 20 / Standard 25 / Large 40 / Boss 50 — roughly 6 Tiny or 2-3 Large per bar); every other damaging tower splits a much smaller assist pool by damage share. An enemy that crossed the finish line only ever pays a reduced shared cleanup pool.
+
+#### CA242 — `xpForNextLevel` (was lines 5466-5468)
+Each completed training bar rolls 2 × (1-3) stat points: 2-6 per bar, average 4, so a farmed carry climbs quickly while every point still passes through the existing diminishing-returns stat curves (see statEffect callers) rather than scaling combat linearly.
+
+#### CA243 — `if` (was lines 5477-5478)
+Fully trained: this tower's own XP share becomes gold, at MASTERY_XP_PER_GOLD, keeping the fractional remainder so nothing is lost to rounding.
+
+#### CA244 — `while` (was lines 5494-5496)
+Capacity check first: assigned stats + unspent points can never exceed STAT_TOTAL_CAP. With no room left, the bar is NOT consumed — the XP is held until the player spends what they already have, so nothing is silently destroyed.
+
+#### CA245 — `if` (was lines 5510-5515)
+"Training milestone," not a level-up — this used to read "LEVEL X!" using tower.expLevel, which is exactly the mislabeling this whole fix addresses: expLevel is an internal XP counter, not the tower's actual displayed level (that's tower.level, driven only by Promote — see the inspect-panel fix). The player picks WHICH stat this point goes toward separately via allocateStat(); this call site doesn't know that choice yet, so it reports the point gained generically rather than naming a specific stat.
+
+#### CA246 — `for` (was lines 5562-5564)
+Passive XP for surviving the wave, paid to every active tower. Deliberately small next to a last hit (Tiny 17 / Large 40) so it never competes with killing blows — it's the floor that keeps a back-line or newly-built unit progressing at all.
+
+#### CA247 — `if` (was lines 5585-5586)
+--- Save / Load: a downloadable .txt file containing a random seed (cosmetic identifier) plus the full serialized game state as JSON, restorable on this device or any other. ---
+
+#### CA248 — `generateSaveSeed` (was lines 5593-5610)
+State classification, documented explicitly rather than left implicit — every piece of runtime state in this game falls into exactly one of these categories, and serializeGameState() below only ever touches the first: PERSISTENT      — survives a save/load round-trip: gold, lives, tower stats/items/position, wavesCompleted, unlockedTowerTypes, seenEnemyTypes, region/path shape. Everything serializeGameState() actually writes out. RECONSTRUCTABLE — never saved, rebuilt fresh from PERSISTENT state on load: spatial hashes (buildEnemyHash() et al.), the barricade scratch collections, waveTimer/ activeWavePlan (a fresh wave always starts IDLE after a load, never mid-spawn — the plan rebuilds deterministically from waveRunSeed), camera position, UI selection state. TRANSIENT       — never saved, never reconstructed, simply doesn't exist after a load: projectiles, particles, floating text, decals, blowingLeaves, hit-stop, screen shake, active audio voices, catPool/skeletonPool companions, wind (windStrength/windTarget reset to a fresh calm state — see resetGame()). This is already exactly what the code does — restoreGameState() clears every TRANSIENT/ RECONSTRUCTABLE pool at the top and only ever assigns from PERSISTENT fields below; documented here so that stays a deliberate invariant rather than an implicit accident of how the function happened to be written.
+
+#### CA249 — `serializeGameState` (was lines 5626-5630)
+schemaVersion is separate from gameVersion on purpose — gameVersion answers "which release produced this save", schemaVersion answers "which serialized structure is this". They've been conflated until now since no save-format change has ever needed migration logic; this just gives that a place to go the day it does, without touching every existing save's gameVersion semantics. Starts at 1 — nothing to migrate yet, this only adds the field.
+
+#### CA250 — `serializeGameState` (was lines 5634-5636)
+Spiral ring-reveal in-progress state (see beginNextRingReveal()) — a mid-spiral buildable ring can already have player-built towers on its revealed tiles, so this is real progress, not reconstructable filler; omitted entirely (stays undefined) when no ring is in progress.
+
+#### CA251 — `downloadSaveFile` (was lines 5659-5666)
+Deterministic migration for a base-class tower loaded from a save that predates the attunement field entirely (state.towers[i].attunement === undefined). In practice this codebase's checkEvolution()/checkAttunementAndSpecialization() has always run synchronously right after every stat change (both allocateStat() and upgrade()'s random growth call it), so a tower that's still a base type when saved should never actually have a stat at or above this threshold under any version of this game's evolution rules — this exists as a defensive safety net (a hand-edited save, or any future change to that invariant) rather than a fix for something that can currently occur in real save data.
+
+#### CA252 — `restoreGameState` (was lines 5695-5696)
+Spiral ring-reveal in-progress state (see beginNextRingReveal()) — restore it if this save captured one mid-spiral, otherwise a fresh/older save has nothing in progress.
+
+#### CA253 — `if` (was lines 5710-5711)
+Union with the permanent (account-wide) set, never replace it — an older save simply has nothing to add here, it doesn't roll back unlocks already earned on other playthroughs.
+
+#### CA254 — `if` (was lines 5717-5718)
+older save from before this feature existed — reconstruct from every wave already passed, so an in-progress run doesn't suddenly re-announce enemies the player has long since met
+
+#### CA255 — `if` (was lines 5749-5750)
+Legacy saves predate the caps: clamp each stat to 500, then trim the combined total to 1000 from the largest stat down, deterministically. Earned class unlocks are untouched.
+
+#### CA256 — `if` (was lines 5767-5768)
+save made before a type's maxHp scale changed (e.g. Barricade). maxHp itself is never restored from save data — it's always fully determined by tower type in create().
+
+#### CA257 — `if` (was lines 5781-5785)
+Same hud-top reveal playBtn's own handler does — genuinely missing before. Loading a save file hid the start screen and entered PLAYING, but hud-top (display:none by default) was never told to show, leaving a loaded game with full gameplay visible and zero HUD bar. Only reachable via loadSaveFileText() -> here, never on a fresh Play, which is why this specific path had never been touched by the fresh-start reveal logic before.
+
+#### CA258 — `if` (was lines 5794-5802)
+Rejects an obviously malformed save BEFORE restoreGameState() runs — that function destructively clears all live state (enemyPool/towerPool/sceneryMap) in its very first lines, with no validation beforehand, so by the time a missing/wrong-type field throws deeper inside it, the live session is already gone with no way back. Checks the specific fields restoreGameState() dereferences without a guard early on — pathWaypointTiles is the exact one whose absence throws inside rebuildPathCellsAndPx()'s `pathWaypointTiles.map(...)` call. Not exhaustive (a save with the right top-level shape but nonsensical nested data could still fail later), but it closes the reproduced crash and the most common real failure mode: a non-save file, or one from an incompatible/corrupted source.
+
+#### CA259 — `validateSaveShape` (was lines 5808-5816)
+restoreGameState() destructively clears every live pool (enemyPool/towerPool/projectilePool/ sceneryMap) in its first lines with no validation of its own, then iterates state.towers/ state.scenery directly. If either field is present but malformed (not an array, or a tower entry with a type that isn't a real CONFIG.TOWERS key — t.create() dereferences CONFIG.TOWERS[type].baseCost unguarded), that iteration throws AFTER the destructive clear has already run. loadSaveFileText()'s try/catch swallows the exception and reports "could not read that save file," which reads as "nothing happened" but the live in-progress session was actually already destroyed. Reject here, before restoreGameState() ever runs, so a malformed towers/scenery payload fails the same way an obviously-invalid file already did.
+
+#### CA260 — `startCameraFollow` (was lines 5853-5856)
+Pans the camera to the wave's spawn point when a new wave actually starts, the same kind of eased pan/zoom already used for tower selection (see updateCameraFollow() below) but a fully separate, independent mechanism — deliberately not sharing state or code with the tower-follow system, so this addition can't risk regressing that already-tuned behavior at all.
+
+#### CA261 — `towerVisualCenterY` (was lines 5884-5887)
+local sprite span is roughly head-top (-31) to feet (+20) before scaling, so the visual midpoint sits at local y ≈ -5.5 relative to the foot-level anchor drawStickman actually translates to. Scaled by the same STICKMAN_SCALE + this tower's own rolled build.scaleY (not the flat per-class JOB_BUILD value — every tower has its own height variance now).
+
+#### CA262 — `if` (was lines 5906-5910)
+target X/Y computed ONCE here using the final zoom, not recomputed every frame against the currently-animating zoom — that coupling made camera.x/y follow a quadratic path instead of a straight line (position and zoom share the same easing curve, and position depends on zoom, so recomputing the target each frame let it briefly move the wrong way before correcting). Each of x, y, and zoom now interpolates independently along its own line.
+
+#### CA263 — `if` (was lines 5918-5919)
+smooth ease-in-out cubic — accelerates then decelerates, so motion is visible throughout instead of nearly all of it being crammed into the final instant of a harsher curve
+
+#### CA264 — `if` (was lines 5924-5926)
+deliberately no clampCamera() here — this is an intentional, explicit camera move, and the normal pan bounds are calculated against the full theoretical WORLD_MAX_W/H rather than the currently revealed play area, so they were silently fighting this centering every frame
+
+#### CA265 — `if` (was lines 5937-5938)
+Paused camera gestures can fire pointermove at 120-240 Hz; rendering synchronously on each one ran several full renders per display frame. Coalesced to at most one render per frame.
+
+#### CA266 — `requestPausedRender` (was lines 5945-5946)
+Flick-to-glide panning: pointer velocity is smoothed during a drag, then decays exponentially after release. Runs once per rendered frame from loop() — no timers, no allocation.
+
+#### CA267 — `zoomAt` (was lines 6004-6006)
+Focuses the camera on the current active region — used at game start (and after restart) so the player sees their small starting island up close instead of the corner of a much bigger world. Snaps the view onto a tower that just earned a killstreak tier. Opt-out: Settings > Video.
+
+#### CA268 — `if` (was lines 6032-6046)
+Enemy's legal states, documented explicitly (booleans/flags below remain the actual implementation — this is not a refactor into a formal enum, which would touch every read site across the file for no behavioral change, given every invariant below was individually verified true in the 1.2.27 audit pass). At most one of these is ever true for an active enemy: SPAWNING  — briefly true only during spawn()'s own execution, never observed between frames ADVANCING — active, !escaped, not currently pileBlocked — the ordinary default state QUEUED    — active, !escaped, pileBlocked === true (waiting at a barricade) ESCAPED   — active, escaped === true (reached the finish line, now wandering/possibly attacking a tower — see updateEscaped()); mutually exclusive with QUEUED/ADVANCING, checked first in update()'s own dispatch INACTIVE  — active === false; the only state a pooled slot can be reused from (spawn() resets every field listed elsewhere in this file's own pool-reuse comments) "dying" has no separate state here — die() sets active=false (-> INACTIVE) synchronously; the visible death animation (deathAnims) is TRANSIENT presentation state, not a gameplay state this enemy instance is still "in".
+
+#### CA269 — `if` (was lines 6070-6076)
+Smaller "minion" filler variant — a much weaker, much cheaper version of the same enemy type, meant to be common ordinary spawn composition rather than a rare event (see SIZE_TIER_BANDS for wave-planned enemies), giving frequent easy last-hit opportunities without changing what TYPE of enemy is on the path. No special-ability suppression needed here — every enemy special ability in this game is keyed off `type`, not off variant flags, so a mini Splitter still splits, a mini Fire enemy still ignites, etc. — it's simply a weaker, cheaper version of the same behavior, not a stripped-down one.
+
+#### CA270 — `if` (was lines 6083-6092)
+Natural per-instance size variance — even within one enemy type, individuals aren't identical: some ants are smaller, some bigger, not just the rare golden "Big" variant above. Tightened from an initial ±20% to ±12% — the wider range was overlapping enough between adjacent enemy TYPES (a big Swarm could match a small Grunt in pixel size) that it was drowning out the type-level size hierarchy (ants smaller than Grunts, Tank/Boulder bigger than Grunts) that the base radius values above are specifically designed to convey. A fair, modest stat correlation goes with it (a smaller individual is a bit weaker and worth a bit less; a bigger one a bit tougher and worth a bit more) rather than a pure cosmetic change, which would otherwise let a smaller hitbox squeeze through congestion with zero tradeoff.
+
+#### CA271 — `top-level` (was lines 6138-6143)
+Same bump animation as touchingBarricade above, but for melee-range breakaway/escaped attacks against a tower instead of a barricade — set to the tower being actively attacked while in range, null otherwise. Render-only (see draw()), reuses the same bumpTime clock; never both set at once in practice (a barricade-blocked enemy can't simultaneously be off-path attacking a tower), but even if they were, draw() just adds both offsets together the same way it already does with the separate hit-flinch offset.
+
+#### CA272 — `top-level` (was lines 6145-6146)
+Breakaway: a small per-spawn chance this enemy abandons the path partway through to 1v1 the nearest tower instead. Fire/Ice specialize in this and inflict a status effect.
+
+#### CA273 — `top-level` (was lines 6172-6174)
+Ambient footstep cadence — a fixed stride LENGTH (not a wall-clock interval), so a faster enemy naturally steps more often without needing its own separate timer scaling. `null` weight (WRAITH) disables footsteps entirely for a deliberately silent, ghostly glide.
+
+#### CA274 — `top-level` (was lines 6182-6184)
+Escaped/wandering state — see reachEnd()/updateEscaped(). Reset explicitly on every reuse (pool slot could previously have belonged to an escaped enemy that was later cleared by startNextWave() without passing back through spawn()'s normal death/deactivation path).
+
+#### CA275 — `top-level` (was lines 6188-6190)
+Creep-camp state — see spawnHut()/spawnHutGuardian()/updateGuardian()/updateHutBuilding(). Reset explicitly on every reuse for the same reason as the escaped-state block above: a pool slot could previously have belonged to a guardian or hut structure.
+
+#### CA276 — `applyBleed` (was lines 6213-6222)
+Cumulative — multiple arrows stuck in the same target add to the total bleed rate instead of just refreshing to whichever hit was strongest. A real body with three arrows in it bleeds faster than one with a single arrow — capped at 4 stacks so a fast-firing Archer can't compound this into an instant, unbounded death spiral; a real body also only has so much blood pressure to lose regardless of how many wounds are open. Each stack's own damage-per-tick is tracked individually (bleedStackDamages) rather than one running sum, since different arrows can roll different damage — once at the 4-stack cap, a new application still refreshes duration below but no longer adds to the damage total, which is what actually enforces the cap this comment describes (a bare stack-count cap with an unbounded running sum underneath it wouldn't).
+
+#### CA277 — `update` (was lines 6232-6235)
+captured before anything this tick moves this enemy — used by resolveSweptEnemyCollisions() to catch fast movers that fully cross paths within one frame (their positions never actually coincide at any frame boundary, so the ordinary end-of-frame collision check never sees an overlap and the two visibly walk straight through one another)
+
+#### CA278 — `update` (was lines 6237-6238)
+periodic reminder labels for active status effects — a slow/curse applied minutes ago is easy to lose track of, so surface what's actually affecting this unit every 120 seconds
+
+#### CA279 — `if` (was lines 6249-6252)
+A much more frequent, more eye-catching reminder specifically for bleeding — a jump/wiggle/ fade icon (spawnBleedIcon) rather than the plain text label above, since an open wound is the status effect most worth glancing at mid-fight. Separate timer from statusLabelTimer's 120s cadence — this fires roughly every 20 seconds while the bleed is active.
+
+#### CA280 — `if` (was lines 6258-6265)
+Ongoing arterial dripping for wounded units — startDripSite() (used for the per-hit and per-death burst) fires instantly and is done; this is a separate, continuous background drip while the unit is either badly hurt OR actively bleeding from an arrow, so a wounded enemy keeps visibly bleeding as it walks rather than only bleeding at the instant of impact. Previously gated ONLY on low HP (<40%) — a freshly arrow-struck enemy at, say, 70% HP with an active bleed status produced no walking trail at all, even though it was genuinely bleeding. Now also fires for the whole duration of an active bleed, regardless of overall HP. Gated on this.hp > 0, so it stops the instant the enemy actually dies — never fires post-mortem.
+
+#### CA281 — `if` (was lines 6273-6277)
+fast-moving wounded units leave an elongated teardrop pointing back along their travel vector, matching how a moving drip source actually trails behind the wound. Also scatters a couple of much finer flecks slightly off the direct line — a person walking with an open wound doesn't drip in one perfectly straight thread, real trails scatter a bit side to side with each step.
+
+#### CA282 — `if` (was lines 6283-6284)
+stationary/slow wounded units (queued at a barricade) pool directly beneath them — concentric small satellite rings around a fixed point instead of one long streak
+
+#### CA283 — `if` (was lines 6323-6329)
+the bleed tick is what makes an open wound visually read as still-active — richer and more varied than the passive low-HP drip: a fresh spray burst, an occasional new pooling decal, and a satellite drop, all using this individual enemy's own cached blood tint. Real bleeding doesn't spurt at constant intensity and then stop dead — it tapers off as the wound naturally closes. `cessation` scales from 1 (just opened) down toward a floor as the wound approaches its own end, so the last couple of ticks are visibly weaker instead of matching the very first tick then cutting off abruptly.
+
+#### CA284 — `if` (was lines 6333-6338)
+Cardiac pulsing: real arterial bleeding isn't a metronome — it surges with each heartbeat, not at constant intensity/timing. `pulse` rides a sine wave keyed to how long this wound has been open (not wall-clock time, so a fresh wound and an old one aren't in lockstep), and drives BOTH the next tick's spacing and its spurt size together — a strong beat means a bigger spurt AND a shorter wait until the next one, a weak beat means a smaller spurt and a longer gap, the way a real pulse alternately surges and eases rather than dripping evenly.
+
+#### CA285 — `if` (was lines 6341-6347)
+Hypovolemic dampening: real bleeding weakens as TOTAL blood volume drops, not just as this individual wound ages — a creep already worn down to a sliver of HP by earlier hits should bleed visibly weaker than a fresh, healthy target even from an identically-timed wound. Previously `beatIntensity` was scoped entirely to this wound's own cessation taper, so a nearly-dead creep with a freshly-reapplied bleed still spurted at full "just opened" strength. `hypoDamp` floors at 0.4 rather than going to zero — even a dying creep still visibly bleeds, just weakly, not not-at-all.
+
+#### CA286 — `if` (was lines 6366-6369)
+Escaped enemies (see reachEnd()) get their own fully separate movement branch — same DOT/ status/gore handling above still applies (they can still burn/bleed/be poisoned to death while wandering), but none of the path-following, barricade-pileup, breakaway, troll, or stall-watchdog logic below is relevant to something no longer walking a path.
+
+#### CA287 — `if` (was lines 6371-6374)
+Creep-camp guardians/structure (see spawnHut()) get their own fully separate branch too — same DOT/status/gore handling above still applies, but none of the path-following, barricade-pileup, breakaway, troll, or stall-watchdog logic below is relevant to something that was never walking a path to begin with.
+
+#### CA288 — `if` (was lines 6377-6380)
+One-shot low-HP growl for the game's two "tough, distinct" enemies — telegraphs a real state change through sound instead of only a shrinking health bar. Checked before the pileBlocked/stunned early-returns below so it still fires even while queued at a barricade, since HP can still be dropping from burn/poison/bleed during that time (1.0.214).
+
+#### CA289 — `if` (was lines 6408-6411)
+Santa's own version of the Boss's rally timer — instead of a self-heal, "ho ho ho"s out a couple of fast COOKIE minions near himself. Same acquireActive(enemyPool) pool-borrow pattern spawnHutGuardian()/child-splitting already use elsewhere, so this costs nothing beyond however many pool slots happen to be free.
+
+#### CA290 — `for` (was lines 6446-6450)
+Don't try to walk faster than whatever's directly ahead of us on this single-file path — set by updateBarricadesAndPileup() earlier this frame, only when something is genuinely close ahead. Without this, a fast unit right behind a slow one kept computing its own full speed every frame and shoving into the slow unit's back, which the collision passes then had to keep fighting right back — that push-and-correct cycle is what read as jittery bumping.
+
+#### CA291 — `if` (was lines 6454-6459)
+Final stretch: this enemy has passed the last real waypoint but hasn't fully crossed the finish line yet (see computeFinishLine() and the matching carpet render in drawMap()) — keep walking straight in the same direction the path was already heading, rather than instantly vanishing at the waypoint's center. reachEnd() only fires once this enemy's own BACK edge (center minus its radius, along the direction of travel) has cleared the tile's true outer edge — i.e. its entire sprite, not just its leading point, is past the carpet.
+
+#### CA292 — `if` (was lines 6474-6479)
+corner-overshoot fix: a strict `dist <= moveDist` occasionally lets a collision push land the enemy a fraction of a pixel PAST the waypoint on a fast frame, so `dist` never satisfies the check again — dx/dy then point backward at the waypoint just passed, and the unit visibly backtracks into oncoming traffic before it's allowed to turn the corner. A small forgiving margin (6px, well under one tile) treats "close enough" as arrived without materially changing normal pathing.
+
+#### CA293 — `if` (was lines 6489-6490)
+Carry the unused step around the corner instead of discarding it, so units keep an even pace through turns rather than hitching at every waypoint (most visible at 5x/10x).
+
+#### CA294 — `if` (was lines 6504-6508)
+Ambient footsteps — a fixed stride LENGTH per step (footstepDist, set in spawn()) rather than a wall-clock timer, so faster enemies naturally step more often with no separate speed scaling needed. Thinned to roughly the visible camera area so an off-screen swarm doesn't spend voice budget on steps nobody can hear anyway; `footstepWeight === null` (WRAITH) never reaches here since footstepDist is Infinity for it (1.0.214).
+
+#### CA295 — `if` (was lines 6551-6552)
+Pack bonus can never lift a unit past its size tier's speed ceiling — a Large wolf pack stays slower than any Small enemy, preserving "bigger always means slower".
+
+#### CA296 — `recordContribution` (was lines 6563-6565)
+Per-tower telemetry — direct request. Centralized here rather than at each individual fire site since literally every damage instance in the game already flows through this one function with sourceTower known, regardless of archetype/splash/melee.
+
+#### CA297 — `spawnSplitChildren` (was lines 6588-6594)
+Which child type a splitting enemy leaves behind — previously hardcoded to always spawn 'SPLITMINI' regardless of what actually split, so a Boulder (a rock enemy) was spawning two 🦠 microbe SPLITMINIs on death, complete with insect-green blood — even though its own description always said "splits on death like a heavier Splitter," implying its own distinct fragment, not a borrowed one. A lookup table here means any future splitting enemy just adds one line rather than another hardcoded branch — this function's own logic never needs to change again to support a new split relationship.
+
+#### CA298 — `updateTroll` (was lines 6608-6610)
+walks BACKWARD toward the entrance instead of forward toward the base — no threat to your lives on its own, but a big bounty if you kill it before it wanders off, and it occasionally takes a swing at a nearby tower, leaving debris that costs gold to clear.
+
+#### CA299 — `updateBreakaway` (was lines 6645-6652)
+A live Barricade physically in the way overrides the enemy's actual breakaway target while it's blocking — a breakaway enemy chasing a tower must still respect a barricade sitting between it and that tower exactly like normal on-path movement does, not freely walk around or through it. Without this, breaking away toward a tower positioned past a live barricade let the enemy end up beyond it entirely unblocked (isBreakaway enemies are excluded from updateBarricadesAndPileup()'s queue/contact system while breaking away — see that function's own active-enemy filter), able to resume forward path movement and reach the finish line despite the barricade never having been destroyed.
+
+#### CA300 — `if` (was lines 6677-6680)
+Only actually ends the breakaway once the enemy's ORIGINAL target is defeated — clearing a blocking barricade along the way (t !== this.breakawayTarget here) just lets t resolve back to that original target on the very next tick, so it resumes the chase instead of stopping short.
+
+#### CA301 — `reachEnd` (was lines 6692-6697)
+Doesn't deactivate — stays on screen as a wandering, still-killable target instead of disappearing the instant it crosses the finish line (see updateEscaped()). Persists across wave boundaries now (no longer force-cleared when the next wave starts — see startNextWave()) — never blocks a wave from completing regardless (see the `anyAlive` check's `!e.escaped` filter in update()), but otherwise stays a real, ongoing target/threat until something actually kills it.
+
+#### CA302 — `reachEnd` (was lines 6701-6707)
+Aimless post-escape wandering, PLUS a periodic real threat to nearby towers — an escaped enemy isn't just annoying to go hunt down, it can genuinely damage an unguarded tower if left wandering too long. Reuses findNearestActiveTower() and Tower.takeDamage() exactly as the normal on-path breakaway system already does (same damage/defeat/gore handling, zero special casing there) — only the targeting decision and movement are separate from that system, since isBreakaway/updateBreakaway() never actually run for an escaped enemy (update()'s dispatch returns via this method before ever reaching that check).
+
+#### CA303 — `updateEscaped` (was lines 6711-6713)
+Same live-Barricade override as updateBreakaway() — an escaped enemy chasing a tower must still respect a barricade physically in its way rather than freely walking around/through one, for the same reason: isBreakaway/escaped movement has no other barricade awareness.
+
+#### CA304 — `if` (was lines 6732-6734)
+Only actually clears escapedAttackTarget once the ORIGINAL target is defeated — same reasoning as updateBreakaway(): clearing a blocking barricade (t !== escapedAttackTarget here) just lets t resolve back to the real target next tick instead of abandoning it.
+
+#### CA305 — `if` (was lines 6740-6744)
+Re-rolled periodically rather than once at spawn (unlike the normal on-path willBreakaway roll) — and at a much higher chance per roll (0.5) than any on-path breakawayChance (max 0.6 total across a whole lifetime, for Fire/Ice; most types are 0.02-0.04) — deliberately more aggressive, since this is meant to feel like a real, escalating cost for every escapee left wandering, not a rare event.
+
+#### CA306 — `if` (was lines 6749-6750)
+Shorter reach than the on-path breakaway's 320 — a wandering escapee shouldn't be able to snipe a tower from clear across the map, only one it's actually bumbled near.
+
+#### CA307 — `if` (was lines 6766-6769)
+Soft bounce off the CURRENT PLAYABLE REGION (not the theoretical max world) — keeps escaped/wandering enemies inside the visible expanded chessboard instead of drifting off into unexpanded, never-rendered territory far past any stickman's reach. activeRegion is read live (not cached) since map expansion can grow it mid-run.
+
+#### CA308 — `if` (was lines 6778-6785)
+Creep-camp guardian — stays near its hut's fixed anchor point (WC3-style: an off-path area worth clearing for a reward, not something that ever threatens the lane) UNLESS a tower has damaged the camp, in which case every living guardian focuses whichever tower currently leads the shared damage ledger (see Enemy.applyDamage()'s campDamageLedger recording and campLeaderTower() below) — approach, engage in melee, return to guarding once the target is gone or too far. Idle wander reuses the exact same soft-bounce pattern updateEscaped() already uses, just anchored to hutAnchorX/Y with a small fixed radius instead of the whole world's bounds — deliberately the smallest possible reuse of proven movement code.
+
+#### CA309 — `if` (was lines 6793-6795)
+Actively engaging — a materially longer leash than idle wander, on purpose: chasing the tower that's actually hurting the camp all the way to melee range is the entire point, and clamping it to the idle radius would mean "retaliate" never visibly does anything.
+
+#### CA310 — `if` (was lines 6815-6819)
+No valid target (nothing has damaged the camp yet, the leader died/went inactive, or the combat leash was exceeded) — walk back toward the hut anchor at normal speed until back inside the idle radius, THEN resume the ordinary bumble-wander below. Without this a guardian that had chased out to the combat leash would otherwise be instantly snapped/ teleported back the moment its target disappeared, which reads as a glitch, not a retreat.
+
+#### CA311 — `if` (was lines 6849-6851)
+The hut building itself — a stationary, high-HP structure that owns respawn scheduling for its own 2 guardians. Never moves, never attacks, isn't reached by any path — exists purely as a targetable structure and a small piece of standing timer state.
+
+#### CA312 — `updateHutBuilding` (was lines 6857-6859)
+this.campDamageLedger is deliberately left untouched here — respawning guardians doesn't reset camp aggro, see the comment where the ledger is created in spawnHut(). A fresh pair picks up campLeaderTower()'s result on their very first updateGuardian() tick.
+
+#### CA313 — `applyDamage` (was lines 6869-6875)
+Zombie Grave and its guardians shrug off anything that isn't Holy (Cleric/Pope) — direct request ("only holy attacks do a lot of damage, meaning much harder without cleric or pope"). Checked on both the grave building itself (isHutBuilding + buildingKind GRAVE) and its zombie guardians (isGuardian + hutRef.buildingKind GRAVE) — same 95% reduction either way, since the guardians are the grave's whole reason for being undead-tough in the first place. Applied BEFORE recordContribution() below so telemetry/lifetime-damage tracking reflects the real, reduced damage actually dealt, not the pre-resistance amount.
+
+#### CA314 — `applyDamage` (was lines 6879-6890)
+Real per-hit damage variance — a genuine min/max roll on the base damage, not just a cosmetic overlay. Symmetric around 1.0, so average DPS over many hits lands exactly where each tower's tuned base numbers already put it — this only adds hit-to-hit spread, it never creeps overall damage up or down. Mage gets the widest band of any tower (±40%, vs. ±20% everywhere else) — its rare, high-stakes shots should feel the most volatile, swinging from a real dud to a real haymaker, matching its "rare, devastating shots" identity far more than a tightly-banded roll would. Still a fixed proportional band, so it scales identically at every tower tier regardless of type. This same roll drives the blood system directly (see hitRoll below) — an unusually strong roll deals visibly more damage on the floating combat text AND produces a visibly bigger, gorier splatter (and now, for Mage specifically, more radiating streak lines — see the MAGE branch's dmgRollT/streakCount), syncing what the player sees numerically with what they see visually.
+
+#### CA315 — `applyDamage` (was lines 6892-6898)
+Investing in the primary damage stat now also widens this band itself — direct feedback ("increasing the primary stat should increase the gap between the min and max as well") — on top of primaryDamageMult already raising the average. Same diminishingStatValue curve as the DEX attack-rate change above, capped at +0.15 extra half-width (so Mage's already-wide ±40% can reach ±55% at full investment, everyone else's ±20% can reach ±35%), so a fully trained tower is visibly swingier — a real chance at a much bigger hit — not just a flat higher average.
+
+#### CA316 — `applyDamage` (was lines 6903-6908)
+Critical hit — a real damage effect now, not just a cosmetic floating-text color change. Uses the source tower's own critChance/critMult (DEX scales chance, INT scales the multiplier — see recomputeStats()); falls back to the flat base values (2.5%/1.20x) for damage with no attributable tower (e.g. none currently, but kept safe rather than assuming). Applied before armor mitigation, so a crit still gets partially reduced by armor like any other hit — it's a bigger hit, not an unmitigatable one.
+
+#### CA317 — `if` (was lines 6926-6930)
+Camp aggro ledger — recorded here (post-armor, post-shield, clamped to remaining HP), NOT in recordContribution() above (which runs pre-mitigation for existing tower lifetime/wave stats and must stay untouched). Only towers count; only hits on a hut or one of its living guardians count. A killing blow contributes no more than the HP it actually took to finish the target, so overkill damage can't inflate a tower's standing in the ledger.
+
+#### CA318 — `if` (was lines 6941-6945)
+Hit-flinch: a small render-only nudge away from the strike direction, applied regardless of the gore toggle — this is core hit-feedback animation, not a gore effect. Never touches this.x/this.y (or traveled/pathIndex), so it carries zero risk of desyncing pathing or collision no matter how often it fires. Scales with how heavy the hit was relative to max HP, so a graze barely registers while a heavy blow visibly rocks the target back for a beat.
+
+#### CA319 — `if` (was lines 6947-6952)
+hitRoll now IS the real damage-variance roll from above, not a separate independent random draw — a lucky high roll deals more damage AND produces bigger blood, syncing the two systems as requested. Still bounded to the same ±20% band regardless of tower tier or target HP, so blood still can't runaway-scale with level; only now it's tied to something real instead of being purely decorative. flinchSeverity above is the separate "how hard did this land relative to max HP" layer — they're independent and multiply together in hitPower/cutSize.
+
+#### CA320 — `if` (was lines 6954-6959)
+Normalized 0-1 position of THIS hit's damage roll within its own min-max range — 0 at the guaranteed minimum, 1 at the guaranteed maximum, regardless of whether this tower uses the standard ±20% band or Mage's ±40% one. Ground-pool blood size now reads this directly (spawnDecal's dmgRollT param) so a min-roll hit visibly pools smaller and a max-roll hit visibly pools bigger — a real, requested ±30% swing tied to where the roll actually landed, not just severity or archetype.
+
+#### CA321 — `if` (was lines 6961-6963)
+isCritical was already rolled earlier (using the source tower's real critChance) before dmg was finalized, so the multiplier could actually apply to the damage — reused here for the floating-text/flinch treatment below, not re-rolled.
+
+#### CA322 — `if` (was lines 6975-6983)
+Gated by a per-hit chance on top of the goreMode toggle itself — real damage doesn't always visibly draw blood every single time it lands (skin elasticity, exact strike angle, and armor all vary), so a hit connecting doesn't have to mean a guaranteed blood event. This wraps WHETHER the block below runs at all; nothing inside it (the actual particle/decal generation) is touched — a hit that does pass this roll looks exactly as it always has. A building has no blood to shed — chips stone and timber instead, same as a barricade taking a hit, on the same per-hit roll used for everything else (not every hit needs to visibly throw debris). Checked BEFORE the blood gate below, not inside it, so the hut never touches goreMode or BLOOD_ON_HIT_CHANCE at all.
+
+#### CA323 — `if` (was lines 6991-7014)
+How hard THIS hit was relative to the target's max HP, applied to hit-time particle counts. Previously only the BLADE cut-line scaled with hit strength (cutSize below) — Mage, Archer, Blunt, and Pierce all fired identical, fixed-size bursts whether the hit was a graze or a near-fatal blow, which is why Mage in particular always read as "maxed out" every single time. hitPower stays close to 1 at an average hit and only swings noticeably at the extremes, so a normal hit still looks like the tuned baseline — only real grazes and near-kills stand out. Occasional anomalously minimal hit — not from a specific book formula, but consistent with its general point that real spatter volume isn't perfectly predictable from force alone (skin elasticity, exact strike angle, and where a blow lands all shift the outcome independent of how hard it hit). A small, uniform chance across every archetype of a notably muted result — the visual equivalent of a real strike that, for whatever reason, just didn't produce much blood despite landing solidly. Blood-volume sliding scale — direct feedback: most hits should land well under 10% of the max possible spray, only occasionally scaling up, and reaching the true top of the range should require landing a crit (crit chance is meant to be the rare, coveted stat) — but a crit alone shouldn't GUARANTEE the max output either, just unlock the chance at it. So: non-crit hits are hard-capped at NORMAL_HIT_CEILING and cubed (Math.pow(rand,3)) so they cluster hard toward the low end within that cap; a crit adds a second roll that can land anywhere from that same ceiling up to the true max, itself still skewed rather than guaranteed — landing the crit is the first rare roll, where it lands in that upper range is the second, i.e. the "double luck roll" this was asked to feel like. Applies to every archetype identically (Archer/Mage/Warrior/Blunt/Pierce all read hitPower below), not just Mage — the previous isAnomalousMinimal special case (a flat 9%-chance small-hit override) is folded into this same curve rather than sitting alongside it as a separate roll.
+
+#### CA324 — `if` (was lines 7017-7021)
+Big splatters are further restricted to LARGE/BOSS enemies only — direct feedback ("splatter needs to be on a larger enemy, never happens on smaller"). A crit on a TINY/SMALL/STANDARD enemy still gets a real bump over its own non-crit roll (still meaningfully bigger), it just can't reach all the way to the true top of the scale the way a crit on something LARGE/BOSS can — a Swarm has nowhere near the blood volume to physically produce a top-tier spray.
+
+#### CA325 — `if` (was lines 7027-7034)
+Unit blood reserve — direct feedback: blood output should scale with how much the enemy has ALREADY lost (a near-dead unit can't still spray full volume), and splitting a hit across several simultaneous attackers should divide the blood between them rather than each landing a full, independent splatter on the same target. hpFrac uses this.hp (already post-damage at this point in applyDamage) over maxHp, floored so a killing blow never rounds all the way to zero visible blood. concurrentAttackers counts distinct towers that hit THIS enemy within the last 400ms (this.recentAttackers, a tiny Map cleaned inline here rather than a separate timer) — 2 attackers within that window halves each one's share, 3 splits it three ways, and so on.
+
+#### CA326 — `if` (was lines 7041-7046)
+Resolved once per hit regardless of archetype (cheap — just reads sourceTower.type) so it's available both to the WARRIOR sub-branches below AND to the ground-pool decal call later in this function — previously `weapon` was declared inside the WARRIOR-only else block and went out of scope before reaching spawnDecal(), which is why Blade/Blunt/Pierce hits all shared one identical ground-pool shape even though their hit-time particle bursts already differed. Now the pool shape differs too — see spawnDecal's BLUNT/PIERCE branches.
+
+#### CA327 — `if` (was lines 7052-7058)
+Low-impact puncture wound, but forensically accurate to how a real high-velocity fine mist behaves: the wound itself produces little total volume, but the mist that flies carries real residual velocity and low drag, scattering as several small droplets rather than a concentrated pool. That scatter is now generous enough to read with just as much visual presence as Warrior's slash or Mage's burst — many small far-flung marks instead of one, rather than genuinely looking sparser overall. Less concentrated blood, same amount of visible impact.
+
+#### CA328 — `if` (was lines 7060-7065)
+Back-spatter — BPA ch.7 ties forward+back spatter specifically to gunshot-type high-velocity penetration, which is Archer's real-world analog far more than Mage's (Mage's blast got this treatment first, but a real arrow/bolt puncture is the actual textbook case for it). Real HVIS back-spatter is markedly less voluminous than the forward exit spray — lower count, shorter range, matching the asymmetry described in the book rather than a mirrored burst in both directions.
+
+#### CA329 — `if` (was lines 7069-7076)
+The entry point itself — now genuinely dark and minimal (spawnPunctureMark), not just the standard colorful blob decal at high opacity like before. A real high-velocity puncture (arrow, bolt) leaves a small, concentrated dark mark right at the wound, distinct from the pale scattered mist around it — per BPA ch.2, external bleeding at the entry point itself is typically modest even for a lethal hit. None of the other archetypes have this "dark pinprick center + scattered halo" signature — Blade's mark is a linear cut, Blunt's a round crush, Mage's a wide cone — only a real puncture wound produces a tiny, near-black point source that the spatter radiates from.
+
+#### CA330 — `if` (was lines 7082-7093)
+High-energy magical impact — now genuinely rare (5x longer between shots) and priced accordingly in spectacle. Forensically, a circular/radial ring pattern is a blunt-trauma signature (see Warrior/BLUNT below) — a magical impact has no crushing surface, so its identity is pure directional streak. Previously this used spawnCastOffArc for each streak — but that function's geometry (arcDir, angularStep, tangent-angle offset) models blood flung TANGENTIALLY off a rotating swinging weapon, which is exactly the Swordsman's physics, not a stationary magical bolt's. A bolt has no swing to be tangential to — it punches straight through the target and continues in its own direction of travel, so its identity is a wide forward CONE of straight radiating spokes (spawnBloodCastoff only, no curve), confined around impactAngle rather than scattered at fully random angles around the full circle. This also makes Mage visually distinct from Archer's cone (much narrower, much smaller, low-energy puncture mist) by being wide, bold, and energetic.
+
+#### CA331 — `if` (was lines 7095-7100)
+Reworked per direct clarification: NOT about frequency (every hit still sprays something — that was never touched) but about typical SIZE. The previous 20/12 base still read as "big every time" because hitPower only swings it modestly on an ordinary hit. Base cut further (10/6) so a normal hit is genuinely small/thin, and a separate rare-only multiplier (crit hits only — 2.5%+ chance, scales with DEX) makes a real "big and thick" burst when it does land, instead of removing the big splatter entirely.
+
+#### CA332 — `if` (was lines 7106-7114)
+Long radiating streaks, distinct from Warrior's single directional cut — a magical blast has no swing direction to align with, so a handful of bold straight spokes burst outward across the forward cone (not a single thin line, and not curved like a swing). Line count is now directly quantized to where THIS hit's actual damage roll landed in its own min/max range (damageVariance, 0.8-1.2x) — a minimum-roll graze draws just 1 bold line, a maximum-roll hit draws 4, with 2-3 in between. This replaces the previous continuous 3-19ish random fan: fewer, bolder, more legible lines that scale in a way the player can actually read hit-to-hit, directly tied to the same variance system driving the floating damage number, rather than an independent random count.
+
+#### CA333 — `if` (was lines 7116-7117)
+Volume also varies hit to hit: most magical impacts spray modestly, a minority really open up. Without this, every Mage hit drew the same dense fan regardless of context.
+
+#### CA334 — `if` (was lines 7121-7126)
+Void patterns (BPA ch.9-10): an absence of blood in an otherwise-sprayed area, caused by another body physically blocking the spray at the instant of the hit. Queries the small local neighborhood once per hit (not once per streak — cheap) via the module-scope enemyHash, then skips any individual streak whose ray would pass within another active enemy's own radius before reaching its landing distance. A real, physically-grounded gap in the pattern rather than every streak always drawing regardless of what's in the way.
+
+#### CA335 — `for` (was lines 7144-7148)
+Back-spatter: real high-velocity impacts (gunshots, and by extension a violent magical blast) throw a fine mist BACK toward the source, not just forward through the target — a distinct, well-documented BPA phenomenon investigators specifically look for to determine where a shot came from. A small amount, lower speed than the forward spray, in the opposite direction.
+
+#### CA336 — `for` (was lines 7150-7154)
+A handful of small non-blood spark particles mixed into the burst — pale violet/energy tinted rather than any shade of bio.bright/bio.dark. Every other archetype's marks are built entirely from the enemy's own blood colors; this is the one purely chromatic signature that reads as "magic" at a glance even before the shape registers, and it's a color no blood profile in the game uses, so it can never accidentally blend in.
+
+#### CA337 — `for` (was lines 7157-7159)
+360-degree vaporization — no directional constraint, mix bright + charred/dark. Now scaled by hitPower like every other archetype (was the last one still firing a flat count regardless of hit severity).
+
+#### CA338 — `for` (was lines 7162-7165)
+A pale gray ash/smoke puff mixed in — the one purely chromatic signature that isn't any shade of blood, the same way Mage's violet sparks aren't. Blunt's ring already reads as "blunt trauma"; without something non-blood in the mix, Explosive was otherwise just Blunt's radial burst with no ring, which is a weak distinction on its own.
+
+#### CA339 — `for` (was lines 7168-7170)
+WARRIOR archetype sub-branches by actual weapon geometry — previously every melee class (blade, blunt mace, thrusting spear alike) produced the identical cut-plus-arc pattern, which read as repetitive/samey regardless of what actually hit the target.
+
+#### CA340 — `if` (was lines 7172-7176)
+Blunt trauma doesn't cut — it crushes, producing an omnidirectional "impact spatter" with no single directional cut line: a wider radial burst of particles and satellite drops scattered around the impact point, PLUS a real circular shockring — a crushing blow genuinely does compress a round area of impact, which is the correct forensic home for a ring pattern (a cutting or magical wound has no such surface to ring).
+
+#### CA341 — `if` (was lines 7181-7186)
+A genuinely heavy blow (real severity, not just a lucky cosmetic roll) cracks a second, tighter inner ring a beat inside the main one — a true crush has more than one visible compression front, where a light knock only ever produces the one. Gated on flinchSeverity specifically (not hitPower, which includes the cosmetic roll) so this stays tied to how much real damage landed, not just RNG — the signature a genuinely hard hit earns, distinct from Blade's escalating cut or Mage's escalating streak count.
+
+#### CA342 — `if` (was lines 7190-7192)
+A deep thrust punctures along one line, closer to an arrow wound in geometry but far more violent — a stronger forward gush and a real drip, no perpendicular cut-line and no swing arc since a thrust doesn't sweep tangentially the way a slash does.
+
+#### CA343 — `if` (was lines 7196-7200)
+A deep thrust doesn't just wound at the point of contact — blood tracks back along the shaft as the spear is withdrawn, leaving a short trailing smear behind the entry point rather than only radiating forward. Placed a few pixels back along -impactAngle so it reads as a distinct "drag" mark, not just another forward spray — a signature none of the other archetypes have, since none of them involve a weapon being pulled back out.
+
+#### CA344 — `if` (was lines 7203-7210)
+BLADE (Swordsman/Axeman) — a real laceration at the wound itself: a bold cut-line right at the point of impact (still oriented across the strike direction, since a slash travels across the target rather than straight into it), PLUS a genuine cast-off arc — the blood already on the blade flung off tangentially during the swing, landing as a curved trail of drops away from the wound, not a second straight line. The cut-line's own size now scales with how hard the hit actually was — a glancing graze leaves a thin nick, a heavy blow a bold, unmistakable gash — instead of every blade hit drawing the exact same size line regardless of damage dealt.
+
+#### CA345 — `if` (was lines 7212-7220)
+A real, cited forensic principle (BPA ch.8): "the initial blow generally does not produce sufficient exposed blood on the weapon to produce cast-off bloodstains" — cast-off specifically requires blood already coating the weapon from a PRIOR strike, distinct from the wound's own spatter (which happens on hit one same as any other). Tracked per-TOWER (`weaponBloodied`), not per-enemy — a blade doesn't get wiped clean between victims mid-battle, so once any Swordsman/Axeman lands its first hit on anything, its blade stays bloodied for the rest of the fight. The wound-source spray (spawnParticles just below) is untouched — only the weapon-borne cast-off line/arc is dampened, since that's the specific mechanism the book ties to a pre-bloodied weapon.
+
+#### CA346 — `if` (was lines 7224-7228)
+Floor raised from a bare "0.4" would still read as a full-size cut on every graze — the original 1.1 floor meant even the lightest scratch drew a cast-off line at ~110% of the tuned base size, which is why every Swordsman hit looked like a heavy strike regardless of how little damage it actually dealt. Floor dropped to 0.4 (a genuinely thin nick) so only hits with real relative severity earn the bold, unmistakable gash.
+
+#### CA347 — `if` (was lines 7230-7233)
+small per-hit color micro-jitter on top of this enemy's own fixed blood tint — real blood shade varies slightly hit to hit even from the same wound (oxygenation, thickness, how fresh vs. already-drying), not just a single flat tone reused for every slash this enemy ever takes
+
+#### CA348 — `top-level` (was lines 7237-7240)
+"Air line" — a brief visible trace of the blade's actual swept path, geometrically identical (same slashAngle, same towerSwingDir handedness) to what drives the real cast-off blood below, so the pattern's angle is now directly verifiable against the swing that caused it rather than just implied.
+
+#### CA349 — `if` (was lines 7246-7248)
+dual-wielded — two independent blades means two overlapping cast-off arcs from slightly different angles/timing, not one arc doubled up. Reads as a genuinely different weapon from Swordsman's single blade rather than the same effect twice.
+
+#### CA350 — `if` (was lines 7258-7262)
+A genuinely deep slash (real severity, not just a lucky cosmetic roll) can nick a vessel — one short, fast perpendicular spurt off the cut line itself, distinct from the tangential cast-off arc above (which is blood already on the blade, not from the wound). Gated on flinchSeverity so it's earned by real damage, giving Blade its own "how bad was it" tier the way Blunt's double-ring and Mage's streak count already do.
+
+#### CA351 — `if` (was lines 7269-7279)
+a real lasting mark on the ground for a non-lethal hit too, not just the killing blow — the particles above all fade within ~1s, so without this, blood only ever visibly stuck around after a kill. Kept deliberately infrequent overall so a fight doesn't turn into one solid red mass instead of readable individual splatters — but the chance is now archetype-aware: Archer and Mage hits were leaving visibly sparser marks than Warrior's slash even though each is just as intense in its own way (a fine puncture mist / a violent burst), so both get a higher chance of a lasting mark to match Warrior's visual presence, while spawnDecal's own archBias sizing still keeps each one shaped correctly for its archetype (Archer's small and elongated, Mage's large and round). The ground pool's shape/size now matches whichever specific weapon caused it, not just the broad archetype — spawnDecal's own elong table differentiates BLADE/BLUNT/PIERCE (see there).
+
+#### CA352 — `if` (was lines 7286-7287)
+ongoing drip tied directly to THIS hit's severity, not a background "wounded" timer — a graze barely drips, a heavy blow relative to the target's max HP keeps bleeding longer
+
+#### CA353 — `if` (was lines 7292-7294)
+a meaningfully heavy (but non-fatal) hit also leaves a running drip trail down from the wound, not just the radial droplets above — this is what makes a solid hit look like it actually broke skin rather than just splashing outward
+
+#### CA354 — `if` (was lines 7298-7309)
+genuinely heavy hits open a real bleeding wound — a ticking damage-over-time effect, not just a one-off visual drip. Strongest application wins (doesn't stack into a burst), and while it's active the enemy keeps actively spraying/pooling fresh blood every tick (see the bleedUntil handling in update()), on top of whatever the low-HP passive drip is doing. Gated by a 10s per-enemy cooldown (lastBleedTriggerAt) — without one, a fast-firing tower landing repeated >15%-of-max-HP hits on the same enemy could retrigger a fresh bleed event every hit, stacking floating "BLEEDING" text, drip trails, and stack recalculation rapidly enough to read as visually broken rather than as a status effect. Also gated on allowBleed — a melee cleave (checkConeHits) only sets this true for the FIRST, full-damage target in its swing, per direct feedback ("only the first gets bleeding"); the reduced-damage 2nd/3rd cleave targets can still bruise/drip (the two blocks above aren't gated) but never open an actual bleed wound from that same swing.
+
+#### CA355 — `if` (was lines 7335-7338)
+Creep-camp notifications — a dying guardian tells its hut the lane just got one emptier; the hut itself schedules its own respawn once BOTH guardians are confirmed gone (see updateHutBuilding()). A dying hut building marks itself permanently destroyed so nothing ever respawns from it again, regardless of any timer that might already be in flight.
+
+#### CA356 — `if` (was lines 7361-7371)
+bigger, tougher enemies get a more dramatic burst — blends how tanky (maxHp vs. a baseline Grunt) AND how visually big (radius vs. the same Grunt baseline) the enemy actually is, so a death burst's size reflects the emoji being killed, not HP alone. Capped so Bosses don't spawn an absurd number of particles. A small, deliberately SLIGHT modifier on top of that: how far along the path this kill happened, at the moment of death. Closer to the finish line = a slight chance of a bigger burst; farther back (near spawn) = a slight pull toward the small end instead. Not a strong effect on its own — proximityMult only ever swings goreScale by up to ±12%, and even that only fires some of the time (the two probability gates below), so a kill right at spawn most often looks the same as it always has, with an occasional visibly smaller one, and a kill right at the finish line occasionally reads as a bit heavier.
+
+#### CA357 — `if` (was lines 7390-7400)
+Cleric's curse doesn't strike or cut — the enemy is consumed by an accumulating holy DoT, not a physical blow, so a normal wound-shaped burst never fit. BPA's own glossary defines "Misting" as blood atomized to a fine spray by the application of force — here that force is the curse itself dissolving the body rather than a weapon striking it, so the kill is rendered as overwhelmingly fine mist (using the same sizeMin fine-particle capability built for the universal death atomization layer, pushed much further) with almost no chunky gibs and no directional cast-off streaks at all — nothing here has a swing or an impact vector to align with. A pale golden-white tint (holy light) mixes into the enemy's own blood color rather than replacing it outright, so the species' identity (still greenish for undead/insects, still bright red for standard flesh) is still legible underneath the holy overlay.
+
+#### CA358 — `if` (was lines 7417-7421)
+low-impact even in death — a fatal arrow still doesn't cause a burst, just a body that's stopped moving with a real puncture wound. Volume stays low (fewer core particles than any other archetype), but the mark COUNT is generous — several drip trails and several far-flung mist droplets — so the kill still reads with real visual presence, matching Warrior/Mage's death-time impact, through spread rather than concentration.
+
+#### CA359 — `if` (was lines 7432-7439)
+a magical kill is now a genuinely rare, singular event (5x longer between shots than any other tower) — amplified to match: faster, wider particles, and more/bolder radiating spokes than an ordinary hit. No shockring here — that circular/radial pattern is a blunt-trauma forensic signature (see Warrior/BLUNT), not a magical one. Same forward-cone-of-straight-spokes treatment as the hit-time branch above (no spawnCastOffArc — that's tangential swing-arc geometry that belongs to a swung weapon, not a bolt punching straight through), confined around impactAngle so a killing blow still reads as a directional blast, not an omnidirectional ring.
+
+#### CA360 — `if` (was lines 7446-7450)
+Same void-pattern check as the hit-time Mage streak loop above (BPA ch.9-10: an absence of blood where another body physically blocked the spray) — this death-time streak loop was missing it despite being the same physical phenomenon at the same event. Confirmed by grep this is Mage's own second streak site, not a separate Archer/Blade/Blunt/Pierce loop — no such equivalent loop exists elsewhere in the code.
+
+#### CA361 — `for` (was lines 7469-7471)
+WARRIOR death now sub-branches by weapon type too, matching the hit-time differentiation above — previously every melee class collapsed identically regardless of whether a blade, a mace, or a spear actually killed it.
+
+#### CA362 — `if` (was lines 7474-7476)
+Blunt death: no directional collapse — a final crushing blow spreads radially, with its own shockring echoing the hit-time BLUNT identity rather than borrowing Blade's directional gush streams.
+
+#### CA363 — `if` (was lines 7485-7486)
+Pierce death: a deep final thrust — narrower and more forward-gush-heavy than Blade's ambient collapse, with fewer stray particles and a stronger, tighter stream.
+
+#### CA364 — `for` (was lines 7496-7498)
+Blade death: a directional collapse, not a burst — modest ambient splatter plus a tight arterial gush weighted toward the last hit, matching how bodies actually bleed out rather than exploding
+
+#### CA365 — `for` (was lines 7511-7515)
+Expirated blood — a distinct forensic mechanism (BPA ch.8) from any of the weapon-specific branches above: blood mixed with air from a throat/chest wound, mechanically unrelated to HOW the killing blow was delivered (a sword, an arrow, a mace can all plausibly catch the airway). Layered additively on top of whatever weapon-specific death gore already fired — never replaces it — as an occasional extra flourish, not gated by weapon type.
+
+#### CA366 — `for` (was lines 7519-7524)
+Death-time atomization mist — a universal fine-particle layer on top of whatever weapon-specific burst already fired, scaled the same way the rest of the death event is (goreScale, so bigger enemies still produce more of it). The existing per-archetype death particles are already sized 2-4px; this adds a distinct layer of genuinely fine mist (0.5-1px) radiating omnidirectionally, giving every death more visible "small particle" texture regardless of which weapon or archetype actually landed the killing blow.
+
+#### CA367 — `if` (was lines 7528-7535)
+Skeletal remains — two independent rolls, not gated to any particular weapon/archetype since bones are a property of the body, not of what killed it. Skipped for dust/ construct enemies (bio.isDust) since those don't have a skeleton to leave behind. Cut again, 0.30/0.14 → 0.12/0.05, per direct feedback ("bones pile up a bit too much") — this is the SECOND cut (see the 0.78/0.45 → 0.30/0.14 note this replaces); bone/skull debris lives for 45 MINUTES (BONE_LIFESPAN) and essentially never expires in a normal session, so with hundreds of kills across a run even a "moderate" per-kill chance compounds into permanent, ever-growing clutter unlike blood, which actually fades.
+
+#### CA368 — `if` (was lines 7539-7544)
+this was passing smallBias=true, which forces every death pool into the same narrow "ordinary splatter" size band and skips the bigger-pool rolls entirely — meaning literally every death looked the same size. The death pool is the one place that should occasionally roll bigger — but spawnDecal's own size tiers are now capped much lower than they briefly were, so "bigger" stays readable instead of becoming one solid mass when several deaths land near each other.
+
+#### CA369 — `if` (was lines 7551-7552)
+a single running drip trail off the death pool — a body leaves one real trickle as it settles, not several fanned-out ones piling onto the same spot
+
+#### CA370 — `if` (was lines 7560-7564)
+the killing blow's blade still had blood on it from the fight — a real cast-off arc (cessation cast-off, per BPA literature: the blade stops abruptly at the target while the blood already in flight keeps going), not a plain straight streak. Blunt/thrust weapons don't have a bladed edge carrying prior blood the same way, so they fall through to the plain streak instead.
+
+#### CA371 — `if` (was lines 7581-7584)
+Distinct visceral death sound, separate from the generic 'death' still used for barricades/ scenery — goreScale (already driving every other part of this death event's size) also scales how wet/heavy this specific sound reads, so a Boss's death sounds a bit weightier than a Grunt's.
+
+#### CA372 — `if` (was lines 7629-7632)
+WC3-style burning building: no fire above 66% HP, a small flame from 66% down to 33%, and a bigger one below that — size and count scale continuously with how badly it's damaged rather than just two fixed stages, so the building visibly gets more engulfed the lower it gets instead of jumping between two looks.
+
+#### CA373 — `if` (was lines 7645-7652)
+A small dark badge behind the skull, not just the bare glyph — the skull previously had nothing to visually separate it from whatever enemy body might be standing right behind it (this is a floating annotation, not a physical object with its own depth-sorted space), so a nearby enemy could make the marker read as overlapping or ambiguous. The full fix (actively checking nearby bodies and nudging the marker to avoid them) would need this draw call to have access to a nearby-enemies list it doesn't currently receive — this simpler, lower-risk version (opaque badge for contrast) resolves the actual readability complaint without that extra plumbing.
+
+#### CA374 — `if` (was lines 7673-7677)
+Same bump animation as the barricade case above, but pointed straight at the tower being attacked instead of along the path — there's no waypoint to reference off-path, and "lean into the thing you're hitting" is the more legible read for a direct melee target anyway. Mutually exclusive with the barricade branch in practice (see the comment on attackBumpTarget's declaration), so no double-bump risk.
+
+#### CA375 — `if` (was lines 7685-7686)
+Hit-flinch render offset — decays from full magnitude down to 0 over flinchDuration. Purely additive to the barricade-bump offset above; both are render-only and can coexist.
+
+#### CA376 — `if` (was lines 7702-7709)
+The status-aura circles just above (slow/burn/poison/pileBlocked) all set ctx.fillStyle to a translucent rgba color and never reset it — globalAlpha=1.0 at the top of this method doesn't help here since a color's own alpha channel is independent of globalAlpha. On any rendering path where the emoji glyph honors fillStyle as a tint (color-emoji support varies by platform/ font), the enemy sprite itself was inheriting whatever translucent aura color was drawn last — this is what actually produced "all enemies transparent," not a global compositing leak. Forcing a fully opaque fillStyle immediately before the glyph draw fixes it regardless of how the platform's font handles color-emoji.
+
+#### CA377 — `if` (was lines 7731-7735)
+was a translucent white FILL circle drawn directly over the emoji — on clustered/queued enemies taking repeated hits, several overlapping fills wash the colors out toward white, reading as "faded"/"invisible" units even though nothing was actually wrong with their HP or targeting. A stroked ring outside the sprite reads as a hit-flash without ever painting over the emoji itself.
+
+#### CA378 — `if` (was lines 7751-7766)
+Tower's legal states, documented explicitly (same non-refactor approach as Enemy's above) — corrected once already before shipping: an earlier draft of this comment wrongly assumed combat damage could destroy a tower (active=false), checked directly against takeDamage() and found that's not what happens at all: ACTIVE    — active === true, hp > 0 — the ordinary default; can attack, be targeted for healing/breakaway/escaped-enemy-attack, be upgraded/sold/moved DISABLED  — active === true, disabledWavesLeft > 0 — reaching 0 HP from combat (a breakaway or escaped-enemy attack) does NOT destroy a tower; takeDamage() instead recovers it to 30% HP and locks it out of attacking for the next 2 waves (disabledWavesLeft=3, decrementing at each wave start). The tower stays fully present and selectable the whole time — this is a genuine "downed and recovering" state, just not one that removes the tower from the board the way the generic tower-defense checklist this was cross-checked against assumed a "downed" state would. REMOVED   — active === false — reachable ONLY by the player selling the tower, or a wholesale pool reset (new game / save load) — never a consequence of combat by itself. The only state a pooled slot can be reused from.
+
+#### CA379 — `Tower` (was lines 7769-7772)
+A tower's world (x,y) is always derived from its grid (gridX,gridY) the same way — this was previously duplicated verbatim in create() and attemptMoveTower() (1.0.211 fix). One method means the two can never drift apart, the way isEnemyFrozen() already does for its own repeated condition elsewhere in this file.
+
+#### CA380 — `create` (was lines 7800-7802)
+Tower HP — mostly irrelevant unless a breakaway enemy engages this tower directly. BARRICADE is the exception: its HP IS the X/10 display, 1:1, and only drops when an enemy is actively blocked against it — rate-limited to at most 1 point per 2 seconds.
+
+#### CA381 — `create` (was lines 7819-7829)
+shieldPct itself (baseShieldPct + item armor) is normally set by recomputeStats() — but every FRESH placement this session (build-menu, the free-item barricade drop, both auto- spawned starting barricades) creates a tower via this method and never calls recomputeStats() afterward (only the save-load restore path does, right after its own create() call). That left shieldPct undefined from the moment of creation until whatever first triggers a recompute (a stat point spent, a promotion) — and a Barricade never triggers one of those, ever, so its shieldPct stayed undefined for its entire life. The very first breakaway/escaped-enemy hit then computed amount*(1-undefined) = NaN in takeDamage(), permanently corrupting hp to NaN (confirmed live: the "-NaN" floating text, HP that can never reach 0 again since NaN<=0 is always false). Seeding a real number here closes the gap at its source, regardless of whether/when recomputeStats() next runs.
+
+#### CA382 — `create` (was lines 7833-7837)
+Per-tower telemetry — direct request ("include per tower telemetry in the debug log"). Purely additive counters, read by drawDebugOverlay()'s telemetry block; never affects gameplay. Barricade never attacks — shots/hits/misses/kills would always sit at a permanent 0, wasting a debug-overlay line every game — so it gets no telemetry object at all, not just a display filter; recordContribution()/fireProjectile() already guard every write with `if(telemetry)`.
+
+#### CA383 — `top-level` (was lines 7871-7883)
+Universal per-tower coloring, called on create(), upgrade(), and evolveInto() — every class gets a genuinely distinct personal shade (not just an ~8% wobble) while staying within its archetype hue, and re-rolling on upgrade/evolution visibly shows growth/change. Skin and pants lightness are each rolled as a fully independent uniform random value across a wide fixed range — NOT an offset applied on top of the class's own preset base lightness. Offsetting from a fixed base (the previous approach) meant a class whose preset pants tone happened to sit light (e.g. Mage's shade color) would statistically keep landing light even after the roll, since the offset was centered on that preset — which is exactly what "Mage always has light pants" was. Rolling an absolute lightness instead makes every class's skin and pants equally likely to land anywhere across the full range, independent of each other and of the class. faceColor is the one deliberate exception — it's always derived as a bit darker than THIS tower's own rolled skin, never fully independent, so the face reliably reads as a subtle shade of the head/body rather than an unrelated random tone.
+
+#### CA384 — `rollSkinTones` (was lines 7887-7892)
+Pants lightness range widened and shifted up (was 18-85, mean ~51 — landed in the visually dark/muddy zone often enough that it read as "pants are always dark" even though the roll itself was uniform). Several classes' `shade` base hue is already fairly saturated (deep red, violet, etc.), which reads darker to the eye than the same lightness number would for a lighter hue — raising the floor keeps genuinely dark pants as a real possibility (still a wide 64-point spread) without them dominating the distribution the way the old lower floor did.
+
+#### CA385 — `rollSkinTones` (was lines 7899-7903)
+Per-tower height/weight variance around the class's own baseline JOB_BUILD proportions — rolled independently on X (weight/breadth) and Y (height), so two towers of the same class genuinely differ in silhouette instead of all sharing one fixed stature. Rolled once at create() and re-rolled at evolveInto() (new class, new physique); NOT re-rolled on upgrade() — leveling up is the same individual getting stronger, not growing a new body.
+
+#### CA386 — `applyTierStats` (was lines 7913-7920)
+Same reasoning extended to two more real leaks found by checking every evolution edge, not just the one already fixed above: Bomber's tiers define splashRadius but Gunalinder's don't (a Gunalinder would otherwise still deal unintended AOE splash via onImpact()'s unconditional `splashRadius > 0` check, directly contradicting its own "trades splash for precision" identity), and Mage's tiers define slowFactor/slowDuration but Cleric's/Pope's don't (lower impact — Cleric/Pope's own curse-based attack path never reads these — but still stale state that has no business surviving the evolution). Blowdart→Squirtgun was checked too and is fine: both define poisonDamage/poisonDuration in every tier.
+
+#### CA387 — `applyTierStats` (was lines 7923-7931)
+snapshot the tier's numbers as the "base" that STR/DEX/INT bonuses layer on top of. Damage specifically is dampened here: the raw tier table's damage growth (tier 1 -> max tier) used to carry through in full, and compounding with recomputeStats()'s own primary-stat damage multiplier meant most of a tower's total damage growth came from spending gold on gold-tier levels alone — the primary stat (STR for Warriors, DEX for Archers, INT for Mages) barely moved the needle by comparison. Anchoring to tier 1's own damage and only letting a fraction of the growth ABOVE that baseline through keeps leveling up feeling rewarding (more range, faster cooldown, unlocked mechanics, and still some damage) while making the primary stat the dominant lever for how hard a tower actually hits, as intended.
+
+#### CA388 — `if` (was lines 7956-7960)
+STR = +8% WARRIOR damage/point with a late-game-friendly curve (see warriorStrDamageMult()), DEX = +3% attack speed/point (lower cooldown), INT = +6 range/point (points come from allocated stats, equipped items, and — once fully geared — a flat Hero bonus) CLERIC is the one exception: INT boosts healAmount instead of adding to range (its range is a fixed detection radius for smiting undead, not something that scales the same way).
+
+#### CA389 — `recomputeStats` (was lines 7962-7969)
+Barricades are obstacles, not towers — fixed 10/10 durability, never touched by any of the generic stat machinery below (STR/DEX/INT, items, Hero/Legendary bonuses, archetype damage curves, HP-stat, crit, accuracy...). This was the actual root cause of a real, reproducible crash: without this guard, Barricade (no CLASS_ARCHETYPE entry) fell all the way through to hpStatBase/hpStatRate's Mage fallback below and recalculated maxHp from whatever str/dex/int the instance happened to have — which could only ever be nonzero because upgrade()'s random stat-growth loop had no Barricade guard either (fixed separately, see upgrade()), silently mutating str/dex/int on a Barricade instance that should never carry meaningful stats at all.
+
+#### CA390 — `recomputeStats` (was lines 7973-7976)
+Armor from items only, at a fixed 1 armor = 1% damage reduction — baseShieldPct (class ability like Hammerman's, plus the Legendary bonus) is a separate, permanent, non-item source, summed here rather than mutated ad-hoc so equipping/unequipping an armor item takes effect immediately. Same 90% cap the Legendary bonus already used.
+
+#### CA391 — `recomputeStats` (was lines 7985-7988)
+Archetype preference: a tower's naturally-favored stat counts as if invested more heavily. Applied once here as the effective point count, then used everywhere downstream instead of the raw totals, so every stat-driven effect (damage, HP, accuracy, luck, range...) benefits consistently rather than needing this logic repeated at each individual usage site.
+
+#### CA392 — `recomputeStats` (was lines 7993-7996)
+1.4.3 balance rebuild: stat effects interpolate linearly to their value at STAT_EFFECT_CAP (500 trained points) instead of compounding diminishing curves. The primary stat's DAMAGE share is deliberately small (+75% at cap) because that same stat also buys attack rate, range, HP and accuracy elsewhere in this method.
+
+#### CA393 — `recomputeStats` (was lines 7998-8000)
+DEX also buys attack rate, but an Archer's DEX is already its damage stat — at full rate it double-dips and out-scales every other class (61 vs 24 DPS at 400 points, measured). Archers get ARCHER_RATE_SHARE of the rate bonus so their edge comes from accuracy/range/crit instead.
+
+#### CA394 — `recomputeStats` (was lines 8002-8010)
+Switched from a flat linear ramp (1 + share * points/CAP, reaching a full +100% at cap with zero diminishing return) to the same diminishingStatValue() curve crit/luck already use — direct feedback ("dex increases attack speed too fast... too overpowered compared to accuracy... attack speed should be more precious"). Attack rate directly multiplies every other DPS source (damage, crit uptime), so an uncapped linear ramp on it was scaling total DPS out ahead of every other stat investment at high DEX. The 0.014-per-point constant is tuned so a fully-trained 500-DEX tower now tops out around +66% attack rate (was +100%), while leaving low/mid investment close to where it already was — the cut lands specifically on late-game stacking, not on an early build's first few points into DEX.
+
+#### CA395 — `recomputeStats` (was lines 8017-8020)
+Dota-style gating: only the archetype's own preferred stat drives its damage. STR only powers Warrior damage, DEX only powers Archer-style damage, INT only powers Mage damage — no more universal STR-boosts-everyone's-damage fallback. HP still gets its own separate STR bonus below (strForHp), since that's a universal tankiness stat, not a damage stat.
+
+#### CA396 — `top-level` (was lines 8023-8026)
+Stored for applyDamage()'s per-hit variance band (see varianceHalfWidth there) — direct feedback that investing in the primary damage stat should widen the gap between a hit's min and max roll, not just raise the average, so heavy investment raises the ceiling (and floor) rather than only nudging a flat average up.
+
+#### CA397 — `top-level` (was lines 8028-8035)
+Stage-2 "Veteran" tier — direct request for a real checkpoint at 250 trained stats, one rung above the 100-point evolution unlock and one below the 500-point specialization cap. Scoped to evolution-reached towers only (EVOLVED_TOWER_TYPES) since the 100/500 rungs on either side of it are themselves evolution concepts; a starter class training past 250 already gets its own smooth continuous scaling from the stat curves elsewhere, it doesn't need a discrete checkpoint bonus on top. Permanent once reached (never revoked), +10% damage — a flat, uniform bonus rather than inventing distinct new content per lineage, which would be real, unscoped design work I'm not doing on a guess (see BACKLOG.md).
+
+#### CA398 — `if` (was lines 8061-8066)
+"HP stat" — a separate value on top of the percentage bonus above, not a replacement for it. Archetype-differentiated per explicit spec: Warrior starts at 3 "heart" (30 bonus HP) and grows 0.32/STR point, Archer starts at 2 (20 HP) growing 0.25/point, Mage starts at 1 (10 HP) growing 0.15/point — Barricade (no CLASS_ARCHETYPE entry) falls back to Mage's rate/base, the lowest, since it's not a fighting class. Converts to flat bonus HP at a 10:1 ratio: 23 HP stat = 230 bonus HP (1.1.27 spec, rebalanced 1.1.37).
+
+#### CA399 — `if` (was lines 8079-8082)
+Critical hits — DEX increases the CHANCE, INT increases the MULTIPLIER, both universal (every archetype benefits, same as DEX's accuracy/attack-speed and INT's range) and both diminishing/capped so heavy investment stays meaningful without becoming absurd. Base values per explicit spec: 2.5% chance to deal 1.20x damage before any stat investment at all.
+
+#### CA400 — `buyItem` (was lines 8091-8092)
+A banked free-barricade charge (see the wave-completion handler) skips wood/stone entirely for this one purchase — checked and consumed before the normal cost checks below.
+
+#### CA401 — `if` (was lines 8111-8114)
+For an item the tower already owns some other way — picked up as a free scenery/chest drop, or dragged over from another tower's inventory — never charges gold/wood/stone. buyItem() is only for an actual shop purchase; reusing it here would incorrectly re-charge for an item that was already paid for once (or never cost anything in the first place).
+
+#### CA402 — `allocateStat` (was lines 8153-8159)
+Progression: a tower never transforms into a new class — it keeps its own identity forever and just keeps growing its own stats/attunement. Reaching a threshold instead permanently unlocks the NEXT tier as a separately buildable tower (see unlockedTowerTypes/unlockTowerTypeBuild) — "grind out a lower tower to unlock a better one," not "a tower grows up into a better one." Applies uniformly at every tier: a freshly-built Blowdart (once unlocked) grinding its own DEX toward 40 unlocks Squirt Gun the exact same way a Swordsman grinding STR toward 500 unlocks Hammerman — neither tower ever becomes the thing it unlocked.
+
+#### CA403 — `checkEvolution` (was lines 8173-8181)
+Elemental attunement (see the ATTUNEMENTS/SPECIALIZATIONS block above CONFIG for the full design writeup). Called only for the 3 base classes, from checkEvolution() above. The first stat to cross ATTUNEMENT_THRESHOLD locks this.attunement permanently — checked in the same str→dex→int priority order the old evolution check always used, though in practice only one stat can cross in any single allocateStat() call anyway, so this order only ever matters for the save-migration path (restoreGameState()'s legacy-save handling), not live play. Crossing SPECIALIZATION_THRESHOLD in that same attuned stat then permanently unlocks the matching specialization as buildable, if SPECIALIZATIONS defines one for this (type, element) pair — this tower itself stays exactly what it is.
+
+#### CA404 — `if` (was lines 8189-8193)
+The old plain "Attuned!" text was the exact source of the "100 DEX did nothing" report — attuning at 100 is real progress (it locks in the element) but doesn't unlock anything buildable by itself; SPECIALIZATION_THRESHOLD (500) in that same stat does. Naming the actual target and the remaining distance here means the first thing a player sees IS the "how far left" readout, not just a vague confirmation they then have to go find.
+
+#### CA405 — `if` (was lines 8202-8206)
+Cat Snapper — a raw DEX-threshold unlock directly on Archer, independent of attunement entirely (checked even if this.attunement is still null), since all 3 of Archer's own element slots are already taken and this was never going through that system at all — see the comment above SPECIALIZATIONS. Reuses SPECIALIZATION_THRESHOLD (500), the same number every other specialization unlock in this file already uses, rather than inventing a new one.
+
+#### CA406 — `if` (was lines 8208-8217)
+Quasar — "all three elements equally." The pairKey system above (and HYBRID_SPECIALIZATIONS) is built entirely around this.attunement being a single locked value, which structurally can't express "all three at once" no matter how it's queried — so this doesn't go through that system, or through this.attunement, at all. Checked as its own fully independent condition instead: all three raw stats (str/dex/int) each reaching SPECIALIZATION_THRESHOLD (500) — the same number every other specialization/hybrid unlock in this file already uses, not a new threshold invented for this. Reachable from any of the 3 base classes, same as Proton/Dark Matter — nothing here is type-restricted beyond BASE_ATTUNABLE_TYPES, which is already what gates every tower that reaches this function at all. Mixed elements (Proton / Quasar / Dark Matter) are states on this stickman, not new classes.
+
+#### CA407 — `if` (was lines 8225-8228)
+Hybrid check — independent of the single-element check above, off the same stat growth. Iterates the other two elements (never re-checks this.attunement's own element against itself) rather than hardcoding which pair might apply, so adding Proton/Dark Matter later is just adding a HYBRID_SPECIALIZATIONS entry, not touching this loop.
+
+#### CA408 — `if` (was lines 8238-8242)
+Currently unused — kept defined rather than deleted. Towers no longer transform into a new class at all (see checkEvolution()/checkAttunementAndSpecialization() above — reaching a threshold now only unlocks the next tier as a separately buildable tower, the source tower keeps its own identity forever), so nothing calls this anymore as of the redesign that removed both of its call sites. Left in place rather than removed outright.
+
+#### CA409 — `evolveInto` (was lines 8247-8249)
+Items are universal now (see UNIVERSAL_ITEMS) — they work identically regardless of class, so they carry straight through evolution instead of being cleared. isHero (which only requires all slots filled, not any specific class's items) stays valid for the same reason.
+
+#### CA410 — `evolveInto` (was lines 8251-8255)
+Fixed alongside the baseMaxHp line above, which this exact bug already sat next to: Hammerman is evolution-only (never built directly, see EVOLVED_TOWER_TYPES), so evolveInto() not updating the shield-granting field meant a tower evolving into Hammerman never actually got its signature 35% shield. Preserves the Legendary bonus across evolution, matching how legendaryHpMult already does.
+
+#### CA411 — `evolveInto` (was lines 8266-8267)
+Five knives, then a long reload — the burst is this class's identity, so it rides on the same cooldown field the rest of the firing code already respects.
+
+#### CA412 — `if` (was lines 8279-8280)
+Points a promotion could actually award right now — assigned stats and unspent points draw on the same STAT_TOTAL_CAP budget, so a full tower can't buy an empty promotion.
+
+#### CA413 — `if` (was lines 8282-8285)
+Named differently from the tier data's "upgradeCost" field on purpose — applyTierStats() copies every tier field onto the instance via Object.assign, and a method with the exact same name as a data field gets silently overwritten (shadowed) by that number after the first upgrade, breaking every upgrade after that. This was a real, reproducible crash.
+
+#### CA414 — `upgrade` (was lines 8293-8295)
+Promotion rolls 1d6 into each of STR/DEX/INT, then a second 1d6 into the class's favored stat. Cost grows exponentially (promotionCostFor), so repeated promotions stay a real gold decision while XP training remains the steady, player-directed growth source.
+
+#### CA415 — `for` (was lines 8310-8311)
+NOTE: applyTierStats() is deliberately NOT called here — promotion rank must not change damage, cooldown or range. Promotion buys stat rolls only.
+
+#### CA416 — `findTarget` (was lines 8345-8354)
+Mage gets a much wider hysteresis margin than other towers, but NOT an absolute lock — an earlier version of this fix returned early and skipped re-evaluation entirely as long as the current target stayed active and in range, with no path back to normal scanning. That meant if Mage's very first lock ever landed on a target it structurally couldn't damage for any reason, it would stay stuck on that unreachable target forever, since nothing could ever trigger a re-scan — a real regression (reported: Mage stopped attacking entirely). This version keeps the normal scan-and-compare flow running every frame (so it can always self-correct), just with Mage's threshold set high enough that only a drastically better-scoring target — not routine minor fluctuations — will actually pull it away mid-charge. Every other tower's 15% margin is unchanged.
+
+#### CA417 — `update` (was lines 8381-8387)
+Melee towers (updateSwordsman/updateAxeman) read `nearby` directly every tick for adjacent-enemy detection, independent of the ranged targeting/cooldown system below — they always need a fresh scan. Every other tower only needs one when it's actually able to act: still charging its first shot, off cooldown, or its current target went stale/left range. Skipping the scan the rest of the time (mid-cooldown with a target still locked in range) was the single largest source of queryNearby()/spatial-hash-query volume during dense waves — every ranged tower was re-scanning its full radius on every tick regardless of cooldown state.
+
+#### CA418 — `if` (was lines 8405-8418)
+The visible weapon rotation must aim along the SAME lead-predicted line the shot actually travels (see fireProjectile()), not straight at the target's current position — a moving target means those two angles diverge, and the tower visibly aims one way while the projectile flies another. Most noticeable on Mage now that shots are rare and dramatic enough for a mismatch to actually be seen, but this affects every ranged class equally. recentlyEngaged used to be a short fixed grace window after losing a target, but with cooldowns now running several seconds (Mage especially, at 4.2-9.5s), real gaps between one target leaving range and the next arriving routinely exceeded that window — so the pose kept flickering back to idle mid-charge every time a target briefly cycled out, even though the tower was still actively counting down toward its next shot the whole time. The tower is genuinely "engaged" for its entire cooldown, not just while a specific target happens to be in range at this exact instant, so that's the real signal to use: stay engaged for as long as the cooldown is actively running, falling back to idle only once it's sitting fully charged with nothing to shoot at for a real stretch (the short window still covers that case).
+
+#### CA419 — `if` (was lines 8422-8428)
+WC3 Optimization & Performance Patch (1.5.6) — exact time-of-flight intercept for these three archetypes specifically, instead of the simpler linear extrapolation below. fireProjectile() reuses this.angle unchanged (same as before), so the visible weapon aim and the actual projectile heading stay guaranteed in sync; the resulting shot is also marked (see fireProjectile()'s p.exactIntercept) to skip Projectile.update()'s continuous mid-flight homing correction — an exact intercept computed once at launch has no unnatural homing curve left to correct.
+
+#### CA420 — `if` (was lines 8433-8438)
+Lead-predict capped to MAX_LEAD_PREDICT_TIME — extrapolating the target's current velocity out to the shot's full flight time (up to ~0.8s at Archer's max range/speed) routinely aimed well past a corner the target had already turned on this winding spiral path, producing a clean whiff even though the prediction math itself was correct. Capping the extrapolation window trades a little lead accuracy on long straight stretches for much more reliability near turns, which are frequent on this map (1.1.2 fix).
+
+#### CA421 — `if` (was lines 8445-8451)
+Mage is deliberately excluded from ever snapping to the idle angle at all — with a 4.2-5.4s cooldown, it's common for it to sit fully charged with no target for well over the 500ms grace window, and snapping the staff to an upright idle pose in that state moved the glowing charge orb to a different screen position, reading as the whole cast restarting even though chargeProgress itself never moved. Mage's angle now simply holds its last aimed direction indefinitely until a real target appears — the render side (drawTowerBody) already always points the staff at `angle` unconditionally to match.
+
+#### CA422 — `for` (was lines 8472-8474)
+curse: a lingering DoT tick, not a single burst — 5x tick damage against undead specifically. "damage" is the total curse damage over its duration; convert to per-tick using the actual 600ms poison tick interval rather than assuming a fixed tick count
+
+#### CA423 — `for` (was lines 8485-8488)
+Pope's evolution over Cleric: no single target, no miss chance to roll against (an AOE pulse centered on itself can't "miss") — every enemy within range gets cursed at once. Same curse-tick/5x-undead-damage mechanics as Cleric's own smite, just applied to everyone in range simultaneously instead of the single closest enemy.
+
+#### CA424 — `if` (was lines 8511-8514)
+(shieldPct||0): defense-in-depth, not the actual fix — see the comment on shieldPct's own initialization in create() for the real bug this guards against. Kept anyway so this specific calculation can never again corrupt hp to NaN even if some future code path reintroduces a similar gap.
+
+#### CA425 — `if` (was lines 8518-8523)
+Throttled hit-reaction chatter, not one per hit — a tower can be hit repeatedly in quick succession by multiple breakaway enemies, and reacting to every single one would be exactly the kind of event-spam this session already learned to avoid with footsteps/impact suppression. Low, gruff pitchBias — a startled reaction, distinct from level-up's bright one. Excluded for Barricade — an inanimate obstacle, not a stickman with a voice; CLASS_ARCHETYPE has no entry for it, so this would otherwise have silently fallen back to a generic voice.
+
+#### CA426 — `fireProjectile` (was lines 8605-8608)
+Reuse this.angle directly rather than recomputing the lead-predicted angle a second time — it was already computed with the exact same formula this same frame, in update(), right before updateRanged()/fireProjectile() were called synchronously off the back of it. Keeping one computation guarantees the projectile can never diverge from the weapon's visible aim.
+
+#### CA427 — `fireProjectile` (was lines 8610-8612)
+muzzle offset: spawn from the actual weapon tip, not the tower's center — replicates the same local-space reach (arm length + weapon length) used when rendering the stickman, so this scales correctly with weaponScale (INT investment) exactly like the visible weapon does
+
+#### CA428 — `switch` (was lines 8633-8636)
+shoulder pivot height must match drawStickman's actual transform stack (STICKMAN_SCALE, the class's own body scaleY, and the Legendary 1.1x bump) — previously this used a flat -13 regardless of class, so taller-built classes like Archer (scaleY 1.08) had their visible bow sit higher than where the arrow actually spawned, i.e. arrows spawned visibly low.
+
+#### CA429 — `switch` (was lines 8650-8657)
+Flight-time budget for the world-boundary hit-resolution failsafe below (see update()) — direct feedback ("the projectile goes past the enemy then it dies a second later"): a committed-hit shot that never geometrically connects used to fly all the way to the WORLD EDGE before snapping back to resolve the hit, which on a large map could take seconds and look badly broken. 1.8x this shot's own original straight-line flight time (floored at 600ms so a short shot still gets real homing-correction leeway) means the snap-back now happens almost immediately after it was clear the shot wasn't going to connect, not after a long visible overshoot.
+
+#### CA430 — `switch` (was lines 8661-8663)
+Glaive's whole identity — direct request ("5x damage to buildings"). Rolled once here against the actual locked target (this.target), not generically at impact, since a single-target shot is already committed to a specific enemy the moment it's fired.
+
+#### CA431 — `switch` (was lines 8665-8669)
+Dual-wield taper: for a true two-weapon burst (burstCount === 2 — Snap Caster's second wand, not Gunalinder's 6-round revolver burst, a different mechanic), the second hit only does 25% of the first. this.burstShotsLeft still holds its pre-decrement value here (fireProjectile() hasn't returned to updateRanged() yet): burstShotsLeft === burstCount means this is the burst's first shot, at full damage; anything less means a later shot in the same burst.
+
+#### CA432 — `top-level` (was lines 8676-8679)
+Money Bag — Merchant's own splash shot, drawn as an arcing lob (same axeFlightMs/ axeSpawnTime timing pattern the thrown-axe visual already uses) instead of the generic splash-shot dot, and bursts into coins instead of the generic orange splash particles on impact (see Projectile.draw()'s isMoneyBag branch and onImpact()'s splashRadius branch).
+
+#### CA433 — `if` (was lines 8685-8688)
+Marks this shot for Projectile.onImpact()'s 'CAT' branch — the cat doesn't deal impact damage itself, it spawns a CatCompanion that does the actual damage over its lifetime instead (see onImpact() below). Set unconditionally on every fire, like isAxe above, so a reused pooled Projectile can never carry a stale effectType from whatever it last was.
+
+#### CA434 — `if` (was lines 8697-8699)
+Hit/miss pre-roll — decided here, at launch, not at the moment of geometric contact. Object- pool reuse means every one of these fields must be set unconditionally on every fire, or a stale value from whatever this pooled Projectile last did could leak into this shot.
+
+#### CA435 — `if` (was lines 8701-8705)
+WC3 Optimization & Performance Patch (1.5.6) — Archer/Marksman/Sniper shots already launched on an exact ballistic intercept (see Tower.update()'s calculateLeadIntercept() branch), so Projectile.update()'s continuous rate-capped homing correction is skipped for them below; set unconditionally, like every other field here, so a reused pooled Projectile can never carry a stale value from whatever it last was.
+
+#### CA436 — `if` (was lines 8711-8714)
+Deliberately bend the launch angle so the shot visibly clears the target's silhouette by a real margin, instead of flying straight at it and only revealing "actually that was a miss" once it geometrically arrives (the previous behavior, and exactly the visual-hit/gameplay-miss contradiction this pre-roll exists to remove).
+
+#### CA437 — `fireAxeThrow` (was lines 8786-8793)
+Flight-time budget for the world-boundary hit-resolution failsafe below (see update()) — direct feedback ("the projectile goes past the enemy then it dies a second later"): a committed-hit shot that never geometrically connects used to fly all the way to the WORLD EDGE before snapping back to resolve the hit, which on a large map could take seconds and look badly broken. 1.8x this shot's own original straight-line flight time (floored at 600ms so a short shot still gets real homing-correction leeway) means the snap-back now happens almost immediately after it was clear the shot wasn't going to connect, not after a long visible overshoot.
+
+#### CA438 — `fireAxeThrow` (was lines 8800-8804)
+Purely visual arc — real position (this.x/this.y) stays exactly the same constant-velocity straight line it always was, so collision detection and the pre-roll hit/miss timing system (missRevealAt, computed from this same timeToImpact) are completely untouched. Only the drawn sprite gets lifted along a sine arc as a function of flight progress, peaking at the midpoint — makes a thrown axe actually look thrown instead of flying dead-level like every other shot.
+
+#### CA439 — `fireAxeThrow` (was lines 8809-8810)
+Same launch-time pre-roll as fireProjectile() — an axe throw is still a single-target shot and needs the same accuracy handling, just via this separate acquisition path.
+
+#### CA440 — `for` (was lines 8892-8894)
+FARM: prefer an enemy this tower can finish with its next hit (last-hit farming), lowest HP first; otherwise fall back to the weakest. ASSIST: prefer the healthiest enemy so the last hit is left to other towers. Neither fakes credit — the actual final hit owns the kill.
+
+#### CA441 — `if` (was lines 8924-8925)
+damage/radius default to this.damage/this.range (Swordsman, Spearman, Hammerman) but can be overridden (Axeman's melee mode uses meleeDamage/meleeRange instead, since its own damage/range are its throw stats)
+
+#### CA442 — `checkConeHits` (was lines 8931-8937)
+Direct feedback: a cone sweep hitting every enemy packed into the arc, all for full damage, wasn't realistic — capped to MELEE_SWEEP_MAX_TARGETS per swing (hitSet already tracks who this swing has hit across its incremental per-frame calls, so its size IS the true count so far), and each successive target within that cap takes 35% less than the one before it (compounding: 100%, 65%, 42.25%...), the way a real blade loses momentum cutting through multiple bodies in one motion. Closest-first selection (see below) so the stronger hits go to the nearest targets, not whichever happened to be first in the source array.
+
+#### CA443 — `checkConeHits` (was lines 8939-8945)
+Zero-allocation top-3-closest selection, replacing an earlier version of this same fix that called nearby.slice().sort() every call — a fresh array allocation on a hot per-tick melee path, exactly the class of thing this project's own V8-GC note (see AGENTS.md) flags. Two parallel fixed-size scratch arrays (enemy refs + distances) cached on the tower instance itself, lazy-created once and reused for the tower's whole lifetime (safe — per-instance, not shared across towers), so a slot "insertion" is just reassigning existing array elements — no object or array allocation anywhere in this function, at any candidate-list size.
+
+#### CA444 — `for` (was lines 8957-8959)
+Insertion into the fixed-size slot list, closest-first, capped at MELEE_SWEEP_MAX_TARGETS — a farther candidate that doesn't beat the current worst-of-3 is simply dropped, same outcome as sorting the full candidate list and slicing the top 3.
+
+#### CA445 — `for` (was lines 8978-8980)
+A melee miss has to LOOK like a miss: the blade sweeps through the enemy's position, so the enemy visibly ducks out of the arc instead of standing in it while "MISS" floats overhead. Same principle as a ranged shot's pre-rolled offset path.
+
+#### CA446 — `for` (was lines 8993-8996)
+Blood-lust aura for the current killstreak holder: a pulsing red energy ring with blood running off it, beneath the stickman — replaces the old flat gold circle. Elemental sweep that follows a melee swing: the same arc the weapon travels, stroked in the tower's element colour and fading as the swing completes.
+
+#### CA447 — `drawBloodLustAura` (was lines 9019-9022)
+Gradient-free, drip-free path on Low — every other glow/gradient effect in this file is already gated behind graphicsQuality, this one was missed. A gradient allocation plus 5 ellipse fills every frame, per tower carrying the buff, is real avoidable cost on the exact setting (Low, mobile) this game defaults new players into.
+
+#### CA448 — `if` (was lines 9053-9054)
+Visible chip: a brief shake plus a red flash, so losing a point reads as damage rather than a number quietly ticking down in the panel.
+
+#### CA449 — `if` (was lines 9069-9075)
+Same class of bug as the enemy emoji fix above: nothing here was setting fillStyle immediately before drawing the barricade glyph, so it inherited whatever translucent color the last thing drawn before it left behind — most often a fading blood decal (drawDecals() runs before towers every frame and sets fillStyle to a partial-alpha rgba for its fade-out), which is exactly what produced barricades occasionally rendering "ghosted"/partially see-through. Forcing an opaque fillStyle right here fixes it for good, regardless of what was drawn immediately beforehand.
+
+#### CA450 — `if` (was lines 9115-9117)
+(upgrade-available indicator lives on the scroll icon in the tower's own panel — the separate pulsing glow ring that used to render here at every affordable-upgrade tower was redundant with it and has been removed)
+
+#### CA451 — `if` (was lines 9129-9130)
+Same post-fire-flourish pattern as castProgress above, for Cat Snapper's brief "cat visibly leaves the hand" beat right after a throw — see drawStickman()'s CAT_SNAPPER branch.
+
+#### CA452 — `if` (was lines 9136-9141)
+Continuous charge-up toward the next shot — 0 right after firing, approaching 1 as the (now much longer) cooldown nears its end. Computed purely from cooldownTimer/cooldown, with no dependency on having a target, so the tower visibly telegraphs that it's always building toward its next shot rather than looking idle/broken during the long wait between shots. Also drives a two-handed Swordsman's ("Zweihander") own wind-up tremble/glow, reusing this exact same mechanic rather than a separate one — see the SWORDSMAN branch's isTwoHander path.
+
+#### CA453 — `if` (was lines 9149-9153)
+Gradual return-to-rest for Mage's staff (see drawStickman()'s MAGE branch): 0 for the first 2s after losing a target — preserves the existing fix where a brief disengagement shouldn't snap the pose — then ramps smoothly to 1 over the next 1.5s if still idle, so the staff/orb settles back to a neutral resting angle instead of staying locked at whatever angle it last aimed at forever, which could leave it pointing at an odd angle indefinitely once idle.
+
+#### CA454 — `if` (was lines 9228-9231)
+Unspent-stat scroll (📜) no longer draws here — it's depth-sorted separately by its own screen position now, since it visually extends well above the tower's head and needs to occlude/be-occluded against neighboring towers correctly rather than sharing the tower body's single sortY. See drawTowerScroll() and its push site in drawDepthSortedLayer().
+
+#### CA455 — `if` (was lines 9244-9248)
+Closest squared distance from point (px,py) to the line SEGMENT (ax,ay)-(bx,by) — used for swept projectile collision below, since a fast-enough projectile (Mage's especially: 1400-1600/s, 2.5-4x every other tower) can move further in a single frame than an enemy's own radius, letting it skip straight past a moving target between one frame's position check and the next. Checking distance to the whole segment the projectile traveled THIS frame, not just its new endpoint, catches that.
+
+#### CA456 — `pointSegmentDist2` (was lines 9259-9268)
+Enemy hitbox precision — a narrow-phase alpha-mask test layered strictly on top of the existing broad-phase swept-circle check below (Projectile.update()'s pointSegmentDist2 <= radius^2), never a replacement for it. Enemy.draw() renders each emoji at `font = radius*2 + 'px serif'`, centered (textAlign/textBaseline 'center'/'middle') at local (0,0) — building one small reference-size mask per type with those exact same font settings, then rescaling test coordinates by the actual instance's radius, keeps the mask aligned with whatever's really on screen for any instance (size-jittered or boss-scaled) without re-rendering per-instance. This can only make a hit stricter than before, never looser: every helper below defaults to `true` (defer to the existing radius-only result) on any failure — mask not yet built, glyph render throws, canvas tainted — so a broken mask never takes away a hit the old code already granted.
+
+#### CA457 — `pointOnEnemyMask` (was lines 9309-9313)
+Swept narrow-phase: samples along the projectile's this-frame travel segment, not just its final point — a fast projectile (Mage bolts especially) can cross an entire enemy within one frame, so an endpoint-only test could tunnel through a real hit or register a hit past where the glyph visually ends. Sample density is fixed relative to mask-space distance, capped so a long fast segment can't blow up the loop.
+
+#### CA458 — `update` (was lines 9333-9348)
+A rolled-HIT shot (not isGuaranteedMiss) that reaches here never geometrically connected — the target moved enough (knockback, a fast enemy, a sharp turn) that even homing correction (rate- and angle-capped, see above) couldn't keep the swept segment crossing its actual mask. Direct feedback: this reads as "the archer can't even hit the enemy even though he's not actually missing" — the roll said hit, but the shot just vanishes with zero feedback, no MISS text (wasn't flagged as one) and no damage (never geometrically connected). Since the roll already committed to a hit, resolve it as one now rather than waste it in silence — same "the roll's outcome is always honored" principle already used for guaranteed misses. Triggers on EITHER the world boundary OR this shot's own flight-time budget (maxFlightMs, set at launch — see fireProjectile()) running out, whichever comes first: the time budget is what actually fires in the overwhelmingly common case (a shot that lost its target mid-map), so the snap-back happens within a fraction of a second instead of after however long it takes to reach the literal edge of a large map — direct feedback ("the projectile goes past the enemy then it dies a second later"). The boundary check stays as a backstop for the rare case a shot is fired from very near the edge with an unusually long maxFlightMs.
+
+#### CA459 — `if` (was lines 9355-9359)
+A rolled miss never resolves a hit, on anything — it just flies its (deliberately offset) path and reveals the MISS feedback once, near where it would have crossed the target, then continues on to natural off-world expiry above. This is the whole point of pre-rolling at launch: "rolled MISS = visual miss = gameplay miss," never a shot that visually connects and only afterward turns out not to count.
+
+#### CA460 — `if` (was lines 9368-9370)
+The target a committed (rolled-hit) shot was tracking died to something else before this shot arrived. That's not an accuracy miss — cancel cleanly rather than let the shot potentially geometrically cross, and hit, a different enemy it wasn't rolled against.
+
+#### CA461 — `if` (was lines 9376-9380)
+Subtle continuous intercept correction for a committed single-target shot — nudges heading toward the target's real current position every frame (rate-capped, see PROJECTILE_HOMING_MAX_TURN_RATE), so a guaranteed hit keeps actually intersecting a moving/ turning target instead of relying solely on the one-shot lead-prediction computed at launch. Splash shots are excluded — they detonate at an area, not a single tracked point.
+
+#### CA462 — `if` (was lines 9387-9389)
+Past PROJECTILE_HOMING_MAX_ANGLE the shot commits to its line and simply misses, the way a real arrow does — no mid-flight course reversal. (Must not `return` here: the rest of update() still has to run this frame.)
+
+#### CA463 — `if` (was lines 9400-9402)
+Query radius widened to cover the WHOLE distance traveled this frame, not just a small area around the new endpoint — otherwise a target sitting near where the projectile USED to be (a frame ago) could fall outside the search entirely on a fast-moving shot.
+
+#### CA464 — `if` (was lines 9417-9420)
+The thrown cat doesn't deal impact damage itself — it becomes a temporary companion that follows this enemy and scratches it repeatedly instead (see CatCompanion). Per-tower cap checked BEFORE touching the pool, so a Cat Snapper already at its own limit doesn't needlessly acquire-then-release a slot other Cat Snappers could use.
+
+#### CA465 — `if` (was lines 9434-9437)
+Splash shots keep their own independent roll here — unlike single-target shots, a splash detonation isn't pre-rolled against one tracked enemy in fireProjectile() (it's not aimed at a specific enemy's silhouette so much as a ground point), so this is still the right place for it.
+
+#### CA466 — `if` (was lines 9456-9459)
+Money Bag bursts into 1-7 Coins on landing — direct request. Purely additive on top of the generic splash particles above (kept as-is so the impact still reads the same for every other splash tower); the coins themselves are the actual gold pickup (see spawnCoinBurst() and updateCoinPickups() — auto-collected by any nearby tower, expire after 15-30s).
+
+#### CA467 — `if` (was lines 9469-9475)
+The shaft must stick out of the side the arrow actually entered from, with the head buried pointing further into the body along the real flight path — not a fully random position/angle around the enemy, which made arrows appear to be sticking out of the wrong side or straight through the middle regardless of where the shot actually came from. The embedding anchor sits on the NEAR side (opposite the direction of travel, since that's the side facing the shooter/where the arrow struck first), with the arrow's own angle matching the real flight path so the head visibly points inward.
+
+#### CA468 — `if` (was lines 9487-9490)
+Snap Caster's whole identity is "sometimes chain lightning" firing far more often than base Mage's occasional status roll, and skewed heavily toward the shock+chain branch specifically rather than an even three-way split with burn/freeze — that's the signature ability the evolution is named for, not an equal chance among three effects.
+
+#### CA469 — `if` (was lines 9513-9514)
+sketch the arc as a short trail of particles along the line between the two — onImpact has no canvas context to draw a line directly, so this is the lightweight approach
+
+#### CA470 — `if` (was lines 9546-9548)
+Money Bag (Merchant) draws as an arcing lob, checked BEFORE the generic splash-shot dot below so it never falls into that plain-dot rendering. Same lift-curve shape as the thrown-axe visual (Math.sin(progress*PI)), just a bigger peak height for a heavier lob.
+
+#### CA471 — `if` (was lines 9584-9588)
+Low graphics: skip the gradient allocation and shadowBlur entirely — same visual identity (a bright bolt with a core), just without the two most expensive parts. This matches the gating already used for the equivalent glow effect elsewhere (the hero-awakening item glow, a few hundred lines up) — this one was inconsistently ungated before.
+
+#### CA472 — `if` (was lines 9602-9608)
+glowing orb core Additive ('lighter') compositing for the orb core instead of shadowBlur — genuine color summation against whatever's behind it (real luminescence), and cheaper than shadowBlur's blur pass. Confirmed real technique, verified directly against Geary's Core HTML5 Canvas (Ch.2, composite modes) rather than taken on an external summary's word. Safe here since it's entirely inside this function's own save()/restore() pair (line 7726/7757) — never leaks into any other draw call.
+
+#### CA473 — `if` (was lines 9640-9648)
+Lets findTouchingBarricade() (runs once per active enemy, every tick) skip scanning the full towerPool for non-barricade towers. A Set, not an array — O(1) add/delete, and iteration order doesn't matter here (findTouchingBarricade just needs "is this one close enough", not order). Every mutation site enumerated directly by grep before this was added: 4 creation call sites (all route through Tower.create(), which is where this is actually populated — see the single insertion point there rather than at each call site) and 2 individual-tower deactivation sites (sell, store-as-ground-item), both of which delete from this Set right where they set .active=false. The 2 bulk "reset every tower" sites (new game, load game) clear this Set entirely at the same point — see those two `for(const t of towerPool) t.active=false` sites.
+
+#### CA474 — `top-level` (was lines 9651-9652)
+Sums every in-flight rolled-hit projectile's damage onto its tracked enemy — O(projectiles) once per tick, zero allocation — so FARM/UNCLAIMED targeting can skip enemies already doomed.
+
+#### CA475 — `for` (was lines 9664-9666)
+Hoisted to module scope (was a per-frame local inside the main loop) so gore code deep inside Enemy.prototype.applyDamage()/die() can query nearby bodies without threading a new parameter through every call site — used for void-pattern detection (see MAGE's streak loop below).
+
+#### CA476 — `for` (was lines 9670-9673)
+decalBudgetOverride itself is declared much earlier (right before PREFS_KEY) — savePrefs()/ loadPrefs() and the Settings-panel sync IIFE all read/write it during initial script execution, well before this point in the file, so it can't be declared down here with the rest of the decal system (a `let` TDZ crash: "Cannot access 'decalBudgetOverride' before initialization").
+
+#### CA477 — `decalCapacity` (was lines 9679-9685)
+Throttle for the decal-expiry sweep in drawDecals() below — expiry precision to the nearest half-second is meaningless against a multi-minute decal lifespan (DECAL_LIFESPAN, 30min base x a 1.15-3.0x per-decal variance — see decalLifespanVariance()), but the sweep itself is a full reverse scan of the entire `decals` array (up to MAX_DECALS) with splice() on every expiry. That cost scales with total decal count, which grows over a long session, so running it every single rendered frame is pure waste once the array is non-trivially sized. realTime (not wall-clock) so it stays correctly frozen/scaled with the rest of the sim's own time source.
+
+#### CA478 — `decalCapacity` (was lines 9688-9694)
+Ambient blowing-leaves gust — a handful of leaves drift across the screen at the start of every round, purely decorative (no gameplay effect, no collision, doesn't interact with anything). Replaces the old static fluttering-leaf ground decal (see CONFIG.FLORA.COMMON) — that emoji's own artwork implies motion, so it belongs actually moving through the air, not randomly rotated and sitting still on the ground forever. Every leaf in one gust shares the same glyph (never mixed within a gust) — green (🍃) through wave 20, brown (🍂) from wave 21 on, called directly from startNextWave() rather than scheduled against a wall-clock timer.
+
+#### CA479 — `spawnLeafGust` (was lines 9697-9699)
+Safety cap, not a normal-play concern — a gust's leaves naturally clear out well within one wave's real duration, but this stops any pathological back-to-back-wave-start case from accumulating leaf objects without bound.
+
+#### CA480 — `for` (was lines 9712-9714)
+Lateral flutter riding on top of the straight drift above — real windblown leaves sway side-to-side as they travel rather than tracing one flat diagonal line. Amplitude/frequency both randomized per-leaf so a gust doesn't read as one shape repeated several times.
+
+#### CA481 — `for` (was lines 9733-9735)
+Fade in/out based on proximity to the despawn bounds above, rather than a flat alpha the whole flight — a leaf now visibly emerges out of nothing near the screen edge and dissolves back out rather than popping in at full opacity and vanishing abruptly.
+
+#### CA482 — `for` (was lines 9739-9741)
+A flat glyph has no real depth to tumble through, so scaleX pulsing (tied to its own rotation, at a non-1:1 rate so the two never lock into an obviously mechanical loop) simulates a leaf flashing edge-on as it spins, instead of rotating as a flat coin.
+
+#### CA483 — `for` (was lines 9754-9757)
+squash-and-fade animation instead of vanishing the instant hp hits 0. Deliberately NOT part of the enemy object or its pooling/targeting/collision systems: it's a pure render-only overlay captured at the moment of death, so it carries zero risk of a "dying but still targetable" bug or any interaction with pathing/collision — it just draws on top for a moment, then disappears.
+
+#### CA484 — `spawnDeathAnim` (was lines 9761-9763)
+Barricade chunks: real timber and stone thrown off the barricade on a hit, arcing up and out under gravity before landing. Purely visual and short-lived (about a second), pooled so a hit never allocates; the permanent ground debris is spawned separately when they land.
+
+#### CA485 — `spawnBarricadeChunk` (was lines 9772-9774)
+Scatter in every direction on the ground plane, not just upward — the barricade sheds material all around itself. The arc comes from the separate vertical hop below, so a piece thrown "downward" on screen still tumbles through the air.
+
+#### CA486 — `startDripSite` (was lines 9849-9855)
+Previously scheduled a delayed trickle of drops landing over the following ~2-5 seconds at this fixed world position — but since that queue was decoupled from the enemy (it only stored x,y), it kept firing whether the enemy was still alive, already dead, or long gone. That's exactly what made blood look like it was appearing out of nowhere several seconds after a kill. Now fires the entire burst immediately, at the actual moment of the hit or the moment of death — same total visual richness (still proportional to how heavy the hit was), just with zero delay, so blood only ever appears at a real instant of impact or death, never afterward.
+
+#### CA487 — `for` (was lines 9866-9870)
+A ground pool laid down while the enemy is actively on fire renders sooty and darkened rather than the normal fresh blood tone — BPA ch.9 ("Effects of Fire and Soot on Bloodstains"): blood exposed to active heat/soot appears distinctly darker than an ordinary stain, and the two are visually sequenced differently at a real scene. `enemy` may be undefined for callers that don't have one handy — falls back to the normal color unchanged in that case.
+
+#### CA488 — `if` (was lines 9886-9889)
+Blood-pool size scale from the enemy's own body radius, relative to Grunt's radius (15) as the baseline — same "baseline Grunt" convention goreScale already uses for death-burst particle counts (this.maxHp / 60), applied here to the ground-pool decal instead. Clamped so a tiny Swarm ant still leaves a visibly small mark and a Boss doesn't dominate the whole screen.
+
+#### CA489 — `getBloodProfile` (was lines 9894-9896)
+Biology-accurate palettes per the game's own enemy categorization (isUndead flag, splits/rock flavor, etc.) rather than a separate ad-hoc taxonomy — keeps this consistent with Cleric's undead-targeting and other systems that already branch on these same properties.
+
+#### CA490 — `if` (was lines 9901-9905)
+Classic zombie ooze — checked BEFORE the generic isUndead fallback below, since Zombie is still technically undead (Cleric's curse/curse-targeting logic doesn't change) but reads visually distinct from the other undead's dark necrotic red — a deliberate genre callback to sickly green zombie fluid rather than the shared "coagulated blood" look every other undead (Wraith, Skeleton, Reaper) uses.
+
+#### CA491 — `shiftHexColor` (was lines 9951-9954)
+Per-enemy blood color variation — same species, genuinely different individual blood shade (a touch more crimson, a touch more brown-red, slightly brighter/darker) instead of every single enemy of a type sharing one identical, flat palette. Rolled once at spawn and cached on the enemy so a given unit's blood stays visually consistent across every hit it takes.
+
+#### CA492 — `resolveGoreArchetype` (was lines 9974-9980)
+Sub-classifies the WARRIOR archetype by actual weapon type — every melee class was previously producing the exact same slash-cut-plus-cast-off-arc wound, even Hammerman/Paladin's blunt mace and Spearman's thrusting spear, which shouldn't leave a bladed slash pattern at all. Real wound geometry differs meaningfully by weapon: a blade drags across and leaves a linear cut with tangential cast-off; a blunt weapon crushes rather than cuts, producing an omnidirectional "impact spatter" with no single cut line; a thrust punctures deep along one line, closer to an arrow wound in geometry but with a stronger, more violent gush.
+
+#### CA493 — `spawnDecal` (was lines 9990-9993)
+Shifted further toward small/sparse per direct feedback: real blood spatter is mostly a handful of fine droplets, not a dense blob cluster on every hit — and fewer blobs per decal means the total decal count (which still drives array/cap/hit-testing cost even after 1.4.46's bake-speed fix) grows more slowly over a session, easing accumulation on top of reading more realistic.
+
+#### CA494 — `if` (was lines 10007-10011)
+Viscosity (bio.viscous — insect hemolymph, coagulated undead blood) is a non-Newtonian, shear-thinning fluid: thicker at rest than standard flesh blood, so a viscous pool doesn't spread into as many separate scattered blobs — it holds together into fewer, tighter, rounder clumps instead. Reuses the same bio.viscous flag already wired into footprint drag friction; this just extends it to the pool's own shape.
+
+#### CA495 — `if` (was lines 10013-10043)
+Per-decal shape identity — every splatter used to jitter blobs inside the exact same fixed 18x11 rectangular envelope, just rescaled, which is what made same-size splatters all read as the same pattern. Now each one gets its own random orientation (loosely following the actual impact angle when the caller has one, otherwise fully random), and blobs are placed with a center-weighted polar distribution instead of independent rectangular jitter — a dense core with scattered outliers, the way an actual bloodstain forms, rather than an evenly-spaced cloud of circles. Aspect ratio (how elongated vs. round the stain reads) AND overall size are both archetype-aware — this is the mark that actually persists on the ground for the long haul (up to 30 minutes), so it's what a player is really judging when they say two classes' blood "looks the same." MAGE previously fell through to the exact same profile as the default (WARRIOR) case, so their ground stains were indistinguishable even though their hit-time particle bursts differed — now every one of the four archetypes has its own distinct shape AND size multiplier: ARCHER    — long, narrow, SMALLER overall: a real puncture drags into a thin directional streak rather than a wide pool, reflecting the low-impact identity. MAGE      — wide directional CONE, LARGEST overall: a violent magical bolt punches straight through the target and keeps going, splaying wide in the bolt's own direction of travel rather than pooling round underfoot — distinct from a blade's narrow cut (which tracks the swing) and from Archer's thin puncture streak (which is small and doesn't fan wide) by being both the widest AND the biggest of the four. EXPLOSIVE — round, mid-size: no single strike vector, but not as dramatically oversized as a point-blank magical burst. BLUNT     — the ROUNDEST and widest of the three melee weapons: a crushing blow has no single cut line to track, matching the shockring/radial-spoke identity above. PIERCE    — the most NARROW and elongated of the three melee weapons: a deep thrust gushes along one tight line, distinct from Blade's wider directional cut smear. BLADE (and the WARRIOR default fallback) — the original moderate directional smear, elongated along the blade's cut — squarely between Blunt's round spread and Pierce's narrow gush.
+
+#### CA496 — `top-level` (was lines 10054-10060)
+Hard cap on the FINAL size after both multipliers — the rare "bigger pool" roll above (up to 2.6x on its own, a ~4% chance) was multiplying on top of the archetype multiplier with no combined limit, so a rare-tier roll landing on Mage (already the largest archetype at 1.75x) could reach 2.6*1.75 = 4.55x base size: a single pool visibly dominating over a full tile, which isn't forensically plausible for any real blood source regardless of how "rare" the roll was. 3.2x still keeps Mage's rare-tier pool the largest possible splatter in the game (above any other archetype's own 2.6x rare-tier ceiling), just no longer able to compound unbounded.
+
+#### CA497 — `top-level` (was lines 10062-10066)
+Requested ±30% swing tied directly to where THIS hit's damage roll landed in its own min-max range — a genuine min-roll hit pools 30% smaller, a genuine max-roll hit pools 30% bigger, independent of and on top of the archetype/rare-tier sizing above. Optional — callers that don't have per-hit roll context (death-time low-severity marks, the generic particle-settling stain) simply don't pass it and get the unscaled size, same as before this existed.
+
+#### CA498 — `top-level` (was lines 10068-10072)
+Ground-pool size now also scales to the actual target's body size (radius), not just weapon archetype and damage roll — previously a Swarm ant and a Boss produced an identically-sized pool for the same weapon type, which read as wrong once you actually compared them side by side. Callers that don't pass one (a few death-time/settling-stain call sites with no easy access to the enemy) simply keep the unscaled size, same as before this existed.
+
+#### CA499 — `top-level` (was lines 10077-10081)
+A viscous fluid resists the surface-tension breakup that makes flesh blood splay into a wide, irregular splatter — it holds its shape and settles closer to round instead of elongating with the impact archetype the way thinner blood does. Blended halfway toward 1 (round) rather than fully overriding the archetype's elongation, so a viscous MAGE hit still reads as rounder than a viscous ARCHER hit, just less extreme than either would be with normal blood.
+
+#### CA500 — `for` (was lines 10092-10094)
+mostly small flecks with occasional slightly bigger blobs, instead of every blob drawing from the same band — kept modest so a handful of overlapping blobs never merges into one oversized solid mass
+
+#### CA501 — `for` (was lines 10098-10102)
+How far this specific pool's blobs actually reach from its stored anchor point — needed because updateWalkingBlood()'s wet-feet pickup check compares distance to that anchor, and on a big/massive pool the visible splatter can extend well beyond it. Without this, an enemy visibly standing in the edge of a large puddle wouldn't be detected as being "in blood" at all unless it happened to be near the exact center point.
+
+#### CA502 — `for` (was lines 10108-10121)
+Real cast-off, per bloodstain-pattern-analysis literature: blood thrown from a weapon during a swing travels TANGENTIALLY to the arc of that swing and lands as a curved series of individual drops, not a single straight streak. Drops nearest the origin of the swing strike closer to perpendicular (rounder, more circular); drops further along the arc travel further and strike at an increasingly acute angle, reading as progressively more elongated — "wide or narrow linear or slightly curved trails... with the more elongated bloodstains most distant from the source." Modeled here as a fan of individual teardrop stains following a curving path away from the wound, each oriented tangent to its own point on the arc (the actual direction that specific drop was flung), rather than one straight cast-off line. A real person swings a blade with a consistent dominant handedness, not a fresh coin-flip every single hit — this was the actual bug behind cast-off arcs "going in a random circle": arcDir was randomized inside spawnCastOffArc() itself on every call, disconnected from anything about the tower's actual swing. Lazily assigned once per tower and reused forever after, so a given Swordsman's cast-off consistently curves the same way, hit after hit, matching a real swing.
+
+#### CA503 — `spawnCastOffArc` (was lines 10127-10131)
+Ranges widened substantially (was a fairly narrow band: 4-6 drops, one dist/angle-step formula every time) — a full-force overhead swing and a quick short jab shouldn't leave an arc that reads as the same shape and size, just repositioned. `scale` varies the whole arc's reach and tightness together per call, on top of the existing per-drop randomness, so consecutive blade hits produce genuinely different-looking cast-off trails.
+
+#### CA504 — `spawnBloodCastoff` (was lines 10151-10158)
+occasional directional cast-off streak, growing away from where the hit came from — real blood spatter travels away from the striking point, not radially outward like a splash. Streaks default to double the standard decal lifespan — they read as more distinct/lasting marks than a soaked pool, and stay around noticeably longer as a result. Angle jitter widened for variety, but length/width pulled back from an earlier pass that made streaks read as oversized — a cast-off streak should be a thin line, not a wide smear. sizeMult lets a specific caller (the Warrior slash wound, which needs to read clearly as an actual cut and not just another generic streak) draw a bolder, longer line than the default.
+
+#### CA505 — `spawnBloodCastoff` (was lines 10160-10167)
+Width now scales on a genuine sqrt curve, not linear — the comment above always said "sqrt curve" but the formula itself was actually linear (1 + (sizeMult-1)*0.55), which barely flattens growth at high sizeMult. That mismatch is exactly why Mage's big radiating streaks (sizeMult 3.0-4.2, the largest in the game) read as visibly bolder/thicker than a real BPA cast-off pattern should — the book explicitly describes cast-off as "linear," i.e. a thin line, regardless of how long it is. A true sqrt relationship keeps Blade's already-reasonable range (sizeMult 0.4-2.1) nearly unchanged while meaningfully thinning Mage's long streaks without shortening them at all — length still scales fully with sizeMult, only width flattens.
+
+#### CA506 — `spawnBloodCastoff` (was lines 10174-10180)
+Footprint pickup (updateWalkingBlood) checks distance from this decal's own x/y anchor — but a cast-off LINE is anchored at the impact point while its visible length reaches up to ~100px away for Mage's biggest streaks. Without this, an enemy standing at the far end of a long, clearly-visible streak registered as nowhere near any blood at all, since the pickup radius defaulted to a bare ~20-30px around the origin. This was the actual reason footprints essentially never triggered despite large, dramatic streaks covering the ground — the streaks ARE there, the pickup detection just couldn't see past their own anchor point.
+
+#### CA507 — `spawnBloodCastoff` (was lines 10185-10190)
+Skeletal remains at a death site (spawnBoneDebris/spawnSkullDrop, independent per-kill rolls — see their call site for the current chances, which have moved a few times based on feedback in both directions; don't restate the numbers here, they'll just go stale again), sized as a fraction of the enemy's own radius so bigger enemies leave bigger bones. Persist notably longer than blood (bones don't oxidize/dry the way fresh blood does, so there's no reason for them to fade on the same short clock) via a fixed extended lifespan rather than the standard DECAL_LIFESPAN*variance blood decals use.
+
+#### CA508 — `for` (was lines 10206-10209)
+Small stone-chip debris for rock/stone-bodied enemies (Tank, Boulder, Rocklet) — a fixed 1/10 of the enemy's own radius per chip, scattered around the impact/death point. Permanent debris like bone fragments, not blood, so it reuses the same long BONE_LIFESPAN rather than a blood-decal's much shorter fade time.
+
+#### CA509 — `spawnSkullDrop` (was lines 10230-10236)
+A worm crawling out of a skull — twice a blood stain's own lifespan, and rather than fading via alpha like blood does, it shrinks smoothly to nothing near the end of its life (see drawOneDecal's isWorm branch) — a distinct exit, not a copy of blood's fade-out. Computed as DECAL_LIFESPAN*2 inline below (not a top-level WORM_LIFESPAN constant) specifically because DECAL_LIFESPAN itself isn't declared until later in the file — a top-level const referencing it here would hit the same temporal-dead-zone crash this replaced (1.1.17 hotfix). Function bodies are only evaluated when called, well after the whole script has parsed, so this is safe.
+
+#### CA510 — `spawnPunctureMark` (was lines 10247-10255)
+The entry wound itself — deliberately dark and small rather than the bright arterial red used everywhere else. BPA ch.2 ("Stab Wounds"): puncture wounds are deeper than they measure on the surface, and "abdominal stab wounds, even fatal ones, rarely have significant external bleeding" — the same section notes low/moderate-velocity penetrating wounds (which an arrow firmly is, nowhere near the >2000 ft/s threshold for "near amputation") bleed "quite modest[ly]" externally despite real lethality. This is the visible entry point; the actual blood the player sees comes from the separate spray/satellite/drip effects layered around it, not from this mark itself — matching the book's point that external appearance understates internal damage for this wound type specifically.
+
+#### CA511 — `spawnDripTrail` (was lines 10262-10267)
+A running drip down a surface — distinct from spawnBloodCastoff's straight directional streak (which reads as the initial spatter/cast-off at the moment of impact). This is what blood does a beat AFTER landing: gravity pulls it into a gently curved trail with a small pooled bead at the tip, rather than staying a perfectly straight line. Rendered as a quadratic curve so it reads as an actual wet trickle, not another copy of the impact streak. Kept deliberately small — a drip should read as a thin trickle, not another blob-sized mark.
+
+#### CA512 — `for` (was lines 10283-10288)
+Real BPA: a satellite droplet that travels further from the source strikes at a shallower angle and carries less mass, which stretches the stain into a longer, more directional teardrop while shrinking its width — near-origin drops read rounder and squatter, far-flung ones read as a longer streak with a sharper tail. distT (0 at the near edge of the scatter range, 1 at the far edge) drives both relationships together instead of len/width being independent random rolls with no relationship to how far the drop actually landed.
+
+#### CA513 — `spawnSkinPeel` (was lines 10300-10301)
+jagged blistered/peeled patch — a distinct shape from the round splatter blobs, for elemental (burn/freeze) damage specifically rather than a physical wound
+
+#### CA514 — `spawnFootprint` (was lines 10313-10317)
+small round smear left by a bloody foot — short-lived (a quarter of the standard lifespan) since these are transient trail marks, not the wound itself. Sized up slightly from the original so they still read clearly next to the larger splatters/streaks around them. dragMult elongates it into a genuine drag-streak instead of a round dot — used right after stepping through a large pile, where a real foot would smear rather than leave a clean print.
+
+#### CA515 — `updateWalkingBlood` (was lines 10326-10328)
+any enemy standing on or very near a fresh decal picks up blood on its feet; while it has wet feet, it leaves a fading trail of footprint marks as it walks, diminishing with each step and eventually running dry — real forensic "bloody shoe track" transfer pattern
+
+#### CA516 — `if` (was lines 10339-10342)
+a real foot drags/smears rather than leaving a clean print right after stepping through a genuinely large pile — dragMult fades back to a normal round print (1x) as the extra sizeBonus steps get used up, so only the first few steps out of a big puddle actually streak.
+
+#### CA517 — `if` (was lines 10352-10356)
+Window widened from the last 40 decals to the last 220, and freshness from 4s to 7s — with several more streaks/drips now spawned per hit and per death, the last 40 decals could be entirely someone else's blood clear across the map within a couple of seconds, so an enemy standing right next to a real puddle would still find nothing to step in. This made footprints noticeably rarer even though the underlying pickup logic never changed.
+
+#### CA518 — `if` (was lines 10360-10364)
+For the main pool decal type, the visible splatter can extend well beyond its stored anchor point on a big/massive pool — comparing distance to just the anchor missed an enemy visibly standing in the edge of a large puddle unless it happened to be near the exact center. footprintRadius (how far this specific pool's blobs actually reach) extends the pickup range to match what's actually drawn on screen.
+
+#### CA519 — `if` (was lines 10366-10373)
+"Wipe" pattern (BPA ch.5/9) — distinct from the footprint pickup above, which is a SWIPE (a bloody object depositing new marks on clean ground). A wipe is the opposite mechanism: something passing THROUGH already-wet blood disturbs the existing stain itself. Previously nothing here ever mutated a decal's own stored shape — footprints only ever added new marks nearby. Only applies to the main pool decal type (has `blobs`) and only while the enemy is actually moving, nudging each blob slightly along the direction of travel and shrinking it a touch, so a pool a creep walks through visibly smears and thins in its wake rather than sitting untouched forever.
+
+#### CA520 — `for` (was lines 10382-10383)
+stepping in a genuinely big pool picks up more blood, so it takes a couple more steps to run dry than a small splatter does
+
+#### CA521 — `for` (was lines 10389-10394)
+A wet squelch at the moment of first contact — BPA ch.5 specifically discusses a foot stepping into a pool ("stepping into a pool of blood can cause spatters on the inner aspects of footwear... blood is splashed from one shoe to the other"), grounding this as a real physical contact event worth its own distinct sound, not silent like every other footstep. Scaled slightly by pool size so a big puddle sounds a bit wetter/heavier than a light scuff through a small splatter.
+
+#### CA522 — `for` (was lines 10401-10405)
+Local saturation cap: once an area already has a lot of blood in it, further hits landing on the same spot shouldn't keep layering distinct new streaks/drops on top indefinitely — real combat corridors get "soaked" and additional wounds blend into existing stains rather than spawning infinite new spaghetti-thin marks stacked over each other. Scans only the most recent decals (cheap, bounded) rather than the whole array.
+
+#### CA523 — `pushDecal` (was lines 10423-10426)
+the main pool decal (isLine:false with a `blobs` array) is exempt — that's the one "this spot already has a wound" mark per hit/death, deliberately allowed to always land. The cap applies to the smaller accessory marks (streaks, drip trails, satellite drops, footprints) that otherwise keep accumulating without bound over a long fight in one corridor.
+
+#### CA524 — `if` (was lines 10432-10434)
+Prefer to recycle blood over debris: skulls, bones and rubble are sparse, long-lived scene objects, and letting a blood-heavy wave overwrite them made them visibly pop in and out. Bounded scan — after a full lap we take whatever slot we land on, so this can never spin.
+
+#### CA525 — `decalLifespanVariance` (was lines 10446-10448)
+every decal lasts strictly longer than the flat baseline (never below 1.15x), with high upside so some individual stains persist dramatically longer than others — real bloodstains don't all age identically depending on surface, airflow, and how much pooled
+
+#### CA526 — `decalLifespanVariance` (was lines 10451-10473)
+Bakes every currently-eligible "settled" decal onto the persistent settledDecalCanvas in one pass, so the live per-frame draw loop below can skip it entirely — the actual perf win, not just the color-math caching 1.2.51 already did. Only the plain pool-blob decal kind (`d.blobs !== undefined` — same test pushDecal() itself already uses) is baked; isPeel/isLine/isDripTrail/ isPuncture/isDrop/isEmojiDrop/isWorm are left live-drawn, deliberately, to avoid reasoning about each of their distinct per-frame animations blind. Eligible window is lifeT 0.45–0.80: lower bound is past 0.4167 (where the skeletonization ring's own math — see drawOneDecal — finishes ramping to fully formed, confirmed by reading its formula, not assumed) so nothing mid-animation ever gets frozen; upper bound leaves a large buffer (DECAL_LIFESPAN is 30min, so 0.80→0.85 is a full 90 real seconds) before fade-out actually starts, versus this rebuild's own DECAL_EXPIRY_SWEEP_INTERVAL (500ms) — so a decal is always re-classified as live again well before it would ever need to visibly fade while still (wrongly) marked baked. A decal that has fully expired and been spliced from `decals` simply isn't in this pass's source data, so it naturally stops being stamped on the very next rebuild — full clear-and-redraw each time, not an incremental add, is what makes removal (fade-approach or actual expiry) correct without ever needing to erase a single shape from the canvas. Bake eligibility per decal kind — only kinds whose geometry is static over the window: - bone/skull/rock debris: never animates or fades, so it bakes for its whole life (fillText of an emoji is one of the costliest Canvas2D calls; hundreds per wave were live-drawn each frame). - satellite drops (~75% of all decals): static geometry; baked once past the bright-red phase, restamped with their current aged color on a slow cadence until the color settles at 0.40. - pool blobs: after the skeletonization ring finishes forming (0.4167), as before. Every kind leaves the cache by 0.80, 90+ real seconds before any fade-out starts at 0.85.
+
+#### CA527 — `decalLifespanVariance` (was lines 10475-10484)
+Baking eligibility used to be written as a FRACTION of DECAL_LIFESPAN (lifeT >= 0.45) — harmless back when the lifespan was 5 minutes (2.25min to bake), but DECAL_LIFESPAN was later extended to 30 minutes so stains would visually last longer, and that silently dragged the bake delay along with it to 13.5 REAL MINUTES. Until a decal turned 13.5 minutes old it stayed in the expensive live-draw pass every single frame — the actual cause of "gets laggier the longer it goes" (confirmed from a live debug export: drawDecals() at 75% of render time with 0 enemies active, 633/637 decals still unbaked at 8 minutes in). Baking now triggers off a small ABSOLUTE age instead, decoupled from however long the stain is set to visually persist — a decal looks fully "dried" (see agedBloodColor's own curve) and is cheap to cache within seconds, regardless of whether its total lifespan is 5 minutes or 30.
+
+#### CA528 — `isDecalBakeEligible` (was lines 10491-10495)
+NO ground debris is ever baked. Baking gave a piece two possible homes — the cached ground layer and the live debris pass — and every transition between them (entering the bake window, leaving it for the fade, a coalesced rebuild landing a few seconds later) was a frame where it was drawn twice or not at all. That is the flicker. One source of truth: debris is always live-drawn, above the blood and below the actors.
+
+#### CA529 — `stampSettledDecal` (was lines 10542-10544)
+Skeletonization ring — see drawOneDecal's own comment for the real-forensic reasoning; this reproduces that exact math at its fully-settled values (skeletonT is guaranteed 1 by lifeT 0.45), not an approximation of it.
+
+#### CA530 — `for` (was lines 10571-10574)
+Per sweep: decals newly entering the bake window are stamped incrementally onto the existing cache (cheap, no clear). Only a baked decal leaving the window or expiring needs a full clear-and-redraw, and those are coalesced to at most one per SETTLED_DECAL_REBUILD_MIN_MS — safe because the window's upper edge (0.80) sits 90+ real seconds before fade-out begins.
+
+#### CA531 — `drawDecals` (was lines 10595-10601)
+Expiry is a single authoritative pass over the real array (splice needs real indices), independent of draw order below. Runs here since this is always called first in the frame (before drawDepthSortedLayer(), which draws debris too now and relies on expiry having already happened this frame) — but throttled to DECAL_EXPIRY_SWEEP_INTERVAL rather than every frame; see the comment on lastDecalExpirySweep above. A decal that should have expired half a second ago but hasn't been swept yet is visually indistinguishable from one that expires exactly on schedule, against a lifespan measured in tens of minutes.
+
+#### CA532 — `decalViewBounds` (was lines 10619-10622)
+Same viewport-culling principle as drawDepthSortedLayer()'s — computed fresh each call (cheap arithmetic, not worth caching across the two decal passes in the same frame) so offscreen decals are rejected before any Canvas state is touched. Margin covers the largest blood pool's blob radius plus its glisten/skeletonization rings.
+
+#### CA533 — `decalViewBounds` (was lines 10631-10633)
+Only the on-screen slice of a full-world cached layer is copied each frame, so blit cost scales with the viewport instead of the whole 2048x1280 world raster (x DPR) — the dominant per-frame memory-bandwidth cost while panning on mobile.
+
+#### CA534 — `decalVisible` (was lines 10649-10652)
+Same viewport-culling principle, for particles and floating text — previously neither pass culled at all (every active one drew regardless of camera position, confirmed by the debug log's own "NOT viewport-culled currently" note on this exact gap). Margin is wider than decals' since floating text jumps/scales up on spawn and particles carry real velocity between frames.
+
+#### CA535 — `drawOneDecal` (was lines 10668-10673)
+Bone/skull/worm debris never uses color/alpha at all (see their branches below — bones are hardcoded to full opacity, worms shrink instead of fading), so the color-aging math below is skipped entirely for them. It's a real cost to skip: several Math.round calls plus a fresh string concatenation, previously run every frame for every visible decal regardless of type — in a scene with a lot of accumulated bone debris (a real reported laggy case), that was pure wasted work on a result nothing ever read.
+
+#### CA536 — `if` (was lines 10676-10685)
+Color/alpha are mathematically constant for the entire 0.40–0.85 lifeT window (the transition-in finishes at 0.40, fade-out doesn't start until 0.85) — see the comment block below for why. Once a decal has settled into that window, its rgba string never changes again until fading starts, so it's cached on the decal itself the first time it's computed and reused every frame after that instead of re-running several Math.round calls plus a fresh string concatenation per decal per frame purely to reproduce the same result. This is the accumulated-gore cost flagged from reading this function: hundreds of visible decals doing that work 60 times a second for output that doesn't change frame to frame is pure waste. Bit-identical output to the always-recompute version — the cached value IS the exact result that recomputing would produce in this window, not an approximation.
+
+#### CA537 — `if` (was lines 10690-10694)
+Real forensic bloodstain aging, compressed so one round ≈ 5 real-world hours: bright oxyhemoglobin red holds for the first ~3.3% of life (≈10 minutes of the 5h scale — blood stays genuinely bright red for a real stretch before any browning starts), then passes through a reddish-brown oxidizing stage as it dries, settling into the fully-dried true color by ~40% of life (≈2 hours) rather than one flat two-color lerp.
+
+#### CA538 — `if` (was lines 10703-10706)
+holds steady until 85% of life, then fades to fully transparent — accelerating as it goes (quadratic, not linear) so a stain barely dims for most of that window and then visibly rushes out right at the end, instead of a flat linear fade the whole time. Direct feedback: "the more the blood fades the faster it should fade out, don't need to linger."
+
+#### CA539 — `if` (was lines 10735-10737)
+a running drip down a surface — gently curved rather than a straight line, with a small pooled bead at the tip once it's fully grown, like a drop about to fall. Distinct from isLine's straight cast-off streak: this is what the blood does a beat AFTER landing.
+
+#### CA540 — `if` (was lines 10753-10758)
+The entry point itself, distinct from any spray — BPA ch.2: puncture/stab wounds are deeper than they measure on the surface and typically show LITTLE external bleeding at the wound itself (the visible blood comes from secondary drips/back-spatter, not the entry point). Small, dark, and minimal rather than colorful and dynamic — a deliberate visual contrast to Blade's bold slash or Blunt's crushing spread, reinforcing Archer's "quiet but lethal" identity: real damage, understated surface mark.
+
+#### CA541 — `if` (was lines 10762-10765)
+Bone/skull/rock remains — deliberately NOT run through the blood hemoglobin-oxidation color pipeline above (bone doesn't oxidize like fresh blood does), AND never subject to the fadeOut curve either — bones are permanent scene debris, not a wound that should visually fade away. Hardcoded to a fixed full opacity, correctly and explicitly.
+
+#### CA542 — `if` (was lines 10767-10770)
+Bone stays at full opacity forever; barricade rubble is temporary litter, so it fades over the last third of its 50s life instead of vanishing in one frame. Bone never fades. Rubble is solid while baked and only fades over its final 10%, which is exactly the window where it drops out of the baked layer and is drawn live again.
+
+#### CA543 — `if` (was lines 10779-10781)
+Never fades, same as bones — but unlike bones (permanent), a worm is meant to eventually disappear; instead of an alpha fade, it shrinks smoothly to nothing over its final 30% of life, like it's burrowing back down rather than a wound-style fade-out.
+
+#### CA544 — `if` (was lines 10793-10794)
+individual satellite droplet — a small elongated teardrop, real BPA main-spatter-plus- smaller-scattered-drops pattern, oriented along its own travel direction
+
+#### CA545 — `for` (was lines 10812-10813)
+wet-sheen glisten on genuinely fresh pools — real blood is glossy/reflective when wet, and goes matte as it dries; fades out over the first ~5% of life
+
+#### CA546 — `if` (was lines 10823-10834)
+Skeletonization / oxidation ring: real bloodstain perimeters coagulate and dry first (ring formation within ~60-90s), leaving a darker, oxidized rim around a slightly recessed, flatter, lighter interior. Modeled here as beginning once a pool is genuinely aged (past 2 minutes of real life, matched to the 5-hour-compressed aging curve above already settling into its dried color by 40% of life) and intensifying gradually, so long-lived pools from the extended DECAL_LIFESPAN visibly read as older than fresh ones instead of all looking identical once past the initial color transition. Rim darkness softened from 0.55/0.7-alpha to 0.78/0.55-alpha — the old values compounded with the base pool color (itself already a dark aged red) into near-black masses on any pool older than a few minutes, which in a long session at speed is most of the visible pools on screen. Still noticeably darker than the fresher core (keeps the "this stain is older" read the effect exists for), just not crossing into solid black.
+
+#### CA547 — `spawnParticles` (was lines 10852-10854)
+Optional sizeMin lets a caller ask for genuinely fine mist droplets instead of the standard 2-4px baseline — added for the death-time atomization layer below. Omitted entirely (the overwhelming majority of existing call sites), it reproduces the original 2-4px range exactly.
+
+#### CA548 — `for` (was lines 10869-10872)
+A brief expanding shockwave ring at the point of impact — used for genuinely high-energy hits (Mage) to read as raw kinetic/magical force, distinct from "just more particles." Reuses the same particle pool as everything else (isRing distinguishes it in drawParticles), so it costs one pool slot and gets recycled the same way as any other particle.
+
+#### CA549 — `spawnShockring` (was lines 10880-10884)
+A full 360° ring was never forensically right for a directional strike — real displaced blood from a blunt impact biases toward the far side of the blow, not equally back toward whatever struck it. `angle` (the direction the blow traveled, i.e. impactAngle) centers the arc on the far hemisphere; `arcSpan` (radians) controls how much of the circle it covers. Omitting both preserves the old full-circle behavior for any caller that doesn't pass them.
+
+#### CA550 — `spawnShockring` (was lines 10889-10893)
+Cleric's curse strike — a brief, bright vertical beam of holy light descending onto the target from directly overhead, with a small flash at the point of impact. Matches Mage's "high-impact, long-wait" identity: since Cleric's cooldown is now similarly long, its one attack should read as a deliberate, singular event rather than a plain colored particle puff. Reuses the shared particle pool the same way spawnShockring does.
+
+#### CA551 — `spawnHolyBeam` (was lines 10904-10909)
+The "air line" — a brief, thin ghost-trail arc tracing the blade's actual swept path through the air at the moment of the swing, geometrically identical to the angle/handedness driving the real cast-off blood (same baseAngle, same arcDir from towerSwingDir) — so the blood pattern's angle is now directly, visibly verifiable against the swing that caused it, not just implied. Reuses the shared particle pool (isSwingArc distinguishes it in drawParticles) the same way every other lightweight effect here does.
+
+#### CA552 — `if` (was lines 10931-10937)
+Inelastic wall bounce off the map edge — Physics for JS Games ch.13: a real collision isn't perfectly elastic, so the velocity component perpendicular to the wall is scaled by a restitution factor (vfac, 0-1) on bounce rather than simply negated. A confirmed real gap from earlier review: gibs previously had zero boundary collision at all, flying straight through the map edge and out of bounds rather than interacting with it physically. Only applied to gibs — chunky debris are the one particle type with enough visual weight for a bounce to actually read; fine mist/streaks stay as they were.
+
+#### CA553 — `bloodSizeRoll` (was lines 10952-10953)
+exponential distribution (mean=1): most rolls land small/normal, huge splatters are a long rare tail — floored at 0.6 so blood is never absent, capped at 4.5 so it never runs away
+
+#### CA554 — `spawnBloodStream` (was lines 10958-10960)
+real flowing liquid streams — each particle renders as a connected line from its previous position to its current one (a genuine trail, not a dash), arcing under gravity like an actual jet of water rather than dust particles scattering radially
+
+#### CA555 — `spawnExpiratedMist` (was lines 10978-10982)
+Expirated blood (BPA ch.8) — blood mixed with air from a mouth/throat/chest wound, mechanically distinct from puncture/blunt/slash spatter: a fine, pale, air-diluted mist rather than a solid-colored spray, sometimes showing faint bubbles where air got trapped in the fluid. Reuses spawnParticles rather than adding a new particle type/rendering path — two calls with different colors stand in for "fine bloody mist" and "a few visible air bubbles."
+
+#### CA556 — `if` (was lines 11037-11039)
+A vertical shaft of light descending onto the target — narrow where it originates high above, flaring wider right at the point of impact. Fades quickly (bracketed by the outer save/restore so its custom gradient/alpha never leaks into the next particle drawn).
+
+#### CA557 — `if` (was lines 11057-11059)
+A thin, fading arc tracing the blade's actual swept path — spans ~140° in the swing direction (arcDir) around arcBaseAngle, matching exactly what spawnCastOffArc() used for the real blood, so the two are always geometrically consistent with each other.
+
+#### CA558 — `spawnFloatingText` (was lines 11086-11087)
+Small, number-only XP pop under the damage numbers: gold for a last hit, silver for an assist or escaped cleanup share. Lives longer than combat text so it can actually be read.
+
+#### CA559 — `spawnXpText` (was lines 11095-11097)
+A distinct "still bleeding" reminder — jumps out, wiggles, then fades over 2 seconds, unlike the plain rise-and-fade of a normal floating combat number. Reuses the same pooled floatingTexts array (isIcon distinguishes it in drawFloatingTexts) rather than a whole separate system.
+
+#### CA560 — `spawnBleedIcon` (was lines 11105-11107)
+A tower's spawn-time flavor quip (pickSpawnQuip()) — reuses the same pooled floatingTexts array as every other floating text, but with a much longer life than the normal 550ms default, since a short multi-word phrase needs real time to actually be read, not just glimpsed as it flies by.
+
+#### CA561 — `for` (was lines 11123-11130)
+Coin pickups — spawned by Merchant's Money Bag splash (see Projectile.onImpact's isMoneyBag branch) and by the rare COIN_POUCH scenery item. A small pooled array, same pattern as floatingTexts above: coins burst outward from a point, settle under friction, then either get auto-collected (any active tower within COIN_COLLECT_RADIUS) or, after a random 15-30s if nothing ever comes close enough, convert straight into gold anyway — never just lost, per direct clarification ("they turn into gold in the player's inv"). Auto-collect rather than a click target: Merchant's whole identity is passive gold generation near wherever he's landed a shot, not one more thing to click.
+
+#### CA562 — `if` (was lines 11152-11155)
+Never just lost — a coin nothing collected in time still converts straight to gold in the player's own total instead of vanishing. Per direct clarification ("they turn into gold in the player's inv"). Same gold-add as the proximity-collect branch below, just a distinct floating text/color so it still reads as "expired, not manually collected."
+
+#### CA563 — `if` (was lines 11161-11163)
+Bursts outward, then friction brings it to rest — same shape as the particle system's own ground-settle behavior, just on a much longer timescale since these persist for seconds, not a fraction of one.
+
+#### CA564 — `if` (was lines 11201-11203)
+Jump: a quick overshoot-bounce scale-up in the first 20% of the animation, settling to 1x. Wiggle: a decaying side-to-side rotation through the middle stretch, dying out by ~70%. Fade: only kicks in over the final 30%, so it reads clearly before disappearing.
+
+#### CA565 — `if` (was lines 11229-11236)
+Two-segment arm (shoulder -> elbow -> hand) instead of one straight line — reads as an actual held weapon pose rather than a rigid stick. `bend` rotates the upper-arm segment away from the hand's final aim angle (radians); positive/negative gives the elbow a visible outward kink. Weapon visual length is driven entirely by weaponScale (which itself comes from range/baseRange, clamped by that class's RANGE_CAPS) — NOT by whether the tower is idle or actively swinging/firing. Interpolates linearly between a per-class min (at weaponScale 1.0, no INT invested) and max (at weaponScale 1.6, the range cap). Using the exact same formula for idle and engaged poses is what keeps the weapon's size consistent instead of visibly changing when it swings.
+
+#### CA566 — `drawArmAndHand` (was lines 11257-11262)
+Small reusable black-cat silhouette, drawn as flat Canvas primitives — no emoji, no image asset — so it renders consistently regardless of the platform's emoji font, and so it can be recolored/ scaled/posed the same way the rest of this file's procedural art already is. Used both for Cat Snapper's own idle/throwing companion glyph (drawStickman()'s CAT_SNAPPER branch, options.idle) and for the pooled CatCompanion.draw() (options.crouch) — one renderer, two pose flags, per the original request that both use the same art rather than two different-looking cats.
+
+#### CA567 — `drawCat` (was lines 11307-11313)
+Pooled temporary companion spawned when a Cat Snapper's thrown cat lands on a target (see Projectile.onImpact()'s 'CAT' branch). Follows its target's CURRENT x/y every frame rather than walking the path itself — deliberately not a second lane-navigating agent, so it can't affect pathfinding, collision, breakaway logic, or barricade queueing no matter what it does. Reuses the same generic Enemy.applyDamage() every other damage source in the game already goes through, so kill credit/gold/gore/death handling all work identically to a normal tower hit with zero special casing there.
+
+#### CA568 — `if` (was lines 11332-11333)
+Retarget once, using the exact same spatial-hash query every tower's own targeting already uses — never an independent search of the whole enemy list, and never anything path-aware.
+
+#### CA569 — `draw` (was lines 11356-11358)
+Fixed-size pool, matching every other pooled entity type in this file (enemyPool/towerPool/ projectilePool) — no per-frame allocation, deterministic hard cap, exhaustion just means the next cat throw has no further effect rather than crashing or growing unbounded.
+
+#### CA570 — `draw` (was lines 11362-11370)
+Necromancer's start-of-round skeleton minions — stationary allies raised near the tower at the start of every round (see startNextWave()'s raiseSkeletonsForTower()) and destroyed the instant that round actually completes (see the waveState ACTIVE->IDLE transition in update()), never carried into the between-wave lull. Deliberately NOT damageable by enemies and deliberately placed only near the (off-path) tower itself, never anywhere path-aware — same "pure combat bonus, zero interaction with pathfinding/collision/blocking/breakaway targeting" contract CatCompanion already established, just with a per-round lifecycle instead of a per-target one. Making them killable would mean teaching the breakaway-targeting system a new kind of valid target — a real, separate feature, not part of this request.
+
+#### CA571 — `for` (was lines 11405-11406)
+Small reusable bone-white skeleton silhouette — flat Canvas primitives, same "no emoji, no image asset" approach as drawCat(), so it renders consistently and matches this file's procedural art.
+
+#### CA572 — `if` (was lines 11498-11499)
+subtle idle breathing sway — per-tower phase offset (from position) keeps a row of idle towers from all bobbing in perfect unison, which would read as robotic
+
+#### CA573 — `if` (was lines 11511-11514)
+head + torso: main skin tone — head radii are pre-compensated for the body's scaleX/scaleY so it renders as a true circle regardless of how stretched or squashed that class's proportions are (a squished-looking head was really just the body's non-uniform scale distorting a circle drawn in the same transformed space)
+
+#### CA574 — `if` (was lines 11530-11533)
+STR mustache — appears once STR exceeds 47, growing with additional STR up to a capped max size (full size by STR 97, 50 points above the threshold), in a stable human hair color rolled once per tower in rollSkinTones(). Sits on the lower-front of the head, below the head-item block above so a hat still renders on top correctly.
+
+#### CA575 — `if` (was lines 11566-11570)
+Zweihander's wind-up — reuses the exact chargeProgress mechanic Mage's own charge-up glow already uses (see chargeProgress's computation above), just applied to a trembling blade instead of a growing orb. Only while NOT mid-swing (swingT===0) — the tremble is what "still charging" looks like, the swing itself is the release, so once it starts swinging the shake stops and the actual swing animation takes over completely.
+
+#### CA576 — `if` (was lines 11573-11574)
+Small helper so the two-handed grip line + tip glow aren't duplicated between the resting and engaged poses below, which otherwise draw near-identical two-handed-specific extras.
+
+#### CA577 — `if` (was lines 11580-11582)
+A building edge-glow along the blade as the charge approaches release — distinct from Mage's orb-glow (a line along the blade, not a radial halo), so the two "charging up" languages read as different weapons rather than a reused effect.
+
+#### CA578 — `if` (was lines 11599-11601)
+resting stance: both arms symmetric at 45°, sword held upright — tilted 55° from vertical (verified to clear the head at the current bigger max sizes) rather than pointing straight up, which wouldn't leave enough room for the larger blade
+
+#### CA579 — `if` (was lines 11608-11610)
+engaged: off-hand fixed at its natural resting direction — tracking the weapon's actual swing angle could send it crossing across the body or swinging up into the air depending on which way the enemy is, so it stays put and lets the elbow bend carry any reactive motion
+
+#### CA580 — `if` (was lines 11619-11620)
+two genuinely separate shoulders (front/back relative to facing), not one shared pivot — a bow is a two-handed grip and needs an actual left/right shoulder to read as one
+
+#### CA581 — `if` (was lines 11625-11627)
+quiver: a rectangular container touching the torso (inner edge at the spine), with a few arrow shafts and fletching sticking out the top — sits on the opposite side from whichever way the archer is facing (facing right -> quiver on the left, and vice versa)
+
+#### CA582 — `for` (was lines 11645-11646)
+front (bow) arm extends nearly straight out toward the target, and tenses/locks as the draw builds — it shouldn't sit frozen while only the drawing arm moves
+
+#### CA583 — `if` (was lines 11671-11677)
+drawing arm: manual geometry instead of generic fixed-segment IK, which collapses into a cramped overlapping mess when the hand is pulled in close to the shoulder (exactly what happens early in the draw, when pullBack is small) — the string hand slides back from the bow grip along the aim axis, and the elbow droops slightly below the shoulder-to-hand line. A fixed downward droop (rather than perpendicular-to-aim) keeps this natural at every facing direction — the previous perpendicular approach compounded with the back shoulder's own offset to stack the elbow well above the shoulder specifically when facing left or right.
+
+#### CA584 — `if` (was lines 11715-11735)
+Staff/orb now always points along `angle` continuously, never snapping to a separate upright "idle" pose based on hasTarget. Previously staffAngle (and the arm angle feeding it) switched between "aimed at target" and idle the instant hasTarget flipped — which happens naturally once Mage sits fully charged waiting for a target for more than half a second, or the moment a new target appears. The charge glow itself never resets, but the pose snap physically moved the glowing orb to a different screen position each time, which read exactly like the whole cast restarting even though the charge percentage never actually moved. `angle` itself already holds a stable last-aimed value between targets (see update()'s recentlyEngaged grace window), so simply always using it here removes the snap entirely. Blends the arm angle and the staff's own extension direction independently toward Swordsman-matching resting targets as restBlend ramps up while genuinely idle (see the extra.restBlend computation in Tower.draw() for the timing). Checked Swordsman's actual resting mechanics directly rather than guessing a single shared angle: Swordsman's arm hangs down-and-out (Math.PI/2-0.7) while its BLADE points up near the shoulder via a completely separate angle (-Math.PI/2+0.96) — the arm and weapon-direction are two independently-angled things, not one. A single shared blend (the previous version here) isn't structurally how Swordsman achieves that look, which is why it still read as anatomically different even after the target angle itself was corrected. Both angles are unified (equal to `angle`) at restBlend=0, so nothing changes for the aimed/casting case — only genuine rest now independently walks the arm down and the staff-tip up, mirroring Swordsman's real geometry rather than approximating it with one compromise angle.
+
+#### CA585 — `if` (was lines 11756-11758)
+outer glow grows with charge — visibly builds toward the next shot the whole time, target or not, so the long wait between shots reads as deliberate anticipation rather than the tower looking idle/unresponsive
+
+#### CA586 — `if` (was lines 11779-11781)
+fixed at its natural resting direction — tracking the weapon's actual swing angle could send it crossing across the body or swinging up into the air depending on which way the enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+
+#### CA587 — `if` (was lines 11807-11809)
+fixed at its natural resting direction — tracking the weapon's actual swing angle could send it crossing across the body or swinging up into the air depending on which way the enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+
+#### CA588 — `if` (was lines 11836-11838)
+fixed at its natural resting direction — tracking the weapon's actual swing angle could send it crossing across the body or swinging up into the air depending on which way the enemy is, so it stays put and lets the elbow bend alone carry any reactive motion
+
+#### CA589 — `if` (was lines 11889-11890)
+casting arm: raised toward the target only while actively cursing something — rests down at a natural side position when idle instead of permanently holding the cross overhead
+
+#### CA590 — `if` (was lines 11906-11908)
+Growing skullcap (zucchetto) — starts small when INT reaches the attunement threshold and is full-size at the 500 INT cap, which is now the Pope requirement (with 750 total trained stats). Tied to the real requirement so it can still complete under the stat caps.
+
+#### CA591 — `if` (was lines 11917-11920)
+Cleric's ultimate form — both arms raised in a wide blessing gesture rather than one arm reaching toward a single target, since Pope has no single target at all (its curse hits everyone in range at once). A much grander mitre replaces Cleric's small skullcap entirely, and the halo scales up to match.
+
+#### CA592 — `if` (was lines 11938-11939)
+The mitre — a tall pointed bishop's hat with two hanging lappets at the back, unmistakably grander than Cleric's small skullcap it replaces entirely at this evolution.
+
+#### CA593 — `if` (was lines 11955-11958)
+Single arm, anchored at mouth height (not the shoulder) so the pipe reads as actually held up to the face in one continuous gesture — matches the reference sketch. Previously had a second "steadying" off-hand anchored 4px off the torso centerline, which visibly floated apart from the body; removed entirely rather than trying to patch its anchor point.
+
+#### CA594 — `if` (was lines 12011-12012)
+single revolver, held two-handed — a steadying off-hand cupping the primary grip, unlike Squirtgun's fully independent dual-wield
+
+#### CA595 — `if` (was lines 12030-12032)
+Two-handed medium rifle — a visual stepping stone between Gunalinder's short one-handed-plus- brace revolver and Sniper's full extended-barrel long rifle: braced with both hands like Sniper, but a shorter barrel and no scope glint, since Sniper is the deeper investment.
+
+#### CA596 — `if` (was lines 12045-12046)
+long rifle, extended barrel — a much longer weapon glyph line than any other class, both hands braced along its length for a stable long-range stance
+
+#### CA597 — `if` (was lines 12062-12065)
+One relaxed supporting arm, one raised throwing arm — a black cat rides just above the raised hand, bobbing gently while idle/aiming. On the brief post-fire flourish (extra.throwProgress, same pattern as Mage's cast — see the extra object's construction above) the cat visibly leaves the hand along the throw line instead of just popping back.
+
+#### CA598 — `if` (was lines 12078-12080)
+Single raised casting arm tipped with a conjured skull, off-hand relaxed at the side — structurally the same one-arm-cast shape as Mage's staff pose, but its own distinct prop instead of an orb, and no steadying off-hand (nothing to steady).
+
+#### CA599 — `if` (was lines 12096-12099)
+Same mouth-anchored single-pipe pose as Blowdart (its closer sibling in weapon shape than Squirtgun's dual-pistol grip), reskinned pale steam-blue with a soft mist wisp at the tip instead of Blowdart's acid-green droplet — the hybrid identity comes through in color and the wisp, not a wholly different gesture.
+
+#### CA600 — `if` (was lines 12107-12108)
+A small drifting mist wisp instead of a static droplet — two soft overlapping puffs, one rising slightly ahead of the other, reading as steam rather than a liquid spray.
+
+#### CA601 — `if` (was lines 12117-12118)
+armor decorations drawn last, on top of the arms — so arm lines never cross over and obscure the chest plate or helmet, which looked wrong when armor was drawn first
+
+#### CA602 — `if` (was lines 12122-12123)
+tapered trapezoid — narrow at the top (well clear of the neck), widening toward the waist, instead of a uniform-width bar that used to reach almost up to the neck
+
+#### CA603 — `if` (was lines 12144-12148)
+Integer spatial-hash keys. String keys ("12,7") allocated a fresh string for every enemy on every hash build and for every cell probed by every queryNearby() call — thousands of short-lived strings per tick, multiplied by up to 90 ticks per frame at 10x speed, feeding GC pauses that show up as periodic stutter. Offset keeps cells slightly outside the world (wandering escapees) unique and non-negative.
+
+#### CA604 — `cellKey` (was lines 12152-12162)
+Pulled out because the exact same "is this enemy currently unable to move" check (stunned OR blocked at a barricade) was independently duplicated across updateBarricadesAndPileup(), resolveSweptEnemyCollisions(), and resolveEnemyCollisions() — same logic, same meaning, three separate copies. Centralizing it doesn't change what any of them do; it just means there's one definition to update if the notion of "frozen" ever needs to account for a new status effect. Creep-camp guardians and huts are stationary scenery-like units; letting them physically shove a route-walking wave unit could pin it in place forever (its velocity still pointed forward, so `traveled` kept rising while its position didn't) and freeze the outcome-gated wave. Route walkers pass through camp units instead. True once the attacker has spent a full interval in contact with this barricade. The first point therefore takes BARRICADE_HIT_INTERVAL_MS of sustained attacking, not a single frame.
+
+#### CA605 — `chipBarricade` (was lines 12178-12179)
+Timber splinters and stone chips thrown outward and upward from the impact, landing as ordinary ground debris so the barricade visibly sheds material as it breaks.
+
+#### CA606 — `spawnBarricadeDebris` (was lines 12183-12184)
+One stone, plus one or two wood pieces per hit — the old 7-12 chunk throw buried every impact in flying debris; a barricade losing a single HP point doesn't need a small explosion.
+
+#### CA607 — `spawnBarricadeDebris` (was lines 12189-12190)
+Shoves an enemy sideways out of a swing it just dodged, perpendicular to the attacker, and leaves a small scuff so the dodge is readable at speed.
+
+#### CA608 — `isCampRouteCrossing` (was lines 12202-12206)
+NOTE: this only ever skips a camp-vs-lane-enemy pair — it does NOT skip a hut-vs-its-own- guardian pair (both aCamp), on purpose: they still need normal separation so a guardian can't stand inside the hut's sprite. What used to actually move the hut was resolveEnemyCollisions()/ resolveSweptEnemyCollisions() not treating isHutBuilding as immovable — fixed at their eFrozen/ otherFrozen checks, not here.
+
+#### CA609 — `isEnemyFrozen` (was lines 12210-12218)
+Last-resort anti-bunching failsafe, independent of whatever the specific root cause of a given stuck-cluster bug turns out to be. Every legitimate reason an enemy stops advancing (queued at a barricade, stunned) is excluded up front — this only watches for the illegitimate case: an enemy that isn't supposed to be blocked at all, but has made essentially no forward progress for several consecutive seconds anyway, which can only mean some other system (present or future) has it genuinely deadlocked. After 3 consecutive ~1-second windows of near-zero `traveled` progress, it gets a single forced nudge directly toward its next waypoint — bypassing the normal collision-limited per-frame movement just for that one correction — and the counter resets. Invisible in ordinary play; only ever fires when something has already gone wrong elsewhere.
+
+#### CA610 — `if` (was lines 12244-12251)
+If this nudge actually reached the waypoint (nudge === dist, capped by the Math.min above), advance pathIndex right here instead of waiting for the next normal movement tick to notice and do it — a corner jammed enough to trigger this watchdog once is exactly the situation likely to jam it again immediately after, which could otherwise leave pathIndex trailing behind where the enemy actually is for another stall cycle. pathIndex is what everything else (reachEnd()'s "ran out of waypoints" check included) actually keys off of — traveled/x/y being correct isn't enough on their own if pathIndex never catches up to match them.
+
+#### CA611 — `if` (was lines 12261-12268)
+Discrete position-based collision (resolveEnemyCollisions, below) only ever compares positions at the START and END of a frame. Two enemies moving fast enough toward each other can start the frame apart, cross paths, and end the frame apart again on the OTHER side of each other without their positions ever coinciding at either checkpoint — the standard pass never sees an overlap, and the two visibly walk straight through one another. This checks each pair's closest approach along their actual movement segment this frame (swept circle vs circle, via each enemy's prevX/ prevY captured at the top of update()) rather than just the two endpoints, and nudges them apart along that closest-approach direction if a tunnel-through is detected.
+
+#### CA612 — `if` (was lines 12294-12297)
+still separated at frame's end despite crossing paths mid-frame — a genuine tunnel-through. Nudge both back apart along the closest-approach normal so the pair reads as a near-graze instead of a clean pass-through; the regular position-based pass handles anything still overlapping at the actual end-of-frame positions, so this only fires for the tunneling case.
+
+#### CA613 — `resolveEnemyCollisions` (was lines 12307-12316)
+physical body-blocking: nothing can occupy the same space as anything else, including a frozen/stunned enemy standing still — those are genuine static obstacles instead of being skipped entirely. Reuses the same spatial hash the tower-targeting queries use. A single position-based pass isn't enough to settle a genuinely dense cluster (3+ enemies converging at once) — pushing pair A/B apart can immediately re-overlap pair B/C, so a single pass through a crowd left residual overlaps that only fully resolved (or visibly "fought") over several subsequent frames, reading as jittery/stuck. Running a couple of extra relaxation passes the same frame lets a crowd actually settle within the frame instead of spreading that settling out visibly over time.
+
+#### CA614 — `resolveEnemyCollisions` (was lines 12318-12324)
+WC3 Optimization & Performance Patch (1.5.6) — spring-damped relaxation instead of an instant full-overlap snap. COLLISION_RELAX_FACTOR (0.7) is the total fraction of an overlap a single pass resolves; split 0.35/0.35 when both bodies are free to move (matches physically since each body absorbs half), or applied whole (0.7) when only one side can move. Under-relaxing like this — instead of the old full 1.0/0.5-split correction — is exactly what a damped elastic spring does: it settles a dense cluster gradually over PASSES's several passes rather than snapping every pair fully apart in one frame, which read as jittery in a big swarm.
+
+#### CA615 — `if` (was lines 12347-12351)
+Exactly (or near-exactly) coincident centers — dx and dy are both ~0, so dividing by any fallback distance still yields a (0,0) push direction and the pair never actually separates. Derive a deterministic angle from the pair's own IDs instead of Math.random() — the same coincident pair then always separates the same way rather than jittering a different direction every frame it stays stuck.
+
+#### CA616 — `if` (was lines 12357-12364)
+Both-frozen pairs (typically two enemies queued behind a barricade) don't count toward correctionsThisPass below. They still get their lateral anti-fuse nudge every pass they're found, but a big barricade queue's overlaps are otherwise permanent for as long as the queue holds — real physical enemies still occupying real overlapping space — so counting them meant correctionsThisPass never hit 0 while any queue existed, forcing all 3 passes (and their buildEnemyHash()+queryNearby() cost) to run every single tick even once the queue had long since settled into its lateral-nudge equilibrium. Only genuinely *movable* pairs (at least one side not frozen) now drive whether later passes are worth running.
+
+#### CA617 — `if` (was lines 12367-12372)
+Bias the separation toward each enemy's own direction of travel (their vx/vy, which already point at their next waypoint) rather than pushing purely radially. A pure radial push shoves units rounding a corner sideways off the path centerline and into walls, which is exactly what produced corner hang-ups — favoring the along-path component and damping the cross-path component keeps the same separation distance but resolves it mostly by units sliding forward/back past each other, not sideways.
+
+#### CA618 — `if` (was lines 12379-12383)
+0.3 (was 0.45) — dense clusters of many identical-speed units (a big Swarm wave funneling through a single-tile-wide entrance is the worst case) settle faster when separation leans further into sliding past each other along the path instead of jostling sideways, which is what let a tightly-packed group keep shoving each other without ever making net forward progress.
+
+#### CA619 — `if` (was lines 12396-12404)
+Both sides "frozen" this tick — typically two enemies queued behind a barricade. A gentle lateral-only nudge (perpendicular to the push vector, small magnitude) keeps queued units from visually fusing, without fighting the queue-slot system's own positioning. BUT a hut building must never actually move, under any circumstance — it's a permanent structure, not a queued unit. Without this guard, a stunned Guardian standing right next to its hut (isEnemyFrozen via stunnedUntil — e.g. after a stun-capable melee tower's cone hit) would land in this same both-frozen branch together with the hut, and the hut would get visibly nudged along with it every tick the two stayed overlapping. Each side only gets the nudge if it isn't the hut.
+
+#### CA620 — `if` (was lines 12416-12419)
+Reused on idle frames (zero active enemies) instead of allocating a fresh {} every frame for something that would end up empty anyway — see the idle fast path in update(). Frozen so any accidental write attempt throws immediately (strict mode) rather than silently corrupting shared state across frames.
+
+#### CA621 — `if` (was lines 12422-12426)
+Bucket-array pool for buildEnemyHash() — reused across calls instead of letting every bucket ([] literal) get thrown away and reallocated on every build. Buckets are keyed by the same "gx,gy" string the hash itself uses; a bucket that existed on a previous build is reused (its .length reset to 0) rather than replaced, so steady-state enemy counts approach zero array allocations per hash build instead of one array per occupied cell per build.
+
+#### CA622 — `if` (was lines 12428-12432)
+Call counters for buildEnemyHash()/queryNearby() — reset once per rendered frame (see loop()), incremented inside the functions themselves below. Answers, directly, "how many times per frame are we actually doing this work" instead of inferring it from source-reading, and queryNearbyMaxResultLenSeen answers whether any single query is returning a suspiciously large result set (a range/cell-size mismatch would show up here immediately).
+
+#### CA623 — `if` (was lines 12453-12456)
+Shared scratch buffer for queryNearby() — every call site consumes its result synchronously (a for...of loop or an immediate .filter() copy) before making another queryNearby() call, so reusing one buffer across calls is safe and eliminates a fresh array allocation on what is one of the hottest per-tick paths in the engine (tower targeting, splash radius, crowd separation).
+
+#### CA624 — `for` (was lines 12484-12488)
+Non-overlapping speed bands: every tier's fastest unit is still slower than the slowest unit of the tier below it, so size is an honest indicator of strength. Speeds are in this game's own px/s scale (a baseline Grunt walks at 50). 1.4.3: enemies walk slower, hit softer and slightly less often so long fodder waves read as a grind rather than a rush. Speed bands are ~25% slower than 1.4.2 and still strictly ordered.
+
+#### CA625 — `for` (was lines 12490-12491)
+Kill bounty was tuned before waves carried hundreds of enemies and before barricades became a recurring cost; tier gold roughly doubled across the board (1.4.40).
+
+#### CA626 — `top-level` (was lines 12541-12547)
+Within a size phase, the next batch may leave once every unit of the current batch has died, escaped, or walked BATCH_RELEASE_PATH_FRACTION of the route — so a weak defense doesn't turn a long path into minutes of dead air per batch. Phase transitions (Tiny -> Small -> ...) still require every smaller route obligation to be fully resolved. Wave 1 keeps strict one-at-a-time. Batch spacing is an absolute distance, not a fraction of the route: wave length must scale with POPULATION, not with how long the map's path happens to be. (At 0.35 of a late-game 88-waypoint route each batch waited ~44s of game time, so a single wave ran for minutes of mostly empty path.)
+
+#### CA627 — `top-level` (was lines 12549-12553)
+The last batch of a size phase used to hold the whole wave until every unit finished the entire route — with the slower 1.4.3 enemy speeds and a long late-game path that was minutes of dead air. A phase may now advance once its stragglers are past PHASE_RELEASE_PATH_FRACTION of the route: they are still visibly ahead of anything the next phase spawns at the entrance, so "smallest first" holds on screen, and they remain route obligations for wave completion.
+
+#### CA628 — `tierPopulationForWave` (was lines 12600-12602)
+With barricades holding a choke point reliably, batches no longer need to trickle: 2-5 per send through wave 50, then 5-10. Wave 1 still walks its ten enemies out one at a time as the tutorial beat; Bosses always arrive alone.
+
+#### CA629 — `waveHpScale` (was lines 12750-12753)
+Per-wave step raised 0.04 → 0.09 per direct feedback ("each wave should add a small buff... more health") — the old value made HP barely move wave-to-wave inside a chapter (a Grunt on wave 2 was only 4% tougher than wave 1), with almost all of the growth arriving as one big jump every 5th wave instead of feeling continuous.
+
+#### CA630 — `resetWaveDispatch` (was lines 12772-12774)
+Entrance spacing tracks the last wave unit by its spawn serial, not just the pooled object: once that enemy dies its slot can be reused by a camp guardian or hut that never walks the path, and gating on the reused object's frozen `traveled` would block dispatch forever.
+
+#### CA631 — `if` (was lines 12793-12794)
+JRPG-style boss announcement: the screen pulses red, everything stops for a beat, and the warning holds long enough to be read before the boss walks on.
+
+#### CA632 — `announceSizePhase` (was lines 12832-12834)
+No toast for SMALL specifically — by direct request ("we don't need a popup that says 'small enemies incoming'... wasn't very accurate either"). TINY/STANDARD/LARGE/BOSS banners are untouched; this was scoped to the one the owner actually flagged, not a blanket removal.
+
+#### CA633 — `if` (was lines 12837-12840)
+The final wave's BOSS slot is always SANTA (see buildWavePlan()'s weight override) — give it its own warning label instead of the generic one, and a distinct GA event so a Santa encounter is actually visible in analytics as its own thing, not folded into every other boss wave.
+
+#### CA634 — `wavePhaseStatusText` (was lines 12895-12899)
+The resolvedUnits/populationTotal readout ("68/74" next to "Wave 5/100") is removed per direct feedback — a raw unit-progress count next to the wave counter read as excessive/messy, and isn't information a player needs mid-fight. The element still shows (and hides itself, see wavePhaseVal.hidden below) for the one case that's an actual actionable warning: enemies currently loose past the barricades.
+
+#### CA635 — `startNextWave` (was lines 12904-12906)
+Was unconditional every wave — direct feedback said "happens too often... need to be rare, maybe indicate a lucky wave, 2% of happening." Gated to a genuine 2% roll, with a toast so the rare trigger reads as a small event rather than just leaves that showed up.
+
+#### CA636 — `startNextWave` (was lines 12911-12917)
+Each round gets its own wind ceiling — how strong a gust can actually get THIS wave — rather than one flat cap for the whole game. Climbs linearly from a gentle 0.15 at wave 0 to a full 1.0 by wave 30, then stays capped there — rough wind is genuinely rare early on and a real, regular possibility later, not present in force from the very first round. windStrength itself isn't reset here — only the ceiling it's allowed to climb toward changes, so a gust already in progress from the previous round doesn't snap down, it just can't climb any higher than the new (lower or higher) ceiling permits from here.
+
+#### CA637 — `startNextWave` (was lines 12919-12925)
+Enemies still wandering from a previous round (see reachEnd()/updateEscaped()) are no longer force-cleared here — they persist across wave boundaries now, by direct request, rather than being deactivated the instant a new wave starts. They already don't block wave completion (see the `anyAlive` check's `!e.escaped` filter) and they remain a genuine, ongoing threat — still killable for the normal reward, and (since 1.2.17) still capable of attacking a nearby tower themselves — so leaving one alive is a real, persistent consequence now, not something that quietly gets swept away at the next "Next Wave" tap.
+
+#### CA638 — `for` (was lines 12929-12932)
+Necromancer's skeletons — raised fresh every round (destroyed at round-complete, see the waveState ACTIVE->IDLE transition in update()). MAX_ONE_PER_BOARD_TYPES already limits this to at most one active Necromancer at a time, so this loop never actually raises more than one tower's worth of skeletons in practice, but it's written generically rather than assuming that.
+
+#### CA639 — `for` (was lines 12963-12970)
+Creep camps (WC3-style): a stationary hut structure guarded by 2 enemies, placed off-path at game start. Clear the guardians for an immediate bounty; the hut itself is tougher still and gives a bigger one-time reward when destroyed. If the hut survives and both guardians are dead, it respawns 2 fresh ones after a random 1-5 minute real-time wait — but only once the lane is actually clear (see updateHutBuilding()), never while a guardian is still standing. Reuses the Enemy class/pool entirely (see isGuardian/isHutBuilding in spawn()) rather than a parallel system — same proven active-flag exclusion pattern already used for escaped enemies throughout this file, not a new concept.
+
+#### CA640 — `for` (was lines 12984-12989)
+The tower every living guardian of this hut currently focuses — whichever active, non-disabled tower holds the highest total in hut.campDamageLedger (recorded in Enemy.applyDamage(), see its own comment for exactly what counts). A stable tie-break (lowest tower.id wins) means guardians don't flicker between two towers doing equal damage — same target every call until something actually overtakes it. Returns null if the hut has no ledger yet (never been damaged) or every tower that ever damaged it is now gone/disabled — that's "no valid target," not an error.
+
+#### CA641 — `spawnHutGuardian` (was lines 13004-13008)
+3x a Grunt's OWN wave-scaled HP (waveHpScale(waveIndex)), not 3x Grunt's flat base HP — a camp that spawns at HUT_MIN_EXPANSION_LEVEL early on is meant to read as a tough detour for THAT point in the game, not a fixed mid-game-strength roadblock dropped in front of a wave-1 player. Per-guardian floor kept at 3x base HP even on wave 1 so it's still meaningfully tankier than a regular Grunt, just not fixed-mid-game-tough.
+
+#### CA642 — `spawnHut` (was lines 13030-13034)
+campDamageLedger deliberately starts fresh here (a brand-new hut has no attacker history yet) and is deliberately NEVER cleared on a guardian respawn (see updateHutBuilding()) — it belongs to the hut, not to any one generation of guardians, so a fresh pair immediately continues defending against whichever tower was already attacking the camp rather than "forgetting" and giving the player a free window. It's runtime-only state, not persisted in the save file.
+
+#### CA643 — `spawnHuts` (was lines 13046-13048)
+Black/white pairs, one random piece per spawn — direct request ("any chess piece randomly white or black"). Unicode has genuine distinct glyphs for both colors of each piece, so this is real color variety, not just a re-tint.
+
+#### CA644 — `spawnCastleGuardian` (was lines 13064-13068)
+Castle — a second, tougher building alongside Hut (direct request: "new hut like building"). Reuses isHutBuilding for EVERY mechanical purpose (collision/freeze/movement/path-progress counting all already key off that one flag in over a dozen places — see its own comments) so none of that proven code needs touching; buildingKind is the only thing that actually distinguishes a Castle from a Hut (display label, and which guardian type it spawns).
+
+#### CA645 — `spawnCastle` (was lines 13087-13091)
+Zombie Grave — direct request: "a grave with two zombies like the hut... only holy attacks do a lot of damage (5x), meaning much harder without cleric or pope." Guardians are real ZOMBIE-family enemies (already in CONFIG.ENEMIES, isUndead:true) rather than a bespoke type, so they carry their own existing undead identity (blood palette, etc.) for free. The building itself and its guardians both take the 95% non-Holy reduction — see applyDamage()'s isGraveTarget check.
+
+#### CA646 — `spawnGrave` (was lines 13123-13128)
+One-time tutorial tips, shown at a specific wave and never again after that — direct request ("all these warnings suggestions and tips should only happen once, after first time it's presumed player knows"). Persisted the same way every other standing preference already is (localStorage, sticktd:seenTips:v1) rather than a genuinely separate cookie mechanism — this is the same consistency call made for the Shop-lock/decal-budget settings earlier: one persistence system, not two, for the same kind of "remember this across sessions" data.
+
+#### CA647 — `if` (was lines 13149-13154)
+wave 20, balance them"). Hut only ever spawned once per game before (at HUT_MIN_EXPANSION_LEVEL); this adds a periodic SECOND source, gated well past that: capped to at most MAX_EXTRA_BUILDINGS_ON_BOARD live at once (so it can't snowball into a wall of buildings), rolled once per wave clear from wave 20 on, chance rising slowly with wave number so it stays rare right at 20 and becomes a real recurring feature by the deep game. Grave joins the rotation only from wave 30 on ("sometimes spawns after wave 30") — before that it's just Hut/Castle, 50/50.
+
+#### CA648 — `loseLife` (was lines 13183-13187)
+Loss condition: every fighting stickman (Swordsman/Archer/Mage and every evolution — anything that isn't a Barricade) simultaneously overrun/disabled at once. Only fires once at least one fighter has actually been built (an empty-but-not-yet-started board doesn't count), and only mid-run — never during IDLE between waves, so a full squad resting right after a wave clear isn't mistaken for a wipe.
+
+#### CA649 — `checkAllFightersDown` (was lines 13191-13194)
+Rewritten from a .filter()+.some() pair to a plain loop — this runs every SIMULATION TICK (not just every rendered frame; several ticks can run per frame at high game speed), and the old version allocated a new array every single tick just to throw it away. Same logic, zero allocation: a running tally of fighters seen and whether any is still standing.
+
+#### CA650 — `update` (was lines 13211-13214)
+Ground-item expiry — throttled to once every 10 real seconds, not per tick; groundItems is small (max 12, see MAX_GROUND_ITEMS) so even an unthrottled sweep would be cheap, but there's no reason to do it more than a handful of times a minute. Skips the currently-dragged item so an active drag interaction is never interrupted by its own item despawning mid-drag.
+
+#### CA651 — `if` (was lines 13221-13226)
+--- Per-tick phase timing instrumentation --------------------------------------------- Answers "which subsystem is actually spending the time" instead of just "updateMs is high." Accumulates into the module-scope phaseTime object (reset once per RENDERED frame, in loop(), not per tick — multiple ticks can run in one frame at high gameSpeed, and these figures should read the same way updateMs already does: total ms spent in that phase across the whole frame). Pure measurement — every phaseTime.x += line wraps an existing call with no logic change.
+
+#### CA652 — `if` (was lines 13232-13247)
+Spawning pauses entirely while any enemy is queued/waiting at a barricade — otherwise new enemies kept arriving on top of an already-backed-up line, growing the pile-up instead of letting it clear. waveTimer is frozen (not just the spawn check) while paused, so nothing becomes "overdue" and there's no burst of catch-up spawns once the blockage clears — time simply resumes exactly where it left off. Also frozen for the duration of the wave-start camera pan (waveStartCameraPan) — the 3-2-1 countdown and the first real spawn both read off this same waveTimer, and starting either one while the camera is still mid-swing toward the spawn point meant the countdown was half over (or enemies had already appeared) before the player had actually arrived at what it was counting down to. Same freeze mechanism as the barricade-pileup pause above. waveTimer itself is now advanced once per rendered frame in loop() using real unscaled wall-clock time (see the comment there) rather than per tick here — the 3-2-1-GO countdown must always take the same 3 real seconds no matter what gameSpeed is set to, since speed multipliers are only meant to speed up the wave itself, not the pre-wave countdown. Only the actual dispatch call remains here, still running once per simulation tick so wave pacing after the countdown continues to scale with gameSpeed exactly as before.
+
+#### CA653 — `if` (was lines 13254-13262)
+updateBarricadesAndPileup() must run every frame regardless of active-enemy count — it's the ONLY place that recalculates anyBarricadeQueued (which gates whether spawning is allowed to continue) and its own 15s force-resume safety valve. Gating this behind an active-enemy check caused a real, confirmed permanent soft-lock: if the last enemy touching a barricade died while anyBarricadeQueued was true, the flag stayed stuck true forever (nothing left to recalculate it), which blocked all future spawning, which meant no enemies ever became active again, which meant this function — including its own safety valve — never ran again either. Cheap even with zero enemies (empty array/Map), unlike the collision/hash work below, which is the actual performance cost and safely stays gated (1.1.35 hotfix).
+
+#### CA654 — `if` (was lines 13295-13300)
+Escaped/wandering enemies (see reachEnd()/updateEscaped()) deliberately don't count toward "is the wave still going" — they've already done everything a wave-blocking enemy can do (cost a life), and are now just an ongoing target/threat, not something the player has to hunt down to progress. Without this exclusion the wave could never complete once even one enemy escaped, since they now persist indefinitely (no longer force-cleared at the next wave start) until something actually kills them.
+
+#### CA655 — `if` (was lines 13302-13306)
+Also wait for any in-flight death animation to finish — die() sets active=false immediately but the squash-and-fade animation it kicks off (deathAnims) still has up to ~220ms left to play. Without this, the very last kill of a wave triggered the wave-complete popup/transition on the exact same frame the corpse started its animation, visibly cutting it off mid-play.
+
+#### CA656 — `if` (was lines 13311-13315)
+Spiral map growth: an in-progress buildable-only ring (see beginNextRingReveal()) drips in 1-3 more tiles for free on every wave clear, regardless of whether the player buys another expansion — "each round" in the reveal pacing is a wave, matching the request directly. Path-rings never populate this queue (see performExpansion()'s nextRingIsPath branch), so this is a no-op between path-ring expansions.
+
+#### CA657 — `if` (was lines 13317-13319)
+Necromancer's skeletons exist only for the round that raised them — see startNextWave()'s raiseSkeletonsForTower() call. Cleared the instant the round actually completes, not carried into the between-wave lull the way escaped enemies deliberately are.
+
+#### CA658 — `if` (was lines 13330-13332)
+Free barricade charge every 5 waves — a defensible middle ground for "spawn a bit more often, somewhere from every 3 to every 10 waves," per the same periodic-milestone pattern moveCharges/expansions already use above.
+
+#### CA659 — `if` (was lines 13336-13339)
+Worms crawling out of skulls — 1-in-10 chance per skull per round, but the worm doesn't actually appear until the round AFTER it's rolled (a skull marked wormPending this round only spawns its worm on the NEXT call to this same handler, one round later). Each skull only ever grows one worm — once wormSpawned is true, it's never rolled again.
+
+#### CA660 — `if` (was lines 13357-13361)
+Was every 3 waves — with a free expansion basically every other wave once early guarantees ran out, the map kept extending faster than most players could actually make use of the new space before the next one arrived. Stretched to every 4 waves, ~33% longer between extensions, while keeping the same guaranteed-early-game unlocks (wavesCompleted <= 4) so the opening waves still feel generous.
+
+#### CA661 — `if` (was lines 13368-13371)
+End-of-round item drop — a small chance (WAVE_DROP_CHANCE) at every wave clear to drop one random item from WAVE_DROP_ITEMS as a ground pickup, same mechanism scenery-clear drops already use (see LUCKY_BRANCH's own scenery-drop push). Placed near a random active fighter tower so it's somewhere the player is already looking, not off in empty space.
+
+#### CA662 — `if` (was lines 13402-13407)
+Dirty-check state for updateTargetFrame() — was doing two getBoundingClientRect() layout reads plus several unconditional DOM writes every single render frame (60fps), regardless of whether the target, its stats, or the panel geometry had actually changed. text/HP-bar content now only writes when the underlying values change; the expensive geometry recompute (getBoundingClientRect + style writes) only runs when the frame just became visible or the layout genuinely may have moved (resize).
+
+#### CA663 — `if` (was lines 13427-13430)
+The hut/its guardians are spawned as type 'GRUNT' under the hood (emoji overridden to read as a structure) — ENEMY_INFO[target.type] would show "Grunt" here otherwise, which is exactly what "not showing the hut as a target" meant: the portrait icon was already right, only the name label wasn't.
+
+#### CA664 — `if` (was lines 13452-13453)
+stack above the main panel instead of beside it — positioning to the right overflows off-screen on phone-width viewports
+
+#### CA665 — `if` (was lines 13466-13471)
+Animated pointer above the currently selected tower — deliberately its own small function rather than folded into Tower.draw() (which already handles a lot per tower and is called for every active tower every frame; this only ever needs to run once, for whichever tower is actually selected). A safely conservative fixed offset above the tower's own anchor point clears the usual overhead elements (name, HP bar, unspent-points scroll) without needing to know the exact height of every possible combination of those on every class.
+
+#### CA666 — `if` (was lines 13501-13508)
+Explicit destination size (WORLD_MAX_W/H, not mapCanvas.width/height) is required now that mapCanvas's own raster is dprValue-scaled (see resizeMapCanvasForDpr()) — without it, drawImage would draw the source at its raw pixel dimensions in world-space units, rendering the whole map dprValue times too large. This is what actually makes the higher raster resolution pay off as sharpness instead of just wasted memory: the browser downsamples a real high-res source into these world-space destination bounds, then ctx's own dprValue transform (see setupCanvas()) scales that back up to match the display's physical pixels 1:1, rather than upscaling a flat 1x raster and blurring it.
+
+#### CA667 — `if` (was lines 13515-13517)
+Blood decals draw BEFORE scenery (trees/rocks) rather than after — blood sits flat on the ground, and a tree/rock is a physically taller object that should occlude any stain directly behind it, not have blood rendered on top of it. The previous order drew stains over trees.
+
+#### CA668 — `for` (was lines 13530-13534)
+Slow rainbow hue-cycle instead of a flat color — direct feedback that the plain colored ring read as generic/default-looking. Offset per item (gi.id) so multiple items on screen don't all cycle in lockstep, and slow enough (a full 360° loop every ~22s) to read as a gentle glow, not a strobe. LUCKY_BRANCH keeps a distinguishing trait (this ring spins visibly faster) rather than losing its "rare" signal now that the color itself no longer says it.
+
+#### CA669 — `for` (was lines 13539-13543)
+Soft radial glow instead of a stroked ring outline — direct feedback ("literally a glow like glowing light gradient not a ring, I hate that ring"). Same rainbow hue-cycle and pulse timing as before, just rendered as a radial gradient (bright, opaque core fading to fully transparent at the edge) instead of a circle stroke, so it reads as ambient light around the item rather than a hard geometric outline.
+
+#### CA670 — `for` (was lines 13547-13548)
+hsla(), not hexToRgba() — ringColorHex is an hsl(...) string (a rainbow hue-cycle), and hexToRgba() only parses '#rrggbb'; hsla() takes the same h/s/l straight from that string.
+
+#### CA671 — `if` (was lines 13568-13570)
+Points at whichever tower is currently the valid drop target — the exact same 26px hit-test radius the actual drop logic in onPointerEnd() uses, so what's shown here always matches what would actually happen if released right now.
+
+#### CA672 — `for` (was lines 13617-13620)
+Per-tower telemetry — direct request ("include per tower telemetry in the debug log, add as much to the debug log capacity as we can"). Sorted by lifetime damage (the towers actually worth looking at), capped to the top 10 so the overlay can't grow unbounded with a large board — a "+N more" line covers the rest without listing every single one.
+
+#### CA673 — `drawFpsCounter` (was lines 13645-13646)
+Simple traffic-light coloring — under 30fps is a real problem worth noticing at a glance, not just a number to squint at.
+
+#### CA674 — `drawFpsCounter` (was lines 13654-13662)
+On-screen "3-2-1-GO" during the flat WAVE_COUNTDOWN_MS delay startNextWave() now adds before spawning actually begins — WORLD-space now (drawn inside the camera transform, right above the spawn marker below), not a fixed screen overlay, so it tracks the spawn tile through the pan. Purely cosmetic, reads waveTimer/waveState but never writes them. Pulsing red warning marker at the wave's spawn point, visible for the entire pre-spawn window (camera pan + 3-2-1-GO countdown) — gone the instant real spawning begins, since enemies visibly appearing there is its own signal at that point. World-space (drawn inside the camera transform in render()), so it correctly tracks the spawn tile through the pan rather than sitting at a fixed screen position.
+
+#### CA675 — `drawSpawnWarningMarker` (was lines 13675-13677)
+Stretched horizontally only (translate to the anchor, scale X, draw at the origin) — a plain font-size bump would also grow it taller and shove it further from the spawn tile; this keeps the same height/position and just makes the glyph itself read as wider/bolder.
+
+#### CA676 — `drawBossCompass` (was lines 13738-13742)
+Lightweight, always-on performance telemetry — a few performance.now() calls per frame, not a gated debug build, so real on-device numbers are available without a separate mode. This is the instrumentation step the 1.1.32 performance audit recommended doing FIRST, before further optimization work, so future claims can be measured rather than inferred from reading code. Inspect via the browser console: `perfStats`.
+
+#### CA677 — `drawBossCompass` (was lines 13746-13750)
+Rolling-window percentile tracking — an average frame time can look perfectly healthy while the game still stutters intermittently; a fixed-size window (2s at 60fps) of raw samples lets the debug log report median/p95/p99/max instead of just "the last frame" or a running average that smooths real spikes away. Small array, shift() cost here is negligible (120 elements max, unlike the old timed-queue approach, which scaled with wave size).
+
+#### CA678 — `drawBossCompass` (was lines 13752-13756)
+Barricade/pileup telemetry — this was previously invisible: no way to tell, from the debug log alone, whether a lag spike during a pileup was the barricade system itself or something else entirely. Snapshot of the most recent updateBarricadesAndPileup() call, not a rolling window — the barricade system runs every tick, so "most recent" already reflects current conditions closely enough.
+
+#### CA679 — `drawBossCompass` (was lines 13758-13760)
+"Actual speed" diagnostic — requested gameSpeed vs. what the simulation is actually achieving, averaged over real time rather than one noisy frame. Answers "is a stutter a rendering problem, a simulation problem, or genuine catch-up debt" at a glance instead of guessing.
+
+#### CA680 — `drawBossCompass` (was lines 13762-13764)
+Session-lifetime worst single frame — distinct from the rolling 2s-window p99/max below, which can miss a rare one-off spike (a wave-transition hitch, a first-hit collision-mask build) that happened outside the last 120 frames by the time anyone opens the debug log.
+
+#### CA681 — `drawBossCompass` (was lines 13766-13770)
+True wall-clock gap between rAF callbacks (rawWallGapMs in loop()) — distinct from worstFrameMs/frameMsHistory above, which only time this callback's own JS execution and are blind to the browser simply delaying the next callback (touch/compositor contention during a pan or pinch gesture is the prime suspect). Same rolling-window + session-worst pattern as the execution-time stats, applied to the number that can actually catch that class of stall.
+
+#### CA682 — `top-level` (was lines 13772-13775)
+Distribution of ticksThisFrame across the rolling window — the median/max above can't distinguish "occasionally catches up 2 ticks, totally normal" from "constantly running 1 tick behind," and that distinction is exactly what separates ordinary catch-up from an actual accumulator spiral. Recorded every frame in loop(), read back as a histogram in the debug log.
+
+#### CA683 — `top-level` (was lines 13777-13781)
+Spatial-query telemetry — see spatialQueryCallsThisFrame/hashBuildsThisFrame/ queryNearbyMaxResultLenSeen near buildEnemyHash()/queryNearby() themselves. Snapshotted here once per frame (in loop()) so the debug log can report last-frame counts, not just the session-lifetime max/current module-scope values that would otherwise require exposing those internals directly.
+
+#### CA684 — `top-level` (was lines 13783-13788)
+Visible/culled counts for enemies/towers — matches the same purpose scenery/decals already had: tell whether a lag spike correlates with a genuinely large on-screen population or with per-entity cost regardless of count. Particles/projectiles have no equivalent because — confirmed by direct inspection of drawParticles() — they are NOT viewport-culled at all currently (every active particle draws regardless of camera position); that fact is reported directly in the debug log instead of inventing a "visible" figure that doesn't exist yet.
+
+#### CA685 — `top-level` (was lines 13790-13793)
+Chrome-only (performance.memory is non-standard; guarded everywhere it's read). Sampled at most once/sec, not every frame — the point is trend-over-time (a steady climb means something genuinely isn't being recycled; a sawtooth that returns to baseline is normal GC behavior), not per-frame precision, and reading it more often than that buys nothing.
+
+#### CA686 — `top-level` (was lines 13796-13801)
+Per-phase time-in-update() breakdown — reset once per RENDERED frame (in loop(), alongside ticksThisFrame), accumulated across however many simulation ticks ran that frame by the phaseTime.x += lines threaded through update() itself. See the comment at the top of update() for why this is frame-scoped rather than tick-scoped. phaseMaxSeen tracks the worst any single frame has hit for each phase, session-lifetime — same "current + max" pattern already used for ticksThisFrame/maxTicksSeen above, applied per-subsystem instead of just in aggregate.
+
+#### CA687 — `resetPhaseTime` (was lines 13809-13812)
+Same per-phase breakdown pattern as phaseTime above, applied to render() instead of update() — render() previously reported one opaque total (perfStats.renderMs) with no visibility into which draw pass actually dominates. Reset once per frame in loop() alongside resetPhaseTime(), accumulated via the renderPhaseTime.x += lines threaded through render() itself.
+
+#### CA688 — `perfPercentile` (was lines 13829-13842)
+Start-screen attract-mode — a genuine self-contained mini-simulation, entirely separate from real game state (its own enemies/towers/projectiles arrays, never enemyPool/towerPool/ projectilePool), advancing on its own now-based delta time rather than the global gameTime (frozen while gameState !== 'PLAYING'). Redesigned as a curated arcade-attract vignette rather than looping distinct tower layouts: a single fixed 3-Archer formation, centered in a shallow arc and facing outward, defends against enemies that spawn from randomized points around the screen perimeter and travel inward toward the formation — never a fixed left-to-right lane, and never truly random either (each spawn's target point is jittered around the formation center so motion still reads as "attacking the group" rather than scattering). One phase-driven loop (calm → action → high-intensity → aftermath → fade) repeats indefinitely, each phase changing spawn rate/enemy mix/intensity rather than switching to a different scene. Archers actually attack — draw/fire animations drive drawStickman()'s real animation fields, real projectiles travel to their target — rather than static idle poses. The dark vignette overlay is #start-screen's own CSS and untouched here, only the content moving behind it changes.
+
+#### CA689 — `perfPercentile` (was lines 13848-13850)
+Cosmetic-only color/glow per element, for the attract-mode archers below — matches the real game's own attunement color language (FIRE/ICE/ELECTRIC) without touching the actual attunement system or drawStickman() itself, which stays completely untouched.
+
+#### CA690 — `perfPercentile` (was lines 13852-13854)
+Broad pool of ordinary enemy types for the attract mode's random mix — excludes BOSS (its huge radius reads oddly at this decorative scale) and TROLL (has no independent wave presence, only appears via a special mechanic elsewhere), everything else is fair game.
+
+#### CA691 — `perfPercentile` (was lines 13857-13860)
+Phase timeline for one attract loop, in ms from loop start. Durations sit inside the "classic arcade cadence" discussed for the redesign: brief fade in/out, several seconds of escalating action, a short aftermath beat before the next loop. Total loop length ~19s, inside the requested 15-25s window.
+
+#### CA692 — `attractPhaseAt` (was lines 13878-13881)
+Controlled-random perimeter spawn: pick a random point just outside the canvas edge (any side, including corners), then aim it at the formation's own center with a bounded random jitter — enough variety that shots don't all converge on one pixel, not so much that enemies wander off looking scattered rather than attacking.
+
+#### CA693 — `if` (was lines 13950-13951)
+Spawning — rate-limited per current phase, capped to that phase's max concurrent enemies so AFTERMATH visibly thins out rather than instantly clearing.
+
+#### CA694 — `for` (was lines 13966-13968)
+Subtle "Ken Burns" camera drift — slow zoom + pan across the whole scene, tied to real time (not the attract loop's own restart cycle) so it doesn't visibly snap back at each loop reset. Small enough (max ~3.5% zoom, a few px of pan) to read as "alive" rather than distracting.
+
+#### CA695 — `for` (was lines 13976-13981)
+Perspective checkerboard ground — rows compress toward a horizon near the top of the screen and widen toward the bottom, approximating a ground plane viewed from a low, looking-up angle (the "bigger towers, more dramatic low-angle perspective" request) — done entirely as ordinary 2D drawing (row-by-row scaling toward a horizon line), not a real 3D/CSS transform, so it's fully self-contained to this function and can't affect the real game's own rendering, layout, or hit-testing at all.
+
+#### CA696 — `for` (was lines 13984-13987)
+The attract screen rolls day or night once per visit (50/50, fixed for the session so it can't flicker between frames): night keeps the moon and stars, day gets a warm sky and a sun. Re-roll whenever the attract screen has been away for a moment (a fresh visit or a return from a run), not only on the very first render — otherwise the same sky persisted for the session.
+
+#### CA697 — `if` (was lines 13991-13992)
+Sky body varies per visit too: position across the sky, and for night a moon phase from new through full. Rolled once so the scene holds still while the player reads the menu.
+
+#### CA698 — `if` (was lines 13997-13998)
+Gradient night sky instead of a flat fill, plus a moon and a handful of twinkling stars — cheap atmosphere that reads immediately as "moody dusk battlefield" rather than a plain dark rectangle.
+
+#### CA699 — `if` (was lines 14012-14013)
+Phase is carved by painting the sky colour back over the moon with an offset disc: a large offset leaves a crescent, a small one leaves a gibbous, and phase 0 covers it entirely.
+
+#### CA700 — `if` (was lines 14026-14027)
+Deterministic per-index placement (not re-randomized every frame) so stars hold still instead of jittering to a new position each render.
+
+#### CA701 — `for` (was lines 14038-14039)
+Quadratic spacing — rows right at the horizon are thin, rows nearest the camera (bottom of the screen) are tall, the classic "receding ground plane" cue.
+
+#### CA702 — `for` (was lines 14050-14052)
+Ambient dust motes — soft, slow-drifting specks for depth, same "deterministic per-index placement" approach as the stars above so they hold a consistent path instead of jumping around frame to frame.
+
+#### CA703 — `for` (was lines 14067-14069)
+Tower attack logic — each Archer periodically finds a live enemy and goes through a real draw/fire cycle, spawning a travelling projectile that lands on arrival, rather than a frozen idle pose.
+
+#### CA704 — `for` (was lines 14071-14075)
+Enemies already claimed by a tower that's mid-attack (phase !== 'idle') this frame — direct request: archers were all independently picking "nearest," which meant they frequently piled onto the same enemy while others walked through unchallenged. Preferring untargeted enemies spreads shots across more of the field; only falls back to overlap when every eligible enemy is already claimed (fewer live targets than towers).
+
+#### CA705 — `if` (was lines 14115-14118)
+Elemental proc — "sometimes," not every hit, per direct request. 45% chance the burst shows the source tower's element instead of the plain gold spark, insinuating fire/ice/ electric without a real status-effect system backing it (this is the menu screen, not live gameplay — purely a visual flourish matching the tower's own color-tint above).
+
+#### CA706 — `if` (was lines 14126-14128)
+Enemies draw before towers, matching the real game's own draw order. Sized up from the old flat 22px — bigger, closer-to-camera sprites, matching the low-angle ground plane above rather than looking small and distant against it.
+
+#### CA707 — `if` (was lines 14130-14132)
+Base size bumped from 46px — towers are scaled 1.8x separately (drawStickman() below), so enemies at the old size read as small purely by comparison, not in isolation. Direct feedback, twice now, confirmed this was a real relative-size mismatch, not a stale-build misread.
+
+#### CA708 — `if` (was lines 14137-14140)
+Radiating burst instead of a flat static circle — progress derived from flashUntil (always triggered as `now + 150` at the point of death, see the projectile-impact loop below), so no extra state needs storing just to animate this. Warm gold tone matching the game's own UI accent color, not gore — this is the menu screen, not live combat.
+
+#### CA709 — `if` (was lines 14146-14148)
+Elemental proc — swaps color AND shape per element, not just a recolor, so fire/ice/ electric actually read as distinct effects. No proc (procElement null/undefined) keeps the original plain gold spark burst exactly as before.
+
+#### CA710 — `if` (was lines 14166-14167)
+Small diamond shard at the tip of each radiating line instead of a bare line end — reads as ice crystals scattering, not a generic spark.
+
+#### CA711 — `if` (was lines 14179-14180)
+Slightly curved lick instead of a dead-straight line — reads as a flame tongue, not a ray. Quadratic curve bowed perpendicular to the radial direction.
+
+#### CA712 — `if` (was lines 14199-14202)
+Walk-bob "saunter" — a real leg/skeleton walk cycle isn't possible for a flat emoji glyph, so this fakes one the standard 2D way: a vertical bounce plus a subtle squash-stretch, both driven by distance walked (e.t) rather than elapsed time, so the step rhythm speeds up/slows down together with the enemy's own pace instead of drifting out of sync with it.
+
+#### CA713 — `if` (was lines 14206-14208)
+Perspective grow — smaller at spawn (still off-frame edge), full size by the time it reaches the formation, matching the same low-angle "approaching camera" logic already used for the ground plane above. Composed with the squash/stretch below, not replacing it.
+
+#### CA714 — `if` (was lines 14228-14232)
+Element-tinted body — one archer each in fire/ice/electric colors, per direct request. Reuses drawStickman()'s existing skinMain/skinShade override params (already supported for other purposes elsewhere in the real game) rather than touching drawStickman() itself at all. Light/dark pairs picked to read clearly as the element while still looking like a body, not a flat color block.
+
+#### CA715 — `if` (was lines 14242-14245)
+Scaled up around each tower's own position (an outer transform, composed with whatever drawStickman() already does internally — its own code is completely untouched) for the "bigger towers, closer camera" look, rather than changing the `level` parameter, which drives real gameplay-facing tier scaling in the actual game and isn't meant for this.
+
+#### CA716 — `for` (was lines 14261-14263)
+Motion trail — a short line back along the same travel path (previous-t sample, not a separate stored history), plus a glow on the leading point. Reads as a real arrow shot rather than a static dot sliding across the screen.
+
+#### CA717 — `for` (was lines 14278-14284)
+Running "defeated" counter — small HUD-style badge, top-left. Conveys ongoing action/stakes (real gameplay has a wave counter and kill-driven progression; this hints at that without needing the actual HUD to be visible during attract mode). Technically still inside the same Ken Burns drift transform above (the outer save/restore hasn't closed yet) rather than reset to a fixed screen-space overlay — the drift itself is subtle enough (a few percent zoom, under 15px of pan) that this reads as fine in practice, not worth a transform-reset that risks getting DPR scaling wrong on a real high-DPI device without being able to verify it there.
+
+#### CA718 — `for` (was lines 14286-14287)
+Vignette — soft darkening toward the edges for a framed, cinematic look rather than a flat rectangle of gameplay filling the whole title screen. Drawn last, on top of everything else.
+
+#### CA719 — `loop` (was lines 14307-14312)
+Wall-clock gap since the PREVIOUS rAF callback actually ran, captured before the clamp below touches it. perfStats.frameMs (further down) only times this callback's own execution — it cannot see time lost to the browser simply delaying the next rAF callback (touch-event/ compositor contention is the classic cause during a pan or pinch-zoom gesture). This is the one number that can. Recorded unclamped and separately from frameTime itself, which still gets clamped right below for the physics accumulator as before.
+
+#### CA720 — `loop` (was lines 14320-14331)
+The 3-2-1-GO pre-wave countdown must always take the same real 3 seconds regardless of gameSpeed — previously waveTimer was advanced by `dt` inside the scaled simulation tick loop in update(), so at 5x/10x it raced past in a fraction of a second (more ticks fire per real second at higher speed, and every tick added a fixed FIXED_DT). Speed multipliers are only meant to speed up the wave itself (dispatch/combat), never the pre-wave countdown. Advanced here using frameTime (real, unscaled wall-clock ms, captured above BEFORE the gameSpeed multiply below) once per rendered frame — not per simulation tick — so it's now completely independent of gameSpeed and of how many ticks run this frame. Mirrors the exact same freeze conditions (barricade pileup / wave-start camera pan) the old per-tick increment used, so pausing behavior is unchanged. advanceWaveDispatch() itself is untouched and still runs once per simulation tick inside update() — actual wave pacing after the countdown still scales normally with gameSpeed, only the countdown display/gate no longer does.
+
+#### CA721 — `while` (was lines 14347-14352)
+If the clamp above was hit, we're still over budget — rather than carrying that debt into next frame (which just reproduces the same catch-up spiral one frame later), drop it. This only discards accumulated SIMULATION time (gameTime advances FIXED_DT per tick actually run); it does NOT touch realTime or presentationTime, which are advanced by wall-clock frameTime above and stay untouched here — death bursts, floating text, and camera presentation keep animating smoothly on their own clock regardless of how much sim debt gets shed.
+
+#### CA722 — `while` (was lines 14363-14369)
+Smoothed FPS for the optional overlay readout (showFpsCounter) — exponential moving average rather than a raw 1000/frameMs each frame, which would jitter distractingly frame to frame. The debug log itself computes FPS from percentiles of frameMsHistory separately — this is only for the lightweight always-visible readout. FPS must come from the wall-clock gap between rAF callbacks, NOT from how long the callback itself took: a 2ms callback on a stuttering device would otherwise read ~500 FPS and hide the very problem the overlay exists to show.
+
+#### CA723 — `if` (was lines 14381-14383)
+Session-lifetime worst frame — kept separate from the rolling window so a rare one-off spike (e.g. a wave-transition hitch) is still visible in the debug log long after it scrolled out of the last 120-frame window.
+
+#### CA724 — `if` (was lines 14396-14397)
+Chrome-only, guarded — Firefox/Safari don't expose performance.memory at all. Sampled at most once/sec (see the comment on the perfStats fields themselves for why).
+
+#### CA725 — `if` (was lines 14409-14411)
+Actual speed: ticks actually executed vs. real elapsed time, over a rolling ~1s window rather than one frame (a single frame's ratio is too noisy — a big tick burst followed by a render-only frame would swing wildly frame to frame even at a perfectly steady overall rate).
+
+#### CA726 — `if` (was lines 14426-14433)
+Cached canvas.getBoundingClientRect() result — pointermove can fire far more often than the game actually renders (every mouse-move/touch-move event, not once per frame), and the two call sites below (toRawCanvasCoords, the active camera-drag pan handler) were each calling it fresh on every single one of those events. getBoundingClientRect() can force a synchronous layout flush, which is real cost to pay dozens of times a second for a value that only actually changes on resize/orientation change. Invalidated (set back to null) exactly there — see setupCanvas() and the orientationchange listener right below it — and lazily recomputed on next use.
+
+#### CA727 — `getCanvasRect` (was lines 14439-14442)
+Guards resizeMapCanvasForDpr() against running before `mapCanvas` (declared far later, in BOOT) actually exists — setupCanvas() runs once immediately below at script-load time, long before that declaration executes, and referencing `mapCanvas` that early would throw (temporal dead zone), not just read undefined. Flipped to true once BOOT creates the canvas.
+
+#### CA728 — `getCanvasRect` (was lines 14444-14446)
+Same readiness guard, for settledDecalCanvas (see its own declaration in BOOT and rebuildSettledDecalCanvas() near drawDecals()) — settled-decal baking must not run before it exists either.
+
+#### CA729 — `getCanvasRect` (was lines 14449-14452)
+Viewport resolution now dynamically matches the actual window shape instead of a fixed 2048:1280 ratio — this lets the camera reveal more of the (already effectively infinite, via the expansion system) world to fill available screen space, rather than letterboxing a fixed-shape box. WORLD_MAX_W/H (the map's actual bounds) are completely separate and unaffected.
+
+#### CA730 — `setupCanvas` (was lines 14468-14472)
+The static map layer (mapCanvas — checkerboard, flora, finish line) is baked once to an offscreen canvas and blitted every frame (see BOOT and the render() call site) rather than redrawn per-frame. It needs its OWN resolution kept in sync with dprValue separately from the main canvas above — only re-bake when dprValue genuinely changed (graphics-quality toggle, or a rare cross-monitor DPI change), not on every ordinary same-monitor resize.
+
+#### CA731 — `setupCanvas` (was lines 14480-14495)
+The HUD is now always a single row (flex-wrap:nowrap) — previously it wrapped onto a second row on narrow phone screens, which caused Next Wave and other buttons to spill below the stat readouts. Instead of wrapping, the whole bar is scaled DOWN as one unit to whatever fits the screen width, so it always reads as one line, just smaller on narrow devices. transform:scale is used rather than shrinking font-size/padding individually, since that would require separately tuning every child element's minimum readable size — a single uniform scale keeps every button's proportions and icon/text relationship identical at every screen width, just smaller as a whole. updateHUD() runs on every kill/hit during combat, potentially many times a second during a dense wave — re-measuring scrollWidth (which forces a synchronous layout reflow) on every single call would be a real performance cost during exactly the busy moments this game is otherwise careful to stay smooth for. `hudFitSignature` is a cheap fingerprint of just the pieces of HUD text whose LENGTH could plausibly change the bar's natural width (gold/lives/wave digit counts) — the expensive measure-and-scale work only actually runs when that fingerprint changes, or when force=true (resize/orientationchange, where content width may not have changed but the available screen width has).
+
+#### CA732 — `if` (was lines 14507-14519)
+Floor of 0.55 keeps text/icons from shrinking past legibility on extremely narrow screens — below that, individual buttons should be redesigned rather than scaled further. Floor lowered from 0.55 to 0.4 — a screenshot showed the bar's edges still clipping past the screen on a narrow device. At 0.55, if the bar's natural content is wide enough relative to the screen, the required scale can mathematically fall below what the floor allows, and the floor wins — leaving genuine overflow rather than a fully-fit bar. "Never clip" now takes priority over "never get too small," since the reported problem was content sticking out past the screen edge, not text being hard to read. 0.94 safety margin: computing scale to exactly fill availableWidth left zero room for sub-pixel/font-metric rendering variance, which showed up as the bar's edge buttons ("Build" on the left, "Next Wave" on the right) visibly crowding or clipping the screen edges on a real device screenshot. A small uniform shrink on top of the fit-to-width calculation gives consistent breathing room instead (1.0.213 fix).
+
+#### CA733 — `if` (was lines 14528-14533)
+Same technique as fitHudTopToOneLine() above, applied to the inspect panel's combat-stat row. Deliberately NO floor on the shrink scale — the HUD version stops at 0.4 so its buttons stay legible/tappable, but this row is pure read-only text with more stats than the HUD has buttons (HP, armor, damage, crit, speed, DPS, range, luck), so it's allowed to shrink indefinitely if its natural content is very wide. Explicit instruction: unreadable at extreme late-game values is an acceptable quirk, never wrapping to a second line is not.
+
+#### CA734 — `if` (was lines 14549-14556)
+Reusable version of the same technique, for any inspect-panel button row that must never wrap or clip text — currently the Upgrade/Sell/DPS row and the Target/Move row. Previously those used flex-shrink + ellipsis (which cut off Upgrade's cost text) or flex-wrap (which let Target/ Move drop to a second line) — this replaces both with the same guaranteed-single-line scaling already proven on the stat row, so text always stays fully visible, just smaller if needed. The row is a full-width grid, so its outer edges always line up with the rows below. Instead of scaling the whole row (which pulled its right edge inward), each button's own label shrinks just enough to fit when a price or target-mode name gets longer.
+
+#### CA735 — `if` (was lines 14559-14560)
+scrollWidth can't see overflow once ellipsis or an inner flex span absorbs it, so the label's real rendered text width is measured directly and compared with the button's content box.
+
+#### CA736 — `fitOptRowToOneLine` (was lines 14581-14582)
+XP awards can call updateInspectPanel() many times inside one rendered frame at 10x speed, and each refit reads layout and re-measures every button. Coalesce to one refit per frame.
+
+#### CA737 — `fitOptRowsToOneLine` (was lines 14596-14602)
+Extends the HP/XP bar area (#inspNameplateMid) to explicitly fill the exact same available width fitStatRowToOneLine() computes for the stat row below — rather than trusting #inspNameplateMid's flex:1 1 auto to independently converge to that identical boundary through browser layout/rounding, which is what left a persistent small gap between the chevron/close buttons and the stat row's right edge. Computing both rows' widths from the same source value (panel.clientWidth - 16) guarantees they land at the same right edge dynamically, on every panel refresh, not just approximately.
+
+#### CA738 — `fitNameplateToStatRow` (was lines 14618-14621)
+The HUD wraps across a variable number of rows depending on screen width, so its height isn't fixed — a hardcoded offset for zoom-controls would inevitably collide with it on some devices (e.g. Next Wave button getting clipped behind the zoom +). Measure the HUD's actual rendered height instead and position zoom-controls just below it, every time layout could have changed.
+
+#### CA739 — `positionZoomControls` (was lines 14633-14634)
+The canvas simply fills its frame exactly now — CANVAS_W/H already matches the window's own shape (see updateCanvasDimensions above), so there's no more aspect-ratio math or letterboxing.
+
+#### CA740 — `handleTap` (was lines 14674-14678)
+Build placement, tower selection, and every other tap-driven gameplay action below stays blocked while paused — this is the explicit version of the protection pointerdown's old blanket `if(gameState !== 'PLAYING') return` used to provide before camera pan/zoom needed to keep working through a pause. Panning/zooming themselves never reach this function at all (they're handled entirely in pointermove/wheel), so this only ever blocks real interaction.
+
+#### CA741 — `if` (was lines 14724-14726)
+Consumes a free charge first when available, otherwise deducts wood+stone — mirrors buyItem()'s existing free-charge-first pattern. canAffordTower() above already confirmed one of these two is true, so exactly one branch here can run.
+
+#### CA742 — `if` (was lines 14734-14736)
+Which tower types actually get used, tracked once per type per session (not every single build — that would be noisy and isn't the useful signal; "did anyone ever build a Merchant this session" is).
+
+#### CA743 — `if` (was lines 14801-14806)
+Ground-item pickup is a real gameplay action (starts moving a physical dropped item) — stays gated to PLAYING. Everything above this (drag/pinch tracking for camera pan and zoom) is deliberately NOT gated — panning and zooming around the map while paused is exactly what a pause should still let you do; only actual gameplay interaction should freeze. handleTap() below carries its own explicit pause-gate for tap-driven actions (build placement, tower selection) for the same reason.
+
+#### CA744 — `if` (was lines 14840-14844)
+Snap-to-target: once the pointer is close enough to an eligible tower, the dragged item's drawn position locks onto that tower instead of trailing the raw cursor — makes it visually unambiguous who's about to receive it before release, rather than relying on the small 👇🏻 indicator alone. SNAP_RADIUS deliberately wider than the 26px drop hit-test radius so the snap engages a little before the drop itself would actually register.
+
+#### CA745 — `for` (was lines 14866-14869)
+hover preview for build-placement / move-mode snap (mouse only; harmless if it fires mid-drag) — skipped entirely once a drag is confirmed (isDragging), since the hover preview is irrelevant while the camera is actively being panned and this avoids a second getBoundingClientRect() read (via toCanvasCoords) on every pointermove during a drag.
+
+#### CA746 — `for` (was lines 14876-14879)
+scenery price-on-hover — mouse hover only now. Previously also ran during an active touch drag ("works for mouse hover and for a touch drag"), which meant computing this on every single pointermove while panning the camera — a second getBoundingClientRect() read for a tooltip nobody can see while actively dragging. Skipped once isDragging is true.
+
+#### CA747 — `if` (was lines 14904-14905)
+Second valid drop target, Barricade-only: a valid empty path tile places it live — every other item can only ever go onto a tower.
+
+#### CA748 — `if` (was lines 14916-14917)
+Neither a tower nor a valid path tile — the ground item just stays where it was dropped, same fallback as any other item drag that misses its target.
+
+#### CA749 — `if` (was lines 14922-14924)
+A cancel commits nothing — draggingGroundItem is cleared below same as a completed drag, but since it was never removed from groundItems above, the item simply stays exactly where it already was, available to pick up again.
+
+#### CA750 — `if` (was lines 14947-14950)
+Cached here too, same reasoning as the inspect-panel/target-frame fixes above — these were being re-queried via document.getElementById() every single call to updateHUDImmediate(), which runs (at most) once per rendered frame via the hudDirty flag, but that's still a real 60fps-adjacent cost across a whole session.
+
+#### CA751 — `if` (was lines 14962-14968)
+Cached once here (same pattern as inspName/inspLevel above), NOT re-queried inside updateInspectPanel() any more — that function was calling document.getElementById() 56 times per invocation, and it can be invoked many times within a single rendered frame at high game speed (every kill/XP award while a tower is selected). 56 uncached DOM lookups x dozens of calls x however many kills land in one frame was real, avoidable main-thread cost that never showed up in the canvas render/update perf breakdown, since it's DOM work, not canvas work — exactly the kind of cost the inspect-panel-open lag lead pointed at.
+
+#### CA752 — `top-level` (was lines 15019-15029)
+updateHUD() is called from many places — most importantly creditKill(), meaning every single kill was previously triggering a full round of getElementById()+textContent DOM writes immediately, even though most of those values (wood/stone/moveCharges/wave progress/etc.) rarely actually change on any given kill. During a dense wave with several kills landing in one frame (especially at 5x/10x speed, where multiple simulation ticks run per rendered frame), that's real repeated DOM work for no visible benefit — the player only ever sees the result once per rendered frame regardless of how many times it was written to in between. updateHUD() itself is now just a dirty flag; the real work moved to updateHUDImmediate() below, flushed at most once per rendered frame from loop() — after all of that frame's simulation ticks have run, so the HUD is never more than one frame stale, same as before. Every existing call site is unaffected — same function name, same call shape, just deferred.
+
+#### CA753 — `flushHUDIfDirty` (was lines 15038-15039)
+A "+N" that rides above the HUD gold counter whenever gold arrives, from any source, with a coin sound. Consecutive gains inside the same second stack into one pop instead of flickering.
+
+#### CA754 — `showGoldGain` (was lines 15054-15056)
+Shop-key mechanic — direct request: the item Shop only opens while an active, non-disabled Merchant tower is on the board. Reused by both the click-gate below and the HUD's visual lock indicator, so they can never disagree about whether the Shop is actually open right now.
+
+#### CA755 — `if` (was lines 15083-15085)
+Shop lock indicator — grayed + a clear tooltip when no Merchant is alive to keep it open, rather than silently doing nothing on tap. Cheap: one boolean check against towerPool, same one the click-gate below uses.
+
+#### CA756 — `if` (was lines 15116-15122)
+Direct feedback: gold changing while the Build menu is open didn't refresh what's shown as affordable until you closed and reopened it. buildTowerModal() does a full grid rebuild (~20-25 rows, innerHTML + listeners each) — too much to run on every gold tick, which is exactly the "these scans probably cause lag" worry. Bounded here the same way the rest of this function already is: only runs when this function itself runs, which is already coalesced to at most once per RENDERED frame (see the hudDirty flag), and only does anything at all when the modal is actually open — a rare, paused-to-browse state, not a per-kill combat cost.
+
+#### CA757 — `for` (was lines 15169-15170)
+Barricade costs wood+stone, not gold — and can be free if a milestone charge is banked (freeBarricadesLeft, granted periodically — see the wave-completion handler).
+
+#### CA758 — `for` (was lines 15172-15175)
+currentBuildCost() returns the flat baseCost unchanged for Barricade (not in SCALING_COST_TYPES) and for Swordsman/Archer/Mage returns the already-scaled price for the NEXT copy — so this label always matches exactly what canAffordTower()/the actual placement deduction will use, not a stale flat number.
+
+#### CA759 — `if` (was lines 15197-15199)
+Re-check live, not the `affordable` closed over from whenever this row was built — gold can change while the modal sits open, and this row isn't rebuilt until it's reopened. Direct feedback: buying silently did nothing until you closed and reopened the menu.
+
+#### CA760 — `if` (was lines 15221-15230)
+Unlockable tower types — locked until any tower reaches the threshold that unlocks them once, ever, in the current game (see unlockedTowerTypes). Same row/help-toggle pattern as starters above. Covers every tier now, not just base-class specializations — a tower never transforms into what it unlocks, it just makes that tower buildable from the Build menu from then on. Cryptic unlock hints — deliberately not the exact "reach STAT NUMBER on CLASS" instructions these used to be. Each hints at the stat (raw power / swiftness / a sharp mind) and the element's feel (ignite / crackle / frost) without literally naming the source class, the stat, or the threshold — the element/stat mapping is meant to be something players notice or puzzle out themselves, not read off a label. The tower's own icon and name stay visible below (so there's still a specific goal in view), only the HOW is a riddle now.
+
+#### CA761 — `top-level` (was lines 15254-15256)
+Plain wave-count text, deliberately breaking from the cryptic-riddle convention above — a simple wave gate (not a stat/element threshold) isn't riddle-worthy, and direct feedback was to make new unlocks CLEAR, not cryptic.
+
+#### CA762 — `for` (was lines 15261-15265)
+Every unlockable tower type gets a Build-tray row from the very start, locked or not — deliberately NOT gated on its own prerequisite class being unlocked first (a deep-tier evolution like Paladin used to stay fully hidden until Hammerman itself was unlocked). The owner wants the Build menu to be a complete, always-visible map of every tower documented in the README, with 🔒 doing the "not yet" work instead of the row simply not existing.
+
+#### CA763 — `for` (was lines 15271-15275)
+MAX_ONE_PER_BOARD_TYPES (Paladin/Squirtgun/Sniper/Pope) — distinct from affordability, so this row still reads as unlocked/gold-visible but can't actually be selected while one is already active on the board, with its own clear reason instead of just silently doing nothing on tap. Reuses live board state (isTowerTypeAvailable()), not a one-time flag, so the row goes selectable again the moment the existing copy is sold or dies.
+
+#### CA764 — `if` (was lines 15294-15295)
+Same live re-check as the starter-tower loop above, same reason: gold/board-capacity can change while this modal sits open without the row being rebuilt.
+
+#### CA765 — `buildShopGrid` (was lines 15344-15346)
+One unified view instead of switching between Items/Passives/Inventory tabs — with only one item in the game and three passives, tab-switching was more navigation than the content actually needed. Everything relevant is just shown together in one pass.
+
+#### CA766 — `if` (was lines 15481-15486)
+WC3/Dota-style item drag: pick this item up off the tower and let the player drop it onto another tower to transfer it there. Reuses the exact same ground-item drag/drop pipeline already used for picking up relic drops — the item becomes a temporary ground item sitting at this tower's position for the duration of the drag, and canvas's own pointermove/pointerup handlers take it from here (including rendering it following the cursor and hit-testing the drop target). No gold is charged or refunded — this moves the item, it doesn't sell or buy it.
+
+#### CA767 — `if` (was lines 15494-15498)
+This pointer's session started on an HTML element, not the canvas, so it was never added to activePointers by canvas's own pointerdown listener — the existing pointermove/pointerup handlers require it to be there (they key off activePointers.get(e.pointerId) being truthy) to recognize this as the active drag pointer. Register it manually, exactly as canvas's own handler would have.
+
+#### CA768 — `top-level` (was lines 15541-15543)
+--- Settings modal (usable from the start screen or mid-game — not gated on gameState) --- Telemetry table: kills, damage and XP per tower, as bars relative to the best tower in each column. Tucked into Settings so it never competes with the playfield.
+
+#### CA769 — `syncSettingsUI` (was lines 15604-15605)
+Tapping the DPS readout explains exactly how that class's damage is produced — which stat feeds damage, which feeds rate, and what the current numbers are.
+
+#### CA770 — `top-level` (was lines 15783-15789)
+Everything genuinely useful for debugging a report, in one plain-text file — not JSON, since this is meant to be pasted directly into a bug report or chat, not machine-parsed. Reads live state at the moment the button is pressed; nothing here is cached/stale. Turns perfStats.ticksThisFrameHistory into a one-line distribution summary — the median/max elsewhere can't distinguish "occasionally catches up 2 ticks, totally normal" from "constantly running 1 tick behind," and that distinction is exactly what separates ordinary catch-up from an actual accumulator spiral.
+
+#### CA771 — `generateDebugLog` (was lines 15808-15811)
+Formats a Date.now() timestamp as both an absolute wall-clock time and how long ago it was relative to log generation — "which wave" alone doesn't tell you whether a spike happened 5 seconds or 20 minutes before you grabbed the log, which matters for correlating it against anything else you were doing (a screen recording, a specific action) at the time.
+
+#### CA772 — `formatAgo` (was lines 15855-15857)
+Same data as the ms line above, just re-expressed as FPS — ms is what actually gets diagnosed from, but FPS is the more familiar unit for a quick sanity check. Percentile order flips here since higher ms = lower fps: median/p95/p99/max above correspond to median/p5/p1/min here.
+
+#### CA773 — `if` (was lines 16080-16084)
+The level-5 Swordsman spec choice (Zweihander/Dual Wield) itself was removed in v1.4.44 — no unlock, at 100 DEX or any other threshold, triggers this. specTwoHander/specDual's listeners removed as unreachable dead code (buried per this project's own no-dead-code rule); chooseSpec() itself stays on Tower, since restoreGameState() still needs it to correctly apply a spec an OLDER save file might have recorded before the feature was removed.
+
+#### CA774 — `if` (was lines 16117-16120)
+A disabled tower's HP bar shows its real recovered value (~30%, see takeDamage()) with no indication that it's actually locked out of attacking, not just running low — read on its own as "this tower is nearly dead" rather than "this tower already went down and is recovering." Prefixing the rounds-remaining count makes that distinction explicit right where the number is.
+
+#### CA775 — `if` (was lines 16124-16127)
+Obstacle, not a tower — deliberately simplified panel. Skips every combat/stat/XP/evolution computation below entirely (not just hiding the resulting fields) since none of it is meaningful for a Barricade; only durability (the HP bar above, already generic) plus Move/Store/Sell/Help remain relevant, matching the requested simplified obstacle view.
+
+#### CA776 — `if` (was lines 16173-16178)
+Show only the SINGLE nearest next unlock — comparing the single-element specialization (already attuned, just needs more of the attuned stat) against every hybrid this tower could still reach, and picking whichever is fewest points away. Previously this always showed the single-element target AND a hybrid note side by side, even when the hybrid was hundreds of points further off (e.g. "54 more INT" next to "350 more STR/INT for Dark Matter") — confusing since only the closer one is actually relevant right now.
+
+#### CA777 — `if` (was lines 16199-16201)
+Attuned, but this base class has no defined specialization for this element yet, and no hybrid is reachable either (intentional for some type/element pairs — see SPECIALIZATIONS comments and BACKLOG.md). Say so plainly rather than hiding the hint.
+
+#### CA778 — `if` (was lines 16214-16216)
+only call out a "most likely" evolution when one branch-relevant stat is a clear, single leader — not at the start (all zero) and not when two-plus stats are tied, since neither case actually predicts which evolution the player is heading toward
+
+#### CA779 — `if` (was lines 16243-16245)
+Min-max damage range only — no separate flat number alongside it. Uses the exact same half-width the actual damage roll in applyDamage() uses, so this is a real number, not a cosmetic guess.
+
+#### CA780 — `if` (was lines 16260-16272)
+Real single-target DPS — average damage per hit (the variance band above is symmetric, so `atk` itself is already the average) times attacks/second, discounted by missChance: the same "relative accuracy" mechanic driving every attack type (melee cone, projectile, Cleric smite) — a hit that physically connects but rolls a miss due to low DEX-based accuracy deals zero damage, so it belongs in an "accurate" DPS figure. Also folds in the real crit system's expected-value contribution (critChance × (critMult-1) extra), since a crit is now a genuine damage effect, not just a cosmetic floating-text color — leaving it out would understate real average output. Burst-fire towers (Gunalinder, Snap Caster) get their real cycle time — (burstCount-1) short burstDelay gaps plus one full cooldown/reload — not just the reload cooldown alone, which would overstate their downtime and understate DPS. Deliberately scoped to direct hit damage only: doesn't add incidental splash against extra targets, poison/burn DoT ticks, or Snap Caster's chance-based chain lightning, all of which are real but situational bonuses on top of this baseline number.
+
+#### CA781 — `top-level` (was lines 16290-16292)
+WC3-style aura box — icon-only, only for evolved/specialist towers (TOWER_STRATEGY), hidden for Swordsman/Archer/Mage/Barricade. Any previously-open tooltip is closed on every panel refresh so a stale strategy note from a different tower can't linger after switching selection.
+
+#### CA782 — `if` (was lines 16342-16346)
+Once trained stats reach STAT_EFFECT_CAP on their own (500), item bonuses on top of that keep showing in the raw total here — accurate, since that's genuinely how many points the tower has — but every combat formula reads through cappedStatPoints() and stops growing at 500. A "(capped)" suffix past the cap keeps the number honest without hiding it or pretending a 6th Lucky Branch is being wasted below the cap.
+
+#### CA783 — `for` (was lines 16370-16373)
+Promotion is a pure stat gain, same as every other class — it never changes what a tower IS. The old level-5 Swordsman spec popup (forcing a Zweihander/Dual Wield pick, which silently changed damage/cooldown/swing arc) has been removed; new tower types only ever come from the stat-threshold unlock system (checkEvolution()), the same rule for every class.
+
+#### CA784 — `top-level` (was lines 16446-16447)
+Tap spends one point; holding repeats (after a short delay) until release or points run out — with 100-XP training bars a farmed carry banks dozens of points per wave.
+
+#### CA785 — `if` (was lines 16517-16520)
+Spacebar toggles pause the same way the pause button itself does — checked first, before the "any key resumes" listener below, and only while actually PLAYING so it can't fire from the start screen, a text input, or any other non-gameplay state. preventDefault() stops the page from scrolling on Space, which is the default browser behavior for that key.
+
+#### CA786 — `if` (was lines 16535-16539)
+"Press any key to continue" — matches the overlay's own text. Any actual key resumes, same exact path the pause button's own un-pause branch uses (resumeGame()), so there's only one place that logic lives. Deliberately not gated to a specific key (Escape/Space) since the overlay's copy promises "any key," not one specific key — Tab and other keys that trigger browser-native behavior are left alone rather than trying to guess which keys are "safe."
+
+#### CA787 — `if` (was lines 16545-16551)
+Auto-pause on tab-switch/app-background, decided explicitly rather than left as the previous implicit behavior (the fixed-timestep loop's frameTime clamp already prevented a catastrophic catch-up spike either way, but a multi-minute AFK background tab was still silently simulating the whole time). Reuses the exact same pause path the button itself uses — gameState='PAUSED' plus the same button UI update — so this is indistinguishable from the player having tapped pause themselves. Does NOT auto-resume on returning to the tab; resuming still requires the player's own tap, same as any other pause.
+
+#### CA788 — `if` (was lines 16640-16648)
+hud-top just went from display:none (scrollWidth measures 0 while hidden) to visible. The very first fitHudTopToOneLine(true) call already ran once at script-load time, while hud-top was still display:none — it measured naturalWidth=0, concluded no scaling was needed, and locked that (wrong) result into hudFitSignature. Nothing since then re-triggers a recompute unless the lives/gold/wave digit COUNT happens to change or the window resizes — so the bar could sit at its true, unscaled, wider-than-the-phone-screen natural width (clipping both edges, since it's centered via margin:0 auto) until one of those unrelated events happened to occur. Forcing a real recompute here, now that the bar's actual layout exists, closes that gap — same fix shape as positionZoomControls() right below it, for the identical underlying reason.
+
+#### CA789 — `if` (was lines 16655-16657)
+First-ever Play click only — never shown again once dismissed, tracked via its own flag rather than piggybacking on savePrefs()'s bundled object, since this is a one-time "seen it" marker, not a live preference that needs to round-trip through the settings UI.
+
+#### CA790 — `resetGame` (was lines 16703-16707)
+decals.length=0 above only clears the LIVE array — most blood is baked into the persistent settledDecalCanvas bitmap within ~4s of landing (DECAL_BAKE_MIN_AGE_MS), and that bitmap was never touched on reset, so a fresh run started with the previous session's entire blood history still painted on it. rebuildSettledDecalCanvas() repaints strictly from the `decals` array (already emptied above), so calling it here produces a genuinely blank canvas.
+
+#### CA791 — `resetGame` (was lines 16730-16731)
+No spawnHuts() here anymore — the hut now spawns on reaching HUT_MIN_EXPANSION_LEVEL (see performExpansion()), never on the tiny starting region.
+
+#### CA792 — `resetGame` (was lines 16740-16746)
+Pre-build every enemy type's collision mask here at boot, not lazily on first appearance — buildEnemyCollisionMask() does a synchronous getImageData() readback (a real GPU pipeline flush), and leaving it lazy meant the FIRST time a new enemy type showed up mid-wave (e.g. wave 6's first Swarm) paid that cost live, during combat, as a real ~50ms one-time hitch confirmed in debug logs ("Wave spawning worst frame ever"). Already correctly memoized per-type (never rebuilt), so this only changes WHEN the one-time cost happens — during boot/load, where a brief extra delay is invisible, instead of as a surprise spike mid-wave.
+
+#### CA793 — `top-level` (was lines 16755-16758)
+Settled-decal bake canvas — same world-space/DPR sizing as mapCanvas, created right after it so resizeMapCanvasForDpr() above (called just now) didn't try to size it before it exists. Sized explicitly here for the same reason: settledDecalCanvasReady flips true only after this, and resizeMapCanvasForDpr() checks that flag before touching it.
+
+#### CA794 — `top-level` (was lines 16770-16773)
+Reveal the whole game-wrapper (canvas + start-screen + hud-top, all hidden/opacity:0 by default in CSS) only after the browser has actually painted a real frame — double rAF is the standard "wait for next paint" technique. Fixes a flash where the raw HUD buttons or an unpainted canvas could show for a moment before JS finished setting up the attract-mode's first frame.
+
