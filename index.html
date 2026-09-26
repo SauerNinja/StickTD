@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.3'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.6'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1799,7 +1799,7 @@ const CONFIG = {
       ]
     },
     BLOWDART: {
-      name: 'Blowdart', icon: '🎯', baseCost: 55, unlocksAfterWave: 1,
+      name: 'Blowdart', icon: '🎯', baseCost: 80, unlocksAfterWave: 7,
       blurb: 'Short range and light hits, but fires roughly twice as fast as an Archer. Every dart is poisoned — the sting lingers and ticks damage over time, hitting harder with more Intelligence invested.',
       tiers: [
         { range: 155, damage: 8,  cooldown: 370, projectileSpeed: 420, poisonDamage: 3, poisonDuration: 3000 },
@@ -4084,6 +4084,19 @@ let moveModeTower = null; // set while the player is choosing where to relocate 
 
 function isTowerUnlocked(type){
   return wavesCompleted >= CONFIG.TOWERS[type].unlocksAfterWave;
+}
+// BUILD-UNLOCK-FIX-01 (1.6.6) — see CHANGELOG.md § [1.6.6]. isTowerUnlocked() is only correct for
+// STARTER_TOWER_TYPES (always-available, gated purely by the current session's wavesCompleted).
+// Every other tower's real buildability comes from unlockedTowerTypes — a PERMANENT, account-wide
+// set that survives across games (via evolution or checkTowerUnlocks()'s own wave-gate scan) — not
+// from the current session's live wave count. Using isTowerUnlocked() as a generic "still
+// buildable" gate was wrong for any non-starter type: a tower a player already has permanently
+// unlocked from a previous playthrough would show correctly as available in the Build menu, but
+// silently fail to place until THIS session's wavesCompleted happened to catch back up to that
+// tower's own gate — reading as "I select it, tap a tile, and nothing happens." This is the one
+// source of truth both the Build menu's display and the actual placement confirm now share.
+function isTowerBuildableNow(type){
+  return STARTER_TOWER_TYPES.includes(type) ? isTowerUnlocked(type) : unlockedTowerTypes.has(type);
 }
 function checkTowerUnlocks(){
   // CA226 — see CHANGELOG.md § Code Archaeology
@@ -7170,8 +7183,20 @@ class Tower{
         const g = Math.round(57 + frac*(175-57));
         const b = Math.round(70 + frac*(80-70));
         ctx.font = 'bold 11px Verdana';
+        // BARRICADE-LABEL-BG-01 (1.6.5) — see CHANGELOG.md § [1.6.5]. This label sits at a fixed
+        // screen position every frame, right where floating combat text (damage numbers, gold/XP
+        // gains) drifts through constantly — this is exactly the chokepoint tile those spawn
+        // around. Plain text with nothing behind it reads as unreadable overlapping digits the
+        // instant a floating text passes through (e.g. "226/10" — two numbers on top of each
+        // other). A small dark backing chip keeps the barricade's own HP legible regardless of
+        // whatever floating text happens to be passing behind it that frame.
+        const hpLabel = Math.round(this.hp) + '/10';
+        const labelW = ctx.measureText(hpLabel).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        roundedRectPath(ctx, this.x - labelW/2 - 4, this.y - 30, labelW + 8, 15, 3);
+        ctx.fill();
         ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-        ctx.fillText(Math.round(this.hp) + '/10', this.x, this.y - 22);
+        ctx.fillText(hpLabel, this.x, this.y - 22);
         const barW = 26, barY = this.y - 14;
         ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x-barW/2, barY, barW, 4);
         ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
@@ -11670,7 +11695,7 @@ function handleTap(clientX, clientY){
   }
 
   if(selectedBuildType){
-    if(!isTowerUnlocked(selectedBuildType)){ selectedBuildType = null; refreshTrayUI(); return; }
+    if(!isTowerBuildableNow(selectedBuildType)){ selectedBuildType = null; refreshTrayUI(); return; }
     if(!isInActiveRegion(gx, gy)){
       spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '🔒 Expand map first', '#e63946');
       return;
@@ -12075,7 +12100,7 @@ function buildTowerModal(){
 
   for(const type of STARTER_TOWER_TYPES){
     const def = CONFIG.TOWERS[type];
-    const unlocked = isTowerUnlocked(type);
+    const unlocked = isTowerBuildableNow(type);
     // CA757 — see CHANGELOG.md § Code Archaeology
     const isFreeBarricade = type === 'BARRICADE' && freeBarricadesLeft > 0;
     // CA758 — see CHANGELOG.md § Code Archaeology
@@ -12150,7 +12175,16 @@ function buildTowerModal(){
     MERCHANT:    '🔒 Unlocks at Wave ' + 15,
     GLAIVE:      '🔒 Unlocks at Wave ' + 20
   };
-  for(const type of UNLOCKABLE_TOWER_TYPES){
+  // BUILD-ORDER-01 (1.6.4) — see CHANGELOG.md § [1.6.4]. Unlocked towers sort to the top, locked
+  // ones stay below — direct request ("unlocked units should be higher in the build menu once
+  // they're unlocked... harder unlocks feel like mystery achievements"). Stable sort keeps each
+  // group's own relative order (the fixed unlock-path order UNLOCKABLE_TOWER_TYPES was already in).
+  const sortedUnlockableTowerTypes = [...UNLOCKABLE_TOWER_TYPES].sort((a, b) => {
+    const aLocked = unlockedTowerTypes.has(a) ? 0 : 1;
+    const bLocked = unlockedTowerTypes.has(b) ? 0 : 1;
+    return aLocked - bLocked;
+  });
+  for(const type of sortedUnlockableTowerTypes){
     // CA762 — see CHANGELOG.md § Code Archaeology
     const def = CONFIG.TOWERS[type];
     const unlocked = unlockedTowerTypes.has(type);

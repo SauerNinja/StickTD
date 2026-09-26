@@ -1,5 +1,58 @@
 # Changelog
 
+## [1.6.6] - 2026-09-25 — Fixed evolved towers silently failing to place, and corrected Blowdart's cost/unlock data
+- **Direct report**: "i try to build blowdart and nothing happens, also way too cheap."
+- **Root cause of "nothing happens"**: the tile-placement confirm handler re-checked
+  `isTowerUnlocked()` — which only compares against THIS session's live `wavesCompleted` — but the
+  Build menu itself decides what's actually available from `unlockedTowerTypes`, a permanent,
+  account-wide set that survives across games (via evolution or `checkTowerUnlocks()`'s own scan).
+  Those are two different sources of truth. A tower a player already had permanently unlocked from
+  a previous playthrough would show correctly as buildable in the menu, but silently fail to
+  actually place until the current session's wave count happened to catch back up to that tower's
+  own gate — select it, tap a tile, nothing happens, no error. This affected every non-starter
+  tower, not just Blowdart, for any returning player early in a fresh game.
+- **Fixed**: added `isTowerBuildableNow(type)` as the one shared source of truth — starter types
+  (Swordsman/Archer/Mage/Barricade) still use the live wave check, everything else checks
+  `unlockedTowerTypes`. Both the Build menu's display logic and the actual placement-confirm now
+  call the same function, so they can't disagree again.
+- **Fixed Blowdart's data**: `baseCost` was 55 and `unlocksAfterWave` was 1 — cheaper than even the
+  base Swordsman/Archer, and unlocking almost immediately, while every other evolved tower costs
+  65-95 gold and unlocks between wave 5 and 20. Corrected to `baseCost: 80, unlocksAfterWave: 7`,
+  set directly between its two actual siblings — Gatling (80/wave 9) and Marksman (85/wave 6), the
+  other two branches of the same Archer Fire/Electric/Ice tier Blowdart belongs to — rather than an
+  arbitrary guess.
+- `node --check` passed clean.
+
+## [1.6.5] - 2026-09-25 — Fixed the barricade HP label overlapping floating combat text ("226/10")
+- **Confirmed from the gameplay video earlier in this session**: I'd flagged this as an unverified
+  observation ("possibly overlapping — I was in the middle of confirming when I hit a tool limit")
+  and never followed up. Went back to the same video frames and confirmed it: `226/10` on screen is
+  two separate numbers rendered on top of each other — the barricade's own HP label (`6/10`) and a
+  floating combat-text number (`22`) that happened to drift through the exact same fixed screen
+  position that frame.
+- **Root cause**: the barricade's HP label draws as plain text with nothing behind it, pinned at a
+  fixed offset above the barricade every frame — and a barricade chokepoint is exactly where
+  floating damage/gold/XP text is constantly spawning and drifting upward from nearby kills. Overlap
+  there isn't a rare edge case, it's the expected traffic pattern for that tile.
+- **Fixed**: added a small dark backing chip (sized to the label's own measured text width, reusing
+  the existing `roundedRectPath()` helper already used elsewhere for this kind of UI backing) behind
+  the barricade's `X/10` label, so it stays legible regardless of what floating text happens to be
+  passing behind it that frame. The HP bar beneath it is untouched.
+- `node --check` passed clean.
+
+## [1.6.4] - 2026-09-25 — Unlocked towers now sort to the top of the Build menu
+- **Direct request from the very start of this session, finally reached**: "make sure the unlocked
+  towers show up higher on the build [menu] — the idea is each player has a unique first play
+  period and harder unlocks feel like mystery achievements."
+- **Fixed**: `buildTowerModal()`'s deeper-tower loop always walked `UNLOCKABLE_TOWER_TYPES` in its
+  fixed declaration order, regardless of which types were actually unlocked — so a freshly-unlocked
+  tower could sit buried below a dozen still-locked "🔒 mystery" rows instead of surfacing where a
+  player would actually see it. Now sorts a copy of that list — unlocked types first, locked types
+  after — with a stable sort so each group keeps its existing relative order (the same order the
+  unlock-path riddles were already presented in). `STARTER_TOWER_TYPES` (Swordsman/Archer/Mage/
+  Barricade) are untouched — they're always unlocked from turn one already.
+- `node --check` passed clean; sort behavior confirmed with a standalone simulation.
+
 ## [1.6.3] - 2026-09-25 — Restored a lost fix: debug overlay box width not fitting telemetry rows
 - **Context**: this session's file chain was built starting from a `1.5.5` commit fetched from
   GitHub at the very start. `main` had moved forward with other real work in between that this
