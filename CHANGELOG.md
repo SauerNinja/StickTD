@@ -1,5 +1,114 @@
 # Changelog
 
+## [1.6.32] - 2026-09-26 — Reduce repeated decal maintenance scans
+- **Render maintenance cost**: full decal expiry compaction and settled-canvas eligibility scanning previously ran every 500 ms, even when no decal was near expiry. The bounded maintenance sweep now runs every 2 seconds, reducing its maximum scan frequency by 75% while leaving per-frame visible decal rendering unchanged.
+- **Behavior**: decal lifespan, render culling, ordering, and appearance are unchanged. An expired decal may remain in the source list or baked canvas for up to 2 seconds longer before cleanup; the existing decal capacity still bounds the list.
+- **Verification**: all executable inline JavaScript blocks pass syntax checks; static checks confirm the game version and newest changelog entry match and the decal draw path remains per-frame.
+
+## [1.6.31] - 2026-09-26 — Keep hash containers short lived
+- **Reversed hash-container reuse after measurement**: a warmed Node 24 microbenchmark with 60 active enemies found deleting and refilling reused hash properties slower than allocating a fresh short-lived container. The measured result is runtime-specific and not a browser frame-time claim, so the experiment is removed. Existing per-cell bucket arrays remain pooled.
+- **Removed dead key accumulation**: hash construction had accumulated every occupied cell key in a list that was not used for queries or cleanup. The unused list is removed, avoiding session-long growth while keeping cell membership and order unchanged.
+- **Wet-blood pickup**: replaced repeated `Math.hypot()` radius checks with squared-distance comparisons after the existing age and axis-aligned rejection. Radius and strict boundary behavior are unchanged.
+- **Particle settling**: replaced the per-particle `Math.hypot(vx, vy) < 6` check with the equivalent squared-speed test. The exact strict threshold is retained, without a square root for particles eligible to pool.
+- **Chain lightning target scan**: replaced the callback-based `enemyPool.find()` and square-root range check with a pool-order loop and equivalent squared 70-pixel range check. It still selects the first active, non-primary enemy in range, preserving current chain-target behavior.
+- **Death cleanup**: `updateDeathAnims()` removed expired entries with repeated `splice()`. It now stably compacts survivors in one pass and returns every expired record to the existing reuse pool. Draw order, expiry condition, and reuse behavior are unchanged.
+- **Verification**: fresh-hash bucket equivalence across 10,000 randomized layouts; squared-distance, particle-speed, and chain-target equivalence across 100,000 cases each; death-animation cleanup equivalence across 10,000 lists; all six executable inline scripts pass syntax checks.
+
+## [1.6.30] - 2026-09-26 — Reuse hash storage across collision passes
+- **Spatial-hash allocation**: all synchronous `buildEnemyHash()` calls now reuse the same hash container and used-key list. Enemy updates and their death-effect lookups complete before collision hashing starts; each collision query is consumed before the next rebuild. This removes the remaining outer hash and key-list allocations from swept-collision and collision-resolution builds as well as the final targeting build. Per-cell buckets, membership, ordering, and query behavior are preserved.
+- **Wet-blood pickup**: replaced repeated `Math.hypot()` radius checks with squared-distance comparisons after the existing age and axis-aligned rejection. Pickup radius, strict boundary behavior, selected decal, and resulting footprints remain unchanged.
+
+## [1.6.29] - 2026-09-26 — Reuse the per-tick spatial-hash container
+- **Measured hot-path allocation**: the v1.6.6 debug capture reports 24 `buildEnemyHash()` calls in one rendered frame. Bucket arrays were already reused, but each build allocated a new outer object; an existing key list was populated but not used to clear old entries.
+- **Safe reuse scope**: intermediate swept-collision and collision-resolution builds keep fresh containers because their call sequence can overlap with death effects that query the previous module-level `enemyHash`. Only the final per-tick targeting hash reuses a scratch container. Its cell keys, bucket membership/order, and nearby results match a fresh hash; cell entries removed then later reused are cleared correctly.
+- **Verification**: randomized equivalence test compared reused and fresh final hashes across 10,000 enemy/cell layouts, including cells emptied and later reused; all six executable inline scripts pass syntax checks.
+
+## [1.6.28] - 2026-09-26 — Compact expired decals in one pass
+- **Long-session cleanup spike**: the periodic decal expiry sweep used `splice()` for each expired entry. Each splice shifts later entries, making a batch expiry need repeated array movement. The sweep now compacts survivors in place in one pass, preserves their order, counts expired baked decals as before, and runs the same settled-canvas rebuild logic.
+- **Scope**: decal caps, lifetimes, draw order, and appearance are unchanged.
+- **Verification**: randomized equivalence check compared retained decal order and expired-baked counts against the old reverse-splice algorithm across 10,000 arrays; all six executable inline scripts pass syntax checks.
+
+## [1.6.27] - 2026-09-26 — Clean up barricades through every break path
+- **Post-barricade performance and movement correctness**: queued-lane damage deactivated a broken barricade, but breakaway attacks called `takeDamage()` and reduced it to zero HP without deactivating it. Both paths now share the same zero-HP cleanup in `chipBarricade()`: deactivate it, remove it from the per-tick `activeBarricades` scan set, invalidate spawn flags, and emit the break effect. This prevents old barricades accumulating in movement scans and prevents a directly broken obstacle staying active.
+- **Verification**: confirmed creation adds barricades; the shared break path removes/deactivates; sell/store and save reset also remove them. All six executable inline scripts pass syntax checks; focused lifecycle check confirms broken entries are absent from subsequent scans.
+
+## [1.6.26] - 2026-09-26 — Rebuild route distances whenever the path changes
+- **Path consistency**: the route-distance cache now keys on the waypoint array reference, which is replaced on every route rebuild. The old count-and-start-X key could treat a different route as unchanged when those two values matched, leaving movement and queue calculations with stale segment distances.
+- **Verification**: focused test confirms a replacement route with the same waypoint count and spawn X rebuilds its cumulative distances; all 6 executable inline scripts pass syntax checks.
+
+## [1.6.25] - 2026-09-26 — Narrow barricade queue searches by lane progress
+- **Crowded-lane update work**: queue catchment previously tested every earlier enemy for each waiting enemy, then discarded candidates more than 110 travel pixels ahead. Since the list is already sorted by travel distance, it now binary-searches to the first eligible progress range and checks only that range. The nearest valid blocked leader and tie order are preserved.
+- **Verification**: randomized equivalence test matched the previous full scan for every candidate across 500 sorted queues (up to 220 enemies each); all 6 executable inline scripts pass syntax checks.
+
+## [1.6.24] - 2026-09-26 — Stop measuring debug panel layout every frame
+- **Debug overlay overhead**: cached the canvas/HUD geometry used to place the overlay, refreshing it on resize, fullscreen changes, HUD/canvas size changes, and when gameplay reveals the HUD. This removes repeated DOM layout reads from each debug-rendered frame while preserving the existing placement formula.
+- **Verification**: a focused test confirms repeated frames use one geometry read, resize/observer changes refresh it, and a hidden HUD retains the prior fallback position. All 6 executable inline scripts pass syntax checks.
+
+## [1.6.23] - 2026-09-26 — Avoid temporary target arrays for minions
+- **High-speed simulation allocations**: Cat Snappers and skeletons no longer create a new filtered array every time they search nearby enemies. They select the same active target choices directly from the spatial query results; Cat Snapper still makes one random choice among active enemies, while skeletons still choose the first active result.
+- **Gameplay**: no damage, range, timing, or target priority changed.
+- **Verification**: focused checks confirm random selection chooses among active targets with one random draw, skeleton selection still chooses the first active target, and empty results stay empty. All 6 executable inline scripts pass syntax checks.
+
+## [1.6.22] - 2026-09-26 — Cache spawn flag placement between map changes
+- **Render hot path**: spawn flags were recalculated every frame by rescanning unlocked tiles, testing tower/scenery occupancy, and comparing candidate pairs. The selected positions are now cached; the same placement calculation runs again only after the path, scenery, or tower occupancy changes. This removes repeated map-search work during idle play and camera movement while keeping the existing placement rules.
+- **Verification**: isolated tests confirm unchanged reads reuse the cached pair, and adding a tower plus invalidating causes new flags to avoid its tile. Invalidation hooks cover path/reveal, scenery, and tower position/removal changes. All 6 executable inline scripts pass syntax checks.
+
+## [1.6.21] - 2026-09-26 — Reuse short-lived death animation records
+- **Death-burst allocation churn**: short-lived corpse display records now return to a small reuse pool when their 220ms animation ends. Repeated kills can reuse those objects instead of allocating a new record per death. The death visuals and timing are unchanged.
+- **Scope**: this avoids one class of garbage-collection pressure during clustered deaths; particles and blood effects have separate costs, so this alone cannot establish that post-death lag is fixed.
+- **Verification**: a focused test recycled and reused 20 records with all fields reset; all 6 executable inline scripts pass syntax checks.
+
+## [1.6.20] - 2026-09-26 — Spread blood decal checks across ticks
+- **Combat-effect workload**: at most 8 enemies per simulation tick now scan recent blood decals for wet-foot pickup, instead of allowing every ready enemy to scan up to 220 decals on the same tick. A rotating cursor spreads the work fairly; checks still run at the existing per-enemy interval, with a short delay under unusually heavy load.
+- **Scope**: this targets a potential CPU spike when many enemies and decals accumulate. There is no current profiling capture to prove that this was the user's sole or dominant lag cause, so this is a focused mitigation rather than a claim that all lag is fixed.
+- **Verification**: all 6 executable inline scripts pass syntax checks; a focused 40-enemy test confirms no more than 8 searches run per tick and all due enemies are checked within 5 ticks.
+
+## [1.6.19] - 2026-09-26 — Make lag telemetry report the real simulation cap
+- **Debug log correction**: the main loop already capped catch-up simulation at 8 ticks per animation frame, but the downloadable debug log still printed “cap 90.” The cap is now a shared constant used by both the loop and the log, so performance reports describe the running code accurately.
+- **Scope**: this corrects diagnosis data; it does not itself increase frame rate. The existing loop cap already bounds simulation work during slow/high-speed frames.
+- **Verification**: all six executable inline scripts pass `node --check`; static checks confirm both loop conditions and debug-log output reference the same constant.
+
+## [1.6.18] - 2026-09-26 — Apply enemy pacing consistently; refit for Build labels
+- **All enemy movement modes**: applied the 15% movement reduction to trolls, breakaways, escaped-enemy chasing/wandering, and hut guardians too. These branches had used raw `this.speed`, bypassing the reduced path movement helper in 1.6.16.
+- **Top HUD**: the fit signature now includes the Build button label, so choosing a longer tower name triggers one layout refit. Lives, gold, and wave counters remain excluded, so kill rewards do not refit the bar.
+- **Verification**: all six inline scripts pass `node --check`; targeted checks confirm each alternate movement branch now uses the reduced speed helper and HUD fit tracks the Build label without depending on resource counter values.
+
+## [1.6.17] - 2026-09-26 — Restore barricade placement; keep debug panel clear on small screens
+- **Barricade regression**: removed an erroneous `nearPathTileSet` requirement from barricade placement. That set intentionally removes all route tiles, so the extra requirement still rejected every barricade. Barricades now require a path tile that is already unlocked and otherwise unoccupied.
+- **Debug overlay**: the panel now remains below the HUD on short screens, showing only the highest-priority lines that fit. Long lines are shortened to fit the canvas width instead of being drawn beneath controls or off-screen.
+- **Spawn flags**: the 2x2 opening map can have only one safe green row beside its straight route, so requiring two separate tiles on opposite sides made both flags disappear. Flags now use separated positions within safe green tiles, preferring opposite sides when available and staying behind the spawn when possible.
+- **Verification**: all six inline scripts pass `node --check`. Isolated checks pass for unlocked/locked route barricades, other-tower path rejection, initial-map flag placement, debug placement below the HUD, short-screen line clipping, and overlay width bounds.
+
+## [1.6.16] - 2026-09-26 — Keep debug telemetry clear of HUD; slower, wider-spaced enemies
+- **Debug overlay placement**: the canvas debug panel now anchors below the visible HUD instead of drawing at a fixed y=30 underneath the Build button. Its vertical placement is clamped to the canvas.
+- **Enemy spacing**: consecutive wave spawns now wait until the prior enemy has traveled its radius + the incoming size-tier radius + 24px (previously +8px), leaving a wider visible gap while preserving every planned enemy.
+- **Enemy movement**: shared lane movement speed is reduced by a further 15%; the existing slow status and size-tier speed cap still apply. Queued-lane speed estimates use the same helper.
+- **Verification**: all six executable inline scripts pass `node --check`; focused checks cover HUD-relative debug placement, the spawn-clearance threshold, and movement scaling. Visual browser review was unavailable because the attached screenshots could not be read.
+
+## [1.6.15] - 2026-09-26 — Restore barricades and stabilize HUD/flags
+- **Barricades**: fixed placement on unlocked path tiles. A green-corridor check had run before the barricade-specific path check, rejecting every path tile.
+- **Spawn flags**: choose unoccupied tiles inside the unlocked region, on opposite sides of the route and behind the spawn when a valid pair exists. Flags no longer get positioned beyond the map edge.
+- **Top HUD**: fitting now responds to viewport/layout width, not changing lives, gold, or wave digits. The absolute gold reward popup is excluded from the measured width, preventing the whole bar from pulsing on kill rewards.
+- **Verification note (corrected in 1.6.17)**: all six inline scripts passed syntax checks. The isolated barricade-placement check was not successfully completed in this release; the `nearPathTileSet` condition it missed is fixed and directly tested in 1.6.17. Browser visual playback was unavailable.
+
+## [1.6.14] - 2026-09-26 — Synchronized spiral growth, safer camps, and ranged spacing
+- **Expansion visuals**: route tiles are now repainted as soon as a new spiral segment is committed. Previously, the route changed before the expansion reveal finished while the cached map still showed old green build tiles; a newly routed tile inside the old region could remain green afterward. Scenery/flora on newly claimed path tiles is cleared at commit.
+- **Hut/building placement and balance**: camps and later hut/castle/grave spawns can only use safe buildable tiles from the most recently opened edge, with a three-tile Manhattan buffer from the finish and existing one-tile buffers around scenery and buildings. If no valid new tile exists, the spawn is skipped (the first camp retries after a later expansion). Hut HP now starts at 1.5x (formerly 4x) and ramps toward 8x; guardian HP starts at 1.5x (formerly 3x) and ramps toward 4.5x.
+- **Ranged minimum distance**: ranged fighters stop selecting or firing on enemies inside a 44px clear radius (plus the enemy's radius), and return to their relaxed idle pose when crowded. Selecting one shows the dashed orange exclusion circle. Melee fighters and support units retain their prior targeting behavior; Axeman uses the rule only in ranged mode.
+- **Blowdart balance**: tier damage is 7/10/14 (was 8/12/18), cooldown is 460/390/320ms (was 370/315/260ms), and poison per tick is 2/4/6 (was 3/5/8), with a shorter poison duration. This reduces sustained damage while keeping its poison identity.
+- **Performance from the supplied recording**: the 1.6.12 footage shows 29 FPS while idle, then 19–22 FPS during early waves. At about 30 seconds, the debug overlay reports 19 FPS, 10.4ms frame work (0.8ms update / 8.4ms render), 3 active enemies, 63 decals (49 live), and 0 dying enemies. This means deaths alone do not explain the slowdown in this clip; the low-quality game was still rendering many accumulated impact effects. Low graphics and crowded battles now use the authored lighter hit/death gore path. The existing death-handler timing and frame/update/render debug log remain available for comparing a fresh run.
+- **Verification**: all six executable inline JavaScript blocks pass `node --check`. Isolated behavior checks pass for new-ring-only hut placement and safety buffers, ranged minimum distance across ranged/melee/Axeman modes, and immediate route-tile repaint/scenery cleanup. The route-generation stress check from 1.6.13 remains applicable because its generation algorithm was unchanged. Browser visual playback could not run here because Chromium is unavailable.
+
+## [1.6.13] - 2026-09-26 — Clearer route growth, gentler camps, and readable combat feedback
+- **Path growth**: the buildable grass corridor is now one tile wide with a Manhattan-adjacent edge, and route tiles themselves are excluded from green/buildable tiles. Expansion uses a short 2–3 tile outer arc plus a collision-free connector to either route end, so it can wind through irregular shapes while preserving a continuous, non-crossing route. The connector length varies with the map geometry.
+- **Camps and scenery**: huts now spawn after ring scenery, and their placement rejects scenery plus its immediate neighboring tiles. Hut health begins at 4x a regular enemy and ramps toward 16x across later waves, making early camps beatable without removing their late-game toughness.
+- **Enemy movement**: removed the packmate proximity scan and pack-speed boost. Pack formations remain visible without making groups accelerate or bunch up.
+- **Promotions**: promotion keeps its passive STR/DEX/INT rolls and grants two additional 1–3 rolls as spendable stat points, bounded by the existing combined trained-stat cap.
+- **Blowdart**: added a relaxed idle pose with the pipe held down at the unit’s side and one arm resting; the two-handed mouth-aiming pose remains for nearby targets.
+- **Barricades and flags**: the backing behind barricade HP text is removed; the number appears for two seconds after HP loss while the bar stays visible. Spawn flags are longer, wave more, and remain spaced on the side away from the finish.
+- **Death-lag diagnosis**: debug logs now record synchronous enemy death-handler count, mean/max time, and calls taking at least 8ms. This separates death logic from later rendering/animation so the reported lag can be diagnosed from a live log instead of guessed at.
+- **Verification**: all six executable inline JavaScript blocks passed `node --check`. A seeded standalone harness exercised 50 route runs × 30 expansions (1,500 total); every result remained continuous and non-crossing, and growth succeeded in all 1,500 cases. The hut-placement function also passed an isolated check for scenery/building buffers and tower occupancy. Browser visual/runtime checks could not run because this environment has no installed Chromium executable.
+
 ## [1.6.12] - 2026-09-26 — Path growth is now genuinely randomized — a different spiral shape every game
 - **Direct request**: "make the path grow randomly and masterfully so it's a unique experience
   every time."
@@ -11780,4 +11889,3 @@ Settled-decal bake canvas — same world-space/DPR sizing as mapCanvas, created 
 
 #### CA794 — `top-level` (was lines 16770-16773)
 Reveal the whole game-wrapper (canvas + start-screen + hud-top, all hidden/opacity:0 by default in CSS) only after the browser has actually painted a real frame — double rAF is the standard "wait for next paint" technique. Fixes a flash where the raw HUD buttons or an unpainted canvas could show for a moment before JS finished setting up the attract-mode's first frame.
-

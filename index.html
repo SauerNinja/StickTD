@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.12'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.32'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1310,6 +1310,18 @@ const RANGE_CAPS = {
   SPEARMAN: 220, AXEMAN: 190, SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150,
   CLERIC: 200, POPE: 220, BLOWDART: 240, SQUIRTGUN: 260, CAT_SNAPPER: 280, NECROMANCER: 250, BLOW_GUNNER: 250, PROTON: 270, DARK_MATTER: 275, QUASAR: 260, BERSERKER: 150, LANCER: 260
 };
+// Ranged fighters hold fire when a target crowds their personal space. The dashed ring shown for a
+// selected ranged tower marks this clear zone; enemy radius is added to the threshold so bodies
+// stay outside it too. Melee fighters (and non-attacking support units) keep their own behavior.
+const MIN_RANGED_ATTACK_RANGE = 44;
+const NO_MIN_RANGE_TYPES = new Set(['SWORDSMAN','SPEARMAN','HAMMERMAN','PALADIN','BERSERKER','LANCER','CLERIC','POPE','BARRICADE']);
+function usesMinimumRangedRange(tower){
+  if(tower.type === 'AXEMAN') return tower.axeMode === 'RANGE';
+  return !NO_MIN_RANGE_TYPES.has(tower.type);
+}
+function minimumTargetDistance(tower, enemy){
+  return usesMinimumRangedRange(tower) ? MIN_RANGED_ATTACK_RANGE + (enemy.radius || 0) : 0;
+}
 // CA015 — see CHANGELOG.md § Code Archaeology
 function diminishingStatValue(points, perPoint){
   let total = 0, remaining = points, tier = 0;
@@ -1809,11 +1821,11 @@ const CONFIG = {
     },
     BLOWDART: {
       name: 'Blowdart', icon: '🎯', baseCost: 80, unlocksAfterWave: 7,
-      blurb: 'Short range and light hits, but fires roughly twice as fast as an Archer. Every dart is poisoned — the sting lingers and ticks damage over time, hitting harder with more Intelligence invested.',
+      blurb: 'Short range and light hits, but fires faster than an Archer. Every dart is poisoned — a measured damage-over-time sting that rewards steady hits without overwhelming early targets.',
       tiers: [
-        { range: 155, damage: 8,  cooldown: 370, projectileSpeed: 420, poisonDamage: 3, poisonDuration: 3000 },
-        { range: 170, damage: 12, cooldown: 315, projectileSpeed: 450, poisonDamage: 5, poisonDuration: 3000, upgradeCost: 90 },
-        { range: 190, damage: 18, cooldown: 260, projectileSpeed: 480, poisonDamage: 8, poisonDuration: 3500, upgradeCost: 130 }
+        { range: 155, damage: 7,  cooldown: 460, projectileSpeed: 420, poisonDamage: 2, poisonDuration: 2600 },
+        { range: 170, damage: 10, cooldown: 390, projectileSpeed: 450, poisonDamage: 4, poisonDuration: 2800, upgradeCost: 90 },
+        { range: 190, damage: 14, cooldown: 320, projectileSpeed: 480, poisonDamage: 6, poisonDuration: 3200, upgradeCost: 130 }
       ]
     },
     SQUIRTGUN: {
@@ -2241,17 +2253,18 @@ function regionFullyExpanded(){
 // pathCells/waypointsPx below), and required by isInActiveRegion() as a hard filter on top of the
 // rectangle check — a tile only counts as buildable if it's both inside the region AND near the
 // path, so the visible shape is a corridor hugging the path's zigs and zags, not the full rectangle.
-const PATH_BUILDABLE_MARGIN = 2;
+const PATH_BUILDABLE_MARGIN = 1;
 let nearPathTileSet = new Set();
 function rebuildNearPathTileSet(){
   const next = new Set();
   for(const tile of pathWaypointTiles){
     for(let dx = -PATH_BUILDABLE_MARGIN; dx <= PATH_BUILDABLE_MARGIN; dx++){
       for(let dy = -PATH_BUILDABLE_MARGIN; dy <= PATH_BUILDABLE_MARGIN; dy++){
-        next.add((tile.x+dx) + ',' + (tile.y+dy));
+        if(Math.abs(dx)+Math.abs(dy) <= PATH_BUILDABLE_MARGIN) next.add((tile.x+dx) + ',' + (tile.y+dy));
       }
     }
   }
+  for(const key of pathCells) next.delete(key); // never paint/build on route tiles themselves
   nearPathTileSet = next;
 }
 function rebuildPathCellsAndPx(){
@@ -2259,6 +2272,7 @@ function rebuildPathCellsAndPx(){
   waypointsPx = pathWaypointTiles.map(p => ({
     x: p.x*TILE_SIZE + TILE_SIZE/2, y: p.y*TILE_SIZE + TILE_SIZE/2
   }));
+  invalidateSpawnFlags();
   rebuildNearPathTileSet(); // MAP-CORRIDOR-01 (1.6.11) — see CHANGELOG.md § [1.6.11]
 }
 // CA092 — see CHANGELOG.md § Code Archaeology
@@ -2349,6 +2363,39 @@ function bridgeTiles(from, to){
   }
   return tiles;
 }
+function isContinuousSimplePath(tiles){
+  const seen = new Set();
+  for(let i=0; i<tiles.length; i++){
+    const tile = tiles[i], key = tile.x+','+tile.y;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    if(i && Math.abs(tile.x-tiles[i-1].x)+Math.abs(tile.y-tiles[i-1].y) !== 1) return false;
+  }
+  return true;
+}
+function findExpansionBridge(from, to, blocked, region){
+  const key = p => p.x+','+p.y;
+  const startKey = key(from), targetKey = key(to), queue = [from], previous = new Map([[startKey, null]]);
+  for(let head=0; head<queue.length && head<regionAreaLimit(region); head++){
+    const current = queue[head], currentKey = key(current);
+    if(currentKey === targetKey) break;
+    const neighbors = [{x:current.x+1,y:current.y},{x:current.x-1,y:current.y},{x:current.x,y:current.y+1},{x:current.x,y:current.y-1}];
+    if(Math.random()<0.5) neighbors.reverse();
+    for(const next of neighbors){
+      if(next.x<region.x0 || next.x>region.x1 || next.y<region.y0 || next.y>region.y1) continue;
+      const nextKey = key(next);
+      if(previous.has(nextKey) || (blocked.has(nextKey) && nextKey !== targetKey)) continue;
+      previous.set(nextKey, currentKey); queue.push(next);
+    }
+  }
+  if(!previous.has(targetKey)) return null;
+  const route = []; let cursor = targetKey;
+  while(cursor){
+    const [x,y] = cursor.split(',').map(Number); route.push({x,y}); cursor = previous.get(cursor);
+  }
+  return route.reverse();
+}
+function regionAreaLimit(region){ return (region.x1-region.x0+1)*(region.y1-region.y0+1); }
 // CA095 — see CHANGELOG.md § Code Archaeology. PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md §
 // [1.6.0]: extends the path by only a short arc of the new ring (arcLength tiles, ending at the
 // point closest to the current spawn) instead of committing the ring's ENTIRE boundary as path in
@@ -2357,34 +2404,34 @@ function bridgeTiles(from, to){
 // around — so a short arc winds the same direction a full ring would have, just truncated.
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
   const ring = ringBoundaryTiles(newRegion);
-  const start = oldPath[0];
-  let idx = 0, bestD = Infinity;
-  for(let i=0; i<ring.length; i++){
-    const d = Math.abs(ring[i].x-start.x) + Math.abs(ring[i].y-start.y);
-    if(d < bestD){ bestD = d; idx = i; }
+  const ends = [{ point:oldPath[0], atStart:true }, { point:oldPath[oldPath.length-1], atStart:false }];
+  const blocked = new Set(oldPath.map(p=>p.x+','+p.y));
+  for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') blocked.add(tower.gridX+','+tower.gridY);
+  const choices = [];
+  for(const end of ends) for(let i=0; i<ring.length; i++) choices.push({ i, end,
+    d:Math.abs(ring[i].x-end.point.x)+Math.abs(ring[i].y-end.point.y) });
+  choices.sort((a,b)=>a.d-b.d);
+  const len = Math.max(2, Math.min(PATH_GROWTH_TILES_MAX, arcLength || PATH_GROWTH_TILES_MIN));
+  // Grow a short arc around the outer edge, then route a collision-free connector back to either
+  // route end. This keeps the additions small and preserves a single walkable route as the map winds.
+  for(const {i,end} of choices.slice(0,Math.min(24,choices.length))){
+    for(const direction of (Math.random()<0.5 ? [1,-1] : [-1,1])){
+      const arc=[];
+      for(let k=0;k<len;k++){
+        const tile=ring[(i+direction*k+ring.length)%ring.length];
+        if(k&&Math.abs(tile.x-arc[k-1].x)+Math.abs(tile.y-arc[k-1].y)!==1) break;
+        arc.push(tile);
+      }
+      if(arc.length!==len || arc.some((p,j)=>blocked.has(p.x+','+p.y) || towerPool.some(t=>t.active&&t.type!=='BARRICADE'&&t.gridX===p.x&&t.gridY===p.y))) continue;
+      const bridge=findExpansionBridge(arc[0],end.point,blocked,newRegion);
+      if(!bridge) continue;
+      const candidate=end.atStart
+        ? [...arc.slice().reverse(),...bridge.slice(1),...oldPath.slice(1)]
+        : [...oldPath,...bridge.slice(0,-1).reverse(),...arc.slice(1)];
+      if(isContinuousSimplePath(candidate)) return candidate;
+    }
   }
-  const n = ring.length;
-  // MASTERFUL-SPIRAL-01 (1.6.12) — see CHANGELOG.md § [1.6.12]. Direct request: "make the path
-  // grow randomly and masterfully so it's a unique experience every time." Every prior expansion
-  // always connected at the single geometrically-closest ring point — fully deterministic given the
-  // map size, so the overall spiral shape barely varied game to game. Jittering the connection
-  // point by a few tiles either way, every single expansion, compounds into a genuinely different
-  // overall path shape each playthrough. Bounded small (±2) so bridges stay short and the result
-  // still reads as a clean, deliberate spiral rather than a random walk.
-  const IDX_JITTER_RANGE = 2;
-  const jitter = Math.floor(Math.random() * (IDX_JITTER_RANGE*2+1)) - IDX_JITTER_RANGE;
-  idx = ((idx + jitter) % n + n) % n;
-  const len = Math.max(1, Math.min(arcLength || n, n));
-  const arc = [];
-  for(let k=len-1; k>=0; k--) arc.push(ring[(idx - k + n) % n]); // arc[arc.length-1] === ring[idx], the closest point
-  const bridge = bridgeTiles(arc[arc.length-1], start);
-  const combined = [...arc, ...bridge, ...oldPath];
-  const deduped = [combined[0]];
-  for(let i=1; i<combined.length; i++){
-    const p = combined[i], last = deduped[deduped.length-1];
-    if(p.x !== last.x || p.y !== last.y) deduped.push(p);
-  }
-  return deduped;
+  return oldPath.slice(); // no safe connector: preserve the known-good route rather than crossing it
 }
 // CA096 — see CHANGELOG.md § Code Archaeology
 function buildFallbackPath(region){
@@ -2413,6 +2460,7 @@ const HUT_MIN_EXPANSION_LEVEL = 3;
 // CA098 — see CHANGELOG.md § Code Archaeology
 const GUARDIAN_COMBAT_LEASH = 260;
 let hutsSpawnedThisGame = false;
+let latestExpansionTiles = [];
 function initRegionAndPath(){
   const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
@@ -2420,6 +2468,7 @@ function initRegionAndPath(){
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
   hutsSpawnedThisGame = false;
+  latestExpansionTiles = [];
   ringRevealed = new Set(); ringRevealQueue = []; ringCandidateRegion = null; // fresh game — no in-progress ring carried over
   ringRevealTotalTiles = 0; ringRevealTimer = 0;
   pathWaypointTiles = generateConflictFreePath(activeRegion); // only the base level uses the half/half comb split
@@ -2445,25 +2494,41 @@ let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700
 // ballooning away from the road.
 const REGION_GROWTH_EDGE_MARGIN = 1; // how close to an edge the path tip must be to grow that edge
 function nextRegionTowardPathTip(){
-  const tip = pathWaypointTiles[0];
+  const tips = [pathWaypointTiles[0], pathWaypointTiles[pathWaypointTiles.length-1]];
   let x0 = activeRegion.x0, y0 = activeRegion.y0, x1 = activeRegion.x1, y1 = activeRegion.y1;
-  if(tip.x - activeRegion.x0 <= REGION_GROWTH_EDGE_MARGIN) x0 = Math.max(0, activeRegion.x0-1);
-  if(activeRegion.x1 - tip.x <= REGION_GROWTH_EDGE_MARGIN) x1 = Math.min(COLS-1, activeRegion.x1+1);
-  if(tip.y - activeRegion.y0 <= REGION_GROWTH_EDGE_MARGIN) y0 = Math.max(0, activeRegion.y0-1);
-  if(activeRegion.y1 - tip.y <= REGION_GROWTH_EDGE_MARGIN) y1 = Math.min(ROWS-1, activeRegion.y1+1);
+  if(tips.some(t => t.x-activeRegion.x0 <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.x0 > 0) x0 = activeRegion.x0-1;
+  if(tips.some(t => activeRegion.x1-t.x <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.x1 < COLS-1) x1 = activeRegion.x1+1;
+  if(tips.some(t => t.y-activeRegion.y0 <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.y0 > 0) y0 = activeRegion.y0-1;
+  if(tips.some(t => activeRegion.y1-t.y <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.y1 < ROWS-1) y1 = activeRegion.y1+1;
   // Safety net: the tip should always end up near an edge each expansion (that's where the last
   // arc landed), but if it's ever well inside with no edge qualifying, grow whichever edge is
   // nearest so the region can never stall without growing at all.
   if(x0===activeRegion.x0 && y0===activeRegion.y0 && x1===activeRegion.x1 && y1===activeRegion.y1){
-    const candidates = [
-      {d: tip.x-activeRegion.x0, apply:() => { x0 = Math.max(0, activeRegion.x0-1); }},
-      {d: activeRegion.x1-tip.x, apply:() => { x1 = Math.min(COLS-1, activeRegion.x1+1); }},
-      {d: tip.y-activeRegion.y0, apply:() => { y0 = Math.max(0, activeRegion.y0-1); }},
-      {d: activeRegion.y1-tip.y, apply:() => { y1 = Math.min(ROWS-1, activeRegion.y1+1); }}
-    ];
+    const candidates = [];
+    if(activeRegion.x0 > 0) candidates.push({d:Math.min(...tips.map(t=>t.x-activeRegion.x0)), apply:() => { x0 = activeRegion.x0-1; }});
+    if(activeRegion.x1 < COLS-1) candidates.push({d:Math.min(...tips.map(t=>activeRegion.x1-t.x)), apply:() => { x1 = activeRegion.x1+1; }});
+    if(activeRegion.y0 > 0) candidates.push({d:Math.min(...tips.map(t=>t.y-activeRegion.y0)), apply:() => { y0 = activeRegion.y0-1; }});
+    if(activeRegion.y1 < ROWS-1) candidates.push({d:Math.min(...tips.map(t=>activeRegion.y1-t.y)), apply:() => { y1 = activeRegion.y1+1; }});
+    if(!candidates.length) return activeRegion;
     candidates.sort((a,b) => a.d-b.d)[0].apply();
   }
   return { x0, y0, x1, y1 };
+}
+// PATH-REVEAL-COHERENCE-01 (1.6.14): expansion commits the new route before its grass animation
+// finishes. Repaint each newly committed route tile immediately, including tiles inside the old
+// region; otherwise the cached map can keep showing buildable green under walking enemies.
+function paintCommittedExpansionPath(oldPath){
+  const oldKeys = new Set(oldPath.map(p => p.x+','+p.y));
+  const changed = pathWaypointTiles.filter(p => !oldKeys.has(p.x+','+p.y));
+  if(!changed.length) return;
+  const mctx = mapCanvas.getContext('2d');
+  mctx.setTransform(dprValue,0,0,dprValue,0,0);
+  for(const tile of changed){
+    const key = tile.x+','+tile.y;
+    sceneryMap.delete(key);
+    floraMap.delete(key);
+    paintPathTileBase(mctx, tile.x, tile.y);
+  }
 }
 function beginNextRingReveal(){
   const newRegion = nextRegionTowardPathTip();
@@ -2471,8 +2536,10 @@ function beginNextRingReveal(){
   // PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md § [1.6.0]. Every expansion winds the spiral outward
   // by a short arc (2-3 tiles) instead of the old alternating "entire new ring becomes path" jump.
   const arcLength = PATH_GROWTH_TILES_MIN + Math.floor(Math.random()*(PATH_GROWTH_TILES_MAX-PATH_GROWTH_TILES_MIN+1));
-  pathWaypointTiles = extendPathWithNewRing(pathWaypointTiles, newRegion, arcLength);
+  const oldPath = pathWaypointTiles;
+  pathWaypointTiles = extendPathWithNewRing(oldPath, newRegion, arcLength);
   rebuildPathCellsAndPx();
+  paintCommittedExpansionPath(oldPath);
   // CA102 — see CHANGELOG.md § Code Archaeology
   ringRevealQueue = ringBoundaryTiles(newRegion).filter(t => !isInActiveRegion(t.x, t.y));
   ringRevealTotalTiles = ringRevealQueue.length; // PATHING-MASTER-01 (1.5.9) — see CHANGELOG.md § [1.5.9]
@@ -2484,6 +2551,7 @@ function advanceRingReveal(n){
   for(let i=0; i<n && ringRevealQueue.length; i++){
     const t = ringRevealQueue.shift();
     ringRevealed.add(t.x+','+t.y);
+    invalidateSpawnFlags();
   }
   if(!ringRevealQueue.length) finalizeRingExpansion();
 }
@@ -2518,19 +2586,20 @@ function finalizeRingExpansion(){
   const oldRegion = { ...activeRegion };
   const oldFinishLine = computeFinishLine(); // captured BEFORE the path terminus moves — this is exactly the carpet footprint the incremental patch below needs to erase
   const newRegion = ringCandidateRegion;
+  latestExpansionTiles = ringBoundaryTiles(newRegion).filter(t =>
+    t.x<oldRegion.x0 || t.x>oldRegion.x1 || t.y<oldRegion.y0 || t.y>oldRegion.y1);
   activeRegion = newRegion;
   expansionLevel++;
   rebuildPathCellsAndPx();
-  if(expansionLevel === HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
-    hutsSpawnedThisGame = true;
-    spawnHuts();
-  }
   for(const tile of pathWaypointTiles){
     sceneryMap.delete(tile.x+','+tile.y);
     floraMap.delete(tile.x+','+tile.y);
   }
   scatterSceneryInRing(oldRegion, newRegion);
   scatterFloraInRing(oldRegion, newRegion);
+  if(expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
+    hutsSpawnedThisGame = spawnHuts(oldRegion, newRegion); // new tiles only, after scenery; never force a camp beside the finish or into an established build area
+  }
   ringRevealed.clear();
   ringRevealQueue = [];
   ringCandidateRegion = null;
@@ -2644,17 +2713,16 @@ function findTouchingBarricade(e){
   return null;
 }
 // CA111 — see CHANGELOG.md § Code Archaeology
-let routeCumulativeLengths = [], routeCacheWaypointCount = -1, routeCacheFirstX = NaN;
+let routeCumulativeLengths = [], routeCacheWaypointsRef = null;
 function ensureRouteLengthCache(){
-  if(routeCacheWaypointCount === waypointsPx.length && routeCacheFirstX === (waypointsPx[0] ? waypointsPx[0].x : NaN)) return;
+  if(routeCacheWaypointsRef === waypointsPx) return;
   routeCumulativeLengths.length = waypointsPx.length;
   routeCumulativeLengths[0] = 0;
   for(let i = 1; i < waypointsPx.length; i++){
     const a = waypointsPx[i-1], b = waypointsPx[i];
     routeCumulativeLengths[i] = routeCumulativeLengths[i-1] + Math.hypot(b.x-a.x, b.y-a.y);
   }
-  routeCacheWaypointCount = waypointsPx.length;
-  routeCacheFirstX = waypointsPx[0] ? waypointsPx[0].x : NaN;
+  routeCacheWaypointsRef = waypointsPx;
 }
 // CA112 — see CHANGELOG.md § Code Archaeology
 function routeSegmentIndexAt(dist){
@@ -2691,6 +2759,24 @@ const MAX_QUEUE_DEPTH = 40;
 // CA115 — see CHANGELOG.md § Code Archaeology
 const BARRICADE_CHIP_MS = 260; // how long a barricade shakes/flashes after losing a point
 const BARRICADE_HIT_INTERVAL_MS = 10000; // max 1 HP lost per 10s from ANY source — pile-up attackers and direct takeDamage() hits share this one limiter
+function findQueueCatchmentLeader(active, endExclusive, behind, maxTraveledGap, catchmentRadius){
+  // `active` is sorted by traveled descending and origTraveled is snapshotted in that order below.
+  // Binary-search the first plausible ahead unit; farther-ahead units cannot be catchment leaders.
+  let low = 0, high = endExclusive;
+  while(low < high){
+    const mid = (low + high) >> 1;
+    if(active[mid].origTraveled - behind.origTraveled > maxTraveledGap) low = mid + 1;
+    else high = mid;
+  }
+  let bestAhead = null, bestDist = Infinity;
+  for(let j = low; j < endExclusive; j++){
+    const ahead = active[j];
+    if(!ahead.pileBlocked) continue;
+    const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
+    if(d < catchmentRadius && d < bestDist){ bestDist = d; bestAhead = ahead; }
+  }
+  return bestAhead;
+}
 function updateBarricadesAndPileup(){
   perfStats.barricadeSnapCount = 0;
   const active = barricadeActiveScratch;
@@ -2729,11 +2815,6 @@ function updateBarricadesAndPileup(){
           spawnBloodCastoff(barricade.x + (Math.random()-0.5)*10, barricade.y + (Math.random()-0.5)*10, wipeAngle, hexToRgba(bio.dark, 0.6), 4);
         }
       }
-      if(barricade.hp <= 0){
-        barricade.active = false; // broken — traffic resumes
-        spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
-        playSound('death');
-      }
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
@@ -2760,15 +2841,7 @@ function updateBarricadesAndPileup(){
     const behind = active[i];
     if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
     if(claimedSlots.size > MAX_QUEUE_DEPTH) continue;
-    let bestAhead = null, bestDist = Infinity;
-    for(let j=0; j<i; j++){
-      // CA122 — see CHANGELOG.md § Code Archaeology
-      const ahead = active[j];
-      if(!ahead.pileBlocked) continue;
-      if(Math.abs(ahead.origTraveled - behind.origTraveled) > MAX_TRAVELED_GAP_FOR_CATCHMENT) continue; // reject cross-lane false catchment
-      const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
-      if(d < QUEUE_CATCHMENT && d < bestDist){ bestDist = d; bestAhead = ahead; }
-    }
+    const bestAhead = findQueueCatchmentLeader(active, i, behind, MAX_TRAVELED_GAP_FOR_CATCHMENT, QUEUE_CATCHMENT);
     if(bestAhead){
       behind.pileBlocked = true;
       const spacing = queueGap(behind);
@@ -2794,7 +2867,7 @@ function updateBarricadesAndPileup(){
     if(d <= ahead.radius + behind.radius + proximityBuffer){
       // CA127 — see CHANGELOG.md § Code Archaeology
       const aheadFrozen = isEnemyFrozen(ahead);
-      const aheadOwnSpeed = ahead.speed * ahead.slowMultiplier * (ahead.packSpeedBonus||1);
+      const aheadOwnSpeed = ahead.packedSpeed() * ahead.slowMultiplier;
       const aheadEffectiveSpeed = aheadFrozen ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
       behind.followSpeedCap = aheadEffectiveSpeed;
     }
@@ -2822,14 +2895,17 @@ function snapEnemyToTraveled(e, slotDist){
 
 function isTileBuildable(gx, gy, ignoreTower, forType){
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return false;
-  if(!isInActiveRegion(gx, gy)) return false;
-  const onPath = pathCells.has(gx+','+gy);
+  const key = gx+','+gy;
+  const onPath = pathCells.has(key);
   if(forType === 'BARRICADE'){
-    if(!onPath) return false; // Barricades ONLY go on the path itself
-  } else if(onPath){
-    return false; // everything else stays off the path, as before
+    // Barricades belong on unlocked route tiles. isInActiveRegion() intentionally excludes
+    // route tiles from its green build corridor, so checking it first made barricades impossible.
+    const unlocked = (activeRegion && gx>=activeRegion.x0 && gx<=activeRegion.x1 && gy>=activeRegion.y0 && gy<=activeRegion.y1) || ringRevealed.has(key);
+    if(!onPath || !unlocked) return false;
+  } else {
+    if(onPath || !isInActiveRegion(gx, gy)) return false; // other towers remain off the route
   }
-  if(sceneryMap.has(gx+','+gy)) return false;
+  if(sceneryMap.has(key)) return false;
   if(towerPool.some(t => t.active && t !== ignoreTower && t.gridX===gx && t.gridY===gy)) return false;
   return true;
 }
@@ -2850,6 +2926,7 @@ function spawnDebrisNear(x, y){
     type: 'STICKS', isSuper: false, scale: 1, clearCost: 30, clearMs: 1200, goldYield: 0,
     woodYield: 0, stoneYield: 0, isClearing: false, clearStart: 0
   });
+  invalidateSpawnFlags();
 }
 function spawnScenery(gx, gy, forceType){
   const S = CONFIG.SCENERY;
@@ -2888,10 +2965,12 @@ function spawnScenery(gx, gy, forceType){
     stoneYield: type === 'ROCK' ? baseYield : 0,
     isClearing: false, clearStart: 0
   });
+  invalidateSpawnFlags();
 }
 
 function generateScenery(){
   sceneryMap.clear();
+  invalidateSpawnFlags();
   clearingScenery.length = 0;
   const cells = [];
   for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
@@ -3072,6 +3151,7 @@ function updateScenery(dt){
         playSound('death');
       }
       sceneryMap.delete(key);
+      invalidateSpawnFlags();
       clearingScenery.splice(i, 1);
       updateHUD();
     }
@@ -3359,7 +3439,13 @@ function paintNewRingTiles(ctx, oldRegion, newRegion){
   }
 }
 // CA156 — see CHANGELOG.md § Code Archaeology
+let spawnFlagsCache = null;
+let spawnFlagsDirty = true;
+function invalidateSpawnFlags(){ spawnFlagsDirty = true; }
 function computeSpawnFlags(){
+  if(!spawnFlagsDirty) return spawnFlagsCache;
+  spawnFlagsDirty = false;
+  spawnFlagsCache = null;
   if(!waypointsPx || waypointsPx.length < 2) return null;
   const start = waypointsPx[0];
   const next = waypointsPx[1];
@@ -3367,13 +3453,39 @@ function computeSpawnFlags(){
   const dirLen = Math.hypot(dirX, dirY) || 1;
   const ux = dirX/dirLen, uy = dirY/dirLen;
   const perpX = -uy, perpY = ux;
-  const halfSpan = TILE_SIZE * 0.5;
-  const farEdgeX = start.x - ux*halfSpan, farEdgeY = start.y - uy*halfSpan; // opposite the direction enemies first walk
-  const fA = { x: farEdgeX + perpX*halfSpan, y: farEdgeY + perpY*halfSpan };
-  const fB = { x: farEdgeX - perpX*halfSpan, y: farEdgeY - perpY*halfSpan };
+  // Sample safe positions within buildable tiles rather than requiring two separate tiles on
+  // opposite sides. The opening map can leave only one green row beside a straight spawn path.
+  const candidates = [];
+  const minX = Math.max(0, activeRegion?.x0 ?? 0), maxX = Math.min(COLS-1, activeRegion?.x1 ?? COLS-1);
+  const minY = Math.max(0, activeRegion?.y0 ?? 0), maxY = Math.min(ROWS-1, activeRegion?.y1 ?? ROWS-1);
+  for(let gy=minY; gy<=maxY; gy++) for(let gx=minX; gx<=maxX; gx++){
+    const key = gx+','+gy;
+    if(pathCells.has(key) || sceneryMap.has(key) || towerPool.some(t=>t.active && t.gridX===gx && t.gridY===gy) || !isInActiveRegion(gx,gy)) continue;
+    for(const fx of [0.12,0.88]) for(const fy of [0.12,0.88]){
+      const x=(gx+fx)*TILE_SIZE, y=(gy+fy)*TILE_SIZE;
+      const dx=x-start.x, dy=y-start.y;
+      const behind=-(dx*ux+dy*uy), side=dx*perpX+dy*perpY;
+      if(behind < -TILE_SIZE*0.15) continue;
+      candidates.push({x,y,behind,side});
+    }
+  }
+  let pair=null, best=Infinity;
+  for(let i=0;i<candidates.length;i++) for(let j=i+1;j<candidates.length;j++){
+    const a=candidates[i], b=candidates[j];
+    const separation=Math.hypot(a.x-b.x,a.y-b.y);
+    if(separation<TILE_SIZE*0.72) continue;
+    // Prefer opposite sides where the map allows it; the opening map may only have one safe side.
+    const sameSidePenalty=a.side*b.side>=0 ? TILE_SIZE*1.5 : 0;
+    const score=Math.hypot(a.x-start.x,a.y-start.y)+Math.hypot(b.x-start.x,b.y-start.y)
+      - Math.min(a.behind,b.behind)*0.25 + sameSidePenalty;
+    if(score<best){best=score;pair=[a,b];}
+  }
+  if(!pair) return null;
+  const [fA,fB]=pair;
   const flagLower = fA.y >= fB.y ? fA : fB; // "lower" = further down/+Y = black flag, same convention as computeFinishLine()
   const flagUpper = fA.y >= fB.y ? fB : fA;
-  return { center: start, flagLower, flagUpper };
+  spawnFlagsCache = { center: start, flagLower, flagUpper };
+  return spawnFlagsCache;
 }
 // CA157 — see CHANGELOG.md § Code Archaeology
 const FLAG_BREEZE_DIR_ANGLE = -0.35;
@@ -3386,13 +3498,13 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-poleH); ctx.stroke();
   ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
   // CA159 — see CHANGELOG.md § Code Archaeology
-  const bannerLen = 18, bannerH = 9;
+  const bannerLen = 27, bannerH = 11;
   const attachTopX = x, attachTopY = y - poleH;
   const attachBotX = x, attachBotY = y - poleH + bannerH;
   const perpX = -awayY, perpY = awayX;
   // CA160 — see CHANGELOG.md § Code Archaeology
-  const amp = 1 + FLAG_BREEZE_STRENGTH*3;
-  const speed = 1.6 + FLAG_BREEZE_STRENGTH*1.8;
+  const amp = 2 + FLAG_BREEZE_STRENGTH*5;
+  const speed = 2.2 + FLAG_BREEZE_STRENGTH*2.4;
   const phase = gameTime/1000*speed;
   // CA161 — see CHANGELOG.md § Code Archaeology
   const lean = (FLAG_BREEZE_DIR_X*perpX + FLAG_BREEZE_DIR_Y*perpY) * FLAG_BREEZE_STRENGTH * 3;
@@ -4007,6 +4119,7 @@ let autoCameraPans = true; // camera moves itself to a killstreak holder; opt-ou
 let showFpsCounter = false; // small live FPS readout overlay, opt-in — separate from the full debug log, for players who just want a quick glance during play
 let screenShakeEnabled = true; // gore-kill impact shake — opt-out for anyone sensitive to camera shake/motion
 let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
+const MAX_SIMULATION_TICKS_PER_FRAME = 8; // bound catch-up work per animation frame to prevent a lag feedback loop
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
 let presentationTime = 0; // advances every rendered PLAYING frame, including between waves — drives transient presentation (death animations) that must finish even while realTime is frozen
@@ -4694,6 +4807,7 @@ function serializeGameState(){
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
     gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed,
     globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
+    latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
     // CA250 — see CHANGELOG.md § Code Archaeology
     ringRevealedArr: ringCandidateRegion ? [...ringRevealed] : undefined,
     ringCandidateRegion: ringCandidateRegion || undefined,
@@ -4737,6 +4851,7 @@ function restoreGameState(state){
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   sceneryMap.clear();
+  invalidateSpawnFlags();
   clearingScenery.length = 0;
 
   gold = state.gold; lives = state.lives; livesBought = state.livesBought || 0; waveIndex = state.waveIndex;
@@ -4746,6 +4861,7 @@ function restoreGameState(state){
   globalPassiveCounts = state.globalPassiveCounts || {};
   activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
   expansionLevel = state.expansionLevel || 0;
+  latestExpansionTiles = Array.isArray(state.latestExpansionTiles) ? state.latestExpansionTiles : [];
   // CA252 — see CHANGELOG.md § Code Archaeology
   if(state.ringCandidateRegion){
     ringCandidateRegion = state.ringCandidateRegion;
@@ -5046,6 +5162,7 @@ function centerCameraOnActiveRegion(zoom){
    ENTITY CLASSES
    ========================================================= */
 // CA268 — see CHANGELOG.md § Code Archaeology
+const enemyDeathTiming = { count:0, totalMs:0, maxMs:0, over8ms:0 };
 class Enemy{
   constructor(){ this.active = false; }
   spawn(type, hpMultiplier, isBig, isMini){
@@ -5349,16 +5466,7 @@ class Enemy{
       if(this.slowTimer <= 0){ this.slowTimer = 0; this.slowMultiplier = 1; }
     }
     if(this.pack){
-      this.packCheckTimer = (this.packCheckTimer||0) - dt;
-      if(this.packCheckTimer <= 0){
-        this.packCheckTimer = 500;
-        let nearbyPack = 0;
-        for(const e of enemyPool){
-          if(e === this || !e.active || !e.pack) continue;
-          if(Math.hypot(e.x-this.x, e.y-this.y) <= 80) nearbyPack++;
-        }
-        this.packSpeedBonus = 1 + Math.min(0.5, nearbyPack*0.15); // up to +50% speed with packmates nearby
-      }
+      this.packSpeedBonus = 1; // packs keep their formation visuals but never gain movement speed
     }
     let effectiveSpeed = this.packedSpeed() * this.slowMultiplier;
     // CA290 — see CHANGELOG.md § Code Archaeology
@@ -5451,7 +5559,9 @@ class Enemy{
   packedSpeed(){
     const packed = this.speed * (this.packSpeedBonus || 1);
     const band = SIZE_TIER_BANDS[this.sizeTier];
-    return band ? Math.min(packed, Math.max(this.speed, band.speedMax)) : packed;
+    const capped = band ? Math.min(packed, Math.max(this.speed, band.speedMax)) : packed;
+    return capped * 0.85; // extra 15% reduction for the requested slower, less rushed pacing
+
   }
   recordContribution(sourceTower, amount){
     if(!sourceTower || !sourceTower.active || amount <= 0) return;
@@ -5512,8 +5622,9 @@ class Enemy{
     if(!target){ this.active = false; return; } // wandered back past the entrance — just gone, no penalty either way
     const dx = target.x - this.x, dy = target.y - this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
-    const moveDist = this.speed * dt / 1000;
-    this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+    const moveSpeed = this.packedSpeed();
+    const moveDist = moveSpeed * dt / 1000;
+    this.vx = dx/dist*moveSpeed; this.vy = dy/dist*moveSpeed;
     if(dist <= moveDist){
       this.x = target.x; this.y = target.y;
       this.pathIndex--;
@@ -5539,7 +5650,8 @@ class Enemy{
     const engageRange = 26;
     if(dist > engageRange){
       this.attackBumpTarget = null; // still closing distance — not pressed against it yet
-      this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+      const moveSpeed = this.packedSpeed();
+      this.vx = dx/dist*moveSpeed; this.vy = dy/dist*moveSpeed;
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     } else {
       this.vx = 0; this.vy = 0;
@@ -5583,7 +5695,7 @@ class Enemy{
       const engageRange = 26;
       if(dist > engageRange){
         this.attackBumpTarget = null; // still closing distance — not pressed against it yet
-        const chaseSpeed = this.speed * 0.7; // faster than aimless bumbling (0.4x below) but short of full on-path speed — reads as "went after that one on purpose"
+        const chaseSpeed = this.packedSpeed() * 0.7; // faster than aimless bumbling (0.4x below) but short of full on-path speed — reads as "went after that one on purpose"
         this.vx = dx/dist*chaseSpeed; this.vy = dy/dist*chaseSpeed;
         this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       } else {
@@ -5614,7 +5726,7 @@ class Enemy{
     if(this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = 900 + Math.random()*1400;
       const ang = Math.random()*Math.PI*2;
-      const bumbleSpeed = this.speed * 0.4; // slower, aimless — reads as "loose," not still fleeing somewhere
+      const bumbleSpeed = this.packedSpeed() * 0.4; // slower, aimless — reads as "loose," not still fleeing somewhere
       this.wanderVx = Math.cos(ang)*bumbleSpeed;
       this.wanderVy = Math.sin(ang)*bumbleSpeed;
     }
@@ -5644,7 +5756,8 @@ class Enemy{
         const dist = Math.hypot(dx,dy) || 0.0001;
         const engageRange = 26; // same engage range updateBreakaway() uses against a tower
         if(dist > engageRange){
-          this.vx = dx/dist*this.speed; this.vy = dy/dist*this.speed;
+          const moveSpeed = this.packedSpeed();
+      this.vx = dx/dist*moveSpeed; this.vy = dy/dist*moveSpeed;
           this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
         } else {
           this.vx = 0; this.vy = 0;
@@ -5663,7 +5776,8 @@ class Enemy{
     const homeDist = Math.hypot(homeDx, homeDy);
     if(homeDist > guardRadius){
       this.guardianReturning = true;
-      this.vx = homeDx/homeDist*this.speed*0.6; this.vy = homeDy/homeDist*this.speed*0.6;
+      const returnSpeed = this.packedSpeed() * 0.6;
+      this.vx = homeDx/homeDist*returnSpeed; this.vy = homeDy/homeDist*returnSpeed;
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       return;
     }
@@ -5672,7 +5786,7 @@ class Enemy{
     if(this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = 900 + Math.random()*1400;
       const ang = Math.random()*Math.PI*2;
-      const bumbleSpeed = this.speed * 0.32; // slow, tight bumble — reads as "guarding," not patrolling
+      const bumbleSpeed = this.packedSpeed() * 0.32; // slow, tight bumble — reads as "guarding," not patrolling
       this.wanderVx = Math.cos(ang)*bumbleSpeed;
       this.wanderVy = Math.sin(ang)*bumbleSpeed;
     }
@@ -5765,7 +5879,10 @@ class Enemy{
     // CA322 — see CHANGELOG.md § Code Archaeology
     if(this.isHutBuilding){
       if(Math.random() < 0.15) spawnBarricadeDebris(this); // lowered from 0.35 — a hut's 16x-normal HP means a long fight lands far more hits than a barricade ever takes, so the same per-hit chance produced a lot more accumulated rubble around a hut than around a barricade dying quickly
-    } else if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE){
+    // PERF-DEATH-01 (1.6.14): the reference footage is set to Low and already shows dozens of
+    // persistent hit decals with zero deaths. Keep impact gore, but thin repeated hit splashes on
+    // Low/crowded frames; death bursts use the same quality-aware budget below.
+    } else if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE * ((graphicsQuality === 'low' || underHeavyVisualLoad) ? 0.35 : 1)){
       const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
@@ -5929,6 +6046,7 @@ class Enemy{
   }
   die(sourceTower, forStreak){
     if(!this.active) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
+    const deathStartedAt = performance.now();
     if(this.revives && !this.hasRevived){
       this.hasRevived = true;
       this.maxHp = Math.round(this.maxHp * 0.5); // permanently weaker second life
@@ -5964,7 +6082,9 @@ class Enemy{
       gold += bountyGold;
       if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     }
-    const low = false; // blood intensity is controlled ONLY by the goreMode toggle, never by graphics quality — full gore shows at any graphics setting as long as gore is enabled
+    // PERF-DEATH-01 (1.6.14): low graphics and crowded battles use the authored lighter death
+    // effect path. The old hard-coded false forced full particle/decal bursts even at low quality.
+    const low = graphicsQuality === 'low' || underHeavyVisualLoad;
     // CA356 — see CHANGELOG.md § Code Archaeology
     const proximityT = clampNum(this.traveled / (routeLengthPx() || 1), 0, 1); // 0 at spawn, 1 at the finish line
     let proximityMult = 1;
@@ -6120,6 +6240,11 @@ class Enemy{
     // CA371 — see CHANGELOG.md § Code Archaeology
     playSound('gore_death', this.x, goreScale);
     updateHUD();
+    const deathElapsedMs = performance.now() - deathStartedAt;
+    enemyDeathTiming.count++;
+    enemyDeathTiming.totalMs += deathElapsedMs;
+    enemyDeathTiming.maxMs = Math.max(enemyDeathTiming.maxMs, deathElapsedMs);
+    if(deathElapsedMs >= 8) enemyDeathTiming.over8ms++;
   }
   draw(ctx){
     ctx.save();
@@ -6164,7 +6289,7 @@ class Enemy{
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.15+pulse, 0, Math.PI*2); ctx.stroke();
     }
-    if(this.pack && (this.packSpeedBonus||1) > 1.1 && !underHeavyVisualLoad){
+    if(this.pack && !underHeavyVisualLoad){
       ctx.strokeStyle = 'rgba(255,255,255,0.4)';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.2, 0, Math.PI*2); ctx.stroke();
@@ -6274,6 +6399,7 @@ class Tower{
     this.gridX = gridX; this.gridY = gridY;
     this.x = gridX*TILE_SIZE + TILE_SIZE/2;
     this.y = gridY*TILE_SIZE + TILE_SIZE/2;
+    invalidateSpawnFlags();
   }
   create(type, gridX, gridY){
     this.id = idCounter++;
@@ -6304,6 +6430,7 @@ class Tower{
     this.goldMult = 1; // 🍀 Luck — recalculated properly in recomputeStats() once DEX is known
     this.barricadeContactSince = null; // gameTime when something first started attacking this barricade — the first point needs a full interval
     this.lastBarricadeHitAt = -99999; // BARRICADE only: gameTime of the last HP loss, for the BARRICADE_HIT_INTERVAL_MS rate limit
+    this.barricadeHpLabelUntil = 0;
     this.lastFireTime = -99999; // used for brief post-fire flourish animations (e.g. Mage's wand cast)
     this.killCount = 0;      // total kills — each one grants a small amount of EXP toward the tower's level
     this.bloodLustUntil = 0; // gameTime until the killstreak blood-lust aura fades
@@ -6646,7 +6773,10 @@ class Tower{
         this[stat]++; granted[stat]++;
       }
     }
+    const spendablePoints = Math.min(this.promotionCapacity(), rollPromotionDie() + rollPromotionDie());
+    this.statPoints += spendablePoints; // two additional promotion rolls become player-allocated points; promotion remains stat-only
     spawnFloatingText(this.x, this.y - 52, '💪+' + granted.str + ' 🏃+' + granted.dex + ' 🧠+' + granted.int, '#ffd700');
+    if(spendablePoints) spawnFloatingText(this.x, this.y - 68, '+' + spendablePoints + ' SPENDABLE', '#7dd3fc');
     refreshProgressionMilestones(this);
     this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
     // CA415 — see CHANGELOG.md § Code Archaeology
@@ -6690,13 +6820,13 @@ class Tower{
     let best = null, bestScore = -Infinity;
     for(const e of nearby){
       const d = Math.hypot(e.x-this.x, e.y-this.y);
-      if(d > range) continue;
+      if(d > range || d < minimumTargetDistance(this,e)) continue;
       const score = this.targetScore(e, d);
       if(score > bestScore){ bestScore = score; best = e; }
     }
     if(this.target && this.target.active){
       const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
-      if(d <= range){
+      if(d <= range && d >= minimumTargetDistance(this,this.target)){
         const currentScore = this.targetScore(this.target, d);
         const threshold = currentScore >= 0 ? currentScore*hysteresisMult : currentScore*hysteresisMultNeg;
         if(!best || best === this.target || bestScore <= threshold) return;
@@ -6718,7 +6848,7 @@ class Tower{
         skipScan = this.cooldownTimer > 0; // updateClericSmite/updatePopeSmite already no-op entirely in that state — no behavior change, just skips the scan that fed them nothing
       } else if(this.cooldownTimer > 0 && this.target && this.target.active){
         const dCur = Math.hypot(this.target.x-this.x, this.target.y-this.y);
-        if(dCur <= this.targetingRange) skipScan = true;
+        if(dCur <= this.targetingRange && dCur >= minimumTargetDistance(this,this.target)) skipScan = true;
         else this.target = null; // fell out of range mid-cooldown — drop it so the scan below finds a real target instead of the tower silently holding a dead aim until cooldown expires
       }
     }
@@ -6748,7 +6878,7 @@ class Tower{
         const predY = this.target.y + this.target.vy*timeToImpact;
         this.angle = Math.atan2(predY-this.y, predX-this.x);
       }
-    } else if(!recentlyEngaged && this.type !== 'MAGE'){
+    } else if((usesMinimumRangedRange(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')){
       // CA421 — see CHANGELOG.md § Code Archaeology
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
@@ -7291,20 +7421,11 @@ class Tower{
         const g = Math.round(57 + frac*(175-57));
         const b = Math.round(70 + frac*(80-70));
         ctx.font = 'bold 11px Verdana';
-        // BARRICADE-LABEL-BG-01 (1.6.5) — see CHANGELOG.md § [1.6.5]. This label sits at a fixed
-        // screen position every frame, right where floating combat text (damage numbers, gold/XP
-        // gains) drifts through constantly — this is exactly the chokepoint tile those spawn
-        // around. Plain text with nothing behind it reads as unreadable overlapping digits the
-        // instant a floating text passes through (e.g. "226/10" — two numbers on top of each
-        // other). A small dark backing chip keeps the barricade's own HP legible regardless of
-        // whatever floating text happens to be passing behind it that frame.
         const hpLabel = Math.round(this.hp) + '/10';
-        const labelW = ctx.measureText(hpLabel).width;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        roundedRectPath(ctx, this.x - labelW/2 - 4, this.y - 30, labelW + 8, 15, 3);
-        ctx.fill();
-        ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-        ctx.fillText(hpLabel, this.x, this.y - 22);
+        if(gameTime < (this.barricadeHpLabelUntil || 0)){
+          ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+          ctx.fillText(hpLabel, this.x, this.y - 22);
+        }
         const barW = 26, barY = this.y - 14;
         ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x-barW/2, barY, barW, 4);
         ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
@@ -7313,6 +7434,15 @@ class Tower{
       return;
     }
     if(isSelected){
+      if(usesMinimumRangedRange(this)){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, MIN_RANGED_ATTACK_RANGE, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,150,60,0.68)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5,4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if(this.type === 'AXEMAN'){
         const activeRange = this.axeMode === 'RANGE' ? this.range : this.meleeRange;
         const inactiveRange = this.axeMode === 'RANGE' ? this.meleeRange : this.range;
@@ -7362,7 +7492,9 @@ class Tower{
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
     // CA453 — see CHANGELOG.md § Code Archaeology
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const hasTargetPose = !!this.target || (!usesMinimumRangedRange(this) &&
+      (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -7648,7 +7780,12 @@ class Projectile{
         } else {
           hitEnemy.applyStun(700);
           spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '⚡ Shocked!', '#ffe14d');
-          const chainTarget = enemyPool.find(e => e.active && e !== hitEnemy && Math.hypot(e.x-hitEnemy.x, e.y-hitEnemy.y) <= 70);
+          let chainTarget = null;
+          for(const candidate of enemyPool){
+            if(!candidate.active || candidate === hitEnemy) continue;
+            const chainDx = candidate.x - hitEnemy.x, chainDy = candidate.y - hitEnemy.y;
+            if(chainDx*chainDx + chainDy*chainDy <= 4900){ chainTarget = candidate; break; }
+          }
           if(chainTarget){
             chainTarget.applyStun(400);
             chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false);
@@ -7795,7 +7932,10 @@ function decalCapacity(){
 const decals = [];
 // CA477 — see CHANGELOG.md § Code Archaeology
 let lastDecalExpirySweep = 0;
-const DECAL_EXPIRY_SWEEP_INTERVAL = 500;
+// Full-array expiry and settled-bake maintenance is bounded by the decal cap.
+// Running this sweep every 2s instead of twice per second cuts maintenance scans
+// by 75%; visible decals still render every frame and retain their exact lifetimes.
+const DECAL_EXPIRY_SWEEP_INTERVAL = 2000;
 // CA478 — see CHANGELOG.md § Code Archaeology
 let blowingLeaves = [];
 function spawnLeafGust(){
@@ -7848,9 +7988,12 @@ function updateAndDrawBlowingLeaves(ctx){
   ctx.restore();
 }
 const deathAnims = []; // lightweight, fully decoupled from Enemy/enemyPool — a corpse gets a brief
-// CA483 — see CHANGELOG.md § Code Archaeology
+const deathAnimPool = []; // PERF-DEATH-02 (1.6.21) — reuse tiny transient records across death bursts
 function spawnDeathAnim(x, y, emoji, radius){
-  deathAnims.push({ x, y, emoji, radius, startTime: presentationTime, duration: 220 });
+  const anim = deathAnimPool.pop() || {};
+  anim.x = x; anim.y = y; anim.emoji = emoji; anim.radius = radius;
+  anim.startTime = presentationTime; anim.duration = 220;
+  deathAnims.push(anim);
 }
 // CA484 — see CHANGELOG.md § Code Archaeology
 const BARRICADE_CHUNK_GRAVITY = 900;   // px/s^2
@@ -7915,9 +8058,17 @@ function drawBarricadeChunks(ctx){
   }
 }
 function updateDeathAnims(){
-  for(let i = deathAnims.length-1; i>=0; i--){
-    if(presentationTime - deathAnims[i].startTime > deathAnims[i].duration) deathAnims.splice(i, 1);
+  let write = 0;
+  const length = deathAnims.length;
+  for(let read = 0; read < length; read++){
+    const anim = deathAnims[read];
+    if(presentationTime - anim.startTime > anim.duration){
+      deathAnimPool.push(anim);
+      continue;
+    }
+    deathAnims[write++] = anim;
   }
+  deathAnims.length = write;
 }
 function drawDeathAnims(ctx){
   for(const d of deathAnims){
@@ -8249,6 +8400,8 @@ function spawnFootprint(x, y, color, angle, dragMult){
   };
   pushDecal(decal);
 }
+const MAX_WET_BLOOD_CHECKS_PER_TICK = 8;
+let wetBloodScanCursor = 0;
 function updateWalkingBlood(dt){
   // CA515 — see CHANGELOG.md § Code Archaeology
   if(!goreMode || decals.length === 0) return;
@@ -8269,14 +8422,27 @@ function updateWalkingBlood(dt){
     }
     // not currently leaving prints — check if standing in fresh blood to pick some up (throttled)
     e.wetCheckTimer = (e.wetCheckTimer||0) - dt;
-    if(e.wetCheckTimer > 0) continue;
+  }
+  // CA515A — stagger expensive decal searches so a crowd of enemies can't all
+  // scan the decal history on one tick. The rotating cursor prevents starvation.
+  const count = enemyPool.length;
+  if(!count) return;
+  const start = wetBloodScanCursor % count;
+  let visited = 0, checks = 0;
+  for(; visited < count && checks < MAX_WET_BLOOD_CHECKS_PER_TICK; visited++){
+    const e = enemyPool[(start + visited) % count];
+    if(!e.active || e.wetFeetSteps > 0 || e.wetCheckTimer > 0) continue;
     e.wetCheckTimer = 400 + Math.random()*200;
+    checks++;
     // CA517 — see CHANGELOG.md § Code Archaeology
     for(let i = decals.length-1; i >= Math.max(0, decals.length-220); i--){
       const d = decals[i];
       if(gameTime - d.spawnTime > 7000) continue; // only fresh (still-wet) blood transfers
       // CA518 — see CHANGELOG.md § Code Archaeology
-      if(Math.hypot(d.x-e.x, d.y-e.y) < e.radius+10+(d.footprintRadius||0)){
+      const pickupRadius = e.radius + 10 + (d.footprintRadius||0);
+      const pickupRadiusSq = pickupRadius * pickupRadius;
+      const pickupDx = d.x-e.x, pickupDy = d.y-e.y;
+      if(pickupDx*pickupDx + pickupDy*pickupDy < pickupRadiusSq){
         // CA519 — see CHANGELOG.md § Code Archaeology
         if(d.blobs && d.blobs.length && Math.hypot(e.vx,e.vy) > 5){
           const moveAngle = Math.atan2(e.vy, e.vx);
@@ -8298,6 +8464,7 @@ function updateWalkingBlood(dt){
       }
     }
   }
+  wetBloodScanCursor = (start + Math.max(1, visited)) % count;
 }
 // CA522 — see CHANGELOG.md § Code Archaeology
 const BLOOD_SATURATION_RADIUS = 26;
@@ -8446,12 +8613,18 @@ function drawDecals(ctx){
   if(presentationTime - lastDecalExpirySweep >= DECAL_EXPIRY_SWEEP_INTERVAL){
     lastDecalExpirySweep = presentationTime;
     let expiredBakedCount = 0;
-    for(let i = decals.length - 1; i >= 0; i--){
-      const d = decals[i];
+    // Compact once instead of splicing once per expired entry; repeated splices shift the
+    // remaining array each time and can turn a synchronized expiry into quadratic cleanup.
+    let write = 0;
+    const originalLength = decals.length;
+    for(let read = 0; read < originalLength; read++){
+      const d = decals[read];
       const age = presentationTime - d.spawnTime;
       const lifespan = d.lifespan || DECAL_LIFESPAN;
-      if(age >= lifespan){ if(d.baked) expiredBakedCount++; decals.splice(i, 1); } // actually expires now, not just capacity-recycled
+      if(age >= lifespan){ if(d.baked) expiredBakedCount++; continue; } // actually expires now, not just capacity-recycled
+      decals[write++] = d;
     }
+    decals.length = write;
     sweepSettledDecals(expiredBakedCount);
   }
   const bounds = decalViewBounds();
@@ -8705,7 +8878,7 @@ function updateParticles(dt){
       else if(p.y > WORLD_MAX_H-4 && p.vy > 0){ p.y = WORLD_MAX_H-4; p.vy *= -REST; }
     }
     p.vx *= p.friction; p.vy *= p.friction;
-    if(p.canPool && !p.pooled && !p.isGib && Math.hypot(p.vx,p.vy) < 6){
+    if(p.canPool && !p.pooled && !p.isGib && p.vx*p.vx + p.vy*p.vy < 36){
       p.pooled = true; // settled — leaves a tiny permanent stain instead of just fading out mid-air
       spawnDecal(p.x, p.y, hexToRgba(p.color, 0.5), true);
     }
@@ -9045,8 +9218,7 @@ class CatCompanion{
     if(this.age >= this.lifetime){ this.active = false; return; }
     if(!this.targetEnemy || !this.targetEnemy.active){
       // CA568 — see CHANGELOG.md § Code Archaeology
-      const nearby = queryNearby(enemyHash, this.x, this.y, 160).filter(e => e.active);
-      this.targetEnemy = nearby.length ? nearby[Math.floor(Math.random()*nearby.length)] : null;
+      this.targetEnemy = randomActiveEnemy(queryNearby(enemyHash, this.x, this.y, 160));
       if(!this.targetEnemy){ this.active = false; return; }
     }
     const orbitAngle = gameTime*0.004 + this.phase;
@@ -9087,9 +9259,9 @@ class SkeletonMinion{
     this.attackProgress = Math.max(0, this.attackProgress - dt/220);
     this.attackTimer -= dt;
     if(this.attackTimer > 0) return;
-    const nearby = queryNearby(enemyHash, this.x, this.y, this.range).filter(e => e.active);
-    if(!nearby.length) return; // stays raised and waiting — does not expire just for having nothing in range right now, only at round-complete
-    nearby[0].applyDamage(this.damage, this.sourceTower);
+    const target = firstActiveEnemy(queryNearby(enemyHash, this.x, this.y, this.range));
+    if(!target) return; // stays raised and waiting — does not expire just for having nothing in range right now, only at round-complete
+    target.applyDamage(this.damage, this.sourceTower);
     this.attackTimer = this.attackCooldown;
     this.attackProgress = 1;
   }
@@ -9593,7 +9765,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.moveTo(4,-29); ctx.lineTo(5,-20); ctx.stroke();
   } else if(type === 'BLOWDART'){
     // CA593 — see CHANGELOG.md § Code Archaeology
-    const mouthAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: rests up-right; engaged: tracks the target
+    const mouthAngle = extra.hasTarget ? angle : Math.PI/2 + 0.15; // relaxed: pipe held loosely down at the side; engaged: raised to the mouth and aimed at the target
     const faceSign = Math.cos(mouthAngle) >= 0 ? 1 : -1; // only used to mirror the decorative dart pouch
     // small dart pouch on the hip, opposite the blowing hand
     ctx.fillStyle = '#4a5a2a';
@@ -9602,7 +9774,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#2f3a1a'; ctx.lineWidth = 1;
     ctx.stroke();
     const mouthX = 0, mouthY = -21; // just under the head circle, above the shoulder line — the "mouth"
-    const hand = drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3*faceSign);
+    const hand = extra.hasTarget
+      ? drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3*faceSign)
+      : drawArmAndHand(ctx, shoulderX, shoulderY, mouthAngle, armLen*0.9, skinMain, 0.1);
     const handX = hand.handX, handY = hand.handY;
     const pipeAngle = mouthAngle;
     const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
@@ -9610,10 +9784,14 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // arm?") — only the mouth-hand was ever drawn. A real blowgun grip uses both hands, the same
     // way SQUIRTGUN/GUNALINDER right below already draw a main hand plus a supporting off-hand; the
     // off-hand reaches from the shoulder to a point partway along the pipe, steadying it.
-    const offGripX = handX + Math.cos(pipeAngle)*7*extra.weaponScale, offGripY = handY + Math.sin(pipeAngle)*7*extra.weaponScale;
-    const offAngle = Math.atan2(offGripY - shoulderY, offGripX - shoulderX);
-    const offDist = Math.hypot(offGripX - shoulderX, offGripY - shoulderY);
-    drawArmAndHand(ctx, shoulderX, shoulderY, offAngle, offDist, skinMain, 0.15*faceSign);
+    if(extra.hasTarget){
+      const offGripX = handX + Math.cos(pipeAngle)*7*extra.weaponScale, offGripY = handY + Math.sin(pipeAngle)*7*extra.weaponScale;
+      const offAngle = Math.atan2(offGripY - shoulderY, offGripX - shoulderX);
+      const offDist = Math.hypot(offGripX - shoulderX, offGripY - shoulderY);
+      drawArmAndHand(ctx, shoulderX, shoulderY, offAngle, offDist, skinMain, 0.15*faceSign);
+    } else {
+      drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 - 0.7, armLen*0.8, skinMain, -0.12);
+    }
     ctx.strokeStyle = '#5a7a2a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
@@ -9784,12 +9962,20 @@ function barricadeAttackReady(barricade){
 // One point off, with the wood-and-stone burst that sells it.
 function chipBarricade(barricade){
   barricade.lastBarricadeHitAt = gameTime;
+  barricade.barricadeHpLabelUntil = gameTime + 2000;
   barricade.hp = Math.max(0, barricade.hp - 1);
   barricade.barricadeChipUntil = gameTime + BARRICADE_CHIP_MS;
-  spawnFloatingText(barricade.x, barricade.y - 26, '-1 (' + barricade.hp + '/' + barricade.maxHp + ')', '#e63946');
+  spawnFloatingText(barricade.x, barricade.y - 26, '-1', '#e63946');
   spawnBarricadeDebris(barricade);
   playSound('hit', barricade.x);
   if(screenShakeEnabled){ screenShakeUntil = gameTime + 140; screenShakeMag = Math.max(screenShakeMag, 4); }
+  if(barricade.hp <= 0){
+    barricade.active = false;
+    activeBarricades.delete(barricade);
+    invalidateSpawnFlags();
+    spawnParticles(barricade.x, barricade.y, '#8a5a2b', 10);
+    playSound('death');
+  }
 }
 // CA605 — see CHANGELOG.md § Code Archaeology
 function spawnBarricadeDebris(barricade){
@@ -9969,9 +10155,9 @@ const enemyHashBucketPool = new Map();
 let spatialQueryCallsThisFrame = 0, hashBuildsThisFrame = 0, queryNearbyMaxResultLenSeen = 0;
 function buildEnemyHash(){
   hashBuildsThisFrame++;
+  // Fresh short-lived container avoids property deletion on a reused object; the bucket arrays
+  // themselves remain pooled. Do not keep a per-build key list: it is unnecessary for cleanup.
   const hash = {};
-  const usedKeys = buildEnemyHash._usedKeys || (buildEnemyHash._usedKeys = []);
-  usedKeys.length = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
     const k = cellKey(e.x, e.y);
@@ -9980,7 +10166,6 @@ function buildEnemyHash(){
       bucket = enemyHashBucketPool.get(k);
       if(bucket){ bucket.length = 0; } else { bucket = []; enemyHashBucketPool.set(k, bucket); }
       hash[k] = bucket;
-      usedKeys.push(k);
     }
     bucket.push(e);
   }
@@ -10002,6 +10187,18 @@ function queryNearby(hash, x, y, range){
   }
   if(queryNearbyScratch.length > queryNearbyMaxResultLenSeen) queryNearbyMaxResultLenSeen = queryNearbyScratch.length;
   return queryNearbyScratch;
+}
+function firstActiveEnemy(nearby){
+  for(const e of nearby) if(e.active) return e;
+  return null;
+}
+function randomActiveEnemy(nearby){
+  let activeCount = 0;
+  for(const e of nearby) if(e.active) activeCount++;
+  if(!activeCount) return null;
+  let selected = Math.floor(Math.random()*activeCount);
+  for(const e of nearby) if(e.active && selected-- === 0) return e;
+  return null;
 }
 
 /* =========================================================
@@ -10289,7 +10486,7 @@ let enemySpawnSerial = 0;
 function spawnWaveUnit(spec){
   const incomingRadius = SIZE_TIER_BANDS[spec.sizeTier].radiusMax;
   if(lastSpawnedEnemy && lastSpawnedEnemy.spawnSerial === lastSpawnedSerial && lastSpawnedEnemy.active && !lastSpawnedEnemy.escaped && !lastSpawnedEnemy.isBreakaway){
-    if(lastSpawnedEnemy.traveled < lastSpawnedEnemy.radius + incomingRadius + 8) return false;
+    if(lastSpawnedEnemy.traveled < enemySpawnClearance(lastSpawnedEnemy.radius, incomingRadius)) return false;
   }
   const e = acquireActive(enemyPool);
   if(!e) return false;
@@ -10300,6 +10497,10 @@ function spawnWaveUnit(spec){
   lastSpawnedEnemy = e;
   lastSpawnedSerial = e.spawnSerial;
   return true;
+}
+function enemySpawnClearance(previousRadius, incomingRadius){
+  // +24px leaves a visible body-width gap after accounting for both enemy radii.
+  return previousRadius + incomingRadius + 24;
 }
 // CA631 — see CHANGELOG.md § Code Archaeology
 const BOSS_WARNING_MS = 2600;
@@ -10445,14 +10646,28 @@ function startNextWave(){
   updateHUD();
 }
 // CA639 — see CHANGELOG.md § Code Archaeology
-function findHutPlacementTile(){
+function findHutPlacementTile(oldRegion, newRegion){
   if(!activeRegion) return null;
   const candidates = [];
-  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
-    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(pathCells.has(gx+','+gy)) continue;
-      candidates.push([gx,gy]);
-    }
+  const blockedPlacementTiles = new Set();
+  for(const key of sceneryMap.keys()){
+    const [sx, sy] = key.split(',').map(Number);
+    for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++) blockedPlacementTiles.add((sx+dx)+','+(sy+dy));
+  }
+  for(const e of enemyPool) if(e.active && e.isHutBuilding){
+    const bx=Math.floor(e.x/TILE_SIZE), by=Math.floor(e.y/TILE_SIZE);
+    for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++) blockedPlacementTiles.add((bx+dx)+','+(by+dy));
+  }
+  for(const t of towerPool) if(t.active) blockedPlacementTiles.add(t.gridX+','+t.gridY);
+  const finishTile = pathWaypointTiles[pathWaypointTiles.length-1];
+  const newlyOpened = oldRegion && newRegion
+    ? ringBoundaryTiles(newRegion).filter(t => t.x<oldRegion.x0 || t.x>oldRegion.x1 || t.y<oldRegion.y0 || t.y>oldRegion.y1)
+    : latestExpansionTiles;
+  for(const {x:gx,y:gy} of newlyOpened){
+    const key = gx+','+gy;
+    if(!isInActiveRegion(gx,gy) || pathCells.has(key) || blockedPlacementTiles.has(key)) continue;
+    if(finishTile && Math.abs(gx-finishTile.x)+Math.abs(gy-finishTile.y) < 3) continue; // keep camps off the finish approach
+    candidates.push([gx,gy]);
   }
   if(!candidates.length) return null;
   const [gx,gy] = candidates[Math.floor(Math.random()*candidates.length)];
@@ -10474,7 +10689,8 @@ function spawnHutGuardian(hutRef){
   const e = acquireActive(enemyPool);
   if(!e) return null; // pool exhausted — the hut just has fewer guardians than intended this time rather than blocking anything else
   // CA641 — see CHANGELOG.md § Code Archaeology
-  e.spawn('GRUNT', 3 * waveHpScale(waveIndex), false, false); // a real guard, much tankier than an ordinary wave Grunt at this point in the game, but still just a Grunt's own moveset/appearance — not a new enemy type to design and balance separately
+  const guardianHpMultiplier = 1.5 + Math.min(3, Math.max(0, waveIndex-1)*0.08);
+  e.spawn('GRUNT', guardianHpMultiplier * waveHpScale(waveIndex), false, false); // camp guards scale up gradually instead of opening at triple HP
   e.isGuardian = true;
   e.hutRef = hutRef;
   e.hutAnchorX = hutRef.x; e.hutAnchorY = hutRef.y;
@@ -10487,7 +10703,8 @@ function spawnHutGuardian(hutRef){
 function spawnHut(x, y){
   const hut = acquireActive(enemyPool);
   if(!hut) return null;
-  hut.spawn('GRUNT', 16 * waveHpScale(waveIndex), false, false); // GRUNT, not TANK — TANK's death branch pays a fixed flat stone amount that ignores this.bounty entirely, which would have silently swallowed the reward boost below; GRUNT keeps this on the normal gold path where the bounty multiplier actually applies. Cut from 40x to 16x per direct feedback ("hut has way too much health") — still meaningfully the toughest single thing on the board, just not absurdly so. Now also scaled by waveHpScale(waveIndex) (same curve every regular enemy uses) so a hut spawned early stays an early-game-appropriate fight rather than fixed mid-game strength — per direct feedback ("thats mid tier strenght early waves lower strength").
+  const hutHealthMultiplier = 1.5 + Math.min(6.5, Math.max(0, waveIndex-1)*0.18);
+  hut.spawn('GRUNT', hutHealthMultiplier * waveHpScale(waveIndex), false, false); // starts below the former 4x and ramps gradually toward 8x
   hut.emoji = '🛖'; // overridden from GRUNT's own default — this needs to read as a structure, not another enemy
   hut.isHutBuilding = true;
   hut.x = x; hut.y = y;
@@ -10502,10 +10719,10 @@ function spawnHut(x, y){
   spawnHutGuardian(hut);
   return hut;
 }
-function spawnHuts(){
-  const tile = findHutPlacementTile();
-  if(!tile) return; // no valid off-path tile found (a tiny starting region) — simply no camp this game rather than forcing a bad placement
-  spawnHut(tile.x, tile.y);
+function spawnHuts(oldRegion, newRegion){
+  const tile = findHutPlacementTile(oldRegion, newRegion);
+  if(!tile) return false; // no safe new tile — try again after a later expansion
+  return !!spawnHut(tile.x, tile.y);
 }
 // CA643 — see CHANGELOG.md § Code Archaeology
 const CHESS_PIECE_EMOJIS = ['♟','♙','♞','♘','♝','♗','♜','♖','♛','♕','♚','♔'];
@@ -10944,6 +11161,30 @@ function render(ctx){
 }
 // Debug mode readout — everything worth seeing in a screenshot or a recorded clip.
 function countActive(pool){ let n = 0; for(const item of pool) if(item.active) n++; return n; }
+const debugOverlayCanvasElement = document.getElementById('gameCanvas');
+const debugOverlayHudElement = document.getElementById('hud-top');
+let debugOverlayLayoutDirty = true;
+let debugOverlayBelowHudY = 6;
+function invalidateDebugOverlayLayout(){ debugOverlayLayoutDirty = true; }
+function getDebugOverlayBelowHudY(){
+  if(!debugOverlayLayoutDirty) return debugOverlayBelowHudY;
+  debugOverlayLayoutDirty = false;
+  const canvasRect = debugOverlayCanvasElement && debugOverlayCanvasElement.getBoundingClientRect();
+  const hudRect = debugOverlayHudElement && debugOverlayHudElement.getBoundingClientRect();
+  debugOverlayBelowHudY = canvasRect && hudRect && debugOverlayHudElement.style.display !== 'none'
+    ? Math.ceil(hudRect.bottom - canvasRect.top + 6)
+    : 6;
+  return debugOverlayBelowHudY;
+}
+window.addEventListener('resize', invalidateDebugOverlayLayout);
+window.addEventListener('orientationchange', invalidateDebugOverlayLayout);
+document.addEventListener('fullscreenchange', invalidateDebugOverlayLayout);
+let debugOverlayResizeObserver = null;
+if(typeof ResizeObserver !== 'undefined'){
+  debugOverlayResizeObserver = new ResizeObserver(invalidateDebugOverlayLayout);
+  if(debugOverlayCanvasElement) debugOverlayResizeObserver.observe(debugOverlayCanvasElement);
+  if(debugOverlayHudElement) debugOverlayResizeObserver.observe(debugOverlayHudElement);
+}
 function drawDebugOverlay(ctx){
   let onPath = 0, escaped = 0, dying = 0;
   for(const e of enemyPool){
@@ -10983,13 +11224,24 @@ function drawDebugOverlay(ctx){
   // (often 60+ monospace characters) regularly overflowed past the box's right edge. Box width is
   // measured against the actual longest line each frame (ctx.measureText()) instead of a
   // hardcoded guess, so it always fits whatever's currently shown.
+  const belowHudY = getDebugOverlayBelowHudY();
+  // Stay below the HUD. On short viewports, show the highest-priority lines that fit rather
+  // than moving the panel back underneath the Build button to keep every tower row visible.
+  const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / 14));
+  if(maxVisibleLines === 0) return;
+  const charWidth = ctx.measureText('M').width || 7;
+  const maxChars = Math.max(8, Math.floor((CANVAS_W - 24) / charWidth));
+  const visibleLines = lines.slice(0, maxVisibleLines).map(line =>
+    line.length > maxChars ? line.slice(0, maxChars - 1) + '…' : line
+  );
   let maxLineWidth = 0;
-  for(const line of lines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
-  const boxWidth = Math.round(maxLineWidth) + 12;
+  for(const line of visibleLines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+  const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
+  const boxHeight = visibleLines.length * 14 + 8;
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(6, 30, boxWidth, lines.length * 14 + 8);
+  ctx.fillRect(6, belowHudY, boxWidth, boxHeight);
   ctx.fillStyle = '#7ee787';
-  lines.forEach((line, i) => ctx.fillText(line, 12, 34 + i * 14));
+  visibleLines.forEach((line, i) => ctx.fillText(line, 12, belowHudY + 4 + i * 14));
   ctx.restore();
 }
 function drawFpsCounter(ctx){
@@ -11534,18 +11786,19 @@ function loop(now){
   }
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
-  const MAX_TICKS_PER_FRAME = 8; // safety cap for high speed multipliers (5x/10x) — lowered from 90: a slow/loaded frame at 5x-10x speed was piling up 30+ catch-up ticks in a single rAF callback (each tick re-running collision relaxation + spatial hash queries), which starved the render thread and produced a feedback loop that kept the game pinned at ~6 FPS until the wave cleared. Capping at 8 and discarding any leftover debt below keeps one rAF callback's simulation cost bounded — at extreme speed/density the game will now visibly slow down (fewer ticks per real second) instead of stalling the renderer.
+  // Keep one animation-frame's simulation work bounded under load/high speed; discard excess debt below.
+
   resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
   resetRenderPhaseTime(); // same pattern, for the render() breakdown below — see renderPhaseTime/resetRenderPhaseTime
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
-  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_TICKS_PER_FRAME && gameState === 'PLAYING'){
+  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_SIMULATION_TICKS_PER_FRAME && gameState === 'PLAYING'){
     update(FIXED_DT);
     accumulator -= FIXED_DT;
     ticksThisFrame++;
   }
   // CA721 — see CHANGELOG.md § Code Archaeology
-  if(ticksThisFrame >= MAX_TICKS_PER_FRAME) accumulator = 0;
+  if(ticksThisFrame >= MAX_SIMULATION_TICKS_PER_FRAME) accumulator = 0;
   perfStats.updateMs = performance.now() - updateStart;
   flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
@@ -11647,11 +11900,15 @@ let hudFitSignature = '';
 function fitHudTopToOneLine(force){
   const hud = document.getElementById('hud-top');
   if(!hud) return;
-  const sig = (document.getElementById('livesVal')?.textContent||'') + '|' + (document.getElementById('goldVal')?.textContent||'') + '|' + (document.getElementById('waveVal')?.textContent||'') + '|' + window.innerWidth;
-  if(!force && sig === hudFitSignature) return; // nothing that could affect natural width has changed — skip the reflow
+  const buildLabel = document.getElementById('buildBtn')?.textContent || '';
+  const sig = String(window.innerWidth) + '|' + String(hud.clientWidth) + '|' + buildLabel;
+  if(!force && sig === hudFitSignature) return; // counter updates must not resize the full bar after every kill
   hudFitSignature = sig;
   hud.style.transform = 'scale(1)'; // reset before measuring, so scrollWidth reflects natural unscaled size
-  const naturalWidth = hud.scrollWidth;
+  // Gold-gain popups are absolutely positioned outside normal flow; scrollWidth includes them
+  // in some browsers and made the fit scale pulse when a kill displayed a reward.
+  const naturalWidth = Array.from(hud.children).reduce((sum, child)=>sum+child.getBoundingClientRect().width,0)
+    + Math.max(0,hud.children.length-1)*(parseFloat(getComputedStyle(hud).columnGap)||0) + 16;
   const availableWidth = window.innerWidth - 12; // small side margin so it never touches the screen edges
   if(naturalWidth > availableWidth){
     // CA732 — see CHANGELOG.md § Code Archaeology
@@ -12178,7 +12435,7 @@ function updateHUDImmediate(){
   refreshTrayUI();
   // CA756 — see CHANGELOG.md § Code Archaeology
   if(towerModalEl && !towerModalEl.classList.contains('hidden')) buildTowerModal();
-  fitHudTopToOneLine(); // guarded internally — only re-measures when gold/lives/wave digit count actually changed
+  fitHudTopToOneLine(); // guarded internally — only re-measures when the available layout changes
 }
 
 function refreshTrayUI(){
@@ -12890,7 +13147,7 @@ function generateDebugLog(){
     'browser itself is delaying rAF, e.g. touch/compositor contention during a pan or pinch gesture, ' +
     'not the game\'s own code)\n';
   s += 'Worst wall-clock gap this session: ' + perfStats.worstWallGapMs.toFixed(2) + 'ms, at wave ' + perfStats.worstWallGapAtWave + '\n';
-  s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap 90)\n';
+  s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap ' + MAX_SIMULATION_TICKS_PER_FRAME + ')\n';
   s += 'Worst frame this session: ' + perfStats.worstFrameMs.toFixed(2) + 'ms, at wave ' + perfStats.worstFrameAtWave +
     ', ' + perfStats.worstFrameTicks + ' ticks that frame (separate from the rolling-window max above — ' +
     'this persists even after the spike scrolls out of the last ' + PERF_HISTORY_SIZE + '-frame window)\n';
@@ -12907,6 +13164,9 @@ function generateDebugLog(){
   s += 'Particles visible/total: ' + perfStats.visibleParticles + '/' + perfStats.totalParticles + '\n';
   s += 'Floating texts visible/total: ' + perfStats.visibleFloatingTexts + '/' + perfStats.totalFloatingTexts +
     '  (projectiles remain uncounted here — see Entity Pools below for their active count)\n\n';
+  s += 'Enemy death handler: ' + enemyDeathTiming.count + ' kills; mean ' + (enemyDeathTiming.count ? enemyDeathTiming.totalMs/enemyDeathTiming.count : 0).toFixed(2) +
+    'ms, max ' + enemyDeathTiming.maxMs.toFixed(2) + 'ms, >=8ms ' + enemyDeathTiming.over8ms +
+    ' (synchronous death logic only; excludes later animation/render cost)\n';
 
   s += 'UPDATE() PHASE BREAKDOWN (ms spent this frame, across all ticks that ran)\n';
   s += '---------------------------------------------------------------------------\n';
@@ -13357,6 +13617,7 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
   if(!selectedTower) return;
   gold += selectedTower.sellValue();
   selectedTower.active = false;
+  invalidateSpawnFlags();
   activeBarricades.delete(selectedTower);
   selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false;
@@ -13384,6 +13645,7 @@ document.getElementById('inspStoreBtn').addEventListener('pointerdown', (e) => {
   if(!selectedTower || selectedTower.type !== 'BARRICADE') return;
   const x = selectedTower.x, y = selectedTower.y;
   selectedTower.active = false;
+  invalidateSpawnFlags();
   activeBarricades.delete(selectedTower);
   spawnGroundItem(x, y, BARRICADE_ITEM);
   spawnFloatingText(x, y - 20, '📦 Ready to carry', '#7dd3fc');
@@ -13602,6 +13864,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   startScreen.classList.add('hidden');
   document.getElementById('hud-top').style.display = 'flex';
+  invalidateDebugOverlayLayout();
   // CA788 — see CHANGELOG.md § Code Archaeology
   fitHudTopToOneLine(true);
   positionZoomControls(); // hud-top just went from display:none (height 0) to visible — this is the one place its real height needs recalculating outside of an actual resize/orientation-change, both already covered by their own listeners
