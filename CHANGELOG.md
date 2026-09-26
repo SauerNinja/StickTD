@@ -1,5 +1,161 @@
 # Changelog
 
+## [1.6.12] - 2026-09-26 — Path growth is now genuinely randomized — a different spiral shape every game
+- **Direct request**: "make the path grow randomly and masterfully so it's a unique experience
+  every time."
+- **What was actually deterministic**: every expansion connected the new arc at the single
+  geometrically-closest point on the new ring's boundary — fully determined by map size and
+  position, with the only per-game randomness being the 2-3 tile arc length. Over dozens of
+  expansions in a full game, this meant the overall spiral shape barely varied between playthroughs.
+- **The fix**: the connection point is now jittered by up to 2 tiles either direction along the
+  ring's boundary, every single expansion (`IDX_JITTER_RANGE = 2`). A small per-expansion jitter
+  compounds into a genuinely different overall path shape by the time a game reaches its 15th-30th
+  expansion, while staying bounded enough that bridges stay short and the result still reads as a
+  deliberate spiral rather than a random walk — "masterfully" random, not chaotic.
+- **Verified, not assumed**: ran the actual path/region functions across 50 independent randomized
+  playthroughs of 30 expansions each (1,500 expansion events total) — zero connectivity breaks, zero
+  out-of-bounds spawns. Separately confirmed three runs of 15 expansions each land at visibly
+  different final spawn positions and region shapes, confirming the variety is real, not a no-op.
+  `node --check` passed clean.
+
+## [1.6.11] - 2026-09-26 — The real spiral fix: buildable tiles now form a corridor around the path, not a rectangle
+- **Direct report, with a screenshot**: "that entire bottom green line isn't needed... the green
+  blocks should be like bordering the path as the path grows in zigs and zags and spirals."
+- **Root cause, finally found**: `activeRegion` is a plain rectangle, and `isInActiveRegion()` — the
+  single function everything (tower placement, map rendering) checks for "is this tile buildable"
+  — treated EVERY tile inside that rectangle as buildable, unconditionally. The 1.6.7 fix only
+  changed how FAST the rectangle grew and toward which edges; it never addressed that a rectangle
+  fundamentally can't express "just border the path" once the path has zigzagged around inside it
+  over several expansions — the rectangle's full interior fills in as grass regardless, including
+  wide areas the path never actually visits. That's the literal "bottom green line" in the
+  screenshot.
+- **The actual fix**: a new `nearPathTileSet` — every tile within `PATH_BUILDABLE_MARGIN` (2 tiles)
+  of any path tile — rebuilt every time the path changes (folded into the existing
+  `rebuildPathCellsAndPx()` hook, so every call site picks it up automatically with no missed
+  spots). `isInActiveRegion()` now requires a tile to be in this corridor AND inside the rectangle,
+  instead of the rectangle alone. `activeRegion` itself is untouched and still governs the outer
+  bounds (camera framing, save state, hut placement) — only the buildable/visible-grass
+  determination changed.
+- **Also fixed the map-painting side**, which had the same bug in a second place:
+  `paintNewRingTiles()` (the incremental map-cache patcher from 1.5.6) was painting every non-path
+  tile in a newly-revealed ring as grass unconditionally, with no `isInActiveRegion()` check at all
+  — the direct visual cause of the bug. Now matches the pattern `repaintFinishCarpetFootprint()`
+  right above it already used correctly: check `isInActiveRegion()`, paint plain dirt for anything
+  outside the corridor. `drawMap()` (the full-rebake fallback) already checked `isInActiveRegion()`
+  correctly and needed no change.
+- **Verified with a standalone simulation** against the real path/region functions across 20
+  expansions: only 63% of the bounding rectangle's area is now actually buildable (down from 100%
+  before this fix) — confirming the corridor is genuinely cutting the wasted area rather than just
+  looking different. Every one of 52 simulated path tiles still had at least 2 adjacent buildable
+  tiles, confirming towers always have somewhere to go near the path — no dead zones introduced.
+  `node --check` passed clean.
+
+## [1.6.10] - 2026-09-26 — Extended the heavy-load detail reduction to tower auras, plus a self-caught bug
+- **Extended `underHeavyVisualLoad`** (from 1.6.9) to three more purely-cosmetic per-tower draw
+  paths, consistent with the same reasoning: the stat-scroll icon's glow pulse (`drawTowerScroll()`),
+  the elemental melee swing arc (`drawElementSwingArc()`), and the Berserker's bloodlust aura
+  (`drawBloodLustAura()`) — the last of these already had a cheaper Low-graphics branch, now also
+  used under heavy load regardless of the player's own graphics setting.
+- **Caught and fixed my own mistake before shipping it**: my first pass at extending
+  `drawBloodLustAura()` accidentally dropped the `return;` and closing brace from its cheap-path
+  branch, which would have caused a `ctx.save()`/`restore()` mismatch and made the function fall
+  through into the expensive gradient path regardless of the condition — silently undoing the whole
+  point of the change, and leaking canvas state besides. Caught it by re-diffing against the
+  original function structure line-for-line before shipping, not just running `node --check` (which
+  can't catch a logic error like this — it was still syntactically valid JavaScript). Fixed and
+  re-verified against the original structure.
+- **Deliberately stopped there**: two more candidates (`drawElementTrail()` and the magic-missile
+  trail, both per-projectile cosmetic effects) were identified as further extension candidates, but
+  making that same kind of mistake once in this round was reason enough to stop rather than push
+  another multi-line edit through with the same rushed care. Left untouched, flagged for a future
+  pass done more carefully rather than rushed to match this round's momentum.
+- `node --check` passed clean, and `drawBloodLustAura()`'s structure was manually re-diffed against
+  the pre-edit original to confirm the fix.
+
+## [1.6.9] - 2026-09-26 — Adaptive detail reduction under heavy battle load (the real fix for the 42.9ms spike)
+- **Measured, not guessed**: a real debug log showed `drawDepthSortedLayer()`'s worst-ever frame at
+  42.9ms. Checked the actual code before touching anything — the sort inside that function handles
+  at most a few hundred items (microseconds, not milliseconds); the real cost is the per-actor
+  `draw()` calls it makes for every visible enemy and tower, each one procedurally redrawing full
+  vector art from scratch every frame. An incremental sort would have shaved almost nothing off
+  that number — the actual lever is cheapening those draws exactly when there's enough on screen
+  for it to matter.
+- **New**: `underHeavyVisualLoad`, recomputed once per rendered frame from the previous frame's
+  visible-enemy count (`HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD = 40`). Deliberately scoped to REUSE the
+  exact same skip-branches `graphicsQuality === 'low'` already exercises (killstreak glow, shadow
+  blur) rather than inventing new ones — those paths are already proven safe by everyone who plays
+  on Low settings today. Extended to Enemy.draw()'s translucent status-aura RINGS (slow/burn/
+  poison/pile-blocked/heals/pack) — explicitly NOT the status ICONS (`drawStatusIcons()` calls) or
+  the shield ring, so crowd-control and shield feedback stay fully readable regardless of load; only
+  the purely decorative reinforcement rings drop.
+- **Why this can't break the game**: every single change gated behind `underHeavyVisualLoad` is a
+  cosmetic-only skip inside a `draw()` method — never touches `this.x`/`this.y`, damage, targeting,
+  or any other simulation state (the same AGENTS.md §4 invariant the lunge/recoil cosmetics already
+  respect). Worst case if something's missed: a battle looks slightly plainer at high enemy counts.
+  Nothing about hit detection, movement, or game state can be affected by this change.
+- `node --check` passed clean.
+
+## [1.6.8] - 2026-09-26 — Collision spatial hash now built once per frame instead of up to 3x
+- **Follow-up on the previously-approved lag micro-optimization** ("if it helps and doesn't break
+  gameplay yes, if it makes it less laggy yes"). `resolveEnemyCollisions()` ran up to 3 relaxation
+  passes per frame, rebuilding the full spatial hash inside EVERY pass. The already-existing
+  early-exit (a pass that corrects nothing stops the loop) already skipped this for settled/idle
+  frames — the real remaining cost was a dense, actively-resolving crowd triggering all 3 passes,
+  and therefore 3 full hash rebuilds, in a single frame.
+- **Changed**: the hash is now built once, before the pass loop, and reused across all 3 passes.
+  Per-pass displacement is bounded by `overlap * COLLISION_RELAX_SPLIT` — a few pixels at most —
+  which essentially never moves an enemy across a hash-cell boundary within one frame's worth of
+  passes, so this costs no real collision accuracy.
+- **Not attempted this round**: the incremental (nearly-sorted) depth-sort — that one needs
+  persistent item identity across frames to actually pay off, which is a bigger structural change
+  to the depth-sort pool than a safe drop-in swap, so it's still pending a dedicated pass.
+- **Not attempted this round, and not expected to help runtime lag even if done**: trimming the
+  attract-mode idle loop or dropping the dev-only self-test harness from the shipped file. Both are
+  file-size/organization items — neither runs during actual gameplay, so removing them wouldn't
+  reduce in-game frame time at all, only shave a little off initial parse size. Held off rather than
+  spend risk budget on something that doesn't address the actual "laggy when it gets big" complaint;
+  the map-growth-locality fix (1.6.7) and this hash-build consolidation are the two changes that
+  actually touch runtime performance.
+- `node --check` passed clean.
+
+## [1.6.7] - 2026-09-26 — Big feedback round: Blowdart art/unlock/overshoot, hut pushback, map growth locality, speed/spacing
+- **Fixed a real bug**: "swordsman still causing pushback on buildings like hut." Traced it —
+  `dodgeEnemyFromSwing()` had no `isHutBuilding` guard, so a missed melee swing against a Hut
+  physically shoved the building 7px sideways every time. Buildings don't dodge; only living
+  enemies do. Guarded.
+- **Changed Blowdart's unlock condition**: was gated by the shared 500-stat specialization
+  threshold every other stat-specialization tower uses (Gatling, Marksman, Hammerman, etc.). Added
+  a per-target `SPECIALIZATION_THRESHOLD_OVERRIDE` map so Blowdart specifically unlocks at 250 DEX,
+  direct request, with every other specialization tower completely unaffected. Wired consistently
+  across the progress-text hint, the actual unlock check, and the tower-panel UI hint.
+- **Fixed Blowdart's missing arm**: "where's his other arm?" — confirmed. It only ever drew one
+  hand holding the pipe, while its siblings Squirtgun and Gunalinder both draw a main hand plus an
+  off-hand support. Added the missing off-hand grip, reaching from the shoulder to a point partway
+  along the pipe, same as a real two-handed blowgun grip.
+- **Fixed the Blowdart overshoot bug**: "the projectile actually flies by the unit and then the
+  damage registers like 2 seconds after" — this is the same overshoot pattern fixed for Archer/
+  Marksman/Sniper in 1.5.8. Extended the same exact launch-time intercept to Blowdart/Squirtgun/
+  Blow Gunner, while keeping the mid-flight homing correction as the safety net this time (not
+  repeating 1.5.6's original mistake of removing it).
+- **Fixed map growth locality/lag**: "way too much growth happening per expansion and it's not
+  focused on the road — the grass should just be next to the road, not a full scene growing in the
+  other direction." Confirmed: `beginNextRingReveal()` grew the region's bounding box by 1 tile on
+  ALL FOUR sides every single expansion, regardless of which direction the path was actually
+  heading. New `nextRegionTowardPathTip()` only grows the edges the path's current tip is actually
+  near. Simulated against the real path functions: at a ~17x18 region, the old scheme would add
+  ~74 tiles in one expansion; the new one added 16 — roughly 4-5x fewer tiles baked/rendered per
+  expansion at scale, directly addressing both the lag and the "ballooning into empty space" look.
+  Verified path connectivity held and the region never stalled across 30 simulated expansions.
+- **Enemies slower and more spread out, again**: "I still don't see it, need much more" /
+  "that will help a lot, slower and more space please." Every enemy speed cut a further 30% on top
+  of 1.6.1's already-applied -25% (≈47.5% below the original values). Queued-lane spacing
+  (`QUEUE_GAP_MULTIPLIER`) raised from 1.4x to 2.2x.
+- **Investigated, not reproduced**: the reported debug-overlay box-width regression. Checked all 6
+  screenshots and all 40 sampled frames of the attached video — the box resized correctly around
+  its content in every single one. Left the code as-is rather than guess at a fix for a bug I
+  couldn't find; flagged for the user to send the specific frame if it recurs.
+- `node --check` passed clean on the final extracted script.
+
 ## [1.6.6] - 2026-09-25 — Fixed evolved towers silently failing to place, and corrected Blowdart's cost/unlock data
 - **Direct report**: "i try to build blowdart and nothing happens, also way too cheap."
 - **Root cause of "nothing happens"**: the tile-placement confirm handler re-checked

@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.6'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.12'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1463,6 +1463,15 @@ const ATTUNEMENT_THRESHOLD = 100;
 const MELEE_SWEEP_MAX_TARGETS = 3;
 const MELEE_SWEEP_FALLOFF = 0.35; // each successive target (closest-first) takes 35% less than the one before it, compounding
 const SPECIALIZATION_THRESHOLD = 500;
+// BLOWDART-UNLOCK-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. Blowdart unlocks at a lower DEX bar
+// than the shared specialization threshold every other stat-specialization tower uses — direct
+// request. Kept as a per-target override map (rather than changing SPECIALIZATION_THRESHOLD
+// itself) so Gatling/Marksman/Hammerman/Axeman/Spearman/Necromancer/Snapcaster/Cleric/Cat Snapper
+// are all completely unaffected.
+const SPECIALIZATION_THRESHOLD_OVERRIDE = { BLOWDART: 250 };
+function specializationThresholdFor(targetType){
+  return SPECIALIZATION_THRESHOLD_OVERRIDE[targetType] !== undefined ? SPECIALIZATION_THRESHOLD_OVERRIDE[targetType] : SPECIALIZATION_THRESHOLD;
+}
 const QUASAR_MIN_PER_STAT = 300;   // Quasar: 1000 total with >= 300 in each stat (e.g. 400/300/300)
 const POPE_TOTAL_REQUIREMENT = 750; // Pope: 500 INT plus 750 combined trained stats on a Cleric
 const ATTUNEMENTS = { str: 'FIRE', dex: 'ELECTRIC', int: 'ICE' };
@@ -1887,32 +1896,34 @@ const CONFIG = {
   ENEMIES: {
     // CA068 — see CHANGELOG.md § Code Archaeology. BALANCE-01 (1.6.1) — see CHANGELOG.md §
     // [1.6.1]: every baseHp +15%, every speed -25% from this table's original values.
-    GRUNT:  { emoji:'😡', baseHp:84,  speed:38,  bounty:6,  radius:15, armor:0, breakawayChance:0.02, breakDamage:6 },
-    SWARM:  { emoji:'🐜', baseHp:31,  speed:59,  bounty:2,  radius:9,  armor:0, breakawayChance:0.02, breakDamage:4 },
-    TANK:   { emoji:'🗿', baseHp:308, speed:20,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:10 },
-    RUNNER: { emoji:'🥷', baseHp:63,  speed:81,  bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:6 },
-    BOSS:   { emoji:'👹', baseHp:3087,speed:16,  bounty:173,radius:34, armor:8, breakawayChance:0,    breakDamage:0 },
+    // BALANCE-02 (1.6.7) — see CHANGELOG.md § [1.6.7]: direct follow-up ("still don't see it, need
+    // much more") — every speed cut a further 30% on top of the 1.6.1 pass (≈47.5% below original).
+    GRUNT:  { emoji:'😡', baseHp:84,  speed:27,  bounty:6,  radius:15, armor:0, breakawayChance:0.02, breakDamage:6 },
+    SWARM:  { emoji:'🐜', baseHp:31,  speed:41,  bounty:2,  radius:9,  armor:0, breakawayChance:0.02, breakDamage:4 },
+    TANK:   { emoji:'🗿', baseHp:308, speed:14,  bounty:16, radius:22, armor:6, breakawayChance:0.02, breakDamage:10 },
+    RUNNER: { emoji:'🥷', baseHp:63,  speed:57,  bounty:9,  radius:12, armor:0, breakawayChance:0.02, breakDamage:6 },
+    BOSS:   { emoji:'👹', baseHp:3087,speed:11,  bounty:173,radius:34, armor:8, breakawayChance:0,    breakDamage:0 },
     // CA069 — see CHANGELOG.md § Code Archaeology
-    SANTA:  { emoji:'🎅', baseHp:7716,speed:15,  bounty:400,radius:38, armor:10, breakawayChance:0,   breakDamage:0 },
+    SANTA:  { emoji:'🎅', baseHp:7716,speed:10,  bounty:400,radius:38, armor:10, breakawayChance:0,   breakDamage:0 },
     // CA070 — see CHANGELOG.md § Code Archaeology
-    COOKIE: { emoji:'🍪', baseHp:25,  speed:88,  bounty:3,  radius:9,  armor:0, breakawayChance:0,    breakDamage:2 },
+    COOKIE: { emoji:'🍪', baseHp:25,  speed:62,  bounty:3,  radius:9,  armor:0, breakawayChance:0,    breakDamage:2 },
     // CA071 — see CHANGELOG.md § Code Archaeology
-    CHESS:  { emoji:'♟', baseHp:150, speed:28,  bounty:14, radius:14, armor:3, breakawayChance:0.9,  breakDamage:9 },
-    TROLL:  { emoji:'🧌', baseHp:183, speed:35,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
-    FIRE:   { emoji:'🔥', baseHp:77,  speed:49,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
-    ICE:    { emoji:'🧊', baseHp:84,  speed:40,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
-    SPLITTER: { emoji:'🦠', baseHp:98,  speed:32,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
-    SPLITMINI:{ emoji:'🦠', baseHp:33,  speed:46,  bounty:2,  radius:8,  armor:0, breakawayChance:0,    breakDamage:2 },
-    HEALER: { emoji:'💉', baseHp:120, speed:30,  bounty:13, radius:15, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
-    SHIELDED: { emoji:'🛡️', baseHp:133, speed:27,  bounty:12, radius:16, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
-    ZOMBIE: { emoji:'🧟', baseHp:210, speed:17,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:7, isUndead:true },
-    WRAITH: { emoji:'👻', baseHp:53,  speed:70,  bounty:9,  radius:12, armor:4, breakawayChance:0.04, breakDamage:5, isUndead:true },
-    SKELETON: { emoji:'🦴', baseHp:91,  speed:32,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
-    WOLF: { emoji:'🐺', baseHp:45,  speed:54,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:5, pack:true },
-    REAPER: { emoji:'💀', baseHp:253, speed:24, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:7, isUndead:true },
-    BOULDER: { emoji:'🪨', baseHp:365, speed:19, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:8, splits:true },
-    ROCKLET: { emoji:'🪨', baseHp:124, speed:26, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:4 },
-    MONARCH: { emoji:'🦋', baseHp:38,  speed:84,  bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:3 }
+    CHESS:  { emoji:'♟', baseHp:150, speed:20,  bounty:14, radius:14, armor:3, breakawayChance:0.9,  breakDamage:9 },
+    TROLL:  { emoji:'🧌', baseHp:183, speed:24,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
+    FIRE:   { emoji:'🔥', baseHp:77,  speed:34,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
+    ICE:    { emoji:'🧊', baseHp:84,  speed:28,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
+    SPLITTER: { emoji:'🦠', baseHp:98,  speed:22,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
+    SPLITMINI:{ emoji:'🦠', baseHp:33,  speed:32,  bounty:2,  radius:8,  armor:0, breakawayChance:0,    breakDamage:2 },
+    HEALER: { emoji:'💉', baseHp:120, speed:21,  bounty:13, radius:15, armor:0, breakawayChance:0.02, breakDamage:5, healsAllies:true, holyLifesteal:true },
+    SHIELDED: { emoji:'🛡️', baseHp:133, speed:19,  bounty:12, radius:16, armor:0, breakawayChance:0.02, breakDamage:6, hasShield:true },
+    ZOMBIE: { emoji:'🧟', baseHp:210, speed:12,  bounty:14, radius:19, armor:9, breakawayChance:0.02, breakDamage:7, isUndead:true },
+    WRAITH: { emoji:'👻', baseHp:53,  speed:49,  bounty:9,  radius:12, armor:4, breakawayChance:0.04, breakDamage:5, isUndead:true },
+    SKELETON: { emoji:'🦴', baseHp:91,  speed:22,  bounty:12, radius:15, armor:6, breakawayChance:0.02, breakDamage:5, revives:true, isUndead:true },
+    WOLF: { emoji:'🐺', baseHp:45,  speed:38,  bounty:7,  radius:11, armor:0, breakawayChance:0.03, breakDamage:5, pack:true },
+    REAPER: { emoji:'💀', baseHp:253, speed:17, bounty:23, radius:20, armor:10, breakawayChance:0.02, breakDamage:7, isUndead:true },
+    BOULDER: { emoji:'🪨', baseHp:365, speed:13, bounty:18, radius:23, armor:5, breakawayChance:0.02, breakDamage:8, splits:true },
+    ROCKLET: { emoji:'🪨', baseHp:124, speed:18, bounty:5,  radius:13, armor:0, breakawayChance:0,    breakDamage:4 },
+    MONARCH: { emoji:'🦋', baseHp:38,  speed:59,  bounty:6,  radius:10, armor:0, breakawayChance:0.02, breakDamage:3 }
   },
   SCENERY: {
     coverage: 0.16,          // fraction of buildable (non-path) tiles scattered with scenery at game start
@@ -2220,11 +2231,35 @@ function expansionCost(){
 function regionFullyExpanded(){
   return activeRegion.x0 <= 0 && activeRegion.y0 <= 0 && activeRegion.x1 >= COLS-1 && activeRegion.y1 >= ROWS-1;
 }
+// MAP-CORRIDOR-01 (1.6.11) — see CHANGELOG.md § [1.6.11]. Direct report, with a screenshot: "that
+// entire bottom green line isn't needed... the green blocks should be like bordering the path."
+// Root cause: activeRegion is a plain rectangle, and isInActiveRegion() below used to treat EVERY
+// tile inside it as buildable — so once the path zigzagged around within that rectangle over
+// several expansions, the rectangle's full interior filled in as grass, including wide areas the
+// path never actually goes near. nearPathTileSet is the actual fix: a corridor of tiles within
+// PATH_BUILDABLE_MARGIN of any path tile, rebuilt every time the path changes (same hook point as
+// pathCells/waypointsPx below), and required by isInActiveRegion() as a hard filter on top of the
+// rectangle check — a tile only counts as buildable if it's both inside the region AND near the
+// path, so the visible shape is a corridor hugging the path's zigs and zags, not the full rectangle.
+const PATH_BUILDABLE_MARGIN = 2;
+let nearPathTileSet = new Set();
+function rebuildNearPathTileSet(){
+  const next = new Set();
+  for(const tile of pathWaypointTiles){
+    for(let dx = -PATH_BUILDABLE_MARGIN; dx <= PATH_BUILDABLE_MARGIN; dx++){
+      for(let dy = -PATH_BUILDABLE_MARGIN; dy <= PATH_BUILDABLE_MARGIN; dy++){
+        next.add((tile.x+dx) + ',' + (tile.y+dy));
+      }
+    }
+  }
+  nearPathTileSet = next;
+}
 function rebuildPathCellsAndPx(){
   pathCells = new Set(pathWaypointTiles.map(p => p.x+','+p.y));
   waypointsPx = pathWaypointTiles.map(p => ({
     x: p.x*TILE_SIZE + TILE_SIZE/2, y: p.y*TILE_SIZE + TILE_SIZE/2
   }));
+  rebuildNearPathTileSet(); // MAP-CORRIDOR-01 (1.6.11) — see CHANGELOG.md § [1.6.11]
 }
 // CA092 — see CHANGELOG.md § Code Archaeology
 function buildSpiralPathTiles(region){
@@ -2329,6 +2364,16 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
     if(d < bestD){ bestD = d; idx = i; }
   }
   const n = ring.length;
+  // MASTERFUL-SPIRAL-01 (1.6.12) — see CHANGELOG.md § [1.6.12]. Direct request: "make the path
+  // grow randomly and masterfully so it's a unique experience every time." Every prior expansion
+  // always connected at the single geometrically-closest ring point — fully deterministic given the
+  // map size, so the overall spiral shape barely varied game to game. Jittering the connection
+  // point by a few tiles either way, every single expansion, compounds into a genuinely different
+  // overall path shape each playthrough. Bounded small (±2) so bridges stay short and the result
+  // still reads as a clean, deliberate spiral rather than a random walk.
+  const IDX_JITTER_RANGE = 2;
+  const jitter = Math.floor(Math.random() * (IDX_JITTER_RANGE*2+1)) - IDX_JITTER_RANGE;
+  idx = ((idx + jitter) % n + n) % n;
   const len = Math.max(1, Math.min(arcLength || n, n));
   const arc = [];
   for(let k=len-1; k>=0; k--) arc.push(ring[(idx - k + n) % n]); // arc[arc.length-1] === ring[idx], the closest point
@@ -2391,13 +2436,37 @@ function performExpansion(label, labelColor){
   updateHUD();
 }
 let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
+// MAP-GROWTH-FOCUS-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. Direct request: "way too much growth
+// happening per expansion and it's not focused on the road — the grass should just be next to the
+// road, not a full scene growing in the other direction." Only grows the region edges the path's
+// current tip is actually near, instead of puffing the bounding box out by 1 on all 4 sides every
+// single expansion regardless of where the path is heading. Cuts both the wasted tiles baked/
+// rendered on the far side (a real lag contributor at high expansion levels) and the visual
+// ballooning away from the road.
+const REGION_GROWTH_EDGE_MARGIN = 1; // how close to an edge the path tip must be to grow that edge
+function nextRegionTowardPathTip(){
+  const tip = pathWaypointTiles[0];
+  let x0 = activeRegion.x0, y0 = activeRegion.y0, x1 = activeRegion.x1, y1 = activeRegion.y1;
+  if(tip.x - activeRegion.x0 <= REGION_GROWTH_EDGE_MARGIN) x0 = Math.max(0, activeRegion.x0-1);
+  if(activeRegion.x1 - tip.x <= REGION_GROWTH_EDGE_MARGIN) x1 = Math.min(COLS-1, activeRegion.x1+1);
+  if(tip.y - activeRegion.y0 <= REGION_GROWTH_EDGE_MARGIN) y0 = Math.max(0, activeRegion.y0-1);
+  if(activeRegion.y1 - tip.y <= REGION_GROWTH_EDGE_MARGIN) y1 = Math.min(ROWS-1, activeRegion.y1+1);
+  // Safety net: the tip should always end up near an edge each expansion (that's where the last
+  // arc landed), but if it's ever well inside with no edge qualifying, grow whichever edge is
+  // nearest so the region can never stall without growing at all.
+  if(x0===activeRegion.x0 && y0===activeRegion.y0 && x1===activeRegion.x1 && y1===activeRegion.y1){
+    const candidates = [
+      {d: tip.x-activeRegion.x0, apply:() => { x0 = Math.max(0, activeRegion.x0-1); }},
+      {d: activeRegion.x1-tip.x, apply:() => { x1 = Math.min(COLS-1, activeRegion.x1+1); }},
+      {d: tip.y-activeRegion.y0, apply:() => { y0 = Math.max(0, activeRegion.y0-1); }},
+      {d: activeRegion.y1-tip.y, apply:() => { y1 = Math.min(ROWS-1, activeRegion.y1+1); }}
+    ];
+    candidates.sort((a,b) => a.d-b.d)[0].apply();
+  }
+  return { x0, y0, x1, y1 };
+}
 function beginNextRingReveal(){
-  const newRegion = {
-    x0: Math.max(0, activeRegion.x0-1),
-    y0: Math.max(0, activeRegion.y0-1),
-    x1: Math.min(COLS-1, activeRegion.x1+1),
-    y1: Math.min(ROWS-1, activeRegion.y1+1)
-  };
+  const newRegion = nextRegionTowardPathTip();
   ringCandidateRegion = newRegion;
   // PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md § [1.6.0]. Every expansion winds the spiral outward
   // by a short arc (2-3 tiles) instead of the old alternating "entire new ring becomes path" jump.
@@ -2500,8 +2569,10 @@ function grantFreeExpansion(){
   return true;
 }
 function isInActiveRegion(gx, gy){
+  const key = gx+','+gy;
+  if(!nearPathTileSet.has(key)) return false; // MAP-CORRIDOR-01 (1.6.11) — see CHANGELOG.md § [1.6.11]
   if(activeRegion && gx >= activeRegion.x0 && gx <= activeRegion.x1 && gy >= activeRegion.y0 && gy <= activeRegion.y1) return true;
-  return ringRevealed.has(gx+','+gy); // spiral-reveal tiles of the in-progress ring — already buildable even though activeRegion itself won't update until the ring fully closes (see finalizeRingExpansion())
+  return ringRevealed.has(key); // spiral-reveal tiles of the in-progress ring — already buildable even though activeRegion itself won't update until the ring fully closes (see finalizeRingExpansion())
 }
 // CA106 — see CHANGELOG.md § Code Archaeology
 function drawPendingRingReveal(ctx){
@@ -2668,7 +2739,9 @@ function updateBarricadesAndPileup(){
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
   // CA118 — see CHANGELOG.md § Code Archaeology. BALANCE-01 (1.6.1) — see CHANGELOG.md § [1.6.1]:
   // +40% queued-lane spacing, direct request ("too close... makes it too laggy and unenjoyable").
-  const QUEUE_GAP_MULTIPLIER = 1.4;
+  // BALANCE-02 (1.6.7) — see CHANGELOG.md § [1.6.7]: direct follow-up ("that will help a lot,
+  // slower and more space please") — raised further to 2.2x.
+  const QUEUE_GAP_MULTIPLIER = 2.2;
   const queueGap = e => Math.max(e.radius * 2 + 10, 26) * QUEUE_GAP_MULTIPLIER;
   const QUEUE_CATCHMENT = 70; // physical radius around an already-blocked enemy that pulls others into the same queue — handles multiple lanes converging on one chokepoint, which the old strict-adjacency check missed
   // CA119 — see CHANGELOG.md § Code Archaeology
@@ -3076,12 +3149,13 @@ function drawTowerScroll(ctx, t, scrollY){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const pulse = 0.55 + 0.45*Math.sin(gameTime/220); // gentle glow pulse, not a hard flash
   ctx.save();
-  ctx.shadowColor = '#4caf50'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8 + pulse*6;
+  ctx.shadowColor = '#4caf50'; ctx.shadowBlur = (graphicsQuality === 'low' || underHeavyVisualLoad) ? 0 : 8 + pulse*6;
   ctx.fillStyle = '#ffffff';
   ctx.fillText('📜', t.x, scrollY);
   ctx.restore();
 }
 function drawDepthSortedLayer(ctx){
+  underHeavyVisualLoad = (perfStats.visibleEnemies || 0) >= HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD; // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]
   const cullMargin = TILE_SIZE * 1.5;
   const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
   const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
@@ -3266,6 +3340,12 @@ function repaintFinishCarpetFootprint(ctx, fl){
   }
 }
 // CA155 — see CHANGELOG.md § Code Archaeology
+// MAP-CORRIDOR-01 (1.6.11) — see CHANGELOG.md § [1.6.11]. This used to paint EVERY non-path tile
+// in the new ring's rectangle as buildable grass unconditionally — the actual visual source of the
+// "huge green strip far from the path" bug. Now matches the pattern repaintFinishCarpetFootprint()
+// right above already used correctly: check isInActiveRegion() (which now itself requires
+// proximity to the path — see rebuildNearPathTileSet()) and paint plain dirt for anything outside
+// the corridor, instead of assuming every tile in the rectangle is buildable.
 function paintNewRingTiles(ctx, oldRegion, newRegion){
   for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
     for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
@@ -3273,7 +3353,8 @@ function paintNewRingTiles(ctx, oldRegion, newRegion){
       if(insideOld) continue; // already baked by a prior expansion — untouched by this one
       const key = gx+','+gy;
       if(pathCells.has(key)) paintPathTileBase(ctx, gx, gy);
-      else paintBuildableTileBase(ctx, gx, gy);
+      else if(isInActiveRegion(gx, gy)) paintBuildableTileBase(ctx, gx, gy);
+      else { ctx.fillStyle = '#8b5a2b'; ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
     }
   }
 }
@@ -3905,6 +3986,17 @@ function canAffordTower(type){
   return gold >= currentBuildCost(type);
 }
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
+// PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]. Adaptive detail reduction under heavy on-screen
+// load, independent of the player's own graphicsQuality choice. Measured (not guessed): a real
+// debug log showed drawDepthSortedLayer()'s worst-ever frame at 42.9ms, and that function's cost
+// is dominated by the per-actor draw() calls inside it, not the sort — so the real lever is
+// cheapening those draws exactly when there are enough enemies on screen for it to matter. Scoped
+// strictly to purely-cosmetic overlays (aura rings, glow) that reuse the SAME already-existing,
+// already-tested skip branches `graphicsQuality === 'low'` already uses — never anything that
+// touches gameplay state, hit detection, or damage, so the worst case of a mistake here is "looks
+// slightly plainer during a huge battle," never a functional break.
+const HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD = 40;
+let underHeavyVisualLoad = false; // recomputed once per rendered frame in drawDepthSortedLayer(), from the PREVIOUS frame's visible-enemy count — a one-frame lag on this is harmless and avoids any chicken-and-egg ordering issue
 let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
 // CA213 — see CHANGELOG.md § Code Archaeology
 const BLOOD_ON_HIT_CHANCE = 0.7;
@@ -6032,24 +6124,32 @@ class Enemy{
   draw(ctx){
     ctx.save();
     ctx.globalAlpha = 1.0; // strictly bracket every enemy draw pass so no leftover alpha/composite state from a previous draw call (this enemy or another) can wash this one out
+    // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]. The translucent aura RINGS below are purely
+    // decorative reinforcement of information the status icons (drawStatusIcons calls) already
+    // convey — under heavy visual load we skip only these rings, never the icons themselves, so
+    // crowd-control feedback stays fully readable either way.
     if(this.slowMultiplier < 1){
-      ctx.fillStyle = 'rgba(125,211,252,0.25)';
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      if(!underHeavyVisualLoad){
+        ctx.fillStyle = 'rgba(125,211,252,0.25)';
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      }
       drawStatusIcons(ctx, this.x, this.y, this.radius, '❄️', 2, 500);
     }
     if(this.burnUntil > gameTime){
-      ctx.fillStyle = 'rgba(255,107,53,0.22)';
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      if(!underHeavyVisualLoad){
+        ctx.fillStyle = 'rgba(255,107,53,0.22)';
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
+      }
       drawStatusIcons(ctx, this.x, this.y, this.radius, '🔥', 3, 260);
     }
     if(this.stunnedUntil > gameTime){
       drawStatusIcons(ctx, this.x, this.y - this.radius*1.35, this.radius*0.75, '⚡', 3, 220, true);
     }
-    if(this.poisonUntil > gameTime){
+    if(this.poisonUntil > gameTime && !underHeavyVisualLoad){
       ctx.fillStyle = 'rgba(124,181,24,0.3)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.05, 0, Math.PI*2); ctx.fill();
     }
-    if(this.pileBlocked){
+    if(this.pileBlocked && !underHeavyVisualLoad){
       ctx.fillStyle = 'rgba(230,57,70,0.3)';
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.1, 0, Math.PI*2); ctx.fill();
     }
@@ -6058,13 +6158,13 @@ class Enemy{
       ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.25, 0, Math.PI*2); ctx.stroke();
     }
-    if(this.healsAllies){
+    if(this.healsAllies && !underHeavyVisualLoad){
       const pulse = Math.sin(performance.now()/300)*2;
       ctx.strokeStyle = 'rgba(124,252,124,0.5)';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.15+pulse, 0, Math.PI*2); ctx.stroke();
     }
-    if(this.pack && (this.packSpeedBonus||1) > 1.1){
+    if(this.pack && (this.packSpeedBonus||1) > 1.1 && !underHeavyVisualLoad){
       ctx.strokeStyle = 'rgba(255,255,255,0.4)';
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.2, 0, Math.PI*2); ctx.stroke();
@@ -6468,7 +6568,7 @@ class Tower{
         // CA404 — see CHANGELOG.md § Code Archaeology
         const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
         const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
-        const remaining = Math.max(0, SPECIALIZATION_THRESHOLD - (this[attunedStat]||0));
+        const remaining = Math.max(0, specializationThresholdFor(target) - (this[attunedStat]||0));
         const suffix = target ? (' — ' + remaining + ' more ' + attunedStat.toUpperCase() + ' to ' + CONFIG.TOWERS[target].name) : '';
         spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!' + suffix, '#ffd700');
         playSound('levelup');
@@ -6480,9 +6580,9 @@ class Tower{
     refreshElementState(this);
     if(!this.attunement) return;
     const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
-    if(this[attunedStat] >= SPECIALIZATION_THRESHOLD){
+    {
       const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
-      if(target) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
+      if(target && this[attunedStat] >= specializationThresholdFor(target)) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
     }
     // CA407 — see CHANGELOG.md § Code Archaeology
     for(const other of Object.values(ATTUNEMENTS)){
@@ -6631,9 +6731,13 @@ class Tower{
     // CA418 — see CHANGELOG.md § Code Archaeology
     const recentlyEngaged = this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500;
     if(this.target){
-      if(this.type === 'ARCHER' || this.type === 'MARKSMAN' || this.type === 'SNIPER'){
+      if(this.type === 'ARCHER' || this.type === 'MARKSMAN' || this.type === 'SNIPER' || this.type === 'BLOWDART' || this.type === 'SQUIRTGUN' || this.type === 'BLOW_GUNNER'){
         // CA419 — see CHANGELOG.md § Code Archaeology (superseded in part — mid-flight homing
-        // correction is NOT skipped for these anymore, see CHANGELOG.md § [1.5.8])
+        // correction is NOT skipped for these anymore, see CHANGELOG.md § [1.5.8]). Extended to
+        // Blowdart/Squirtgun/Blow Gunner in [1.6.7] — same "flies past, damage registers ~2s late"
+        // symptom reported for Blowdart specifically, same fix: an exact launch-time intercept
+        // instead of the shorter linear extrapolation below, while keeping the mid-flight
+        // correction as the safety net for a target that moves after launch.
         this.angle = calculateLeadIntercept(this.x, this.y, this.projectileSpeed || 1, this.target.x, this.target.y, this.target.vx, this.target.vy);
       } else {
         const dx = this.target.x-this.x, dy = this.target.y-this.y;
@@ -7093,7 +7197,11 @@ class Tower{
       if(this.telemetry) this.telemetry.shotsFired++; // melee "shot" = one swing actually connecting with one target, hit or miss — see checkConeHits' own per-target roll below
       if(Math.random() < this.missChance){
         // CA445 — see CHANGELOG.md § Code Archaeology
-        dodgeEnemyFromSwing(e, this);
+        // HUT-PUSHBACK-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. dodgeEnemyFromSwing() had no
+        // isHutBuilding guard, so a missed swing against a Hut/Castle physically shoved the
+        // building 7px sideways every time — a static structure visibly sliding on every miss,
+        // which is exactly what read as "pushback." Buildings don't dodge; only living enemies do.
+        if(!e.isHutBuilding) dodgeEnemyFromSwing(e, this);
         spawnFloatingText(e.x, e.y - e.radius - 6, 'MISS', '#aaaaaa');
         if(this.telemetry) this.telemetry.misses++;
         continue;
@@ -7108,7 +7216,7 @@ class Tower{
   // CA446 — see CHANGELOG.md § Code Archaeology
   drawElementSwingArc(ctx){
     const element = towerElement(this);
-    if(!element || graphicsQuality === 'low' || !this.swingStart) return;
+    if(!element || graphicsQuality === 'low' || underHeavyVisualLoad || !this.swingStart) return;
     const elapsed = gameTime - this.swingStart;
     if(elapsed < 0 || elapsed > this.swingDuration) return;
     const visuals = ELEMENT_VISUALS[element];
@@ -7129,7 +7237,7 @@ class Tower{
     const radius = 26 + pulse * 4;
     ctx.save();
     // CA447 — see CHANGELOG.md § Code Archaeology
-    if(graphicsQuality === 'low'){
+    if(graphicsQuality === 'low' || underHeavyVisualLoad){
       ctx.fillStyle = 'rgba(180,10,10,' + (0.28 + pulse * 0.14).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(this.x, this.y, radius * 0.82, 0, Math.PI*2); ctx.fill();
       ctx.restore();
@@ -7254,7 +7362,7 @@ class Tower{
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
     // CA453 — see CHANGELOG.md § Code Archaeology
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low', drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: !!this.target || this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -7278,7 +7386,7 @@ class Tower{
       ctx.strokeStyle = 'rgba(255,235,59,0.75)';
       ctx.lineWidth = 3;
       ctx.shadowColor = 'rgba(255,235,59,0.6)';
-      ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8;
+      ctx.shadowBlur = (graphicsQuality === 'low' || underHeavyVisualLoad) ? 0 : 8;
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
@@ -9498,6 +9606,14 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const handX = hand.handX, handY = hand.handY;
     const pipeAngle = mouthAngle;
     const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
+    // BLOWDART-ARM-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. Direct report ("where's his other
+    // arm?") — only the mouth-hand was ever drawn. A real blowgun grip uses both hands, the same
+    // way SQUIRTGUN/GUNALINDER right below already draw a main hand plus a supporting off-hand; the
+    // off-hand reaches from the shoulder to a point partway along the pipe, steadying it.
+    const offGripX = handX + Math.cos(pipeAngle)*7*extra.weaponScale, offGripY = handY + Math.sin(pipeAngle)*7*extra.weaponScale;
+    const offAngle = Math.atan2(offGripY - shoulderY, offGripX - shoulderX);
+    const offDist = Math.hypot(offGripX - shoulderX, offGripY - shoulderY);
+    drawArmAndHand(ctx, shoulderX, shoulderY, offAngle, offDist, skinMain, 0.15*faceSign);
     ctx.strokeStyle = '#5a7a2a'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
@@ -9777,9 +9893,15 @@ function resolveEnemyCollisions(){
   // CA614 — see CHANGELOG.md § Code Archaeology
   const COLLISION_RELAX_FACTOR = 0.7;
   const COLLISION_RELAX_SPLIT = COLLISION_RELAX_FACTOR * 0.5; // 0.35 — the per-body coefficient when both sides share the correction
+  // PERF-01 (1.6.8) — see CHANGELOG.md § [1.6.8]. Built once instead of once per pass (previously
+  // up to 3 full spatial-hash rebuilds in a single frame). Per-pass displacement is bounded by
+  // overlap*COLLISION_RELAX_SPLIT — a few pixels at most — which essentially never moves an enemy
+  // across a hash-cell boundary within one frame's worth of passes, so reusing the same hash across
+  // all 3 relaxation passes costs no real accuracy. The already-existing early-exit below (a pass
+  // that corrects nothing stops the loop) still applies on top of this.
+  const hash = buildEnemyHash();
   for(let pass = 0; pass < PASSES; pass++){
     let correctionsThisPass = 0; // a pass that corrected nothing means the field is already settled — further passes would repeat identical work
-    const hash = buildEnemyHash();
     for(const e of enemyPool){
       if(!e.active) continue;
       const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
@@ -13062,7 +13184,7 @@ function updateInspectPanel(){
       // CA776 — see CHANGELOG.md § Code Archaeology
       let nearest = null;
       if(target){
-        const remaining = Math.max(0, SPECIALIZATION_THRESHOLD - (t[attunedStat]||0));
+        const remaining = Math.max(0, specializationThresholdFor(target) - (t[attunedStat]||0));
         const targetDef = CONFIG.TOWERS[target];
         nearest = { remaining, text: remaining > 0
           ? (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ' + remaining + ' more ' + attunedStat.toUpperCase())
