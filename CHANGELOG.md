@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.42] - 2026-09-27 — Adapt cosmetic detail to measured render spikes
+- **Measured visual-load response**: keep the existing visible-enemy detail reduction and add a 45-frame hold when the prior depth-sorted phase exceeds 8 ms. This uses the existing cosmetic-only low-detail branches, leaves simulation/combat state untouched, and recovers after the hold unless the measured phase or visible population remains high.
+- **Fallback visibility**: count depth-sort pressure and adaptive-detail frames; slow-frame snapshots state whether the fallback was active, its remaining hold, and the preceding depth-sort duration.
+- **Long-session render phases**: trend rows now retain per-minute average and maximum timings for every render phase, including map blit, decals, depth sorting, ground items, effects, and overlays.
+- **Decal scan reuse**: the existing decal pass now collects viewport-visible bones, skulls, and worms into a reusable frame array; depth rendering consumes that array instead of rescanning every decal and recalculating bounds. Existing array order and draw placement are preserved.
+- **Evidence and limits**: the historical v1.6.6 log recorded a 42.9 ms worst depth-sorted phase with eight active enemies. It motivates measuring-based fallback but does not establish the same cost on current v1.6.42 devices; the next fresh log must confirm whether the fallback activates and helps.
+- **Verification**: all executable inline scripts pass syntax checks. Focused tests cover trend phase aggregation and adaptive-detail trigger, hold, and recovery. No gameplay or simulation cap changes.
+
+## [1.6.41] - 2026-09-27 — Correlate lag events with camera movement
+- **Pan and zoom attribution**: slow-frame and long-callback snapshots now record per-frame camera displacement, zoom change, and whether the camera moved during that callback.
+- **Long-session comparison**: each trend period reports the share of moving-camera frames, slow moving-camera frames, average render time during moving versus stationary frames, and peak pan/zoom deltas. This helps distinguish panning-related render cost from high callback gaps that occur with little game work.
+- **No gameplay policy change**: simulation limits and rendering behavior remain unchanged; this addition only records frame context.
+- **Verification**: all executable inline scripts pass syntax checks; focused tests verify movement classification and moving/stationary render aggregation.
+
+## [1.6.40] - 2026-09-27 — Rewrite the cookie-consent message in Santa's voice
+- **Clearer consent copy**: replace the claim that analytics cookies save game unlocks with an accurate explanation that they help measure how StickTD is played, framed as Santa keeping his naughty-or-nice list.
+- **Button wording**: change the action to “Give Santa Cookies” and simplify the open-source alternative.
+- **Cleaner wrapping**: balance consent paragraphs to avoid a stranded one-word final line on supported browsers.
+- **Verification**: confirm the displayed copy, consent wiring, linked repository, and version/changelog agreement; syntax-check all executable inline scripts.
+
 ## [1.6.39] - 2026-09-27 — Preserve long-session performance trends and catch-up losses
 - **Time-loss visibility**: the logger now records how often the frame-time ceiling is applied, how much wall time it excludes, how often the eight-tick simulation ceiling is reached, and the simulation-time debt discarded at that ceiling. It retains the 20 largest cap-discard events with same-frame update/render phases and load context. Runtime behavior and both existing safety ceilings are unchanged.
 - **Lag progression over time**: a bounded 120-period history records active-play windows after each 60 seconds of accumulated callback time. Each period includes callback cadence, average/maximum frame/update/render/gap timings, slow-frame and long-gap counts, requested speed, wave progression, peak entity/effect/query/hash counts, catch-up loss, and heap endpoints/maximum when exposed by the browser.

@@ -642,7 +642,7 @@
   #consent-inner{display:flex;flex-direction:column;align-items:center;gap:16px;
     max-width:480px;text-align:center;background:rgba(30,20,10,0.97);
     border:2px solid #f1c40f;border-radius:14px;padding:28px 28px 32px;}
-  #consent-banner p{margin:0;line-height:1.5;}
+  #consent-banner p{margin:0;line-height:1.5;text-wrap:balance;}
   #consentSantaFace{font-size:min(30vw,110px);line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));}
   #consentSantaLine{font-weight:bold;font-size:1.05em;}
   #consentOpenSource{font-size:0.85em;opacity:0.8;}
@@ -654,13 +654,13 @@
 <div id="consent-banner" class="hidden">
   <div id="consent-inner">
     <div id="consentSantaFace" aria-hidden="true">🎅</div>
-    <p id="consentSantaLine">Ho, ho, ho. I need your cookies — not the eating kind, the browser
-    kind. They're how I save your unlocks and squash bugs. No cookies, no memory of anything
-    you've done. That's just how this works, kid.</p>
-    <p id="consentOpenSource">Don't feel like handing them over? Fair enough — this game is
+    <p id="consentSantaLine">Ho, ho, ho! Santa loves cookies. These analytics cookies help me
+    keep track of who's been naughty or nice in StickTD—and see how the game is played. Give Santa
+    cookies, and you'll make the list!</p>
+    <p id="consentOpenSource">Rather keep your cookies? StickTD is
     <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener" onclick="if(window.trackEvent) window.trackEvent('outbound_click', {destination:'github'});">open source</a>.
-    Build it from source yourself and keep every cookie to yourself.</p>
-    <button id="consentAccept" type="button">🍪 Fine, Accept</button>
+    Build it yourself and skip analytics.</p>
+    <button id="consentAccept" type="button">🍪 Give Santa Cookies</button>
   </div>
 </div>
 <script>
@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.39'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.42'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3235,7 +3235,7 @@ function drawTowerScroll(ctx, t, scrollY){
   ctx.restore();
 }
 function drawDepthSortedLayer(ctx){
-  underHeavyVisualLoad = (perfStats.visibleEnemies || 0) >= HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD; // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]
+  refreshHeavyVisualLoadState();
   const cullMargin = TILE_SIZE * 1.5;
   const viewLeft = (0 - camera.x) / camera.zoom - cullMargin;
   const viewRight = (CANVAS_W - camera.x) / camera.zoom + cullMargin;
@@ -3280,10 +3280,7 @@ function drawDepthSortedLayer(ctx){
   perfStats.visibleEnemies = visibleEnemyCount; perfStats.totalActiveEnemies = totalActiveEnemyCount;
   perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
   // CA148 — see CHANGELOG.md § Code Archaeology
-  const debrisBounds = decalViewBounds();
-  for(const d of decals){
-    if(!(d.isEmojiDrop || d.isWorm)) continue;
-    if(!decalVisible(d, debrisBounds)) continue;
+  for(const d of depthSortedDecalsThisFrame){
     perfStats.visibleDecals++;
     drawOneDecal(ctx, d);
   }
@@ -4100,15 +4097,22 @@ function canAffordTower(type){
 let graphicsQuality = 'low'; // 'high' | 'low' — chosen on the start screen, controls DPR cap + skips a few glow layers
 // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]. Adaptive detail reduction under heavy on-screen
 // load, independent of the player's own graphicsQuality choice. Measured (not guessed): a real
-// debug log showed drawDepthSortedLayer()'s worst-ever frame at 42.9ms, and that function's cost
-// is dominated by the per-actor draw() calls inside it, not the sort — so the real lever is
-// cheapening those draws exactly when there are enough enemies on screen for it to matter. Scoped
-// strictly to purely-cosmetic overlays (aura rings, glow) that reuse the SAME already-existing,
-// already-tested skip branches `graphicsQuality === 'low'` already uses — never anything that
-// touches gameplay state, hit detection, or damage, so the worst case of a mistake here is "looks
-// slightly plainer during a huge battle," never a functional break.
 const HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD = 40;
-let underHeavyVisualLoad = false; // recomputed once per rendered frame in drawDepthSortedLayer(), from the PREVIOUS frame's visible-enemy count — a one-frame lag on this is harmless and avoids any chicken-and-egg ordering issue
+let underHeavyVisualLoad = false;
+let heavyVisualLoadHoldFrames = 0;
+const HEAVY_VISUAL_LOAD_DEPTH_SORT_MS = 8;
+const HEAVY_VISUAL_LOAD_HOLD_FRAMES = 45;
+function refreshHeavyVisualLoadState(){
+  const enemyLoad = (perfStats.visibleEnemies || 0) >= HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD;
+  if(enemyLoad || perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS){
+    heavyVisualLoadHoldFrames = HEAVY_VISUAL_LOAD_HOLD_FRAMES;
+  } else if(heavyVisualLoadHoldFrames > 0){
+    heavyVisualLoadHoldFrames--;
+  }
+  underHeavyVisualLoad = enemyLoad || heavyVisualLoadHoldFrames > 0;
+  if(perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS) perfStats.depthSortPressureFrames++;
+  if(underHeavyVisualLoad) perfStats.adaptiveVisualFrames++;
+}
 let goreMode = true; // 18+ gated toggle — swaps enemy-death particles to a more intense red burst
 // CA213 — see CHANGELOG.md § Code Archaeology
 const BLOOD_ON_HIT_CHANCE = 0.7;
@@ -7930,6 +7934,7 @@ function decalCapacity(){
   return graphicsQuality === 'low' ? MAX_DECALS_LOW_QUALITY : MAX_DECALS;
 }
 const decals = [];
+const depthSortedDecalsThisFrame = [];
 // CA477 — see CHANGELOG.md § Code Archaeology
 let lastDecalExpirySweep = 0;
 // Full-array expiry and settled-bake maintenance is bounded by the decal cap.
@@ -8630,7 +8635,17 @@ function drawDecals(ctx){
   const bounds = decalViewBounds();
   perfStats.totalDecals = decals.length;
   perfStats.visibleDecals = 0;
-  for(const d of decals) if(!d.isEmojiDrop && !d.isWorm && !d.baked && decalVisible(d, bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx, d); }
+  depthSortedDecalsThisFrame.length = 0;
+  for(const d of decals){
+    if(d.isEmojiDrop || d.isWorm){
+      if(decalVisible(d, bounds)) depthSortedDecalsThisFrame.push(d);
+      continue;
+    }
+    if(!d.baked && decalVisible(d, bounds)){
+      perfStats.visibleDecals++;
+      drawOneDecal(ctx, d);
+    }
+  }
 }
 function decalViewBounds(){
   // CA532 — see CHANGELOG.md § Code Archaeology
@@ -11096,7 +11111,10 @@ function render(ctx){
   drawDeathAnims(ctx);
   drawDepthSortedLayer(ctx); // scenery + enemies + towers + bone/skull/worm debris, interleaved by Y-depth — see drawDepthSortedLayer() for why
   drawSelectedTowerArrow(ctx);
-  renderPhaseTime.depthSorted += performance.now() - __rpt; __rpt = performance.now();
+  const depthSortedPhaseMs = performance.now() - __rpt;
+  renderPhaseTime.depthSorted += depthSortedPhaseMs;
+  perfStats.lastDepthSortedMs = depthSortedPhaseMs;
+  __rpt = performance.now();
   const groundItemBounds = fxViewBounds();
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
@@ -11332,7 +11350,7 @@ function drawBossCompass(ctx){
 
 // CA676 — see CHANGELOG.md § Code Archaeology
 const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
-  visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0,
+  visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0, lastDepthSortedMs: 0,
   visibleParticles: 0, totalParticles: 0, visibleFloatingTexts: 0, totalFloatingTexts: 0,
   // CA677 — see CHANGELOG.md § Code Archaeology
   frameMsHistory: [], updateMsHistory: [], renderMsHistory: [],
@@ -11341,7 +11359,9 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   // CA679 — see CHANGELOG.md § Code Archaeology
   actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
   wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
+  cameraMoveXLastFrame: 0, cameraMoveYLastFrame: 0, cameraMovePixelsLastFrame: 0, cameraZoomDeltaLastFrame: 0, cameraMovingLastFrame: false,
   simulationCapEvents: [], sessionTrendSamples: [],
+  adaptiveVisualFrames: 0, depthSortPressureFrames: 0,
   // CA680 — see CHANGELOG.md § Code Archaeology
   worstFrameMs: 0, worstFrameAtWave: 0, worstFrameTicks: 0, worstFrameAtReal: 0,
   slowFrameEvents: [], longCallbackGapEvents: [], longTaskEvents: [], longTaskCount: 0, longTaskObserverActive: false, longTaskObserverError: '',
@@ -11417,6 +11437,15 @@ function recordPerfEventSample(events, durationMs, minimumMs, wallGapMs){
     cameraX: camera.x,
     cameraY: camera.y,
     zoom: camera.zoom,
+    cameraMoveX: perfStats.cameraMoveXLastFrame,
+    cameraMoveY: perfStats.cameraMoveYLastFrame,
+    cameraMovePixels: perfStats.cameraMovePixelsLastFrame,
+    cameraZoomDelta: perfStats.cameraZoomDeltaLastFrame,
+    cameraMoving: perfStats.cameraMovingLastFrame,
+    adaptiveDetailActive: underHeavyVisualLoad,
+    adaptiveDetailHoldFrames: heavyVisualLoadHoldFrames,
+    depthSortMs: perfStats.lastDepthSortedMs,
+    depthSortPressure: perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS,
     quality: graphicsQuality,
     dpr: dprValue,
     tabHidden: document.hidden,
@@ -11492,7 +11521,10 @@ let perfTrendWindow = null;
 function createPerfTrendWindow(now){
   return { start: now, frames: 0, frameTotal: 0, updateTotal: 0, renderTotal: 0, callbackGapTotal: 0,
     requestedSpeedTotal: 0, maxFrame: 0, maxUpdate: 0, maxRender: 0, maxCallbackGap: 0,
-    slowFrames: 0, longGaps: 0, maxTicks: 0, maxDebt: 0, maxEnemies: 0, maxVisibleEnemies: 0,
+    slowFrames: 0, longGaps: 0, cameraMovingFrames: 0, cameraMovingSlowFrames: 0, cameraMovingRenderTotal: 0, cameraStationaryRenderTotal: 0, maxCameraMovePixels: 0, maxCameraZoomDelta: 0,
+    adaptiveDetailFrames: 0, depthSortPressureFrames: 0,
+    renderPhaseTotals: Object.fromEntries(Object.keys(renderPhaseTime).map(k => [k, 0])),
+    renderPhaseMaxima: Object.fromEntries(Object.keys(renderPhaseTime).map(k => [k, 0])), maxTicks: 0, maxDebt: 0, maxEnemies: 0, maxVisibleEnemies: 0,
     maxTowers: 0, maxVisibleTowers: 0, maxParticles: 0, maxDecals: 0, maxQueries: 0, maxHashes: 0,
     baseCapHits: perfStats.simulationCatchUpCapHits, baseDroppedMs: perfStats.simulationDebtDroppedMs,
     baseWallClampHits: perfStats.wallTimeClampHits, baseWallClampedMs: perfStats.wallTimeClampedMs,
@@ -11516,6 +11548,22 @@ function recordPerfTrendFrame(now, rawGapMs){
   if(rawGapMs > w.maxCallbackGap) w.maxCallbackGap = rawGapMs;
   if(perfStats.frameMs >= 16.7) w.slowFrames++;
   if(rawGapMs >= 33.3) w.longGaps++;
+  if(underHeavyVisualLoad) w.adaptiveDetailFrames++;
+  if(perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS) w.depthSortPressureFrames++;
+  if(perfStats.cameraMovingLastFrame){
+    w.cameraMovingFrames++;
+    w.cameraMovingRenderTotal += perfStats.renderMs;
+    if(perfStats.frameMs >= 16.7) w.cameraMovingSlowFrames++;
+  } else {
+    w.cameraStationaryRenderTotal += perfStats.renderMs;
+  }
+  if(perfStats.cameraMovePixelsLastFrame > w.maxCameraMovePixels) w.maxCameraMovePixels = perfStats.cameraMovePixelsLastFrame;
+  if(perfStats.cameraZoomDeltaLastFrame > w.maxCameraZoomDelta) w.maxCameraZoomDelta = perfStats.cameraZoomDeltaLastFrame;
+  for(const k in renderPhaseTime){
+    const phaseMs = renderPhaseTime[k];
+    w.renderPhaseTotals[k] += phaseMs;
+    if(phaseMs > w.renderPhaseMaxima[k]) w.renderPhaseMaxima[k] = phaseMs;
+  }
   if(perfStats.ticksThisFrame > w.maxTicks) w.maxTicks = perfStats.ticksThisFrame;
   if(perfStats.lastAccumulatorDebtMs > w.maxDebt) w.maxDebt = perfStats.lastAccumulatorDebtMs;
   if(perfStats.totalActiveEnemies > w.maxEnemies) w.maxEnemies = perfStats.totalActiveEnemies;
@@ -11542,7 +11590,16 @@ function recordPerfTrendFrame(now, rawGapMs){
     averageUpdateMs: w.updateTotal / w.frames, maxUpdateMs: w.maxUpdate,
     averageRenderMs: w.renderTotal / w.frames, maxRenderMs: w.maxRender,
     averageCallbackGapMs: w.callbackGapTotal / w.frames, maxCallbackGapMs: w.maxCallbackGap,
-    slowFrames: w.slowFrames, longGaps: w.longGaps, maxTicks: w.maxTicks, maxDebtMs: w.maxDebt,
+    slowFrames: w.slowFrames, longGaps: w.longGaps, cameraMovingFrames: w.cameraMovingFrames,
+    cameraMovingSlowFrames: w.cameraMovingSlowFrames, cameraMovingFramePercent: w.frames ? (w.cameraMovingFrames/w.frames)*100 : 0,
+    adaptiveDetailFrames: w.adaptiveDetailFrames, adaptiveDetailFramePercent: w.frames ? (w.adaptiveDetailFrames/w.frames)*100 : 0,
+    depthSortPressureFrames: w.depthSortPressureFrames,
+    averageMovingRenderMs: w.cameraMovingFrames ? w.cameraMovingRenderTotal/w.cameraMovingFrames : 0,
+    averageStationaryRenderMs: (w.frames-w.cameraMovingFrames) ? w.cameraStationaryRenderTotal/(w.frames-w.cameraMovingFrames) : 0,
+    renderPhaseAverageMs: Object.fromEntries(Object.keys(w.renderPhaseTotals).map(k => [k, w.renderPhaseTotals[k]/w.frames])),
+    renderPhaseMaxMs: { ...w.renderPhaseMaxima },
+    maxCameraMovePixels: w.maxCameraMovePixels, maxCameraZoomDelta: w.maxCameraZoomDelta,
+    maxTicks: w.maxTicks, maxDebtMs: w.maxDebt,
     capHits: perfStats.simulationCatchUpCapHits - w.baseCapHits,
     droppedSimulationMs: perfStats.simulationDebtDroppedMs - w.baseDroppedMs,
     wallClampFrames: perfStats.wallTimeClampHits - w.baseWallClampHits,
@@ -11566,6 +11623,9 @@ function recordSimulationCapEvent(rawGapMs, droppedMs){
     wave: waveIndex, waveState, gameState, gameSpeed, accumulatorMs: droppedMs,
     activeEnemies: perfStats.totalActiveEnemies, activeTowers: perfStats.totalActiveTowers,
     activeParticles: perfStats.totalParticles, decals: perfStats.totalDecals,
+    cameraMoveX: perfStats.cameraMoveXLastFrame, cameraMoveY: perfStats.cameraMoveYLastFrame,
+    cameraMovePixels: perfStats.cameraMovePixelsLastFrame, cameraZoomDelta: perfStats.cameraZoomDeltaLastFrame,
+    cameraMoving: perfStats.cameraMovingLastFrame,
     hashBuilds: perfStats.hashBuildsLastFrame, spatialQueries: perfStats.spatialQueryCallsLastFrame,
     updatePhases: { ...phaseTime }, renderPhases: { ...renderPhaseTime } };
   insertTopDurationEvent(perfStats.simulationCapEvents, event, SIMULATION_CAP_EVENT_LIMIT);
@@ -12068,6 +12128,7 @@ function loop(now){
   realTimeFrozen = waveState === 'IDLE';
   if(!realTimeFrozen) realTime += frameTime;
   presentationTime += frameTime;
+  const cameraAtFrameStartX = camera.x, cameraAtFrameStartY = camera.y, cameraAtFrameStartZoom = camera.zoom;
   applyPanInertia(frameTime);
   // CA720 — see CHANGELOG.md § Code Archaeology
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
@@ -12099,6 +12160,11 @@ function loop(now){
   const renderStart = performance.now();
   render(ctx);
   perfStats.renderMs = performance.now() - renderStart;
+  perfStats.cameraMoveXLastFrame = camera.x - cameraAtFrameStartX;
+  perfStats.cameraMoveYLastFrame = camera.y - cameraAtFrameStartY;
+  perfStats.cameraMovePixelsLastFrame = Math.hypot(perfStats.cameraMoveXLastFrame, perfStats.cameraMoveYLastFrame);
+  perfStats.cameraZoomDeltaLastFrame = Math.abs(camera.zoom - cameraAtFrameStartZoom);
+  perfStats.cameraMovingLastFrame = perfStats.cameraMovePixelsLastFrame >= 0.25 || perfStats.cameraZoomDeltaLastFrame >= 0.0005;
   perfStats.frameMs = performance.now() - frameStart;
   perfStats.ticksThisFrame = ticksThisFrame;
   if(ticksThisFrame > perfStats.maxTicksSeen) perfStats.maxTicksSeen = ticksThisFrame;
@@ -13448,6 +13514,9 @@ function generateDebugLog(){
     'not the game\'s own code)\n';
   s += 'Worst wall-clock gap this session: ' + perfStats.worstWallGapMs.toFixed(2) + 'ms, at wave ' + perfStats.worstWallGapAtWave + '\n';
   s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap ' + MAX_SIMULATION_TICKS_PER_FRAME + ')\n';
+  s += 'Adaptive detail: ' + (underHeavyVisualLoad ? 'active' : 'inactive') + ', ' + perfStats.adaptiveVisualFrames +
+    ' rendered frame(s) active; depth-sort pressure ' + perfStats.depthSortPressureFrames + ' frame(s) above ' +
+    HEAVY_VISUAL_LOAD_DEPTH_SORT_MS.toFixed(1) + 'ms (' + HEAVY_VISUAL_LOAD_HOLD_FRAMES + '-frame hold)\n';
   s += 'Worst frame this session: ' + perfStats.worstFrameMs.toFixed(2) + 'ms, at wave ' + perfStats.worstFrameAtWave +
     ', ' + perfStats.worstFrameTicks + ' ticks that frame (separate from the rolling-window max above — ' +
     'this persists even after the spike scrolls out of the last ' + PERF_HISTORY_SIZE + '-frame window)\n';
@@ -13462,7 +13531,10 @@ function generateDebugLog(){
       s += '   state: wave ' + e.wave + ' ' + e.waveState + '/' + e.gameState + ', speed ' + e.gameSpeed +
         'x, ticks ' + e.ticks + ', debt ' + e.accumulatorMs.toFixed(2) + 'ms, tab hidden ' + e.tabHidden +
         ', quality ' + e.quality + ', DPR ' + e.dpr + ', camera ' + e.cameraX.toFixed(1) + ',' + e.cameraY.toFixed(1) +
-        ' zoom ' + e.zoom.toFixed(3) + '\n';
+        ' zoom ' + e.zoom.toFixed(3) + ', camera moved ' + e.cameraMoving + ' (' + e.cameraMoveX.toFixed(2) + ',' +
+        e.cameraMoveY.toFixed(2) + 'px; zoom Δ' + e.cameraZoomDelta.toFixed(4) + ')' +
+        ', adaptive detail ' + e.adaptiveDetailActive + ' (' + e.adaptiveDetailHoldFrames + ' frames left), depth sort ' +
+        e.depthSortMs.toFixed(2) + 'ms' + (e.depthSortPressure ? ' OVER budget' : '') + '\n';
       s += '   entities: enemies ' + e.visibleEnemies + '/' + e.activeEnemies + ', towers ' + e.visibleTowers + '/' +
         e.activeTowers + ', projectiles ' + e.activeProjectiles + ', particles ' + e.activeParticles + ', texts ' +
         e.activeTexts + ', death animations ' + e.deathAnimations + ', decals ' + e.visibleDecals + '/' + e.decals +
@@ -13514,6 +13586,13 @@ function generateDebugLog(){
         'ms  render avg/max ' + e.averageRenderMs.toFixed(2) + '/' + e.maxRenderMs.toFixed(2) +
         'ms  callback gap avg/max ' + e.averageCallbackGapMs.toFixed(2) + '/' + e.maxCallbackGapMs.toFixed(2) +
         'ms  slow frames/gaps ' + e.slowFrames + '/' + e.longGaps + '\n';
+      s += '   adaptive detail ' + e.adaptiveDetailFrames + '/' + e.frames + ' frames (' + e.adaptiveDetailFramePercent.toFixed(1) + '%), depth-sort pressure frames ' + e.depthSortPressureFrames + '\n';
+      s += '   camera moving ' + e.cameraMovingFrames + '/' + e.frames + ' frames (' + e.cameraMovingFramePercent.toFixed(1) + '%), slow while moving ' +
+        e.cameraMovingSlowFrames + ', render avg moving/stationary ' + e.averageMovingRenderMs.toFixed(2) + '/' +
+        e.averageStationaryRenderMs.toFixed(2) + 'ms, max pan ' + e.maxCameraMovePixels.toFixed(2) + 'px, max zoom Δ ' +
+        e.maxCameraZoomDelta.toFixed(4) + '\n';
+      s += '   render phases avg/max ms: ' + Object.keys(e.renderPhaseMaxMs).map(k => k + '=' +
+        e.renderPhaseAverageMs[k].toFixed(2) + '/' + e.renderPhaseMaxMs[k].toFixed(2)).join(' ') + '\n';
       s += '   max ticks/debt ' + e.maxTicks + '/' + e.maxDebtMs.toFixed(2) +
         'ms  cap hits/dropped simulation ' + e.capHits + '/' + e.droppedSimulationMs.toFixed(2) +
         'ms  wall clamps/lost wall time ' + e.wallClampFrames + '/' + e.wallTimeClampedMs.toFixed(2) + 'ms\n';
