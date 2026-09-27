@@ -7,13 +7,7 @@ session; open the reference doc only when a specific subsystem note is actually 
 
 ## 1. Scope and non-negotiable constraints
 
-- **Read `README.md`'s "Core design principles" section before touching any progression/unlock
-  code.** It is the single canonical statement of the owner's design vision (tower identity never
-  changes, unlocks are permanent and account-wide, elements are states not towers, promotion is a
-  pure stat-roll, the Build menu shows every tower from the start). It exists specifically because
-  an agent got two of these five wrong in the same session (see the incident note below) —
-  checking it first is now mandatory, not optional, for any change touching tower unlocks,
-  progression, promotion, or the Build menu.
+- **Check progression intent before changing unlock behavior.** Read the README's player-facing progression overview and the progression invariants in this file, then trace the current unlock source through registration, Build-menu display, purchase, save, and load. The README explains the player experience; this file and the current implementation define the technical contract.
 - **`index.html` holds the whole game; the one explicit exception is `CHANGELOG.md`.** No separate
   runtime JS/CSS files, no build step, no new runtime dependencies for anything gameplay-related —
   keep it that way regardless of how large the file gets. The single exception, changed by direct
@@ -29,6 +23,9 @@ session; open the reference doc only when a specific subsystem note is actually 
 - **Canonical reference:** live game at https://sauerninja.github.io/StickTD/, repo (source of
   truth) at https://github.com/SauerNinja/StickTD. Check the live URL or pull current repo state
   before assuming a local copy is current — this repo can be updated outside any given session.
+- **Current snapshot priority**: when the owner supplies a complete current project snapshot, use its `index.html`, `CHANGELOG.md`, and companion files as the active baseline ahead of older ZIP archives or remembered workspace versions. Record and verify its `GAME_VERSION`; keep any differences from earlier work explicit.
+- **Index comment references**: keep code comments brief and avoid embedding long rationale in `index.html`. Any pointer to a detailed changelog explanation must name the exact version heading and archive/entry ID, using the form `CHANGELOG.md § [x.y.z] Section, CA###`. Verify the cited version and ID exist before shipping; put the full explanation in the changelog.
+- **README voice**: write `README.md` as enduring, positive, player-facing product copy, with a clear game-package tone. Describe what players experience and can do; keep copy general where exact detail does not help a player's decision. Avoid release chronology, before/after narration, phrases such as "now we no longer" or "used to," implementation history, and defensive lists of absent features. Correct or add copy only when a stable, verified player-facing fact needs it. Put past changes in `CHANGELOG.md` and contributor rules or technical detail in `AGENTS.md`.
 - **Version lives in exactly one place**: `GAME_VERSION` in `index.html`, referenced everywhere
   else (start screen, Settings > About, save files). Never hardcode it a second time.
 - Existing owner-directed gameplay, balance, UX, audio, and integration decisions are constraints,
@@ -267,14 +264,11 @@ hand — this part is not meant to be read in full every session.
   precedent as the existing wave-gated starter unlocks via `isTowerUnlocked()`) tracks which
   evolution targets have actually been unlocked this game; `UNLOCKABLE_TOWER_TYPES` and
   `TOWER_UNLOCK_SOURCE_BY_TARGET` are both derived programmatically from `SPECIALIZATIONS` +
-  `EVOLUTIONS`, not a separately maintained list. **The exact unlock source/threshold for each
-  class is deliberately never shown to players** — the Build menu's locked rows and the in-game
-  help modal both use `TOWER_UNLOCK_RIDDLE`, a set of thematic hints, instead of the precise
-  mechanical requirement `TOWER_UNLOCK_SOURCE_BY_TARGET` actually holds. This is intentional design
-  (discovering the stat/element mapping is meant to be part of the game), not incomplete
-  documentation — don't "fix" the in-game UI to be more precise to match this file or `README.md`,
-  which document the exact mechanics on purpose since they're developer-facing, not player-facing.
-  See `README.md`'s own callout on this at the top of its "Towers & evolutions" section.
+  `EVOLUTIONS`, not a separately maintained list. Treat `TOWER_UNLOCK_SOURCE_BY_TARGET` as the
+  source for player-facing unlock descriptions. Keep locked-row copy direct, useful, and free of
+  cryptic riddles; state the relevant wave, source class, or stat requirement when it helps the
+  player understand their next goal. The README gives a broad roster and progression overview;
+  these invariants and the verified source tables define exact behavior.
 - `EVOLVED_TOWER_TYPES` lists everything reachable only via unlock, never built directly from the
   start (includes Hammerman itself). A base-type tower loaded from a save that predates the
   `attunement` field runs `migrateLegacyAttunement()` — deterministic, and in practice a no-op for
@@ -434,8 +428,7 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
 
 ## Progression and balance invariants (1.4.x)
 
-See README.md's "Core design principles" for the plain-language vision these enforce; this section
-is the technical/numeric detail underneath it, not a competing statement of it.
+These invariants and the owner's current instructions define progression behavior; keep the README focused on the player experience.
 
 - Trained stats are capped at `STAT_EFFECT_CAP` (500) each and `STAT_TOTAL_CAP` (1,000) combined.
   Enforce in `allocateStat()`, promotion and save loading — never only in the UI.

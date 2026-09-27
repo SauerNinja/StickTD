@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.43] - 2026-09-27 — Keep project copy evergreen and comment references exact
+- **README voice**: describe the enduring player experience in positive, time-neutral language. Keep release history in this changelog and contributor rules in `AGENTS.md`; update player-facing copy only when a stable, verified fact needs correction or addition.
+- **Index references**: all 788 live `CA` pointers identify the changelog release that introduced the archive and their matching `CA` entry, so each inline pointer leads directly to its explanation.
+- **Source selection**: use the owner's latest complete uploaded project snapshot as the active baseline, ahead of older ZIP archives or remembered workspace files.
+- **Unlock-copy guidance**: align contributor instructions with the owner's preference for direct, useful, non-cryptic Build-menu unlock descriptions derived from the actual unlock-source table.
+- **Scope**: documentation and terse comment pointers only. Runtime gameplay behavior is unchanged.
+- **Verification**: check the game/changelog version, all pointer IDs and destinations, README wording, and executable inline-script syntax.
+
 ## [1.6.42] - 2026-09-27 — Adapt cosmetic detail to measured render spikes
 - **Measured visual-load response**: keep the existing visible-enemy detail reduction and add a 45-frame hold when the prior depth-sorted phase exceeds 8 ms. This uses the existing cosmetic-only low-detail branches, leaves simulation/combat state untouched, and recovers after the hold unless the measured phase or visible population remains high.
 - **Fallback visibility**: count depth-sort pressure and adaptive-detail frames; slow-frame snapshots state whether the fallback was active, its remaining hold, and the preceding depth-sort duration.
@@ -9565,7 +9573,7 @@ First versioned release. Baseline snapshot of the full feature set built up to t
   past the first one; a Barricade HP display bug caused by a generic regen system applying to a
   tower type it shouldn't have; map generation that could leave zero buildable tiles in a small
   starting region).
-## Code Archaeology — full comment history exported from index.html
+## Code Archaeology — full comment history exported from index.html (introduced in v1.5.7)
 Every standalone multi-line comment block that used to live inline in index.html, verbatim, keyed by the ID now left in its place in the code (`// CA0XX — see CHANGELOG.md § Code Archaeology`). index.html itself only keeps single-line comments and these pointer IDs from here forward — see the [1.5.7] entry above for the policy this enforces.
 
 #### CA001 — `gtag` (was lines 58-60)
