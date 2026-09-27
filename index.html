@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.32'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.39'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -11097,9 +11097,11 @@ function render(ctx){
   drawDepthSortedLayer(ctx); // scenery + enemies + towers + bone/skull/worm debris, interleaved by Y-depth — see drawDepthSortedLayer() for why
   drawSelectedTowerArrow(ctx);
   renderPhaseTime.depthSorted += performance.now() - __rpt; __rpt = performance.now();
+  const groundItemBounds = fxViewBounds();
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = Math.sin(gameTime/300 + gi.id)*4;
+    if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
     ctx.save();
     // CA668 — see CHANGELOG.md § Code Archaeology
     const isRareDrop = gi.itemDef === LUCKY_BRANCH;
@@ -11338,8 +11340,14 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   barricadeActiveScanned: 0, barricadeQueuedCount: 0, barricadeSnapCount: 0, barricadeMaxQueueLenSeen: 0,
   // CA679 — see CHANGELOG.md § Code Archaeology
   actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
+  wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
+  simulationCapEvents: [], sessionTrendSamples: [],
   // CA680 — see CHANGELOG.md § Code Archaeology
   worstFrameMs: 0, worstFrameAtWave: 0, worstFrameTicks: 0, worstFrameAtReal: 0,
+  slowFrameEvents: [], longCallbackGapEvents: [], longTaskEvents: [], longTaskCount: 0, longTaskObserverActive: false, longTaskObserverError: '',
+  longAnimationFrameEvents: [], longAnimationFrameCount: 0, longAnimationFrameObserverActive: false, longAnimationFrameObserverError: '',
+  interactionEvents: [], interactionEventCount: 0, interactionObserverActive: false, interactionObserverError: '',
+  runtimeErrors: [], runtimeErrorCount: 0,
   // CA681 — see CHANGELOG.md § Code Archaeology
   wallGapMsHistory: [], worstWallGapMs: 0, worstWallGapAtWave: 0, worstWallGapAtReal: 0,
   // CA682 — see CHANGELOG.md § Code Archaeology
@@ -11366,9 +11374,22 @@ function resetRenderPhaseTime(){
   for(const k in renderPhaseTime) renderPhaseTime[k] = 0;
 }
 const PERF_HISTORY_SIZE = 120;
+const perfHistoryNextWriteIndex = new WeakMap();
 function recordPerfSample(arr, value){
-  arr.push(value);
-  if(arr.length > PERF_HISTORY_SIZE) arr.shift();
+  if(arr.length < PERF_HISTORY_SIZE){
+    arr.push(value);
+    if(arr.length === PERF_HISTORY_SIZE) perfHistoryNextWriteIndex.set(arr, 0);
+    return;
+  }
+  const nextWrite = perfHistoryNextWriteIndex.get(arr) || 0;
+  arr[nextWrite] = value;
+  perfHistoryNextWriteIndex.set(arr, (nextWrite + 1) % PERF_HISTORY_SIZE);
+}
+function perfHistoryEndpoints(arr){
+  if(!arr.length) return [0, 0];
+  const nextWrite = perfHistoryNextWriteIndex.get(arr);
+  if(nextWrite === undefined) return [arr[0], arr[arr.length - 1]];
+  return [arr[nextWrite], arr[(nextWrite + arr.length - 1) % arr.length]];
 }
 function perfPercentile(arr, p){
   if(!arr.length) return 0;
@@ -11376,6 +11397,270 @@ function perfPercentile(arr, p){
   const idx = clampNum(Math.floor(p*sorted.length), 0, sorted.length-1);
   return sorted[idx];
 }
+const PERF_EVENT_HISTORY_LIMIT = 10;
+function recordPerfEventSample(events, durationMs, minimumMs, wallGapMs){
+  if(durationMs < minimumMs || (events.length >= PERF_EVENT_HISTORY_LIMIT && durationMs <= events[events.length - 1].durationMs)) return;
+  const event = {
+    durationMs,
+    time: new Date().toISOString(),
+    frameMs: perfStats.frameMs,
+    updateMs: perfStats.updateMs,
+    renderMs: perfStats.renderMs,
+    wallGapMs,
+    ticks: perfStats.ticksThisFrame,
+    wave: waveIndex,
+    waveState,
+    gameState,
+    gameSpeed,
+    gameTime,
+    accumulatorMs: perfStats.lastAccumulatorDebtMs,
+    cameraX: camera.x,
+    cameraY: camera.y,
+    zoom: camera.zoom,
+    quality: graphicsQuality,
+    dpr: dprValue,
+    tabHidden: document.hidden,
+    visibleEnemies: perfStats.visibleEnemies,
+    activeEnemies: perfStats.totalActiveEnemies,
+    visibleTowers: perfStats.visibleTowers,
+    activeTowers: perfStats.totalActiveTowers,
+    activeProjectiles: countActive(projectilePool),
+    activeParticles: perfStats.totalParticles,
+    activeTexts: perfStats.totalFloatingTexts,
+    deathAnimations: deathAnims.length,
+    decals: perfStats.totalDecals,
+    visibleDecals: perfStats.visibleDecals,
+    scenery: perfStats.totalScenery,
+    groundItems: groundItems.length,
+    hashBuilds: perfStats.hashBuildsLastFrame,
+    spatialQueries: perfStats.spatialQueryCallsLastFrame,
+    barricadeScanned: perfStats.barricadeActiveScanned,
+    barricadeQueued: perfStats.barricadeQueuedCount,
+    usedHeapMB: perfStats.memorySupported ? perfStats.usedHeapMB : null,
+    updatePhases: { ...phaseTime },
+    renderPhases: { ...renderPhaseTime }
+  };
+  let index = 0;
+  while(index < events.length && events[index].durationMs >= durationMs) index++;
+  events.splice(index, 0, event);
+  if(events.length > PERF_EVENT_HISTORY_LIMIT) events.pop();
+}
+const LONG_TASK_HISTORY_LIMIT = 20;
+const LONG_ANIMATION_FRAME_HISTORY_LIMIT = 20;
+const INTERACTION_HISTORY_LIMIT = 30;
+const RUNTIME_ERROR_HISTORY_LIMIT = 50;
+const diagnosticObservers = [];
+function startDiagnosticObserver(entryType, handler, optionVariants, activeField, errorField){
+  if(typeof PerformanceObserver !== 'function') return;
+  let observer = null;
+  try {
+    observer = new PerformanceObserver(list => handler(list.getEntries()));
+    let observed = false, lastError = null;
+    for(const options of optionVariants){
+      try {
+        observer.observe(options);
+        observed = true;
+        break;
+      } catch(error) {
+        lastError = error;
+      }
+    }
+    if(observed){
+      diagnosticObservers.push(observer);
+      perfStats[activeField] = true;
+    } else {
+      observer.disconnect();
+      perfStats[errorField] = String(lastError && lastError.message || lastError || (entryType + ' unavailable')).slice(0, 160);
+    }
+  } catch(error) {
+    if(observer) observer.disconnect();
+    perfStats[errorField] = String(error && error.message || error || (entryType + ' unavailable')).slice(0, 160);
+  }
+}
+function insertTopDurationEvent(events, event, limit){
+  let index = 0;
+  while(index < events.length && events[index].durationMs >= event.durationMs) index++;
+  if(index < limit){
+    events.splice(index, 0, event);
+    if(events.length > limit) events.pop();
+  }
+}
+const SIMULATION_CAP_EVENT_LIMIT = 20;
+const SESSION_TREND_INTERVAL_MS = 60000;
+const SESSION_TREND_HISTORY_LIMIT = 120;
+let perfTrendWindow = null;
+function createPerfTrendWindow(now){
+  return { start: now, frames: 0, frameTotal: 0, updateTotal: 0, renderTotal: 0, callbackGapTotal: 0,
+    requestedSpeedTotal: 0, maxFrame: 0, maxUpdate: 0, maxRender: 0, maxCallbackGap: 0,
+    slowFrames: 0, longGaps: 0, maxTicks: 0, maxDebt: 0, maxEnemies: 0, maxVisibleEnemies: 0,
+    maxTowers: 0, maxVisibleTowers: 0, maxParticles: 0, maxDecals: 0, maxQueries: 0, maxHashes: 0,
+    baseCapHits: perfStats.simulationCatchUpCapHits, baseDroppedMs: perfStats.simulationDebtDroppedMs,
+    baseWallClampHits: perfStats.wallTimeClampHits, baseWallClampedMs: perfStats.wallTimeClampedMs,
+    heapStartMB: perfStats.memorySupported ? perfStats.usedHeapMB : null,
+    heapEndMB: perfStats.memorySupported ? perfStats.usedHeapMB : null,
+    heapMaxMB: perfStats.memorySupported ? perfStats.usedHeapMB : null,
+    startWave: waveIndex, startSpeed: gameSpeed };
+}
+function recordPerfTrendFrame(now, rawGapMs){
+  if(!perfTrendWindow) perfTrendWindow = createPerfTrendWindow(now);
+  const w = perfTrendWindow;
+  w.frames++;
+  w.frameTotal += perfStats.frameMs;
+  w.updateTotal += perfStats.updateMs;
+  w.renderTotal += perfStats.renderMs;
+  w.callbackGapTotal += rawGapMs;
+  w.requestedSpeedTotal += gameSpeed;
+  if(perfStats.frameMs > w.maxFrame) w.maxFrame = perfStats.frameMs;
+  if(perfStats.updateMs > w.maxUpdate) w.maxUpdate = perfStats.updateMs;
+  if(perfStats.renderMs > w.maxRender) w.maxRender = perfStats.renderMs;
+  if(rawGapMs > w.maxCallbackGap) w.maxCallbackGap = rawGapMs;
+  if(perfStats.frameMs >= 16.7) w.slowFrames++;
+  if(rawGapMs >= 33.3) w.longGaps++;
+  if(perfStats.ticksThisFrame > w.maxTicks) w.maxTicks = perfStats.ticksThisFrame;
+  if(perfStats.lastAccumulatorDebtMs > w.maxDebt) w.maxDebt = perfStats.lastAccumulatorDebtMs;
+  if(perfStats.totalActiveEnemies > w.maxEnemies) w.maxEnemies = perfStats.totalActiveEnemies;
+  if(perfStats.visibleEnemies > w.maxVisibleEnemies) w.maxVisibleEnemies = perfStats.visibleEnemies;
+  if(perfStats.totalActiveTowers > w.maxTowers) w.maxTowers = perfStats.totalActiveTowers;
+  if(perfStats.visibleTowers > w.maxVisibleTowers) w.maxVisibleTowers = perfStats.visibleTowers;
+  if(perfStats.totalParticles > w.maxParticles) w.maxParticles = perfStats.totalParticles;
+  if(perfStats.totalDecals > w.maxDecals) w.maxDecals = perfStats.totalDecals;
+  if(perfStats.spatialQueryCallsLastFrame > w.maxQueries) w.maxQueries = perfStats.spatialQueryCallsLastFrame;
+  if(perfStats.hashBuildsLastFrame > w.maxHashes) w.maxHashes = perfStats.hashBuildsLastFrame;
+  if(perfStats.memorySupported){
+    if(w.heapStartMB === null) w.heapStartMB = perfStats.usedHeapMB;
+    w.heapEndMB = perfStats.usedHeapMB;
+    if(w.heapMaxMB === null || perfStats.usedHeapMB > w.heapMaxMB) w.heapMaxMB = perfStats.usedHeapMB;
+  }
+  const elapsed = w.callbackGapTotal;
+  if(elapsed < SESSION_TREND_INTERVAL_MS || !w.frames) return;
+  perfStats.sessionTrendSamples.push({
+    startTime: Number.isFinite(performance.timeOrigin) ? new Date(performance.timeOrigin + w.start).toISOString() : 'unavailable',
+    endTime: Number.isFinite(performance.timeOrigin) ? new Date(performance.timeOrigin + now).toISOString() : new Date().toISOString(),
+    durationSeconds: elapsed / 1000, wallSpanSeconds: (now - w.start) / 1000,
+    frames: w.frames, callbackFps: w.frames / (elapsed / 1000),
+    averageFrameMs: w.frameTotal / w.frames, maxFrameMs: w.maxFrame,
+    averageUpdateMs: w.updateTotal / w.frames, maxUpdateMs: w.maxUpdate,
+    averageRenderMs: w.renderTotal / w.frames, maxRenderMs: w.maxRender,
+    averageCallbackGapMs: w.callbackGapTotal / w.frames, maxCallbackGapMs: w.maxCallbackGap,
+    slowFrames: w.slowFrames, longGaps: w.longGaps, maxTicks: w.maxTicks, maxDebtMs: w.maxDebt,
+    capHits: perfStats.simulationCatchUpCapHits - w.baseCapHits,
+    droppedSimulationMs: perfStats.simulationDebtDroppedMs - w.baseDroppedMs,
+    wallClampFrames: perfStats.wallTimeClampHits - w.baseWallClampHits,
+    wallTimeClampedMs: perfStats.wallTimeClampedMs - w.baseWallClampedMs,
+    maxEnemies: w.maxEnemies, maxVisibleEnemies: w.maxVisibleEnemies,
+    maxTowers: w.maxTowers, maxVisibleTowers: w.maxVisibleTowers,
+    maxParticles: w.maxParticles, maxDecals: w.maxDecals,
+    maxQueries: w.maxQueries, maxHashes: w.maxHashes,
+    averageRequestedSpeed: w.requestedSpeedTotal / w.frames, endRequestedSpeed: gameSpeed,
+    startWave: w.startWave, endWave: waveIndex,
+    heapStartMB: w.heapStartMB, heapEndMB: w.heapEndMB, heapMaxMB: w.heapMaxMB
+  });
+  if(perfStats.sessionTrendSamples.length > SESSION_TREND_HISTORY_LIMIT) perfStats.sessionTrendSamples.shift();
+  perfTrendWindow = createPerfTrendWindow(now);
+}
+function recordSimulationCapEvent(rawGapMs, droppedMs){
+  if(droppedMs <= 0) return;
+  const event = { durationMs: droppedMs, time: new Date().toISOString(), wallGapMs: rawGapMs,
+    wallTimeClampedMs: Math.max(0, rawGapMs - 100), frameMs: perfStats.frameMs,
+    updateMs: perfStats.updateMs, renderMs: perfStats.renderMs, ticks: perfStats.ticksThisFrame,
+    wave: waveIndex, waveState, gameState, gameSpeed, accumulatorMs: droppedMs,
+    activeEnemies: perfStats.totalActiveEnemies, activeTowers: perfStats.totalActiveTowers,
+    activeParticles: perfStats.totalParticles, decals: perfStats.totalDecals,
+    hashBuilds: perfStats.hashBuildsLastFrame, spatialQueries: perfStats.spatialQueryCallsLastFrame,
+    updatePhases: { ...phaseTime }, renderPhases: { ...renderPhaseTime } };
+  insertTopDurationEvent(perfStats.simulationCapEvents, event, SIMULATION_CAP_EVENT_LIMIT);
+}
+function recordLongTaskEntries(entries){
+  for(const entry of entries){
+    perfStats.longTaskCount++;
+    const attributions = [];
+    if(entry.attribution){
+      for(let i=0;i<entry.attribution.length && i<3;i++){
+        const item = entry.attribution[i];
+        attributions.push({ name: item.name || '', containerType: item.containerType || '',
+          containerName: item.containerName || '', containerId: item.containerId || '' });
+      }
+    }
+    const event = { durationMs: entry.duration, startTimeMs: entry.startTime,
+      time: Number.isFinite(performance.timeOrigin) ? new Date(performance.timeOrigin + entry.startTime).toISOString() : 'unavailable',
+      attributions };
+    insertTopDurationEvent(perfStats.longTaskEvents, event, LONG_TASK_HISTORY_LIMIT);
+  }
+}
+startDiagnosticObserver('longtask', recordLongTaskEntries,
+  [{ type: 'longtask', buffered: true }, { type: 'longtask' }], 'longTaskObserverActive', 'longTaskObserverError');
+function recordLongAnimationFrameEntries(entries){
+  for(const entry of entries){
+    perfStats.longAnimationFrameCount++;
+    const scripts = [];
+    if(entry.scripts){
+      for(let i=0;i<entry.scripts.length && i<5;i++){
+        const item = entry.scripts[i];
+        scripts.push({ source: safeDiagnosticSource(item.sourceURL || ''), functionName: item.sourceFunctionName || '',
+          invoker: item.invoker || '', durationMs: item.duration || 0,
+          forcedStyleAndLayoutMs: item.forcedStyleAndLayoutDuration || 0 });
+      }
+    }
+    const event = { durationMs: entry.duration, startTimeMs: entry.startTime,
+      time: Number.isFinite(performance.timeOrigin) ? new Date(performance.timeOrigin + entry.startTime).toISOString() : 'unavailable',
+      blockingDurationMs: entry.blockingDuration || 0,
+      renderDurationMs: entry.renderStart ? Math.max(0, (entry.presentationTime || entry.startTime + entry.duration) - entry.renderStart) : 0,
+      styleAndLayoutMs: entry.styleAndLayoutStart ? Math.max(0, (entry.presentationTime || entry.startTime + entry.duration) - entry.styleAndLayoutStart) : 0,
+      firstUIEventDelayMs: entry.firstUIEventTimestamp ? Math.max(0, entry.firstUIEventTimestamp - entry.startTime) : 0,
+      scripts };
+    insertTopDurationEvent(perfStats.longAnimationFrameEvents, event, LONG_ANIMATION_FRAME_HISTORY_LIMIT);
+  }
+}
+startDiagnosticObserver('long-animation-frame', recordLongAnimationFrameEntries,
+  [{ type: 'long-animation-frame', buffered: true }, { type: 'long-animation-frame' }],
+  'longAnimationFrameObserverActive', 'longAnimationFrameObserverError');
+function recordInteractionEntries(entries){
+  for(const entry of entries){
+    perfStats.interactionEventCount++;
+    const processingStart = Number(entry.processingStart) || 0;
+    const processingEnd = Number(entry.processingEnd) || processingStart;
+    const event = { durationMs: entry.duration, name: entry.name || 'unknown',
+      startTimeMs: entry.startTime,
+      time: Number.isFinite(performance.timeOrigin) ? new Date(performance.timeOrigin + entry.startTime).toISOString() : 'unavailable',
+      inputDelayMs: Math.max(0, processingStart - entry.startTime),
+      processingMs: Math.max(0, processingEnd - processingStart),
+      presentationDelayMs: Math.max(0, entry.startTime + entry.duration - processingEnd),
+      interactionId: entry.interactionId || 0 };
+    insertTopDurationEvent(perfStats.interactionEvents, event, INTERACTION_HISTORY_LIMIT);
+  }
+}
+startDiagnosticObserver('event', recordInteractionEntries,
+  [{ type: 'event', buffered: true, durationThreshold: 16 }, { type: 'event', durationThreshold: 16 },
+    { type: 'event', buffered: true }, { type: 'event' }], 'interactionObserverActive', 'interactionObserverError');
+function safeDiagnosticSource(source){
+  if(!source) return '';
+  try {
+    const url = new URL(source, location.href);
+    return url.origin + url.pathname;
+  } catch(error) {
+    return String(source).split(/[?#]/)[0].slice(0, 300);
+  }
+}
+function recordRuntimeError(type, message, source, line, column, stack){
+  perfStats.runtimeErrorCount++;
+  perfStats.runtimeErrors.push({ type, time: new Date().toISOString(), message: String(message || '').slice(0, 1200),
+    source: safeDiagnosticSource(source), line: Number(line) || 0, column: Number(column) || 0,
+    stack: String(stack || '').slice(0, 3000) });
+  if(perfStats.runtimeErrors.length > RUNTIME_ERROR_HISTORY_LIMIT) perfStats.runtimeErrors.shift();
+}
+window.addEventListener('error', event => {
+  const target = event.target;
+  if(target && target !== window){
+    recordRuntimeError('resource-load', (target.tagName || 'resource') + ' load failure', target.currentSrc || target.src || target.href, 0, 0, '');
+    return;
+  }
+  recordRuntimeError('javascript-error', event.message, event.filename, event.lineno, event.colno, event.error && event.error.stack);
+}, true);
+window.addEventListener('unhandledrejection', event => {
+  const reason = event.reason;
+  const message = reason && reason.message ? reason.name ? reason.name + ': ' + reason.message : reason.message : String(reason || 'unhandled promise rejection');
+  recordRuntimeError('unhandled-rejection', message, '', 0, 0, reason && reason.stack);
+});
 // CA688 — see CHANGELOG.md § Code Archaeology
 const ATTRACT_FORMATION = [
   { xf: 0.50, yf: 0.32, element: 'FIRE' },     // top-center archer
@@ -11774,7 +12059,11 @@ function loop(now){
   let frameTime = now - lastTime;
   // CA719 — see CHANGELOG.md § Code Archaeology
   const rawWallGapMs = frameTime;
-  if(frameTime > 100) frameTime = 100;
+  if(frameTime > 100){
+    perfStats.wallTimeClampHits++;
+    perfStats.wallTimeClampedMs += frameTime - 100;
+    frameTime = 100;
+  }
   lastTime = now;
   realTimeFrozen = waveState === 'IDLE';
   if(!realTimeFrozen) realTime += frameTime;
@@ -11792,13 +12081,19 @@ function loop(now){
   resetRenderPhaseTime(); // same pattern, for the render() breakdown below — see renderPhaseTime/resetRenderPhaseTime
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
+  let droppedSimulationTimeThisFrame = 0;
   while(accumulator >= FIXED_DT && ticksThisFrame < MAX_SIMULATION_TICKS_PER_FRAME && gameState === 'PLAYING'){
     update(FIXED_DT);
     accumulator -= FIXED_DT;
     ticksThisFrame++;
   }
   // CA721 — see CHANGELOG.md § Code Archaeology
-  if(ticksThisFrame >= MAX_SIMULATION_TICKS_PER_FRAME) accumulator = 0;
+  if(ticksThisFrame >= MAX_SIMULATION_TICKS_PER_FRAME){
+    perfStats.simulationCatchUpCapHits++;
+    droppedSimulationTimeThisFrame = Math.max(0, accumulator);
+    perfStats.simulationDebtDroppedMs += droppedSimulationTimeThisFrame;
+    accumulator = 0;
+  }
   perfStats.updateMs = performance.now() - updateStart;
   flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
@@ -11845,6 +12140,7 @@ function loop(now){
     }
   }
   perfStats.lastAccumulatorDebtMs = accumulator; // leftover simulation time this frame couldn't catch up on, carried into the next one
+  perfStats.lastDroppedSimulationTimeMs = droppedSimulationTimeThisFrame;
   // CA725 — see CHANGELOG.md § Code Archaeology
   perfStats.actualSpeedWindowRealMs += frameTime;
   perfStats.actualSpeedWindowTicks += ticksThisFrame;
@@ -11852,6 +12148,10 @@ function loop(now){
     perfStats.lastMeasuredActualSpeed = (perfStats.actualSpeedWindowTicks * FIXED_DT) / perfStats.actualSpeedWindowRealMs;
     perfStats.actualSpeedWindowRealMs = 0; perfStats.actualSpeedWindowTicks = 0;
   }
+  recordPerfEventSample(perfStats.slowFrameEvents, perfStats.frameMs, 16.7, rawWallGapMs);
+  recordPerfEventSample(perfStats.longCallbackGapEvents, rawWallGapMs, 33.3, rawWallGapMs);
+  recordSimulationCapEvent(rawWallGapMs, droppedSimulationTimeThisFrame);
+  recordPerfTrendFrame(now, rawWallGapMs);
 }
 
 /* =========================================================
@@ -13128,10 +13428,10 @@ function generateDebugLog(){
     '  (last ' + perfStats.frameMsHistory.length + ' frames — an average can look healthy while intermittent stalls hide inside it, this is what actually reveals them)\n';
   // CA772 — see CHANGELOG.md § Code Archaeology
   const fpsFromMs = ms => ms > 0 ? (1000/ms) : 0;
-  s += 'FPS — median: ' + fpsFromMs(perfPercentile(perfStats.frameMsHistory,0.5)).toFixed(0) +
-    '  p5: ' + fpsFromMs(perfPercentile(perfStats.frameMsHistory,0.95)).toFixed(0) +
-    '  p1: ' + fpsFromMs(perfPercentile(perfStats.frameMsHistory,0.99)).toFixed(0) +
-    '  min: ' + fpsFromMs(perfPercentile(perfStats.frameMsHistory,1)).toFixed(0) + '\n';
+  s += 'Rendered callback FPS — median: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,0.5)).toFixed(0) +
+    '  p5: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,0.95)).toFixed(0) +
+    '  p1: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,0.99)).toFixed(0) +
+    '  min: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,1)).toFixed(0) + '\n';
   s += 'Update ms — median: ' + perfPercentile(perfStats.updateMsHistory,0.5).toFixed(2) +
     '  p99: ' + perfPercentile(perfStats.updateMsHistory,0.99).toFixed(2) +
     '  max: ' + perfPercentile(perfStats.updateMsHistory,1).toFixed(2) + '\n';
@@ -13151,6 +13451,144 @@ function generateDebugLog(){
   s += 'Worst frame this session: ' + perfStats.worstFrameMs.toFixed(2) + 'ms, at wave ' + perfStats.worstFrameAtWave +
     ', ' + perfStats.worstFrameTicks + ' ticks that frame (separate from the rolling-window max above — ' +
     'this persists even after the spike scrolls out of the last ' + PERF_HISTORY_SIZE + '-frame window)\n';
+  function appendHistoricalPerfEvents(title, events, metricName){
+    s += '\n' + title + '\n' + '-'.repeat(title.length) + '\n';
+    if(!events.length){ s += 'No events crossed the recording threshold during this session.\n'; return; }
+    for(let i=0;i<events.length;i++){
+      const e = events[i];
+      s += '#' + (i+1) + '  ' + metricName + ' ' + e.durationMs.toFixed(2) + 'ms  ' + e.time +
+        '  frame ' + e.frameMs.toFixed(2) + 'ms (update ' + e.updateMs.toFixed(2) + ', render ' + e.renderMs.toFixed(2) +
+        ')  callback gap ' + e.wallGapMs.toFixed(2) + 'ms\n';
+      s += '   state: wave ' + e.wave + ' ' + e.waveState + '/' + e.gameState + ', speed ' + e.gameSpeed +
+        'x, ticks ' + e.ticks + ', debt ' + e.accumulatorMs.toFixed(2) + 'ms, tab hidden ' + e.tabHidden +
+        ', quality ' + e.quality + ', DPR ' + e.dpr + ', camera ' + e.cameraX.toFixed(1) + ',' + e.cameraY.toFixed(1) +
+        ' zoom ' + e.zoom.toFixed(3) + '\n';
+      s += '   entities: enemies ' + e.visibleEnemies + '/' + e.activeEnemies + ', towers ' + e.visibleTowers + '/' +
+        e.activeTowers + ', projectiles ' + e.activeProjectiles + ', particles ' + e.activeParticles + ', texts ' +
+        e.activeTexts + ', death animations ' + e.deathAnimations + ', decals ' + e.visibleDecals + '/' + e.decals +
+        ', scenery ' + e.scenery + ', ground items ' + e.groundItems + ', barricade scans/queue ' +
+        e.barricadeScanned + '/' + e.barricadeQueued + ', hashes/queries ' + e.hashBuilds + '/' + e.spatialQueries +
+        (e.usedHeapMB === null ? '' : ', heap ' + e.usedHeapMB.toFixed(1) + 'MB') + '\n';
+      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+      s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+    }
+  }
+  appendHistoricalPerfEvents('SESSION SLOW-FRAME SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', frame workload >=16.7ms)', perfStats.slowFrameEvents, 'frame');
+  appendHistoricalPerfEvents('SESSION LONG-CALLBACK-GAP SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', callback gap >=33.3ms)', perfStats.longCallbackGapEvents, 'gap');
+  s += '\nSIMULATION CATCH-UP AND TIME LOSS\n';
+  s += '---------------------------------\n';
+  s += 'Frame-time clamp: ' + perfStats.wallTimeClampHits + ' frame(s), ' + perfStats.wallTimeClampedMs.toFixed(2) +
+    'ms of wall time excluded by the 100ms frame-time ceiling.\n';
+  s += 'Simulation tick cap: ' + perfStats.simulationCatchUpCapHits + ' frame(s) reached ' + MAX_SIMULATION_TICKS_PER_FRAME +
+    ' ticks; discarded simulation debt total ' + perfStats.simulationDebtDroppedMs.toFixed(2) + 'ms, last frame ' +
+    perfStats.lastDroppedSimulationTimeMs.toFixed(2) + 'ms. Remaining accumulator debt is ' +
+    perfStats.lastAccumulatorDebtMs.toFixed(2) + 'ms after any cap discard.\n';
+  s += 'Retained cap-discard events: ' + perfStats.simulationCapEvents.length + '/' + SIMULATION_CAP_EVENT_LIMIT +
+    ' largest observed discarded-debt frames.\n';
+  for(let i=0;i<perfStats.simulationCapEvents.length;i++){
+    const e = perfStats.simulationCapEvents[i];
+    s += '#' + (i+1) + '  discarded ' + e.durationMs.toFixed(2) + ' simulation-ms  ' + e.time +
+      '  wall gap ' + e.wallGapMs.toFixed(2) + 'ms (clamped ' + e.wallTimeClampedMs.toFixed(2) +
+      ')  JS frame ' + e.frameMs.toFixed(2) + 'ms (update ' + e.updateMs.toFixed(2) + ', render ' + e.renderMs.toFixed(2) +
+      ')  wave ' + e.wave + ' ' + e.waveState + '/' + e.gameState + ' speed ' + e.gameSpeed + 'x ticks ' + e.ticks + '\n';
+    s += '   load: enemies ' + e.activeEnemies + ', towers ' + e.activeTowers + ', particles ' + e.activeParticles +
+      ', decals ' + e.decals + ', hashes/queries ' + e.hashBuilds + '/' + e.spatialQueries + '\n';
+    s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+    s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+  }
+  s += '\nLONG-SESSION PERFORMANCE TREND (completed active-play minute windows)\n';
+  s += '--------------------------------------------------------------------\n';
+  s += 'Retained periods: ' + perfStats.sessionTrendSamples.length + '/' + SESSION_TREND_HISTORY_LIMIT +
+    ' (one sample per 60 seconds of accumulated rendered callback time; periods while paused are not included in active callback time).\n';
+  if(!perfStats.sessionTrendSamples.length){
+    s += 'No complete 60-second active-play period has been recorded yet.\n';
+  } else {
+    for(let i=0;i<perfStats.sessionTrendSamples.length;i++){
+      const e = perfStats.sessionTrendSamples[i];
+      s += '#' + (i+1) + '  ' + e.startTime + ' to ' + e.endTime + '  callbacks ' + e.frames +
+        '  sampled callback time ' + e.durationSeconds.toFixed(1) + 's  wall span ' + e.wallSpanSeconds.toFixed(1) +
+        's  callback FPS ' + e.callbackFps.toFixed(1) + '  wave ' + e.startWave + '->' + e.endWave +
+        '  speed avg/end ' + e.averageRequestedSpeed.toFixed(2) + '/' + e.endRequestedSpeed.toFixed(2) + 'x\n';
+      s += '   frame avg/max ' + e.averageFrameMs.toFixed(2) + '/' + e.maxFrameMs.toFixed(2) +
+        'ms  update avg/max ' + e.averageUpdateMs.toFixed(2) + '/' + e.maxUpdateMs.toFixed(2) +
+        'ms  render avg/max ' + e.averageRenderMs.toFixed(2) + '/' + e.maxRenderMs.toFixed(2) +
+        'ms  callback gap avg/max ' + e.averageCallbackGapMs.toFixed(2) + '/' + e.maxCallbackGapMs.toFixed(2) +
+        'ms  slow frames/gaps ' + e.slowFrames + '/' + e.longGaps + '\n';
+      s += '   max ticks/debt ' + e.maxTicks + '/' + e.maxDebtMs.toFixed(2) +
+        'ms  cap hits/dropped simulation ' + e.capHits + '/' + e.droppedSimulationMs.toFixed(2) +
+        'ms  wall clamps/lost wall time ' + e.wallClampFrames + '/' + e.wallTimeClampedMs.toFixed(2) + 'ms\n';
+      s += '   peak enemies active/visible ' + e.maxEnemies + '/' + e.maxVisibleEnemies +
+        ', towers active/visible ' + e.maxTowers + '/' + e.maxVisibleTowers + ', particles/decals ' +
+        e.maxParticles + '/' + e.maxDecals + ', spatial queries/hash builds ' + e.maxQueries + '/' + e.maxHashes + '\n';
+      s += '   heap start/end/max ' + (e.heapStartMB === null ? 'n/a' : e.heapStartMB.toFixed(1) + '/' + e.heapEndMB.toFixed(1) + '/' + e.heapMaxMB.toFixed(1) + 'MB') + '\n';
+    }
+  }
+  s += '\nBROWSER LONG TASKS (PerformanceObserver, tasks >=50ms)\n';
+  s += '-------------------------------------------------------\n';
+  s += 'Observer: ' + (perfStats.longTaskObserverActive ? 'active' : perfStats.longTaskObserverError ? 'unavailable (' + perfStats.longTaskObserverError + ')' : 'unsupported or unavailable') +
+    '  total observed: ' + perfStats.longTaskCount + '  retained: ' + perfStats.longTaskEvents.length + '/' + LONG_TASK_HISTORY_LIMIT + '\n';
+  if(!perfStats.longTaskEvents.length){
+    s += 'No browser long tasks were observed during this session. This API is browser-dependent and does not report GPU/compositor work.\n';
+  } else {
+    s += 'These tasks ran on the main thread; observer timestamps are entry start times, while attribution details depend on browser support.\n';
+    for(let i=0;i<perfStats.longTaskEvents.length;i++){
+      const e = perfStats.longTaskEvents[i];
+      s += '#' + (i+1) + '  ' + e.durationMs.toFixed(2) + 'ms  ' + e.time + '  start +' + e.startTimeMs.toFixed(2) + 'ms\n';
+      if(e.attributions.length){
+        s += '   attribution: ' + e.attributions.map(a => [a.name, a.containerType, a.containerName, a.containerId].filter(Boolean).join('/')).join('; ') + '\n';
+      } else {
+        s += '   attribution: unavailable\n';
+      }
+    }
+  }
+  s += '\nLONG ANIMATION FRAMES (PerformanceObserver, frames >=50ms)\n';
+  s += '------------------------------------------------------------\n';
+  s += 'Observer: ' + (perfStats.longAnimationFrameObserverActive ? 'active' : perfStats.longAnimationFrameObserverError ? 'unavailable (' + perfStats.longAnimationFrameObserverError + ')' : 'unsupported or unavailable') +
+    '  total observed: ' + perfStats.longAnimationFrameCount + '  retained: ' + perfStats.longAnimationFrameEvents.length + '/' + LONG_ANIMATION_FRAME_HISTORY_LIMIT + '\n';
+  if(!perfStats.longAnimationFrameEvents.length){
+    s += 'No long animation frames were observed, or this browser does not support the API. When available, this reports main-thread rendering and script attribution, not GPU/compositor timing.\n';
+  } else {
+    for(let i=0;i<perfStats.longAnimationFrameEvents.length;i++){
+      const e = perfStats.longAnimationFrameEvents[i];
+      s += '#' + (i+1) + '  ' + e.durationMs.toFixed(2) + 'ms  ' + e.time + '  blocking ' + e.blockingDurationMs.toFixed(2) +
+        'ms  render ' + e.renderDurationMs.toFixed(2) + 'ms  style/layout ' + e.styleAndLayoutMs.toFixed(2) +
+        'ms  first UI event delay ' + e.firstUIEventDelayMs.toFixed(2) + 'ms\n';
+      if(e.scripts.length){
+        s += '   scripts: ' + e.scripts.map(a => [a.functionName, a.source, a.invoker].filter(Boolean).join(' @ ') +
+          ' ' + a.durationMs.toFixed(2) + 'ms forced-style/layout ' + a.forcedStyleAndLayoutMs.toFixed(2) + 'ms').join('; ') + '\n';
+      } else {
+        s += '   scripts: unavailable or none attributed\n';
+      }
+    }
+  }
+  s += '\nSLOW INTERACTION EVENTS (Event Timing API)\n';
+  s += '------------------------------------------\n';
+  s += 'Observer: ' + (perfStats.interactionObserverActive ? 'active' : perfStats.interactionObserverError ? 'unavailable (' + perfStats.interactionObserverError + ')' : 'unsupported or unavailable') +
+    '  observed entries: ' + perfStats.interactionEventCount + '  retained: ' + perfStats.interactionEvents.length + '/' + INTERACTION_HISTORY_LIMIT +
+    '  (browser timing thresholds and event coverage vary)\n';
+  if(!perfStats.interactionEvents.length){
+    s += 'No qualifying event timing entries were observed during this session.\n';
+  } else {
+    for(let i=0;i<perfStats.interactionEvents.length;i++){
+      const e = perfStats.interactionEvents[i];
+      s += '#' + (i+1) + '  ' + e.name + ' ' + e.durationMs.toFixed(2) + 'ms  ' + e.time +
+        '  input delay ' + e.inputDelayMs.toFixed(2) + 'ms  handler ' + e.processingMs.toFixed(2) +
+        'ms  presentation wait ' + e.presentationDelayMs.toFixed(2) + 'ms  interaction ' + e.interactionId + '\n';
+    }
+  }
+  s += '\nSESSION JAVASCRIPT / RESOURCE ERRORS\n';
+  s += '------------------------------------\n';
+  s += 'Total captured: ' + perfStats.runtimeErrorCount + '  retained: ' + perfStats.runtimeErrors.length + '/' + RUNTIME_ERROR_HISTORY_LIMIT + '\n';
+  if(!perfStats.runtimeErrors.length){
+    s += 'No JavaScript errors, unhandled promise rejections, or resource-load errors were captured.\n';
+  } else {
+    for(let i=0;i<perfStats.runtimeErrors.length;i++){
+      const e = perfStats.runtimeErrors[i];
+      s += '#' + (i+1) + '  ' + e.time + '  ' + e.type + '  ' + e.message +
+        (e.source ? '  at ' + e.source + (e.line ? ':' + e.line + ':' + e.column : '') : '') + '\n';
+      if(e.stack) s += '   ' + e.stack.replace(/\n/g, '\n   ') + '\n';
+    }
+  }
   s += tickDistributionLine() + '\n';
   s += 'Requested speed: ' + gameSpeed + 'x   Actual simulation speed (last ~1s window): ' + perfStats.lastMeasuredActualSpeed.toFixed(2) + 'x\n';
   s += 'Accumulator debt (leftover simulation time not yet caught up): ' + perfStats.lastAccumulatorDebtMs.toFixed(1) + 'ms\n';
@@ -13217,7 +13655,7 @@ function generateDebugLog(){
     s += 'Used heap: ' + perfStats.usedHeapMB.toFixed(1) + 'MB   Total heap: ' + perfStats.totalHeapMB.toFixed(1) +
       'MB   Limit: ' + perfStats.heapLimitMB.toFixed(1) + 'MB\n';
     if(perfStats.heapHistory.length >= 2){
-      const first = perfStats.heapHistory[0], last = perfStats.heapHistory[perfStats.heapHistory.length-1];
+      const [first, last] = perfHistoryEndpoints(perfStats.heapHistory);
       const minutesSpan = perfStats.heapHistory.length / 60; // sampled ~once/sec, so N samples ≈ N/60 minutes
       const growthPerMin = minutesSpan > 0 ? (last-first)/minutesSpan : 0;
       s += 'Heap trend over last ' + perfStats.heapHistory.length + ' samples (~' + minutesSpan.toFixed(1) + 'min): ' +
@@ -13230,6 +13668,15 @@ function generateDebugLog(){
     s += "Not available in this browser (Firefox/Safari don't expose performance.memory). " +
       'Chrome/Edge with the game open a while gives the most useful trend data.\n';
   }
+  const canvasBufferBytes = c => c && c.width && c.height ? c.width * c.height * 4 : 0;
+  const displayCanvasBytes = canvasBufferBytes(canvas);
+  const mapCanvasBytes = canvasBufferBytes(mapCanvas);
+  const settledCanvasBytes = canvasBufferBytes(settledDecalCanvas);
+  s += 'Estimated canvas RGBA backing stores: display ' + (displayCanvasBytes/1048576).toFixed(1) +
+    'MiB, static map ' + (mapCanvasBytes/1048576).toFixed(1) + 'MiB, settled decals ' +
+    (settledCanvasBytes/1048576).toFixed(1) + 'MiB, total ' +
+    ((displayCanvasBytes+mapCanvasBytes+settledCanvasBytes)/1048576).toFixed(1) +
+    'MiB. Estimate is width x height x 4 bytes and excludes browser/GPU copies and metadata.\n';
   s += '\n';
 
   s += 'GAME STATE\n';
@@ -13302,6 +13749,12 @@ function generateDebugLog(){
     (window.screen ? window.screen.width + 'x' + window.screen.height : 'n/a') + '\n';
   s += 'devicePixelRatio: ' + (window.devicePixelRatio || 1) + '\n';
   s += 'Language: ' + navigator.language + '   Online: ' + navigator.onLine + '\n';
+  s += 'Hardware threads: ' + (navigator.hardwareConcurrency || 'n/a') + '   Device memory: ' +
+    (navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'n/a') +
+    '   Max touch points: ' + (navigator.maxTouchPoints || 0) + '\n';
+  let contextAttributes = 'unavailable';
+  try { if(ctx.getContextAttributes) contextAttributes = JSON.stringify(ctx.getContextAttributes()); } catch(error) {}
+  s += 'Canvas 2D context attributes: ' + contextAttributes + '\n';
 
   return s;
 }
