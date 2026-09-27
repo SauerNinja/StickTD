@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.6.44] - 2026-09-27 — Bound collision cost when enemies jam into a dense clump
+- **Measured, not guessed**: extracted `resolveSweptEnemyCollisions()`, `resolveEnemyCollisions()`,
+  `buildEnemyHash()`, and `queryNearby()` verbatim into a headless Node stress harness (no browser
+  needed — pure simulation math, no Canvas calls) and timed them at 50-800 active enemies, both
+  spread out (normal density) and artificially packed into one tight clump. Spread-out populations
+  stayed near-linear (~7 ms at 800 enemies). Packed populations degraded superlinearly: 800 packed
+  enemies cost ~15 ms in `resolveSweptEnemyCollisions` and ~27 ms in `resolveEnemyCollisions` alone
+  — more than a full 16.7 ms frame budget, from collision resolution by itself. The cause: when
+  enemies cluster tightly (a Barricade chokepoint, a corner backup), a single `queryNearby()` call
+  can return most of the active population, since the spatial hash's cell-bucketing stops helping
+  once density outpaces cell size.
+- **`COLLISION_QUERY_CAP` (48)**: both collision functions now process at most 48 neighbors per
+  query instead of every hash hit. Below the cap (any normal, non-degenerate density) behavior is
+  unchanged. Above it — only reachable via extreme clustering — an enemy resolves against the first
+  48 neighbors the hash bucket order returns rather than all of them; remaining overlap in that rare
+  case settles over the existing 3-pass relaxation and subsequent frames instead of one frame, the
+  same tradeoff already accepted for melee cleave's `MELEE_SWEEP_MAX_TARGETS`. Re-ran the same
+  harness after the change: at 800 packed enemies, `resolveSweptEnemyCollisions` dropped from
+  ~15.4 ms to ~4.8 ms and `resolveEnemyCollisions` from ~27.2 ms to ~9.9 ms (~65% average
+  reduction at that worst case measured).
+- **Scope**: `resolveSweptEnemyCollisions()` and `resolveEnemyCollisions()` only. No change to
+  targeting (`queryNearby()`'s other 9 call sites are untouched), spawning, wave logic, or the
+  spatial hash itself.
+- **Verification**: `node --check` on all 7 real JS script blocks (the 8th is the JSON-LD schema
+  block, expected to fail a JS syntax check). Diffed the full file against the prior version to
+  confirm only the version bump and these two loops changed. Not yet verified with a live browser
+  session (none available this pass) — the harness measures the extracted simulation math faithfully
+  but doesn't confirm in-game visual/gameplay feel at the cap boundary; worth a real playtest at a
+  deliberately jammed chokepoint before considering this fully closed.
+
 ## [1.6.43] - 2026-09-27 — Keep project copy evergreen and comment references exact
 - **README voice**: describe the enduring player experience in positive, time-neutral language. Keep release history in this changelog and contributor rules in `AGENTS.md`; update player-facing copy only when a stable, verified fact needs correction or addition.
 - **Index references**: all 788 live `CA` pointers identify the changelog release that introduced the archive and their matching `CA` entry, so each inline pointer leads directly to its explanation.

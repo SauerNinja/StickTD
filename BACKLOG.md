@@ -1,5 +1,38 @@
 # Backlog
 
+## From the 2026-09-27 Claude source audit (v1.6.43) — flagged, not yet built
+Read `performExpansion()`/`finalizeRingExpansion()`, the collision spatial hash, and
+`drawDepthSortedLayer()` directly against the live source — all three are already well-optimized
+(bounded ring/carpet repaint, pooled hash buckets with squared-distance rejection and a single
+hash reused across all 3 relaxation passes, viewport-culled-then-sorted depth list) and were left
+alone rather than "improved" without a measured reason to. AGENTS.md's rule-4 exception note about
+`rebakeMap()` doing a full-world redraw on every expansion was corrected — that was already fixed
+(see `MAP-CORRIDOR-01`/`PATH-REVEAL-COHERENCE-01`), the doc just hadn't caught up.
+
+- **Mage-kill occlusion loop — checked, NOT a real lag contributor, don't re-flag it.** Previously
+  listed here as an unconfirmed lead. Did the actual arithmetic instead of leaving it unconfirmed:
+  even a worst-case 15-enemy simultaneous Mage-AoE kill in one dense clump is ~3,000 iterations of
+  trivial math (~microseconds in V8), and it's already skipped entirely under `if(!low)` once
+  `graphicsQuality==='low'` or `underHeavyVisualLoad` is active. Correcting the record so a future
+  session doesn't re-chase this.
+- **Shipped (1.6.44): collision-cost cap for dense clumps** — see CHANGELOG.md § [1.6.44]. A
+  headless Node harness (`stress_collision.js`, extracting `resolveSweptEnemyCollisions()`,
+  `resolveEnemyCollisions()`, `buildEnemyHash()`, `queryNearby()` verbatim from `index.html`) found
+  that collision cost stays near-linear at realistic spread-out density but degrades superlinearly
+  once enemies jam into one dense clump — 800 packed enemies cost ~15ms + ~27ms across the two
+  functions, more than a full frame budget, because a single `queryNearby()` call returns nearly
+  the whole active population when density outpaces the hash's cell size. Capped neighbors
+  processed per query at 48 (`COLLISION_QUERY_CAP`); re-measured with the same harness before
+  shipping: ~65% average cost reduction at the 800-packed worst case, no behavior change below the
+  cap. **Not yet confirmed with a live playtest** — the harness proves the simulation math is
+  cheaper, not that it still feels/looks right in-game at a real jammed chokepoint (e.g. a
+  Barricade backup). Worth a deliberate stress playtest (funnel a big wave into one Barricade,
+  watch for visible stacking/popping at the cap boundary) before calling this fully closed.
+- **General**: the debug overlay's per-phase timings (`phaseTime.*`) and exportable log are still
+  the right tool for finding the *next* bottleneck once this one's confirmed in a real session —
+  this round's fix came from a headless harness because no browser was available, not because the
+  in-game overlay is worse evidence. Prefer it when it's reachable.
+
 ## From the 2026-09-25 lag-audit/screenshot round — triaged, not yet built
 Shipped this round (see CHANGELOG.md 1.4.89-1.4.98): blood dark-tone lightened, Space-to-pause,
 per-tier decal budget setting (now with a fixed 250/750 Low/High default), hut/camp HP scaled to
