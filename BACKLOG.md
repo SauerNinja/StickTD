@@ -1,5 +1,17 @@
 # Backlog
 
+## Needs live visual confirmation (no browser session available when shipped)
+- **Spawn flags (1.6.46, supersedes 1.6.45)** — 1.6.45 fixed the banner's shape/orientation but
+  left the actual placement wrong (a buildable-tile search that never matched the owner's own
+  specified rule). 1.6.46 replaces that search with the exact spec: both flags on the spawn tile's
+  edge farthest from the finish carpet, one straight line. Shipped from geometry reasoning and a
+  standalone math check (collinearity, exact tile-width separation, exact half-tile offset from
+  spawn across 8 path angles), not a live render. Confirm after upload: both flags sit together on
+  one edge of the spawn tile, immediately behind where enemies first appear, banners read as broad
+  triangles not slivers.
+- **Collision-cost cap (1.6.44)** — see its own entry below; still needs a deliberate jammed-
+  chokepoint playtest to confirm no visible stacking/popping at the 48-neighbor cap boundary.
+
 ## From the 2026-09-27 Claude source audit (v1.6.43) — flagged, not yet built
 Read `performExpansion()`/`finalizeRingExpansion()`, the collision spatial hash, and
 `drawDepthSortedLayer()` directly against the live source — all three are already well-optimized

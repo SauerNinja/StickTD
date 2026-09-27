@@ -51,6 +51,43 @@ session; open the reference doc only when a specific subsystem note is actually 
   owner hasn't explicitly confirmed. If a request sounds like it wants a mechanic changed, restate
   it back in one sentence and get an explicit yes before writing any code toward it.
 
+## Design pillars — read before touching waves, balance, or gore
+
+- **Wave order and scale.** Every wave sends its smallest enemies in before anything bigger gets to
+  move, always at least 2-5 small units for every big one. Size is the tell for strength: bigger
+  always means slower, tougher, and worth more XP (1-5x a small kill), never just a reskin.
+- **Escapees don't linger.** An enemy that survives past the finish line and dies later still
+  disappears — a defeated escapee is not a permanent fixture on the map.
+- **Leveling pace.** Roughly 5-7 small kills or 2-3 big ones fill a tower's XP bar and grant a stat
+  point. An assist earns only a fractional share of that, never the full reward.
+- **Map growth stays incremental.** Expansion winds outward a few tiles at a time, never a whole
+  ring at once — organic while the route is young, closing into a full ring as it matures. Never
+  redraw more of the map than the part that just changed, per the lag-creep protocol above.
+- **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
+  falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
+  never on the fall-off hits behind it.
+- **Wind and Luck are retired, not deleted.** Ambient miss-chance wind and DEX's bonus-gold Luck
+  were pulled for reading as confusing, not for being broken — the plumbing stays inert (see the
+  Lag-creep protocol's note on `windCeilingForWave`) so either can be re-enabled on purpose later,
+  never by accident.
+- **Blood volume tracks crit, not randomness.** Spray size sits on a skewed scale — small most of
+  the time, a large splatter only when a crit actually lands. Crit stays the rare, coveted stat;
+  blood volume is how a player feels that rarity, not an independent coin flip.
+- **DEX stays precious.** Attack-speed scaling from DEX must never let a player out-DPS
+  accuracy/other-stat investment just by dumping points into speed — see Combat & stats below for
+  the current diminishing-returns curve that protects this. Any future DEX rebalance keeps this
+  intent, not just the current numbers.
+- **Investing in power widens the swing, not just the average.** Training a tower's primary stat
+  should stretch its min/max damage roll further apart, not simply raise the midpoint — a heavily
+  invested tower reads as swingier, not just stronger on average.
+- **Santa is the real final boss.** Highest HP in the game, replacing the ordinary boss on the
+  campaign's last wave, periodically summoning fast Cookie enemies instead of healing. The same
+  voice carries into the cookie-consent banner — large and dryly self-aware that the cookies are
+  for save data and debugging, framed as Santa keeping his own naughty-or-nice list.
+- **UI holds up at every screen size.** Stat buttons and every scale-to-fit HUD element stay
+  legible and correctly sized on a large screen, not just a small one — verify both ends, not just
+  mobile.
+
 ## 2. Evidence and intended behavior
 
 - **Code and executed tests establish implementation behavior.** Explicit user decisions and
@@ -292,6 +329,21 @@ hand — this part is not meant to be read in full every session.
   tower has an active target — repositioned every rendered frame against the panel's actual
   width, since the panel isn't fixed size, via `getBoundingClientRect()`.
 
+## Route markers (spawn flags, finish carpet)
+
+Both the spawn flags and the finish carpet are computed directly from the path's own waypoints —
+never searched for among nearby buildable tiles, never cached independently of the path. Each
+marker sits on one straight edge of its own tile: the carpet on the finish tile's forward/exit
+edge (`computeFinishLine()`, anchored to the path's last waypoint), the two flags together on the
+spawn tile's backward/entrance edge — the edge farthest from the carpet — (`computeSpawnFlags()`,
+anchored to the first waypoint). The two functions are deliberate mirrors of each other: same
+technique, opposite end of the path, opposite edge of the tile. A flag's `awayX/awayY` points
+further backward, away from the tile, and is fixed once per path computation — never recomputed
+from a flag's position relative to some other point at draw time, which produces an unstable,
+edge-on-looking banner instead of a broad readable one. Neither marker's shape or position depends
+on wind; only the flag's flutter animation does, and even that reads from a fixed ambient
+constant, not the disabled miss-chance wind system.
+
 ## Combat & stats
 
 - Leveling is a genuine EXP system (`gainTowerExp()`), separate from the gold-tier `level` field
@@ -495,7 +547,11 @@ Lag in this project has repeatedly crept back through small, individually reason
    natively compiled engine — don't treat a nonzero GC cost alone as evidence of a code bug.
 4. **No unconditional full-world work** in per-frame or timer paths. World caches are blitted as
    the visible slice (`blitWorldLayer()`) and rebuilt only when dirty, coalesced
-   (`SETTLED_DECAL_REBUILD_MIN_MS`).
+   (`SETTLED_DECAL_REBUILD_MIN_MS`). Map expansion repaints stay scoped to the new ring's rectangle
+   (`paintNewRingTiles()`) plus the finish carpet's own footprint at its old and new position
+   (`repaintFinishCarpetFootprint()`) — never a full-map redraw. `rebakeMap()`/`drawMap()` (the true
+   `WORLD_MAX_W × WORLD_MAX_H` redraw) is reserved for save/load restore and DPR/resize, where a
+   one-time full repaint is the correct scope, not a recurring one.
 5. **Promotion and rebuild are separate paths.** A function that both promotes items into a cache
    and rebuilds it must never be made dirty-only (the 1.3.1 regression). Bake = incremental stamp
    on entry + coalesced full rebuild on exit.
@@ -509,21 +565,10 @@ Lag in this project has repeatedly crept back through small, individually reason
    multi-wave 10× playthrough. Record render ms and live-decal count in the CHANGELOG entry.
 10. **Structural HTML/CSS edits require a real-browser render check** (Playwright), not only a
     syntax check.
-
-**Resolved — the rule-4 exception below no longer applies (verified 2026-09-27):** this section
-previously said `rebakeMap()`/`drawMap()` still redrew the entire `WORLD_MAX_W × WORLD_MAX_H` map
-on every expansion. Read directly against the current source: `performExpansion()` /
-`finalizeRingExpansion()` no longer call `rebakeMap()` at all. They call
-`repaintFinishCarpetFootprint(mctx, oldFinishLine)` (bounded to the old carpet's own footprint,
-using the finish line captured before the path moved — exactly the "clear the old carpet"
-requirement this note used to say was unmet) and `paintNewRingTiles(mctx, oldRegion, newRegion)`
-(bounded to the new ring's rectangle only, skipping anything inside the old region). `rebakeMap()`
-itself is now called only from save/load restore and DPR/resize, not from any per-expansion or
-timer-adjacent path. See `MAP-CORRIDOR-01` (1.6.11) and `PATH-REVEAL-COHERENCE-01` (1.6.14) in
-`CHANGELOG.md` for the shipped history. Not re-verified with an in-browser visual check this pass
-(no live browser session available) — if a stray duplicate carpet or un-cleared old-ring tile is
-ever seen after an expansion, that's the first place to look, but the source itself no longer does
-the unconditional full-world redraw this note used to warn about.
+11. **A function that writes DOM text/attributes never reads a layout-forcing property**
+    (`clientWidth`, `scrollWidth`, `offsetWidth`, `getBoundingClientRect()`) later in the same
+    synchronous call — that forces a synchronous reflow the JS-timing overlay (`phaseTime.*`)
+    cannot see. Read first and cache, or defer the read to the next animation frame.
 
 ## Head block, consent, and SEO — don't casually reorder or trim
 

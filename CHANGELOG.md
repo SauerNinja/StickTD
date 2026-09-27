@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.6.46] - 2026-09-27 — Restore the actual spawn-flag placement spec (v1.6.45 fixed the wrong bug)
+- **The real problem**: `computeSpawnFlags()` had been rewritten at some point into a search over
+  nearby buildable tiles, picking whichever qualifying pair scored best. That approach never
+  matched the placement rule that was explicitly specified in an earlier session and confirmed
+  correct at the time: **both spawn flags sit on the same edge of the spawn tile — one straight
+  line, never a diagonal pair — specifically whichever edge is farthest from the finish carpet.**
+  v1.6.45 fixed the flag banners' shape and orientation (they were rendering as thin, edge-on
+  slivers) but did that fix on top of the wrong placement logic, so the flags still weren't where
+  they were supposed to be — visible in a screenshot as banners sitting out on green buildable
+  tiles instead of marking the route itself.
+- **Fix**: `computeSpawnFlags()` now mirrors `computeFinishLine()`'s own geometry exactly — same
+  technique, same style, anchored to the path's FIRST waypoint instead of its LAST. The finish
+  carpet sits on the finish tile's forward/exit edge (`computeFinishLine()`); the spawn flags now
+  sit on the spawn tile's backward/entrance edge, the mirror image. No searching, no scoring, no
+  buildable-tile dependency — a direct geometric computation, same as the carpet always was.
+- **Verified with a standalone check across 8 path angles** (0° through 315°): the two flag
+  positions are always exactly collinear (a real single line, not an approximation), always exactly
+  one tile-width (64px) apart, and their midpoint always sits exactly half a tile-width behind the
+  spawn point — the tile's true back edge, every time.
+- **Documented so this doesn't happen a third time**: the placement rule is now stated directly in
+  `computeSpawnFlags()`'s own comment, in plain language, with an explicit note not to replace it
+  with a buildable-tile search again. Also added to `AGENTS.md` as a standing invariant.
+- **Verification**: `node --check` on all 7 real script blocks. The geometry checks above ran
+  against the actual logic pattern, not a guess. Still not confirmed with a live render — no
+  browser session available this pass — so please confirm visually after upload: both flags should
+  now sit together on one edge of the spawn tile, immediately behind where enemies first appear.
+
+## [1.6.45] - 2026-09-27 — Fix spawn flags rendering thin, off-route, and edge-on
+- **Root cause**: the flag banner's outward direction was recomputed every frame as
+  `(flag position - spawn point)`, normalized. That vector isn't reliably perpendicular to the
+  path — it can point diagonally or even along the path depending on exactly which buildable-tile
+  corner `computeSpawnFlags()` happened to pick, and it destabilizes toward a near-zero length
+  whenever a flag lands close to the spawn point. Both produce a collapsed, edge-on sliver instead
+  of a broad, readable banner — and since it was recomputed independently for each flag, the two
+  could end up leaning inconsistent directions instead of mirroring each other across the route.
+- **Fix**: each flag now stores a fixed direction perpendicular to the path's own initial heading,
+  set once when the route is computed, signed so the two flags always point away from each other.
+  Verified directly (not assumed): a standalone check across six different path angles confirms the
+  stored direction is always exactly unit length and always exactly perpendicular to the path
+  (dot product 0.0000 in every case) — never degenerate, never drifting off-axis.
+- **Route hugging**: each flag's position is now pulled 40% of the way toward the actual spawn
+  point after tile selection, so its base visibly sits at the route edge instead of wherever the
+  qualifying tile's sampled corner happened to land.
+- **Size**: pole height 26→34px, banner length 27→36px, banner height 11→15px, for a more legible
+  flag at normal zoom.
+- **Not wind-related**: the flutter/lean animation (`FLAG_BREEZE_*`) is a fixed ambient constant,
+  independent of the removed miss-chance wind system, and was already correct — this fix is about
+  the banner's base shape and position, not its animation.
+- **Verification**: `node --check` on all 7 real script blocks. Diffed the full file against the
+  prior version to confirm only these functions changed. A standalone geometry check (unit-length,
+  perpendicularity, opposite-sign mirroring across 6 path angles) confirms the math is sound. Not
+  yet confirmed with a live render — no browser session available this pass — so this should be
+  checked visually after upload, particularly at a spawn point close to the map edge where the
+  route-hug pull has less room to work with.
+
 ## [1.6.44] - 2026-09-27 — Bound collision cost when enemies jam into a dense clump
 - **Measured, not guessed**: extracted `resolveSweptEnemyCollisions()`, `resolveEnemyCollisions()`,
   `buildEnemyHash()`, and `queryNearby()` verbatim into a headless Node stress harness (no browser

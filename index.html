@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.44'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.46'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3300,9 +3300,13 @@ function drawDepthSortedLayer(ctx){
       case 't': it.t.draw(ctx, it.t === selectedTower); break;
       case 'r': drawTowerScroll(ctx, it.t, it.scrollY); break;
       case 'f': {
-        const dx = it.pos.x-it.center.x, dy = it.pos.y-it.center.y;
-        const dlen = Math.hypot(dx,dy) || 1;
-        drawFinishFlagPole(ctx, it.pos.x, it.pos.y, dx/dlen, dy/dlen, it.isBlack);
+        // FLAG-BROADSIDE-01 (1.6.45) — see CHANGELOG.md § [1.6.45]. awayX/awayY is now a fixed
+        // perpendicular-to-path direction stored on the flag by computeSpawnFlags(), not a
+        // per-frame vector recomputed from (flag position - spawn point). That recomputed vector
+        // could point along the path instead of across it depending on exactly which tile corner
+        // got picked, and could destabilize toward a near-zero length right next to the spawn
+        // point — both produce a thin, collapsed, edge-on banner instead of a broad readable one.
+        drawFinishFlagPole(ctx, it.pos.x, it.pos.y, it.pos.awayX, it.pos.awayY, it.isBlack);
         break;
       }
     }
@@ -3439,6 +3443,17 @@ function paintNewRingTiles(ctx, oldRegion, newRegion){
 let spawnFlagsCache = null;
 let spawnFlagsDirty = true;
 function invalidateSpawnFlags(){ spawnFlagsDirty = true; }
+// SPAWN-FLAG-PLACEMENT-01 (1.6.46) — see CHANGELOG.md § [1.6.46]. Owner-specified placement rule —
+// stated explicitly once already and lost when this function was later reworked into a
+// nearby-buildable-tile search; restated here so it can't quietly drift again: both spawn flags
+// sit on the SAME EDGE of the spawn tile — one straight line, never a diagonal pair, never
+// searched or placed independently — specifically whichever edge is farthest from the finish
+// carpet, i.e. the tile's back edge, opposite the direction enemies first walk. This is the exact
+// mirror of computeFinishLine()'s own carpet geometry: that function anchors to the path's LAST
+// waypoint and puts the carpet on the tile's forward/exit edge; this one anchors to the FIRST
+// waypoint and puts both flags on the tile's backward/entrance edge. Do not replace this with a
+// search over nearby buildable tiles for "safety" or variety — that was tried, and losing this
+// exact rule in that rewrite is the regression this comment exists to prevent from repeating.
 function computeSpawnFlags(){
   if(!spawnFlagsDirty) return spawnFlagsCache;
   spawnFlagsDirty = false;
@@ -3450,37 +3465,19 @@ function computeSpawnFlags(){
   const dirLen = Math.hypot(dirX, dirY) || 1;
   const ux = dirX/dirLen, uy = dirY/dirLen;
   const perpX = -uy, perpY = ux;
-  // Sample safe positions within buildable tiles rather than requiring two separate tiles on
-  // opposite sides. The opening map can leave only one green row beside a straight spawn path.
-  const candidates = [];
-  const minX = Math.max(0, activeRegion?.x0 ?? 0), maxX = Math.min(COLS-1, activeRegion?.x1 ?? COLS-1);
-  const minY = Math.max(0, activeRegion?.y0 ?? 0), maxY = Math.min(ROWS-1, activeRegion?.y1 ?? ROWS-1);
-  for(let gy=minY; gy<=maxY; gy++) for(let gx=minX; gx<=maxX; gx++){
-    const key = gx+','+gy;
-    if(pathCells.has(key) || sceneryMap.has(key) || towerPool.some(t=>t.active && t.gridX===gx && t.gridY===gy) || !isInActiveRegion(gx,gy)) continue;
-    for(const fx of [0.12,0.88]) for(const fy of [0.12,0.88]){
-      const x=(gx+fx)*TILE_SIZE, y=(gy+fy)*TILE_SIZE;
-      const dx=x-start.x, dy=y-start.y;
-      const behind=-(dx*ux+dy*uy), side=dx*perpX+dy*perpY;
-      if(behind < -TILE_SIZE*0.15) continue;
-      candidates.push({x,y,behind,side});
-    }
-  }
-  let pair=null, best=Infinity;
-  for(let i=0;i<candidates.length;i++) for(let j=i+1;j<candidates.length;j++){
-    const a=candidates[i], b=candidates[j];
-    const separation=Math.hypot(a.x-b.x,a.y-b.y);
-    if(separation<TILE_SIZE*0.72) continue;
-    // Prefer opposite sides where the map allows it; the opening map may only have one safe side.
-    const sameSidePenalty=a.side*b.side>=0 ? TILE_SIZE*1.5 : 0;
-    const score=Math.hypot(a.x-start.x,a.y-start.y)+Math.hypot(b.x-start.x,b.y-start.y)
-      - Math.min(a.behind,b.behind)*0.25 + sameSidePenalty;
-    if(score<best){best=score;pair=[a,b];}
-  }
-  if(!pair) return null;
-  const [fA,fB]=pair;
-  const flagLower = fA.y >= fB.y ? fA : fB; // "lower" = further down/+Y = black flag, same convention as computeFinishLine()
-  const flagUpper = fA.y >= fB.y ? fB : fA;
+  const halfSpan = TILE_SIZE * 0.5;
+  // The spawn tile's back edge — mirrored across the tile's own center from its forward/exit edge,
+  // same technique computeFinishLine() uses for the carpet, just subtracting the travel direction
+  // instead of adding it.
+  const edgeX = start.x - ux*halfSpan, edgeY = start.y - uy*halfSpan;
+  const pA = { x: edgeX + perpX*halfSpan, y: edgeY + perpY*halfSpan };
+  const pB = { x: edgeX - perpX*halfSpan, y: edgeY - perpY*halfSpan };
+  const flagLower = pA.y >= pB.y ? pA : pB; // "lower" = further down/+Y = black flag, same convention as computeFinishLine()
+  const flagUpper = pA.y >= pB.y ? pB : pA;
+  // Both flags flutter further backward, away from the tile — same "away from the tile's own
+  // center" convention the flag-pole draw function has always used.
+  flagLower.awayX = -ux; flagLower.awayY = -uy;
+  flagUpper.awayX = -ux; flagUpper.awayY = -uy;
   spawnFlagsCache = { center: start, flagLower, flagUpper };
   return spawnFlagsCache;
 }
@@ -3490,12 +3487,12 @@ const FLAG_BREEZE_DIR_X = Math.cos(FLAG_BREEZE_DIR_ANGLE), FLAG_BREEZE_DIR_Y = M
 const FLAG_BREEZE_STRENGTH = 0.6;
 // CA158 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA158
 function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
-  const poleH = 26;
+  const poleH = 34;
   ctx.strokeStyle = '#6b5842'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-poleH); ctx.stroke();
   ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
   // CA159 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA159
-  const bannerLen = 27, bannerH = 11;
+  const bannerLen = 36, bannerH = 15;
   const attachTopX = x, attachTopY = y - poleH;
   const attachBotX = x, attachBotY = y - poleH + bannerH;
   const perpX = -awayY, perpY = awayX;
