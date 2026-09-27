@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.6.39] - 2026-09-27 — Preserve long-session performance trends and catch-up losses
+- **Time-loss visibility**: the logger now records how often the frame-time ceiling is applied, how much wall time it excludes, how often the eight-tick simulation ceiling is reached, and the simulation-time debt discarded at that ceiling. It retains the 20 largest cap-discard events with same-frame update/render phases and load context. Runtime behavior and both existing safety ceilings are unchanged.
+- **Lag progression over time**: a bounded 120-period history records active-play windows after each 60 seconds of accumulated callback time. Each period includes callback cadence, average/maximum frame/update/render/gap timings, slow-frame and long-gap counts, requested speed, wave progression, peak entity/effect/query/hash counts, catch-up loss, and heap endpoints/maximum when exposed by the browser.
+- **Canvas memory context**: the debug log estimates RGBA backing-store size for the display, map, and settled-decal canvases from their dimensions. This is a lower-bound estimate and excludes browser/GPU copies and implementation overhead.
+- **Verification**: all six executable inline scripts pass syntax checks. Focused tests confirm 60-second aggregation, 120-period retention, wall-time/simulation-loss accounting, peak context capture, and top-20 cap-event ranking.
+
+## [1.6.38] - 2026-09-27 — Expand delayed lag and runtime diagnostics
+- **Long animation frames**: retain the 20 longest browser-reported animation frames with blocking time, render duration, style/layout duration, first UI-event delay, and up to five contributing script records where supported.
+- **Slow interactions**: retain the 30 longest Event Timing entries, separating input delay, event-handler processing, and presentation wait, with event name and interaction ID when supplied by the browser.
+- **Runtime failures**: retain the latest 50 JavaScript errors, unhandled promise rejections, and resource-load failures, including capped stacks and source locations. Source query strings and fragments are removed before logging.
+- **Environment context**: add reported hardware thread count, approximate device memory, touch-point count, and available Canvas 2D context attributes.
+- **Bounded and optional**: histories have fixed caps; observers are feature-detected with fallback options. These additions do not change game behavior. Browser support and attribution vary; none of these browser APIs reports GPU/compositor timing directly.
+- **Verification**: all six executable inline scripts pass syntax checks. Focused tests pass for duration ranking/caps, browser-observer fallbacks, interaction timing decomposition, error/rejection capture, and source URL query removal.
+
+## [1.6.37] - 2026-09-27 — Retain browser long-task diagnostics
+- **Delayed lag diagnosis**: the debug log now retains the 20 longest browser-reported main-thread tasks of 50 ms or more for the session, including their original timestamps and up to three browser-provided attribution records. This can reveal blocking work that does not appear inside the game loop’s update/render phase timings.
+- **Compatibility and limits**: the observer is feature-detected and falls back when buffered observation is unavailable. Unsupported browsers report that status; no gameplay or rendering behavior depends on this API. Browser long-task entries do not expose GPU or compositor work, and attribution detail varies by browser.
+- **Verification**: all six executable inline scripts pass syntax checks; focused tests confirm descending top-20 retention, total counts, attribution storage, and fallback when buffered observation is unavailable.
+
+## [1.6.36] - 2026-09-27 — Preserve historical lag-event context
+- **Delayed diagnosis**: the downloadable debug log previously retained lifetime maxima and a short rolling sample window, but not the phase timings and game state from the same spike. It now keeps the ten slowest game-code frames at or above 16.7 ms and ten longest callback gaps at or above 33.3 ms for the session, even when the log is downloaded later.
+- **Captured context**: each retained event includes timestamp, frame/update/render work, callback gap, tick count, simulation debt, wave/state/speed, camera/zoom, quality/DPR, tab visibility, entity and effect counts, spatial-hash activity, heap sample when available, and same-event update/render phase breakdowns. The bounded lists are only updated when an event crosses a threshold and ranks among the session's ten largest.
+- **Scope**: diagnostics only; game behavior is unchanged. The snapshots distinguish expensive game callbacks from long intervals between callbacks, but do not expose browser GPU/compositor internals.
+- **Verification**: all executable inline scripts pass syntax checks; focused tests confirm thresholds, descending top-ten retention, and preservation of same-event phase/context values. Game version and newest changelog entry match.
+
+## [1.6.35] - 2026-09-27 — Write performance history without shifting arrays
+- **Profiler overhead**: each rendered frame previously appended to four rolling performance arrays and shifted up to 120 samples from each once full. The histories now overwrite their oldest slot in a circular buffer, avoiding repeated array shifts while retaining the same bounded sample window. Percentiles and tick distributions are order-independent; heap-trend reporting now reads the oldest and newest samples explicitly.
+- **Scope**: this reduces work performed by the profiler itself. It does not change game simulation or rendering behavior.
+- **Verification**: all six executable inline scripts pass syntax checks; randomized sequences match the previous 120-sample window, percentile results, tick distributions, and heap-trend endpoints.
+
+## [1.6.34] - 2026-09-27 — Report rendered callback FPS accurately
+- **Debug log accuracy**: the FPS percentile line was derived from JavaScript callback execution time, which can report hundreds of FPS even when the browser invokes the render loop at about 20 FPS. It now derives rendered callback cadence from the measured wall-clock interval between callbacks; JavaScript work duration remains available in the separate frame/update/render millisecond lines.
+- **Lag diagnosis**: supplied v1.6.6 telemetry showed a 50.1 ms median wall-clock gap (about 20 rendered callbacks per second) alongside a 2.7 ms median JavaScript frame workload (about 370 FPS by the old mislabeled calculation). This change corrects the report and does not itself improve runtime speed.
+- **Verification**: all six executable inline scripts pass syntax checks; a focused percentile conversion check confirms 50.1 ms reports about 20 FPS and the percentile labels invert correctly. Game version and newest changelog entry match.
+
+## [1.6.33] - 2026-09-26 — Cull off-screen ground-item glow rendering
+- **Camera rendering cost**: resting dropped items previously created a radial gradient and drew a glow and icon every frame, including when fully outside the camera view. Rendering now skips items outside the existing effects viewport bounds, which include a two-tile safety margin for the glow and icon. This is a draw-only cull; item simulation, pickup range, lifetime, and drop behavior are unchanged.
+- **Verification**: all executable inline JavaScript blocks pass syntax checks; targeted viewport checks confirm visible items and items inside the effects margin remain eligible to draw, while distant off-screen items are skipped. Game version and newest changelog entry match.
+
 ## [1.6.32] - 2026-09-26 — Reduce repeated decal maintenance scans
 - **Render maintenance cost**: full decal expiry compaction and settled-canvas eligibility scanning previously ran every 500 ms, even when no decal was near expiry. The bounded maintenance sweep now runs every 2 seconds, reducing its maximum scan frequency by 75% while leaving per-frame visible decal rendering unchanged.
 - **Behavior**: decal lifespan, render culling, ordering, and appearance are unchanged. An expired decal may remain in the source list or baked canvas for up to 2 seconds longer before cleanup; the existing decal capacity still bounds the list.
@@ -17,6 +56,7 @@
 ## [1.6.30] - 2026-09-26 — Reuse hash storage across collision passes
 - **Spatial-hash allocation**: all synchronous `buildEnemyHash()` calls now reuse the same hash container and used-key list. Enemy updates and their death-effect lookups complete before collision hashing starts; each collision query is consumed before the next rebuild. This removes the remaining outer hash and key-list allocations from swept-collision and collision-resolution builds as well as the final targeting build. Per-cell buckets, membership, ordering, and query behavior are preserved.
 - **Wet-blood pickup**: replaced repeated `Math.hypot()` radius checks with squared-distance comparisons after the existing age and axis-aligned rejection. Pickup radius, strict boundary behavior, selected decal, and resulting footprints remain unchanged.
+- **Verification**: randomized fresh-versus-reused hash equivalence across 10,000 layouts; squared-distance boundary/equivalence checks; all six executable inline scripts pass syntax checks.
 
 ## [1.6.29] - 2026-09-26 — Reuse the per-tick spatial-hash container
 - **Measured hot-path allocation**: the v1.6.6 debug capture reports 24 `buildEnemyHash()` calls in one rendered frame. Bucket arrays were already reused, but each build allocated a new outer object; an existing key list was populated but not used to clear old entries.
