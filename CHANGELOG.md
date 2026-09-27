@@ -1,5 +1,155 @@
 # Changelog
 
+## [1.6.54] - 2026-09-27 — Found the bigger half of the hit-accuracy bug I missed last round
+- **What 1.6.53 missed**: burn, poison, and bleed all tick damage every 420-600ms for the duration
+  of the effect, each tick calling `recordContribution()` directly — none of them were included in
+  the `countsAsShotHit` fix from 1.6.53, so every DoT tick was still inflating `hitsLanded` with no
+  matching shot. This is very likely the larger contributor of the two, not the smaller one: a
+  single poison application can tick 5-8+ times over a 3-4 second duration from one shot, versus
+  splash's one-time multi-victim hit.
+- **Fix**: all three DoT tick sites now pass `countsAsShotHit: false` to `recordContribution()`,
+  same as the four sources fixed in 1.6.53. Damage, gold, and kill crediting are unaffected — only
+  the accuracy count stops inflating.
+- **Why this was missed last round**: I checked every `applyDamage()` call site but not
+  `recordContribution()`'s own call sites directly — burn/poison/bleed bypass `applyDamage()` and
+  call `recordContribution()` themselves. Checked this time.
+- **Verification**: `node --check` on all 7 real script blocks.
+
+## [1.6.53] - 2026-09-27 — Real hit-accuracy bug fixed; debug overlay shrinks instead of wraps; flags snap horizontal
+- **Hit-accuracy telemetry (the real bug)**: `hitsLanded` could exceed `shotsFired`, showing over
+  100% accuracy. Root cause: `recordContribution()` (called from inside `applyDamage()`)
+  unconditionally counted every damage instance as a hit, but four separate paths deal damage
+  without their own matching shot: splash damage (one shot hitting N enemies counted N hits against
+  1 shot — likely the largest single contributor), elemental bonus procs (PROTON's extra tick),
+  chain-lightning's secondary target, and summoned minions (cat companions, skeleton minions, which
+  attack on their own independent cadence unrelated to the summoning tower's shots at all).
+  `applyDamage()` now takes a `countsAsShotHit` flag (default true, so every untouched call site is
+  unaffected); the four secondary-damage paths above pass `false` so they still credit damage, gold,
+  and kills normally but no longer inflate the accuracy count. Splash damage now credits exactly one
+  hit per shot that connects, regardless of how many enemies it actually catches, instead of one
+  hit per enemy. Verified directly: simulated the exact broken scenario (one splash shot catching 4
+  enemies) through the real logic — hitsLanded now comes out to exactly 1 against 1 shotsFired, not
+  4 against 1.
+- **Debug overlay text**: reverted the 1.6.50 line-wrap approach. Standing rule, restated because
+  it's been asked for more than once: text that doesn't fit its box shrinks to fit, it never wraps
+  to a second line. The overlay now measures the longest visible line and scales its own font size
+  down (bounded by a 7px floor) when needed, instead of wrapping — one physical line per logical
+  line, always.
+- **Flag direction**: the banner's direction now snaps to pure left or right instead of whatever
+  diagonal the path's actual heading produced — reads as a clean, recognizable flag shape regardless
+  of path angle. Both flags share the same input direction already, so this keeps them consistent
+  with each other too.
+- **Verification**: `node --check` on all 7 real script blocks after every change in this round.
+
+## [1.6.52] - 2026-09-27 — Back to a triangle, now with gravity sag and a folded crease
+- **The ask**: not the ribbon shape from 1.6.47/1.6.49 — a triangle, but with more weight/gravity
+  to it, and a folded look rather than one flat plane.
+- **Shape**: back to a single triangular pennant. The top and bottom edges are now quadratic
+  curves, not straight lines, with their control points pulled toward true screen-down — real
+  gravity, independent of which way the pole itself faces — so the cloth reads as drooping under
+  its own weight.
+- **Fold**: a shaded sub-triangle along the lower diagonal suggests a creased fold rather than one
+  uncreased flat plane.
+- **Kept from the last two rounds**: the per-flag phase offset (the two flags still don't flutter
+  in lockstep) and the ambient breeze lean — both folded into the simpler triangle without needing
+  to change.
+- **Verification**: `node --check` on all 7 real script blocks. Sanity-checked the tip position
+  across several path directions and animation phases — always a valid, non-degenerate triangle.
+  Not yet confirmed live.
+
+## [1.6.51] - 2026-09-27 — Trees/rocks could spawn outside the buildable green area
+- **The bug**: `generateScenery()`, `generateFlora()`, `scatterSceneryInRing()`, and
+  `scatterFloraInRing()` all picked candidate tiles from a rectangular bounding box
+  (`activeRegion` or `newRegion`), checking only whether a tile was on the path or already
+  occupied. None of them checked `isInActiveRegion()` — the actual function that decides whether a
+  tile paints as buildable green or plain brown dirt (`MAP-CORRIDOR-01`, 1.6.11). A bounding
+  rectangle can include tiles outside the real near-path corridor, so scenery and flora (trees,
+  rocks) could land on tiles that render as dirt, not grass — visible as a tree sitting outside the
+  green area after an expansion.
+- **Fix**: all four functions now skip any candidate tile where `isInActiveRegion()` is false,
+  matching what `isTileBuildable()` (used elsewhere, e.g. the periodic tree-respawn path via
+  `maybeSpawnMoreScenery()`) already did correctly — that path was never affected by this bug.
+- **Scope checked**: this was the only place the gap existed. Every other scenery/flora placement
+  path already goes through `isTileBuildable()`, which has always included the corridor check.
+- **Verification**: `node --check` on all 7 real script blocks. Diffed the file to confirm exactly
+  one new corridor guard landed in each of the four affected functions and nothing else changed.
+  Not yet confirmed with a live render — the next map expansion after upload is the place to check
+  that new trees stay inside the green.
+
+## [1.6.50] - 2026-09-27 — Debug overlay wraps long lines on mobile instead of cutting them off
+- **The bug**: a tower telemetry row is often 60+ monospace characters (`#1 SWORDSMAN L1  shots 29
+  hit 33 miss 11 (114%)  dmg 4821  kills 12`). The overlay's own per-frame width measurement
+  already sized the box correctly to whatever fit, but any line longer than the narrow mobile
+  canvas allowed still got hard-truncated with a trailing `…` — silently dropping the damage and
+  kill numbers, exactly the values someone reading tower telemetry actually wants.
+- **Fix**: long lines now wrap across as many physical lines as needed to fit the canvas width,
+  instead of being cut off. Monospace font makes a hard character-count wrap exact rather than an
+  approximation. Continuation lines indent 2 spaces so a wrapped row reads as one entry, not two.
+- **Verified directly**: a standalone check wrapped a real 67-character telemetry line at a narrow
+  28-character budget, reconstructed the original from the wrapped pieces, and confirmed the text
+  matches exactly with every physical line within budget — no content lost, not just visually
+  plausible.
+- **Scope**: `drawDebugOverlay()` only — the vertical line budget (how many rows fit before falling
+  back to "+N more towers not shown") is untouched, only how a single too-wide line is handled.
+- **Verification**: `node --check` on all 7 real script blocks.
+
+## [1.6.49] - 2026-09-27 — More organic flag motion; reviewed real telemetry for the first time
+- **Flags**: the two flags now animate with independent phase offsets instead of perfect lockstep
+  (real cloth on separate poles never moves in sync), and a slower, lower-amplitude second wave
+  layers on top of the base ripple for more organic, less single-note motion. Base amplitude also
+  increased. Re-verified the same width-never-collapses guarantee from the prior pass holds with
+  both new terms added: minimum cross-width stayed at the same tapered floor across thousands of
+  sampled phases for both flags, hoist stayed exactly pinned in every case.
+- **Real debug log reviewed** (owner-provided, v1.6.46, 1m37s session): frame time median 2ms,
+  p99 3ms, worst single frame 23ms the entire session. The handful of 60-96ms wall-clock gaps in
+  the log all cluster in the first few seconds with zero active entities and near-0ms update/render
+  — consistent with browser boot/compositor jank rather than game code, per the log's own
+  annotation. No action taken; recorded as the first real (not simulated) performance confirmation
+  this project has had this round of work.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed live — the
+  previous round's flag screenshot/log both predated this and the prior wavy-flag change, so
+  neither has been seen live yet; worth a look once uploaded.
+
+## [1.6.48] - 2026-09-27 — Cap frame rate on mobile to save battery/GPU work
+- **The ask**: mobile FPS should run a bit lower than an uncapped high-refresh display, to
+  compensate for the smaller/thinner form factor.
+- **Detection**: standard touch/coarse-pointer check (`navigator.maxTouchPoints` +
+  `matchMedia('(pointer: coarse)')`), computed once at boot — not User-Agent sniffing, which is
+  unreliable and easily wrong.
+- **Cap**: `loop()` now skips the entire frame — simulation, render, and all perf bookkeeping —
+  until 1000/30ms has actually elapsed, on mobile only. This happens before any work runs, so it
+  genuinely cuts CPU/GPU cost rather than just hiding it behind a draw-call skip.
+- **Verified simulation correctness stays exact**: a standalone check simulated 10 seconds of
+  native 90Hz callbacks through the actual throttle logic — effective processed rate came out
+  ~28.6fps (the target, with the small gap being expected quantization against the native refresh
+  grid), and total fixed-timestep simulation ticks over that window came out to exactly 600 — a
+  perfect 60Hz simulation rate, completely unaffected by the render throttle. Gameplay speed and
+  timing are untouched; only how often the frame is actually drawn changes.
+- **Desktop unaffected**: `IS_MOBILE_DEVICE` gates the whole check — a non-touch/fine-pointer
+  device runs exactly as before, uncapped.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed with a live
+  mobile session on an actual device — the debug overlay's FPS readout should read close to 30 on
+  mobile once this is live; worth a quick check after upload.
+
+## [1.6.47] - 2026-09-27 — Flags are long and genuinely wavy now, not a static triangle
+- **The ask**: a longer flag with a real flowing wave along its length, while keeping the broad
+  face readable — not edge-on, not a kite.
+- **Redesign**: `drawFinishFlagPole()`'s banner is now a 6-segment ribbon instead of a single-tip
+  triangle. The top and bottom edges share the exact same lateral ripple offset at every point
+  along the length — only the half-height differs — so the width stays open the whole way instead
+  of the two edges wobbling independently into a diamond/kite shape.
+- **Motion**: ripple amplitude builds from 0 right at the pole (real cloth is pinned there) to full
+  strength at the free end, and the wave's phase shifts with position so it reads as travelling
+  outward along the banner, not the whole shape rocking rigidly back and forth.
+- **Verified directly**: a standalone check sampled the banner's cross-width at every segment
+  across 5 different animation phases — width at the hoist stayed exactly 16px (pinned, as
+  intended) and never dropped below ~10.4px anywhere along the taper, at every phase tested. The
+  broad face can't collapse to an edge-on sliver at any point in the animation, by construction.
+- **Length**: banner length 36→46px, for a genuinely longer flag.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed with a live
+  render — please take a look once it's live; the geometry is proven, the actual look/feel is your
+  call.
+
 ## [1.6.46] - 2026-09-27 — Restore the actual spawn-flag placement spec (v1.6.45 fixed the wrong bug)
 - **The real problem**: `computeSpawnFlags()` had been rewritten at some point into a search over
   nearby buildable tiles, picking whichever qualifying pair scored best. That approach never

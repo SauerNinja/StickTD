@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.46'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.54'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -2975,7 +2975,13 @@ function generateScenery(){
   const cells = [];
   for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
     for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(!pathCells.has(gx+','+gy)) cells.push([gx,gy]);
+      if(pathCells.has(gx+','+gy)) continue;
+      // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. The region's bounding
+      // rectangle can include tiles outside the near-path corridor — those paint as plain brown
+      // dirt (see paintNewRingTiles()/drawMap()), not buildable green. Scenery must never land on
+      // one of those tiles regardless of which rectangle it falls inside.
+      if(!isInActiveRegion(gx, gy)) continue;
+      cells.push([gx,gy]);
     }
   }
   shuffleArray(cells);
@@ -3003,7 +3009,11 @@ function generateFlora(){
   const cells = [];
   for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
     for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(!pathCells.has(gx+','+gy)) cells.push([gx,gy]);
+      if(pathCells.has(gx+','+gy)) continue;
+      // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. Same corridor guard as
+      // generateScenery() — the region's bounding rectangle can include non-buildable dirt tiles.
+      if(!isInActiveRegion(gx, gy)) continue;
+      cells.push([gx,gy]);
     }
   }
   shuffleArray(cells);
@@ -3030,6 +3040,10 @@ function scatterSceneryInRing(oldRegion, newRegion){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
       if(wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
+      // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. newRegion is a bounding
+      // rectangle, not the actual near-path corridor — a cell inside it can still paint as plain
+      // brown dirt (see paintNewRingTiles()). Scenery must respect the real corridor, not the box.
+      if(!isInActiveRegion(gx, gy)) continue;
       // CA137 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA137
       if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue;
       cells.push([gx,gy]);
@@ -3047,6 +3061,10 @@ function scatterFloraInRing(oldRegion, newRegion){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
       if(wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
+      // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. Same corridor guard as
+      // scatterSceneryInRing() above — this is the direct fix for flora (trees) appearing outside
+      // the buildable green area after an expansion.
+      if(!isInActiveRegion(gx, gy)) continue;
       if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue; // same reveal-gap reasoning as scatterSceneryInRing() above
       cells.push([gx,gy]);
     }
@@ -3490,31 +3508,57 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const poleH = 34;
   ctx.strokeStyle = '#6b5842'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-poleH); ctx.stroke();
-  ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
+  // FLAG-HORIZONTAL-01 (1.6.53) — see CHANGELOG.md § [1.6.53]. The banner direction is snapped to
+  // pure left or right (never a diagonal), so the flag always reads as a clean, recognizable shape
+  // regardless of which way the path actually heads. Both flags are always called with the same
+  // input direction (see computeSpawnFlags()), so this keeps them pointing the same way as each
+  // other too, not just internally consistent on their own.
+  const snappedAwayX = awayX >= 0 ? 1 : -1;
+  awayX = snappedAwayX; awayY = 0;
+  const perpX = -awayY, perpY = awayX;
   // CA159 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA159
-  const bannerLen = 36, bannerH = 15;
+  // FLAG-TRIANGLE-GRAVITY-01 (1.6.52) — see CHANGELOG.md § [1.6.52]. Back to a single triangular
+  // pennant (not the FLAG-WAVE-01/02 segmented ribbon), with two changes: the top and bottom edges
+  // are curved, not straight, with their control points pulled toward true screen-down — real
+  // gravity, independent of which way the pole itself faces — so the cloth reads as sagging under
+  // its own weight instead of standing perfectly rigid. A second, shaded sub-triangle along the
+  // lower diagonal suggests a folded crease rather than one flat, uncreased plane.
+  const bannerLen = 40, bannerH = 16;
   const attachTopX = x, attachTopY = y - poleH;
   const attachBotX = x, attachBotY = y - poleH + bannerH;
-  const perpX = -awayY, perpY = awayX;
-  // CA160 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA160
-  const amp = 2 + FLAG_BREEZE_STRENGTH*5;
+  const amp = 2 + FLAG_BREEZE_STRENGTH*4;
   const speed = 2.2 + FLAG_BREEZE_STRENGTH*2.4;
-  const phase = gameTime/1000*speed;
+  const flagPhaseOffset = isBlack ? 1.7 : 0; // FLAG-WAVE-02 (1.6.49) — the two flags stay out of lockstep
+  const phase = gameTime/1000*speed + flagPhaseOffset;
   // CA161 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA161
-  const lean = (FLAG_BREEZE_DIR_X*perpX + FLAG_BREEZE_DIR_Y*perpY) * FLAG_BREEZE_STRENGTH * 3;
+  const lean = (FLAG_BREEZE_DIR_X*perpX + FLAG_BREEZE_DIR_Y*perpY) * FLAG_BREEZE_STRENGTH * 2;
   const ripple = Math.sin(phase)*amp + lean;
-  const tipX = x + awayX*bannerLen + perpX*ripple;
-  const tipY = (y - poleH + bannerH*0.5) + awayY*bannerLen + perpY*ripple;
+  const GRAVITY_SAG = 7; // px of true screen-down droop pulled into the tip and the edge curves
+  const tipX = attachTopX + awayX*bannerLen + perpX*ripple;
+  const tipY = attachTopY + bannerH*0.5 + awayY*bannerLen + perpY*ripple + GRAVITY_SAG;
+
+  ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
   ctx.beginPath();
   ctx.moveTo(attachTopX, attachTopY);
-  ctx.lineTo(tipX, tipY);
-  ctx.lineTo(attachBotX, attachBotY);
+  ctx.quadraticCurveTo((attachTopX+tipX)/2, (attachTopY+tipY)/2 + GRAVITY_SAG, tipX, tipY);
+  ctx.quadraticCurveTo((tipX+attachBotX)/2, (tipY+attachBotY)/2 + GRAVITY_SAG*0.5, attachBotX, attachBotY);
   ctx.closePath();
   ctx.fill();
   // CA162 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA162
   ctx.strokeStyle = isBlack ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
   ctx.lineWidth = 1;
   ctx.stroke();
+
+  // Fold crease: a shadowed sub-triangle along the lower diagonal, using points that stay inside
+  // the outer shape's convex span so it never draws outside the flag itself.
+  const foldX = attachTopX + (tipX-attachTopX)*0.55, foldY = attachTopY + (tipY-attachTopY)*0.55;
+  ctx.fillStyle = isBlack ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.14)';
+  ctx.beginPath();
+  ctx.moveTo(foldX, foldY);
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(attachBotX, attachBotY);
+  ctx.closePath();
+  ctx.fill();
 }
 function drawMap(ctx){
   ctx.fillStyle = '#8b5a2b';
@@ -4482,7 +4526,7 @@ function applyAttunementStatus(tower, enemy){
     // CA231 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA231
     case 'PROTON':
       enemy.applyBurn(5000, tower);
-      enemy.applyDamage(Math.round(tower.damage * 0.25), tower, false);
+      enemy.applyDamage(Math.round(tower.damage * 0.25), tower, false, false, true, false);
       spawnFloatingText(enemy.x, labelY, '☢️ Melting!', '#ff5722');
       break;
     case 'QUASAR':
@@ -5357,7 +5401,7 @@ class Enemy{
       if(this.burnTickTimer <= 0){
         this.burnTickTimer = 500;
         const burnDmg = Math.max(1, Math.round(this.maxHp * 0.04));
-        this.recordContribution(this.lastBurnSource, burnDmg);
+        this.recordContribution(this.lastBurnSource, burnDmg, false);
         this.hp -= burnDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, burnDmg+'🔥', '#ff8844');
         spawnParticles(this.x, this.y, '#ff6b35', 3);
@@ -5369,7 +5413,7 @@ class Enemy{
       if(this.poisonTickTimer <= 0){
         this.poisonTickTimer = 600;
         const poisonDmg = Math.max(1, Math.round(this.poisonDamagePerTick));
-        this.recordContribution(this.lastPoisonSource, poisonDmg);
+        this.recordContribution(this.lastPoisonSource, poisonDmg, false);
         this.hp -= poisonDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, poisonDmg+'☠️', '#7cb518');
         spawnParticles(this.x, this.y, '#7cb518', 3);
@@ -5382,7 +5426,7 @@ class Enemy{
       this.bleedTickTimer -= dt;
       if(this.bleedTickTimer <= 0){
         const bleedDmg = Math.max(1, Math.round(this.bleedDamagePerTick));
-        this.recordContribution(this.lastBleedSource, bleedDmg);
+        this.recordContribution(this.lastBleedSource, bleedDmg, false);
         this.hp -= bleedDmg;
         spawnFloatingText(this.x, this.y - this.radius - 6, bleedDmg+'🩸', '#e63946');
         // CA283 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA283
@@ -5564,14 +5608,21 @@ class Enemy{
     return capped * 0.85; // extra 15% reduction for the requested slower, less rushed pacing
 
   }
-  recordContribution(sourceTower, amount){
+  recordContribution(sourceTower, amount, countsAsShotHit){
     if(!sourceTower || !sourceTower.active || amount <= 0) return;
     this.damageLedger.set(sourceTower, (this.damageLedger.get(sourceTower) || 0) + amount);
     sourceTower.lifetimeDamage = (sourceTower.lifetimeDamage || 0) + Math.min(amount, Math.max(0, this.hp));
     sourceTower.waveDamage = (sourceTower.waveDamage || 0) + Math.min(amount, Math.max(0, this.hp));
     // CA296 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA296
+    // HIT-ACCURACY-01 (1.6.53) — see CHANGELOG.md § [1.6.53]. hitsLanded must stay 1:1 with
+    // shotsFired for the accuracy telemetry (hit/shots %) to mean anything. It doesn't by default:
+    // splash damage hits every enemy in radius from one shot, elemental bonus procs and
+    // chain-lightning deal a second damage instance from the same shot, and summoned minions
+    // (cats, skeletons) attack on their own independent cadence with no shotsFired of their own.
+    // Every one of those calls applyDamage() too. countsAsShotHit === false marks a call that must
+    // still credit damage/gold/kills normally but must not inflate the shot-accuracy count.
     if(sourceTower.telemetry){
-      sourceTower.telemetry.hitsLanded++;
+      if(countsAsShotHit !== false) sourceTower.telemetry.hitsLanded++;
       if(this.hp <= 0) sourceTower.telemetry.killsSecured++;
     }
   }
@@ -5816,13 +5867,13 @@ class Enemy{
       else spawnHutGuardian(this);
     }
   }
-  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed){
+  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit){
     allowBleed = allowBleed === undefined ? true : allowBleed;
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // CA313 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA313
     const isGraveTarget = (this.isHutBuilding && this.buildingKind === 'GRAVE') || (this.isGuardian && this.hutRef && this.hutRef.buildingKind === 'GRAVE');
     if(isGraveTarget && !isHoly) amount = Math.max(1, Math.round(amount * 0.05));
-    this.recordContribution(sourceTower, amount);
+    this.recordContribution(sourceTower, amount, countsAsShotHit);
     // CA314 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA314
     const varianceHalfWidth = (sourceTower && sourceTower.type === 'MAGE') ? 0.4 : 0.2;
     // CA315 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA315
@@ -7731,11 +7782,12 @@ class Projectile{
         return;
       }
       let streakClaimed = false;
+      if(this.sourceTower && this.sourceTower.telemetry) this.sourceTower.telemetry.hitsLanded++; // one shot, one hit — regardless of how many enemies the splash actually catches
       for(const e of enemyPool){
         if(!e.active) continue;
         const d = Math.hypot(e.x-this.x, e.y-this.y);
         if(d <= this.splashRadius){
-          e.applyDamage(this.damage, this.sourceTower, !streakClaimed);
+          e.applyDamage(this.damage, this.sourceTower, !streakClaimed, false, true, false);
           applyAttunementStatus(this.sourceTower, e);
           if(e.hp <= 0 || !e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
         }
@@ -7789,7 +7841,7 @@ class Projectile{
           }
           if(chainTarget){
             chainTarget.applyStun(400);
-            chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false);
+            chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false, false, true, false);
             spawnFloatingText(chainTarget.x, chainTarget.y - chainTarget.radius - 14, '⚡ Chained!', '#ffe14d');
             if(graphicsQuality !== 'low'){
               // CA469 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA469
@@ -9242,7 +9294,7 @@ class CatCompanion{
     this.attackProgress = Math.max(0, this.attackProgress - dt/220);
     this.attackTimer -= dt;
     if(this.attackTimer <= 0 && this.targetEnemy.active){ // re-checked here too — update() above can null/deactivate it, and applyDamage() itself is not safe to call on an inactive enemy
-      this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower);
+      this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower, undefined, false, true, false);
       this.attackTimer += this.attackCooldown;
       this.attackProgress = 1;
     }
@@ -9273,7 +9325,7 @@ class SkeletonMinion{
     if(this.attackTimer > 0) return;
     const target = firstActiveEnemy(queryNearby(enemyHash, this.x, this.y, this.range));
     if(!target) return; // stays raised and waiting — does not expire just for having nothing in range right now, only at round-complete
-    target.applyDamage(this.damage, this.sourceTower);
+    target.applyDamage(this.damage, this.sourceTower, undefined, false, true, false);
     this.attackTimer = this.attackCooldown;
     this.attackProgress = 1;
   }
@@ -10864,6 +10916,13 @@ function loseLife(n){
    ========================================================= */
 const FIXED_DT = 1000/60;
 let lastTime = 0, accumulator = 0;
+// MOBILE-FPS-CAP-01 (1.6.48) — see CHANGELOG.md § [1.6.48]. Standard touch/coarse-pointer
+// detection (not User-Agent sniffing, which is unreliable and explicitly discouraged) — computed
+// once at boot, never re-evaluated per frame.
+const IS_MOBILE_DEVICE = (navigator.maxTouchPoints > 0) && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+const MOBILE_TARGET_FPS = 30;
+const MOBILE_FRAME_INTERVAL_MS = 1000 / MOBILE_TARGET_FPS;
+let lastLoopProcessedAt = 0;
 
 // CA648 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA648
 function checkAllFightersDown(){
@@ -11254,23 +11313,34 @@ function drawDebugOverlay(ctx){
   // measured against the actual longest line each frame (ctx.measureText()) instead of a
   // hardcoded guess, so it always fits whatever's currently shown.
   const belowHudY = getDebugOverlayBelowHudY();
+  // DEBUG-OVERLAY-SHRINK-01 (1.6.53) — see CHANGELOG.md § [1.6.53]. Standing rule: text that
+  // doesn't fit its box shrinks to fit, it never wraps to a second physical line. A tower
+  // telemetry row is often 60+ monospace characters; if the longest visible line doesn't fit the
+  // available canvas width at the default 11px, the whole overlay's font scales down (bounded by
+  // MIN_DEBUG_FONT_PX) and every line is re-measured at that size — one line each, always.
+  const MIN_DEBUG_FONT_PX = 7;
+  const availableWidth = CANVAS_W - 24;
+  let longestLineWidth = 0;
+  for(const line of lines) longestLineWidth = Math.max(longestLineWidth, ctx.measureText(line).width);
+  let fontPx = 11;
+  if(longestLineWidth > availableWidth && longestLineWidth > 0){
+    fontPx = Math.max(MIN_DEBUG_FONT_PX, Math.floor(11 * (availableWidth / longestLineWidth)));
+    ctx.font = 'bold ' + fontPx + 'px monospace';
+  }
+  const lineHeight = fontPx + 3;
   // Stay below the HUD. On short viewports, show the highest-priority lines that fit rather
   // than moving the panel back underneath the Build button to keep every tower row visible.
-  const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / 14));
+  const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / lineHeight));
   if(maxVisibleLines === 0) return;
-  const charWidth = ctx.measureText('M').width || 7;
-  const maxChars = Math.max(8, Math.floor((CANVAS_W - 24) / charWidth));
-  const visibleLines = lines.slice(0, maxVisibleLines).map(line =>
-    line.length > maxChars ? line.slice(0, maxChars - 1) + '…' : line
-  );
+  const visibleLines = lines.slice(0, maxVisibleLines);
   let maxLineWidth = 0;
   for(const line of visibleLines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
   const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
-  const boxHeight = visibleLines.length * 14 + 8;
+  const boxHeight = visibleLines.length * lineHeight + 8;
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(6, belowHudY, boxWidth, boxHeight);
   ctx.fillStyle = '#7ee787';
-  visibleLines.forEach((line, i) => ctx.fillText(line, 12, belowHudY + 4 + i * 14));
+  visibleLines.forEach((line, i) => ctx.fillText(line, 12, belowHudY + 4 + i * lineHeight));
   ctx.restore();
 }
 function drawFpsCounter(ctx){
@@ -12122,6 +12192,15 @@ function renderAttractMode(ctx, now){
 }
 function loop(now){
   requestAnimationFrame(loop);
+  // MOBILE-FPS-CAP-01 (1.6.48) — see CHANGELOG.md § [1.6.48]. Skip the entire frame (simulation,
+  // render, and all perf bookkeeping) on mobile until the target interval has actually elapsed —
+  // deliberately BEFORE any work happens, not just skipping the draw call, so this genuinely cuts
+  // CPU/GPU work rather than only hiding it. Safe to skip whole frames here because the
+  // fixed-timestep accumulator below measures real elapsed time via `lastTime`, not callback
+  // count — the next processed frame simply has a larger `frameTime` and the existing catch-up
+  // logic (bounded by MAX_SIMULATION_TICKS_PER_FRAME) runs the correct number of ticks for it.
+  if(IS_MOBILE_DEVICE && now - lastLoopProcessedAt < MOBILE_FRAME_INTERVAL_MS) return;
+  lastLoopProcessedAt = now;
   if(gameState === 'START'){ renderAttractMode(ctx, now); return; }
   if(gameState !== 'PLAYING'){ lastTime = now; return; }
   const frameStart = performance.now();

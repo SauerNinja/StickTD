@@ -1,16 +1,23 @@
 # Backlog
 
 ## Needs live visual confirmation (no browser session available when shipped)
-- **Spawn flags (1.6.46, supersedes 1.6.45)** — 1.6.45 fixed the banner's shape/orientation but
-  left the actual placement wrong (a buildable-tile search that never matched the owner's own
-  specified rule). 1.6.46 replaces that search with the exact spec: both flags on the spawn tile's
-  edge farthest from the finish carpet, one straight line. Shipped from geometry reasoning and a
-  standalone math check (collinearity, exact tile-width separation, exact half-tile offset from
-  spawn across 8 path angles), not a live render. Confirm after upload: both flags sit together on
-  one edge of the spawn tile, immediately behind where enemies first appear, banners read as broad
-  triangles not slivers.
-- **Collision-cost cap (1.6.44)** — see its own entry below; still needs a deliberate jammed-
-  chokepoint playtest to confirm no visible stacking/popping at the 48-neighbor cap boundary.
+- **Collision-cost cap (1.6.44)** — still needs a deliberate jammed-chokepoint playtest to confirm
+  no visible stacking/popping at the 48-neighbor cap boundary.
+- **Mobile FPS cap (1.6.48)** — debug overlay should read close to 30 on an actual mobile device;
+  not yet confirmed on real hardware.
+- **Tree/scenery corridor fix (1.6.51)** — the next map expansion after upload is the place to
+  check that new trees stay inside the green area.
+- **Flag shape/direction (1.6.52/1.6.53)** — triangle with gravity sag, folded crease, and
+  horizontal-snapped direction. Placement itself (same edge, farthest from carpet) was confirmed at
+  1.6.46 and hasn't changed since; the shape/direction changed twice after that confirmation, so
+  those specific changes are still unconfirmed live.
+- **Hit-accuracy fix (1.6.53, completed 1.6.54)** — 1.6.53 fixed splash/procs/minions; 1.6.54 caught
+  burn/poison/bleed DoT ticks, which were likely the bigger contributor and were missed in the first
+  pass. The math is verified against the real logic for all 7 sources now, but hasn't been watched
+  in a live session with an actual DoT-applying or splash/minion tower to confirm the displayed
+  accuracy % stays sane in practice.
+- **Debug overlay shrink-to-fit (1.6.53)** — should show one line per row, smaller font, on a
+  narrow mobile canvas instead of wrapping; not yet seen live.
 
 ## From the 2026-09-27 Claude source audit (v1.6.43) — flagged, not yet built
 Read `performExpansion()`/`finalizeRingExpansion()`, the collision spatial hash, and
