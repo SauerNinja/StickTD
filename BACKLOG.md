@@ -1,5 +1,50 @@
 # Backlog
 
+## From the 2026-09-27 mega-round — explicitly not attempted, needs its own pass
+Owner sent 13 distinct requests in one message. Three shipped (see CHANGELOG 1.6.60); the rest need
+real investigation or are too large to rush. Listed here so nothing gets lost.
+
+- **No evolutions, ever — replace with a permanent unlock-tree.** By far the largest item: remove
+  the entire evolve-in-place mechanic (Swordsman→Axeman/Hammerman/Spearman, Archer→Gatling/Blowdart/
+  Marksman, Mage→Snapcaster/Cleric, the double-stat evolutions Paladin/Berserker/Lancer/Pope, the
+  elemental Proton/Dark Matter/Quasar, Necromancer) and replace it with reaching a stat threshold
+  permanently unlocking a new, independently-buildable tower type — base towers stay buildable
+  after their branches unlock, like a tech tree. Touches every tower definition, the Build menu, the
+  promotion UI, tooltips, and save-file format/compatibility. Needs an explicit design pass (which
+  towers keep a stat-gated unlock vs. a wave-gated one, what happens to existing saves with already-
+  evolved towers) before writing any code, not a rushed attempt inside a larger round.
+- **Dual-wield attack timing** — main hand connects, then the off hand a beat later, then a
+  recharge ~2.5x the total time both hits took. Affects Axeman, dual-wield Swordsman, Squirtgun.
+  Needs tracing each class's actual swing-timing state machine before touching it — not a one-line
+  change.
+- **Inspect panel's button row looks cramped** — needs a real dynamic flex/wrap layout pass, not a
+  guess; should allow a second line without that line reading disproportionately smaller than the
+  first.
+- **Melee range balance across classes** — owner reports Axeman reaching further than Spearman
+  despite Spearman's numbers being larger on paper, and Cleric/Priest should have the *longest*
+  range of anyone (slowest attacker, biggest reach) but currently reads shorter than Axeman. The
+  AXEMAN min-range theory was checked and ruled out this round (see CHANGELOG 1.6.60) — the real
+  cause is still unknown and needs a live comparison, not another guess.
+- **Ranged classes (Archer/Mage lineage) need a min range; STR/melee lineage never does** — stated
+  as the general design intent. Partially already true (Cleric/Pope/Swordsman/Spearman/Hammerman/
+  Paladin/Berserker/Lancer are already in `NO_MIN_RANGE_TYPES`) but not audited end-to-end against
+  every current and future class.
+- **Blowdart's dart appears to fire over the target's head** — a projectile spawn-height/trajectory
+  issue, not yet traced to the actual spawn-point code.
+- **Cleric does too little damage with too long a cooldown** — a real balance-number pass, not
+  touched this round.
+
+## From Game Programming Patterns (Nystrom) — checked, not attempted
+- **Incremental spatial-hash maintenance** — the book's canonical Spatial Partition pattern keeps
+  its grid persistent, moving an entity between cells only when it actually crosses a boundary,
+  instead of rebuilding the whole structure every call. `buildEnemyHash()` currently rebuilds from
+  scratch on every call (twice per frame, once each in `resolveSweptEnemyCollisions()` and
+  `resolveEnemyCollisions()`). This session's own collision stress-test data already showed that
+  cost is small at this game's actual population sizes — the packed-density problem that 1.6.44
+  fixed was query cost, not rebuild cost. Worth revisiting only if a future profile shows the
+  rebuild itself is measurably expensive at real populations; not attempted now since it would mean
+  threading cell-tracking through every enemy's movement code for an unmeasured gain.
+
 ## Needs live visual confirmation (no browser session available when shipped)
 - **Collision-cost cap (1.6.44)** — still needs a deliberate jammed-chokepoint playtest to confirm
   no visible stacking/popping at the 48-neighbor cap boundary.

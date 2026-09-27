@@ -5,6 +5,34 @@ rationale, historical lessons, and best-practice notes live in `AGENTS_REFERENCE
 covers what to do and how; that one covers why, in depth, per subsystem. Read this file every
 session; open the reference doc only when a specific subsystem note is actually relevant.
 
+## 0. Get oriented from GitHub, not from an uploaded file
+
+`github.com/SauerNinja/StickTD`, `main` branch, is the authoritative source for this project —
+ahead of any locally uploaded copy, and especially ahead of an old zip. Assume the live repo is
+close to the current state and start there rather than trusting whatever file happens to be
+attached to the conversation.
+
+- **Pull the live files directly**, no authentication needed for a public repo:
+  `https://raw.githubusercontent.com/SauerNinja/StickTD/main/index.html` (same path for
+  `CHANGELOG.md`, `AGENTS.md`, `BACKLOG.md`, `README.md`). Compare `GAME_VERSION` in that file
+  against any locally uploaded copy before doing anything else — a mismatch means the upload is
+  stale, and the live version wins.
+- **List recent commits** via `https://api.github.com/repos/SauerNinja/StickTD/commits` (add
+  `?per_page=20` for more, `?since=`/`?until=` to bound a range) for a fast timeline of what
+  changed and when, without downloading the whole file history.
+- **Diff two points directly** via
+  `https://api.github.com/repos/SauerNinja/StickTD/compare/{base}...{head}` (a commit SHA, a tag,
+  or `main`) to see the exact patch between them — this is the fastest way to answer "what changed
+  since the version I last knew about" without re-reading the whole file cold.
+- **Cross-reference `CHANGELOG.md`'s own entries** for the *why* behind a diff — commit messages
+  are terse; the changelog's per-version entries carry the reasoning, what was verified, and what
+  wasn't.
+- The GitHub API is unauthenticated here and rate-limited; if a request comes back rate-limited,
+  fall back to the raw file fetches above rather than retrying the API repeatedly.
+
+This is the efficient path to getting current on the project's actual state — cheaper than reading
+the whole file fresh, and more reliable than assuming an uploaded copy is current.
+
 ## 1. Scope and non-negotiable constraints
 
 - **Check progression intent before changing unlock behavior.** Read the README's player-facing progression overview and the progression invariants in this file, then trace the current unlock source through registration, Build-menu display, purchase, save, and load. The README explains the player experience; this file and the current implementation define the technical contract.
@@ -587,6 +615,11 @@ so they never wrap.
 
 ## UI layout techniques
 
+- **Every UI and input change targets both mobile and desktop, at any screen scale, with both
+  mouse and touch.** Nothing gets built mouse-only or desktop-only by default — layout math derives
+  from actual measured canvas/element dimensions (never a hardcoded screen-size assumption), and
+  interaction handlers respond to both pointer and touch events. Verify a change at a narrow mobile
+  width, not only at whatever width it happened to be built at.
 - `#inspCombatRow` (the stat row) never wraps: `fitStatRowToOneLine()` measures true `scrollWidth`
   against the panel's real available width and scales down via a left-anchored transform — no
   floor on the shrink scale (unreadable at extreme late-game values is accepted; wrapping isn't).
@@ -605,6 +638,9 @@ so they never wrap.
 - A discrete instantaneous event (impact, death, decal appearing) renders at full final size on
   the exact frame it happens — no grow-in/fade-in, which decouples "when it visually finishes" from
   "when it happened" and reads as delayed/buggy.
+- Nothing fades in and out repeatedly — no `globalAlpha` or rgba-alpha modulated by a continuous
+  `sin()` on a warning banner, marker, or indicator. The only acceptable fade is one-way, out,
+  permanently. Position and color can still pulse or bob for attention; opacity does not cycle.
 - Render-only cosmetic offsets live in `draw()`, never touch the entity's real `x`/`y` — mutating
   authoritative position for a visual effect risks desyncing pathing/collision that same frame.
 - HTML5 semantics: the UI is built from generic `<div>`s throughout (checked directly — zero

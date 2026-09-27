@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.54'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.60'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1532,7 +1532,7 @@ const EVOLVED_TOWER_TYPES = ['HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART
 // CA046 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA046
 const MAX_ONE_PER_BOARD_TYPES = ['PALADIN','SQUIRTGUN','SNIPER','POPE','NECROMANCER'];
 // CA047 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA047
-const SCALING_COST_TYPES = ['SWORDSMAN','ARCHER','MAGE'];
+const SCALING_COST_TYPES = ['SWORDSMAN','ARCHER','MAGE','AXEMAN','SPEARMAN','HAMMERMAN','CLERIC','BLOWDART','GATLING','MARKSMAN','BOMBER','SNAPCASTER'];
 const SCALING_COST_GROWTH = 1.2; // cost multiplier per existing on-board copy of that type — e.g. a 50-gold base becomes ~60/72/86/124/310 gold for the 2nd/3rd/4th/6th/11th copy
 // CA048 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA048
 const TOWER_UNLOCK_SOURCE_BY_TARGET = {}; // target type -> the REAL mechanical unlock source — internal only now (see TOWER_UNLOCK_RIDDLE in buildTowerModal() for what's actually shown to players), kept for deriving UNLOCKABLE_TOWER_TYPES and any future dev/debug tooling
@@ -1654,7 +1654,7 @@ const CONFIG = {
       ]
     },
     AXEMAN: {
-      name: 'Axeman', icon: '🪓', baseCost: 75, unlocksAfterWave: 5,
+      name: 'Axeman', icon: '🪓', baseCost: 375, unlocksAfterWave: 5,
       blurb: 'Dual-wields hand axes. Manually toggle between a close swing and a ranged throw — one free switch per wave.',
       tiers: [
         { range: 180, meleeRange: 70, damage: 34, meleeDamage: 14, cooldown: 1400, meleeCooldown: 500, projectileSpeed: 320 },
@@ -1663,7 +1663,7 @@ const CONFIG = {
       ]
     },
     SPEARMAN: {
-      name: 'Spearman', icon: '🔱', baseCost: 65, unlocksAfterWave: 5,
+      name: 'Spearman', icon: '🔱', baseCost: 325, unlocksAfterWave: 5,
       blurb: 'A long, sweeping thrust with much greater reach than a sword — but very slow to wind up.',
       tiers: [
         { range: 150, damage: 40, cooldown: 1800 },
@@ -1672,7 +1672,7 @@ const CONFIG = {
       ]
     },
     HAMMERMAN: {
-      name: 'Hammerman', icon: '🔨', baseCost: 85, unlocksAfterWave: 10,
+      name: 'Hammerman', icon: '🔨', baseCost: 425, unlocksAfterWave: 10,
       blurb: 'Stuns whatever it hits. Carries a shield and extra HP — the tower to put in harm\'s way when a mob breaks off to attack.',
       tiers: [
         { range: 95,  damage: 23, cooldown: 950, stunMs: 500 },
@@ -1729,7 +1729,7 @@ const CONFIG = {
       ]
     },
     SNAPCASTER: {
-      name: 'Snap Caster', icon: '⚡', baseCost: 95, unlocksAfterWave: 8,
+      name: 'Snap Caster', icon: '⚡', baseCost: 475, unlocksAfterWave: 8,
       blurb: "A DEX-focused Mage evolution — dual-wields a second wand, casting a rapid two-bolt burst each cycle instead of a single blast. Still meaningfully slower than an Archer overall, and each individual bolt hits for less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
       tiers: [
         { range: 210, damage: 58,  cooldown: 1650, burstCount: 2, burstDelay: 190, projectileSpeed: 1500, slowFactor: 0.25, slowDuration: 900 },
@@ -1738,7 +1738,7 @@ const CONFIG = {
       ]
     },
     BOMBER: {
-      name: 'Bomber', icon: '💣', baseCost: 90, unlocksAfterWave: 6,
+      name: 'Bomber', icon: '💣', baseCost: 450, unlocksAfterWave: 6,
       blurb: 'Lobs an explosive with splash damage — strong against groups.',
       tiers: [
         { range: 210, damage: 26, cooldown: 1500, projectileSpeed: 260, splashRadius: 55 },
@@ -1767,7 +1767,7 @@ const CONFIG = {
       ]
     },
     GATLING: {
-      name: 'Gatling', icon: '🔫', baseCost: 80, unlocksAfterWave: 9,
+      name: 'Gatling', icon: '🔫', baseCost: 400, unlocksAfterWave: 9,
       blurb: 'Very fast, low damage per shot — shreds through swarms.',
       tiers: [
         { range: 200, damage: 5,  cooldown: 140, projectileSpeed: 560 },
@@ -1783,7 +1783,7 @@ const CONFIG = {
       ]
     },
     CLERIC: {
-      name: 'Cleric', icon: '✝️', baseCost: 75, unlocksAfterWave: 5,
+      name: 'Cleric', icon: '✝️', baseCost: 375, unlocksAfterWave: 5,
       blurb: "The longest cooldown of any tower — calls down a strike of white-hot holy light on its target, dealing 5x tick damage against undead. Once per wave, also heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target.",
       tiers: [
         { range: 140, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
@@ -1820,7 +1820,7 @@ const CONFIG = {
       ]
     },
     BLOWDART: {
-      name: 'Blowdart', icon: '🎯', baseCost: 80, unlocksAfterWave: 7,
+      name: 'Blowdart', icon: '🎯', baseCost: 400, unlocksAfterWave: 7,
       blurb: 'Short range and light hits, but fires faster than an Archer. Every dart is poisoned — a measured damage-over-time sting that rewards steady hits without overwhelming early targets.',
       tiers: [
         { range: 155, damage: 7,  cooldown: 460, projectileSpeed: 420, poisonDamage: 2, poisonDuration: 2600 },
@@ -1896,7 +1896,7 @@ const CONFIG = {
       ]
     },
     MARKSMAN: {
-      name: 'Marksman', icon: '🔫', baseCost: 85, unlocksAfterWave: 6,
+      name: 'Marksman', icon: '🔫', baseCost: 425, unlocksAfterWave: 6,
       blurb: "Ice Archer's specialization — one carefully aimed rifle shot at a time. Longer range and harder-hitting than base Archer, without Gatling's fire rate or Blowdart's poison. Evolves further into Sniper at deep INT investment.",
       tiers: [
         { range: 300, damage: 60,  cooldown: 1000, projectileSpeed: 520 },
@@ -3375,12 +3375,13 @@ function paintBuildableTileBase(ctx, gx, gy){
 // CA152 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA152
 function paintPathTileBase(ctx, gx, gy){
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
-  ctx.fillStyle = '#8b5a2b';
+  // PATH-CONTRAST-01 (1.6.60) — see CHANGELOG.md § [1.6.60]. Path tiles used to fill the exact same
+  // #8b5a2b as the plain background dirt, with only a barely-visible 6%-black overlay on alternating
+  // tiles — direct request was to make the path read as visibly distinct. Lighter alternating tile
+  // is a sandy tan; darker is a chocolate brown. Both differ from the background now, mild contrast
+  // rather than a hard checkerboard.
+  ctx.fillStyle = (gx+gy)%2===0 ? '#6f4720' : '#a67c4d';
   ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-  if((gx+gy)%2===0){
-    ctx.fillStyle = 'rgba(0,0,0,0.06)';
-    ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-  }
   if(Math.random() >= 0.55){
     const pebbleCount = 1 + Math.floor(Math.random()*2);
     for(let i=0; i<pebbleCount; i++){
@@ -3516,49 +3517,44 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const snappedAwayX = awayX >= 0 ? 1 : -1;
   awayX = snappedAwayX; awayY = 0;
   const perpX = -awayY, perpY = awayX;
-  // CA159 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA159
-  // FLAG-TRIANGLE-GRAVITY-01 (1.6.52) — see CHANGELOG.md § [1.6.52]. Back to a single triangular
-  // pennant (not the FLAG-WAVE-01/02 segmented ribbon), with two changes: the top and bottom edges
-  // are curved, not straight, with their control points pulled toward true screen-down — real
-  // gravity, independent of which way the pole itself faces — so the cloth reads as sagging under
-  // its own weight instead of standing perfectly rigid. A second, shaded sub-triangle along the
-  // lower diagonal suggests a folded crease rather than one flat, uncreased plane.
-  const bannerLen = 40, bannerH = 16;
-  const attachTopX = x, attachTopY = y - poleH;
-  const attachBotX = x, attachBotY = y - poleH + bannerH;
-  const amp = 2 + FLAG_BREEZE_STRENGTH*4;
+  // FLAG-CLOTH-01 (1.6.55) — see CHANGELOG.md § [1.6.55]. Replaces FLAG-TRIANGLE-GRAVITY-01's
+  // single triangle and its separate fold-crease shape (that shape's vertices were linearly
+  // interpolated while the outer edge was already a curve, so it never actually sat flush against
+  // the boundary — the misaligned triangle this replaces). A real multi-segment cloth wave instead:
+  // top and bottom edges share the exact same ripple offset at every segment (only the taper
+  // differs), so the width can't collapse into a kite the way independent edges would. Purely
+  // cosmetic — this function has no connection to any gameplay stat, accuracy included; the
+  // disabled miss-chance wind system is a separate, unrelated mechanism.
+  const bannerLen = 42, bannerHalfH = 9, segs = 9;
+  const amp = 3 + FLAG_BREEZE_STRENGTH*5;
   const speed = 2.2 + FLAG_BREEZE_STRENGTH*2.4;
   const flagPhaseOffset = isBlack ? 1.7 : 0; // FLAG-WAVE-02 (1.6.49) — the two flags stay out of lockstep
   const phase = gameTime/1000*speed + flagPhaseOffset;
-  // CA161 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA161
-  const lean = (FLAG_BREEZE_DIR_X*perpX + FLAG_BREEZE_DIR_Y*perpY) * FLAG_BREEZE_STRENGTH * 2;
-  const ripple = Math.sin(phase)*amp + lean;
-  const GRAVITY_SAG = 7; // px of true screen-down droop pulled into the tip and the edge curves
-  const tipX = attachTopX + awayX*bannerLen + perpX*ripple;
-  const tipY = attachTopY + bannerH*0.5 + awayY*bannerLen + perpY*ripple + GRAVITY_SAG;
-
+  const gustPhase = gameTime/1000*0.5 + flagPhaseOffset*0.6;
+  const gustAmp = amp * 0.4;
+  const GRAVITY_SAG = 6; // sag accelerates toward the tip (t*t) — real cloth droops more the further it hangs from where it's pinned
+  const baseX = x, baseY = y - poleH + bannerHalfH;
+  const topPts = [], botPts = [];
+  for(let i=0; i<=segs; i++){
+    const t = i/segs;
+    const ripple = (Math.sin(phase - t*2.4)*amp + Math.sin(gustPhase - t*1.0)*gustAmp) * t;
+    const halfH = bannerHalfH * (1 - t*0.3); // gentle taper — never collapses to a point
+    const bx = baseX + awayX*bannerLen*t;
+    const by = baseY + awayY*bannerLen*t + GRAVITY_SAG*t*t;
+    topPts.push({ x: bx + perpX*(ripple - halfH), y: by + perpY*(ripple - halfH) });
+    botPts.push({ x: bx + perpX*(ripple + halfH), y: by + perpY*(ripple + halfH) });
+  }
   ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
   ctx.beginPath();
-  ctx.moveTo(attachTopX, attachTopY);
-  ctx.quadraticCurveTo((attachTopX+tipX)/2, (attachTopY+tipY)/2 + GRAVITY_SAG, tipX, tipY);
-  ctx.quadraticCurveTo((tipX+attachBotX)/2, (tipY+attachBotY)/2 + GRAVITY_SAG*0.5, attachBotX, attachBotY);
+  ctx.moveTo(topPts[0].x, topPts[0].y);
+  for(let i=1; i<topPts.length; i++) ctx.lineTo(topPts[i].x, topPts[i].y);
+  for(let i=botPts.length-1; i>=0; i--) ctx.lineTo(botPts[i].x, botPts[i].y);
   ctx.closePath();
   ctx.fill();
   // CA162 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA162
   ctx.strokeStyle = isBlack ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
   ctx.lineWidth = 1;
   ctx.stroke();
-
-  // Fold crease: a shadowed sub-triangle along the lower diagonal, using points that stay inside
-  // the outer shape's convex span so it never draws outside the flag itself.
-  const foldX = attachTopX + (tipX-attachTopX)*0.55, foldY = attachTopY + (tipY-attachTopY)*0.55;
-  ctx.fillStyle = isBlack ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.14)';
-  ctx.beginPath();
-  ctx.moveTo(foldX, foldY);
-  ctx.lineTo(tipX, tipY);
-  ctx.lineTo(attachBotX, attachBotY);
-  ctx.closePath();
-  ctx.fill();
 }
 function drawMap(ctx){
   ctx.fillStyle = '#8b5a2b';
@@ -5218,7 +5214,7 @@ class Enemy{
     this.armor = def.armor;
     this.maxHp = Math.round(def.baseHp * hpMultiplier);
     this.hp = this.maxHp;
-    this.speed = def.speed;
+    this.speed = def.speed * 0.9; // GLOBAL-ENEMY-SLOW-01 (1.6.60) — see CHANGELOG.md § [1.6.60]. Direct request: enemies walk 10% slower.
     this.bounty = def.bounty;
     this.radius = def.radius;
     this.embeddedArrows = [];
@@ -5635,7 +5631,7 @@ class Enemy{
     this.isMini = sizeTier === 'TINY';
     this.isBig = sizeTier === 'LARGE';
     this.radius = Math.round(band.radiusMin + sizeRank * (band.radiusMax - band.radiusMin));
-    this.speed = band.speedMin + familySpeedRank * (band.speedMax - band.speedMin);
+    this.speed = (band.speedMin + familySpeedRank * (band.speedMax - band.speedMin)) * 0.9; // GLOBAL-ENEMY-SLOW-01 (1.6.60) — see CHANGELOG.md § [1.6.60]
     this.maxHp = Math.max(1, Math.round(def.baseHp * hpScale * band.hpMult * ENEMY_HP_SCALE * (0.95 + sizeRank * 0.1)));
     this.hp = this.maxHp;
     this.bounty = Math.max(1, Math.round(def.bounty * band.bountyMult));
@@ -6555,6 +6551,11 @@ class Tower{
     // CA386 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA386
     this.splashRadius = 0; this.slowFactor = 0; this.slowDuration = 0;
     Object.assign(this, this.def.tiers[Math.min(this.level, this.def.tiers.length) - 1]); // promotions past the authored tier table keep the top tier's baseline; growth comes from promotion stat rolls
+    // GLOBAL-ATTACK-SLOW-01 (1.6.60) — see CHANGELOG.md § [1.6.60]. Direct request: every tower
+    // attacks 20% slower. Applied once here, at the single point tier cooldown values land on the
+    // instance, rather than hand-editing every tier's cooldown number across every tower.
+    this.cooldown = Math.round(this.cooldown * 1.2);
+    if(this.meleeCooldown) this.meleeCooldown = Math.round(this.meleeCooldown * 1.2);
     // CA387 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA387
     const TIER_DAMAGE_GROWTH = 0.45; // only 45% of the raw tier-to-tier damage jump carries through
     const tier1 = this.def.tiers[0];
@@ -9522,9 +9523,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, swordLen, extra.weaponThickness);
     } else if(!extra.hasTarget){
       // CA578 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA578
+      // SWORD-GRIP-ALIGN-01 (1.6.59) — see CHANGELOG.md § [1.6.59]. Same fix as the Spearman: the
+      // gripping hand now holds at the sword's own resting angle instead of a fixed angle unrelated
+      // to it, so the forearm and blade form one continuous line instead of kinking at the hand.
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
       const restAngle = -Math.PI/2 + 0.96 + chargeShake;
-      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 - 0.7, armLen, skinMain, 0.15);
+      const hand = drawArmAndHand(ctx, shoulderX, shoulderY, restAngle, armLen, skinMain, 0.15);
       drawSwordBlade(ctx, hand.handX, hand.handY, restAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
       if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, restAngle);
     } else {
@@ -9668,9 +9672,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       // CA586 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA586
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
-    const handX = hand.handX, handY = hand.handY;
-    // stubby mortar tube angled toward the target
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, bomberAngle, armLen, skinMain);
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#5c5c5c';
     ctx.lineWidth = 6*extra.weaponThickness; ctx.lineCap = 'butt';
     const tubeLen = weaponLenFromScale(12, 19, extra.weaponScale);
@@ -9694,7 +9696,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       // CA587 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA587
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, gatlingAngle, armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
     // twin parallel barrels
     const perpX = -Math.sin(gatlingAngle), perpY = Math.cos(gatlingAngle);
@@ -9708,10 +9710,15 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   } else if(type === 'AXEMAN' || type === 'BERSERKER'){
     const axeLen = weaponLenFromScale(15, 24, extra.weaponScale);
-    const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, -0.4);
-    drawAxeHead(ctx, hand1.handX, hand1.handY, angle, level, axeLen, extra.weaponThickness);
-    const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, 0.4);
-    drawAxeHead(ctx, hand2.handX, hand2.handY, angle, level, axeLen, extra.weaponThickness);
+    // AXEMAN-IDLE-01 (1.6.59) — see CHANGELOG.md § [1.6.59]. Unlike Spearman/Hammerman, this never
+    // had its own idle pose — it always used the raw attack-facing angle, even standing idle with
+    // no target, which held both axes out stiffly at whatever direction the tower last faced.
+    // Resting stance: axes held down at the sides.
+    const axeAngle = extra.hasTarget ? angle : Math.PI/2 + 0.15;
+    const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, axeAngle, armLen, skinMain, -0.4);
+    drawAxeHead(ctx, hand1.handX, hand1.handY, axeAngle, level, axeLen, extra.weaponThickness);
+    const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, axeAngle, armLen, skinMain, 0.4);
+    drawAxeHead(ctx, hand2.handX, hand2.handY, axeAngle, level, axeLen, extra.weaponThickness);
   } else if(type === 'SPEARMAN' || type === 'LANCER'){
     const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
     const spearAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: thrusts at the target
@@ -9721,7 +9728,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       // CA588 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA588
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, spearBend);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : spearAngle, armLen, skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
     const shaftLen = weaponLenFromScale(15, 24, extra.weaponScale);
@@ -9741,7 +9748,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   } else if(type === 'HAMMERMAN'){
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
     const hammerAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen, skinMain, hammerBend);
+    // HAMMER-GRIP-ALIGN-01 (1.6.59) — see CHANGELOG.md § [1.6.59]. Same fix as the Spearman and
+    // Swordsman: grip at the hammer's own resting angle, not a fixed angle unrelated to it.
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, hammerAngle, armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
     const haftLen = weaponLenFromScale(14, 22, extra.weaponScale);
@@ -9875,8 +9884,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
     // dual-wielded pistols, both hands actively aiming — no relaxed off-hand for a gunslinger stance
     const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
-    const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 + 0.7), armLen*0.9, skinMain, -0.2);
-    const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 - 0.7), armLen*0.9, skinMain, 0.2);
+    const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.9, skinMain, -0.2);
+    const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.9, skinMain, 0.2);
     ctx.font = (14 * extra.weaponScale * (0.85 + extra.weaponThickness*0.15)) + 'px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -10592,22 +10601,23 @@ function drawBossWarning(ctx){
   const remaining = bossWarningUntil - gameTime;
   if(remaining <= 0) return;
   const t = 1 - remaining / BOSS_WARNING_MS;
-  const pulse = 0.5 + 0.5 * Math.sin(gameTime / 90);
+  // OPACITY-NO-PULSE-01 (1.6.59) — see CHANGELOG.md § [1.6.59]. Standing rule: nothing fades in
+  // and out repeatedly. This banner used to modulate its alpha with a continuous sine wave; now it
+  // holds a steady value for as long as it's shown.
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = 'rgba(120,0,0,' + (0.18 + pulse * 0.16).toFixed(2) + ')';
+  ctx.fillStyle = 'rgba(120,0,0,0.26)';
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   const bandH = 86;
   const bandY = CANVAS_H * 0.42 - bandH / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, bandY, CANVAS_W, bandH);
-  ctx.strokeStyle = 'rgba(230,57,70,' + (0.6 + pulse * 0.4).toFixed(2) + ')';
+  ctx.strokeStyle = 'rgba(230,57,70,0.8)';
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(0, bandY); ctx.lineTo(CANVAS_W, bandY); ctx.moveTo(0, bandY+bandH); ctx.lineTo(CANVAS_W, bandY+bandH); ctx.stroke();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e63946';
   ctx.font = 'bold 34px Georgia, "Times New Roman", serif';
-  ctx.globalAlpha = 0.65 + pulse * 0.35;
   ctx.fillText('⚠  W A R N I N G  ⚠', CANVAS_W/2, bandY + 28);
   ctx.fillStyle = '#ffe9a8';
   ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
@@ -11312,7 +11322,14 @@ function drawDebugOverlay(ctx){
   // (often 60+ monospace characters) regularly overflowed past the box's right edge. Box width is
   // measured against the actual longest line each frame (ctx.measureText()) instead of a
   // hardcoded guess, so it always fits whatever's currently shown.
-  const belowHudY = getDebugOverlayBelowHudY();
+  // DEBUG-OVERLAY-TOPRIGHT-01 (1.6.56) — see CHANGELOG.md § [1.6.56]. Anchored top-right, below
+  // the FPS counter, instead of top-left below the HUD bar. Every modal that can cover the
+  // top-left corner (Build, Shop, Settings) opens from the left-side HUD buttons; top-right, under
+  // the FPS counter, is clear of all of them. Still takes the real HUD-bar measurement into
+  // account (not just the FPS counter's own height) so it can't collide with that either on an
+  // unusually tall or wrapped HUD layout — whichever constraint asks for more room wins.
+  const belowFpsY = 4 + FPS_COUNTER_FONT_PX * 1.3 + 6;
+  const belowHudY = Math.max(getDebugOverlayBelowHudY(), belowFpsY);
   // DEBUG-OVERLAY-SHRINK-01 (1.6.53) — see CHANGELOG.md § [1.6.53]. Standing rule: text that
   // doesn't fit its box shrinks to fit, it never wraps to a second physical line. A tower
   // telemetry row is often 60+ monospace characters; if the longest visible line doesn't fit the
@@ -11328,8 +11345,8 @@ function drawDebugOverlay(ctx){
     ctx.font = 'bold ' + fontPx + 'px monospace';
   }
   const lineHeight = fontPx + 3;
-  // Stay below the HUD. On short viewports, show the highest-priority lines that fit rather
-  // than moving the panel back underneath the Build button to keep every tower row visible.
+  // Stay below the HUD/FPS counter. On short viewports, show the highest-priority lines that fit
+  // rather than growing past the bottom of the screen.
   const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / lineHeight));
   if(maxVisibleLines === 0) return;
   const visibleLines = lines.slice(0, maxVisibleLines);
@@ -11337,17 +11354,21 @@ function drawDebugOverlay(ctx){
   for(const line of visibleLines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
   const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
   const boxHeight = visibleLines.length * lineHeight + 8;
+  const boxLeft = CANVAS_W - 6 - boxWidth; // right-anchored: grows leftward from the right edge
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(6, belowHudY, boxWidth, boxHeight);
+  ctx.fillRect(boxLeft, belowHudY, boxWidth, boxHeight);
   ctx.fillStyle = '#7ee787';
-  visibleLines.forEach((line, i) => ctx.fillText(line, 12, belowHudY + 4 + i * lineHeight));
+  visibleLines.forEach((line, i) => ctx.fillText(line, boxLeft + 6, belowHudY + 4 + i * lineHeight));
   ctx.restore();
 }
+const FPS_COUNTER_FONT_PX = 18; // bumped from 13 per direct request ("make FPS bigger")
 function drawFpsCounter(ctx){
   const fps = Math.round(perfStats.smoothedFps || 60);
-  // CA673 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA673
-  ctx.fillStyle = fps >= 50 ? '#4caf50' : fps >= 30 ? '#ffc107' : '#f44336';
-  ctx.font = 'bold 13px monospace';
+  // FPS-DISPLAY-01 (1.6.56) — see CHANGELOG.md § [1.6.56]. Bigger and re-thresholded per direct
+  // request: 30+ reads as healthy (green), 20-29 as a real but tolerable drop (yellow), anything
+  // below 20 — including well below 10 — as a problem (red).
+  ctx.fillStyle = fps >= 30 ? '#4caf50' : fps >= 20 ? '#ffc107' : '#f44336';
+  ctx.font = 'bold ' + FPS_COUNTER_FONT_PX + 'px monospace';
   ctx.textAlign = 'right'; ctx.textBaseline = 'top';
   ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
   ctx.strokeText(fps + ' FPS', CANVAS_W - 8, 4);
@@ -11358,10 +11379,8 @@ function drawSpawnWarningMarker(ctx){
   if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
   if(waveTimer >= WAVE_COUNTDOWN_MS) return;
   const spawn = waypointsPx[0];
-  const pulse = 0.6 + Math.sin(gameTime/180)*0.4;
   const bob = Math.sin(gameTime/220) * 4;
   ctx.save();
-  ctx.globalAlpha = Math.max(0.35, pulse);
   ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e63946';
@@ -11415,11 +11434,10 @@ function drawBossCompass(ctx){
   const maxX = CANVAS_W/2 - margin, maxY = CANVAS_H/2 - margin;
   const scale = Math.min(Math.abs(maxX/Math.cos(angle)), Math.abs(maxY/Math.sin(angle)));
   const arrowX = cx + Math.cos(angle)*scale, arrowY = cy + Math.sin(angle)*scale;
-  const pulse = 0.6 + Math.sin(gameTime/200)*0.3;
   ctx.save();
   ctx.translate(arrowX, arrowY);
   ctx.rotate(angle);
-  ctx.fillStyle = `rgba(230,57,70,${pulse.toFixed(2)})`;
+  ctx.fillStyle = 'rgba(230,57,70,0.85)';
   ctx.beginPath();
   ctx.moveTo(12,0); ctx.lineTo(-6,-8); ctx.lineTo(-6,8); ctx.closePath(); ctx.fill();
   ctx.restore();
@@ -12355,7 +12373,13 @@ function fitHudTopToOneLine(force){
   const hud = document.getElementById('hud-top');
   if(!hud) return;
   const buildLabel = document.getElementById('buildBtn')?.textContent || '';
-  const sig = String(window.innerWidth) + '|' + String(hud.clientWidth) + '|' + buildLabel;
+  // DOM-REFLOW-01 (1.6.57) — see CHANGELOG.md § [1.6.57]. hud.clientWidth used to be part of this
+  // signature, forcing a layout flush on every call — this function runs on every HUD update
+  // (every kill, gold change, wave change), not just on resize. #hud-top's CSS is `left:0;right:0`
+  // with no independent sizing trigger besides the viewport itself, and viewport resize is already
+  // handled separately by the dedicated resize/orientationchange listeners below, which force a
+  // re-fit directly. window.innerWidth alone is sufficient and reads no layout property at all.
+  const sig = String(window.innerWidth) + '|' + buildLabel;
   if(!force && sig === hudFitSignature) return; // counter updates must not resize the full bar after every kill
   hudFitSignature = sig;
   hud.style.transform = 'scale(1)'; // reset before measuring, so scrollWidth reflects natural unscaled size

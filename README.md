@@ -77,7 +77,6 @@ Every icon used across the HUD, a tower's inspect panel, its target frame, and i
 | ⏳ | Full attack-cycle time, in seconds |
 | 🥈 | Average damage per second, including expected critical hits and accuracy (burst-fire towers use their full attack cycle) |
 | 🎯 | Range — attack radius in world units |
-| 🍀 | Luck — bonus gold from this tower's kills |
 
 The stats row scales to fit on one line across panel widths.
 

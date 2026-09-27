@@ -1,5 +1,141 @@
 # Changelog
 
+## [1.6.60] - 2026-09-27 — Global pacing changes and real path/background contrast
+- **Attacks 20% slower, enemies walk 10% slower**: both applied as a single multiplier at the one
+  point each value lands on an instance (`applyTierStats()` for cooldowns, both enemy speed
+  assignment points for movement) rather than hand-editing every tower tier and enemy definition
+  individually — one place to verify, trivially reversible.
+- **Path/background contrast**: path tiles used to fill the exact same `#8b5a2b` as the plain
+  background dirt, with only a barely-visible 6%-black overlay distinguishing alternating tiles.
+  Now a genuine two-tone: sandy tan on one alternating tile, chocolate brown on the other, both
+  visibly different from the background instead of matching it.
+- **Investigated and reverted, not shipped**: initially added AXEMAN to `NO_MIN_RANGE_TYPES` to fix
+  the "min range too high in melee" report, then traced `usesMinimumRangedRange()` directly and
+  found it already special-cases Axeman's melee mode correctly, bypassing that list entirely — the
+  edit would have been a no-op. Reverted rather than ship a change that does nothing. The actual
+  cause of that complaint is still open — see BACKLOG.
+- **Explicitly not attempted this round** — see BACKLOG.md for the full list and why: dual-wield
+  attack timing (main hand, then off hand, then a long recharge), the inspect panel's cramped
+  button row, melee range balance across classes, Blowdart's projectile spawn height, Cleric's
+  damage/cooldown, and — the largest by far — removing the evolution system entirely in favor of a
+  permanent unlock-tree model. That last one touches dozens of tower definitions, the whole unlock
+  system, and save-file compatibility; it needs its own scoped pass, not a rushed attempt inside a
+  13-item round.
+- **Verification**: `node --check` on all 7 real script blocks.
+
+## [1.6.59] - 2026-09-27 — Every stickman's idle grip fixed; no more in-and-out opacity anywhere
+- **New standing rule**: nothing fades in and out repeatedly. The only acceptable fade is one-way,
+  out, permanently. Went through every `globalAlpha`/rgba-alpha pulse in the codebase and fixed the
+  four real ones: the boss-warning banner's background flash, its "WARNING" text, the off-screen
+  boss-direction arrow, and the spawn countdown marker — all previously oscillated opacity via a
+  continuous sine wave; all now hold a steady value. Motion (bob, sway) is untouched — the rule is
+  about transparency cycling, not animation in general.
+- **Idle grip mismatch, found and fixed in six classes**: the pattern the Spearman fix (1.6.58)
+  addressed — a gripping hand held at a fixed angle unrelated to the direction the weapon itself
+  points when idle, reading as a kink where the forearm and weapon meet — was never unique to the
+  Spearman. Checked every melee/ranged class's idle pose directly and found the same mismatch in
+  Swordsman, Hammerman, Bomber, Gatling, and Squirtgun. Fixed all five the same way: the grip now
+  uses the weapon's own resting angle instead of an unrelated fixed one.
+- **Axeman never had an idle pose at all**: unlike every other melee class, it always used the raw
+  attack-facing angle for both arms, even standing idle with no target — holding both axes out
+  stiffly at whatever direction the tower last faced, rather than a designed resting stance. Gave it
+  one: axes held down at the sides, matching the pattern already used everywhere else.
+- **Checked, found correct**: Cleric's idle cast-hand already uses its own gesture angle directly,
+  no mismatch. Not re-audited beyond the classes listed above — Archer, Mage, and the remaining
+  evolutions weren't touched this pass.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed live — six pose
+  fixes and four pulse fixes in one round is a lot to eyeball at once; worth a full look at each
+  affected class once it's up.
+
+## [1.6.58] - 2026-09-27 — Spearman's grip fixed; specialty towers cost 5x and now scale per repeat buy
+- **Spearman visual bug**: the gripping hand's forearm pointed at a fixed angle unrelated to the
+  spear shaft's own direction (idle: ~50° for the arm vs. ~-35° for the shaft, an 85° mismatch).
+  The eye reads the forearm-then-shaft as one bent line, so the spearhead — correctly placed at the
+  true end of the shaft — looked like it sat partway along what appeared to be one longer weapon.
+  Fixed by gripping along the spear's own angle instead of an unrelated fixed one, so the forearm
+  and shaft form one continuous straight line.
+- **Specialty tower pricing**: Axeman, Spearman, Hammerman, Cleric, Blowdart, Gatling, Marksman,
+  Bomber, and Snap Caster all cost roughly 5x their previous price (e.g. Spearman 65→325, Axeman
+  75→375) — solidly above the basic towers (50-70) instead of comparable to or barely above them.
+- **The actual mechanism gap**: `SCALING_COST_TYPES` — the exponential repeat-purchase cost curve
+  already used for Swordsman/Archer/Mage — never included any of these nine towers, so a 2nd, 3rd,
+  or 10th copy of a specialty tower cost exactly the same flat price as the first, no scaling at
+  all. All nine are now in that list, using the same proven growth rate (20% per existing copy) as
+  the basic towers already use.
+- **Not touched**: Merchant and Glaive — already priced well above this range (140/130) and gated
+  much later (wave 15/20), not the "too easy to buy early" problem being fixed here.
+- **Verification**: `node --check` on all 7 real script blocks. Computed the actual cost curve for
+  all nine towers directly: first purchase lands 5-6.8x the basic-tower range, each repeat compounds
+  20% higher, matching the existing Swordsman/Archer/Mage formula exactly. Not yet confirmed live —
+  the spear fix in particular is a visual read that's worth a look once it's up.
+
+## [1.6.57] - 2026-09-27 — Real book-verified fix: dropped a forced-reflow read from the HUD fit check
+- **Source**: "High Performance JavaScript" (Zakas, 2010), Ch.3 (DOM Scripting). Confirmed by direct
+  extraction, not from a secondhand summary: `clientWidth`/`clientTop`/`clientLeft`/`clientHeight`
+  (along with `offsetWidth` and friends) force the browser to flush its pending render-tree changes
+  and reflow immediately, whenever read — "never request layout information while it's being
+  changed" is the book's own explicit guidance.
+- **Checked against the actual code, not assumed**: `fitHudTopToOneLine()`'s own dirty-check
+  signature read `hud.clientWidth` on every call — and it's called from `updateHUDImmediate()`,
+  which runs on every kill, gold change, and wave change, far more often than window resizes
+  actually happen.
+- **Confirmed the read was genuinely redundant, not just probably redundant**: `#hud-top`'s CSS is
+  `left:0;right:0`, meaning its width tracks the viewport directly with no other independent
+  sizing trigger. Window resize is already handled separately by dedicated
+  `resize`/`orientationchange` listeners that force a re-fit directly (`fitHudTopToOneLine(true)`).
+  `window.innerWidth` alone is sufficient for the signature and reads no layout property at all.
+- **Fix**: dropped `hud.clientWidth` from the signature. Every HUD update no longer forces a
+  synchronous reflow just to check whether anything actually needs re-measuring.
+- **Also checked, not implemented**: Game Programming Patterns' Spatial Partition chapter
+  maintains its grid incrementally (only moving an entity between buckets when it actually crosses
+  a cell boundary), versus `buildEnemyHash()`'s current full-rebuild-every-call design. A real,
+  legitimate alternative — but this session's own stress-test data (see 1.6.44's harness) already
+  showed the rebuild cost is small at this game's actual population sizes; the packed-density case
+  that mattered was the query cost, not the rebuild cost. Switching to incremental maintenance would
+  be an invasive rearchitecture of enemy movement for a gain that isn't measured to exist at this
+  game's scale — recorded in BACKLOG rather than attempted blind.
+- **Verification**: `node --check` on all 7 real script blocks. Diffed the file to confirm only the
+  signature line changed.
+
+## [1.6.56] - 2026-09-27 — Debug overlay moved top-right, FPS counter bigger and re-thresholded
+- **The bug**: the debug overlay sat top-left, below the HUD bar — the same corner every left-side
+  modal (Build, Shop, Settings) opens from, so opening any of them covered it completely.
+- **Fix**: moved it to top-right, anchored below the FPS counter instead. Every modal that can
+  cover the top-left is clear of the top-right corner. Still takes the real HUD-bar measurement
+  into account too (not just the FPS counter's height), so it can't collide with an unusually tall
+  or wrapped HUD layout either — whichever constraint asks for more room wins. Verified the
+  right-anchor math directly at three widths including a 390px mobile canvas: flush against the
+  right edge in every case.
+- **FPS counter**: font size 13px → 18px. Color thresholds changed to 30+ green, 20-29 yellow,
+  below 20 (including well below 10) red — was 50/30 before.
+- **Standing rule added**: every UI and input change now explicitly targets both mobile and
+  desktop, any screen scale, both mouse and touch by default — recorded in `AGENTS.md`'s UI layout
+  section. Confirmed this isn't aspirational: the canvas's own click handling already uses
+  `pointerdown`, which natively unifies mouse and touch, so the codebase already follows this in
+  practice.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed live.
+
+## [1.6.55] - 2026-09-27 — Real cloth wave, no more mismatched fold triangle
+- **The bug**: the "fold crease" shading added in 1.6.52 used vertices computed by straight-line
+  interpolation between the flag's corners, but the flag's outer edge was already a curve by that
+  point — the two never actually lined up, producing a visible mismatched triangle poking against
+  the curved boundary.
+- **Fix**: dropped the single-triangle-plus-fold-shape approach entirely. Replaced with a 9-segment
+  cloth wave: top and bottom edges share the exact same ripple offset at every segment (only the
+  taper differs), so the width can't collapse into a kite, and there's no separate shape to
+  misalign with the outline anymore because there's only one outline. A slower secondary wave
+  layers under the primary ripple for less single-note motion, and gravity sag now accelerates
+  toward the tip (scales with t²) rather than linearly, closer to how real cloth actually droops
+  further from where it's pinned.
+- **Purely cosmetic, confirmed**: this function's only inputs are position, direction, `isBlack`,
+  and `gameTime` — no gameplay stat, and no connection to the disabled miss-chance wind system,
+  which remains a separate, unrelated, still-inert mechanism.
+- **Verified directly**: sampled cross-width across both flags, 5 points in the animation cycle, and
+  both banner directions — minimum width held at 12.6px (the tapered floor) and the hoist stayed
+  pinned at exactly 18px in every case, confirming the shape can't collapse or gap at any point in
+  the wave.
+- **Verification**: `node --check` on all 7 real script blocks. Not yet confirmed live.
+
 ## [1.6.54] - 2026-09-27 — Found the bigger half of the hit-accuracy bug I missed last round
 - **What 1.6.53 missed**: burn, poison, and bleed all tick damage every 420-600ms for the duration
   of the effect, each tick calling `recordContribution()` directly — none of them were included in
