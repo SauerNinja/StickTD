@@ -1,5 +1,17 @@
 # Backlog
 
+## From the v1.6.54 wave 9 performance captures — updated for v1.6.66
+- **Fast-forward cap loss — patched, verify after upload.** At about 6.9 callback FPS and 5x, all 413 frames in the sampled minute reached the old eight-tick ceiling and discarded about 151 seconds of simulation time. v1.6.66 scales the cap with speed (45 ticks at 5x, 90 at 10x), allows up to 150ms per fast-forward callback, and measures actual speed against raw callback time. Repeat the same wave 9 test; inspect requested/actual speed, cap hits, dropped simulation time, and wall-time clamps.
+- **Low browser callback rate — still needs a v1.6.66 playtest.** The v1.6.54 capture reports roughly 7 callbacks per second while rolling JavaScript update/render times are mostly around 1–2ms and render phase averages stay low. This does not identify a repeatable code-side rendering hot spot. If callback FPS remains low with v1.6.66 while synchronous phases stay fast, capture a browser performance trace and inspect compositor/GPU scheduling before changing draw quality or removing visual effects.
+- **Memory growth — no leak established.** The two snapshots report roughly 12.6–12.9MB used JavaScript heap and a small increase over about two minutes; this duration cannot establish a persistent leak, and the metric does not cover GPU/canvas backing-store memory. Recheck a longer active session and compare post-GC heap baselines before claiming a leak or adding more pooling.
+
+## From the 2026-09-28 playtest screenshots
+- **Forensic visual review** — screenshots show accumulated pools, directional marks, and remains, but the board is zoomed too far out to judge individual stain shape, transfer, or weapon-specific patterns. Capture the next run zoomed into a recent fight, with gore enabled, alongside its debug log and save. Preserve evidence-led effects (direction, transfer, substrate/species) and avoid claiming validated forensic reconstruction.
+- **Earlier performance context** — v1.6.54 video/screenshots showed 24–31 FPS at 5x before the later wave 9 drop. The v1.6.66 follow-up test is tracked above; keep camera framing and device consistent when comparing.
+- **Verify corrected kill and Cleric telemetry live** — v1.6.54 shows positive damage but zero kills, and the Cleric has damage with zero shots/hits. v1.6.64 moves kill counting to confirmed death and counts direct smites as shots; v1.6.66 carries those fixes forward. Confirm the counters rise in the next test.
+
+
+
 ## From the 2026-09-27 mega-round — explicitly not attempted, needs its own pass
 Owner sent 13 distinct requests in one message. Three shipped (see CHANGELOG 1.6.60); the rest need
 real investigation or are too large to rush. Listed here so nothing gets lost.
@@ -31,8 +43,6 @@ real investigation or are too large to rush. Listed here so nothing gets lost.
   every current and future class.
 - **Blowdart's dart appears to fire over the target's head** — a projectile spawn-height/trajectory
   issue, not yet traced to the actual spawn-point code.
-- **Cleric does too little damage with too long a cooldown** — a real balance-number pass, not
-  touched this round.
 
 ## From Game Programming Patterns (Nystrom) — checked, not attempted
 - **Incremental spatial-hash maintenance** — the book's canonical Spatial Partition pattern keeps
@@ -118,8 +128,9 @@ alongside a dozen other simultaneous changes.
 
 **Clearly scoped, queued next — none of these need a real investigation before starting, they just
 weren't reached this round:**
-- **1:1 dirt-to-grass path ratio** — a new requirement for the path generator itself (distinct from
-  the ring-expansion system above), not previously requested.
+- **Literal global 1:1 dirt-to-grass tile count** — still open and distinct from the two-tile green
+  border now around the route (see CHANGELOG 1.6.62). The current incremental 2-3 path-tile growth
+  makes a global equal count a separate map-shape/pacing decision.
 - **Corner padding at the finish-line escape spot** — pad the specific corner where an enemy has
   been seen cutting into the finish line with an extra grass/buffer tile.
 
@@ -226,9 +237,11 @@ being attempted, not from reading code alone:
   enough in modern JS engines that this may not show up as real cost at all. Needs a debug-log-
   confirmed hot spot (updateMs during a genuinely dense wave) before attempting, not just "this is
   the known pattern."
-- **`MAX_TICKS_PER_FRAME = 90`** — a very high catch-up ceiling for the fixed-timestep loop.
-  `perfStats.maxTicksSeen` now tracks this directly — check it after a long dense-wave session
-  before deciding whether the ceiling is ever actually approached on real devices.
+- **Speed-scaled simulation catch-up ceiling — shipped in 1.6.66; retest before further tuning.**
+  The 1x baseline is 8 ticks; fast-forward scales its budget to the accepted callback interval,
+  capped at 90 ticks at 10x. Use the v1.6.66 perf log's current cap, cap-hit count, discarded debt,
+  raw callback gaps, and update timings to decide whether this bound needs adjustment on a real
+  dense wave. Avoid reverting to the former fixed 8-tick cap.
 
 ## Audio mastery — deferred passes (reference: 5 uploaded game-audio books, treated as first-tier
 ## principles; current index.html as second-tier implementation authority — see AGENTS.md)
@@ -951,8 +964,8 @@ Builder NPC (Hammerman-proportioned, bright orange).
 - Minimap panel (a small radar-style overview of the whole map) — was part of the original WC3
   dashboard concept but never built; the current bottom panel has no map overview at all.
 - Undead armor values (Zombie 9, Wraith 4, Skeleton 6, Reaper 10) were a first-pass rebalance —
-  worth revisiting once there's actual playtesting data on whether Cleric's 5x curse bonus is
-  landing as a meaningful tactical choice or just a minor bonus.
+  revisit after testing v1.6.64's direct, armor-ignoring Cleric smite to see whether 5x damage makes
+  small undead counters feel decisive without flattening larger undead encounters.
 - Expand the level cap from 3 to 10 per tower — currently `canUpgrade()` is bounded by
   `tiers.length`, and every one of the 13 tower configs has exactly 3 tiers. Getting to 10 means
   adding 7 more tiers (range/damage/cooldown progression) to every tower and rebalancing gold

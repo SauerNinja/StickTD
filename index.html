@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>StickTD — Stick Tower Defense | Free Browser Tower Defense Game</title>
-<meta name="description" content="Play StickTD, a free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects. Created by SauerNinja (Setvin Noether).">
+<meta name="description" content="Play StickTD, a free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects. Created by SauerNinja (Setvin Noether).">
 <meta name="keywords" content="stick tower defense, StickTD, sauerninja, setvin noether, tower defense game, stickman tower defense, free browser game, html5 tower defense, endless wave tower defense">
 <meta name="author" content="SauerNinja (Setvin Noether)">
 <meta name="robots" content="index, follow">
@@ -12,7 +12,7 @@
      the actual share image; a data: URI here would not be fetchable by most social-media crawlers -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="StickTD — Stick Tower Defense">
-<meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
+<meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
 <meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,7 +22,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
-<meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.">
+<meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
 <meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
@@ -32,7 +32,7 @@
   "@type": "VideoGame",
   "name": "StickTD",
   "alternateName": "Stick Tower Defense",
-  "description": "A free browser-based Stick Tower Defense game — evolving towers, endless waves, and forensically-detailed procedural blood effects.",
+  "description": "A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.",
   "url": "https://sauerninja.github.io/StickTD/",
   "image": "https://sauerninja.github.io/StickTD/og-image.png",
   "genre": ["Tower Defense", "Strategy"],
@@ -808,7 +808,7 @@
         <div id="targetHeaderLabel">TARGETING</div>
         <div id="targetNameRow"><strong id="targetName">-</strong></div>
         <div id="targetHpBarTrack"><div id="targetHpBarFill"></div><span id="targetHpBarText">0/0</span></div>
-        <div id="targetStatsRow"><span>🛡️ <span id="targetDefVal">0</span></span><span>👟 <span id="targetSpeedVal">0</span></span></div>
+        <div id="targetStatsRow"><span>🛡️ <span id="targetDefVal">0</span></span><span>👟 <span id="targetSpeedVal">0</span></span><span>⚖️ <span id="targetWeightVal">1.0</span></span></div>
       </div>
     </div>
 
@@ -1090,7 +1090,7 @@
 <script>
   (function(){
     const GAME_URL = 'https://sauerninja.github.io/StickTD/';
-    const SHARE_TEXT = 'StickTD — a free browser stick tower defense game with forensically-detailed blood effects';
+    const SHARE_TEXT = 'StickTD — a free browser stick tower defense game with detailed combat evidence effects';
     document.getElementById('changesBtn').addEventListener('click', function(){
       window.open('https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md', '_blank', 'noopener');
     });
@@ -1123,7 +1123,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.60'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.66'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1289,7 +1289,7 @@ const TOWER_STRATEGY = {
   SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
   MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Evolves further into Sniper." },
   SNAPCASTER:{ icon: '⚡', text: 'Mage evolved through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
-  CLERIC:    { icon: '✨', text: 'The only support tower: heals nearby towers and smites undead directly rather than shooting enemies. Doesn\'t fight the wave — keeps everyone else able to.' },
+  CLERIC:    { icon: '✨', text: 'A support tower that heals allies and directly smites undead. Its dependable immediate holy hit deals 5x damage and ignores armor, making it especially dangerous to small undead while bosses can endure it.' },
   POPE:      { icon: '⛪', text: "Cleric's AOE evolution — hits every enemy in range at once instead of one target. Reached only through very deep INT investment (750 total). Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
   NECROMANCER:{ icon: '💀', text: "Mage evolved through STR instead of INT: a dark bolt attack, plus a small band of skeleton minions raised near it at the start of every round (gone again the instant the round ends). The skeletons aren't a one-time boost — budget for them fresh each round, and place this where its own raised band can actually reach the path." },
   BLOW_GUNNER:{ icon: '♨️', text: "Archer's Fire+Ice hybrid — reached by pushing STR and INT both to 500, not just the one that locked the attunement first. Every hit carries both Blowdart's poison DoT and a Mage-style chilling slow at once, a genuinely different identity from either single-element sibling rather than a stronger version of one." },
@@ -1298,7 +1298,7 @@ const TOWER_STRATEGY = {
   DARK_MATTER:{ icon: '🕳️', text: "Electric+Ice hybrid, reachable from any base class — whichever pushes both DEX and INT to 500 first. Leans harder into the slow than the burn, unlike Proton — a control-focused identity rather than a damage-focused one." },
   QUASAR:{ icon: '🌟', text: "The hardest unlock in the game — needs a fully trained tower — 1000 total stats with at least 300 in each of STR, DEX and INT. Hits everything in a small splash radius around its target, not just the one enemy, on top of the same burn+slow every hybrid carries." },
   BERSERKER:{ icon: '👹', text: "An Axeman pushed to STR 500 instead of a second element — trades the throw-toggle for a much wider, harder cleave. Bring it in close where its swing can actually catch a crowd; it's a brute-force AoE tool, not a precision one." },
-  LANCER:{ icon: '🎯', text: "A Spearman pushed to DEX 500 — even longer reach than base Spearman, precision over power. The longest-ranged melee class in the game; place it where its reach is the whole point, not just a bonus." },
+  LANCER:{ icon: '🎯', text: "A Spearman pushed to DEX 500 carries a knight lance and strikes harder against larger, heavier enemies. Damage scales with target size: half damage at tiny scale, normal damage at standard scale, and up to 1.75x against the heaviest foes." },
 };
 
 // CA013 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA013
@@ -1702,7 +1702,7 @@ const CONFIG = {
     // CA059 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA059
     LANCER: {
       name: 'Lancer', icon: '🎯', baseCost: 0, unlocksAfterWave: 0,
-      blurb: 'A Spearman pushed to the DEX extreme — even longer reach, precise rather than powerful, keeping enemies at arm\'s length before they ever close in.',
+      blurb: 'A Spearman pushed to the DEX extreme — wields a knight lance whose impact scales with enemy weight, dealing more damage to larger targets.',
       tiers: [
         { range: 200, damage: 44, cooldown: 1700 },
         { range: 220, damage: 66, cooldown: 1550, upgradeCost: 125 },
@@ -1784,7 +1784,7 @@ const CONFIG = {
     },
     CLERIC: {
       name: 'Cleric', icon: '✝️', baseCost: 375, unlocksAfterWave: 5,
-      blurb: "The longest cooldown of any tower — calls down a strike of white-hot holy light on its target, dealing 5x tick damage against undead. Once per wave, also heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target.",
+      blurb: "The longest cooldown of any tower — calls down a strike of white-hot holy light for immediate damage, dealing 5x damage against undead and ignoring their armor. Built to almost always kill small undead in one smite; bosses can survive. Once per wave, also heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target.",
       tiers: [
         { range: 140, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
         { range: 155, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
@@ -2253,14 +2253,16 @@ function regionFullyExpanded(){
 // pathCells/waypointsPx below), and required by isInActiveRegion() as a hard filter on top of the
 // rectangle check — a tile only counts as buildable if it's both inside the region AND near the
 // path, so the visible shape is a corridor hugging the path's zigs and zags, not the full rectangle.
-const PATH_BUILDABLE_MARGIN = 1;
+// CA795 — see CHANGELOG.md § [1.6.62] Green route buffer. Keep two full green tiles around each route tile so the
+// forest/building corridor visually frames the road instead of letting brown road dominate.
+const PATH_BUILDABLE_MARGIN = 2;
 let nearPathTileSet = new Set();
 function rebuildNearPathTileSet(){
   const next = new Set();
   for(const tile of pathWaypointTiles){
     for(let dx = -PATH_BUILDABLE_MARGIN; dx <= PATH_BUILDABLE_MARGIN; dx++){
       for(let dy = -PATH_BUILDABLE_MARGIN; dy <= PATH_BUILDABLE_MARGIN; dy++){
-        if(Math.abs(dx)+Math.abs(dy) <= PATH_BUILDABLE_MARGIN) next.add((tile.x+dx) + ',' + (tile.y+dy));
+        next.add((tile.x+dx) + ',' + (tile.y+dy)); // square/Chebyshev neighborhood includes diagonal forest tiles
       }
     }
   }
@@ -2514,20 +2516,38 @@ function nextRegionTowardPathTip(){
   }
   return { x0, y0, x1, y1 };
 }
-// PATH-REVEAL-COHERENCE-01 (1.6.14): expansion commits the new route before its grass animation
-// finishes. Repaint each newly committed route tile immediately, including tiles inside the old
-// region; otherwise the cached map can keep showing buildable green under walking enemies.
+// CA796 — see CHANGELOG.md § [1.6.62] Cached corridor repaint. Expansion commits the new
+// route before its grass animation finishes. Repaint the new route plus its bounded neighborhood
+// immediately, including old-region tiles whose buildable status changed with the wider corridor.
+// This keeps the cached map coherent without rebaking the whole world on each expansion.
 function paintCommittedExpansionPath(oldPath){
   const oldKeys = new Set(oldPath.map(p => p.x+','+p.y));
   const changed = pathWaypointTiles.filter(p => !oldKeys.has(p.x+','+p.y));
   if(!changed.length) return;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
+  const dirtyTiles = new Set();
   for(const tile of changed){
-    const key = tile.x+','+tile.y;
-    sceneryMap.delete(key);
-    floraMap.delete(key);
-    paintPathTileBase(mctx, tile.x, tile.y);
+    for(let dx=-PATH_BUILDABLE_MARGIN; dx<=PATH_BUILDABLE_MARGIN; dx++){
+      for(let dy=-PATH_BUILDABLE_MARGIN; dy<=PATH_BUILDABLE_MARGIN; dy++){
+        dirtyTiles.add((tile.x+dx)+','+(tile.y+dy));
+      }
+    }
+  }
+  for(const key of dirtyTiles){
+    const [gx,gy] = key.split(',').map(Number);
+    if(gx<0 || gx>=COLS || gy<0 || gy>=ROWS) continue;
+    const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
+    if(pathCells.has(key)){
+      sceneryMap.delete(key);
+      floraMap.delete(key);
+      paintPathTileBase(mctx, gx, gy);
+    } else if(isInActiveRegion(gx, gy)){
+      paintBuildableTileBase(mctx, gx, gy);
+    } else if(activeRegion && gx>=activeRegion.x0 && gx<=activeRegion.x1 && gy>=activeRegion.y0 && gy<=activeRegion.y1){
+      mctx.fillStyle = '#8b5a2b';
+      mctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+    }
   }
 }
 function beginNextRingReveal(){
@@ -4160,7 +4180,8 @@ let autoCameraPans = true; // camera moves itself to a killstreak holder; opt-ou
 let showFpsCounter = false; // small live FPS readout overlay, opt-in — separate from the full debug log, for players who just want a quick glance during play
 let screenShakeEnabled = true; // gore-kill impact shake — opt-out for anyone sensitive to camera shake/motion
 let gameSpeed = 1; // 1x / 2x / 3x / 5x / 10x fast-forward, cycled via the HUD button
-const MAX_SIMULATION_TICKS_PER_FRAME = 8; // bound catch-up work per animation frame to prevent a lag feedback loop
+const MAX_SIMULATION_TICKS_PER_FRAME = 8; // base catch-up budget at 1x; scale it with gameSpeed so fast-forward does not silently run at 1x
+const MAX_SIMULATION_SPEED_MULTIPLIER = 10; // must match the highest supported SPEED_LEVELS entry
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
 let presentationTime = 0; // advances every rendered PLAYING frame, including between waves — drives transient presentation (death animations) that must finish even while realTime is frozen
@@ -4322,6 +4343,9 @@ let hoveredSceneryKey = null; // "gx,gy" of scenery currently hovered/touched �
 let wavesCompleted = 0;
 let hasUnseenUnlock = false;
 let unlockToastTimer = null;
+// CA799 — see CHANGELOG.md § [1.6.63] Wave/unlock toast ordering.
+let waveSummaryActive = false;
+const pendingToastMessages = [];
 const unlockToastEl = document.getElementById('unlock-toast');
 const unlockToastTextEl = document.getElementById('unlockToastText');
 let moveCharges = 1;      // free tower relocations; +1 every 2 waves completed, capped
@@ -4358,11 +4382,16 @@ function checkTowerUnlocks(){
   }
 }
 function showToast(message){
+  if(waveSummaryActive){ pendingToastMessages.push(message); return; }
   const toast = unlockToastEl;
   unlockToastTextEl.textContent = message;
   toast.classList.add('show');
   clearTimeout(unlockToastTimer);
-  unlockToastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+  unlockToastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    unlockToastTimer = null;
+    if(!waveSummaryActive && pendingToastMessages.length) showToast(pendingToastMessages.shift());
+  }, 3200);
   playSound('wave');
 }
 function showUnlockToast(types){
@@ -4403,6 +4432,15 @@ document.getElementById('newEnemyCloseBtn').addEventListener('pointerdown', (e) 
 });
 function showWaveSummary(waveNum, goldGained, towerReports){
   const el = document.getElementById('wave-summary-toast');
+  // A wave unlock can be announced just before this report opens; defer the toast so the
+  // larger summary cannot cover it. Other toasts requested while the summary is open queue too.
+  if(unlockToastEl.classList.contains('show')){
+    pendingToastMessages.unshift(unlockToastTextEl.textContent);
+    unlockToastEl.classList.remove('show');
+    clearTimeout(unlockToastTimer);
+    unlockToastTimer = null;
+  }
+  waveSummaryActive = true;
   document.getElementById('waveSummaryNum').textContent = waveNum;
   document.getElementById('waveSummaryGoldVal').textContent = goldGained;
   const list = document.getElementById('waveSummaryXpList');
@@ -4420,7 +4458,11 @@ function showWaveSummary(waveNum, goldGained, towerReports){
   }
   el.classList.add('show');
   clearTimeout(showWaveSummary._t);
-  showWaveSummary._t = setTimeout(() => el.classList.remove('show'), 4500);
+  showWaveSummary._t = setTimeout(() => {
+    el.classList.remove('show');
+    waveSummaryActive = false;
+    if(pendingToastMessages.length) showToast(pendingToastMessages.shift());
+  }, 4500);
 }
 // CA227 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA227
 function processClericHealing(){
@@ -4571,19 +4613,24 @@ function dpsBreakdownText(t){
   const primaryStat = archetype === 'WARRIOR' ? 'STR' : archetype === 'ARCHER' ? 'DEX' : archetype === 'MAGE' ? 'INT' : 'none';
   const primaryValue = archetype === 'WARRIOR' ? t.str : archetype === 'ARCHER' ? t.dex : t.int;
   const shotsPerSecond = t.cooldown > 0 ? 1000 / t.cooldown : 0;
-  const varianceHalf = t.type === 'MAGE' ? 0.4 : 0.2; // matches applyDamage()'s variance band
-  const averageDamage = t.damage;
+  const varianceHalf = Math.min(0.6, (t.type === 'MAGE' ? 0.4 : 0.2) + (t.primaryStatEff ? diminishingStatValue(t.primaryStatEff, 0.0003) : 0)); // matches applyDamage()'s stat-expanded variance band
+  // CA798 — see CHANGELOG.md § [1.6.61] Cleric damage display.
+  const clericUndeadMultiplier = t.type === 'CLERIC' ? 5 : 1;
+  const averageDamage = t.damage * clericUndeadMultiplier;
+  const accuracy = t.type === 'CLERIC' ? 1 : 1 - (t.missChance || 0);
   const lines = [
     'Primary stat: ' + primaryStat + ' ' + (primaryValue || 0) + '  →  damage x' + (1 + PRIMARY_DAMAGE_PER_POINT * cappedStatPoints(primaryValue || 0)).toFixed(2),
     'Damage per hit: ' + Math.round(averageDamage * (1 - varianceHalf)) + '-' + Math.round(averageDamage * (1 + varianceHalf)) + ' (avg ' + averageDamage.toFixed(1) + ')',
+    ...(t.type === 'CLERIC' ? ['Target: undead only; 5x smite ignores armor'] : []),
+    ...(t.type === 'LANCER' ? ['Lance damage: 0.5x–1.75x by enemy weight (15px radius = 1.0)'] : []),
     'Attack rate: ' + shotsPerSecond.toFixed(2) + '/s (cooldown ' + Math.round(t.cooldown) + 'ms)',
     '  DEX ' + (t.dex || 0) + ' → rate x' + (1 + (archetype === 'ARCHER' ? ARCHER_RATE_SHARE : 1) * cappedStatPoints(t.dex || 0) / STAT_EFFECT_CAP).toFixed(2)
       + (archetype === 'ARCHER' ? ' (Archers get ' + Math.round(ARCHER_RATE_SHARE * 100) + '% of the rate bonus — DEX is already their damage stat)' : ''),
-    'Accuracy: ' + Math.round((1 - (t.missChance || 0)) * 100) + '%   Crit: ' + Math.round((t.critChance || 0) * 100) + '% x' + (t.critMult || 1.2).toFixed(2),
+    'Accuracy: ' + Math.round(accuracy * 100) + '%   Crit: ' + Math.round((t.critChance || 0) * 100) + '% x' + (t.critMult || 1.2).toFixed(2),
     'Range: ' + Math.round(t.range || t.meleeRange || 0) + ' (INT ' + (t.int || 0) + ' of ' + STAT_EFFECT_CAP + ' toward the class cap)',
     'Max HP: ' + Math.round(t.maxHp) + '  (STR ' + (t.str || 0) + ' → x' + (1 + cappedStatPoints(t.str || 0) * 2 / STAT_EFFECT_CAP).toFixed(2) + ')',
     '',
-    'Shown DPS = avg damage x rate x accuracy x crit' + (t.splashRadius > 0 ? ', single target only — splash hits everything within ' + Math.round(t.splashRadius) + '.' : '.'),
+    'Shown DPS = avg damage x rate x accuracy x crit' + (t.type === 'CLERIC' ? ' against undead.' : t.splashRadius > 0 ? ', single target only — splash hits everything within ' + Math.round(t.splashRadius) + '.' : '.'),
     'Promotion rank does not affect damage: it only rolls stats.'
   ];
   return lines.join('\n');
@@ -5204,8 +5251,14 @@ function centerCameraOnActiveRegion(zoom){
    ========================================================= */
 // CA268 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA268
 const enemyDeathTiming = { count:0, totalMs:0, maxMs:0, over8ms:0 };
+// Knight's lance: target weight is linear size relative to a standard 15px-radius unit.
+// Half damage at minimum size, 1x at standard size, capped at 1.75x for very large targets.
+function lancerWeightDamageMultiplier(weight){ return clampNum(Number(weight) || 1, 0.5, 1.75); }
 class Enemy{
   constructor(){ this.active = false; }
+  // Weight is a readable size-scale stat: radius 15 is the standard 1.0 reference.
+  // Enemy family and wave-size radius changes therefore update weight automatically.
+  get weight(){ return Math.max(0.25, (this.radius || 15) / 15); }
   spawn(type, hpMultiplier, isBig, isMini){
     const def = CONFIG.ENEMIES[type];
     this.id = idCounter++;
@@ -5619,7 +5672,6 @@ class Enemy{
     // still credit damage/gold/kills normally but must not inflate the shot-accuracy count.
     if(sourceTower.telemetry){
       if(countsAsShotHit !== false) sourceTower.telemetry.hitsLanded++;
-      if(this.hp <= 0) sourceTower.telemetry.killsSecured++;
     }
   }
   applySizeTier(sizeTier, sizeJitter, hpScale){
@@ -5863,7 +5915,7 @@ class Enemy{
       else spawnHutGuardian(this);
     }
   }
-  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit){
+  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit, ignoreArmor){
     allowBleed = allowBleed === undefined ? true : allowBleed;
     if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // CA313 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA313
@@ -5880,9 +5932,12 @@ class Enemy{
     // CA316 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA316
     const isCritical = Math.random() < (sourceTower ? sourceTower.critChance : 0.025);
     if(isCritical) dmg = Math.round(dmg * (sourceTower ? sourceTower.critMult : 1.2));
+    // CA797 — see CHANGELOG.md § [1.6.61] Cleric smite.
+    // Cleric's direct smite opts into armor bypass. Keep it explicit so Paladin's holy swings
+    // retain their established armor interaction.
     const holyBonus = (isHoly && this.isUndead);
     if(holyBonus) dmg = Math.round(dmg * 1.5);
-    if(this.armor) dmg = Math.max(1, dmg - this.armor);
+    if(this.armor && !ignoreArmor) dmg = Math.max(1, dmg - this.armor);
     if(this.hasShield && this.shieldHp > 0){
       const absorbed = Math.min(this.shieldHp, dmg);
       this.shieldHp -= absorbed;
@@ -6105,6 +6160,9 @@ class Enemy{
       return; // not actually dead yet — no bounty, no kill credit, skip normal death handling
     }
     if(this.splits && !this.hasSplit) this.spawnSplitChildren();
+    // recordContribution() runs before HP subtraction, so it cannot detect the lethal hit.
+    // Count only an actual death, after the revive guard, and only once.
+    if(sourceTower && sourceTower.active && sourceTower.telemetry) sourceTower.telemetry.killsSecured++;
     awardKillExperience(this, sourceTower, forStreak);
     spawnDeathAnim(this.x, this.y, this.emoji, this.radius); // brief squash-and-fade in place of an instant vanish
     this.active = false;
@@ -6527,6 +6585,8 @@ class Tower{
     this.applyTierStats();
   }
   get def(){ return CONFIG.TOWERS[this.type]; }
+  // STR raises stickman mass to 1.5x at the stat cap; appearance follows sqrt(mass).
+  get weight(){ return 1 + clampNum(this.str || 0, 0, 500) / 1000; }
   // CA383 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA383
   rollSkinTones(){
     const jobColor = JOB_COLORS[this.type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
@@ -6945,23 +7005,22 @@ class Tower{
     if(this.cooldownTimer > 0) return;
     let target = null, bestD = Infinity;
     for(const e of nearby){
+      if(!e.isUndead) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d < bestD){ bestD = d; target = e; }
     }
     if(!target){ this.angle = IDLE_WEAPON_ANGLE; return; }
     this.angle = Math.atan2(target.y-this.y, target.x-this.x);
-    if(Math.random() < this.missChance + windMissPenalty(this)){
-      spawnFloatingText(target.x, target.y - target.radius - 6, 'MISS', '#aaaaaa');
-    } else {
-      // CA422 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA422
-      const curseDur = this.curseDuration || 3000;
-      const tickCount = Math.max(1, Math.round(curseDur / 600));
-      const perTick = this.damage / tickCount;
-      const curseTick = target.isUndead ? Math.round(perTick * 5) : Math.round(perTick);
-      target.applyPoison(curseTick, curseDur, this);
-      spawnHolyBeam(target.x, target.y, '#fff3c4');
-      playSound('cast_cleric');
-    }
+    // CA797 — see CHANGELOG.md § [1.6.61] Cleric smite.
+    // Cleric's smite is a direct holy hit, not a delayed poison effect. This makes its
+    // anti-undead role legible on impact and prevents armor or wind misses from erasing it.
+    // applyDamage() supplies a 1.5x holy-vs-undead multiplier. Divide the input by it
+    // first so the final smite is exactly 5x tower damage, before variance and crits.
+    const holyDamage = target.isUndead ? this.damage * (5 / 1.5) : this.damage;
+    if(this.telemetry) this.telemetry.shotsFired++;
+    target.applyDamage(holyDamage, this, true, true, false, true, true);
+    spawnHolyBeam(target.x, target.y, '#fff3c4');
+    playSound('cast_cleric');
     this.cooldownTimer = this.cooldown;
   }
   // CA423 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA423
@@ -7389,7 +7448,8 @@ class Tower{
         if(this.telemetry) this.telemetry.misses++;
         continue;
       }
-      e.applyDamage(Math.round(damage * fallenOff), this, !streakClaimed, !!isHoly, isFirstHitThisSwing);
+      const weightScale = this.type === 'LANCER' ? lancerWeightDamageMultiplier(e.weight) : 1;
+      e.applyDamage(Math.round(damage * fallenOff * weightScale), this, !streakClaimed, !!isHoly, isFirstHitThisSwing);
       applyAttunementStatus(this, e);
       if(!e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
       if(stunMs) e.applyStun(stunMs);
@@ -7547,7 +7607,8 @@ class Tower{
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
     const hasTargetPose = !!this.target || (!usesMinimumRangedRange(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX, buildScaleY: this.buildScaleY, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const strSizeScale = Math.sqrt(this.weight);
+    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     if(this.type === 'SWORDSMAN' && this.spec){
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
@@ -9731,20 +9792,26 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : spearAngle, armLen, skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
-    const shaftLen = weaponLenFromScale(15, 24, extra.weaponScale);
+    const shaftLen = weaponLenFromScale(type === 'LANCER' ? 20 : 15, type === 'LANCER' ? 30 : 24, extra.weaponScale);
     const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
     const backX = handX - Math.cos(spearAngle)*8, backY = handY - Math.sin(spearAngle)*8;
-    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2.5*extra.weaponThickness;
+    ctx.strokeStyle = type === 'LANCER' ? '#6b4930' : '#8a5a2b';
+    ctx.lineWidth = (type === 'LANCER' ? 3.5 : 2.5)*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(backX,backY); ctx.lineTo(tipX,tipY); ctx.stroke();
     // small triangular spearhead
     const perpX = -Math.sin(spearAngle), perpY = Math.cos(spearAngle);
-    ctx.fillStyle = level >= 3 ? '#bdeaff' : '#c7ccd1';
+    ctx.fillStyle = type === 'LANCER' || level >= 3 ? '#bdeaff' : '#c7ccd1';
     ctx.beginPath();
     ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX - Math.cos(spearAngle)*8 + perpX*3, tipY - Math.sin(spearAngle)*8 + perpY*3);
-    ctx.lineTo(tipX - Math.cos(spearAngle)*8 - perpX*3, tipY - Math.sin(spearAngle)*8 - perpY*3);
+    ctx.lineTo(tipX - Math.cos(spearAngle)*(type === 'LANCER' ? 12 : 8) + perpX*(type === 'LANCER' ? 4.5 : 3), tipY - Math.sin(spearAngle)*(type === 'LANCER' ? 12 : 8) + perpY*(type === 'LANCER' ? 4.5 : 3));
+    ctx.lineTo(tipX - Math.cos(spearAngle)*(type === 'LANCER' ? 12 : 8) - perpX*(type === 'LANCER' ? 4.5 : 3), tipY - Math.sin(spearAngle)*(type === 'LANCER' ? 12 : 8) - perpY*(type === 'LANCER' ? 4.5 : 3));
     ctx.closePath();
     ctx.fill();
+    if(type === 'LANCER'){
+      const guardX = tipX - Math.cos(spearAngle)*14, guardY = tipY - Math.sin(spearAngle)*14;
+      ctx.strokeStyle = '#c7ccd1'; ctx.lineWidth = 2.2*extra.weaponThickness;
+      ctx.beginPath(); ctx.moveTo(guardX - perpX*5, guardY - perpY*5); ctx.lineTo(guardX + perpX*5, guardY + perpY*5); ctx.stroke();
+    }
   } else if(type === 'HAMMERMAN'){
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
     const hammerAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
@@ -10926,6 +10993,9 @@ function loseLife(n){
    ========================================================= */
 const FIXED_DT = 1000/60;
 let lastTime = 0, accumulator = 0;
+const NORMAL_MAX_FRAME_TIME_MS = 100;
+const FAST_FORWARD_MAX_FRAME_TIME_MS = 150;
+const MAX_SIMULATION_TICK_CAP = Math.ceil(FAST_FORWARD_MAX_FRAME_TIME_MS * MAX_SIMULATION_SPEED_MULTIPLIER / FIXED_DT);
 // MOBILE-FPS-CAP-01 (1.6.48) — see CHANGELOG.md § [1.6.48]. Standard touch/coarse-pointer
 // detection (not User-Agent sniffing, which is unreliable and explicitly discouraged) — computed
 // once at boot, never re-evaluated per frame.
@@ -11089,6 +11159,7 @@ const targetHpBarFill = document.getElementById('targetHpBarFill');
 const targetHpBarText = document.getElementById('targetHpBarText');
 const targetDefVal = document.getElementById('targetDefVal');
 const targetSpeedVal = document.getElementById('targetSpeedVal');
+const targetWeightVal = document.getElementById('targetWeightVal');
 // CA662 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA662
 let targetFrameContentKey = '';
 let targetFrameWasVisible = false;
@@ -11104,7 +11175,7 @@ function updateTargetFrame(){
     return;
   }
   const hpPct = target.maxHp > 0 ? Math.max(0, Math.min(100, (target.hp/target.maxHp)*100)) : 0;
-  const contentKey = target.id + ':' + Math.round(hpPct) + ':' + Math.round(target.hp) + ':' + target.armor + ':' + Math.round(target.speed);
+  const contentKey = target.id + ':' + Math.round(hpPct) + ':' + Math.round(target.hp) + ':' + target.armor + ':' + Math.round(target.speed) + ':' + target.weight.toFixed(2);
   if(contentKey !== targetFrameContentKey){
     targetFrameContentKey = contentKey;
     targetPortraitFace.textContent = target.emoji;
@@ -11115,6 +11186,7 @@ function updateTargetFrame(){
     targetHpBarText.textContent = Math.round(target.hp) + '/' + target.maxHp;
     targetDefVal.textContent = target.armor;
     targetSpeedVal.textContent = Math.round(target.speed);
+    targetWeightVal.textContent = target.weight.toFixed(1);
   }
   if(!targetFrameWasVisible){
     frame.classList.add('show');
@@ -11454,7 +11526,8 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   // CA678 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA678
   barricadeActiveScanned: 0, barricadeQueuedCount: 0, barricadeSnapCount: 0, barricadeMaxQueueLenSeen: 0,
   // CA679 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA679
-  actualSpeedWindowRealMs: 0, actualSpeedWindowTicks: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
+  actualSpeedWindowRealMs: 0, actualSpeedWindowSimulationMs: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
+  lastSimulationTickCap: MAX_SIMULATION_TICKS_PER_FRAME, lastFrameTimeClampMs: NORMAL_MAX_FRAME_TIME_MS,
   wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
   cameraMoveXLastFrame: 0, cameraMoveYLastFrame: 0, cameraMovePixelsLastFrame: 0, cameraZoomDeltaLastFrame: 0, cameraMovingLastFrame: false,
   simulationCapEvents: [], sessionTrendSamples: [],
@@ -11525,6 +11598,7 @@ function recordPerfEventSample(events, durationMs, minimumMs, wallGapMs){
     renderMs: perfStats.renderMs,
     wallGapMs,
     ticks: perfStats.ticksThisFrame,
+    tickCap: perfStats.lastSimulationTickCap,
     wave: waveIndex,
     waveState,
     gameState,
@@ -11715,8 +11789,8 @@ function recordPerfTrendFrame(now, rawGapMs){
 function recordSimulationCapEvent(rawGapMs, droppedMs){
   if(droppedMs <= 0) return;
   const event = { durationMs: droppedMs, time: new Date().toISOString(), wallGapMs: rawGapMs,
-    wallTimeClampedMs: Math.max(0, rawGapMs - 100), frameMs: perfStats.frameMs,
-    updateMs: perfStats.updateMs, renderMs: perfStats.renderMs, ticks: perfStats.ticksThisFrame,
+    wallTimeClampedMs: Math.max(0, rawGapMs - perfStats.lastFrameTimeClampMs), frameMs: perfStats.frameMs,
+    updateMs: perfStats.updateMs, renderMs: perfStats.renderMs, ticks: perfStats.ticksThisFrame, tickCap: perfStats.lastSimulationTickCap,
     wave: waveIndex, waveState, gameState, gameSpeed, accumulatorMs: droppedMs,
     activeEnemies: perfStats.totalActiveEnemies, activeTowers: perfStats.totalActiveTowers,
     activeParticles: perfStats.totalParticles, decals: perfStats.totalDecals,
@@ -12215,8 +12289,8 @@ function loop(now){
   // deliberately BEFORE any work happens, not just skipping the draw call, so this genuinely cuts
   // CPU/GPU work rather than only hiding it. Safe to skip whole frames here because the
   // fixed-timestep accumulator below measures real elapsed time via `lastTime`, not callback
-  // count — the next processed frame simply has a larger `frameTime` and the existing catch-up
-  // logic (bounded by MAX_SIMULATION_TICKS_PER_FRAME) runs the correct number of ticks for it.
+  // count — the next processed frame simply has a larger `frameTime` and the catch-up logic
+  // (bounded by the speed-scaled cap calculated inside loop()) handles it.
   if(IS_MOBILE_DEVICE && now - lastLoopProcessedAt < MOBILE_FRAME_INTERVAL_MS) return;
   lastLoopProcessedAt = now;
   if(gameState === 'START'){ renderAttractMode(ctx, now); return; }
@@ -12225,10 +12299,12 @@ function loop(now){
   let frameTime = now - lastTime;
   // CA719 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA719
   const rawWallGapMs = frameTime;
-  if(frameTime > 100){
+  const maxFrameTimeMs = gameSpeed > 1 ? FAST_FORWARD_MAX_FRAME_TIME_MS : NORMAL_MAX_FRAME_TIME_MS;
+  perfStats.lastFrameTimeClampMs = maxFrameTimeMs;
+  if(frameTime > maxFrameTimeMs){
     perfStats.wallTimeClampHits++;
-    perfStats.wallTimeClampedMs += frameTime - 100;
-    frameTime = 100;
+    perfStats.wallTimeClampedMs += frameTime - maxFrameTimeMs;
+    frameTime = maxFrameTimeMs;
   }
   lastTime = now;
   realTimeFrozen = waveState === 'IDLE';
@@ -12242,20 +12318,23 @@ function loop(now){
   }
   accumulator += frameTime * gameSpeed;
   let ticksThisFrame = 0;
-  // Keep one animation-frame's simulation work bounded under load/high speed; discard excess debt below.
+  // The bounded catch-up cap scales with the accepted frame gap and requested speed.
+  const tickCapThisFrame = Math.min(MAX_SIMULATION_TICK_CAP,
+    Math.max(MAX_SIMULATION_TICKS_PER_FRAME, Math.ceil(maxFrameTimeMs * gameSpeed / FIXED_DT)));
+  perfStats.lastSimulationTickCap = tickCapThisFrame;
 
   resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
   resetRenderPhaseTime(); // same pattern, for the render() breakdown below — see renderPhaseTime/resetRenderPhaseTime
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
   let droppedSimulationTimeThisFrame = 0;
-  while(accumulator >= FIXED_DT && ticksThisFrame < MAX_SIMULATION_TICKS_PER_FRAME && gameState === 'PLAYING'){
+  while(accumulator + 1e-9 >= FIXED_DT && ticksThisFrame < tickCapThisFrame && gameState === 'PLAYING'){
     update(FIXED_DT);
-    accumulator -= FIXED_DT;
+    accumulator = Math.max(0, accumulator - FIXED_DT);
     ticksThisFrame++;
   }
   // CA721 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA721
-  if(ticksThisFrame >= MAX_SIMULATION_TICKS_PER_FRAME){
+  if(ticksThisFrame >= tickCapThisFrame && accumulator >= FIXED_DT){
     perfStats.simulationCatchUpCapHits++;
     droppedSimulationTimeThisFrame = Math.max(0, accumulator);
     perfStats.simulationDebtDroppedMs += droppedSimulationTimeThisFrame;
@@ -12314,11 +12393,14 @@ function loop(now){
   perfStats.lastAccumulatorDebtMs = accumulator; // leftover simulation time this frame couldn't catch up on, carried into the next one
   perfStats.lastDroppedSimulationTimeMs = droppedSimulationTimeThisFrame;
   // CA725 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA725
-  perfStats.actualSpeedWindowRealMs += frameTime;
-  perfStats.actualSpeedWindowTicks += ticksThisFrame;
+  perfStats.actualSpeedWindowRealMs += Math.max(0, rawWallGapMs);
+  // Count completed simulation time against the raw callback gap; clamped frame time would
+  // overstate achieved speed whenever the elapsed-time safety ceiling discards wall time.
+  perfStats.actualSpeedWindowSimulationMs += ticksThisFrame * FIXED_DT;
   if(perfStats.actualSpeedWindowRealMs >= 1000){
-    perfStats.lastMeasuredActualSpeed = (perfStats.actualSpeedWindowTicks * FIXED_DT) / perfStats.actualSpeedWindowRealMs;
-    perfStats.actualSpeedWindowRealMs = 0; perfStats.actualSpeedWindowTicks = 0;
+    perfStats.lastMeasuredActualSpeed = perfStats.actualSpeedWindowRealMs > 0
+      ? perfStats.actualSpeedWindowSimulationMs / perfStats.actualSpeedWindowRealMs : 0;
+    perfStats.actualSpeedWindowRealMs = 0; perfStats.actualSpeedWindowSimulationMs = 0;
   }
   recordPerfEventSample(perfStats.slowFrameEvents, perfStats.frameMs, 16.7, rawWallGapMs);
   recordPerfEventSample(perfStats.longCallbackGapEvents, rawWallGapMs, 33.3, rawWallGapMs);
@@ -13494,6 +13576,8 @@ function getReadmeText(){
 'Archer - ranged, now draws the bow before firing: slower arrows, but real power behind each shot.\n' +
 'Axeman - dual-wields hand axes, manually toggles between a close swing and a ranged throw.\n' +
 'Spearman - long melee reach, slow but hard-hitting.\n' +
+'Lancer - a knight lance whose damage scales with enemy weight, up to 1.75x on the heaviest foes.\n' +
+'Cleric - supports allies and directly smites undead for 5x damage, ignoring armor.\n' +
 'Hammerman - stuns on hit, carries a shield and extra HP.\n' +
 'Mage - slows enemies it hits.\n' +
 'Bomber - splash damage against groups.\n' +
@@ -13512,7 +13596,7 @@ function getReadmeText(){
 'The killing blow earns full XP (Tiny 17, Small 20, Standard 25, Large 40, Boss 50); every 100 XP rolls ' +
 '2 x (1-3) stat points, capped at 500 per stat and 1000 total per stickman. At 500 total you can name ' +
 'the unit; at 1000 it is fully trained, earns a trophy, and its XP share becomes gold (25 XP = 1 gold). ' +
-'Promote buys stat rolls only — it never changes damage, cooldown or range.\n\n' +
+'Promote buys stat rolls only — it never changes damage, cooldown or range. STR also increases stickman weight and rendered size; enemy weight follows body size (15px radius = 1.0).\n\n' +
 'ELEMENTS\n' +
 '--------\n' +
 'At 100 in a stat a stickman attunes: STR=Fire (burn), DEX=Electric (shock), INT=Ice (chill). ' +
@@ -13625,7 +13709,7 @@ function generateDebugLog(){
     'browser itself is delaying rAF, e.g. touch/compositor contention during a pan or pinch gesture, ' +
     'not the game\'s own code)\n';
   s += 'Worst wall-clock gap this session: ' + perfStats.worstWallGapMs.toFixed(2) + 'ms, at wave ' + perfStats.worstWallGapAtWave + '\n';
-  s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / cap ' + MAX_SIMULATION_TICKS_PER_FRAME + ')\n';
+  s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / current speed-scaled cap ' + perfStats.lastSimulationTickCap + ', base ' + MAX_SIMULATION_TICKS_PER_FRAME + ' at 1x)\n';
   s += 'Adaptive detail: ' + (underHeavyVisualLoad ? 'active' : 'inactive') + ', ' + perfStats.adaptiveVisualFrames +
     ' rendered frame(s) active; depth-sort pressure ' + perfStats.depthSortPressureFrames + ' frame(s) above ' +
     HEAVY_VISUAL_LOAD_DEPTH_SORT_MS.toFixed(1) + 'ms (' + HEAVY_VISUAL_LOAD_HOLD_FRAMES + '-frame hold)\n';
@@ -13641,7 +13725,7 @@ function generateDebugLog(){
         '  frame ' + e.frameMs.toFixed(2) + 'ms (update ' + e.updateMs.toFixed(2) + ', render ' + e.renderMs.toFixed(2) +
         ')  callback gap ' + e.wallGapMs.toFixed(2) + 'ms\n';
       s += '   state: wave ' + e.wave + ' ' + e.waveState + '/' + e.gameState + ', speed ' + e.gameSpeed +
-        'x, ticks ' + e.ticks + ', debt ' + e.accumulatorMs.toFixed(2) + 'ms, tab hidden ' + e.tabHidden +
+        'x, ticks ' + e.ticks + '/' + e.tickCap + ', debt ' + e.accumulatorMs.toFixed(2) + 'ms, tab hidden ' + e.tabHidden +
         ', quality ' + e.quality + ', DPR ' + e.dpr + ', camera ' + e.cameraX.toFixed(1) + ',' + e.cameraY.toFixed(1) +
         ' zoom ' + e.zoom.toFixed(3) + ', camera moved ' + e.cameraMoving + ' (' + e.cameraMoveX.toFixed(2) + ',' +
         e.cameraMoveY.toFixed(2) + 'px; zoom Δ' + e.cameraZoomDelta.toFixed(4) + ')' +
@@ -13662,16 +13746,16 @@ function generateDebugLog(){
   s += '\nSIMULATION CATCH-UP AND TIME LOSS\n';
   s += '---------------------------------\n';
   s += 'Frame-time clamp: ' + perfStats.wallTimeClampHits + ' frame(s), ' + perfStats.wallTimeClampedMs.toFixed(2) +
-    'ms of wall time excluded by the 100ms frame-time ceiling.\n';
-  s += 'Simulation tick cap: ' + perfStats.simulationCatchUpCapHits + ' frame(s) reached ' + MAX_SIMULATION_TICKS_PER_FRAME +
-    ' ticks; discarded simulation debt total ' + perfStats.simulationDebtDroppedMs.toFixed(2) + 'ms, last frame ' +
+    'ms of wall time excluded (100ms at 1x; 150ms during fast-forward; last ceiling ' + perfStats.lastFrameTimeClampMs + 'ms).\n';
+  s += 'Simulation tick cap: ' + perfStats.simulationCatchUpCapHits + ' frame(s) reached the speed-scaled cap (last cap ' + perfStats.lastSimulationTickCap + ' ticks; base ' + MAX_SIMULATION_TICKS_PER_FRAME + ' at 1x); discarded simulation debt total ' +
+    perfStats.simulationDebtDroppedMs.toFixed(2) + 'ms, last frame ' +
     perfStats.lastDroppedSimulationTimeMs.toFixed(2) + 'ms. Remaining accumulator debt is ' +
     perfStats.lastAccumulatorDebtMs.toFixed(2) + 'ms after any cap discard.\n';
   s += 'Retained cap-discard events: ' + perfStats.simulationCapEvents.length + '/' + SIMULATION_CAP_EVENT_LIMIT +
     ' largest observed discarded-debt frames.\n';
   for(let i=0;i<perfStats.simulationCapEvents.length;i++){
     const e = perfStats.simulationCapEvents[i];
-    s += '#' + (i+1) + '  discarded ' + e.durationMs.toFixed(2) + ' simulation-ms  ' + e.time +
+    s += '#' + (i+1) + '  discarded ' + e.durationMs.toFixed(2) + ' simulation-ms at cap ' + e.tickCap + ' ticks  ' + e.time +
       '  wall gap ' + e.wallGapMs.toFixed(2) + 'ms (clamped ' + e.wallTimeClampedMs.toFixed(2) +
       ')  JS frame ' + e.frameMs.toFixed(2) + 'ms (update ' + e.updateMs.toFixed(2) + ', render ' + e.renderMs.toFixed(2) +
       ')  wave ' + e.wave + ' ' + e.waveState + '/' + e.gameState + ' speed ' + e.gameSpeed + 'x ticks ' + e.ticks + '\n';
@@ -14150,7 +14234,10 @@ function updateInspectPanel(){
   inspAtkVal.textContent = '';
   const dmgHalf = Math.min(0.6, (t.type === 'MAGE' ? 0.4 : 0.2) + (t.primaryStatEff ? diminishingStatValue(t.primaryStatEff, 0.0003) : 0)); // must match applyDamage()'s effectiveVarianceHalfWidth exactly — base half-width per archetype (Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band) plus the same primary-stat spread bonus applyDamage() adds
   const dmgMinEl = inspAtkRange;
-  const dmgRangeText = Math.round(atk*(1-dmgHalf)) + '-' + Math.round(atk*(1+dmgHalf));
+  // CA798 — see CHANGELOG.md § [1.6.61] Cleric damage display.
+  const damageDisplayMultiplier = t.type === 'CLERIC' ? 5 : 1;
+  const displayedAtk = atk * damageDisplayMultiplier;
+  const dmgRangeText = Math.round(displayedAtk*(1-dmgHalf)) + '-' + Math.round(displayedAtk*(1+dmgHalf));
   if(dmgMinEl) dmgMinEl.textContent = dmgRangeText;
   if(inspDpsRangeVal) inspDpsRangeVal.textContent = dmgRangeText; // same computed range, shown again under DPS per direct request — one source of truth, two display spots
   inspHpStatVal.textContent = Math.round((t.hpStat||0)*1000)/1000;
@@ -14165,7 +14252,9 @@ function updateInspectPanel(){
   const dpsShotsPerCycle = (t.burstCount && t.burstCount > 1) ? t.burstCount : 1;
   const dpsCycleMs = dpsShotsPerCycle > 1 ? (dpsShotsPerCycle-1)*(t.burstDelay||0) + cd : cd;
   const critExpectedMult = 1 + (t.critChance||0) * ((t.critMult||1.2) - 1);
-  const dps = dpsCycleMs > 0 ? (dpsShotsPerCycle * atk * critExpectedMult * (1 - (t.missChance||0))) / (dpsCycleMs/1000) : 0;
+  const dpsDamageMultiplier = t.type === 'CLERIC' ? 5 : 1;
+  const dpsAccuracy = t.type === 'CLERIC' ? 1 : 1 - (t.missChance||0);
+  const dps = dpsCycleMs > 0 ? (dpsShotsPerCycle * atk * dpsDamageMultiplier * critExpectedMult * dpsAccuracy) / (dpsCycleMs/1000) : 0;
   inspDpsVal.textContent = dps >= 100 ? Math.round(dps) : dps.toFixed(1);
   fitStatRowToOneLine();
   fitNameplateToStatRow();
@@ -14242,7 +14331,7 @@ function updateInspectPanel(){
     btn.disabled = noPoints || statCapped;
     btn.classList.toggle('has-points', !noPoints && !statCapped);
     btn.classList.toggle('primary-stat', stat === primaryStatOfSelected);
-    btn.title = stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : 'Support stat';
+    btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : 'Support stat';
   }
   queueInspectPanelRefit();
 }
@@ -14450,7 +14539,7 @@ shopBuyLifeBtn.addEventListener('pointerdown', (e) => {
   updateHUD();
 });
 const speedBtn = document.getElementById('speedBtn');
-const SPEED_LEVELS = [1, 2, 3, 5, 10];
+const SPEED_LEVELS = [1, 2, 3, 5, MAX_SIMULATION_SPEED_MULTIPLIER];
 speedBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();

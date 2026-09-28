@@ -89,8 +89,11 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 - **Leveling pace.** Roughly 5-7 small kills or 2-3 big ones fill a tower's XP bar and grant a stat
   point. An assist earns only a fractional share of that, never the full reward.
 - **Map growth stays incremental.** Expansion winds outward a few tiles at a time, never a whole
-  ring at once — organic while the route is young, closing into a full ring as it matures. Never
-  redraw more of the map than the part that just changed, per the lag-creep protocol above.
+  ring at once — organic while the route is young, closing into a full ring as it matures. The
+  route must be visibly framed by two green buildable tiles, including diagonal neighbors, so the
+  surrounding forest/build area reads broader than the dirt road. Keep the buildable corridor tied
+  to the route rather than filling the whole region. Never redraw more of the map than the part that
+  just changed, per the lag-creep protocol above.
 - **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
   falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
   never on the fall-off hits behind it.
@@ -211,6 +214,18 @@ look reasonable":
   cover it. It is drawn live, above blood and below actors.
 - The FPS readout must be derived from the wall-clock gap between rAF callbacks, never from how
   long the callback took.
+- **Fast-forward catch-up budget**: `MAX_SIMULATION_TICKS_PER_FRAME` is the 1x baseline (8 ticks).
+  Above 1x, the accepted frame gap is capped at 150ms and the per-frame tick cap scales to cover
+  that gap at the requested speed, with a hard maximum of 90 ticks at 10x; 1x retains its 100ms
+  frame-time ceiling. Keep the cap and supported `SPEED_LEVELS` synchronized. Do not reduce the
+  cap back to a fixed 8 ticks, which made low-FPS 5x sessions run near 1x and discard most of the
+  accumulated simulation time.
+- **Actual-speed telemetry** compares completed simulation milliseconds against the raw rAF
+  callback gap, not the clamped frame delta. Keep reported catch-up cap and discarded-debt values
+  alongside callback FPS; a low callback rate with low synchronous JS render/update time does not
+  by itself prove a game-code hot spot or a JavaScript heap leak.
+- Verify speed changes with focused timing checks at 1x, 5x, and 10x, then compare a same-device,
+  same-wave gameplay capture. A synthetic loop test verifies arithmetic, not browser-compositor FPS.
 - Any new decal/debris kind must declare whether it bakes (`isDecalBakeEligible()`); static
   geometry must bake. Verify with the perf overlay: live-drawn decals should stay near ~100
   regardless of total decal count.
@@ -491,9 +506,9 @@ why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's
   debug log (Settings > About > Download Debug Log) alongside game/settings/audio-engine/entity
   pool state and browser/device info.
 - Deferred (see `BACKLOG.md` for current status): static scenery/decal caching into offscreen
-  canvas layers with explicit invalidation, spatial-hash allocation reduction in real combat (not
-  just idle), and `MAX_TICKS_PER_FRAME` tuning — check `perfStats` numbers before attempting any
-  of these rather than guessing from reading code.
+  canvas layers with explicit invalidation and spatial-hash allocation reduction in real combat
+  (not just idle). Treat the speed-scaled catch-up ceiling as an active tuning point; compare
+  real-device cap hits, dropped debt, callback gaps, and update cost before changing it.
 
 ## Versioning rule (hard constraint)
 
@@ -667,3 +682,6 @@ so they never wrap.
   cap — a cap alone doesn't stop visual clustering in one hot spot while capacity remains elsewhere.
 - Any mechanic that can pause/block forward progress needs an explicit timeout/force-resume safety
   valve — see Part 1 §4's queue-cleanup invariant, which this generalizes.
+
+## Weight and size rules (1.6.64)
+- **Derived weight is not saved state.** Enemy weight follows its current radius (15px = 1.0), and tower weight follows capped STR (1.0–1.5); visual size follows sqrt(weight). Keep these derived values synchronized automatically through getters, including after save loads and size-tier changes. Lancer damage uses target weight with a 0.5–1.75 multiplier.
