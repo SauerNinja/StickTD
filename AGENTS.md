@@ -88,15 +88,7 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   disappears — a defeated escapee is not a permanent fixture on the map.
 - **Leveling pace.** Roughly 5-7 small kills or 2-3 big ones fill a tower's XP bar and grant a stat
   point. An assist earns only a fractional share of that, never the full reward.
-- **Map growth stays incremental.** Expansion winds outward a few tiles at a time, never a whole
-  ring at once — organic while the route is young, closing into a full ring as it matures. The
-  route is bordered by one green buildable tile on EVERY side, diagonals included (`PATH_BUILDABLE_MARGIN`
-  is 1), wherever the route goes, including where it touches the edge of the region rectangle. Buildable
-  green is exactly that border (`isInActiveRegion()`), never the rectangle: filtering by the rectangle
-  left no grass above or left of the road and dropped green far from it (the 1.6.76 regression). A
-  two-tile buffer (1.6.62) was tried and the owner called it too much grass. New border tiles wait in
-  `pendingRevealTileKeys` until the expansion reveals them, so growth still spirals outward. An
-  expansion that reveals nothing must still close (`finalizeRingExpansion()`), or no later one can start. Never redraw more of the map than the part that
+- **Map growth stays incremental.** Expansion winds outward a few tiles at a time, never a whole ring at once. The route keeps grass on every side and between its own legs (see Map, route and start-of-game rules). Never redraw more of the map than the part that
   just changed, per the lag-creep protocol above.
 - **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
   falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
@@ -391,103 +383,43 @@ edge-on-looking banner instead of a broad readable one. Neither marker's shape o
 on wind; only the flag's flutter animation does, and even that reads from a fixed ambient
 constant, not the disabled miss-chance wind system.
 
-The flag pole must stay clearly lighter than the dirt background (`drawFinishFlagPole()`, light
-shaft in a dark outline, currently about 4.2:1). It was once a dark brown close to the dirt color
-(about 1.2:1), which made the pole vanish and the banners look detached. Any recolor of the pole
-must keep at least 3:1 contrast against `#8b5a2b`.
+The flag pole stays clearly lighter than the dirt background: a light shaft in a dark outline with a round finial, at least 3:1 contrast against `#8b5a2b` (`FLAG_POLE_COLOR`, `DIRT_BACKGROUND_COLOR`).
 
-Dirt-path tiles and buildable green tiles form one chessboard. Green is light where `(gx+gy)%2===0`;
-dirt is dark where `(gx+gy)%2===1`, so a dark dirt tile always touches light green. Path colors come
-only from `pathTileColor()` (`PATH_TILE_DARK`, `PATH_TILE_LIGHT`), used by both `drawMap()` and
-`paintPathTileBase()`. Never give those two functions separate path colors: they once diverged and the
-path changed look after every expansion. The light dirt tone must stay slightly lighter than the
-`#8b5a2b` background so it never merges with it. It is the warm orange-brown `#926438`. A grey taupe
-(`#9a8266`) was tried and the owner rejected it as "way too grey": keep both path tones warm.
+The spawn flags are triangular pennants: a vertical hoist edge at the top of the pole tapering to one tip (`computeFlagPennantShape()`), 14px tall at the hoist (hoist half height 7). Fold shading is drawn per strip from the same cross-section vertices as the silhouette (`drawPennantFoldShading()`), so a fold always sits on the outline. Wind blows only while no wave is in progress (`waveState === 'IDLE'`, `updateFlagWind()`), even when enemies are loose: it rises over 1.2 s, and dies over 2.5 s when a wave starts. While a wave is active the flags hang straight down along the pole, gathered to about half length, with no ripple and no fold shading computed. In the calm, an uneven gust level (`flagGustLevel()`) lifts the flag from a drooping lull to nearly level, lengthens the cloth and strengthens the ripple, and the ripple runs perpendicular to the flag's own tilted axis.
 
-Ground details (pebbles on dirt, grass tufts on green) come from `paintPathPebbles()` and
-`paintGrassTufts()`, seeded per tile by `seedTileRandom(gx, gy, salt)`. Never use `Math.random()` for them:
-a tile must paint identically on every repaint. Keep them inside `GROUND_DETAIL_EDGE_MARGIN` of the tile
-edge, and call the shared painters from every place that paints a path or buildable tile.
-The seed includes `groundDetailRunSeed` (random per page load, saved with the game), so each run is unique but a
-tile never changes within a run. The starting map gets a chosen budget from `pickStarterGroundDetails()`:
-1 to 2 path tiles with 1 to 2 pebbles, 1 to 2 grass tiles with a tuft, the other starting tiles clean. The owner
-wants only a few details on the first blocks; never raise those budgets. `validateDesignContract()` must run
-after `initRegionAndPath()` because it inspects the chosen starter tiles.
+Dirt-path tiles and buildable green tiles form one chessboard. Green is light where `(gx+gy)%2===0`; dirt is dark where `(gx+gy)%2===1`, so a dark dirt tile always touches light green. Path colors come only from `pathTileColor()` (`PATH_TILE_DARK`, `PATH_TILE_LIGHT`), used by both `drawMap()` and `paintPathTileBase()`. Both tones stay warm orange-brown (`#835528` and `#926438`), with the light tone slightly lighter than the `#8b5a2b` background.
+
+Ground details (pebbles on dirt, grass tufts on green) come from `paintPathPebbles()` and `paintGrassTufts()`, seeded per tile by `seedTileRandom(gx, gy, salt)`; never `Math.random()`, so a tile paints identically on every repaint. Details stay inside `GROUND_DETAIL_EDGE_MARGIN` of the tile edge, and every place that paints a path or buildable tile calls the shared painters. The seed includes `groundDetailRunSeed` (random per page load, saved with the game). The starting map takes a chosen budget from `pickStarterGroundDetails()`: 1 to 2 path tiles with 1 to 2 pebbles and 1 to 2 grass tiles with a tuft, the other starting tiles clean.
+
+## Map, route and start-of-game rules
+
+- **Starting position.** A new game has exactly 2 route tiles, 2 grass tiles inside the starting 2x2 region, and 1 Barricade on the finish tile at full health (`seedStartingBarricades()`, `validateStartingBarricade()`). The rest of the border stays locked (`lockStartingBorderOutsideRegion()`, `pendingRevealTileKeys`) until the first expansion. A save made before the first expansion restores the same lock.
+- **Border.** Buildable green is exactly the border within `PATH_BUILDABLE_MARGIN` (1) of the route, diagonals included, on every side (`isInActiveRegion()`); it never depends on the region rectangle. New border tiles wait in `pendingRevealTileKeys` until the expansion reveals them. An expansion that reveals nothing still closes (`finalizeRingExpansion()`).
+- **Route spacing.** Two route tiles three or more steps apart along the road never touch, edge or corner, so a strip of grass separates each leg from the next (`routeSpacingViolationCount()`, `extendPathWithNewRing()`). Growth tries a spaced connector first and falls back to the plain simple-path rule only when none exists.
+- **Enemy pace.** Walking speed is `ENEMY_WALK_SPEED_SCALE` (0.25, at most 0.3) times each enemy's base speed. Each wave unit after the first spawns `ENEMY_SPAWN_GAP_MS` (5000, at least 4500) after the previous one, in simulation time.
+- **No canvas filters.** Never assign `ctx.filter` on the game canvas: the browser rasterises every primitive through a filter pass that the game's own frame timers cannot see. A downed tower uses grey skin colors and reduced opacity instead (`DOWNED_TOWER_SKIN_MAIN`, `DOWNED_TOWER_SKIN_SHADE`).
+- **Telemetry.** Analytics events are declared once in `TELEMETRY_EVENTS` and sent only through `trackGameEvent()`, which forwards declared parameters only, adds `game_version`, `wave` and `quality`, and records the last 60 events for the Debug Log. Event and parameter names are snake_case, at most 40 characters, at most 25 parameters per event including the three standard ones, string values at most 100 characters. To report something new, add it to the catalog first. Events are consent-gated by `window.trackEvent()`.
+- **Presentation clocks.** Presentation-only animation (the spawn "!" marker, flag flutter) uses `presentationTime`, not `gameTime`, so game speed does not change its rate.
 
 ## Stickman poses
 
-Idle weapon-arm angle for hand-held weapons is `IDLE_GRIP_ARM_ANGLE`: the arm hangs down and forward at the
-side and the weapon rests angled up from the hand. Never set the idle arm to the weapon's own angle for
-swords, hammers, guns or bombers; that raises the arm and holds the weapon stiffly up (the 1.6.59
-regression). Every class branch in `drawStickman()` must define `handX`/`handY` before using them; a
-missing definition throws every frame that class is drawn, and `node --check` will not catch it. Before
-shipping any pose change, render every `CONFIG.TOWERS` type both idle and engaged with the real
-`drawStickman()` and confirm there are no exceptions.
+Idle weapon-arm angle for hand-held weapons is `IDLE_GRIP_ARM_ANGLE`: the arm hangs down and forward and the weapon rests angled up from the hand. Every class branch in `drawStickman()` defines `handX`/`handY` before using them; a missing definition throws every frame that class is drawn, and `node --check` does not catch it. Before shipping any pose change, render every `CONFIG.TOWERS` type idle and engaged with the real `drawStickman()` and confirm there are no exceptions.
 
 ## Design contract
 
-Owner-decided rules are executable: `validateDesignContract()` runs at boot, never throws, and reports to the
-console and to the Debug Log line "Design contract". It checks pole contrast, warm and ordered path tones,
-the dirt/green checkerboard, the range balance theory below, the green border around the route (at boot and
-after every expansion), corridor margin, pebble sparsity and starter budgets, the idle weapon arm and the
-flag wind direction. When the owner states a new rule, add a named constant for it and one check there,
-and add the rule's reason to its check message. Do not loosen a check to make a change pass: ask the owner.
+Owner-decided rules are executable: `validateDesignContract()` runs at boot after `initRegionAndPath()`, never throws, and reports to the console and the Debug Log line "Design contract". It covers pole contrast, warm and ordered path tones, the chessboard, range balance, the route border, the starting position, corridor margin, pebble and starter budgets, enemy pace, telemetry catalog rules, loose-enemy rules, chance-structure rules, the idle weapon arm and flag wind direction. A new owner rule gets a named constant and one check there. A check is never loosened to make a change pass.
 
-**Range balance theory (owner-decided, `RANGE-BALANCE-01`).** Range grows linearly with INT from a tower's
-starting range to its `RANGE_CAPS` value at 500 INT (`interpolateRangeByInt()`), so a starting range must sit well
-below the cap: the Archer starts at 140 (cap 380) and reaches 260 at 250 INT. The role decides how far it goes:
-melee (WARRIOR archetype) has the shortest starting and maximum ranges, archer types (ARCHER) sit in the middle,
-and mage style (MAGE) ends up with the longest. `RANGE_BANDS` holds the numbers per role (melee caps 140-220,
-archer caps 240-400, mage caps 400-520; starts at most 70%, 55% and 55% of the cap), `rangeRoleOf()` assigns
-roles from `CLASS_ARCHETYPE`, and Cleric, Pope, Merchant and Glaive are support exemptions
-(`RANGE_ROLE_OVERRIDES`). Every tower with a range needs a `RANGE_CAPS` entry: a missing one silently defaults to
-double its start. Never raise a start or cap out of its band to make a tower feel stronger; move its role or ask
-the owner. The spawn "!" marker and every other presentation-only animation must use
-`presentationTime`, not `gameTime`, so game speed never changes how fast they move.
-
-The spawn flags are triangular pennants, not rectangles: a vertical hoist edge at the top of the pole
-tapering to one tip point (`computeFlagPennantShape()`). The cloth is a light-wind traveling wave that is
-zero at the pole and grows toward the tip. Fold shading is drawn per strip from the same cross-section
-vertices as the silhouette (`drawPennantFoldShading()`), never as a separate shape, so folds cannot
-drift off the outline. Keep the wind light: small amplitude, slow speed, about one and a quarter folds.
-The flag wind blows only while NO wave is in progress (`waveState === 'IDLE'`, see `updateFlagWind()`): the calm
-between waves, even when enemies are loose. It rises in 1.2 s, and the moment a wave starts it dies over 2.5 s.
-While the wave is active the flags are lifeless: hanging straight down along the pole, gathered to about half
-their length, with no ripple or fold shading computed at all, to keep combat frames cheap. 1.6.74 had the wind
-backwards; the contract tests both directions. In the calm the flags must look like real wind: a slow, uneven
-gust level (`flagGustLevel()`) lifts the flag from a drooping lull to nearly level, lengthens the cloth and
-strengthens the ripple in a gust, and the ripple runs perpendicular to the flag's own tilted axis. Keep them
-narrow (hoist half height 7): not limp in the wind, not wide.
+**Range balance (`RANGE-BALANCE-01`).** Range grows linearly with INT from a tower's starting range to its `RANGE_CAPS` value at 500 INT (`interpolateRangeByInt()`), so a starting range sits well below the cap. Melee (WARRIOR archetype) has the shortest starting and maximum ranges, archer types (ARCHER) sit in the middle, and mage style (MAGE) has the longest. `RANGE_BANDS` holds the numbers per role (melee caps 140-220, archer caps 240-400, mage caps 400-520; starts at most 70%, 55% and 55% of the cap), `rangeRoleOf()` assigns roles from `CLASS_ARCHETYPE`, and Cleric, Pope, Merchant and Glaive are support exemptions (`RANGE_ROLE_OVERRIDES`). Every tower with a range has a `RANGE_CAPS` entry, because a missing one defaults to double its start.
 
 ## Loose enemies, chance structures
 
-Loose enemies (`enemy.escaped`: crossed the finish and still alive): each costs 1 life every 6 seconds while it
-lives (`LOOSE_ENEMY_LIFE_DRAIN_MS`, `advanceLooseDrain()`, run in `updateEscaped()` on simulation time), in any
-wave state; each stays on the route and its grass border (`isLooseWalkableAt()`, `confineLooseEnemyToRoute()`),
-never on the bare dirt outside it; the count shows under the Next Wave button (`countLooseEnemies()`,
-`#looseNotice`) as plain text, "🏃 N loose", with no background and no drain wording, and hides at zero.
-Lives changes of every kind show only beside the health counter (`showLivesChange()`, `#livesChangePop`, red
-minus / green plus, like the gold pop) and never over enemies or other map objects. The game-over screen has
-Play Again as the large primary button and Download Debug Log as a smaller secondary one below it. The region-rectangle clamp they used to have is gone: the rectangle no
-longer describes where the grass is.
+Loose enemies (`enemy.escaped`: crossed the finish and still alive) each cost 1 life every 6 seconds (`LOOSE_ENEMY_LIFE_DRAIN_MS`, `advanceLooseDrain()`, run in `updateEscaped()` on simulation time), in any wave state. Each stays on the route and its grass border (`isLooseWalkableAt()`, `confineLooseEnemyToRoute()`). The count shows as plain text under the Next Wave button ("🏃 N loose", `#looseNotice`, no background) and hides at zero. Lives changes of every kind show only beside the health counter (`showLivesChange()`, `#livesChangePop`; red minus, green plus) and never over enemies or other map objects. The game-over screen has Play Again as the large primary button, then a smaller Download Debug Log button; its message is two even rows, the sentence and then the call to action.
 
-Chance structures (`CONFIG.CHANCE_STRUCTURES`, `maybeSpawnChanceStructures()`, `useChanceStructure()`): rare
-structures that appear on the grass border when a wave is cleared, stored as scenery items with
-`isChanceStructure`. The Healing Fountain (⛲) holds a pool of 10 lives; a tap restores as many missing lives as
-it can, up to the pool, never above `maxLivesNow()`; it stays with its remaining pool and vanishes when the pool
-is spent; used at full health it heals nothing and stays. Spawn chance rises when the player is hurt and with a
-pity timer, capped at `maxChance` (0.6), never before `minWavesCompleted`, never above `maxOnBoard`. To add a
-structure: one table row plus a case in `useChanceStructure()`. Their rings must stay steady (no pulsing
-opacity): nothing in this game fades in and out repeatedly.
+Chance structures (`CONFIG.CHANCE_STRUCTURES`, `maybeSpawnChanceStructures()`, `useChanceStructure()`) are rare scenery items with `isChanceStructure` that appear on the grass border when a wave is cleared. The Healing Fountain (⛲) holds a pool of 10 lives; a tap restores as many missing lives as it can, never above `maxLivesNow()`; it keeps its remaining pool and vanishes when the pool is spent; used at full health it heals nothing and stays. Spawn chance rises when the player is hurt and with a pity timer, capped at `maxChance` (0.6), never before `minWavesCompleted`, never above `maxOnBoard`. A new structure is one table row plus a case in `useChanceStructure()`. Structure rings are steady, never pulsing.
 
 ## Reset options and storage keys
 
-Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgressAndRestart()`) clears every
-StickTD storage key by prefix: `stickTD_` and `sticktd:`. Any new `localStorage` key must start with one of
-those prefixes, or "Clear All Cookies & Data" will silently miss it. Both reset paths end in
-`location.reload()` and must not write storage between the clear and the reload. Unlocks are re-derived
-from waves completed by `checkTowerUnlocks()`, so clearing them in place without a reload would re-grant
-them at the next wave check.
+Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgressAndRestart()`) clears every StickTD storage key by prefix: `stickTD_` and `sticktd:`. Every new `localStorage` key starts with one of those prefixes. Both reset paths end in `location.reload()` and write no storage between the clear and the reload, because unlocks are re-derived from waves completed by `checkTowerUnlocks()`.
 
 ## Combat & stats
 

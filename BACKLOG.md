@@ -126,6 +126,8 @@ alongside a dozen other simultaneous changes.
   ability) beyond Pope, Sniper, Gunalinder, Berserker, Lancer, etc. — not a threshold number, real
   new content per lineage you'd need to actually specify.
 
+- **Telemetry follow-ups** — the event catalog (`TELEMETRY_EVENTS`) is in place. Candidates: a Looker Studio funnel of `wave_started` to `wave_completed` per wave, alerting on `lag_detected`, and per-tower-type survival from `tower_downed`. Custom dimensions for `tower_type`, `cause` and `quality` need registering in the GA4 admin before they appear in reports.
+- **Enemy pace tuning** — `ENEMY_WALK_SPEED_SCALE` and `ENEMY_SPAWN_GAP_MS` set the pace of every wave; the wave-completion telemetry (`duration_s`, `lives_lost`) shows how a change plays out.
 - **Chance structures beyond the Healing Fountain** — the system (`CONFIG.CHANCE_STRUCTURES`) is table-driven, so
   a shrine, a well or a supply cache is one row plus a case in `useChanceStructure()`. Open question from
   1.6.77: the fountain heals player *lives* (hearts); if healing *towers* was meant, that is a second effect

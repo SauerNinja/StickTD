@@ -46,11 +46,12 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 
 ## How to play
 
+- Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
 - Tap **Build**, choose a tower, then tap a hedge tile to place it. Each arrival gets a short class-flavored quip and a synthesized voice blip.
 - Select a tower to view its portrait, health, experience, and combat stats. Open its nameplate for upgrades, movement, selling, equipment, targeting, and stat allocation.
 - Train towers through combat and invest in their strengths. Stat milestones open specialist classes for your roster.
-- Clear waves to expand the spiral battlefield. Free milestones and paid expansions create new route and build space as your campaign grows. Grass always borders the route: every route tile has a green build tile touching it on every side, and the border grows outward along the road with each expansion.
-- The flags on the spawn tile stir in gusts and lulls of a light breeze while you wait for the next wave, then hang limp and straight down as soon as a wave begins.
+- Clear waves to expand the winding battlefield. Free milestones and paid expansions extend the road a few tiles at a time. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
+- The flags on the spawn tile ripple in a light, gusting breeze between waves and hang still once a wave begins.
 - Face an endless sequence of waves with nine rotating archetypes and enemies that grow in size, strength, and rewards.
 - Play with a mouse on desktop or touch controls on mobile. Pan, zoom, pause, and set the simulation speed from the HUD.
 - Select an actively attacking tower to see its target's health, armor, and movement speed.
@@ -189,15 +190,15 @@ Each tower develops along two progression tracks, with **500 points per stat and
 
 ## Waves
 
-Every wave follows a size order: Tiny, Small, Standard, then Large enemies and Bosses on every fifth wave. Dispatch advances as each group clears the route or reaches the finish. Larger enemies move more slowly, bring greater strength, and offer more XP. Wave plans include plentiful smaller foes alongside major threats.
+Every wave follows a size order: Tiny, Small, Standard, then Large enemies and Bosses on every fifth wave. Dispatch advances as each group clears the route or reaches the finish. Larger enemies move more slowly, bring greater strength, and offer more XP. Enemies walk at a measured pace and arrive well spaced, so your towers have time to line up each target. Wave plans include plentiful smaller foes alongside major threats.
 
 The opening 15 waves introduce enemy families gradually, with a short guide to each type's health, speed, bounty, and abilities. End-of-wave summaries report gold gained and experience earned by class.
 
-After wave 100, nine rotating wave archetypes provide varied pacing, enemy mixes, and combat challenges. Bosses can summon Grunt minions, with a compass marker to track those out of view. Spawn spacing keeps the entrance clear as groups arrive.
+After wave 100, nine rotating wave archetypes provide varied pacing, enemy mixes, and combat challenges. Bosses can summon Grunt minions, with a compass marker to track those out of view. Spacing keeps the entrance clear as groups arrive.
 
 ## Pathing & AI
 
-Enemies follow the spiral in single file, forming natural queues at Barricades. Swept collision checks keep fast-moving units in contact with the route and one another. Dispatch adapts to a backed-up queue, and a safety timeout helps combat resume if movement stalls. Waypoint margins guide clean turns around spiral corners.
+Enemies follow the road in single file, forming natural queues at Barricades. Swept collision checks keep fast-moving units in contact with the route and one another. Dispatch adapts to a backed-up queue, and a safety timeout helps combat resume if movement stalls. Waypoint margins guide clean turns around spiral corners.
 
 ## Items & Heroes
 
@@ -230,7 +231,7 @@ Now and then, when a wave is cleared, a rare structure appears on the grass besi
 
 Start with 100 lives. Extra lives are available in the Shop, with costs that rise after each purchase.
 
-An enemy costs a life when its full body crosses the checkered finish line. Every enemy that got through and is still alive is *loose*, and each loose enemy costs another life every 6 seconds until you defeat it, so a wave that slips past builds pressure instead of waiting for you. The count shows under the Next Wave button and disappears when none are left; loose enemies stay on the road and its grass border. Any change to your lives pops beside the health counter, red when you lose lives and green when you gain them. Escaped enemies remain on the map as live targets across waves, and defeating them earns a gold and XP cleanup reward. During breaks between waves, wandering enemies may hunt nearby towers.
+An enemy costs a life when its full body crosses the checkered finish line. An enemy that gets through and is still alive is *loose*, and each loose enemy costs another life every 6 seconds until it is defeated, so a wave that slips past keeps the pressure on. The count appears under the Next Wave button and clears when none are left. Loose enemies stay on the road and its grass border. Any change to your lives appears beside the health counter, red when you lose lives and green when you gain them. Escaped enemies remain on the map as live targets across waves, and defeating them earns a gold and XP cleanup reward. During breaks between waves, wandering enemies may hunt nearby towers.
 
 ## Settings
 
@@ -288,65 +289,65 @@ Use the section headers around each destination to navigate when line references
 - `applyPanInertia()` / `requestPausedRender()` — camera glide and paused-render coalescing.
 
 **Major sections**
-- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1147)
-- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2427)
-- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2927)
+- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1149)
+- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2445)
+- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2992)
 - [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2004)
-- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8687)
+- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8798)
 - [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1539)
-- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7410)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7517)
 - [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1628)
-- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4286)
-- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4702)
-- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5672)
-- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5841)
-- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9868)
-- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10689)
-- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10956)
-- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11590)
-- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13012)
-- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13446)
-- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15265)
-- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15339)
+- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4390)
+- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4806)
+- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5778)
+- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5947)
+- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9979)
+- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10798)
+- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11065)
+- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11701)
+- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13130)
+- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13566)
+- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15383)
+- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15469)
 
 **Core gameplay systems**
 - [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1685)
 - [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1958)
 - [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1466)
-- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3042)
-- [`computeFinishLine()` — shared geometry for the finish-line carpet and full-body crossing check; `reachEnd()`/`updateEscaped()` — escaped enemies remain active targets](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3742)
-- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5848)
-- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7110)
-- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8371) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
-- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9892) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
-- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10007) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
-- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7537)
-- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10095)
-- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10745)
-- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10791)
-- [`buildWavePlan()` — seeded wave construction, including the rotating wave archetypes after wave 100](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11116)
-- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2029)
-- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11622)
-- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11831)
-- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13516)
-- [`fitHudTopToOneLine()` — scales the top bar to fit narrow screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13054)
-- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14791)
+- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3107)
+- [`computeFinishLine()` — shared geometry for the finish-line carpet and full-body crossing check; `reachEnd()`/`updateEscaped()` — escaped enemies remain active targets](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3893)
+- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5954)
+- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7216)
+- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8482) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
+- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10003) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
+- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10118) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
+- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7645)
+- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10206)
+- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10854)
+- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10900)
+- [`buildWavePlan()` — seeded wave construction, including the rotating wave archetypes after wave 100](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11225)
+- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2022)
+- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11733)
+- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11949)
+- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13636)
+- [`fitHudTopToOneLine()` — scales the top bar to fit narrow screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13172)
+- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14909)
 
 **Blood & gore system** (see [Blood & gore](#blood--gore) above for the player-facing description)
-- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8846)
-- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8827)
-- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8911)
-- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8925)
-- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8990)
-- [`towerSwingDir()` — per-tower swing handedness for consistent cast-off arcs](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8986)
-- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9587)
-- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9090)
-- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9563)
-- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9072)
-- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9645)
-- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains and worms that emerge from skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9027)
-- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9130)
-- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4655)
+- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8957)
+- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8938)
+- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9022)
+- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9036)
+- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9101)
+- [`towerSwingDir()` — per-tower swing handedness for consistent cast-off arcs](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9097)
+- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9698)
+- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9201)
+- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9674)
+- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9183)
+- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9756)
+- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains and worms that emerge from skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9138)
+- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9241)
+- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4759)
 
 ## Running locally
 

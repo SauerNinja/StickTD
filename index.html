@@ -80,6 +80,7 @@
       (e.message || 'unknown error') + '\n' +
       'at ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + '\n\n' +
       (e.error && e.error.stack ? e.error.stack : '(no stack available)');
+    if(window.trackEvent) window.trackEvent('game_error', { message: String(e.message || 'unknown').slice(0, 100), source: String(e.filename || '').split('/').pop().slice(0, 60), line: e.lineno || 0 });
     // CA004 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA004
     (document.body || document.documentElement).appendChild(box);
   });
@@ -601,6 +602,7 @@
     margin-bottom:6px;}
   #versionTag{font-size:11px;color:var(--paper);opacity:0.55;margin-bottom:14px;}
   #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
+  #end-screen #endMessage{white-space:pre-line;text-align:center;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;gap:8px;margin-top:10px;}
   #rating-picker{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:10px;}
@@ -1146,13 +1148,13 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.78'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.80'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
 
 const STICKMAN_SCALE = 1.15;      // slightly larger tower figures
-const IDLE_GRIP_ARM_ANGLE = Math.PI/2 - 0.7; // IDLE-GRIP-01 (1.6.73): relaxed weapon-arm angle — hangs down and forward at the side while the weapon rests angled up from the hand. Do NOT replace with the weapon's own angle: that raises the arm and holds the weapon stiffly up.
+const IDLE_GRIP_ARM_ANGLE = Math.PI/2 - 0.7; // IDLE-GRIP-01 (1.6.73) — see CHANGELOG.md § [1.6.73]
 const IDLE_WEAPON_ANGLE = Math.PI/2; // weapon hangs down at rest instead of frozen pointing up (this.angle's default)
 const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose
 
@@ -1329,14 +1331,7 @@ const TOWER_STRATEGY = {
 const MAX_ITEM_SLOTS = 6;
 const HERO_BONUS_STAT = 5;
 // CA014 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA014
-// RANGE-BALANCE-01 (1.6.76) — see CHANGELOG.md § [1.6.76]. THE RANGE BALANCE THEORY (owner-decided):
-// every tower starts with a short range that INT grows in a straight line to the class cap at 500 INT
-// (interpolateRangeByInt()), and the ROLE decides how far that goes. Melee (WARRIOR) has the shortest
-// starting and maximum ranges, archer types (ARCHER) sit in the middle, and mage style (MAGE) ends up
-// with the longest. RANGE_BANDS holds the numbers each role must stay inside; validateDesignContract()
-// checks every tower against them, so a new tower or a re-tune cannot quietly break the theory.
-// Support and utility classes (Cleric, Pope, Merchant, Glaive) keep their own short radii: they are
-// exempt from the role ordering but still need a cap and a slow start.
+// RANGE-BALANCE-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 const RANGE_CAPS = {
   SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150, BERSERKER: 150, AXEMAN: 190, SPEARMAN: 200, LANCER: 220,
   BLOWDART: 240, BLOW_GUNNER: 250, SQUIRTGUN: 260, CRAZY_CHEF: 260, GUNALINDER: 310, BOMBER: 320, SNAPCASTER: 320,
@@ -1382,13 +1377,13 @@ function diminishingStatValue(points, perPoint){
 }
 // CA018 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA018
 const STAT_TAIL_SOFTNESS = 50;
-// RANGE-CURVE-01 (1.6.74) — see CHANGELOG.md § [1.6.74]. INT grows a tower's range in a straight line
-// from its tier's starting range at 0 INT to the class cap (RANGE_CAPS) at 500 INT, so the range at
-// 250 INT is the midpoint. Starting ranges must therefore sit well below the cap: an Archer that
-// starts at 260 already has the range you would expect at 250 INT. validateDesignContract() checks it.
+// RANGE-CURVE-01 (1.6.74) — see CHANGELOG.md § [1.6.74]
 function interpolateRangeByInt(startingRange, rangeCap, intRangeFraction){
   return Math.round(startingRange + (rangeCap - startingRange) * intRangeFraction);
 }
+// ENEMY-PACE-01 (1.6.80) — see CHANGELOG.md § [1.6.80]
+const ENEMY_WALK_SPEED_SCALE = 0.25;
+const ENEMY_SPAWN_GAP_MS = 5000;
 const STAT_EFFECT_CAP = 500;        // a single stat's effects stop growing here (matches the trained-stat cap)
 const STAT_TOTAL_CAP = 1000;        // combined trained stats per stickman
 const NAMING_THRESHOLD = 500;       // combined trained stats that unlock naming
@@ -2007,14 +2002,7 @@ const CONFIG = {
     COMMON: ['🌿','🌱','🍀','🌾','🍂'],
     ACCENT: ['🍁','🍄','🌺','🌻']
   },
-  // CHANCE-STRUCTURES-01 (1.6.77) — see CHANGELOG.md § [1.6.77]. Rare structures that appear at random on
-  // the grass border when a wave is cleared, like a treasure chest or a hut but with a kinder purpose.
-  // One table entry per structure; the spawner, drawing, use and save/load are shared. To add one: add an
-  // entry here and a case in useChanceStructure().
-  //   FOUNTAIN: a pool of healLives hearts. Tapping it restores as many missing lives as it can (never
-  //   above the maximum); it stays, with the pool shown, until the pool is spent, then it disappears.
-  //   The chance to appear rises the more hurt the player is and with every cleared wave without one
-  //   (a pity timer), capped at maxChance, and never before minWavesCompleted or above maxOnBoard.
+  // CHANCE-STRUCTURES-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
   CHANCE_STRUCTURES: {
     FOUNTAIN: {
       emoji: '⛲', name: 'Healing Fountain', color: '#7dd3fc', scale: 1.05, useMs: 600,
@@ -2148,11 +2136,7 @@ function validateGameDefinitions(){
   }
 }
 
-// DESIGN-CONTRACT-01 (1.6.74) — see CHANGELOG.md § [1.6.74]. Owner-decided visual and balance rules
-// written as executable checks, so a later edit that quietly breaks one is reported at boot instead of
-// being noticed in a screenshot. Unlike validateGameDefinitions() this never throws: a cosmetic
-// violation must not stop the game. Problems go to the console and to the Debug Log ("Design contract").
-// Adding a new owner rule? Add the constant it depends on and one check here.
+// DESIGN-CONTRACT-01 (1.6.74) — see CHANGELOG.md § [1.6.74]
 const POLE_MIN_CONTRAST_RATIO = 3;
 const PATH_TILE_MIN_SATURATION = 0.45;
 const MIN_PATH_BUILDABLE_MARGIN = 1;
@@ -2195,6 +2179,17 @@ function countMissingPathBorderTiles(){
   }
   return missing;
 }
+// Checked once the starting barricade has been placed: a new game must begin with exactly one Barricade on the
+// finish tile at full health (STARTING-BARRICADE-01). It went missing twice because nothing noticed.
+function validateStartingBarricade(){
+  const problems = [];
+  const barricades = towerPool.filter(tower => tower.active && tower.type === 'BARRICADE');
+  const finishTile = pathWaypointTiles[pathWaypointTiles.length - 1];
+  if(barricades.length !== 1) problems.push('a new game must start with exactly 1 barricade, found ' + barricades.length + ' (STARTING-BARRICADE-01)');
+  else if(barricades[0].gridX !== finishTile.x || barricades[0].gridY !== finishTile.y) problems.push('the starting barricade must sit on the finish tile (STARTING-BARRICADE-01)');
+  else if(barricades[0].hp !== barricades[0].maxHp) problems.push('the starting barricade must start at full health (STARTING-BARRICADE-01)');
+  return problems;
+}
 function reportPathBorderProblems(){
   designContractProblems = designContractProblems.filter(problem => !problem.startsWith('path border'));
   const missingBorderTiles = countMissingPathBorderTiles();
@@ -2233,10 +2228,18 @@ function validateRangeBalance(){
 }
 function validateDesignContract(){
   const problems = validateRangeBalance();
-  if(pendingRevealTileKeys.size === 0){
-    const missingBorderTiles = countMissingPathBorderTiles();
-    if(missingBorderTiles) problems.push('path border: ' + missingBorderTiles + ' tile(s) touching the route are not buildable green (PATH-BORDER-01)');
+  if(expansionLevel === 0 && !ringCandidateRegion){
+    let startingGrassTiles = 0;
+    for(const key of nearPathTileSet){ const [borderX, borderY] = key.split(',').map(Number); if(isInActiveRegion(borderX, borderY)) startingGrassTiles++; }
+    if(pathCells.size !== STARTING_PATH_TILE_COUNT || startingGrassTiles !== STARTING_GRASS_TILE_COUNT) problems.push('a new game must start with ' + STARTING_PATH_TILE_COUNT + ' path tiles and ' + STARTING_GRASS_TILE_COUNT + ' grass tiles, found ' + pathCells.size + ' and ' + startingGrassTiles + ' (STARTING-MAP-01)');
   }
+  // The border rule is checked with the starting lock lifted, so it still guards the rule at boot even though
+  // a new game deliberately shows only 2 of its grass tiles until the first expansion (STARTING-MAP-01).
+  const lockedAtBoot = [...pendingRevealTileKeys];
+  pendingRevealTileKeys.clear();
+  const missingBorderTiles = countMissingPathBorderTiles();
+  for(const lockedKey of lockedAtBoot) pendingRevealTileKeys.add(lockedKey);
+  if(missingBorderTiles) problems.push('path border: ' + missingBorderTiles + ' tile(s) touching the route are not buildable green (PATH-BORDER-01)');
   const poleContrast = contrastRatioOfHex(FLAG_POLE_COLOR, DIRT_BACKGROUND_COLOR);
   if(poleContrast < POLE_MIN_CONTRAST_RATIO) problems.push('flag pole contrast against dirt is ' + poleContrast.toFixed(2) + ':1, needs at least ' + POLE_MIN_CONTRAST_RATIO + ':1 (FLAG-POLE-CONTRAST-01)');
   const dirtLuminance = relativeLuminanceOfHex(DIRT_BACKGROUND_COLOR);
@@ -2272,6 +2275,15 @@ function validateDesignContract(){
   if(!(Math.sin(IDLE_GRIP_ARM_ANGLE) > 0.5)) problems.push('IDLE_GRIP_ARM_ANGLE must point the idle weapon arm downward, not raise it (IDLE-GRIP-01)');
   if(advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS - 1).hearts !== 0 || advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS).hearts !== 1 || advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS*2).hearts !== 2 || LOOSE_ENEMY_LIFE_DRAIN_MS !== 6000) problems.push('each loose enemy must cost exactly 1 life per 6 seconds (LOOSE-DRAIN-01)');
   if(showLivesChange.length !== 1 || !document.getElementById('livesChangePop')) problems.push('lives changes must pop beside the health counter (LIVES-POP-01)');
+  if(ENEMY_WALK_SPEED_SCALE > 0.3 || ENEMY_SPAWN_GAP_MS < 4500) problems.push('enemies must walk very slowly and arrive well spaced: walk speed scale at most 0.3 and at least 4.5 seconds between spawns (ENEMY-PACE-01)');
+  for(const [eventName, eventParams] of Object.entries(TELEMETRY_EVENTS)){
+    if(!/^[a-z][a-z0-9_]*$/.test(eventName) || eventName.length > 40) problems.push('telemetry event "' + eventName + '" must be snake_case and at most 40 characters (TELEMETRY-01)');
+    if(eventParams.length + 3 > 25) problems.push('telemetry event "' + eventName + '" has ' + (eventParams.length + 3) + ' parameters including the 3 standard ones; the limit is 25 (TELEMETRY-01)');
+    for(const paramName of eventParams) if(!/^[a-z][a-z0-9_]*$/.test(paramName) || paramName.length > 40) problems.push('telemetry parameter "' + paramName + '" on "' + eventName + '" must be snake_case and at most 40 characters (TELEMETRY-01)');
+  }
+  for(const requiredEvent of ['game_started', 'wave_started', 'wave_completed', 'game_over', 'tower_downed', 'lag_detected', 'map_expanded', 'tower_built']){
+    if(!TELEMETRY_EVENTS[requiredEvent]) problems.push('telemetry event "' + requiredEvent + '" must stay in the catalog (TELEMETRY-01)');
+  }
   if(isLooseWalkableAt(-500, -500)) problems.push('loose enemies must not be allowed outside the route and its grass border (LOOSE-CONFINE-01)');
   for(const [structureType, structure] of Object.entries(CONFIG.CHANCE_STRUCTURES)){
     if(!structure.emoji || !structure.name || !(structure.useMs > 0)) problems.push(structureType + ' needs an emoji, a name and a use time (CHANCE-STRUCTURES-01)');
@@ -2464,7 +2476,7 @@ function regionFullyExpanded(){
 // path, so the visible shape is a corridor hugging the path's zigs and zags, not the full rectangle.
 // CA795 — see CHANGELOG.md § [1.6.62] Green route buffer. Keep two full green tiles around each route tile so the
 // forest/building corridor visually frames the road instead of letting brown road dominate.
-const PATH_BUILDABLE_MARGIN = 1; // 1.6.74: was 2 (1.6.62). Two tiles of green around the route read as far too much grass; one tile hugs the road.
+const PATH_BUILDABLE_MARGIN = 1; // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 let nearPathTileSet = new Set();
 function rebuildNearPathTileSet(){
   const next = new Set();
@@ -2615,6 +2627,33 @@ function regionAreaLimit(region){ return (region.x1-region.x0+1)*(region.y1-regi
 // one shot. The arc is taken walking BACKWARD from that closest point in the ring's own fixed
 // traversal order (ringBoundaryTiles' order) — the same order the old full-ring version rotated
 // around — so a short arc winds the same direction a full ring would have, just truncated.
+// ROUTE-SPACING-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
+const ROUTE_SPACING_MIN_STEP_GAP = 3;
+let routeSpacingRelaxedExpansions = 0;
+function routeSpacingViolationCount(tiles){
+  const indexByKey = new Map();
+  for(let i=0; i<tiles.length; i++) indexByKey.set(tiles[i].x+','+tiles[i].y, i);
+  let violations = 0;
+  for(let i=0; i<tiles.length; i++){
+    for(let dx=-1; dx<=1; dx++){
+      for(let dy=-1; dy<=1; dy++){
+        if(!dx && !dy) continue;
+        const otherIndex = indexByKey.get((tiles[i].x+dx)+','+(tiles[i].y+dy));
+        if(otherIndex !== undefined && otherIndex - i >= ROUTE_SPACING_MIN_STEP_GAP) violations++;
+      }
+    }
+  }
+  return violations;
+}
+function routeSpacingBuffer(oldPath, connectsAtStart){
+  const buffer = new Set();
+  for(let i=0; i<oldPath.length; i++){
+    const isFarFromConnection = connectsAtStart ? i >= ROUTE_SPACING_MIN_STEP_GAP : i <= oldPath.length - 1 - ROUTE_SPACING_MIN_STEP_GAP;
+    if(!isFarFromConnection) continue;
+    for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++) buffer.add((oldPath[i].x+dx)+','+(oldPath[i].y+dy));
+  }
+  return buffer;
+}
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
   const ring = ringBoundaryTiles(newRegion);
   const ends = [{ point:oldPath[0], atStart:true }, { point:oldPath[oldPath.length-1], atStart:false }];
@@ -2625,23 +2664,31 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
     d:Math.abs(ring[i].x-end.point.x)+Math.abs(ring[i].y-end.point.y) });
   choices.sort((a,b)=>a.d-b.d);
   const len = Math.max(2, Math.min(PATH_GROWTH_TILES_MAX, arcLength || PATH_GROWTH_TILES_MIN));
+  const baselineViolations = routeSpacingViolationCount(oldPath);
+  const spacingBuffers = [routeSpacingBuffer(oldPath, true), routeSpacingBuffer(oldPath, false)];
   // Grow a short arc around the outer edge, then route a collision-free connector back to either
   // route end. This keeps the additions small and preserves a single walkable route as the map winds.
-  for(const {i,end} of choices.slice(0,Math.min(24,choices.length))){
-    for(const direction of (Math.random()<0.5 ? [1,-1] : [-1,1])){
-      const arc=[];
-      for(let k=0;k<len;k++){
-        const tile=ring[(i+direction*k+ring.length)%ring.length];
-        if(k&&Math.abs(tile.x-arc[k-1].x)+Math.abs(tile.y-arc[k-1].y)!==1) break;
-        arc.push(tile);
+  for(const requireSpacing of [true, false]){
+    for(const {i,end} of choices.slice(0,Math.min(requireSpacing ? 48 : 24,choices.length))){
+      const bridgeBlocked = requireSpacing ? new Set([...blocked, ...spacingBuffers[end.atStart ? 0 : 1]]) : blocked;
+      for(const direction of (Math.random()<0.5 ? [1,-1] : [-1,1])){
+        const arc=[];
+        for(let k=0;k<len;k++){
+          const tile=ring[(i+direction*k+ring.length)%ring.length];
+          if(k&&Math.abs(tile.x-arc[k-1].x)+Math.abs(tile.y-arc[k-1].y)!==1) break;
+          arc.push(tile);
+        }
+        if(arc.length!==len || arc.some((p,j)=>blocked.has(p.x+','+p.y) || towerPool.some(t=>t.active&&t.type!=='BARRICADE'&&t.gridX===p.x&&t.gridY===p.y))) continue;
+        const bridge=findExpansionBridge(arc[0],end.point,bridgeBlocked,newRegion);
+        if(!bridge) continue;
+        const candidate=end.atStart
+          ? [...arc.slice().reverse(),...bridge.slice(1),...oldPath.slice(1)]
+          : [...oldPath,...bridge.slice(0,-1).reverse(),...arc.slice(1)];
+        if(!isContinuousSimplePath(candidate)) continue;
+        if(requireSpacing && routeSpacingViolationCount(candidate) > baselineViolations) continue;
+        if(!requireSpacing) routeSpacingRelaxedExpansions++;
+        return candidate;
       }
-      if(arc.length!==len || arc.some((p,j)=>blocked.has(p.x+','+p.y) || towerPool.some(t=>t.active&&t.type!=='BARRICADE'&&t.gridX===p.x&&t.gridY===p.y))) continue;
-      const bridge=findExpansionBridge(arc[0],end.point,blocked,newRegion);
-      if(!bridge) continue;
-      const candidate=end.atStart
-        ? [...arc.slice().reverse(),...bridge.slice(1),...oldPath.slice(1)]
-        : [...oldPath,...bridge.slice(0,-1).reverse(),...arc.slice(1)];
-      if(isContinuousSimplePath(candidate)) return candidate;
     }
   }
   return oldPath.slice(); // no safe connector: preserve the known-good route rather than crossing it
@@ -2686,7 +2733,8 @@ function initRegionAndPath(){
   ringRevealTotalTiles = 0; ringRevealTimer = 0;
   pathWaypointTiles = generateConflictFreePath(activeRegion); // only the base level uses the half/half comb split
   rebuildPathCellsAndPx();
-  pickStarterGroundDetails(); // GROUND-DETAIL-RUN-01 (1.6.75)
+  lockStartingBorderOutsideRegion(); // STARTING-MAP-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
+  pickStarterGroundDetails(); // GROUND-DETAIL-RUN-01 (1.6.75) — see CHANGELOG.md § [1.6.75]
 }
 function performExpansion(label, labelColor){
   // CA099 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA099
@@ -2696,7 +2744,7 @@ function performExpansion(label, labelColor){
   }
   // CA100 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA100
   advanceRingReveal(1 + Math.floor(Math.random()*3));
-  if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76): an expansion that revealed nothing must still close, or no later expansion could start
+  if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
   updateHUD();
 }
 let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
@@ -2773,13 +2821,17 @@ function beginNextRingReveal(){
   const previouslyBorderingKeys = nearPathTileSet;
   pathWaypointTiles = extendPathWithNewRing(oldPath, newRegion, arcLength);
   rebuildPathCellsAndPx();
-  // PATH-BORDER-01 (1.6.76): the reveal queue is the new route tiles plus the border tiles that just
-  // appeared around them, nearest to the old route tip first, so growth spirals outward along the road.
+  // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
   const oldTip = oldPath[oldPath.length-1];
   const oldPathKeys = new Set(oldPath.map(p => p.x+','+p.y));
   const revealTiles = [];
   for(const tile of pathWaypointTiles){
     if(!oldPathKeys.has(tile.x+','+tile.y)) revealTiles.push({ x: tile.x, y: tile.y });
+  }
+  for(const lockedKey of [...pendingRevealTileKeys]){
+    if(!nearPathTileSet.has(lockedKey)){ pendingRevealTileKeys.delete(lockedKey); continue; } // became route: revealed as route
+    const [lockedX, lockedY] = lockedKey.split(',').map(Number);
+    revealTiles.push({ x: lockedX, y: lockedY }); // STARTING-MAP-01: the first expansion opens the locked starting border
   }
   for(const key of nearPathTileSet){
     if(previouslyBorderingKeys.has(key)) continue;
@@ -2825,7 +2877,7 @@ function advanceRingReveal(n){
 function driveRingReveal(dt){
   if(!ringRevealQueue.length){
     ringRevealTimer = 0;
-    if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76): safety net for a ring with nothing left to reveal
+    if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
     return;
   }
   ringRevealTimer += dt;
@@ -2874,7 +2926,7 @@ function finalizeRingExpansion(){
   drawFinishCarpet(mctx, computeFinishLine());
   spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, pendingRingLabel, pendingRingLabelColor);
   playSound('wave');
-  if(window.trackEvent) window.trackEvent('map_expanded', { expansion_level: expansionLevel });
+  trackGameEvent('map_expanded', { expansion_level: expansionLevel, route_tiles: pathWaypointTiles.length, spacing_relaxed: routeSpacingRelaxedExpansions });
   updateHUD();
 }
 let expansionsUsedThisCycle = 0; // resets each time a new wave starts — caps expansion to once per idle period
@@ -2900,13 +2952,20 @@ function grantFreeExpansion(){
   performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
   return true;
 }
-// PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]. The buildable green is the border of tiles within
-// PATH_BUILDABLE_MARGIN of the route, on EVERY side of it, wherever the route goes. It used to also
-// require the tile to lie inside the rectangular activeRegion, which cut the border off wherever the
-// route touched the region's edge (nothing above or left of the path) while the rectangle's far corner
-// filled with green nowhere near the road. A newly grown border tile is not buildable until the
-// expansion reveals it (pendingRevealTileKeys), so the growth is still seen spiralling outward.
+// PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 const pendingRevealTileKeys = new Set();
+// STARTING-MAP-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
+const STARTING_PATH_TILE_COUNT = 2;
+const STARTING_GRASS_TILE_COUNT = 2;
+function lockStartingBorderOutsideRegion(){
+  pendingRevealTileKeys.clear();
+  if(expansionLevel !== 0 || ringCandidateRegion || !activeRegion) return;
+  for(const key of nearPathTileSet){
+    const [borderX, borderY] = key.split(',').map(Number);
+    const insideStartingRegion = borderX >= activeRegion.x0 && borderX <= activeRegion.x1 && borderY >= activeRegion.y0 && borderY <= activeRegion.y1;
+    if(!insideStartingRegion) pendingRevealTileKeys.add(key);
+  }
+}
 function isInActiveRegion(gx, gy){
   const key = gx+','+gy;
   return nearPathTileSet.has(key) && !pendingRevealTileKeys.has(key);
@@ -3289,7 +3348,8 @@ function generateFlora(){
 // CA134 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA134
 function seedStartingBarricades(){
   // CA135 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA135
-  const pathTiles = pathWaypointTiles.filter(p => isInActiveRegion(p.x, p.y));
+  // STARTING-BARRICADE-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
+  const pathTiles = pathWaypointTiles;
   if(pathTiles.length < 2) return;
   const spot = pathTiles[pathTiles.length - 1]; // the finish tile itself — a screenshot confirmed the previous "-2" (one tile before it) left a visible empty-tile gap, not actually "by" the carpet as asked
   const t = acquireActive(towerPool);
@@ -3395,6 +3455,7 @@ function updateScenery(dt){
     }
     if(!(gameTime - item.clearStart >= item.clearMs)){ i++; continue; }
     if(gameTime - item.clearStart >= item.clearMs){
+      if(!item.isChanceStructure) trackGameEvent('scenery_cleared', { scenery_type: item.type });
       if(item.isChanceStructure){
         keepItemAfterUse = !useChanceStructure(item);
       } else if(item.type === 'CHEST'){
@@ -3447,7 +3508,7 @@ function updateScenery(dt){
     }
   }
 }
-// CHANCE-STRUCTURES-01 (1.6.77): spawning, using and describing chance structures. See CONFIG.CHANCE_STRUCTURES.
+// CHANCE-STRUCTURES-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
 const chanceStructureDrySpells = {};
 function maxLivesNow(){ return 100 + livesBought; }
 function livesMissingNow(){ return Math.max(0, maxLivesNow() - lives); }
@@ -3489,6 +3550,7 @@ function maybeSpawnChanceStructures(){
     spawnFloatingText(item.x, item.y - 30, definition.emoji + ' ' + definition.name + '!', definition.color);
     spawnParticles(item.x, item.y, definition.color, 12);
     showToast(definition.emoji + ' A ' + definition.name + ' appeared! Tap it.');
+    trackGameEvent('chance_structure_spawned', { structure: type, lives });
   }
 }
 // Returns true when the structure is used up (and should disappear), false when it stays.
@@ -3502,6 +3564,7 @@ function useChanceStructure(item){
     }
     lives += healed;
     item.healPool -= healed;
+    trackGameEvent('chance_structure_used', { structure: item.type, healed, pool_left: item.healPool });
     spawnFloatingText(item.x, item.y - 22, '+' + healed + ' ❤️', '#ff8fa3');
     spawnParticles(item.x, item.y, definition.color, 14);
     playSound('wave');
@@ -3594,11 +3657,9 @@ function drawOneSceneryItem(ctx, key, item, size){
     ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
   }
 }
-// LOOSE-DRAIN-01 / LOOSE-CONFINE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]. Owner-decided rules for
-// enemies that have crossed the finish line and are still alive ("loose"):
-//  * each one costs 1 life every LOOSE_ENEMY_LIFE_DRAIN_MS (6 seconds) for as long as it lives;
-//  * each one stays on the route and its grass border (never wandering across the bare dirt outside);
-//  * the count is shown under the Next Wave button (countLooseEnemies()).
+// LOOSE-DRAIN-01 / LOOSE-CONFINE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
+const DOWNED_TOWER_SKIN_MAIN = '#9b9b9b';
+const DOWNED_TOWER_SKIN_SHADE = '#7a7a7a';
 const LOOSE_ENEMY_LIFE_DRAIN_MS = 6000;
 function advanceLooseDrain(drainMs, dtMs){
   const totalMs = drainMs + dtMs;
@@ -3618,6 +3679,90 @@ function confineLooseEnemyToRoute(enemy, previousX, previousY){
   enemy.x = previousX; enemy.y = previousY;
   enemy.wanderVx = -enemy.wanderVx; enemy.wanderVy = -enemy.wanderVy;
   return true;
+}
+// TELEMETRY-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
+const TELEMETRY_EVENTS = {
+  game_started: ['device', 'viewport', 'first_visit', 'loaded_save'],
+  wave_started: ['wave', 'lives', 'gold', 'towers', 'loose', 'unlocked_towers'],
+  wave_completed: ['wave', 'duration_s', 'lives_start', 'lives_end', 'lives_lost', 'escaped', 'loose_peak', 'loose_end', 'loose_drain_lives', 'towers_downed', 'gold_start', 'gold_end', 'towers', 'fps_median', 'gap_p95_ms'],
+  wave_milestone: ['waves_completed'],
+  tower_built: ['tower_type', 'cost', 'towers', 'first_of_type'],
+  tower_upgraded: ['tower_type', 'level', 'cost'],
+  tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
+  item_purchased: ['item', 'currency', 'cost'],
+  map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
+  chance_structure_spawned: ['structure', 'lives'],
+  chance_structure_used: ['structure', 'healed', 'pool_left'],
+  scenery_cleared: ['scenery_type'],
+  shop_opened: ['gold'],
+  settings_changed: ['setting', 'value'],
+  save_downloaded: ['waves_completed'],
+  save_loaded: ['save_version', 'waves_completed'],
+  progress_reset: ['kind'],
+  santa_boss_encountered: ['wave'],
+  game_over: ['cause', 'wave_reached', 'waves_completed', 'duration_s', 'towers_built', 'towers_downed', 'lives_bought', 'loose_end', 'fps_median'],
+  lag_detected: ['median_gap_ms', 'p95_gap_ms', 'towers_downed', 'enemies', 'loose', 'decals', 'particles'],
+  session_summary: ['duration_s', 'max_wave', 'waves_completed', 'towers_built', 'ended_in_game_over'],
+  game_error: ['message', 'source', 'line']
+};
+const TELEMETRY_RECENT_LIMIT = 60;
+const LAG_MEDIAN_GAP_THRESHOLD_MS = 90;
+const LAG_MIN_SAMPLES = 60;
+const telemetryRecent = [];
+const sessionTelemetry = { startedAtMs: 0, towersBuilt: 0, towersDowned: 0, gameOverReported: false };
+const waveTelemetry = { startedAtGameTime: 0, livesAtStart: 0, goldAtStart: 0, escaped: 0, towersDowned: 0, loosePeak: 0, looseDrainLives: 0, lagReported: false };
+function trackGameEvent(name, params){
+  const declaredParams = TELEMETRY_EVENTS[name];
+  if(!declaredParams){ console.warn('trackGameEvent: "' + name + '" is not in TELEMETRY_EVENTS'); return; }
+  const payload = { game_version: GAME_VERSION, wave: waveIndex, quality: graphicsQuality };
+  if(params){
+    for(const key of declaredParams){
+      if(params[key] === undefined) continue;
+      payload[key] = typeof params[key] === 'string' ? params[key].slice(0, 100) : params[key];
+    }
+  }
+  telemetryRecent.push({ atSecond: Math.round(gameTime/1000), name, payload });
+  if(telemetryRecent.length > TELEMETRY_RECENT_LIMIT) telemetryRecent.shift();
+  if(window.trackEvent) window.trackEvent(name, payload);
+}
+function perfMedianFps(){
+  const medianGapMs = perfPercentile(perfStats.wallGapMsHistory, 0.5);
+  return medianGapMs > 0 ? Math.round(1000/medianGapMs) : 0;
+}
+function countTowersDownedNow(){
+  let downed = 0;
+  for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE' && tower.disabledWavesLeft > 0) downed++;
+  return downed;
+}
+function countActiveTowers(){
+  let active = 0;
+  for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') active++;
+  return active;
+}
+// A run of slow frames that the game's own timers cannot explain (the browser delaying the frame
+// callback) is reported once per wave, with what was on screen, so a lag cause can be found from the numbers.
+function maybeReportLag(){
+  if(waveTelemetry.lagReported || perfStats.wallGapMsHistory.length < LAG_MIN_SAMPLES) return;
+  const medianGapMs = perfPercentile(perfStats.wallGapMsHistory, 0.5);
+  if(medianGapMs < LAG_MEDIAN_GAP_THRESHOLD_MS) return;
+  waveTelemetry.lagReported = true;
+  trackGameEvent('lag_detected', {
+    median_gap_ms: Math.round(medianGapMs), p95_gap_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95)),
+    towers_downed: countTowersDownedNow(), enemies: enemyPool.filter(e => e.active).length, loose: countLooseEnemies(),
+    decals: perfStats.totalDecals, particles: perfStats.totalParticles
+  });
+}
+function reportTowerDowned(tower, cause){
+  sessionTelemetry.towersDowned++; waveTelemetry.towersDowned++;
+  trackGameEvent('tower_downed', { tower_type: tower.type, tower_level: tower.level, cause, towers_standing: countActiveTowers() - countTowersDownedNow() });
+}
+function reportSessionSummary(){
+  if(sessionTelemetry.startedAtMs === 0) return;
+  trackGameEvent('session_summary', {
+    duration_s: Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000), max_wave: waveIndex, waves_completed: wavesCompleted,
+    towers_built: sessionTelemetry.towersBuilt, ended_in_game_over: sessionTelemetry.gameOverReported
+  });
+  sessionTelemetry.startedAtMs = 0;
 }
 // CA145 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA145
 const depthSortPool = [];
@@ -3755,13 +3900,7 @@ function computeFinishLine(){
   const upperP = pA.y >= pB.y ? pB : pA;
   return { edgeX, edgeY, ux, uy, lowerP, upperP };
 }
-// GROUND-DETAIL-01 (1.6.72) — see CHANGELOG.md § [1.6.72]. Tiny cosmetic details baked into the static
-// map layer: pebbles on dirt-path tiles and grass tufts on buildable green tiles. Every detail is
-// derived from a per-tile seed (tile coordinates plus a salt), never from Math.random(), so a tile
-// paints identically every time it is repainted (full bake, expansion repaint, finish-carpet
-// repaint, ring-reveal preview) and details never shuffle or pop. The generator is one module-level
-// state variable, so painting allocates no closures or arrays. Details stay inside a margin from the
-// tile edge so they never cross the grid lines. Chances and counts below are the tuning knobs.
+// GROUND-DETAIL-01 (1.6.72) — see CHANGELOG.md § [1.6.72]
 const PATH_PEBBLE_TILE_CHANCE = 0.55;
 const PATH_PEBBLE_MIN_COUNT = 1;
 const PATH_PEBBLE_MAX_COUNT = 3;
@@ -3772,13 +3911,7 @@ const GROUND_DETAIL_EDGE_MARGIN = 10;
 const PEBBLE_STONE_TONES = ['rgba(92,82,72,0.6)', 'rgba(140,130,118,0.6)', 'rgba(190,182,170,0.6)'];
 const GRASS_BLADE_TONES_ON_LIGHT_TILE = ['#5d8846', '#6c9a52'];
 const GRASS_BLADE_TONES_ON_DARK_TILE = ['#86b364', '#6f9c55'];
-// GROUND-DETAIL-RUN-01 (1.6.75) — see CHANGELOG.md § [1.6.75]. The seed also includes a per-run number
-// chosen at page load (a restart reloads the page), so every new game gets a different arrangement of
-// stones and tufts while a tile still paints identically for the whole run. It is saved with the game.
-// The STARTING map (the first path and grass tiles) gets a small chosen budget instead of pure chance:
-// 1 to STARTER_PEBBLE_TILES_MAX path tiles get 1 to STARTER_PEBBLES_PER_TILE_MAX pebbles, and 1 to
-// STARTER_TUFT_TILES_MAX grass tiles get a tuft, at random tiles each run; the other starting tiles stay
-// clean so the first screen shows "a few", never a crowd. Later tiles use the sparse chances above.
+// GROUND-DETAIL-RUN-01 (1.6.75) — see CHANGELOG.md § [1.6.75]
 const STARTER_PEBBLE_TILES_MAX = 2;
 const STARTER_PEBBLES_PER_TILE_MAX = 2;
 const STARTER_TUFT_TILES_MAX = 2;
@@ -3884,16 +4017,7 @@ function paintBuildableTileBase(ctx, gx, gy){
   ctx.lineWidth = 1;
   ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
 }
-// PATH-CHESS-01 (1.6.68) — see CHANGELOG.md § [1.6.68]. Single source of truth for dirt-path tile
-// colors, used by BOTH drawMap() (full bake) and paintPathTileBase() (incremental repaints). They used
-// to disagree: drawMap() drew a faint 6%-black shade while paintPathTileBase() drew a strong tan and
-// chocolate pair, so the path changed look after each expansion. The checkerboard also ran the wrong
-// way: the dark dirt tile sat beside the DARK green tile. Buildable green is light at (gx+gy)%2===0,
-// so dirt is dark at (gx+gy)%2===1: every dark dirt tile touches light green and every light dirt tile
-// touches dark green, the way a chessboard alternates. PATH_TILE_DARK is the background #8b5a2b
-// shaded 6% black; PATH_TILE_LIGHT is the same background lightened 6% toward white. Both stay WARM
-// (orange-brown): the owner rejected a grey taupe (#9a8266) as "way too grey" and asked for the older
-// color back (1.6.74). validateDesignContract() enforces the warmth and the lightness order.
+// PATH-CHESS-01 (1.6.68) — see CHANGELOG.md § [1.6.68]
 const DIRT_BACKGROUND_COLOR = '#8b5a2b';
 const FLAG_POLE_COLOR = '#e8d9b0';
 const PATH_TILE_DARK = '#835528';
@@ -3904,7 +4028,7 @@ function pathTileColor(gx, gy){ return isDarkPathTile(gx, gy) ? PATH_TILE_DARK :
 // CA152 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA152
 function paintPathTileBase(ctx, gx, gy){
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
-  // PATH-CHESS-01 (1.6.68) — tile colors and checker parity come from pathTileColor(), shared with drawMap().
+  // PATH-CHESS-01 (1.6.68) — see CHANGELOG.md § [1.6.68]
   ctx.fillStyle = pathTileColor(gx, gy);
   ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
   paintPathPebbles(ctx, gx, gy);
@@ -4014,16 +4138,7 @@ function computeSpawnFlags(){
   spawnFlagsCache = { center: start, flagLower, flagUpper };
   return spawnFlagsCache;
 }
-// FLAG-PENNANT-01 (1.6.70) — see CHANGELOG.md § [1.6.70]. Each spawn flag is a TRIANGULAR PENNANT:
-// a vertical hoist edge pinned to the top of the pole, tapering to a single tip point at the free end
-// (never a rectangular ribbon). Light-wind cloth: a slow traveling wave whose amplitude grows from
-// zero at the pole to its maximum at the tip, about one and a quarter folds along the length, a gust
-// that slowly swells and eases the amplitude, and a small gravity droop toward the tip. Folds are
-// drawn from the SAME cross-section vertices as the silhouette (one strip per segment): a strip where
-// the cloth tilts away is shaded, a strip where it tilts toward the light is highlighted, and the cloth
-// narrows slightly where it turns edge-on (foreshortening). Because shading strips share the
-// silhouette's vertices they can never sit off the outline, which was the defect of the old separate
-// fold triangle. Do not replace this with a rectangle or a strip of constant width.
+// FLAG-PENNANT-01 (1.6.70) — see CHANGELOG.md § [1.6.70]
 const FLAG_SEGMENTS = 24;
 const FLAG_PENNANT_LENGTH = 46;
 const FLAG_HOIST_HALF_HEIGHT = 7;
@@ -4042,13 +4157,7 @@ const FLAG_WIND_RISE_MS = 1200;
 const FLAG_WIND_FALL_MS = 2500;
 const FLAG_WIND_VISIBLE_THRESHOLD = 0.02;
 let flagWindStrength = 0;
-// FLAG-WIND-GATE-01 (1.6.74, corrected 1.6.76) — see CHANGELOG.md § [1.6.76]. The flags only stir while NO
-// wave is in progress (waveState 'IDLE': waiting for the next wave, the calm before the charge). The
-// moment a wave starts (countdown, spawning, fighting: every other state) the wind dies over
-// FLAG_WIND_FALL_MS and the flags hang still and slightly limp until the wave is cleared. With zero wind
-// no ripple is computed and no fold shading is drawn, which keeps the busy combat frames cheap. Called
-// once per simulation tick from update(), so pausing freezes the wind too. 1.6.74 had this backwards
-// (it blew during the wave); validateDesignContract() now tests both directions.
+// FLAG-WIND-GATE-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 function updateFlagWind(dtMs){
   const targetStrength = waveState === 'IDLE' ? 1 : 0;
   if(flagWindStrength === targetStrength) return;
@@ -4061,14 +4170,7 @@ const flagTopX = new Float32Array(FLAG_SEGMENTS + 1);
 const flagTopY = new Float32Array(FLAG_SEGMENTS + 1);
 const flagBottomX = new Float32Array(FLAG_SEGMENTS + 1);
 const flagBottomY = new Float32Array(FLAG_SEGMENTS + 1);
-// FLAG-REALISTIC-WIND-01 (1.6.77) — see CHANGELOG.md § [1.6.77]. Two poses, one blend:
-//  * STILL (a wave is in progress): the pennant hangs limp and straight down along the pole, gathered to
-//    FLAG_LIMP_LENGTH_SCALE of its length, with no ripple, so a lifeless flag reads as lifeless.
-//  * WINDY (between waves): a slow, uneven gust level (flagGustLevel(), three sines of different periods)
-//    lifts the flag from a drooping lull to nearly level in a gust; the cloth also lengthens and ripples
-//    harder in a gust, and the ripple moves perpendicular to the flag's own tilted axis, so it looks
-//    like real wind coming and going rather than a fixed wave loop.
-// flagWindStrength (0..1, see updateFlagWind()) blends STILL into WINDY so the wind rises and dies smoothly.
+// FLAG-REALISTIC-WIND-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
 function flagGustLevel(gustClockSeconds, flagPhaseOffset){
   const slowSwell = Math.sin(gustClockSeconds*0.55 + flagPhaseOffset*0.6);
   const mediumSwell = Math.sin(gustClockSeconds*1.35 + flagPhaseOffset*1.3 + 1.7);
@@ -4141,11 +4243,7 @@ function drawPennantFoldShading(ctx, isBlack){
   }
 }
 // CA158 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA158
-// FLAG-POLE-CONTRAST-01 (1.6.67) — see CHANGELOG.md § [1.6.67]. The pole used to be #6b5842 on
-// the #8b5a2b dirt background (contrast ~1.2:1), so it vanished and the white and black banners
-// looked like loose ribbons floating in empty space. It is now a light shaft (#e8d9b0, ~4.2:1
-// against dirt) inside a dark outline, capped with a round finial, so both banners visibly hang
-// from a pole. Keep the pole lighter than the dirt.
+// FLAG-POLE-CONTRAST-01 (1.6.67) — see CHANGELOG.md § [1.6.67]
 function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const poleH = 34;
   ctx.save();
@@ -4182,8 +4280,8 @@ function drawMap(ctx){
   ctx.fillStyle = DIRT_BACKGROUND_COLOR;
   ctx.fillRect(0,0,WORLD_MAX_W,WORLD_MAX_H);
 
-  // PATH-CHESS-01 (1.6.68) — both path tones are filled, using the same pathTileColor() as paintPathTileBase()
-  // GROUND-DETAIL-01 (1.6.72) — pebbles come from paintPathPebbles(), shared with paintPathTileBase()
+  // PATH-CHESS-01 (1.6.68) — see CHANGELOG.md § [1.6.68]
+  // GROUND-DETAIL-01 (1.6.72) — see CHANGELOG.md § [1.6.72]
   for(let gx=0; gx<COLS; gx++){
     for(let gy=0; gy<ROWS; gy++){
       if(!pathCells.has(gx+','+gy)) continue;
@@ -5501,6 +5599,7 @@ function downloadSaveFile(){
   a.href = url; a.download = 'savegame-' + state.seed + '.txt'; a.click();
   URL.revokeObjectURL(url);
   showToast('💾 Saved (seed ' + state.seed + ')');
+  trackGameEvent('save_downloaded', { waves_completed: wavesCompleted });
 }
 // CA251 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA251
 function migrateLegacyAttunement(t){
@@ -5542,8 +5641,7 @@ function restoreGameState(state){
   latestExpansionTiles = Array.isArray(state.latestExpansionTiles) ? state.latestExpansionTiles : [];
   // CA252 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA252
   if(state.ringCandidateRegion){
-    // PATH-BORDER-01 (1.6.76): a save made while a ring was still revealing is completed at once after
-    // the map is rebuilt (see the finalizeRingExpansion() call below); the reveal is only cosmetic.
+    // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
     ringCandidateRegion = state.ringCandidateRegion;
     ringRevealed = new Set(); ringRevealQueue = [];
     pendingRevealTileKeys.clear();
@@ -5571,6 +5669,7 @@ function restoreGameState(state){
     }
   }
   rebuildPathCellsAndPx();
+  lockStartingBorderOutsideRegion(); // STARTING-MAP-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
   generateFlora();
 
   for(const s of (state.scenery || [])) sceneryMap.set(s.key, s.item);
@@ -5621,7 +5720,7 @@ function restoreGameState(state){
   waveState = 'IDLE'; resetWaveDispatch();
   screenShakeUntil = 0; screenShakeMag = 0;
   rebakeMap();
-  if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76): complete a mid-reveal save now that the map exists
+  if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
   centerCameraOnActiveRegion();
   gameState = 'PLAYING';
   blowingLeaves = [];
@@ -5663,6 +5762,7 @@ function loadSaveFileText(text){
     const versionNote = (state.gameVersion && state.gameVersion !== GAME_VERSION)
       ? ' — from v' + state.gameVersion + ', this is v' + GAME_VERSION : '';
     showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')' + versionNote);
+    trackGameEvent('save_loaded', { save_version: state.gameVersion || 'unknown', waves_completed: wavesCompleted });
   } catch(err){
     showToast('⚠️ Could not read that save file');
   }
@@ -5858,7 +5958,7 @@ class Enemy{
     this.armor = def.armor;
     this.maxHp = Math.round(def.baseHp * hpMultiplier);
     this.hp = this.maxHp;
-    this.speed = def.speed * 0.9; // GLOBAL-ENEMY-SLOW-01 (1.6.60) — see CHANGELOG.md § [1.6.60]. Direct request: enemies walk 10% slower.
+    this.speed = def.speed * ENEMY_WALK_SPEED_SCALE; // ENEMY-PACE-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
     this.bounty = def.bounty;
     this.radius = def.radius;
     this.embeddedArrows = [];
@@ -6275,7 +6375,7 @@ class Enemy{
     this.isMini = sizeTier === 'TINY';
     this.isBig = sizeTier === 'LARGE';
     this.radius = Math.round(band.radiusMin + sizeRank * (band.radiusMax - band.radiusMin));
-    this.speed = (band.speedMin + familySpeedRank * (band.speedMax - band.speedMin)) * 0.9; // GLOBAL-ENEMY-SLOW-01 (1.6.60) — see CHANGELOG.md § [1.6.60]
+    this.speed = (band.speedMin + familySpeedRank * (band.speedMax - band.speedMin)) * ENEMY_WALK_SPEED_SCALE; // ENEMY-PACE-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
     this.maxHp = Math.max(1, Math.round(def.baseHp * hpScale * band.hpMult * ENEMY_HP_SCALE * (0.95 + sizeRank * 0.1)));
     this.hp = this.maxHp;
     this.bounty = Math.max(1, Math.round(def.bounty * band.bountyMult));
@@ -6371,22 +6471,22 @@ class Enemy{
   }
   reachEnd(){
     loseLife(1);
+    waveTelemetry.escaped++;
+    waveTelemetry.loosePeak = Math.max(waveTelemetry.loosePeak, countLooseEnemies() + 1);
     // CA301 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA301
     this.escaped = true;
     this.wanderRepickTimer = 0; // pick a wander heading on the very next tick instead of waiting out a leftover timer value
   }
   // CA302 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA302
   updateEscaped(dt){
-    // LOOSE-DRAIN-01 (1.6.77) — see CHANGELOG.md § [1.6.77]. Every loose enemy costs 1 life per
-    // LOOSE_ENEMY_LIFE_DRAIN_MS while it stays alive, so pressure builds and nobody can sit on a wave
-    // that has slipped through. The clock is simulation time (dt), so fast-forward drains proportionally.
+    // LOOSE-DRAIN-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
     const looseDrain = advanceLooseDrain(this.looseDrainMs, dt);
     this.looseDrainMs = looseDrain.remainingMs;
     for(let heartIndex=0; heartIndex<looseDrain.hearts && gameState === 'PLAYING'; heartIndex++){
       loseLife(1); // the change shows by the health counter (showLivesChange()), never on the enemy
+      waveTelemetry.looseDrainLives++;
     }
-    // LOOSE-CONFINE-01 (1.6.77): loose enemies stay on the route and its grass border. One that somehow
-    // stands outside it (an old save, a route change) is put back on the nearest route tile first.
+    // LOOSE-CONFINE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
     if(!isLooseWalkableAt(this.x, this.y)) this.placeOnNearestRouteTile();
     const positionBeforeMoveX = this.x, positionBeforeMoveY = this.y;
     this.updateEscapedMovement(dt);
@@ -7351,6 +7451,7 @@ class Tower{
     this.equippedItems.push(def);
     this.recomputeStats();
     this.checkHeroStatus();
+    trackGameEvent('item_purchased', { item: def.id || def.name, currency: useFreeCharge ? 'free_charge' : (def.woodCost ? 'wood_stone' : 'gold'), cost: def.cost || def.woodCost || 0 });
     return true;
   }
   // CA401 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA401
@@ -7504,6 +7605,7 @@ class Tower{
     // CA415 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA415
     this.checkEvolution();
     playSound('click');
+    trackGameEvent('tower_upgraded', { tower_type: this.type, level: this.level, cost });
     return true;
   }
   // Called once, right after reaching level 5, when the player picks a Swordsman specialization.
@@ -7669,6 +7771,7 @@ class Tower{
     if(this.hp <= 0 && this.disabledUntil <= gameTime){
       this.disabledUntil = gameTime + 4000;
       this.disabledWavesLeft = 3; // decrements at the start of each wave; 3 correctly locks through both N+1 and N+2, free by N+3 — "out for 2 of the next rounds"
+      reportTowerDowned(this, 'attack');
       this.hp = Math.round(this.maxHp * 0.3); // recovers with partial HP once the disable ends
       this.killStreak = 0; this.nextStreakTier = 0;
       spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
@@ -7694,6 +7797,7 @@ class Tower{
         if(this.hp <= 0 && this.disabledUntil <= gameTime){
           this.disabledUntil = gameTime + 4000;
           this.disabledWavesLeft = 3;
+          reportTowerDowned(this, 'burn');
           this.hp = Math.round(this.maxHp * 0.3);
           this.killStreak = 0; this.nextStreakTier = 0;
         }
@@ -8250,10 +8354,11 @@ class Tower{
 
     const isDisabled = this.disabledUntil > gameTime || this.disabledWavesLeft > 0;
     if(isDisabled){
-      // overrun — greyed out and marked dizzy while it can't act
+      // NO-CANVAS-FILTER-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
       ctx.save();
       ctx.globalAlpha = 0.55;
-      ctx.filter = 'grayscale(1)';
+      extra.skinMain = DOWNED_TOWER_SKIN_MAIN;
+      extra.skinShade = DOWNED_TOWER_SKIN_SHADE;
     }
     drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
     if(isDisabled){
@@ -10193,9 +10298,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, swordLen, extra.weaponThickness);
     } else if(!extra.hasTarget){
       // CA578 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA578
-      // IDLE-GRIP-01 (1.6.73) — see CHANGELOG.md § [1.6.73]. Relaxed stance: the sword arm hangs down
-      // and forward at the side (IDLE_GRIP_ARM_ANGLE) and the blade rests angled up from the hand.
-      // 1.6.59 raised the arm to the blade's own angle, which held the sword stiffly up.
+      // IDLE-GRIP-01 (1.6.73) — see CHANGELOG.md § [1.6.73]
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
       const restAngle = -Math.PI/2 + 0.96 + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, IDLE_GRIP_ARM_ANGLE, armLen, skinMain, 0.15);
@@ -10415,7 +10518,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   } else if(type === 'HAMMERMAN'){
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
     const hammerAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
-    // IDLE-GRIP-01 (1.6.73) — relaxed arm at the side while idle; the hammer rests angled up from the hand.
+    // IDLE-GRIP-01 (1.6.73) — see CHANGELOG.md § [1.6.73]
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
@@ -11013,7 +11116,7 @@ const ENEMY_FAMILY_SPEED_MIN = Math.min(...Object.values(CONFIG.ENEMIES).map(def
 const ENEMY_FAMILY_SPEED_MAX = Math.max(...Object.values(CONFIG.ENEMIES).map(def => def.speed));
 let waveRunSeed = (Math.random() * 4294967296) >>> 0;
 let activeWavePlan = null;
-const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
+const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
 // CA626 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA626
 const BATCH_RELEASE_SPACING_PX = 240;
 // CA627 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA627
@@ -11227,7 +11330,7 @@ function waveRouteObligationsOutstanding(minPathFraction){
 function resetWaveDispatch(){
   activeWavePlan = null;
   waveDispatch.phaseIndex = 0; waveDispatch.batchIndex = 0; waveDispatch.unitIndex = 0;
-  waveDispatch.gapRemainingMs = 0; waveDispatch.resolvedUnits = 0;
+  waveDispatch.gapRemainingMs = 0; waveDispatch.unitGapRemainingMs = 0; waveDispatch.resolvedUnits = 0;
   waveDispatch.batchEnemies.length = 0; waveDispatch.batchSerials.length = 0;
 }
 // CA630 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA630
@@ -11311,10 +11414,12 @@ function advanceWaveDispatch(dt){
   if(!phase){ waveState = 'ACTIVE'; updateHUD(); return; }
   const batch = phase.batches[waveDispatch.batchIndex];
   if(waveDispatch.unitIndex < batch.units.length){
+    if(waveDispatch.unitGapRemainingMs > 0){ waveDispatch.unitGapRemainingMs -= dt; return; } // ENEMY-PACE-01: space the units out
     if(spawnWaveUnit(batch.units[waveDispatch.unitIndex])){
       waveDispatch.unitIndex++;
       waveDispatch.batchEnemies.push(lastSpawnedEnemy);
       waveDispatch.batchSerials.push(lastSpawnedSerial);
+      waveDispatch.unitGapRemainingMs = ENEMY_SPAWN_GAP_MS;
     }
     return;
   }
@@ -11344,9 +11449,7 @@ function advanceWaveDispatch(dt){
   }
   updateHUD();
 }
-// LOOSE-NOTICE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]. Enemies that crossed the finish line and are
-// still alive ("loose"). The count shows under the Next Wave button whenever it is above zero, in any wave
-// state, and disappears the moment the last one is gone.
+// LOOSE-NOTICE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
 function countLooseEnemies(){
   let looseCount = 0;
   for(const enemy of enemyPool) if(enemy.active && enemy.escaped) looseCount++;
@@ -11391,6 +11494,8 @@ function startNextWave(){
   waveState = 'SPAWNING';
   startWaveStartCameraPan();
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
+  Object.assign(waveTelemetry, { startedAtGameTime: gameTime, livesAtStart: lives, goldAtStart: gold, escaped: 0, towersDowned: 0, loosePeak: countLooseEnemies(), looseDrainLives: 0, lagReported: false });
+  trackGameEvent('wave_started', { wave: waveIndex, lives, gold, towers: countActiveTowers(), loose: countLooseEnemies(), unlocked_towers: unlockedTowerTypes.size });
   for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
   playSound('roundStart');
@@ -11582,7 +11687,7 @@ function maybeSpawnExtraBuilding(){
 }
 function loseLife(n){
   lives -= n;
-  if(lives <= 0){ lives = 0; endGame(); }
+  if(lives <= 0){ lives = 0; endGame(undefined, 'lives'); }
   updateHUD();
 }
 
@@ -11614,7 +11719,7 @@ function checkAllFightersDown(){
     if(t.disabledWavesLeft <= 0){ anyStanding = true; break; }
   }
   if(fighterCount === 0 || !anyStanding){
-    endGame('Your whole squad was overrun on wave ' + waveIndex + '. Rebuild and\u00A0try\u00A0again.');
+    endGame('Your whole squad was overrun on wave ' + waveIndex + '.\nRebuild and try again.', 'squad_overrun');
     return true;
   }
   return false;
@@ -11684,7 +11789,14 @@ function update(dt){
     if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
-      if(window.trackEvent && wavesCompleted % 5 === 0) window.trackEvent('wave_milestone', { waves_completed: wavesCompleted }); // every 5th wave only — every single wave would be noisy without adding real signal
+      maybeReportLag();
+      trackGameEvent('wave_completed', {
+        wave: waveIndex, duration_s: Math.round((gameTime - waveTelemetry.startedAtGameTime)/1000), lives_start: waveTelemetry.livesAtStart, lives_end: lives,
+        lives_lost: Math.max(0, waveTelemetry.livesAtStart - lives), escaped: waveTelemetry.escaped, loose_peak: waveTelemetry.loosePeak, loose_end: countLooseEnemies(),
+        loose_drain_lives: waveTelemetry.looseDrainLives, towers_downed: waveTelemetry.towersDowned, gold_start: waveTelemetry.goldAtStart, gold_end: gold,
+        towers: countActiveTowers(), fps_median: perfMedianFps(), gap_p95_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95))
+      });
+      if(wavesCompleted % 5 === 0) trackGameEvent('wave_milestone', { waves_completed: wavesCompleted }); // every 5th wave only — every single wave would be noisy without adding real signal
       // CA656 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA656
       if(ringRevealQueue.length) advanceRingReveal(1 + Math.floor(Math.random()*3));
       // CA657 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA657
@@ -12051,7 +12163,7 @@ function drawSpawnWarningMarker(ctx){
   if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
   if(waveTimer >= WAVE_COUNTDOWN_MS) return;
   const spawn = waypointsPx[0];
-  const bob = Math.sin(presentationTime/220) * 4; // SPAWN-MARKER-CLOCK-01 (1.6.74): real presentation time, so game speed never speeds the bob up
+  const bob = Math.sin(presentationTime/220) * 4; // SPAWN-MARKER-CLOCK-01 (1.6.74) — see CHANGELOG.md § [1.6.74]
   ctx.save();
   ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -13257,9 +13369,11 @@ function handleTap(clientX, clientY){
     }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     // CA742 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA742
-    if(window.trackEvent && !builtTowerTypesThisSession.has(selectedBuildType)){
+    sessionTelemetry.towersBuilt++;
+    {
+      const isFirstOfType = !builtTowerTypesThisSession.has(selectedBuildType);
       builtTowerTypesThisSession.add(selectedBuildType);
-      window.trackEvent('tower_built', { tower_type: selectedBuildType });
+      trackGameEvent('tower_built', { tower_type: selectedBuildType, cost: currentBuildCost(selectedBuildType), towers: countActiveTowers(), first_of_type: isFirstOfType });
     }
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
     playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type]);
@@ -13535,11 +13649,7 @@ function showGoldGain(amount){
   clearTimeout(goldGainHideTimer);
   goldGainHideTimer = setTimeout(() => { goldGainHideTimer = 0; pop.dataset.pending = 0; pop.classList.remove('pop'); }, 900);
 }
-// LIVES-POP-01 (1.6.78) — see CHANGELOG.md § [1.6.78]. Any change to lives (a loose enemy's drain, an enemy
-// crossing the finish, a fountain, a bought life) pops beside the health counter exactly like gold does,
-// red with a minus when lives fall, green with a plus when they rise, adding up within one animation.
-// Nothing about lives is ever shown over the enemies. Same-direction changes inside the animation window
-// add together; a change in the other direction starts a fresh total.
+// LIVES-POP-01 (1.6.78) — see CHANGELOG.md § [1.6.78]
 let lastShownLives = null, livesChangeHideTimer = 0;
 function showLivesChange(delta){
   const pop = document.getElementById('livesChangePop');
@@ -13810,7 +13920,7 @@ function openShopModal(){
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
   playSound('ui_open');
-  if(window.trackEvent) window.trackEvent('shop_opened', {});
+  trackGameEvent('shop_opened', { gold });
 }
 function closeShopModal(){
   document.getElementById('shop-modal').classList.add('hidden');
@@ -14107,10 +14217,12 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
 });
 document.getElementById('gfxHighRadio').addEventListener('change', () => {
   graphicsQuality = 'high'; setupCanvas(); savePrefs();
+  trackGameEvent('settings_changed', { setting: 'graphics_quality', value: 'high' });
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'high'));
 });
 document.getElementById('gfxLowRadio').addEventListener('change', () => {
   graphicsQuality = 'low'; setupCanvas(); savePrefs();
+  trackGameEvent('settings_changed', { setting: 'graphics_quality', value: 'low' });
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'low'));
 });
 document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
@@ -14180,14 +14292,7 @@ document.getElementById('loadSaveInput').addEventListener('change', (e) => {
   reader.readAsText(file);
   e.target.value = ''; // allow re-selecting the same file later
 });
-// RESET-OPTIONS-01 (1.6.69) — see CHANGELOG.md § [1.6.69]. Settings → Game → Reset options. "Clear
-// Unlocks" removes only the permanent tower-unlock set; "Clear All Cookies & Data" removes every
-// StickTD storage key (consent choice, unlocks, prefs, seen tutorial tips, welcome flag, last-seen
-// version), session storage and every script-readable cookie. Both then reload, because unlocks are
-// re-derived from wavesCompleted by checkTowerUnlocks() and the current run's towers, wave and
-// seenEnemyTypes live only in memory: a reload is what makes the player earn everything again and see
-// the Santa consent prompt, the welcome dialog and the first-wave tips fresh. Nothing writes storage
-// between the clear and the reload, so nothing can restore what was just removed.
+// RESET-OPTIONS-01 (1.6.69) — see CHANGELOG.md § [1.6.69]
 const STICKTD_STORAGE_PREFIXES = ['stickTD_', 'sticktd:'];
 const RESET_CONFIRM_MESSAGES = {
   unlocks: 'This removes every tower you have unlocked and restarts your run, so you must earn them all again. A save file you load later brings its own unlocks back. Continue?',
@@ -14215,10 +14320,12 @@ function expireReadableCookies(){
   }
 }
 function clearUnlocksAndRestart(){
+  trackGameEvent('progress_reset', { kind: 'unlocks' });
   try{ localStorage.removeItem(PERMANENT_UNLOCKS_KEY); }catch(err){ /* storage unavailable — nothing to clear */ }
   location.reload();
 }
 function clearAllProgressAndRestart(){
+  trackGameEvent('progress_reset', { kind: 'everything' });
   removeStoredKeysByPrefix(STICKTD_STORAGE_PREFIXES);
   try{ sessionStorage.clear(); }catch(err){ /* storage unavailable — nothing to clear */ }
   expireReadableCookies();
@@ -14729,6 +14836,11 @@ function generateDebugLog(){
   let contextAttributes = 'unavailable';
   try { if(ctx.getContextAttributes) contextAttributes = JSON.stringify(ctx.getContextAttributes()); } catch(error) {}
   s += 'Canvas 2D context attributes: ' + contextAttributes + '\n';
+
+  s += '\nTELEMETRY (last ' + telemetryRecent.length + ' events reported; sent to analytics only if cookies were accepted)\n';
+  s += '---------------------------------------------------------------------------------------------\n';
+  for(const reported of telemetryRecent) s += '  +' + reported.atSecond + 's  ' + reported.name + '  ' + JSON.stringify(reported.payload) + '\n';
+  s += 'Design contract: ' + (designContractProblems.length ? designContractProblems.join(' | ') : 'OK') + '\n';
 
   return s;
 }
@@ -15304,6 +15416,10 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   lastTime = performance.now();
   blowingLeaves = [];
   updateHUD();
+  sessionTelemetry.startedAtMs = performance.now();
+  let isFirstVisit = true;
+  try{ isFirstVisit = !localStorage.getItem('stickTD_welcomeSeen'); }catch(e){ /* storage unavailable: treat as first visit */ }
+  trackGameEvent('game_started', { device: IS_MOBILE_DEVICE ? 'mobile' : 'desktop', viewport: Math.round(window.innerWidth/100)*100 + 'x' + Math.round(window.innerHeight/100)*100, first_visit: isFirstVisit, loaded_save: false });
   // CA789 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA789
   try{
     if(!localStorage.getItem('stickTD_welcomeSeen')){
@@ -15313,6 +15429,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   }catch(e){ /* storage unavailable — just skip the one-time welcome, not worth failing over */ }
 });
 
+window.addEventListener('pagehide', reportSessionSummary);
 document.getElementById('endDownloadLogBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   downloadDebugLogFile(); // GAMEOVER-LOG-01 (1.6.2) — see CHANGELOG.md § [1.6.2]
@@ -15326,13 +15443,20 @@ document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   window.location.reload();
 });
 
-function endGame(message){
+function endGame(message, cause){
   gameState = 'GAME_OVER';
+  sessionTelemetry.gameOverReported = true;
   endTitle.textContent = 'Game Over';
-  endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '. Rebuild your\u00A0squad\u00A0and\u00A0try\u00A0again.');
+  endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '.\nRebuild your squad and try again.'); // GAMEOVER-LAYOUT-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
   playSound('lose');
   endScreen.classList.remove('hidden');
-  if(window.trackEvent) window.trackEvent('game_over', { wave_reached: waveIndex, waves_completed: wavesCompleted });
+  trackGameEvent('game_over', {
+    cause: cause || 'lives', wave_reached: waveIndex, waves_completed: wavesCompleted,
+    duration_s: sessionTelemetry.startedAtMs ? Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000) : 0,
+    towers_built: sessionTelemetry.towersBuilt, towers_downed: sessionTelemetry.towersDowned, lives_bought: livesBought, loose_end: countLooseEnemies(), fps_median: perfMedianFps()
+  });
+  maybeReportLag();
+  reportSessionSummary();
 }
 
 /* =========================================================
@@ -15357,6 +15481,7 @@ settledDecalCanvas.height = WORLD_MAX_H * dprValue;
 settledDecalCanvasReady = true;
 generateScenery();
 seedStartingBarricades();
+for(const startingProblem of validateStartingBarricade()){ designContractProblems.push(startingProblem); console.warn(startingProblem); }
 centerCameraOnActiveRegion();
 document.getElementById('versionText').textContent = GAME_VERSION;
 document.getElementById('aboutVersionText').textContent = GAME_VERSION;
