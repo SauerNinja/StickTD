@@ -90,9 +90,13 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   point. An assist earns only a fractional share of that, never the full reward.
 - **Map growth stays incremental.** Expansion winds outward a few tiles at a time, never a whole
   ring at once — organic while the route is young, closing into a full ring as it matures. The
-  route must be visibly framed by two green buildable tiles, including diagonal neighbors, so the
-  surrounding forest/build area reads broader than the dirt road. Keep the buildable corridor tied
-  to the route rather than filling the whole region. Never redraw more of the map than the part that
+  route is bordered by one green buildable tile on EVERY side, diagonals included (`PATH_BUILDABLE_MARGIN`
+  is 1), wherever the route goes, including where it touches the edge of the region rectangle. Buildable
+  green is exactly that border (`isInActiveRegion()`), never the rectangle: filtering by the rectangle
+  left no grass above or left of the road and dropped green far from it (the 1.6.76 regression). A
+  two-tile buffer (1.6.62) was tried and the owner called it too much grass. New border tiles wait in
+  `pendingRevealTileKeys` until the expansion reveals them, so growth still spirals outward. An
+  expansion that reveals nothing must still close (`finalizeRingExpansion()`), or no later one can start. Never redraw more of the map than the part that
   just changed, per the lag-creep protocol above.
 - **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
   falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
@@ -386,6 +390,104 @@ from a flag's position relative to some other point at draw time, which produces
 edge-on-looking banner instead of a broad readable one. Neither marker's shape or position depends
 on wind; only the flag's flutter animation does, and even that reads from a fixed ambient
 constant, not the disabled miss-chance wind system.
+
+The flag pole must stay clearly lighter than the dirt background (`drawFinishFlagPole()`, light
+shaft in a dark outline, currently about 4.2:1). It was once a dark brown close to the dirt color
+(about 1.2:1), which made the pole vanish and the banners look detached. Any recolor of the pole
+must keep at least 3:1 contrast against `#8b5a2b`.
+
+Dirt-path tiles and buildable green tiles form one chessboard. Green is light where `(gx+gy)%2===0`;
+dirt is dark where `(gx+gy)%2===1`, so a dark dirt tile always touches light green. Path colors come
+only from `pathTileColor()` (`PATH_TILE_DARK`, `PATH_TILE_LIGHT`), used by both `drawMap()` and
+`paintPathTileBase()`. Never give those two functions separate path colors: they once diverged and the
+path changed look after every expansion. The light dirt tone must stay slightly lighter than the
+`#8b5a2b` background so it never merges with it. It is the warm orange-brown `#926438`. A grey taupe
+(`#9a8266`) was tried and the owner rejected it as "way too grey": keep both path tones warm.
+
+Ground details (pebbles on dirt, grass tufts on green) come from `paintPathPebbles()` and
+`paintGrassTufts()`, seeded per tile by `seedTileRandom(gx, gy, salt)`. Never use `Math.random()` for them:
+a tile must paint identically on every repaint. Keep them inside `GROUND_DETAIL_EDGE_MARGIN` of the tile
+edge, and call the shared painters from every place that paints a path or buildable tile.
+The seed includes `groundDetailRunSeed` (random per page load, saved with the game), so each run is unique but a
+tile never changes within a run. The starting map gets a chosen budget from `pickStarterGroundDetails()`:
+1 to 2 path tiles with 1 to 2 pebbles, 1 to 2 grass tiles with a tuft, the other starting tiles clean. The owner
+wants only a few details on the first blocks; never raise those budgets. `validateDesignContract()` must run
+after `initRegionAndPath()` because it inspects the chosen starter tiles.
+
+## Stickman poses
+
+Idle weapon-arm angle for hand-held weapons is `IDLE_GRIP_ARM_ANGLE`: the arm hangs down and forward at the
+side and the weapon rests angled up from the hand. Never set the idle arm to the weapon's own angle for
+swords, hammers, guns or bombers; that raises the arm and holds the weapon stiffly up (the 1.6.59
+regression). Every class branch in `drawStickman()` must define `handX`/`handY` before using them; a
+missing definition throws every frame that class is drawn, and `node --check` will not catch it. Before
+shipping any pose change, render every `CONFIG.TOWERS` type both idle and engaged with the real
+`drawStickman()` and confirm there are no exceptions.
+
+## Design contract
+
+Owner-decided rules are executable: `validateDesignContract()` runs at boot, never throws, and reports to the
+console and to the Debug Log line "Design contract". It checks pole contrast, warm and ordered path tones,
+the dirt/green checkerboard, the range balance theory below, the green border around the route (at boot and
+after every expansion), corridor margin, pebble sparsity and starter budgets, the idle weapon arm and the
+flag wind direction. When the owner states a new rule, add a named constant for it and one check there,
+and add the rule's reason to its check message. Do not loosen a check to make a change pass: ask the owner.
+
+**Range balance theory (owner-decided, `RANGE-BALANCE-01`).** Range grows linearly with INT from a tower's
+starting range to its `RANGE_CAPS` value at 500 INT (`interpolateRangeByInt()`), so a starting range must sit well
+below the cap: the Archer starts at 140 (cap 380) and reaches 260 at 250 INT. The role decides how far it goes:
+melee (WARRIOR archetype) has the shortest starting and maximum ranges, archer types (ARCHER) sit in the middle,
+and mage style (MAGE) ends up with the longest. `RANGE_BANDS` holds the numbers per role (melee caps 140-220,
+archer caps 240-400, mage caps 400-520; starts at most 70%, 55% and 55% of the cap), `rangeRoleOf()` assigns
+roles from `CLASS_ARCHETYPE`, and Cleric, Pope, Merchant and Glaive are support exemptions
+(`RANGE_ROLE_OVERRIDES`). Every tower with a range needs a `RANGE_CAPS` entry: a missing one silently defaults to
+double its start. Never raise a start or cap out of its band to make a tower feel stronger; move its role or ask
+the owner. The spawn "!" marker and every other presentation-only animation must use
+`presentationTime`, not `gameTime`, so game speed never changes how fast they move.
+
+The spawn flags are triangular pennants, not rectangles: a vertical hoist edge at the top of the pole
+tapering to one tip point (`computeFlagPennantShape()`). The cloth is a light-wind traveling wave that is
+zero at the pole and grows toward the tip. Fold shading is drawn per strip from the same cross-section
+vertices as the silhouette (`drawPennantFoldShading()`), never as a separate shape, so folds cannot
+drift off the outline. Keep the wind light: small amplitude, slow speed, about one and a quarter folds.
+The flag wind blows only while NO wave is in progress (`waveState === 'IDLE'`, see `updateFlagWind()`): the calm
+between waves, even when enemies are loose. It rises in 1.2 s, and the moment a wave starts it dies over 2.5 s.
+While the wave is active the flags are lifeless: hanging straight down along the pole, gathered to about half
+their length, with no ripple or fold shading computed at all, to keep combat frames cheap. 1.6.74 had the wind
+backwards; the contract tests both directions. In the calm the flags must look like real wind: a slow, uneven
+gust level (`flagGustLevel()`) lifts the flag from a drooping lull to nearly level, lengthens the cloth and
+strengthens the ripple in a gust, and the ripple runs perpendicular to the flag's own tilted axis. Keep them
+narrow (hoist half height 7): not limp in the wind, not wide.
+
+## Loose enemies, chance structures
+
+Loose enemies (`enemy.escaped`: crossed the finish and still alive): each costs 1 life every 6 seconds while it
+lives (`LOOSE_ENEMY_LIFE_DRAIN_MS`, `advanceLooseDrain()`, run in `updateEscaped()` on simulation time), in any
+wave state; each stays on the route and its grass border (`isLooseWalkableAt()`, `confineLooseEnemyToRoute()`),
+never on the bare dirt outside it; the count shows under the Next Wave button (`countLooseEnemies()`,
+`#looseNotice`) as plain text, "🏃 N loose", with no background and no drain wording, and hides at zero.
+Lives changes of every kind show only beside the health counter (`showLivesChange()`, `#livesChangePop`, red
+minus / green plus, like the gold pop) and never over enemies or other map objects. The game-over screen has
+Play Again as the large primary button and Download Debug Log as a smaller secondary one below it. The region-rectangle clamp they used to have is gone: the rectangle no
+longer describes where the grass is.
+
+Chance structures (`CONFIG.CHANCE_STRUCTURES`, `maybeSpawnChanceStructures()`, `useChanceStructure()`): rare
+structures that appear on the grass border when a wave is cleared, stored as scenery items with
+`isChanceStructure`. The Healing Fountain (⛲) holds a pool of 10 lives; a tap restores as many missing lives as
+it can, up to the pool, never above `maxLivesNow()`; it stays with its remaining pool and vanishes when the pool
+is spent; used at full health it heals nothing and stays. Spawn chance rises when the player is hurt and with a
+pity timer, capped at `maxChance` (0.6), never before `minWavesCompleted`, never above `maxOnBoard`. To add a
+structure: one table row plus a case in `useChanceStructure()`. Their rings must stay steady (no pulsing
+opacity): nothing in this game fades in and out repeatedly.
+
+## Reset options and storage keys
+
+Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgressAndRestart()`) clears every
+StickTD storage key by prefix: `stickTD_` and `sticktd:`. Any new `localStorage` key must start with one of
+those prefixes, or "Clear All Cookies & Data" will silently miss it. Both reset paths end in
+`location.reload()` and must not write storage between the clear and the reload. Unlocks are re-derived
+from waves completed by `checkTowerUnlocks()`, so clearing them in place without a reload would re-grant
+them at the next wave check.
 
 ## Combat & stats
 

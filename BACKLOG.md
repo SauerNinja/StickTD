@@ -126,11 +126,17 @@ alongside a dozen other simultaneous changes.
   ability) beyond Pope, Sniper, Gunalinder, Berserker, Lancer, etc. — not a threshold number, real
   new content per lineage you'd need to actually specify.
 
+- **Chance structures beyond the Healing Fountain** — the system (`CONFIG.CHANCE_STRUCTURES`) is table-driven, so
+  a shrine, a well or a supply cache is one row plus a case in `useChanceStructure()`. Open question from
+  1.6.77: the fountain heals player *lives* (hearts); if healing *towers* was meant, that is a second effect
+  in `useChanceStructure()`.
+
 **Clearly scoped, queued next — none of these need a real investigation before starting, they just
 weren't reached this round:**
-- **Literal global 1:1 dirt-to-grass tile count** — still open and distinct from the two-tile green
-  border now around the route (see CHANGELOG 1.6.62). The current incremental 2-3 path-tile growth
-  makes a global equal count a separate map-shape/pacing decision.
+- **Literal global 1:1 dirt-to-grass tile count** — still open and distinct from the one-tile green
+  border that now wraps the whole route (CHANGELOG 1.6.62 tried two tiles, 1.6.76 settled on one on every
+  side). The current incremental 2-3 path-tile growth makes a global equal count a separate
+  map-shape/pacing decision.
 - **Corner padding at the finish-line escape spot** — pad the specific corner where an enemy has
   been seen cutting into the finish line with an extra grass/buffer tile.
 
