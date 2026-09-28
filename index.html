@@ -307,6 +307,13 @@
   #welcome-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #welcome-modal.hidden{display:none;}
+  #item-guide-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:26;display:flex;align-items:center;justify-content:center;padding:16px;}
+  #item-guide-modal.hidden{display:none;}
+  #item-guide-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
+    max-width:460px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
+  #item-guide-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
+  #item-guide-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
+    border:none;border-radius:8px;padding:10px 22px;font-weight:bold;font-size:clamp(13px,2.2vw,16px);cursor:pointer;min-height:40px;}
   #welcome-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:460px;width:100%;max-height:85vh;overflow-y:auto;padding:16px;color:var(--paper);
     text-align:left;font-size:clamp(11px,1.8vw,13px);line-height:1.55;}
@@ -979,6 +986,18 @@
       </div>
     </div>
 
+    <div id="item-guide-modal" class="hidden">
+      <div id="item-guide-modal-inner">
+        <h2>🎁 Item Guide</h2>
+        <p>Defeated enemies sometimes leave an item on the road. Items shine with a rainbow glow, and the rarer the item, the brighter the shine.</p>
+        <p><b>Equip an item</b> by dragging it onto any stickman. Each item adds to Strength, Dexterity, Intelligence or Armor.</p>
+        <p>Every stickman carries up to <b>six items</b>. A stickman with all six slots filled is promoted to <b>Hero</b>.</p>
+        <p>Select a stickman and open its nameplate to see the items it carries. Drag an item out to hand it to another stickman.</p>
+        <p>Some enemies leave a signature item of their own, and bosses always leave something special.</p>
+        <button id="item-guide-modal-close">Got it!</button>
+      </div>
+    </div>
+
     <div id="welcome-modal" class="hidden">
       <div id="welcome-modal-inner">
         <h2>👋 Welcome, Commander!</h2>
@@ -1148,7 +1167,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.80'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.81'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1642,6 +1661,101 @@ function barricadeRepairCost(t){
   };
 }
 const UNIVERSAL_ITEMS = [ LUCKY_BRANCH, IRON_CHARM, SWIFT_FEATHER, BARRICADE_ITEM ];
+// ITEM-DROPS-01 (1.6.81) — see CHANGELOG.md § [1.6.81]
+Object.assign(LUCKY_BRANCH, { rarity: 'RARE' });
+Object.assign(IRON_CHARM, { rarity: 'UNCOMMON' });
+Object.assign(SWIFT_FEATHER, { rarity: 'UNCOMMON' });
+Object.assign(BARRICADE_ITEM, { rarity: 'COMMON' });
+const ITEM_RARITIES = {
+  COMMON:   { label: 'Common',   weight: 60, glowRadius: 20, hueMsPerDegree: 60, statBudget: [1, 3] },
+  UNCOMMON: { label: 'Uncommon', weight: 28, glowRadius: 22, hueMsPerDegree: 45, statBudget: [3, 5] },
+  RARE:     { label: 'Rare',     weight: 10, glowRadius: 26, hueMsPerDegree: 30, statBudget: [5, 8] },
+  EPIC:     { label: 'Epic',     weight: 2,  glowRadius: 30, hueMsPerDegree: 18, statBudget: [8, 14] }
+};
+const DROP_ITEM_ROWS = [
+  ['RUSTY_NAIL', 'Rusty Nail', '🔩', 'COMMON', { str: 2 }],
+  ['WORN_BOOTS', 'Worn Boots', '🥾', 'COMMON', { dex: 2 }],
+  ['WOOL_SCARF', 'Wool Scarf', '🧣', 'COMMON', { armor: 2 }],
+  ['GLASS_MARBLE', 'Glass Marble', '🔮', 'COMMON', { int: 2 }],
+  ['LEATHER_GLOVE', 'Leather Glove', '🧤', 'COMMON', { str: 1, armor: 1 }],
+  ['BRASS_COMPASS', 'Brass Compass', '🧭', 'COMMON', { dex: 1, int: 1 }],
+  ['PADDED_VEST', 'Padded Vest', '🦺', 'COMMON', { armor: 3 }],
+  ['LUCKY_COIN', 'Lucky Coin', '🪙', 'COMMON', { str: 1, dex: 1, int: 1 }],
+  ['WOODEN_WHISTLE', 'Wooden Whistle', '🎺', 'COMMON', { dex: 2, armor: 1 }],
+  ['CANDLE_STUB', 'Candle Stub', '🕯️', 'COMMON', { int: 2, armor: 1 }],
+  ['HUNTER_BADGE', 'Hunter Badge', '🎖️', 'UNCOMMON', { str: 2, dex: 1 }],
+  ['SCHOLAR_LENS', 'Scholar Lens', '🔍', 'UNCOMMON', { int: 2, dex: 1 }],
+  ['IRON_HELM', 'Iron Helm', '⛑️', 'UNCOMMON', { armor: 4 }],
+  ['SWIFT_BOOTS', 'Swift Boots', '👟', 'UNCOMMON', { dex: 3 }],
+  ['WAR_DRUM', 'War Drum', '🥁', 'UNCOMMON', { str: 2, int: 1, armor: 1 }],
+  ['MOON_PENDANT', 'Moon Pendant', '📿', 'UNCOMMON', { int: 3, armor: 1 }],
+  ['STORM_UMBRELLA', 'Storm Umbrella', '☔', 'UNCOMMON', { armor: 2, dex: 2 }],
+  ['SILVER_BELL', 'Silver Bell', '🔔', 'UNCOMMON', { str: 1, dex: 1, int: 2 }],
+  ['DRAGON_SCALE', 'Dragon Scale', '🐉', 'RARE', { str: 3, armor: 3 }],
+  ['STAR_COMPASS', 'Star Compass', '⭐', 'RARE', { dex: 3, int: 3 }],
+  ['ANCIENT_TOME', 'Ancient Tome', '📜', 'RARE', { int: 5, armor: 1 }],
+  ['GUARDIAN_SHIELD', 'Guardian Shield', '🛡️', 'RARE', { armor: 6, str: 1 }],
+  ['LIGHTNING_BOLT', 'Lightning Bolt', '⚡', 'RARE', { dex: 4, str: 2 }],
+  ['CHAMPION_MEDAL', 'Champion Medal', '🏅', 'RARE', { str: 2, dex: 2, int: 2 }],
+  ['PHOENIX_EMBER', 'Phoenix Ember', '♨️', 'EPIC', { str: 4, int: 4 }],
+  ['TITAN_GAUNTLET', 'Titan Gauntlet', '🥊', 'EPIC', { str: 6, armor: 4 }],
+  ['AURORA_PRISM', 'Aurora Prism', '🌈', 'EPIC', { str: 3, dex: 3, int: 3, armor: 3 }],
+  ['GRUNT_HEADBAND', 'Grunt Headband', '🎀', 'COMMON', { str: 2, armor: 1 }],
+  ['ANT_JAW', 'Ant Jaw', '🦷', 'COMMON', { dex: 2 }],
+  ['GRANITE_HEART', 'Granite Heart', '🪨', 'RARE', { armor: 5, str: 1 }],
+  ['SHADOW_SASH', 'Shadow Sash', '🧵', 'UNCOMMON', { dex: 4 }],
+  ['FIEND_HORN', 'Fiend Horn', '📯', 'RARE', { str: 4, int: 2, armor: 1 }],
+  ['HOLIDAY_STOCKING', 'Holiday Stocking', '🧦', 'EPIC', { str: 2, dex: 2, int: 2, armor: 3 }],
+  ['FORTUNE_SLIP', 'Fortune Slip', '🥠', 'COMMON', { int: 2, dex: 1 }],
+  ['KNIGHT_PAWN', 'Knight Pawn', '♟️', 'UNCOMMON', { str: 1, armor: 3 }],
+  ['BRIDGE_TOLL', 'Bridge Toll', '💰', 'RARE', { str: 3, armor: 2, dex: 1 }],
+  ['EMBER_CORE', 'Ember Core', '🔥', 'UNCOMMON', { str: 3, int: 1 }],
+  ['FROST_SHARD', 'Frost Shard', '❄️', 'UNCOMMON', { int: 3, armor: 1 }],
+  ['SPORE_FLASK', 'Spore Flask', '🧪', 'UNCOMMON', { int: 3, dex: 1 }],
+  ['MENDERS_PIN', 'Mender\'s Pin', '📌', 'UNCOMMON', { armor: 3, int: 1 }],
+  ['FIELD_HELMET', 'Field Helmet', '🪖', 'UNCOMMON', { armor: 4, str: 1 }],
+  ['GRAVE_CHARM', 'Grave Charm', '⚰️', 'UNCOMMON', { armor: 2, str: 2 }],
+  ['SPECTRAL_VEIL', 'Spectral Veil', '🕸️', 'UNCOMMON', { dex: 3, int: 1 }],
+  ['BONE_WHISTLE', 'Bone Whistle', '🦴', 'COMMON', { dex: 2, int: 1 }],
+  ['WOLF_FANG', 'Wolf Fang', '🐾', 'UNCOMMON', { str: 2, dex: 2 }],
+  ['MIDNIGHT_CHARM', 'Midnight Charm', '🌙', 'RARE', { int: 4, str: 1 }],
+  ['GEODE', 'Geode', '💎', 'RARE', { armor: 4, int: 2 }],
+  ['BUTTERFLY_WING', 'Butterfly Wing', '🦋', 'UNCOMMON', { dex: 4 }]
+];
+const DROP_ITEMS = DROP_ITEM_ROWS.map(([id, name, icon, rarity, stats]) => Object.freeze({ id, name, icon, rarity, str: stats.str || 0, dex: stats.dex || 0, int: stats.int || 0, armor: stats.armor || 0, cost: 0, isDropOnly: true }));
+const ITEM_BY_ID = new Map([...UNIVERSAL_ITEMS, ...DROP_ITEMS].map(item => [item.id, item]));
+const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK: 'GRANITE_HEART', RUNNER: 'SHADOW_SASH', BOSS: 'FIEND_HORN', SANTA: 'HOLIDAY_STOCKING', COOKIE: 'FORTUNE_SLIP', CHESS: 'KNIGHT_PAWN', TROLL: 'BRIDGE_TOLL', FIRE: 'EMBER_CORE', ICE: 'FROST_SHARD', SPLITTER: 'SPORE_FLASK', HEALER: 'MENDERS_PIN', SHIELDED: 'FIELD_HELMET', ZOMBIE: 'GRAVE_CHARM', WRAITH: 'SPECTRAL_VEIL', SKELETON: 'BONE_WHISTLE', WOLF: 'WOLF_FANG', REAPER: 'MIDNIGHT_CHARM', BOULDER: 'GEODE', MONARCH: 'BUTTERFLY_WING' };
+const SIGNATURE_DROP_CHANCE = 0.22;
+const ITEM_DROP_CHANCE_BY_TIER = { TINY: 0.03, SMALL: 0.05, STANDARD: 0.08, LARGE: 0.18, BOSS: 1 };
+const BOSS_RARITY_WEIGHTS = { COMMON: 0, UNCOMMON: 35, RARE: 50, EPIC: 15 };
+const ITEM_GUIDE_SEEN_KEY = 'stickTD_itemGuideSeen';
+function itemStatSummary(itemDef){
+  const parts = [];
+  if(itemDef.str) parts.push('+' + itemDef.str + ' STR');
+  if(itemDef.dex) parts.push('+' + itemDef.dex + ' DEX');
+  if(itemDef.int) parts.push('+' + itemDef.int + ' INT');
+  if(itemDef.armor) parts.push('+' + itemDef.armor + ' Armor');
+  return parts.join('  ');
+}
+function rollDropRarity(isBossDrop){
+  const weights = isBossDrop ? BOSS_RARITY_WEIGHTS : null;
+  let totalWeight = 0;
+  for(const key of Object.keys(ITEM_RARITIES)) totalWeight += weights ? weights[key] : ITEM_RARITIES[key].weight;
+  let roll = Math.random() * totalWeight;
+  for(const key of Object.keys(ITEM_RARITIES)){
+    roll -= weights ? weights[key] : ITEM_RARITIES[key].weight;
+    if(roll < 0) return key;
+  }
+  return 'COMMON';
+}
+function pickGenericDropItem(rarity){
+  const candidates = DROP_ITEMS.filter(item => item.rarity === rarity);
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+function enemyDropTier(enemy){
+  if(enemy.type === 'BOSS' || enemy.type === 'SANTA') return 'BOSS';
+  return enemy.sizeTier || (enemy.isBig ? 'LARGE' : enemy.isMini ? 'TINY' : 'STANDARD');
+}
 // CA057 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA057
 const WAVE_DROP_ITEMS = [ LUCKY_BRANCH, IRON_CHARM, SWIFT_FEATHER ];
 const WAVE_DROP_CHANCE = 0.12;
@@ -2284,6 +2398,26 @@ function validateDesignContract(){
   for(const requiredEvent of ['game_started', 'wave_started', 'wave_completed', 'game_over', 'tower_downed', 'lag_detected', 'map_expanded', 'tower_built']){
     if(!TELEMETRY_EVENTS[requiredEvent]) problems.push('telemetry event "' + requiredEvent + '" must stay in the catalog (TELEMETRY-01)');
   }
+  const itemIds = new Set();
+  for(const item of ITEM_BY_ID.values()){
+    if(itemIds.has(item.id)) problems.push('duplicate item id ' + item.id + ' (ITEM-DROPS-01)');
+    itemIds.add(item.id);
+  }
+  if(DROP_ITEMS.length < 40) problems.push('the item catalog must offer at least 40 drop items, found ' + DROP_ITEMS.length + ' (ITEM-DROPS-01)');
+  for(const item of DROP_ITEMS){
+    const rarity = ITEM_RARITIES[item.rarity];
+    if(!rarity){ problems.push('item ' + item.id + ' has an unknown rarity (ITEM-DROPS-01)'); continue; }
+    const statTotal = item.str + item.dex + item.int + item.armor;
+    if(statTotal < rarity.statBudget[0] || statTotal > rarity.statBudget[1]) problems.push('item ' + item.id + ' has ' + statTotal + ' stat points, outside the ' + rarity.label + ' range ' + rarity.statBudget[0] + '-' + rarity.statBudget[1] + ' (ITEM-DROPS-01)');
+    if(item.cost !== 0) problems.push('drop-only item ' + item.id + ' must not be for sale (ITEM-DROPS-01)');
+  }
+  for(const rarityKey of Object.keys(ITEM_RARITIES)) if(!DROP_ITEMS.some(item => item.rarity === rarityKey)) problems.push('no drop items of rarity ' + rarityKey + ' (ITEM-DROPS-01)');
+  for(const [enemyType, itemId] of Object.entries(ENEMY_SIGNATURE_DROPS)){
+    if(!CONFIG.ENEMIES[enemyType]) problems.push('signature drop for unknown enemy ' + enemyType + ' (ITEM-DROPS-01)');
+    if(!ITEM_BY_ID.has(itemId)) problems.push('signature drop ' + itemId + ' for ' + enemyType + ' is not in the catalog (ITEM-DROPS-01)');
+  }
+  if(Object.keys(ENEMY_SIGNATURE_DROPS).length < 20) problems.push('at least 20 enemy types must have a signature drop (ITEM-DROPS-01)');
+  if(ITEM_DROP_CHANCE_BY_TIER.BOSS !== 1 || ITEM_DROP_CHANCE_BY_TIER.STANDARD > 0.15 || SIGNATURE_DROP_CHANCE > 0.3) problems.push('bosses always drop an item; regular enemies stay at or below 15% general and 30% signature (ITEM-DROPS-01)');
   if(isLooseWalkableAt(-500, -500)) problems.push('loose enemies must not be allowed outside the route and its grass border (LOOSE-CONFINE-01)');
   for(const [structureType, structure] of Object.entries(CONFIG.CHANCE_STRUCTURES)){
     if(!structure.emoji || !structure.name || !(structure.useMs > 0)) problems.push(structureType + ' needs an emoji, a name and a use time (CHANCE-STRUCTURES-01)');
@@ -3691,6 +3825,9 @@ const TELEMETRY_EVENTS = {
   tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
   item_purchased: ['item', 'currency', 'cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
+  item_dropped: ['item', 'rarity', 'source'],
+  item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
+  item_guide_shown: [],
   chance_structure_spawned: ['structure', 'lives'],
   chance_structure_used: ['structure', 'healed', 'pool_left'],
   scenery_cleared: ['scenery_type'],
@@ -4996,7 +5133,7 @@ let gameState = 'START';    // START | PLAYING | GAME_OVER | VICTORY
 let selectedBuildType = null;
 // CA224 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA224
 let groundItems = []; // { id, x, y, itemDef, spawnTime } — dropped items sitting on the map, waiting to be dragged onto a tower
-const MAX_GROUND_ITEMS = 12; // a real, previously-missing cap — nothing evicted this before; over a genuinely long session with uncollected drops this grew without bound
+const MAX_GROUND_ITEMS = 24; // a real, previously-missing cap — nothing evicted this before; over a genuinely long session with uncollected drops this grew without bound
 const GROUND_ITEM_LIFESPAN = 300000; // 5 minutes uncollected and it despawns, same "accumulates over session length" fix as decal/bone lifespans got earlier this session
 let lastGroundItemSweep = 0;
 function spawnGroundItem(x, y, itemDef){
@@ -5011,7 +5148,50 @@ function spawnGroundItem(x, y, itemDef){
   }
   const item = { id: idCounter++, x, y, itemDef, spawnTime: gameTime };
   groundItems.push(item);
+  maybeShowItemGuide();
   return item;
+}
+// Rolls the item drops for a defeated enemy: its signature item (see ENEMY_SIGNATURE_DROPS) and a size-based
+// chance at a general item. Bosses always drop one item of at least Uncommon rarity, plus their signature item.
+function dropItemsFromEnemy(enemy){
+  if(enemy.isGuardian || enemy.isHutBuilding) return;
+  const tier = enemyDropTier(enemy);
+  const signatureItem = ENEMY_SIGNATURE_DROPS[enemy.type] ? ITEM_BY_ID.get(ENEMY_SIGNATURE_DROPS[enemy.type]) : null;
+  const dropped = [];
+  if(signatureItem && (tier === 'BOSS' || Math.random() < SIGNATURE_DROP_CHANCE)) dropped.push(signatureItem);
+  if(tier === 'BOSS' || Math.random() < ITEM_DROP_CHANCE_BY_TIER[tier]){
+    const generic = pickGenericDropItem(rollDropRarity(tier === 'BOSS'));
+    if(generic && !dropped.includes(generic)) dropped.push(generic);
+  }
+  for(let i=0; i<dropped.length; i++){
+    const spread = dropped.length > 1 ? (i - (dropped.length-1)/2) * 22 : 0;
+    spawnGroundItem(enemy.x + spread, enemy.y, dropped[i]);
+    const rarity = ITEM_RARITIES[dropped[i].rarity];
+    trackGameEvent('item_dropped', { item: dropped[i].id, rarity: dropped[i].rarity, source: enemy.type });
+    if(dropped[i].rarity === 'RARE' || dropped[i].rarity === 'EPIC') showToast(dropped[i].icon + ' ' + rarity.label + ' item: ' + dropped[i].name);
+  }
+}
+// The first item a player ever sees opens a one-time guide that explains items and the inventory.
+let itemGuideShownThisPage = false, itemGuidePausedGame = false;
+function maybeShowItemGuide(){
+  if(itemGuideShownThisPage) return;
+  let alreadySeen = false;
+  try{ alreadySeen = !!localStorage.getItem(ITEM_GUIDE_SEEN_KEY); }catch(err){ /* storage unavailable: show once per page load */ }
+  if(alreadySeen) return;
+  itemGuideShownThisPage = true;
+  try{ localStorage.setItem(ITEM_GUIDE_SEEN_KEY, '1'); }catch(err){ /* storage unavailable: nothing to remember */ }
+  if(gameState === 'PLAYING'){
+    gameState = 'PAUSED';
+    pauseStartedAtReal = Date.now();
+    itemGuidePausedGame = true;
+  }
+  document.getElementById('item-guide-modal').classList.remove('hidden');
+  trackGameEvent('item_guide_shown', {});
+}
+function closeItemGuide(){
+  document.getElementById('item-guide-modal').classList.add('hidden');
+  if(itemGuidePausedGame){ itemGuidePausedGame = false; resumeGame(); }
+  playSound('ui_close');
 }
 let draggingGroundItem = null; // the ground item currently being dragged, or null
 let dragItemPos = { x:0, y:0 }; // current world-space position of the item while dragging, for rendering it under the cursor
@@ -5692,7 +5872,7 @@ function restoreGameState(state){
     if(td.spec) t.chooseSpec(td.spec); // calls the real spec-choice logic (damage/cooldown/swing-arc multipliers), not a bare label assignment — chooseSpec() itself guards against re-applying if t.spec is somehow already set
     if(td.totalSpent !== undefined) t.totalSpent = td.totalSpent; // else: an old save predating this field — t.create() above already set totalSpent to this tower's base cost, a safe (if not perfectly accurate for a heavily-upgraded legacy tower) fallback rather than a crash
     if(td.targetMode) t.targetMode = td.targetMode;
-    t.equippedItems = (td.itemIds||[]).map(id => UNIVERSAL_ITEMS.find(i => i.id===id)).filter(Boolean);
+    t.equippedItems = (td.itemIds||[]).map(id => ITEM_BY_ID.get(id)).filter(Boolean);
     t.isLegendary = !!td.isLegendary; t.legendaryName = td.legendaryName || '';
     // CA255 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA255
     t.str = Math.min(t.str, STAT_EFFECT_CAP); t.dex = Math.min(t.dex, STAT_EFFECT_CAP); t.int = Math.min(t.int, STAT_EFFECT_CAP);
@@ -6897,6 +7077,7 @@ class Enemy{
       gold += bountyGold;
       if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     }
+    dropItemsFromEnemy(this);
     // PERF-DEATH-01 (1.6.14): low graphics and crowded battles use the authored lighter death
     // effect path. The old hard-coded false forced full particle/decal bursts even at low quality.
     const low = graphicsQuality === 'low' || underHeavyVisualLoad;
@@ -11980,17 +12161,19 @@ function render(ctx){
   const groundItemBounds = fxViewBounds();
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
-    const bob = Math.sin(gameTime/300 + gi.id)*4;
+    const popAge = gameTime - gi.spawnTime;
+    const popLift = popAge < 450 ? -Math.sin(popAge/450*Math.PI)*16 : 0;
+    const bob = Math.sin(gameTime/300 + gi.id)*4 + popLift;
     if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
     ctx.save();
     // CA668 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA668
-    const isRareDrop = gi.itemDef === LUCKY_BRANCH;
-    const hueSpeed = isRareDrop ? 30 : 60; // ms per degree — lower = faster cycle
+    const itemRarity = ITEM_RARITIES[gi.itemDef.rarity] || ITEM_RARITIES.COMMON;
+    const hueSpeed = itemRarity.hueMsPerDegree; // ms per degree — lower = faster cycle
     const hue = (gameTime / hueSpeed + gi.id * 47) % 360;
     const ringColorHex = `hsl(${hue.toFixed(0)}, 100%, 58%)`;
     // CA669 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA669
     const glowPulse = 0.55 + Math.sin(gameTime/280 + gi.id)*0.25;
-    const glowRadius = 20;
+    const glowRadius = itemRarity.glowRadius;
     const grad = ctx.createRadialGradient(gi.x, gi.y + bob, 0, gi.x, gi.y + bob, glowRadius);
     // CA670 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA670
     const glowHsla = (a) => `hsla(${hue.toFixed(0)}, 100%, 58%, ${a})`;
@@ -13519,9 +13702,14 @@ function onPointerEnd(e){
       const target = towerPool.find(t => t.active && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
       if(target && target.receiveItem(draggingGroundItem.itemDef)){
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
-        spawnFloatingText(target.x, target.y - 40, (draggingGroundItem.itemDef.isBarricade ? '🚧 Stored!' : '🌿 Equipped!'), '#8bc34a');
+        const equippedDef = draggingGroundItem.itemDef;
+        spawnFloatingText(target.x, target.y - 40, equippedDef.isBarricade ? '🚧 Stored!' : equippedDef.icon + ' ' + equippedDef.name, '#8bc34a');
+        if(!equippedDef.isBarricade) spawnFloatingText(target.x, target.y - 54, itemStatSummary(equippedDef), '#ffe082');
+        trackGameEvent('item_equipped', { item: equippedDef.id, rarity: equippedDef.rarity, tower_type: target.type, items_carried: target.equippedItems.length });
         playSound('click');
         if(selectedTower === target) updateInspectPanel();
+      } else if(target && target.equippedItems.length >= MAX_ITEM_SLOTS){
+        spawnFloatingText(target.x, target.y - 40, 'Item slots full (' + MAX_ITEM_SLOTS + '/' + MAX_ITEM_SLOTS + ')', '#ff8a80');
       } else if(draggingGroundItem.itemDef.isBarricade){
         // CA747 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA747
         const gx = Math.floor(dragItemPos.x / TILE_SIZE), gy = Math.floor(dragItemPos.y / TILE_SIZE);
@@ -13943,7 +14131,7 @@ function buildShopGrid(){
       const row = document.createElement('div');
       row.className = 'shop-equipped-row';
       row.style.gridColumn = '1/-1';
-      row.innerHTML = '<span>' + it.icon + ' ' + it.name + '</span>';
+      row.innerHTML = '<span>' + it.icon + ' ' + it.name + (itemStatSummary(it) ? ' <small>' + itemStatSummary(it) + '</small>' : '') + '</span>';
       const removeBtn = document.createElement('button');
       removeBtn.textContent = 'Remove';
       removeBtn.addEventListener('pointerdown', (e) => {
@@ -14086,6 +14274,10 @@ document.getElementById('statsInfoBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   document.getElementById('help-modal').classList.remove('hidden');
   playSound('ui_open');
+});
+document.getElementById('item-guide-modal-close').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  closeItemGuide();
 });
 document.getElementById('welcome-modal-close').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -15119,7 +15311,7 @@ function updateInspectPanel(){
     const item = t.equippedItems[i];
     if(item){
       slot.textContent = item.icon;
-      slot.title = item.name;
+      slot.title = item.name + (itemStatSummary(item) ? ' — ' + itemStatSummary(item) : '');
       slot.classList.add('filled');
     } else {
       slot.textContent = '';

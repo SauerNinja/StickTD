@@ -417,6 +417,10 @@ Loose enemies (`enemy.escaped`: crossed the finish and still alive) each cost 1 
 
 Chance structures (`CONFIG.CHANCE_STRUCTURES`, `maybeSpawnChanceStructures()`, `useChanceStructure()`) are rare scenery items with `isChanceStructure` that appear on the grass border when a wave is cleared. The Healing Fountain (⛲) holds a pool of 10 lives; a tap restores as many missing lives as it can, never above `maxLivesNow()`; it keeps its remaining pool and vanishes when the pool is spent; used at full health it heals nothing and stays. Spawn chance rises when the player is hurt and with a pity timer, capped at `maxChance` (0.6), never before `minWavesCompleted`, never above `maxOnBoard`. A new structure is one table row plus a case in `useChanceStructure()`. Structure rings are steady, never pulsing.
 
+## Items and drops
+
+Items are equipment that adds Strength, Dexterity, Intelligence or Armor through `recomputeStats()`. The shop sells only `UNIVERSAL_ITEMS`; every other item is drop-only (`DROP_ITEMS`, `cost: 0`) and is looked up by id in `ITEM_BY_ID`, including when a save is loaded. A new item is one row in `DROP_ITEM_ROWS`, with its stat total inside its rarity's `statBudget`; a new signature drop is one entry in `ENEMY_SIGNATURE_DROPS`. Drops are rolled once per enemy death by `dropItemsFromEnemy()` (general chance by size tier, signature chance `SIGNATURE_DROP_CHANCE`, bosses always). Ground items are dragged onto a stickman; the ring glow grows with rarity. The first item ever seen opens the one-time Item Guide (`maybeShowItemGuide()`, key `stickTD_itemGuideSeen`), which pauses the game while open. Player-facing text about items follows the game-manual voice: general, professional, no change commentary.
+
 ## Reset options and storage keys
 
 Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgressAndRestart()`) clears every StickTD storage key by prefix: `stickTD_` and `sticktd:`. Every new `localStorage` key starts with one of those prefixes. Both reset paths end in `location.reload()` and write no storage between the clear and the reload, because unlocks are re-derived from waves completed by `checkTowerUnlocks()`.

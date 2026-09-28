@@ -1,5 +1,37 @@
 # Backlog
 
+## From the food-drop concept review (external design notes, 2026-09-28) — assessed, not built
+
+Reviewed against the game as it stands (100 lives, Shop lives with rising cost, the Healing Fountain, item drops with six-slot inventories). The notes assume a "base health" pool with small heals; the game uses lives, and Shop lives are meant as a costly safety valve, so anything that adds maximum lives is treated with care.
+
+- **Fruit, vegetables and meat as food drops.** Overlaps the new item system. Worth keeping: a *Food* drop class that heals lives (small) or grants tower experience. Fruit as tower XP fits the leveling design; vegetables as small permanent stat points fit as rare drops. Meat as a large heal is reasonable; permanent maximum-life gains from meat are **not** recommended, because they weaken the Shop's extra-life pricing and loose-enemy pressure. If ever added, cap them per wave and convert the surplus to gold.
+- **Medical Shop items.** A Bandage (small heal) and First Aid Kit (restore part of missing lives) overlap the Fountain and Shop lives. The **Defibrillator** (one carried, revives once at 25% lives) is the strongest idea: a clear, one-time safety net with a memorable moment. Needs a decision on price and on how it interacts with the squad-overrun defeat.
+- **Boss treats (cookie, cupcake, cake, donut, chocolate, lollipop).** Fits the guaranteed boss drop already in place. A multi-effect "combo" pickup could sit beside the boss item as a consumable. Temporary tower buffs must refresh rather than stack.
+- **Donut Orbital Barrier.** Miniature donuts orbiting the finish as leak shields is a charming visual. It must decide how it interacts with loose enemies, which drain lives on a timer, and it expires at wave end by design.
+- **Consumable treats with area effects** (frozen enemies, syrup slow zone on the road). Feasible with the existing status system and decals; each needs a performance check on busy waves.
+- **Open questions from the notes.** Whether vegetable boosts apply globally or as assignable points (existing global passives suggest global); whether temporary buffs last a fixed time or a wave (a fixed time is simpler to balance); whether unused donut shields carry over (no, by the notes' own rule).
+
+## From the item-drop design pass (2026-09-28) — ideas beyond the first release
+
+- **Resource drops.** Signature drops that are resources instead of gear: a stone bundle from the Tank (which already pays stone as its bounty), wood from tree-themed enemies, coins from the Troll. Needs a hand-in target because resources are not equipped.
+- **Set bonuses.** Matching items (for example two undead charms) grant a small extra bonus, giving the collection a goal.
+- **Enemy-specific effects.** A few signature items with a small special effect, such as a Frost Shard that slows a little, or an Ember Core that adds burn, once the stat-only items have been played.
+- **Item swap and salvage.** Trade three Common items for one Uncommon of the player's choice, or salvage an item for gold.
+- **Codex.** A page listing every item found, with the enemy that drops it and a completion count.
+- **Rarity-tinted glow.** Tint the ground glow by rarity in addition to its size and speed, so a rare item reads at a glance.
+
+## From the architecture research report (external notes on a 1.0.x snapshot, 2026-09-28) — verify before acting
+
+The report reviews an old snapshot, so each point needs a check against the current file first.
+
+- **Explicit entity states.** Replace the growing set of boolean flags on enemies (breakaway, queued, escaped, guardian and others) with a small state machine. Reduces the chance of two systems disagreeing about one enemy.
+- **Presentation queue.** Record combat events (hit, kill) in a fixed ring buffer and let the renderer play sounds, particles and text from it, keeping the simulation free of presentation work.
+- **Descriptive names in hot paths.** Rename cryptic fields such as `origQX` and `lowerP` to full domain words; low risk and helps every future edit.
+- **Audio timing.** Delay or suppress celebration sounds when a tower is about to be downed, so a level-up fanfare does not play over a knockout.
+- **Lookup tables in the sound engine.** Replace the large branching `SoundEngine.play` with a table of sound recipes.
+- **Wave and map editor.** A local tool that exports wave plans and route settings as data, so tuning does not require editing the game file.
+- **Evolution clean-up.** The report echoes the existing item about removing the evolve-in-place system in favor of permanent unlocks.
+
 ## From the v1.6.54 wave 9 performance captures — updated for v1.6.66
 - **Fast-forward cap loss — patched, verify after upload.** At about 6.9 callback FPS and 5x, all 413 frames in the sampled minute reached the old eight-tick ceiling and discarded about 151 seconds of simulation time. v1.6.66 scales the cap with speed (45 ticks at 5x, 90 at 10x), allows up to 150ms per fast-forward callback, and measures actual speed against raw callback time. Repeat the same wave 9 test; inspect requested/actual speed, cap hits, dropped simulation time, and wall-time clamps.
 - **Low browser callback rate — still needs a v1.6.66 playtest.** The v1.6.54 capture reports roughly 7 callbacks per second while rolling JavaScript update/render times are mostly around 1–2ms and render phase averages stay low. This does not identify a repeatable code-side rendering hot spot. If callback FPS remains low with v1.6.66 while synchronous phases stay fast, capture a browser performance trace and inspect compositor/GPU scheduling before changing draw quality or removing visual effects.

@@ -146,8 +146,8 @@ Each tower has an individual look shaped by its class, silhouette, and stat grow
 ## Enemies
 
 Grunt, Swarm, Tank, and Runner make up the early roster, alongside a Boss on wave 15. Fire and
-Ice enemies can break off the path entirely to 1v1 a tower directly, inflicting burn or a slow
-debuff on it. Splitter breaks into two smaller Splitmini on death; Boulder does the same but
+Ice enemies can break away from the path to challenge a tower one-on-one, inflicting burn or a slow
+debuff. Splitter breaks into two smaller Splitmini on death; Boulder does the same but
 tankier. Healer keeps nearby enemies topped up; Shielded absorbs hits until its shield breaks.
 Wolf hunts in a coordinated pack. The Troll has a large bounty, roughly double HP, and walks backward toward the entrance. Defeat it before it escapes.
 
@@ -202,16 +202,13 @@ Enemies follow the road in single file, forming natural queues at Barricades. Sw
 
 ## Items & Heroes
 
-Every tower has six transferable item slots. Shared items support any class: the **Lucky Branch** 🌿 (+1
-STR/+1 DEX/+1 INT, gold + wood), and the **Barricade** 🚧 item (see Resources below) — both
-buyable from the Shop for whichever tower you have selected. Items can be dragged directly from
-one tower's inventory onto another to transfer them, or dropped on the ground first. A ground
-item bobs gently with a soft pulsing ring around it at every graphics setting, and while you're
-actively dragging one, a 👇🏻 indicator appears above a valid tower drop target. Global passive upgrades apply to every tower you own, current and future. A tower with all
-6 item slots filled awakens into a **Hero**, with a permanent stat bonus and a visible crown, and
-its own distinct sound. A tower whose STR+DEX+INT reaches 100 total becomes **Legendary** — a
-separate, rarer milestone with its own small permanent stat bonus, a player-chosen name, and the
-biggest fanfare in the game.
+Defeated enemies sometimes leave an item on the road. Items shine with a rainbow glow that grows brighter with rarity, from Common through Uncommon and Rare to Epic. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found.
+
+- **Signature drops.** Many enemies carry an item of their own. Grunts may drop a Headband, Tanks a Granite Heart, Trolls a Bridge Toll, Zombies a Grave Charm and Wraiths a Spectral Veil, and Bosses always leave a special item along with a strong general one. Larger enemies are more likely to drop items than smaller ones.
+- **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. Uncollected items wait on the battlefield for several minutes.
+- **Item Guide.** The first item you find opens a short guide that explains items and the inventory.
+- **Shop items.** The **Lucky Branch** 🌿 (+1 STR/+1 DEX/+1 INT, gold and wood) and the **Barricade** 🚧 (see Resources below) can be bought for the selected stickman. Global passive upgrades apply to every stickman you own, present and future.
+- **Heroes.** A stickman with all six slots filled is promoted to **Hero**, with a permanent stat bonus, a visible crown and its own sound. A stickman whose STR, DEX and INT total 100 becomes **Legendary**, a rarer milestone with its own permanent bonus, a name of your choice and the biggest fanfare in the game.
 
 ## Resources
 
@@ -241,7 +238,7 @@ viewer/downloader, plus **Download Debug Log** — one text file with live perfo
 game/settings state, audio engine status, entity pool counts, and browser/device info, for
 attaching to a bug report).
 
-**Reset options** (Settings → Game): **Clear Unlocks** removes every earned tower unlock, and **Clear All Cookies & Data** also removes the cookie choice, settings and tutorial progress. Both restart your run, so the Santa cookie prompt, welcome dialog and first-wave tips return with no towers and nothing unlocked. Each asks for confirmation first; downloaded save files are not touched.
+**Reset options** (Settings → Game): **Clear Unlocks** removes every earned tower unlock, and **Clear All Cookies & Data** also removes the cookie choice, settings and tutorial progress. Both restart your run, so the cookie notice, welcome dialog, Item Guide and first-wave tips appear again with no towers and nothing unlocked. Each asks for confirmation first; downloaded save files are not touched.
 
 ## Save / Load
 
@@ -289,65 +286,65 @@ Use the section headers around each destination to navigate when line references
 - `applyPanInertia()` / `requestPausedRender()` — camera glide and paused-render coalescing.
 
 **Major sections**
-- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1149)
-- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2445)
-- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2992)
-- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2004)
-- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8798)
-- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1539)
-- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7517)
-- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1628)
-- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4390)
-- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4806)
-- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5778)
-- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5947)
-- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9979)
-- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10798)
-- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11065)
-- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11701)
-- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13130)
-- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13566)
-- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15383)
-- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15469)
+- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1168)
+- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2573)
+- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3120)
+- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2113)
+- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8973)
+- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1553)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7692)
+- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1642)
+- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4521)
+- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4937)
+- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5952)
+- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6121)
+- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10154)
+- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10973)
+- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11240)
+- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11876)
+- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13307)
+- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13748)
+- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15569)
+- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15655)
 
 **Core gameplay systems**
-- [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1685)
-- [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1958)
-- [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1466)
-- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3107)
-- [`computeFinishLine()` — shared geometry for the finish-line carpet and full-body crossing check; `reachEnd()`/`updateEscaped()` — escaped enemies remain active targets](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3893)
-- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5954)
-- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7216)
-- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8482) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
-- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10003) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
-- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10118) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
-- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7645)
-- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10206)
-- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10854)
-- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10900)
-- [`buildWavePlan()` — seeded wave construction, including the rotating wave archetypes after wave 100](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11225)
-- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2022)
-- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11733)
-- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11949)
-- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13636)
-- [`fitHudTopToOneLine()` — scales the top bar to fit narrow screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13172)
-- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14909)
+- [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1794)
+- [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2067)
+- [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1480)
+- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3235)
+- [`computeFinishLine()` — shared geometry for the finish-line carpet and full-body crossing check; `reachEnd()`/`updateEscaped()` — escaped enemies remain active targets](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4024)
+- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6128)
+- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7391)
+- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8657) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
+- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10178) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
+- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10293) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
+- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7820)
+- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10381)
+- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11029)
+- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11075)
+- [`buildWavePlan()` — seeded wave construction, including the rotating wave archetypes after wave 100](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11400)
+- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2131)
+- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11908)
+- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12124)
+- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13818)
+- [`fitHudTopToOneLine()` — scales the top bar to fit narrow screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13349)
+- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15095)
 
 **Blood & gore system** (see [Blood & gore](#blood--gore) above for the player-facing description)
-- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8957)
-- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8938)
-- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9022)
-- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9036)
-- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9101)
-- [`towerSwingDir()` — per-tower swing handedness for consistent cast-off arcs](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9097)
-- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9698)
-- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9201)
-- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9674)
-- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9183)
-- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9756)
-- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains and worms that emerge from skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9138)
-- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9241)
-- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4759)
+- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9132)
+- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9113)
+- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9197)
+- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9211)
+- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9276)
+- [`towerSwingDir()` — per-tower swing handedness for consistent cast-off arcs](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9272)
+- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9873)
+- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9376)
+- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9849)
+- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9358)
+- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9931)
+- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains and worms that emerge from skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9313)
+- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9416)
+- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4890)
 
 ## Running locally
 
