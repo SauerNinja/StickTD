@@ -399,7 +399,18 @@ Ground details (pebbles on dirt, grass tufts on green) come from `paintPathPebbl
 - **Enemy pace.** Walking speed is `ENEMY_WALK_SPEED_SCALE` (0.25, at most 0.3) times each enemy's base speed. Each wave unit after the first spawns `ENEMY_SPAWN_GAP_MS` (5000, at least 4500) after the previous one, in simulation time.
 - **No canvas filters.** Never assign `ctx.filter` on the game canvas: the browser rasterises every primitive through a filter pass that the game's own frame timers cannot see. A downed tower uses grey skin colors and reduced opacity instead (`DOWNED_TOWER_SKIN_MAIN`, `DOWNED_TOWER_SKIN_SHADE`).
 - **Telemetry.** Analytics events are declared once in `TELEMETRY_EVENTS` and sent only through `trackGameEvent()`, which forwards declared parameters only, adds `game_version`, `wave` and `quality`, and records the last 60 events for the Debug Log. Event and parameter names are snake_case, at most 40 characters, at most 25 parameters per event including the three standard ones, string values at most 100 characters. To report something new, add it to the catalog first. Events are consent-gated by `window.trackEvent()`.
-- **Presentation clocks.** Presentation-only animation (the spawn "!" marker, flag flutter) uses `presentationTime`, not `gameTime`, so game speed does not change its rate.
+- **Presentation clocks.** Presentation-only animation (the spawn "!" marker, flag flutter, the selection-hand
+  pointer, scenery clearing progress) uses `presentationTime`, not `gameTime`, so game speed does not
+  change its rate.
+- **Game-speed scope (`GAME-SPEED-SCOPE-01`, owner-decided).** The 1x/2x/3x/5x/10x control is meant to
+  speed up enemy movement and tower attack rate only, proportionately — nothing else. Anything that is
+  real-world work-in-progress (clearing scenery, a UI timer, a pointer animation) must run on
+  `presentationTime`/real elapsed time, never `gameTime`. This has only been audited and fixed for the
+  cases the owner actually flagged (scenery clearing, the selection-hand pointer) as of 1.6.93 — a full
+  pass over every remaining `gameTime`-driven animation has not been done, because several of them
+  (enemy flicker, tower shake, ground-item bob, livestock bob) belong to entities that already move at
+  game speed, and whether each should track game speed or not needs a case-by-case call, not a blanket
+  find-and-replace. When touching any such animation, check which category it falls in before assuming.
 
 ## Stickman poses
 
@@ -416,6 +427,58 @@ Owner-decided rules are executable: `validateDesignContract()` runs at boot afte
 Loose enemies (`enemy.escaped`: crossed the finish and still alive) each cost 1 life every 6 seconds (`LOOSE_ENEMY_LIFE_DRAIN_MS`, `advanceLooseDrain()`, run in `updateEscaped()` on simulation time), in any wave state. Each stays on the route and its grass border (`isLooseWalkableAt()`, `confineLooseEnemyToRoute()`). The count shows as plain text under the Next Wave button ("🏃 N loose", `#looseNotice`, no background) and hides at zero. Lives changes of every kind show only beside the health counter (`showLivesChange()`, `#livesChangePop`; red minus, green plus) and never over enemies or other map objects. The game-over screen has Play Again as the large primary button, then a smaller Download Debug Log button; its message is two even rows, the sentence and then the call to action.
 
 Chance structures (`CONFIG.CHANCE_STRUCTURES`, `maybeSpawnChanceStructures()`, `useChanceStructure()`) are rare scenery items with `isChanceStructure` that appear on the grass border when a wave is cleared. The Healing Fountain (⛲) holds a pool of 10 lives; a tap restores as many missing lives as it can, never above `maxLivesNow()`; it keeps its remaining pool and vanishes when the pool is spent; used at full health it heals nothing and stays. Spawn chance rises when the player is hurt and with a pity timer, capped at `maxChance` (0.6), never before `minWavesCompleted`, never above `maxOnBoard`. A new structure is one table row plus a case in `useChanceStructure()`. Structure rings are steady, never pulsing.
+
+## Elemental attunement combat effects
+
+Fire burns for 10s (`applyBurn()`); it and every other DoT (bleed, poison) track independent `*Until` timers on the enemy, so they always stack — never make one DoT cancel or override another. Ice fully freezes for 10s (`applyFreeze()`, `frozenUntil`), stopping movement the same way `stunnedUntil` does; keep the 🧊 icon distinct from Electric's ⚡ so the two read differently. Electric arcs via `spawnChainLightning()` (`CHAIN_LIGHTNING_MAX_JUMPS`, `_JUMP_RADIUS`), stunning and partially damaging each jump target, with visuals in `activeLightningArcs`/`drawLightningArcs()`.
+
+## Boss treat tactical effects
+
+Donut, Chocolate and Lollipop (in `TREAT_ITEMS`) each carry a secondary effect beyond the shared heal/XP/gold bundle every treat grants, dispatched in `applyTreatItem()`. Donut's shield (`donutShieldHits`, capped `DONUT_SHIELD_MAX`) is checked first in `loseLife()`, before the Defibrillator, and cleared by `clearDonutShieldAtWaveEnd()` on every wave completion. Chocolate's buff (`chocolateAtkSpeedBuffUntil`) is read where tower cooldown ticks down; stacking extends the timer rather than multiplying. Lollipop zones (`lollipopZones`) are ticked once per frame in `updateTreatTacticalEffects()` and apply the enemy's own `applySlow()` — never build a second slow system when this one already exists. Only the shield persists across a save; the other two are temporary and reset on load.
+
+## Elemental tower tint and attack emoji
+
+`towerElement(tower)` is the single source of truth for a tower's active element (locked attunement or mixed elementState). Real gameplay towers tint skin toward `ELEMENT_SKIN_TINTS[element]` (blended via `tintSkinTowardElement()`, never a flat replace) and show `ELEMENT_ATTACK_EMOJI[element]` at the muzzle while aiming/attacking. The downed-tower grey (`NO-CANVAS-FILTER-01`) is applied after and overrides the tint.
+
+## End-of-road scenery density
+
+Scenery near either end of the route (spawn flags, finish line) is denser and larger than mid-route, tapering over `END_SCENERY_RADIUS_TILES` route tiles (`pathEndProximity()`, `spawnExtraEndScenery()`, both called from `generateScenery()` and `scatterSceneryInRing()`). The random scale roll in `spawnScenery()` is biased toward the top of the range near the ends, and the tree/rock split shifts toward rock. Distance is measured along the route, not straight-line. Purpose: encourage building in the middle, keeping both ends open for the road to keep expanding.
+
+## First-time alerts and Introduction Text
+
+One-time explanatory popups (welcome, Item Guide, first enemy escape, first tower overrun) all go through `maybeShowFirstTimeAlert()` or the same localStorage-gate pattern, and all respect `introTextEnabled` (Settings → Game → "First-time tips and alerts"). Never add a second persistence mechanism for this category — fold new first-time popups into the existing `sticktd:prefs:v1` blob.
+
+## Meat max-HP and livestock
+
+Meat items raise `bonusMaxLivesFromMeat` (folded into `maxLivesNow()`) as well as healing, tiered in `MEAT_MAXHP_BY_ID` and capped per wave at `MEAT_MAXHP_CAP_PER_WAVE` (reset in the wave-started hook); overflow becomes gold via `MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT`. Never remove this cap — it is what keeps meat drops from making the Shop's Extra Life price pointless. Livestock are real pooled Enemy instances (`isLivestock` flag, `CONFIG.ENEMIES` CHICKEN/PIG/COW, `maybeSpawnLivestockOnExpansion()`), not a parallel system — this reuses the full damage/elemental/death pipeline instead of re-implementing it. `Enemy.updateLivestockWander()` confines them to the walkable road/grass area (`isLooseWalkableAt()`) and skips all hostile AI. `buildEnemyHash()` excludes `isLivestock` enemies from normal tower targeting unless they are `markedTargetEnemy`; `die()` branches on `isLivestock` to drop the matching meat instead of gold/XP and clear the mark. Never let livestock block wave completion — the `anyActiveEnemies`/`anyAlive` checks explicitly exclude them.
+
+## Projectile aim
+
+A ranged shot's flight direction (`p.vx`/`p.vy`, `p.angle` in `fireProjectile()`) is computed from the
+actual muzzle spawn point to the target — never reuse the tower-center-to-target `angle` for flight once
+the spawn point (`spawnX`/`spawnY`) is known, since the muzzle sits above center by `shoulderYWorld` and
+reusing the center angle sends the shot flying parallel to, but above, the correct line. `fireAxeThrow()`
+has its own separate calculation and is not affected by this rule.
+
+## Target marking
+
+One global `markedTargetEnemy` (`setMarkedTarget()`, `tryMarkTargetAt()`, drawn as 🎯 via `drawMarkedTargetIcon()`). Every tower's `findTarget()` checks it first and takes it unconditionally while in range and past the minimum-range rule, ahead of normal scoring. This is also the only way an unmarked (passive) livestock enemy becomes attackable, since `buildEnemyHash()` otherwise hides it from targeting entirely.
+
+## Dirt-to-grass ratio
+
+`bonusGrassTiles` (checked in `isInActiveRegion()` alongside the normal border) adds one extra buildable tile every `EXTRA_GRASS_EVERY_N_EXPANSIONS` (4) expansions, via `maybeAddBonusGrassTile()`. This is separate from and additive to the strict 1-tile border (`PATH-BORDER-01`): never fold bonus tiles into the border-completeness check, and never let this cadence go to 0 or negative.
+
+## Map expansion frequency
+
+`EXPANSIONS_PER_CYCLE` (3) caps expansions per idle period, checked in `expandRegion()`/`grantFreeExpansion()` and shown in the build menu. Since 1.6.76 an expansion adds only a few route tiles, not a whole ring, so this cap can stay generous without any single expansion growing the map by a large amount.
+
+## Build cost scaling
+
+`SCALING_COST_TYPES` covers every stickman type except Barricade and the max-one-per-board types; `SCALING_COST_GROWTH` (at least 2.25) multiplies cost per existing copy of that type on the board (`currentBuildCost()`). Never add a max-one-per-board type to the scaling list — `validateGameDefinitions()` rejects the contradiction.
+
+## Food, treats and medical supplies
+
+Food (`FOOD_ITEMS`) and Treats (`TREAT_ITEMS`) are a separate drop pool from equipment: dragging one onto a stickman applies its effect immediately via `applyFoodItem()`/`applyTreatItem()` and removes it, never occupying an item slot. Meat heals lives only — never raise `maxLivesNow()` from food; that is an explicit design boundary protecting the Shop's Extra Life economy. Medical Shop items (`MEDICAL_ITEMS`) are bought via `buyMedicalItem()` and either apply immediately or are held (Defibrillator) until `loseLife()` would end the run.
 
 ## Items and drops
 

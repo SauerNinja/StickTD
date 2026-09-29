@@ -6,8 +6,8 @@ Reviewed against the game as it stands (100 lives, Shop lives with rising cost, 
 
 - **Fruit, vegetables and meat as food drops.** Overlaps the new item system. Worth keeping: a *Food* drop class that heals lives (small) or grants tower experience. Fruit as tower XP fits the leveling design; vegetables as small permanent stat points fit as rare drops. Meat as a large heal is reasonable; permanent maximum-life gains from meat are **not** recommended, because they weaken the Shop's extra-life pricing and loose-enemy pressure. If ever added, cap them per wave and convert the surplus to gold.
 - **Medical Shop items.** A Bandage (small heal) and First Aid Kit (restore part of missing lives) overlap the Fountain and Shop lives. The **Defibrillator** (one carried, revives once at 25% lives) is the strongest idea: a clear, one-time safety net with a memorable moment. Needs a decision on price and on how it interacts with the squad-overrun defeat.
-- **Boss treats (cookie, cupcake, cake, donut, chocolate, lollipop).** Fits the guaranteed boss drop already in place. A multi-effect "combo" pickup could sit beside the boss item as a consumable. Temporary tower buffs must refresh rather than stack.
-- **Donut Orbital Barrier.** Miniature donuts orbiting the finish as leak shields is a charming visual. It must decide how it interacts with loose enemies, which drain lives on a timer, and it expires at wave end by design.
+- **Boss treats (cookie, cupcake, cake, donut, chocolate, lollipop) — done, 1.6.82 (base 5) and 1.6.87 (tactical effects for donut/chocolate/lollipop).**
+- **Donut Orbital Barrier — shield mechanic done, 1.6.87 (flat charge count, not the orbiting-donut visual).** The shield absorbs leaks and expires at wave end as specified; loose-enemy life drain is untouched by it (the shield only intercepts the finish-line leak, not the per-second drain from an already-loose enemy). The literal orbiting-donuts-around-the-base visual is still open if wanted.
 - **Consumable treats with area effects** (frozen enemies, syrup slow zone on the road). Feasible with the existing status system and decals; each needs a performance check on busy waves.
 - **Open questions from the notes.** Whether vegetable boosts apply globally or as assignable points (existing global passives suggest global); whether temporary buffs last a fixed time or a wave (a fixed time is simpler to balance); whether unused donut shields carry over (no, by the notes' own rule).
 
@@ -167,12 +167,8 @@ alongside a dozen other simultaneous changes.
 
 **Clearly scoped, queued next — none of these need a real investigation before starting, they just
 weren't reached this round:**
-- **Literal global 1:1 dirt-to-grass tile count** — still open and distinct from the one-tile green
-  border that now wraps the whole route (CHANGELOG 1.6.62 tried two tiles, 1.6.76 settled on one on every
-  side). The current incremental 2-3 path-tile growth makes a global equal count a separate
-  map-shape/pacing decision.
-- **Corner padding at the finish-line escape spot** — pad the specific corner where an enemy has
-  been seen cutting into the finish line with an extra grass/buffer tile.
+- **Literal global dirt-to-grass tile count — resolved as ~1:1.25, 1.6.90.** `GRASS_RATIO-01`, one bonus tile every 4 expansions on top of the 1-tile border.
+- **Corner padding at the finish-line escape spot — resolved by 1.6.76's route-border rules.** Every route tile now has a grass border on every side by construction (`PATH-BORDER-01`), which removes the class of gap this item was written against.
 
 **Clearly scoped, queued for next round (no open question):**
 - **Finish-line escape recurrence** — your screenshots/video are all captured at v1.4.88, the same
@@ -182,28 +178,12 @@ weren't reached this round:**
   debug overlay's `enemies X path / Y escaped` numbers at the moment it happens (visible in your
   own screenshots' debug box, top-left) so I can trace which specific corner and confirm whether
   it's the same code path recurring or a second, different gap.
-- **Wave pacing/spacing slowdown** — units slower, more spacing between spawns, gentler early-wave
-  ramp to match the slower map expansion. Straightforward multiplier work in `buildWavePlan()`/
-  `waveHpScale()`-adjacent spawn-interval code once the spiral-expansion shape (above) is settled,
-  since pacing should be tuned against whatever the new expansion cadence actually is, not the old one.
-- **Hut loot-chest drop** — on hut-building death, spawn a chest that bursts into several
-  gold/XP pickups flung onto nearby path/grass tiles, alongside the existing bounty payout. Real
-  feature (new pickup-entity spawn + scatter/physics), not a tuning number.
-- **Element emoji + skin-tint on elemental attacks** — show a small themed emoji on a tower's own
-  attack animation once it's carrying an element, and tint the stickman's skin toward that
-  element's color on top of its native skin color. Needs the actual per-element emoji list
-  confirmed (fire/electric/ice/etc.) before implementing.
-- **First-escape / first-stickman-death alert popups** — one-time popups ("an enemy escaped and is
-  wandering — it'll attack your towers if left alone", "your Swordsman died") the first time each
-  happens per player. Ties directly into the next item (they're meant to be togglable "introduction
-  text").
-- **"Introduction text" opt-out setting, cookie-backed** — turn the above (plus any other first-time
-  tutorial-style popups already in the game) into one togglable category in Settings, persisted via
-  cookies specifically (rather than the existing `localStorage`-based prefs system) per your own
-  wording — worth confirming you want a second, separate persistence mechanism just for this
-  category rather than folding it into the existing `sticktd:prefs:v1` localStorage blob, which
-  every other toggle already uses and which cookies have no real advantage over in a same-origin
-  single-page game.
+- **Wave pacing/spacing slowdown — done, 1.6.80.** `ENEMY_WALK_SPEED_SCALE` and `ENEMY_SPAWN_GAP_MS`.
+- **Hut loot-chest drop — done, 1.6.84.** `spawnHutLootChest()`.
+- **Element emoji + skin-tint on elemental attacks — done, 1.6.86.** `ELEMENT-TINT-01`.
+- **Element combat effects (Fire 10s burn, Ice full freeze, Electric chain lightning) — done, 1.6.88.** `ELEMENT-EFFECTS-01`.
+- **First-escape / first-stickman-death alert popups — done, 1.6.84.** `FIRST-TIME-ALERTS-01`.
+- **"Introduction text" opt-out setting — done, 1.6.84,** folded into the existing localStorage prefs blob rather than a second cookie mechanism (see that changelog entry for the reasoning).
 
 ## Open from the 1.3.x wave-architecture handoff (StickTD_Claude_Complete_Handoff.pdf)
 - Melee/beam committed-damage tracking (1.3.3 tracks projectiles only).
