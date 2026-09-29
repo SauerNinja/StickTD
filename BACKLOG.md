@@ -1,5 +1,9 @@
 # Backlog
 
+## From the 2026-09-29 playtest round (v1.6.110) — still open
+- Frame rate falling as waves progress (capture set: 25 FPS at wave 1 to 12-21 FPS at waves 8-10 with 1-9 ms of game JavaScript): needs a browser performance trace comparing v1.6.108 and later.
+- Seeded combat randomness for replayable bug reports; coordinate-hashed scenery so save files stay small on very long roads. (Shock discharge shipped in 1.6.113.)
+
 ## Low FPS with tiny JavaScript time — needs a device trace (2026-09-29)
 The owner's screenshots show 22-29 FPS while the debug overlay reports only 1-4 ms of game JavaScript per frame (update 0.2-0.9 ms, render 1.4-2.7 ms), and a headless Chromium run of v1.6.109 measured 0.1-0.4 ms update and 0.3-0.4 ms render, with low graphics at 55-60 FPS. So the ceiling is outside the game's JavaScript: canvas compositing, GPU or driver, browser throttling on a 2560x1440 window, or an extension. Next step is a Chrome Performance recording (or `chrome://gpu`) on that machine, not another guess at game code. Cheap experiments to try first: window size, hardware acceleration on or off, extensions disabled, and the Low graphics DPR cap.
 
@@ -25,7 +29,7 @@ Reviewed against the game as it stands (100 lives, Shop lives with rising cost, 
 
 ## From the item-drop design pass (2026-09-28) — ideas beyond the first release
 
-- **Resource drops.** Signature drops that are resources instead of gear: a stone bundle from the Tank (which already pays stone as its bounty), wood from tree-themed enemies, coins from the Troll. Needs a hand-in target because resources are not equipped.
+- **Resource drops.** Signature drops that are resources instead of gear: a stone bundle from the Tank (which already pays stone as its bounty), wood from tree-themed enemies. (Troll gold bags shipped in 1.6.113.) Needs a hand-in target because resources are not equipped.
 - **Set bonuses.** Matching items (for example two undead charms) grant a small extra bonus, giving the collection a goal.
 - **Enemy-specific effects.** A few signature items with a small special effect, such as a Frost Shard that slows a little, or an Ember Core that adds burn, once the stat-only items have been played.
 - **Item swap and salvage.** Trade three Common items for one Uncommon of the player's choice, or salvage an item for gold.
@@ -39,7 +43,6 @@ The report reviews an old snapshot, so each point needs a check against the curr
 - **Explicit entity states.** Replace the growing set of boolean flags on enemies (breakaway, queued, escaped, guardian and others) with a small state machine. Reduces the chance of two systems disagreeing about one enemy.
 - **Presentation queue.** Record combat events (hit, kill) in a fixed ring buffer and let the renderer play sounds, particles and text from it, keeping the simulation free of presentation work.
 - **Descriptive names in hot paths.** Rename cryptic fields such as `origQX` and `lowerP` to full domain words; low risk and helps every future edit.
-- **Audio timing.** Delay or suppress celebration sounds when a tower is about to be downed, so a level-up fanfare does not play over a knockout.
 - **Lookup tables in the sound engine.** Replace the large branching `SoundEngine.play` with a table of sound recipes.
 - **Wave and map editor.** A local tool that exports wave plans and route settings as data, so tuning does not require editing the game file.
 - **Evolution clean-up.** The report echoes the existing item about removing the evolve-in-place system in favor of permanent unlocks.

@@ -164,6 +164,11 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 Each of these caused a real, shipped bug. Check for the specific failure mode, not just "does this
 look reasonable":
 
+- Consumables (food, treats, stims, meals) are carried in a stickman's six item slots and used on demand (slot click or keys 1-6), passed by dragging to another stickman, or dragged back to the map within stickman reach. They are never applied on pickup or auto-eaten at wave end.
+- Canvas resolution is owned by the render governor: `setupCanvas()` multiplies the device pixel ratio by the current render-scale step, and every cache sized from `dprValue` follows it. Do not size canvases from `window.devicePixelRatio` directly.
+- Cooking recipes (any recipe with `fuelCost`) are available only to a stickman within reach of a lit Campfire, and spend that fire's fuel; the Campfire is a chance structure whose fuel is saved with the scenery item and burns one per completed wave.
+- Decorative emote and speech-bubble effects are chance-based, never guaranteed, capped at two bubbles on screen, timed in real time, and free of per-frame allocation.
+- Barricades are unlimited; price rises steeply with the number already on the field. Enemy displacement from misses or hits is render-only; real positions change only through path movement and collision resolution, and route-following enemies stay leashed to the lane.
 - Queue/cleanup logic that depends on an entity still being present must not silently stop running
   once that entity is gone — a real permanent soft-lock shipped this way (spawning deadlocked
   because the one function that reset its own gating flag was skipped when no enemies were alive).

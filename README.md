@@ -162,6 +162,8 @@ Reaper is the heaviest-armored undead in the roster.
 
 ## Status effects
 
+An enemy shocked by lightning that dies within three seconds discharges a burst to the enemies packed around it.
+
 Burn, curse (poison-style DoT), bleeding (see [Blood & gore](#blood--gore)), slow, and stun are marked by periodic reminders and distinct visuals: drifting ice crystals, flickering flames, and orbiting lightning bolts. Crowd-control effects can spread through queued enemies, extending their impact along the route.
 
 ## Blood & gore
@@ -210,7 +212,7 @@ Enemies follow the road in single file, forming natural queues at Barricades. Sw
 Defeated enemies sometimes leave an item on the road. Items shine with a rainbow glow that grows brighter with rarity, from Common through Uncommon and Rare to Epic. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found.
 
 - **Signature drops.** Many enemies carry an item of their own. Grunts may drop a Headband, Tanks a Granite Heart, Trolls a Bridge Toll, Zombies a Grave Charm and Wraiths a Spectral Veil, and Bosses always leave a special item along with a strong general one. Larger enemies are more likely to drop items than smaller ones.
-- **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. Uncollected items wait on the battlefield for several minutes.
+- **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. A stickman with spendable stat points can tick **Auto spend** beside them to have new points spent on his main stat automatically. Uncollected items wait on the battlefield for several minutes.
 - **Item Guide.** The first item you find opens a short guide that explains items and the inventory.
 - **Shop items.** The **Lucky Branch** 🌿 (+1 STR/+1 DEX/+1 INT, gold and wood) and the **Barricade** 🚧 (see Resources below) can be bought for the selected stickman. Global passive upgrades apply to every stickman you own, present and future.
 - **Heroes.** A stickman with all six slots filled is promoted to **Hero**, with a permanent stat bonus, a visible crown and its own sound. A stickman whose STR, DEX and INT total 100 becomes **Legendary**, a rarer milestone with its own permanent bonus, a name of your choice and the biggest fanfare in the game.
@@ -218,7 +220,7 @@ Defeated enemies sometimes leave an item on the road. Items shine with a rainbow
 
 ## Food & Medical Supplies
 
-Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Unlike equipment items, food is used immediately — drag it onto any stickman, and its effect applies at once.
+Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Food, Boss Treats and stims are carried like any other item: drag one onto a stickman to store it in an item slot, then click the slot or press its number key (1–6) to use it. Drag it to another stickman to pass it along, or onto the map within a stickman's reach to move it.
 
 - **Fruit** 🍎 grants a stickman experience toward its next level, scaled to how far the campaign has progressed.
 - **Vegetables** 🥕 are rarer and grant a small, permanent stat point.
@@ -226,13 +228,18 @@ Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Unlike equip
 - **Livestock.** Chickens, pigs and cows sometimes wander onto the map as it expands, grazing slowly and safely unless singled out.
 - **Target marking.** Click any enemy — or one of the animals above — to place a target marker over its head. Every tower on the map will prioritize that target while it stays in range, letting you call the shot on a dangerous enemy or send your defenses after a wandering animal for its meat.
 - **Boss Treats.** Every Boss and Holiday Boss leaves behind a Treat — a single guaranteed reward bundling a life restore, experience, and sometimes bonus gold.
+- **Cooking and the Campfire.** 🔥 Now and then a Campfire — a fire on two crossed logs — appears near the road after the third wave. It is the only place to cook. Tap it to add wood (15 🪵 buys 2 fuel, up to 8); it burns one fuel at the end of every wave and goes cold at zero. A stickman standing near a lit fire can combine stored foods with the Combine button, spending fuel from the fire. Simple pairs cost 1 fuel: Bacon and Potato make a Breakfast Plate (attack speed), Steak and Carrot a Hearty Stew (restores health), Apple and Blueberries a Fruit Salad (range), Meat on the Bone and a Drumstick a Roast Feast (damage). Complex recipes take three or four foods and 2–3 fuel: Bacon, Potato and Corn make a Sunrise Skillet; Steak, Garlic and Hot Pepper a Fiery Ragout; Strawberries, Cherries and Blueberries a Berry Pie; Carrot, Potato, Corn and Hot Pepper a Harvest Curry that boosts damage, speed and range and heals. Meals are used like stims and last until the end of the round.
+- **Supply crates.** 📦 Crates found as scenery open for 10 gold and hold a stim: Adrenaline (attack speed), Combat Stim (damage), Spotter Scope (range), Field Medkit (heals 40%), or the rare Hyper-Serum (all three). Stim buffs last until the end of the round they are used in.
+- **Berry bushes.** 🪴 Potted bushes clear for a flat 5 gold, the cheapest clearance on the map, and drop berries.
+- **Gold bags and the wandering troll.** Chests and, rarely, fallen enemies spill gold bags of small coins. Trolls on the road also carry gold bags. Now and then a wandering troll strolls the road and clubs any stickman it stumbles upon; target it and defeat it for 2–3 bags.
+- **Stickman chatter.** Stickmen occasionally show a mood emoji and a short line at key moments — low health, a swarm, a leak, a boss kill, a close call. It only happens sometimes, for fun.
 - **Medical Supplies**, sold in the Shop, are held in reserve and used automatically: the Bandage and First Aid Kit restore lives on purchase, and the Defibrillator is carried until the moment it's needed — intercepting a defeat and reviving the base at 25% lives.
 
 ## Resources
 
 Earn gold from enemy defeats and wave clears. Gather wood and stone from trees, rocks, treasure chests, and relic drops to fund premium equipment and Barricades.
 
-Buy the Barricade item from the Shop (600🪵/300🪨), place it from a tower's inventory onto a valid path tile, then store or transfer it as your defense changes. Every five waves banks one free Barricade charge, up to three. Tanks add stone to the battlefield when defeated.
+Barricades are unlimited, and each one already standing on the field makes the next cost more wood and stone: the second is modest, then the price climbs steeply. Buy the Barricade item from the Shop, place it from a tower's inventory onto a valid path tile, then store or transfer it as your defense changes. Every five waves banks one free Barricade charge, up to three. Tanks add stone to the battlefield when defeated.
 
 ## Huts
 
@@ -249,6 +256,9 @@ Start with 100 lives. Extra lives are available in the Shop, with costs that ris
 An enemy costs a life when its full body crosses the checkered finish line. An enemy that gets through and is still alive is *loose*, and each loose enemy costs another life every 6 seconds until it is defeated, so a wave that slips past keeps the pressure on. The count appears under the Next Wave button and clears when none are left. Loose enemies stay on the road and its grass border. Any change to your lives appears beside the health counter, red when you lose lives and green when you gain them. Escaped enemies remain on the map as live targets across waves, and defeating them earns a gold and XP cleanup reward. During breaks between waves, wandering enemies may hunt nearby towers.
 
 ## Settings
+
+The game watches its own frame rate and, if it stays low, quietly lowers the render resolution a step at a time, then raises it again once things are steady. The debug overlay shows the current render scale.
+
 
 Video (graphics quality: Low / High, trading off shadows and particle-heavy effects for
 performance), Audio (mute), Game (18+ gore toggle, save/load, and **Reset options**), and About (in-app README
