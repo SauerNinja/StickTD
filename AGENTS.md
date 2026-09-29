@@ -452,6 +452,21 @@ One-time explanatory popups (welcome, Item Guide, first enemy escape, first towe
 
 Meat items raise `bonusMaxLivesFromMeat` (folded into `maxLivesNow()`) as well as healing, tiered in `MEAT_MAXHP_BY_ID` and capped per wave at `MEAT_MAXHP_CAP_PER_WAVE` (reset in the wave-started hook); overflow becomes gold via `MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT`. Never remove this cap — it is what keeps meat drops from making the Shop's Extra Life price pointless. Livestock are real pooled Enemy instances (`isLivestock` flag, `CONFIG.ENEMIES` CHICKEN/PIG/COW, `maybeSpawnLivestockOnExpansion()`), not a parallel system — this reuses the full damage/elemental/death pipeline instead of re-implementing it. `Enemy.updateLivestockWander()` confines them to the walkable road/grass area (`isLooseWalkableAt()`) and skips all hostile AI. `buildEnemyHash()` excludes `isLivestock` enemies from normal tower targeting unless they are `markedTargetEnemy`; `die()` branches on `isLivestock` to drop the matching meat instead of gold/XP and clear the mark. Never let livestock block wave completion — the `anyActiveEnemies`/`anyAlive` checks explicitly exclude them.
 
+## Item crafting
+
+`CRAFTING_RECIPES` (`findCraftableRecipeFor()`, `craftItemOn()`) are the only "make an item from other items"
+mechanic in the game — never add a codex, salvage, or set-bonus system alongside it; that was explicitly
+ruled out. Crafting only ever consumes exact ingredient items from one tower's own `equippedItems` and adds
+one result item; there is no global/shared stash. The 🔧 Combine button in the inspect panel is the only UI —
+it shows only when the currently-selected tower's inventory satisfies a recipe exactly.
+
+## Evolve-in-place — does not exist
+
+There is no in-place tower transformation. Reaching a stat threshold permanently unlocks a new type for the
+Build tray (`unlockTowerTypeBuild()`, called from `checkEvolution()`/`checkAttunementAndSpecialization()`);
+the tower that triggered it is never changed. If you find yourself writing code that reassigns `tower.type`
+on an existing, already-built tower, stop — that pattern was removed on purpose (`NO-EVOLVE-IN-PLACE-01`).
+
 ## Projectile aim
 
 A ranged shot's flight direction (`p.vx`/`p.vy`, `p.angle` in `fireProjectile()`) is computed from the

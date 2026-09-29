@@ -581,6 +581,9 @@
     display:flex;align-items:center;justify-content:center;font-size:1.15em;cursor:pointer;
     padding:0; margin-left:4px;}
   #inspAuraBox.hidden{display:none;}
+  #inspCraftBtn{background:linear-gradient(180deg, #ffe066 0%, var(--gold) 55%, #c9960b 100%);color:#3a2a00;border:none;border-radius:6px;
+    padding:4px 8px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:4px;}
+  #inspCraftBtn.hidden{display:none;}
   #inspAuraBox:active{box-shadow:0 0 12px rgba(241,196,15,0.85), inset 0 1px 3px rgba(0,0,0,0.6);}
   #auraTooltip{flex-basis:100%;display:flex;align-items:flex-start;gap:8px;
     background:rgba(20,14,6,0.95);border:1px solid var(--gold);border-radius:6px;
@@ -815,6 +818,7 @@
             <div class="item-slot" data-slot="3"></div>
             <div class="item-slot" data-slot="4"></div>
             <div class="item-slot" data-slot="5"></div>
+            <button id="inspCraftBtn" class="hidden" title="">🔧 Combine</button>
             <button id="inspAuraBox" class="hidden" aria-label="Tower strategy" title=""></button>
           </div>
         </div>
@@ -1168,7 +1172,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.95'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.96'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1780,6 +1784,61 @@ function applyHutLootItem(lootDef, nearTower){
   if(lootDef.kind === 'gold'){ gold += lootDef.amount; spawnFloatingText(nearTower?nearTower.x:0, (nearTower?nearTower.y:0)-40, '+'+lootDef.amount+'💰', '#ffd23f'); }
   else if(nearTower){ gainTowerExp(nearTower, lootDef.amount); spawnFloatingText(nearTower.x, nearTower.y-40, '+'+lootDef.amount+' XP', '#64b5f6'); }
   playSound('click');
+}
+// ITEM-CRAFTING-01 (1.6.96) — see CHANGELOG.md § [1.6.96]. WC3-style consumable recipes, entirely
+// within a stickman's own inventory: no separate codex, salvage, or set-bonus system, and no crafting
+// UI beyond the inventory itself. Combining CONSUMES the exact ingredient items from that stickman's
+// equippedItems and adds the result — never a shared/global stash, never partial credit toward a recipe.
+const CRAFTING_RECIPES = [
+  { result: 'HUNTER_BADGE',    ingredients: ['RUSTY_NAIL', 'LEATHER_GLOVE'] },
+  { result: 'SWIFT_BOOTS',     ingredients: ['WORN_BOOTS', 'BRASS_COMPASS'] },
+  { result: 'IRON_HELM',       ingredients: ['WOOL_SCARF', 'PADDED_VEST'] },
+  { result: 'SCHOLAR_LENS',    ingredients: ['GLASS_MARBLE', 'CANDLE_STUB'] },
+  { result: 'SILVER_BELL',     ingredients: ['LUCKY_COIN', 'WOODEN_WHISTLE'] },
+  { result: 'WAR_DRUM',        ingredients: ['RUSTY_NAIL', 'WOOL_SCARF', 'GLASS_MARBLE'] },
+  { result: 'STORM_UMBRELLA',  ingredients: ['WOOL_SCARF', 'WORN_BOOTS'] },
+  { result: 'CHAMPION_MEDAL',  ingredients: ['HUNTER_BADGE', 'SCHOLAR_LENS'] },
+  { result: 'GUARDIAN_SHIELD', ingredients: ['IRON_HELM', 'SWIFT_BOOTS'] },
+  { result: 'LIGHTNING_BOLT',  ingredients: ['SWIFT_BOOTS', 'SILVER_BELL'] },
+  { result: 'DRAGON_SCALE',    ingredients: ['IRON_HELM', 'WAR_DRUM'] },
+  { result: 'STAR_COMPASS',    ingredients: ['SCHOLAR_LENS', 'SWIFT_BOOTS'] },
+  { result: 'ANCIENT_TOME',    ingredients: ['SCHOLAR_LENS', 'MOON_PENDANT'] },
+  { result: 'PHOENIX_EMBER',   ingredients: ['DRAGON_SCALE', 'CHAMPION_MEDAL'] },
+  { result: 'TITAN_GAUNTLET',  ingredients: ['GUARDIAN_SHIELD', 'DRAGON_SCALE'] },
+  { result: 'AURORA_PRISM',    ingredients: ['STAR_COMPASS', 'LIGHTNING_BOLT', 'CHAMPION_MEDAL'] }
+];
+// Consumes-first order the ingredients list into a lookup for fast "does this tower have the pieces" checks.
+const craftableItemIdSet = new Set(CRAFTING_RECIPES.map(recipe => recipe.result));
+function findCraftableRecipeFor(equippedItems){
+  const heldIds = equippedItems.map(item => item.id);
+  for(const recipe of CRAFTING_RECIPES){
+    const heldCopy = [...heldIds];
+    const hasEveryIngredient = recipe.ingredients.every(ingredientId => {
+      const foundIndex = heldCopy.indexOf(ingredientId);
+      if(foundIndex === -1) return false;
+      heldCopy.splice(foundIndex, 1);
+      return true;
+    });
+    if(hasEveryIngredient) return recipe;
+  }
+  return null;
+}
+function craftItemOn(tower){
+  const recipe = findCraftableRecipeFor(tower.equippedItems);
+  if(!recipe) return false;
+  for(const ingredientId of recipe.ingredients){
+    const index = tower.equippedItems.findIndex(item => item.id === ingredientId);
+    if(index !== -1) tower.equippedItems.splice(index, 1);
+  }
+  const resultDef = ITEM_BY_ID.get(recipe.result);
+  tower.equippedItems.push(resultDef);
+  tower.recomputeStats();
+  tower.checkHeroStatus();
+  spawnFloatingText(tower.x, tower.y - 44, '🔧 ' + resultDef.icon + ' ' + resultDef.name + '!', '#ffe066');
+  spawnParticles(tower.x, tower.y, '#ffe066', 12);
+  playSound('levelup');
+  trackGameEvent('item_crafted', { result: recipe.result, tower_type: tower.type });
+  return true;
 }
 const ITEM_GUIDE_SEEN_KEY = 'stickTD_itemGuideSeen';
 const FIRST_ESCAPE_SEEN_KEY = 'stickTD_firstEscapeSeen';
@@ -2507,6 +2566,13 @@ function validateDesignContract(){
   for(const [type, def] of Object.entries(LIVESTOCK_TYPES)) if(!FOOD_BY_ID.has(def.meatId)) problems.push('livestock ' + type + ' drops an unknown meat item (LIVESTOCK-01)');
   if(!BERRY_FOOD_IDS.every(id => FOOD_BY_ID.has(id))) problems.push('every berry id a Bush can drop must exist in the food catalog (BUSH-BERRIES-01)');
   for(const [type, def] of Object.entries(LIVESTOCK_TYPES)) if(!CONFIG.ENEMIES[type] || !CONFIG.ENEMIES[type].bounty === undefined) problems.push('livestock ' + type + ' must have a matching CONFIG.ENEMIES entry (TARGET-MARK-01)');
+  for(const recipe of CRAFTING_RECIPES){
+    if(!ITEM_BY_ID.has(recipe.result)) problems.push('craft recipe result "' + recipe.result + '" is not in the item catalog (ITEM-CRAFTING-01)');
+    if(recipe.ingredients.length < 2) problems.push('craft recipe for "' + recipe.result + '" needs at least 2 ingredients (ITEM-CRAFTING-01)');
+    for(const ingredientId of recipe.ingredients) if(!ITEM_BY_ID.has(ingredientId)) problems.push('craft recipe for "' + recipe.result + '" needs unknown ingredient "' + ingredientId + '" (ITEM-CRAFTING-01)');
+    if(recipe.ingredients.includes(recipe.result)) problems.push('craft recipe for "' + recipe.result + '" cannot use its own result as an ingredient (ITEM-CRAFTING-01)');
+    if(recipe.ingredients.length > MAX_ITEM_SLOTS) problems.push('craft recipe for "' + recipe.result + '" needs more ingredients than a tower has slots (ITEM-CRAFTING-01)');
+  }
   if(LIVESTOCK_MAX_ON_BOARD > 8) problems.push('livestock population must stay small (LIVESTOCK-01)');
   if(isLooseWalkableAt(-500, -500)) problems.push('loose enemies must not be allowed outside the route and its grass border (LOOSE-CONFINE-01)');
   for(const [structureType, structure] of Object.entries(CONFIG.CHANCE_STRUCTURES)){
@@ -4195,6 +4261,7 @@ const TELEMETRY_EVENTS = {
   item_dropped: ['item', 'rarity', 'source'],
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
   item_guide_shown: [],
+  item_crafted: ['result', 'tower_type'],
   game_speed_changed: ['speed'],
   target_marked: ['target_type', 'enemy_type'],
   food_collected: ['item', 'tower_type'],
@@ -8226,24 +8293,11 @@ class Tower{
       if(hybridTarget) unlockTowerTypeBuild(hybridTarget);
     }
   }
-  // CA408 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA408
-  evolveInto(newType){
-    const oldName = this.def.name;
-    this.type = newType; // 'def' is a getter derived from this.type — no separate assignment needed or possible
-    this.level = 1; // fresh tier progression as the new class
-    // CA409 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA409
-    this.baseMaxHp = newType === 'BARRICADE' ? 10 : (newType === 'HAMMERMAN' ? 180 : 100);
-    // CA410 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA410
-    this.baseShieldPct = (newType === 'HAMMERMAN' ? 0.35 : 0) + (this.isLegendary ? 0.05 : 0);
-    this.rollSkinTones(); // fresh shade fitting the new class's own hue, not a carried-over old-class tone
-    this.rollBuild(); // fresh height/weight variance around the new class's own baseline proportions
-    this.applyTierStats(); // re-initializes damage/range/cooldown/etc from the new class's tier-1 data, then calls recomputeStats()
-    this.hp = this.maxHp; // full heal on transformation
-    spawnFloatingText(this.x, this.y - 40, '✨ Evolved!', '#ffd700');
-    showToast(oldName + ' evolved into ' + this.def.name + '!');
-    playSound('evolution');
-    updateInspectPanel();
-  }
+  // NO-EVOLVE-IN-PLACE-01 (1.6.96) — see CHANGELOG.md § [1.6.96]. There is no evolve-in-place system:
+  // reaching a stat threshold permanently unlocks a new type for the Build tray (unlockTowerTypeBuild(),
+  // called from checkEvolution()/checkAttunementAndSpecialization() above); the existing tower that
+  // triggered it is untouched and keeps playing as what it already is. evolveInto() used to transform a
+  // tower in place; it had no remaining call sites and is removed.
   // CA411 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA411
   applyChefBurst(){
     if(this.type !== 'CRAZY_CHEF') return;
@@ -15694,6 +15748,10 @@ document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) =>
   content.classList.toggle('hidden');
 });
 
+document.getElementById('inspCraftBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  if(selectedTower && craftItemOn(selectedTower)) updateInspectPanel();
+});
 document.getElementById('inspAxeModeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower || selectedTower.type !== 'AXEMAN') return;
@@ -15930,6 +15988,15 @@ function updateInspectPanel(){
       slot.classList.remove('filled');
     }
   });
+  const craftRecipe = findCraftableRecipeFor(t.equippedItems);
+  const inspCraftBtn = document.getElementById('inspCraftBtn');
+  if(craftRecipe){
+    const resultDef = ITEM_BY_ID.get(craftRecipe.result);
+    inspCraftBtn.classList.remove('hidden');
+    inspCraftBtn.title = 'Combine into ' + resultDef.icon + ' ' + resultDef.name;
+  } else {
+    inspCraftBtn.classList.add('hidden');
+  }
 
   inspStatPointsVal.textContent = t.statPoints;
   // CA782 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA782
