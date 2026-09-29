@@ -257,7 +257,7 @@ An enemy costs a life when its full body crosses the checkered finish line. An e
 
 ## Settings
 
-The game watches its own frame rate and, if it stays low, quietly lowers the render resolution a step at a time, then raises it again once things are steady. The debug overlay shows the current render scale.
+**Choose your visual style.** Low graphics is a good starting point for phones and laptops with integrated graphics. High graphics adds richer effects, including weight-based screen shake, for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch whenever you like. If play stays far below smooth for a long stretch, the game will offer an optional automatic resolution assist. You choose how low it may go — 75%, 50% or 25%, or never — and you can restore full sharpness at any time in Settings.
 
 
 Video (graphics quality: Low / High, trading off shadows and particle-heavy effects for

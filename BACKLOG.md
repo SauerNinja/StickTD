@@ -4,6 +4,16 @@
 - Frame rate falling as waves progress (capture set: 25 FPS at wave 1 to 12-21 FPS at waves 8-10 with 1-9 ms of game JavaScript): needs a browser performance trace comparing v1.6.108 and later.
 - Seeded combat randomness for replayable bug reports; coordinate-hashed scenery so save files stay small on very long roads. (Shock discharge shipped in 1.6.113.)
 
+## From the 2026-09-29 balance and polish round (v1.6.116) — still open
+- More map expansions per wave and longer, more layered waves (requested; needs a design pass on expansion cost and wave pacing before any numbers change).
+- A complete measured balance audit of every tower class against enemy families and waves, with before and after results.
+- Build-menu nudge toward building (requested, wording unclear).
+- Balance follow-ups from BALANCE_REPORT.md: seeded wave harness, Marksman check, armor floor for rapid-fire towers.
+- Hosting-side: submit sitemap.xml in Search Console and register GA4 custom dimensions; not code.
+
+## Lag investigation next step (v1.6.120)
+- After playing on v1.6.120, download the debug log during a slow stretch and read the Graphics processor, Power and Frame pacing lines. They say whether the machine is using software rendering, a 30 FPS power-saving mode, or whether game time is the cost.
+
 ## Low FPS with tiny JavaScript time — needs a device trace (2026-09-29)
 The owner's screenshots show 22-29 FPS while the debug overlay reports only 1-4 ms of game JavaScript per frame (update 0.2-0.9 ms, render 1.4-2.7 ms), and a headless Chromium run of v1.6.109 measured 0.1-0.4 ms update and 0.3-0.4 ms render, with low graphics at 55-60 FPS. So the ceiling is outside the game's JavaScript: canvas compositing, GPU or driver, browser throttling on a 2560x1440 window, or an extension. Next step is a Chrome Performance recording (or `chrome://gpu`) on that machine, not another guess at game code. Cheap experiments to try first: window size, hardware acceleration on or off, extensions disabled, and the Low graphics DPR cap.
 

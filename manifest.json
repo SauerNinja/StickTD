@@ -11,6 +11,15 @@
   "categories": [
     "games"
   ],
+  "screenshots": [
+    {
+      "src": "og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Stickman towers defending an expanding road"
+    }
+  ],
   "icons": [
     {
       "src": "favicon.png",
