@@ -431,10 +431,12 @@
   #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
-  .insp-opt-row{display:flex;flex-wrap:nowrap;gap:8px;align-items:center;width:100%;box-sizing:border-box;}
-  #inspUpgradeSellRow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);}
-  #inspUpgradeSellRow button{width:100%;overflow:hidden;}
-  #inspUpgradeBtn, #inspSellBtn, #inspTargetBtn{flex:0 1 auto;min-width:0;white-space:nowrap;}
+  /* INSPECT-WRAP-01 (1.6.108): option rows wrap onto a second line at full text size instead of shrinking labels to fit one line.
+     Every button keeps its natural width (min-width:max-content) and grows to share the line, so a wrapped line reads as
+     proportionate as the first. */
+  .insp-opt-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:stretch;width:100%;box-sizing:border-box;}
+  .insp-opt-row > button:not(.info-btn){flex:1 1 auto;min-width:max-content;white-space:nowrap;}
+  .insp-opt-row > .info-btn{flex:0 0 auto;align-self:center;}
   #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
     justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
@@ -1172,7 +1174,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.96'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.109'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1357,11 +1359,11 @@ const HERO_BONUS_STAT = 5;
 // CA014 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA014
 // RANGE-BALANCE-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 const RANGE_CAPS = {
-  SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150, BERSERKER: 150, AXEMAN: 190, SPEARMAN: 200, LANCER: 220,
+  SWORDSMAN: 160, HAMMERMAN: 140, PALADIN: 150, BERSERKER: 150, AXEMAN: 180, SPEARMAN: 200, LANCER: 220,
   BLOWDART: 240, BLOW_GUNNER: 250, SQUIRTGUN: 260, CRAZY_CHEF: 260, GUNALINDER: 310, BOMBER: 320, SNAPCASTER: 320,
   GATLING: 340, MARKSMAN: 360, ARCHER: 380, SNIPER: 400,
   NECROMANCER: 400, CAT_SNAPPER: 420, QUASAR: 430, PROTON: 440, DARK_MATTER: 450, MAGE: 480,
-  CLERIC: 200, POPE: 220, MERCHANT: 260, GLAIVE: 300
+  CLERIC: 260, POPE: 280, MERCHANT: 260, GLAIVE: 300
 };
 const RANGE_BANDS = {
   MELEE:   { start: [85, 150],  cap: [140, 220], maxStartShareOfCap: 0.70 },
@@ -1703,10 +1705,10 @@ Object.assign(IRON_CHARM, { rarity: 'UNCOMMON' });
 Object.assign(SWIFT_FEATHER, { rarity: 'UNCOMMON' });
 Object.assign(BARRICADE_ITEM, { rarity: 'COMMON' });
 const ITEM_RARITIES = {
-  COMMON:   { label: 'Common',   weight: 60, glowRadius: 20, hueMsPerDegree: 60, statBudget: [1, 3] },
-  UNCOMMON: { label: 'Uncommon', weight: 28, glowRadius: 22, hueMsPerDegree: 45, statBudget: [3, 5] },
-  RARE:     { label: 'Rare',     weight: 10, glowRadius: 26, hueMsPerDegree: 30, statBudget: [5, 8] },
-  EPIC:     { label: 'Epic',     weight: 2,  glowRadius: 30, hueMsPerDegree: 18, statBudget: [8, 14] }
+  COMMON:   { label: 'Common',   weight: 60, glowRadius: 20, hueMsPerDegree: 60, statBudget: [1, 3], ringColor: '#cfd8dc' },
+  UNCOMMON: { label: 'Uncommon', weight: 28, glowRadius: 22, hueMsPerDegree: 45, statBudget: [3, 5], ringColor: '#66bb6a' },
+  RARE:     { label: 'Rare',     weight: 10, glowRadius: 26, hueMsPerDegree: 30, statBudget: [5, 8], ringColor: '#42a5f5' },
+  EPIC:     { label: 'Epic',     weight: 2,  glowRadius: 30, hueMsPerDegree: 18, statBudget: [8, 14], ringColor: '#ce93d8' }
 };
 const DROP_ITEM_ROWS = [
   ['RUSTY_NAIL', 'Rusty Nail', '🔩', 'COMMON', { str: 2 }],
@@ -1761,8 +1763,24 @@ const DROP_ITEM_ROWS = [
 const DROP_ITEMS = DROP_ITEM_ROWS.map(([id, name, icon, rarity, stats]) => Object.freeze({ id, name, icon, rarity, str: stats.str || 0, dex: stats.dex || 0, int: stats.int || 0, armor: stats.armor || 0, cost: 0, isDropOnly: true }));
 const ITEM_BY_ID = new Map([...UNIVERSAL_ITEMS, ...DROP_ITEMS].map(item => [item.id, item]));
 const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK: 'GRANITE_HEART', RUNNER: 'SHADOW_SASH', BOSS: 'FIEND_HORN', SANTA: 'HOLIDAY_STOCKING', COOKIE: 'FORTUNE_SLIP', CHESS: 'KNIGHT_PAWN', TROLL: 'BRIDGE_TOLL', FIRE: 'EMBER_CORE', ICE: 'FROST_SHARD', SPLITTER: 'SPORE_FLASK', HEALER: 'MENDERS_PIN', SHIELDED: 'FIELD_HELMET', ZOMBIE: 'GRAVE_CHARM', WRAITH: 'SPECTRAL_VEIL', SKELETON: 'BONE_WHISTLE', WOLF: 'WOLF_FANG', REAPER: 'MIDNIGHT_CHARM', BOULDER: 'GEODE', MONARCH: 'BUTTERFLY_WING' };
-const SIGNATURE_DROP_CHANCE = 0.22;
-const ITEM_DROP_CHANCE_BY_TIER = { TINY: 0.03, SMALL: 0.05, STANDARD: 0.08, LARGE: 0.18, BOSS: 1 };
+// LOOT-TABLE-01 (1.6.99) — see CHANGELOG.md § [1.6.99]. Morrowind-style container table. THEME: medieval-modern
+// fusion — knights and crossbows beside energy drinks, nano-tonics and bounty chips. New loot names, icons and
+// flavor should keep blending the two eras (Nano-Tonic, Espresso Elixir, Bounty Chip), never one alone.
+// A regular enemy rolls ONCE against LOOT_DROP_CHANCE_BY_TIER; most kills drop nothing. On a hit it drops exactly
+// ONE item: the category comes from LOOT_CATEGORY_WEIGHTS_BY_TIER (supply = common, tonic = uncommon, gear = rare).
+// Gear is the only category that touches ITEM_RARITIES; SIGNATURE_SHARE_OF_GEAR_DROPS of gear drops are the
+// enemy's own signature item. Bosses ignore all of this and always drop signature + generic gear plus a Treat.
+const SIGNATURE_SHARE_OF_GEAR_DROPS = 0.35;
+const LOOT_DROP_CHANCE_BY_TIER = { TINY: 0.03, SMALL: 0.04, STANDARD: 0.06, LARGE: 0.14, BOSS: 1 };
+const LOOT_CATEGORY_WEIGHTS_BY_TIER = {
+  TINY:     { supply: 76, tonic: 20, gear: 4 },
+  SMALL:    { supply: 72, tonic: 22, gear: 6 },
+  STANDARD: { supply: 66, tonic: 25, gear: 9 },
+  LARGE:    { supply: 46, tonic: 32, gear: 22 }
+};
+const LOOT_REGULAR_DROP_CAP_BASE = 2;      // max regular-enemy drops per wave at wave 0...
+const LOOT_REGULAR_DROP_CAP_PER_10_WAVES = 1; // ...plus this many per 10 waves, up to the max below
+const LOOT_REGULAR_DROP_CAP_MAX = 6;
 const BOSS_RARITY_WEIGHTS = { COMMON: 0, UNCOMMON: 35, RARE: 50, EPIC: 15 };
 // HUT-LOOT-01 (1.6.84) — see CHANGELOG.md § [1.6.84]. A destroyed hut/camp bursts into 3-5 gold/XP
 // pickups scattered nearby, on top of its existing bounty payout. Reuses the ground-item system
@@ -1772,6 +1790,12 @@ const HUT_LOOT_ROWS = [
   ['LOOT_XP', 'Training Scroll', '📜', 'xp', 25]
 ];
 const HUT_LOOT_ITEMS = HUT_LOOT_ROWS.map(([id, name, icon, kind, amount]) => Object.freeze({ id, name, icon, kind, amount, isHutLoot: true }));
+const LOOT_TONIC_ROWS = [
+  ['TONIC_NANO', 'Nano-Tonic', '🧪', 'heal', 4],
+  ['TONIC_ESPRESSO', 'Espresso Elixir', '☕', 'xp', 60],
+  ['TONIC_BOUNTY_CHIP', 'Bounty Chip', '💳', 'gold', 40]
+];
+const LOOT_TONIC_ITEMS = LOOT_TONIC_ROWS.map(([id, name, icon, kind, amount]) => Object.freeze({ id, name, icon, kind, amount, isHutLoot: true }));
 function spawnHutLootChest(x, y){
   const count = 3 + Math.floor(Math.random()*3);
   for(let i=0; i<count; i++){
@@ -1781,7 +1805,12 @@ function spawnHutLootChest(x, y){
   spawnParticles(x, y, '#ffd23f', 16);
 }
 function applyHutLootItem(lootDef, nearTower){
-  if(lootDef.kind === 'gold'){ gold += lootDef.amount; spawnFloatingText(nearTower?nearTower.x:0, (nearTower?nearTower.y:0)-40, '+'+lootDef.amount+'💰', '#ffd23f'); }
+  if(lootDef.kind === 'heal'){
+    const healed = Math.min(lootDef.amount, maxLivesNow() - lives);
+    if(healed > 0){ lives += healed; showLivesChange(healed); }
+    spawnFloatingText(nearTower?nearTower.x:0, (nearTower?nearTower.y:0)-40, '+'+lootDef.amount+' ❤️', '#7be07b');
+  }
+  else if(lootDef.kind === 'gold'){ gold += lootDef.amount; spawnFloatingText(nearTower?nearTower.x:0, (nearTower?nearTower.y:0)-40, '+'+lootDef.amount+'💰', '#ffd23f'); }
   else if(nearTower){ gainTowerExp(nearTower, lootDef.amount); spawnFloatingText(nearTower.x, nearTower.y-40, '+'+lootDef.amount+' XP', '#64b5f6'); }
   playSound('click');
 }
@@ -1940,9 +1969,9 @@ const CONFIG = {
       name: 'Axeman', icon: '🪓', baseCost: 375, unlocksAfterWave: 5,
       blurb: 'Dual-wields hand axes. Manually toggle between a close swing and a ranged throw — one free switch per wave.',
       tiers: [
-        { range: 120, meleeRange: 70, damage: 34, meleeDamage: 14, cooldown: 1400, meleeCooldown: 500, projectileSpeed: 320 },
-        { range: 140, meleeRange: 80, damage: 48, meleeDamage: 20, cooldown: 1250, meleeCooldown: 450, projectileSpeed: 340, upgradeCost: 100 },
-        { range: 160, meleeRange: 90, damage: 66, meleeDamage: 28, cooldown: 1100, meleeCooldown: 400, projectileSpeed: 360, upgradeCost: 150 }
+        { range: 115, meleeRange: 70, damage: 34, meleeDamage: 14, cooldown: 1400, meleeCooldown: 500, projectileSpeed: 320 },
+        { range: 130, meleeRange: 80, damage: 48, meleeDamage: 20, cooldown: 1250, meleeCooldown: 450, projectileSpeed: 340, upgradeCost: 100 },
+        { range: 145, meleeRange: 90, damage: 66, meleeDamage: 28, cooldown: 1100, meleeCooldown: 400, projectileSpeed: 360, upgradeCost: 150 }
       ]
     },
     SPEARMAN: {
@@ -2069,9 +2098,9 @@ const CONFIG = {
       name: 'Cleric', icon: '✝️', baseCost: 375, unlocksAfterWave: 5,
       blurb: "The longest cooldown of any tower — calls down a strike of white-hot holy light for immediate damage, dealing 5x damage against undead and ignoring their armor. Built to almost always kill small undead in one smite; bosses can survive. Once per wave, also heals whichever of your towers has the lowest HP — with multiple Clerics, each one picks a different tower so heals never pile onto the same target.",
       tiers: [
-        { range: 140, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
-        { range: 155, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
-        { range: 170, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
+        { range: 150, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
+        { range: 170, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
+        { range: 190, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
       ]
     },
     // CA063 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA063
@@ -2088,9 +2117,9 @@ const CONFIG = {
       name: 'Pope', icon: '🧑‍🦳', baseCost: 0, unlocksAfterWave: 0,
       blurb: "Cleric's ultimate form, reached at 500 INT with 750+ total trained stats — the curse is no longer aimed at a single target. Every enemy within range is struck at once in a holy nova, still dealing 5x tick damage against the undead. Still heals your lowest-HP tower once per wave.",
       tiers: [
-        { range: 130, damage: 30, cooldown: 8000, healAmount: 80, curseDuration: 4000 },
-        { range: 145, damage: 40, cooldown: 7200, healAmount: 100, curseDuration: 4400, upgradeCost: 220 },
-        { range: 160, damage: 52, cooldown: 6400, healAmount: 130, curseDuration: 4800, upgradeCost: 300 }
+        { range: 160, damage: 30, cooldown: 8000, healAmount: 80, curseDuration: 4000 },
+        { range: 180, damage: 40, cooldown: 7200, healAmount: 100, curseDuration: 4400, upgradeCost: 220 },
+        { range: 200, damage: 52, cooldown: 6400, healAmount: 130, curseDuration: 4800, upgradeCost: 300 }
       ]
     },
     CRAZY_CHEF: {
@@ -2463,6 +2492,20 @@ function validateRangeBalance(){
     (startsByRole[role] = startsByRole[role] || []).push(startingRange);
     (capsByRole[role] = capsByRole[role] || []).push(rangeCap);
   }
+  // MELEE-RANGE-BALANCE-01 (1.6.108): reach hierarchy owner asked for. Spearman out-reaches Axeman, and Cleric then Pope out-reach every
+  // melee class, at every tier and at the INT cap.
+  const tierRangeOf = (type, tierIndex) => CONFIG.TOWERS[type].tiers[tierIndex].range;
+  const meleeLineage = ['SWORDSMAN','HAMMERMAN','PALADIN','BERSERKER','AXEMAN','SPEARMAN','LANCER'];
+  for(let tierIndex = 0; tierIndex < 3; tierIndex++){
+    if(tierRangeOf('SPEARMAN', tierIndex) <= tierRangeOf('AXEMAN', tierIndex)) problems.push('Spearman must out-reach Axeman at tier ' + (tierIndex+1) + ' (MELEE-RANGE-BALANCE-01)');
+    for(const meleeType of meleeLineage){
+      if(tierRangeOf('CLERIC', tierIndex) <= tierRangeOf(meleeType, tierIndex)) problems.push('Cleric must out-reach ' + meleeType + ' at tier ' + (tierIndex+1) + ' (MELEE-RANGE-BALANCE-01)');
+    }
+    if(tierRangeOf('POPE', tierIndex) < tierRangeOf('CLERIC', tierIndex)) problems.push('Pope must reach at least as far as Cleric at tier ' + (tierIndex+1) + ' (MELEE-RANGE-BALANCE-01)');
+  }
+  if(RANGE_CAPS.SPEARMAN <= RANGE_CAPS.AXEMAN) problems.push('Spearman range cap must exceed Axeman (MELEE-RANGE-BALANCE-01)');
+  for(const meleeType of meleeLineage) if(RANGE_CAPS.CLERIC <= RANGE_CAPS[meleeType]) problems.push('Cleric range cap must exceed ' + meleeType + ' (MELEE-RANGE-BALANCE-01)');
+  if(RANGE_CAPS.POPE < RANGE_CAPS.CLERIC) problems.push('Pope range cap must be at least Cleric (MELEE-RANGE-BALANCE-01)');
   const average = values => values.reduce((sum, value) => sum + value, 0) / values.length;
   if(startsByRole.MELEE && startsByRole.RANGED && startsByRole.CASTER){
     if(!(average(startsByRole.MELEE) < average(startsByRole.RANGED) && average(startsByRole.RANGED) < average(startsByRole.CASTER))) problems.push('average starting range must run melee < archer types < mage style (RANGE-BALANCE-01)');
@@ -2548,7 +2591,8 @@ function validateDesignContract(){
     if(!ITEM_BY_ID.has(itemId)) problems.push('signature drop ' + itemId + ' for ' + enemyType + ' is not in the catalog (ITEM-DROPS-01)');
   }
   if(Object.keys(ENEMY_SIGNATURE_DROPS).length < 20) problems.push('at least 20 enemy types must have a signature drop (ITEM-DROPS-01)');
-  if(ITEM_DROP_CHANCE_BY_TIER.BOSS !== 1 || ITEM_DROP_CHANCE_BY_TIER.STANDARD > 0.15 || SIGNATURE_DROP_CHANCE > 0.3) problems.push('bosses always drop an item; regular enemies stay at or below 15% general and 30% signature (ITEM-DROPS-01)');
+  if(LOOT_DROP_CHANCE_BY_TIER.BOSS !== 1 || LOOT_DROP_CHANCE_BY_TIER.STANDARD > 0.10 || LOOT_DROP_CHANCE_BY_TIER.LARGE > 0.2) problems.push('bosses always drop loot; regular enemies stay at or below 10% (standard) and 20% (large) so drops feel special (LOOT-TABLE-01)');
+  for(const tierKey of ['TINY','SMALL','STANDARD','LARGE']){ const w = LOOT_CATEGORY_WEIGHTS_BY_TIER[tierKey]; if(!w || w.supply <= w.tonic || w.tonic <= w.gear) problems.push('loot tier ' + tierKey + ' must weigh supply above tonic above gear (LOOT-TABLE-01)'); }
   if(SCALING_COST_GROWTH < 2.25) problems.push('stickman build costs must grow at least 2.25x per copy on board (PRICE-SCALING-01)');
   if(FOOD_ITEMS.length < 20) problems.push('the food catalog must offer at least 20 items, found ' + FOOD_ITEMS.length + ' (FOOD-DROPS-01)');
   for(const [id, healValue] of Object.entries(MEAT_HEAL_BY_ID)) if(healValue > 30) problems.push('meat item ' + id + ' heals ' + healValue + ', above the small-heal cap of 30 (FOOD-DROPS-01)');
@@ -2559,7 +2603,6 @@ function validateDesignContract(){
   if(!TREAT_ITEMS.some(t => t.id === 'DONUT') || !TREAT_ITEMS.some(t => t.id === 'CHOCOLATE') || !TREAT_ITEMS.some(t => t.id === 'LOLLIPOP')) problems.push('donut, chocolate and lollipop tactical treats must all be in the catalog (TREAT-TACTICS-01)');
   if(DONUT_SHIELD_MAX > 5) problems.push('donut shield must stay capped at 5 charges (TREAT-TACTICS-01)');
   if(CHAIN_LIGHTNING_MAX_JUMPS < 1) problems.push('chain lightning must be able to jump to at least 1 additional enemy (ELEMENT-EFFECTS-01)');
-  if(EXPANSIONS_PER_CYCLE < 2) problems.push('multiple expansions per idle period are required for smooth progression (EXPANSION-FREQUENCY-01)');
   if(EXTRA_GRASS_EVERY_N_EXPANSIONS < 1) problems.push('bonus grass cadence must be a positive number of expansions (GRASS-RATIO-01)');
   if(MEAT_MAXHP_CAP_PER_WAVE > 8) problems.push('meat max-HP gain must stay capped per wave to protect the Shop extra-life economy (MEAT-MAXHP-01)');
   if(Math.max(...Object.values(MEAT_MAXHP_BY_ID)) > MEAT_MAXHP_CAP_PER_WAVE) problems.push('a single meat item must not exceed the per-wave max-HP cap on its own (MEAT-MAXHP-01)');
@@ -3193,6 +3236,7 @@ function finalizeRingExpansion(){
     floraMap.delete(tile.x+','+tile.y);
   }
   scatterSceneryInRing(oldRegion, newRegion);
+  ensureEndGuardScenery();
   scatterFloraInRing(oldRegion, newRegion);
   if(expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
     hutsSpawnedThisGame = spawnHuts(oldRegion, newRegion); // new tiles only, after scenery; never force a camp beside the finish or into an established build area
@@ -3221,31 +3265,18 @@ function finalizeRingExpansion(){
   trackGameEvent('map_expanded', { expansion_level: expansionLevel, route_tiles: pathWaypointTiles.length, spacing_relaxed: routeSpacingRelaxedExpansions });
   updateHUD();
 }
-// EXPANSION-FREQUENCY-01 (1.6.89) — see CHANGELOG.md § [1.6.89]. Since 1.6.76 an expansion only adds a
-// few route tiles (PATH_GROWTH_TILES_MIN..MAX), not a whole rectangular ring the way pre-1.6.76
-// expansions did, so allowing several per idle period speeds progression without any single click
-// growing the map by a huge amount. Raised from 1 to 3.
-const EXPANSIONS_PER_CYCLE = 3;
-let expansionsUsedThisCycle = 0; // resets each time a new wave starts — caps expansion per idle period
-let queuedFreeExpansions = 0;    // any free milestone that couldn't fire this cycle waits here for the next one
-
+// UNLIMITED-EXPANSION-01 (1.6.98) — see CHANGELOG.md § [1.6.98]. Expansion has no per-idle-period cap: the only
+// limits are gold, the idle gap between waves, and the fixed world bounds (regionFullyExpanded()).
 function expandRegion(){
   if(regionFullyExpanded()) return false;
-  if(expansionsUsedThisCycle >= EXPANSIONS_PER_CYCLE) return false; // capped per idle period — button should already be disabled
   const cost = expansionCost();
   if(gold < cost) return false;
   gold -= cost;
-  expansionsUsedThisCycle++;
   performExpansion('🗺️ Map Expanded!', '#ffd700');
   return true;
 }
 function grantFreeExpansion(){
   if(regionFullyExpanded()) return false;
-  if(expansionsUsedThisCycle >= EXPANSIONS_PER_CYCLE){
-    queuedFreeExpansions++; // queue it rather than exceeding the per-idle-period cap
-    return false;
-  }
-  expansionsUsedThisCycle++;
   performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
   return true;
 }
@@ -3288,6 +3319,9 @@ const LIVESTOCK_TYPES = {
 const LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION = 0.35;
 const LIVESTOCK_MAX_ON_BOARD = 4;
 const LIVESTOCK_WANDER_RETARGET_MS = 2500;
+const LIVESTOCK_WALK_MS_MIN = 900, LIVESTOCK_WALK_MS_MAX = 2200;
+const LIVESTOCK_IDLE_MS_MIN = 700, LIVESTOCK_IDLE_MS_MAX = 2400;
+const LIVESTOCK_WALK_SPEED_MULT = 2.4; // the base speeds are for a slow amble; walking bursts are shorter so they need a bit more
 // TARGET-MARK-01 (1.6.94): livestock are now real Enemy instances (see CONFIG.ENEMIES CHICKEN/PIG/COW
 // and Enemy.updateLivestockWander()), so drawing and update reuse the normal enemy render/update paths
 // automatically; only spawning needs its own entry point.
@@ -3304,7 +3338,8 @@ function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
   animal.spawn(type, 1, false, false);
   animal.isLivestock = true;
   animal.x = gx*TILE_SIZE + TILE_SIZE/2; animal.y = gy*TILE_SIZE + TILE_SIZE/2;
-  animal.retargetTimer = Math.random()*LIVESTOCK_WANDER_RETARGET_MS;
+  animal.retargetTimer = Math.random()*LIVESTOCK_IDLE_MS_MAX;
+  animal.livestockWalking = false;
 }
 function maybeAddBonusGrassTile(revealedBorderKeys){
   if(expansionLevel % EXTRA_GRASS_EVERY_N_EXPANSIONS !== 0) return;
@@ -3610,8 +3645,23 @@ function spawnDebrisNear(x, y){
 const END_SCENERY_RADIUS_TILES = 8;
 const END_SCENERY_MAX_COVERAGE_BONUS = 0.5;
 const END_SCENERY_MAX_ROCK_CHANCE_BONUS = 0.4;
+// LAG-SCENERY-01 (1.6.109): pathEndProximity() scanned every route tile per call, and scenery placement calls it per cell (and per sort
+// comparison), which grows quadratically as the road lengthens. Results are memoized per tile and thrown away whenever the route changes.
+const pathEndProximityCache = new Map();
+let pathEndProximityCacheSignature = '';
 function pathEndProximity(gx, gy){
   if(!pathWaypointTiles || !pathWaypointTiles.length) return 0;
+  const lastTile = pathWaypointTiles[pathWaypointTiles.length - 1];
+  const signature = pathWaypointTiles.length + ':' + pathWaypointTiles[0].x + ',' + pathWaypointTiles[0].y + ':' + lastTile.x + ',' + lastTile.y;
+  if(signature !== pathEndProximityCacheSignature){ pathEndProximityCache.clear(); pathEndProximityCacheSignature = signature; }
+  const cacheKey = gx * 4096 + gy;
+  const cached = pathEndProximityCache.get(cacheKey);
+  if(cached !== undefined) return cached;
+  const proximity = computePathEndProximity(gx, gy);
+  pathEndProximityCache.set(cacheKey, proximity);
+  return proximity;
+}
+function computePathEndProximity(gx, gy){
   let nearestRouteIndex = -1, nearestDistance = Infinity;
   for(let i=0; i<pathWaypointTiles.length; i++){
     const tile = pathWaypointTiles[i];
@@ -3631,7 +3681,9 @@ function spawnExtraEndScenery(cells, spawnedKeys){
     if(proximity > 0 && Math.random() < proximity * END_SCENERY_MAX_COVERAGE_BONUS) spawnScenery(cx, cy);
   }
 }
-function spawnScenery(gx, gy, forceType){
+const SCENERY_FIRST_WAVE_INDEX = 1; // waveIndex counts waves started; scenery may appear only once the first wave has begun
+function spawnScenery(gx, gy, forceType, forcedSizeFrac){
+  if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
   const S = CONFIG.SCENERY;
   const endProximity = pathEndProximity(gx, gy);
   let type;
@@ -3652,7 +3704,7 @@ function spawnScenery(gx, gy, forceType){
   const isSuper = !chanceDefinition && Math.random() < S.superChance;
   const baseScaleRoll = S.minScale + Math.random()*(S.maxScale-S.minScale);
   const endBiasedScale = baseScaleRoll + (S.maxScale - baseScaleRoll) * endProximity;
-  const scale = chanceDefinition ? chanceDefinition.scale : (isSuper ? S.maxScale : Math.max(baseScaleRoll, endBiasedScale));
+  const scale = chanceDefinition ? chanceDefinition.scale : (isSuper ? S.maxScale : forcedSizeFrac !== undefined ? S.minScale + forcedSizeFrac*(S.maxScale-S.minScale) : Math.max(baseScaleRoll, endBiasedScale));
   const sizeFrac = (scale - S.minScale) / (S.maxScale - S.minScale); // 0..1
   const baseYield = Math.round(S.baseResourceYield * scale) * (isSuper ? S.superYieldMultiplier : 1);
 
@@ -3680,8 +3732,57 @@ function spawnScenery(gx, gy, forceType){
   invalidateSpawnFlags();
 }
 
+// END-GUARD-01 (1.6.102) — see CHANGELOG.md § [1.6.102]. Both ends of the road (the spawn flags and the finish line)
+// are guarded by large, expensive rocks and trees so the player is discouraged from building beside them and
+// walling off the lane; paying to clear one is the player's option for expanding into that space. Idempotent:
+// it tops each road end up to END_GUARD_MIN_PIECES nearby pieces, nearest tiles first, once per distinct end tile
+// (guardedRoadEndKeys), so it can run after every wave and expansion, guards each new end as the road grows, and
+// never re-fills space the player has paid to clear. Held back by the same first-level gate as all scenery (spawnScenery()).
+const END_GUARD_RADIUS_TILES = 3;
+const END_GUARD_MIN_PIECES = 3;
+const END_GUARD_MIN_SIZE_FRAC = 0.7;
+const END_GUARD_ROCK_SHARE = 0.65;
+function pieceCountNearTile(tile, radiusTiles){
+  let count = 0;
+  for(const item of sceneryMap.values()){
+    if(item.isChanceStructure) continue;
+    if(Math.abs(item.gx - tile.x) + Math.abs(item.gy - tile.y) <= radiusTiles) count++;
+  }
+  return count;
+}
+const guardedRoadEndKeys = new Set();
+function guardRoadEnd(endTile){
+  const endKey = endTile.x + ',' + endTile.y;
+  if(guardedRoadEndKeys.has(endKey)) return;
+  guardedRoadEndKeys.add(endKey);
+  let existing = pieceCountNearTile(endTile, END_GUARD_RADIUS_TILES);
+  if(existing >= END_GUARD_MIN_PIECES) return;
+  const candidates = [];
+  for(let gx = endTile.x - END_GUARD_RADIUS_TILES; gx <= endTile.x + END_GUARD_RADIUS_TILES; gx++){
+    for(let gy = endTile.y - END_GUARD_RADIUS_TILES; gy <= endTile.y + END_GUARD_RADIUS_TILES; gy++){
+      const distance = Math.abs(gx - endTile.x) + Math.abs(gy - endTile.y);
+      if(distance === 0 || distance > END_GUARD_RADIUS_TILES) continue;
+      if(!isTileBuildable(gx, gy)) continue;
+      candidates.push({ gx, gy, distance, tieBreak: Math.random() });
+    }
+  }
+  candidates.sort((a, b) => a.distance - b.distance || a.tieBreak - b.tieBreak);
+  for(const spot of candidates){
+    if(existing >= END_GUARD_MIN_PIECES) break;
+    const type = Math.random() < END_GUARD_ROCK_SHARE ? 'ROCK' : 'TREE';
+    const sizeFrac = END_GUARD_MIN_SIZE_FRAC + Math.random() * (1 - END_GUARD_MIN_SIZE_FRAC);
+    spawnScenery(spot.gx, spot.gy, type, sizeFrac);
+    if(sceneryMap.has(spot.gx + ',' + spot.gy)) existing++;
+  }
+}
+function ensureEndGuardScenery(){
+  if(waveIndex < SCENERY_FIRST_WAVE_INDEX || !pathWaypointTiles || pathWaypointTiles.length < 2) return;
+  guardRoadEnd(pathWaypointTiles[0]);
+  guardRoadEnd(pathWaypointTiles[pathWaypointTiles.length - 1]);
+}
 function generateScenery(){
   sceneryMap.clear();
+  guardedRoadEndKeys.clear();
   invalidateSpawnFlags();
   clearingScenery.length = 0;
   const cells = [];
@@ -3703,8 +3804,38 @@ function generateScenery(){
   spawnExtraEndScenery(cells, spawnedKeys);
 }
 
+// FLORA-GROWTH-01 (1.6.108) — see CHANGELOG.md § [1.6.108]. HIGH graphics only: flora is drawn live instead of being baked into the
+// static map, so seedlings can bounce up and grow into their flower. Low graphics keeps the baked, static flora (drawMap()).
+// Flora present at game start is fully grown; flora added by a map expansion grows in over FLORA_GROW_MS.
+const FLORA_GROW_MS = 5000;
+const FLORA_GROW_STAGGER_MS = 3000;
+const FLORA_SEEDLING_STAGE_END = 0.45; // share of the growth spent as a seedling before the real glyph pops in
+const FLORA_SEEDLING_GLYPH = '🌱';
+function easeOutBack(t){ const c1 = 1.70158, c3 = c1 + 1; return 1 + c3*Math.pow(t-1, 3) + c1*Math.pow(t-1, 2); }
+function drawAnimatedFlora(ctx, bounds){
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const item of floraMap.values()){
+    if(pendingRevealTileKeys.has(item.gx+','+item.gy)) continue;
+    const x = item.x + item.offX, y = item.y + item.offY;
+    if(!fxVisible(x, y, bounds)) continue;
+    const grown = presentationTime - item.growStartAt;
+    const growth = grown >= FLORA_GROW_MS ? 1 : Math.max(0, grown / FLORA_GROW_MS);
+    if(growth <= 0) continue;
+    const isSeedling = growth < FLORA_SEEDLING_STAGE_END && item.glyph !== FLORA_SEEDLING_GLYPH;
+    const stageProgress = isSeedling ? growth / FLORA_SEEDLING_STAGE_END : (growth - (item.glyph === FLORA_SEEDLING_GLYPH ? 0 : FLORA_SEEDLING_STAGE_END)) / (item.glyph === FLORA_SEEDLING_GLYPH ? 1 : 1 - FLORA_SEEDLING_STAGE_END);
+    const scale = growth >= 1 ? 1 : Math.max(0.05, easeOutBack(Math.min(1, stageProgress)));
+    const sway = Math.sin(presentationTime/1400 + item.swayPhase) * 0.05;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(item.rotDeg * Math.PI/180 + sway);
+    ctx.scale(scale, scale);
+    ctx.font = Math.round(TILE_SIZE*0.42*item.sizeFrac) + 'px serif';
+    ctx.fillText(isSeedling ? FLORA_SEEDLING_GLYPH : item.glyph, 0, 0);
+    ctx.restore();
+  }
+}
 // CA132 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA132
-function spawnFlora(gx, gy){
+function spawnFlora(gx, gy, animateGrowth){
   const F = CONFIG.FLORA;
   const isAccent = Math.random() < F.accentShare;
   const pool = isAccent ? F.ACCENT : F.COMMON;
@@ -3714,6 +3845,7 @@ function spawnFlora(gx, gy){
     rotDeg: Math.round(Math.random()*360),
     offX: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
     offY: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
+    growStartAt: animateGrowth ? presentationTime + Math.random()*FLORA_GROW_STAGGER_MS : -Infinity, swayPhase: Math.random()*Math.PI*2,
     sizeFrac: 0.45 + Math.random()*0.3 // 45%-75% of the base glyph size — shrunk from 75%-125% per
     // CA133 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA133
   });
@@ -3788,13 +3920,14 @@ function scatterFloraInRing(oldRegion, newRegion){
   }
   shuffleArray(cells);
   const count = Math.floor(cells.length * CONFIG.FLORA.coverage);
-  for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1]);
+  for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1], true);
 }
 
 // CA139 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA139
 const TREE_SURGE_WAVES = [3, 4, 5];
 const ROCK_SURGE_WAVES = [8, 9, 10];
 function maybeSpawnMoreScenery(){
+  ensureEndGuardScenery();
   const upcomingWave = waveIndex + 1; // this runs in the IDLE gap right before that wave starts
   const isTreeSurge = TREE_SURGE_WAVES.includes(upcomingWave);
   const isRockSurge = ROCK_SURGE_WAVES.includes(upcomingWave);
@@ -3855,7 +3988,7 @@ function updateScenery(dt){
         const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)];
         spawnGroundItem(item.x, item.y - 4, FOOD_BY_ID.get(berryId));
       } else if(item.type === 'CHEST'){
-        gold += item.goldYield;
+        spawnChestCoinFountain(item.x, item.y - 6, item.goldYield);
         spawnFloatingText(item.x, item.y - 20, '+' + item.goldYield + '💰', '#ffd700');
         spawnParticles(item.x, item.y, '#ffd700', 12);
         playSound('wave');
@@ -3915,7 +4048,6 @@ const FOOD_KINDS = {
   VEGETABLE: { weight: 10, color: '#8bc34a' },
   MEAT:      { weight: 30, color: '#ff8a65' }
 };
-const FOOD_DROP_CHANCE_BY_TIER = { TINY: 0.05, SMALL: 0.07, STANDARD: 0.10, LARGE: 0.16, BOSS: 0 };
 const FOOD_ITEM_ROWS = [
   ['APPLE', 'Apple', '🍎', 'FRUIT'], ['BANANA', 'Banana', '🍌', 'FRUIT'], ['GRAPES', 'Grapes', '🍇', 'FRUIT'],
   ['TANGERINE', 'Tangerine', '🍊', 'FRUIT'], ['STRAWBERRY', 'Strawberry', '🍓', 'FRUIT'], ['WATERMELON', 'Watermelon', '🍉', 'FRUIT'],
@@ -3952,13 +4084,6 @@ function pickGenericFoodItem(){
   for(const [kindName, kind] of Object.entries(FOOD_KINDS)){ roll -= kind.weight; if(roll < 0){ chosenKind = kindName; break; } }
   const candidates = FOOD_ITEMS.filter(item => item.kind === chosenKind);
   return candidates[Math.floor(Math.random() * candidates.length)];
-}
-function dropFoodFromEnemy(enemy){
-  if(enemy.isGuardian || enemy.isHutBuilding) return;
-  const tier = enemyDropTier(enemy);
-  if(tier === 'BOSS') return; // bosses drop a Treat instead — see dropTreatFromBoss()
-  if(Math.random() >= FOOD_DROP_CHANCE_BY_TIER[tier]) return;
-  spawnGroundItem(enemy.x, enemy.y - 6, pickGenericFoodItem());
 }
 // Applies a food item's effect to the nearest tower within pickup range, or as a life restore if none is
 // close enough (Meat and the token/small heals on Fruit and Vegetable always work this way).
@@ -4232,6 +4357,19 @@ function advanceLooseDrain(drainMs, dtMs){
   const totalMs = drainMs + dtMs;
   const hearts = Math.floor(totalMs / LOOSE_ENEMY_LIFE_DRAIN_MS);
   return { hearts, remainingMs: totalMs - hearts*LOOSE_ENEMY_LIFE_DRAIN_MS };
+}
+function nearestLooseWalkableTileCenter(worldX, worldY){
+  const originTileX = Math.floor(worldX / TILE_SIZE), originTileY = Math.floor(worldY / TILE_SIZE);
+  for(let radius = 1; radius <= 12; radius++){
+    for(let dx = -radius; dx <= radius; dx++){
+      for(let dy = -radius; dy <= radius; dy++){
+        if(Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const tileX = originTileX + dx, tileY = originTileY + dy;
+        if(pathCells.has(tileX+','+tileY) || isInActiveRegion(tileX, tileY)) return { x: tileX*TILE_SIZE + TILE_SIZE/2, y: tileY*TILE_SIZE + TILE_SIZE/2 };
+      }
+    }
+  }
+  return null;
 }
 function isLooseWalkableAt(worldX, worldY){
   const tileX = Math.floor(worldX / TILE_SIZE), tileY = Math.floor(worldY / TILE_SIZE);
@@ -4897,7 +5035,7 @@ function drawMap(ctx){
 
   // CA167 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA167
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for(const item of floraMap.values()){
+  for(const item of graphicsQuality === 'high' ? [] : floraMap.values()){ // high graphics draws flora live, see drawAnimatedFlora()
     ctx.save();
     ctx.translate(item.x + item.offX, item.y + item.offY);
     ctx.rotate(item.rotDeg * Math.PI/180);
@@ -5595,29 +5733,73 @@ function spawnGroundItem(x, y, itemDef){
     }
     if(oldestIdx !== -1) groundItems.splice(oldestIdx, 1);
   }
-  const item = { id: idCounter++, x, y, itemDef, spawnTime: gameTime };
+  const item = { id: idCounter++, x, y, itemDef, spawnTime: presentationTime };
   groundItems.push(item);
   maybeShowItemGuide();
   return item;
 }
-// Rolls the item drops for a defeated enemy: its signature item (see ENEMY_SIGNATURE_DROPS) and a size-based
-// chance at a general item. Bosses always drop one item of at least Uncommon rarity, plus their signature item.
+// LOOT-TABLE-01 (1.6.99): supply = common (fruit, coin pouches), tonic = uncommon (potions, meat, vegetables,
+// purses, training scrolls), gear = rare (equipment, see ITEM_RARITIES). Picks are made lazily so the food and
+// hut-loot tables above can be declared in any order.
+const LOOT_SUPPLY_SOURCES = [
+  { weight: 70, pick: () => pickFoodOfKind('FRUIT') },
+  { weight: 30, pick: () => HUT_LOOT_ITEMS[0] }
+];
+const LOOT_TONIC_SOURCES = [
+  { weight: 45, pick: () => pickFromList(LOOT_TONIC_ITEMS) },
+  { weight: 25, pick: () => pickFoodOfKind('MEAT') },
+  { weight: 10, pick: () => pickFoodOfKind('VEGETABLE') },
+  { weight: 20, pick: () => pickFromList([HUT_LOOT_ITEMS[1], HUT_LOOT_ITEMS[2]]) }
+];
+let lootWaveTracked = -1, lootRegularDropsThisWave = 0;
+function pickFromList(list){ return list[Math.floor(Math.random() * list.length)]; }
+function pickFoodOfKind(kindName){ return pickFromList(FOOD_ITEMS.filter(item => item.kind === kindName)); }
+function pickWeighted(entries){
+  let roll = Math.random() * entries.reduce((sum, entry) => sum + entry.weight, 0);
+  for(const entry of entries){ roll -= entry.weight; if(roll < 0) return entry; }
+  return entries[entries.length - 1];
+}
+function regularLootCapForWave(){
+  return Math.min(LOOT_REGULAR_DROP_CAP_MAX, LOOT_REGULAR_DROP_CAP_BASE + Math.floor(waveIndex / 10) * LOOT_REGULAR_DROP_CAP_PER_10_WAVES);
+}
+function rollLootCategory(tier){
+  const weights = LOOT_CATEGORY_WEIGHTS_BY_TIER[tier];
+  const entries = Object.keys(weights).map(category => ({ category, weight: weights[category] }));
+  return pickWeighted(entries).category;
+}
+function rollRegularLootItem(enemy, tier){
+  const category = rollLootCategory(tier);
+  if(category === 'supply') return { category, item: pickWeighted(LOOT_SUPPLY_SOURCES).pick() };
+  if(category === 'tonic') return { category, item: pickWeighted(LOOT_TONIC_SOURCES).pick() };
+  const signatureId = ENEMY_SIGNATURE_DROPS[enemy.type];
+  const useSignature = signatureId && Math.random() < SIGNATURE_SHARE_OF_GEAR_DROPS;
+  return { category, item: useSignature ? ITEM_BY_ID.get(signatureId) : pickGenericDropItem(rollDropRarity(false)) };
+}
 function dropItemsFromEnemy(enemy){
   if(enemy.isGuardian || enemy.isHutBuilding) return;
   const tier = enemyDropTier(enemy);
-  const signatureItem = ENEMY_SIGNATURE_DROPS[enemy.type] ? ITEM_BY_ID.get(ENEMY_SIGNATURE_DROPS[enemy.type]) : null;
   const dropped = [];
-  if(signatureItem && (tier === 'BOSS' || Math.random() < SIGNATURE_DROP_CHANCE)) dropped.push(signatureItem);
-  if(tier === 'BOSS' || Math.random() < ITEM_DROP_CHANCE_BY_TIER[tier]){
-    const generic = pickGenericDropItem(rollDropRarity(tier === 'BOSS'));
-    if(generic && !dropped.includes(generic)) dropped.push(generic);
+  if(tier === 'BOSS'){
+    const signatureId = ENEMY_SIGNATURE_DROPS[enemy.type];
+    if(signatureId) dropped.push({ category: 'gear', item: ITEM_BY_ID.get(signatureId) });
+    const generic = pickGenericDropItem(rollDropRarity(true));
+    if(generic && !dropped.some(entry => entry.item === generic)) dropped.push({ category: 'gear', item: generic });
+  } else {
+    if(lootWaveTracked !== waveIndex){ lootWaveTracked = waveIndex; lootRegularDropsThisWave = 0; }
+    if(lootRegularDropsThisWave >= regularLootCapForWave()) return;
+    if(Math.random() >= LOOT_DROP_CHANCE_BY_TIER[tier]) return;
+    const rolled = rollRegularLootItem(enemy, tier);
+    if(!rolled.item) return;
+    lootRegularDropsThisWave++;
+    dropped.push(rolled);
   }
   for(let i=0; i<dropped.length; i++){
+    const { category, item } = dropped[i];
     const spread = dropped.length > 1 ? (i - (dropped.length-1)/2) * 22 : 0;
-    spawnGroundItem(enemy.x + spread, enemy.y, dropped[i]);
-    const rarity = ITEM_RARITIES[dropped[i].rarity];
-    trackGameEvent('item_dropped', { item: dropped[i].id, rarity: dropped[i].rarity, source: enemy.type });
-    if(dropped[i].rarity === 'RARE' || dropped[i].rarity === 'EPIC') showToast(dropped[i].icon + ' ' + rarity.label + ' item: ' + dropped[i].name);
+    spawnGroundItem(enemy.x + spread, enemy.y - 6, item);
+    trackGameEvent('item_dropped', { item: item.id, rarity: item.rarity || category.toUpperCase(), source: enemy.type });
+    if(item.rarity === 'RARE' || item.rarity === 'EPIC') showToast(item.icon + ' ' + ITEM_RARITIES[item.rarity].label + ' item: ' + item.name);
+    else if(category === 'tonic') showToast(item.icon + ' ' + item.name + ' dropped!');
   }
 }
 // The first item a player ever sees opens a one-time guide that explains items and the inventory.
@@ -5644,6 +5826,32 @@ function closeItemGuide(){
 }
 let draggingGroundItem = null; // the ground item currently being dragged, or null
 let dragItemPos = { x:0, y:0 }; // current world-space position of the item while dragging, for rendering it under the cursor
+// ITEM-MOVE-01 (1.6.104) — see CHANGELOG.md § [1.6.104]. A dragged ground item can be set down anywhere on the map,
+// but only inside the reach (targeting range circle) of at least one fighting stickman. Outside every circle the
+// item slides to the nearest point on the closest circle's edge; with no stickman to reach it, it cannot move.
+function activeItemReachCircles(){
+  const circles = [];
+  for(const tower of towerPool){
+    if(!tower.active || tower.type === 'BARRICADE') continue;
+    circles.push({ x: tower.x, y: tower.y, r: tower.targetingRange });
+  }
+  return circles;
+}
+function clampToItemReach(point, circles, fallback){
+  if(!circles.length) return { x: fallback.x, y: fallback.y };
+  let best = null, bestGap = Infinity;
+  for(const circle of circles){
+    const dx = point.x - circle.x, dy = point.y - circle.y;
+    const distance = Math.hypot(dx, dy);
+    if(distance <= circle.r) return { x: point.x, y: point.y };
+    const gap = distance - circle.r;
+    if(gap < bestGap){
+      bestGap = gap;
+      best = { x: circle.x + dx / distance * circle.r, y: circle.y + dy / distance * circle.r };
+    }
+  }
+  return best;
+}
 let selectedTower = null;
 let inspPanelExpanded = false; // compact (name/level/basic stats) by default; full options behind an explicit button
 let idCounter = 1;
@@ -6424,7 +6632,6 @@ function restoreGameState(state){
     t.disabledWavesLeft = td.disabledWavesLeft || 0;
   }
 
-  expansionsUsedThisCycle = 0; queuedFreeExpansions = 0;
   waveState = 'IDLE'; resetWaveDispatch();
   screenShakeUntil = 0; screenShakeMag = 0;
   rebakeMap();
@@ -6484,8 +6691,9 @@ const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
   waveStartCameraPan = null; // mutually exclusive with the wave-start pan below — whichever the player's attention is on wins, they never fight over camera.x/y/zoom in the same frame
-  cameraFollow = { tower, selectTime: gameTime, phase: 'waiting', panStartX: 0, panStartY: 0 };
+  cameraFollow = { tower, selectTime: presentationTime, phase: 'waiting', panStartX: 0, panStartY: 0 };
 }
+// REAL-TIME-PRESENTATION-01 (1.6.103): every camera pan below runs on presentationTime (real elapsed time), never gameTime, so 1x/2x/3x/5x/10x cannot change how fast the camera moves.
 // CA260 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA260
 let waveStartCameraPan = null;
 function startWaveStartCameraPan(){
@@ -6494,7 +6702,7 @@ function startWaveStartCameraPan(){
   const spawn = waypointsPx[0];
   const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
   waveStartCameraPan = {
-    panStartTime: gameTime, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
+    panStartTime: presentationTime, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
     targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - spawn.y*targetZoom
   };
 }
@@ -6503,7 +6711,7 @@ function updateWaveStartCameraPan(){
   if(cameraFollow){ waveStartCameraPan = null; return; } // player selected a tower mid-pan — hand off to that instead of fighting it
   const PAN_MS = 1200;
   const f = waveStartCameraPan;
-  const t = Math.min(1, (gameTime - f.panStartTime) / PAN_MS);
+  const t = Math.min(1, (presentationTime - f.panStartTime) / PAN_MS);
   const eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; // smooth ease-in-out cubic, same curve as the tower-follow pan
   camera.zoom = f.panStartZoom + (f.targetZoom - f.panStartZoom)*eased;
   camera.x = f.panStartX + (f.targetX - f.panStartX)*eased;
@@ -6527,9 +6735,9 @@ function updateCameraFollow(){
   const RECOMMENDED_ZOOM = 1.3; // guaranteed minimum close-up distance — zooms in to at least this, never zooms out past wherever the user already is
   const WAIT_MS = 150, PAN_MS = 1400;
   if(f.phase === 'waiting'){
-    if(gameTime - f.selectTime >= WAIT_MS){
+    if(presentationTime - f.selectTime >= WAIT_MS){
       f.phase = 'panning';
-      f.panStartTime = gameTime;
+      f.panStartTime = presentationTime;
       f.panStartX = camera.x; f.panStartY = camera.y;
       f.panStartZoom = camera.zoom;
       f.targetZoom = Math.max(camera.zoom, RECOMMENDED_ZOOM); // guarantees at least this zoom level, but never zooms OUT from wherever the user already is
@@ -6540,7 +6748,7 @@ function updateCameraFollow(){
     return;
   }
   if(f.phase === 'panning'){
-    const t = Math.min(1, (gameTime - f.panStartTime) / PAN_MS);
+    const t = Math.min(1, (presentationTime - f.panStartTime) / PAN_MS);
     // CA263 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA263
     const eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
     camera.zoom = f.panStartZoom + (f.targetZoom - f.panStartZoom)*eased;
@@ -6775,6 +6983,7 @@ class Enemy{
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
     this.looseDrainMs = 0;
     // CA275 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA275
+    this.isLivestock = false; this.livestockWalking = false; // LIVESTOCK-RECYCLE-01 (1.6.106): pooled enemies are reused, so a slot that once held a pig must not stay flagged as livestock
     this.isGuardian = false; this.hutRef = null; this.hutAnchorX = 0; this.hutAnchorY = 0;
     this.isHutBuilding = false; this.guardiansAliveCount = 0; this.respawnAt = null; this.destroyed = false;
     this.active = true;
@@ -6788,19 +6997,36 @@ class Enemy{
     this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms);
   }
   updateLivestockWander(dt){
+    // LIVESTOCK-CUTE-01 (1.6.105): idle a moment, then amble in a direction for a bit, then idle again. Driven in real time
+    // once per rendered frame (updatePresentationEffects()), so animals move between waves and at every game speed.
     this.retargetTimer = (this.retargetTimer||0) - dt;
     if(this.retargetTimer <= 0){
-      this.retargetTimer = LIVESTOCK_WANDER_RETARGET_MS * (0.6 + Math.random()*0.8);
-      const angle = Math.random()*Math.PI*2;
-      const wanderSpeed = LIVESTOCK_TYPES[this.type].speed;
-      this.vx = Math.cos(angle)*wanderSpeed; this.vy = Math.sin(angle)*wanderSpeed;
+      this.livestockWalking = !this.livestockWalking;
+      if(this.livestockWalking){
+        this.retargetTimer = LIVESTOCK_WALK_MS_MIN + Math.random()*(LIVESTOCK_WALK_MS_MAX - LIVESTOCK_WALK_MS_MIN);
+        const angle = Math.random()*Math.PI*2;
+        const wanderSpeed = LIVESTOCK_TYPES[this.type].speed * LIVESTOCK_WALK_SPEED_MULT;
+        this.vx = Math.cos(angle)*wanderSpeed; this.vy = Math.sin(angle)*wanderSpeed;
+        if(this.vx > 1) this.livestockFacesRight = true; else if(this.vx < -1) this.livestockFacesRight = false;
+      } else {
+        this.retargetTimer = LIVESTOCK_IDLE_MS_MIN + Math.random()*(LIVESTOCK_IDLE_MS_MAX - LIVESTOCK_IDLE_MS_MIN);
+        this.vx = 0; this.vy = 0;
+      }
     }
+    if(!isLooseWalkableAt(this.x, this.y)){
+      // LIVESTOCK-UNSTUCK-01 (1.6.109): an animal that ends up on ground it cannot walk (map change, odd spawn tile) would bounce in place
+      // forever, because every step fails the walkable check. Move it to the middle of the active region's nearest walkable tile.
+      const rescue = nearestLooseWalkableTileCenter(this.x, this.y);
+      if(rescue){ this.x = rescue.x; this.y = rescue.y; }
+    }
+    if(!this.livestockWalking) return;
     const previousX = this.x, previousY = this.y;
     this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     if(!isLooseWalkableAt(this.x, this.y)){
       if(isLooseWalkableAt(this.x, previousY)){ this.y = previousY; this.vy = -this.vy; }
       else if(isLooseWalkableAt(previousX, this.y)){ this.x = previousX; this.vx = -this.vx; }
       else { this.x = previousX; this.y = previousY; this.vx = -this.vx; this.vy = -this.vy; }
+      if(this.vx > 1) this.livestockFacesRight = true; else if(this.vx < -1) this.livestockFacesRight = false;
     }
   }
   applyFreeze(ms){
@@ -7591,6 +7817,7 @@ class Enemy{
   }
   die(sourceTower, forStreak){
     if(!this.active) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
+    if(this.isLivestock && !LIVESTOCK_TYPES[this.type]) this.isLivestock = false; // LIVESTOCK-RECYCLE-01 safety net: a real enemy can never be treated as livestock
     if(this.isLivestock){
       this.active = false;
       if(markedTargetEnemy === this) markedTargetEnemy = null;
@@ -7642,7 +7869,7 @@ class Enemy{
       if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     }
     dropItemsFromEnemy(this);
-    if(this.type === 'BOSS' || this.type === 'SANTA') dropTreatFromBoss(this); else dropFoodFromEnemy(this);
+    if(this.type === 'BOSS' || this.type === 'SANTA') dropTreatFromBoss(this);
     // PERF-DEATH-01 (1.6.14): low graphics and crowded battles use the authored lighter death
     // effect path. The old hard-coded false forced full particle/decal bursts even at low quality.
     const low = graphicsQuality === 'low' || underHeavyVisualLoad;
@@ -7790,7 +8017,7 @@ class Enemy{
       }
       if(this.type === 'BOSS' || this.type === 'SANTA'){
         if(screenShakeEnabled){
-          screenShakeUntil = gameTime + (low ? 150 : 220);
+          screenShakeUntil = presentationTime + (low ? 150 : 220);
           screenShakeMag = Math.max(screenShakeMag, (low ? 6 : 9) * Math.min(1.4, goreScale));
         }
         hitStopUntil = gameTime + 40; // brief 40ms freeze-frame for impact weight — a different effect than screen shake, not covered by that toggle
@@ -7909,9 +8136,14 @@ class Enemy{
       bumpDy += Math.sin(this.flinchAngle) * this.flinchMag * flinchT;
     }
     ctx.save();
-    const walkBob = speed > 5 ? Math.sin(this.traveled/9) * Math.min(2.2, this.radius*0.13) : 0;
+    const livestockHop = this.isLivestock ? (this.livestockWalking ? -Math.abs(Math.sin(presentationTime/130 + this.id*1.7)) * this.radius*0.38 : Math.sin(presentationTime/700 + this.id)*this.radius*0.05) : 0;
+    const walkBob = this.isLivestock ? livestockHop : (speed > 5 ? Math.sin(this.traveled/9) * Math.min(2.2, this.radius*0.13) : 0);
     ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy+walkBob)+0.5);
-    if(speed > 20){
+    if(this.isLivestock){
+      if(this.livestockFacesRight) ctx.scale(-1, 1); // the farm emoji face left by default
+      if(this.livestockWalking) ctx.rotate(Math.sin(presentationTime/130 + this.id*1.7) * 0.14);
+    }
+    if(speed > 20 && !this.isLivestock){
       const angle = Math.atan2(this.vy, this.vx);
       const stretch = 1 + Math.min(0.25, speed/700);
       const squash = 1/stretch;
@@ -8142,13 +8374,11 @@ class Tower{
     }
     if(this.isVeteran) this.damage = Math.round(this.damage * 1.1);
     this.cooldown = Math.max(80, Math.round(this.baseCooldown / dexMult));
-    if(this.type === 'CLERIC'){
-      this.range = this.baseRange; // fixed smite-detection radius, not INT-scaled
-      if(this.baseHealAmount) this.healAmount = Math.round(this.baseHealAmount * (1 + cappedStatPoints(intEff) / STAT_EFFECT_CAP));
-    } else {
-      const cap = RANGE_CAPS[this.type] || this.baseRange * 2;
-      this.range = interpolateRangeByInt(this.baseRange, cap, intRangeFraction);
-    }
+    if(this.type === 'CLERIC' && this.baseHealAmount) this.healAmount = Math.round(this.baseHealAmount * (1 + cappedStatPoints(intEff) / STAT_EFFECT_CAP));
+    // MELEE-RANGE-BALANCE-01 (1.6.108): Cleric used to keep a fixed range while every other class grew toward its cap with INT,
+    // so a trained Axeman out-reached it. Cleric now scales like everyone else, toward the longest cap of the melee and support lineage.
+    const cap = RANGE_CAPS[this.type] || this.baseRange * 2;
+    this.range = interpolateRangeByInt(this.baseRange, cap, intRangeFraction);
     if(this.baseMeleeDamage) this.meleeDamage = Math.round(this.baseMeleeDamage * primaryDamageMult);
     if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange){
@@ -10614,11 +10844,12 @@ function drawParticles(ctx){
 
 const floatingTexts = Array.from({length: TEXT_COUNT}, () => ({active:false,x:0,y:0,text:'',color:'#fff',life:0,maxLife:0}));
 let textIndex = 0;
-function spawnFloatingText(x,y,text,color){
+const ITEM_POPUP_LIFE_MS = 1800; // item equip/stored popups stay up long enough to read
+function spawnFloatingText(x,y,text,color,lifeMs){
   const t = floatingTexts[textIndex];
   textIndex = (textIndex+1) % TEXT_COUNT;
   t.active = true; t.x = x; t.y = y; t.text = text; t.color = color;
-  t.life = t.maxLife = 550;
+  t.life = t.maxLife = lifeMs || 550;
   t.isIcon = false; t.isXp = false;
 }
 // CA558 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA558
@@ -10645,23 +10876,67 @@ function spawnTowerQuip(x,y,text){
   t.life = t.maxLife = 1800;
   t.isIcon = false;
 }
-function updateFloatingTexts(dt){
+function updateFloatingTexts(frameMs){
   for(const t of floatingTexts){
     if(!t.active) continue;
-    t.life -= dt;
+    t.life -= frameMs;
     if(t.life <= 0){ t.active = false; continue; }
-    if(!t.isIcon) t.y -= 22*dt/1000; // plain combat text drifts upward; icons stay put and animate in place instead
+    if(!t.isIcon) t.y -= 22*frameMs/1000; // plain combat text drifts upward; icons stay put and animate in place instead
   }
 }
 // CA561 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA561
-const COIN_COUNT = 40;
+const COIN_COUNT = 96;
 const COIN_COLLECT_RADIUS = 46;
-const coinPickups = Array.from({length: COIN_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,value:0,age:0,lifespan:0}));
+const coinPickups = Array.from({length: COIN_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,value:0,age:0,lifespan:0,z:0,vz:0,airborne:false,convertsMidair:false,flightMs:0,convertAtMs:0}));
 let coinIndex = 0;
+// CHEST-FOUNTAIN-01 (1.6.101) — see CHANGELOG.md § [1.6.101]. A cleared treasure chest throws a fountain of coins
+// into the air. Most turn into gold before they land (gold is added at that moment, with a sparkle); the rest land
+// and stay on the ground, where a click or a nearby stickman collects them. The chest's gold is split across all of them.
+const CHEST_FOUNTAIN_COIN_COUNT = 24;
+const CHEST_FOUNTAIN_MIDAIR_COUNT = 18;
+const COIN_GRAVITY_PX_PER_S2 = 900;
+const COIN_CLICK_RADIUS = 28;
+function acquireCoinSlot(){
+  const c = coinPickups[coinIndex];
+  coinIndex = (coinIndex+1) % COIN_COUNT;
+  if(c.active) gold += c.value; // recycling a live coin must never lose its gold
+  c.airborne = false; c.convertsMidair = false; c.z = 0; c.vz = 0; c.flightMs = 0; c.convertAtMs = 0;
+  return c;
+}
+function spawnChestCoinFountain(x, y, totalGold){
+  const baseValue = Math.max(1, Math.floor(totalGold / CHEST_FOUNTAIN_COIN_COUNT));
+  const remainder = totalGold - baseValue * CHEST_FOUNTAIN_COIN_COUNT;
+  for(let i=0; i<CHEST_FOUNTAIN_COIN_COUNT; i++){
+    const c = acquireCoinSlot();
+    const angle = Math.random()*Math.PI*2, sideSpeed = 30 + Math.random()*120;
+    const isLastCoin = i === CHEST_FOUNTAIN_COIN_COUNT - 1;
+    c.active = true; c.x = x; c.y = y; c.z = 8;
+    c.vx = Math.cos(angle)*sideSpeed; c.vy = Math.sin(angle)*sideSpeed*0.6;
+    c.vz = 280 + Math.random()*200;
+    c.airborne = true;
+    c.convertsMidair = i < CHEST_FOUNTAIN_MIDAIR_COUNT;
+    const flightMs = 2 * c.vz / COIN_GRAVITY_PX_PER_S2 * 1000;
+    c.convertAtMs = flightMs * (0.35 + Math.random()*0.4);
+    c.value = baseValue + (isLastCoin ? remainder : 0);
+    c.age = 0;
+    c.lifespan = 15000 + Math.random()*15000;
+  }
+}
+function tryCollectCoinAt(worldX, worldY){
+  for(const c of coinPickups){
+    if(!c.active || c.airborne) continue;
+    if(Math.hypot(c.x - worldX, c.y - worldY) > COIN_CLICK_RADIUS) continue;
+    gold += c.value;
+    spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#ffd700');
+    playSound('click');
+    c.active = false;
+    return true;
+  }
+  return false;
+}
 function spawnCoinBurst(x, y, count){
   for(let i=0; i<count; i++){
-    const c = coinPickups[coinIndex];
-    coinIndex = (coinIndex+1) % COIN_COUNT;
+    const c = acquireCoinSlot();
     const ang = Math.random()*Math.PI*2, speed = 40 + Math.random()*90;
     c.active = true; c.x = x; c.y = y;
     c.vx = Math.cos(ang)*speed; c.vy = Math.sin(ang)*speed;
@@ -10679,6 +10954,22 @@ function updateCoinPickups(dt){
       gold += c.value;
       spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#e6c200');
       c.active = false;
+      continue;
+    }
+    if(c.airborne){
+      c.flightMs += dt;
+      c.vz -= COIN_GRAVITY_PX_PER_S2*dt/1000;
+      c.z += c.vz*dt/1000;
+      c.vx *= Math.pow(0.55, dt/1000); c.vy *= Math.pow(0.55, dt/1000);
+      c.x += c.vx*dt/1000; c.y += c.vy*dt/1000;
+      if(c.convertsMidair && c.flightMs >= c.convertAtMs){
+        gold += c.value;
+        spawnParticles(c.x, c.y - c.z, '#ffd700', 3);
+        c.active = false;
+      } else if(c.z <= 0){
+        c.z = 0; c.airborne = false;
+        c.vx *= 0.3; c.vy *= 0.3;
+      }
       continue;
     }
     // CA563 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA563
@@ -10702,7 +10993,17 @@ function drawCoinPickups(ctx){
     const remainFrac = 1 - c.age/c.lifespan;
     ctx.globalAlpha = remainFrac < 0.15 ? remainFrac/0.15 : 1; // only fades in the final 15% of its life, stays fully visible otherwise
     ctx.font = '16px sans-serif';
-    ctx.fillText('🪙', c.x, c.y);
+    if(c.airborne){
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, 6, 3, 0, 0, Math.PI*2); ctx.fill();
+      ctx.save();
+      ctx.translate(c.x, c.y - c.z);
+      ctx.scale(Math.max(0.25, Math.abs(Math.cos(c.flightMs*0.02))), 1);
+      ctx.fillText('🪙', 0, 0);
+      ctx.restore();
+    } else {
+      ctx.fillText('🪙', c.x, c.y);
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -11583,7 +11884,7 @@ function chipBarricade(barricade){
   spawnFloatingText(barricade.x, barricade.y - 26, '-1', '#e63946');
   spawnBarricadeDebris(barricade);
   playSound('hit', barricade.x);
-  if(screenShakeEnabled){ screenShakeUntil = gameTime + 140; screenShakeMag = Math.max(screenShakeMag, 4); }
+  if(screenShakeEnabled){ screenShakeUntil = presentationTime + 140; screenShakeMag = Math.max(screenShakeMag, 4); }
   if(barricade.hp <= 0){
     barricade.active = false;
     activeBarricades.delete(barricade);
@@ -12135,13 +12436,13 @@ const BOSS_WARNING_MS = 2600;
 let bossWarningUntil = 0;
 let bossWarningLabel = 'BOSS APPROACHING';
 function showBossWarning(label){
-  bossWarningUntil = gameTime + BOSS_WARNING_MS;
+  bossWarningUntil = presentationTime + BOSS_WARNING_MS;
   bossWarningLabel = label || 'BOSS APPROACHING';
   playSound('wave');
-  if(screenShakeEnabled){ screenShakeUntil = gameTime + 600; screenShakeMag = Math.max(screenShakeMag, 7); }
+  if(screenShakeEnabled){ screenShakeUntil = presentationTime + 600; screenShakeMag = Math.max(screenShakeMag, 7); }
 }
 function drawBossWarning(ctx){
-  const remaining = bossWarningUntil - gameTime;
+  const remaining = bossWarningUntil - presentationTime;
   if(remaining <= 0) return;
   const t = 1 - remaining / BOSS_WARNING_MS;
   // OPACITY-NO-PULSE-01 (1.6.59) — see CHANGELOG.md § [1.6.59]. Standing rule: nothing fades in
@@ -12181,11 +12482,21 @@ function announceSizePhase(phase){
   else showToast(SIZE_PHASE_BANNERS[phase.sizeTier]);
   playSound(phase.sizeTier === 'BOSS' || phase.sizeTier === 'LARGE' ? 'wave' : 'click');
 }
+// WAVE-RUSH-01 (1.6.100) — see CHANGELOG.md § [1.6.100]. When the player has cleared every enemy still on the route
+// mid-wave, the remaining unit-spacing and batch/phase presentation gaps are pointless waiting: drop them so the next
+// enemy is released immediately. Held back only while a boss warning banner is on screen.
+function rushDispatchIfFieldClear(){
+  if(presentationTime < bossWarningUntil) return;
+  if(waveRouteObligationsOutstanding()) return;
+  waveDispatch.unitGapRemainingMs = 0;
+  waveDispatch.gapRemainingMs = 0;
+}
 function advanceWaveDispatch(dt){
   const plan = activeWavePlan;
   if(!plan || waveTimer < WAVE_COUNTDOWN_MS) return;
   const phase = plan.phases[waveDispatch.phaseIndex];
   if(!phase){ waveState = 'ACTIVE'; updateHUD(); return; }
+  rushDispatchIfFieldClear();
   const batch = phase.batches[waveDispatch.batchIndex];
   if(waveDispatch.unitIndex < batch.units.length){
     if(waveDispatch.unitGapRemainingMs > 0){ waveDispatch.unitGapRemainingMs -= dt; return; } // ENEMY-PACE-01: space the units out
@@ -12515,10 +12826,10 @@ function update(dt){
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
   if(checkAllFightersDown()) return; // loss condition: every fighting stickman overrun at once — see checkAllFightersDown()
   // CA650 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA650
-  if(gameTime - lastGroundItemSweep > 10000){
-    lastGroundItemSweep = gameTime;
+  if(presentationTime - lastGroundItemSweep > 10000){
+    lastGroundItemSweep = presentationTime;
     if(groundItems.length){
-      groundItems = groundItems.filter(gi => gi === draggingGroundItem || gameTime - gi.spawnTime < groundItemLifespan(gi));
+      groundItems = groundItems.filter(gi => gi === draggingGroundItem || presentationTime - gi.spawnTime < groundItemLifespan(gi));
     }
   }
   // CA651 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA651
@@ -12542,7 +12853,7 @@ function update(dt){
   phaseTime.barricade += performance.now() - __pt; __pt = performance.now();
   const anyActiveEnemies = enemyPool.some(e => e.active && !e.isLivestock); // TARGET-MARK-01 (1.6.94): livestock never block a wave from completing
   if(anyActiveEnemies){
-    for(const e of enemyPool) if(e.active) e.update(dt);
+    for(const e of enemyPool) if(e.active && !e.isLivestock) e.update(dt); // livestock wander in real time, see updatePresentationEffects()
     phaseTime.enemyUpdate += performance.now() - __pt; __pt = performance.now();
     resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
     resolveEnemyCollisions();
@@ -12564,8 +12875,6 @@ function update(dt){
   updateDeathAnims();
   updateBarricadeChunks(dt);
   updateWalkingBlood(dt);
-  updateFloatingTexts(dt);
-  updateCoinPickups(dt);
   phaseTime.particles += performance.now() - __pt; __pt = performance.now();
 
 
@@ -12595,7 +12904,6 @@ function update(dt){
       // CA657 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA657
       for(const s of skeletonPool) s.active = false;
       processClericHealing();
-      expansionsUsedThisCycle = 0; // new idle period — one expansion allowed again
       checkTowerUnlocks();
       maybeSpawnMoreScenery();
       maybeSpawnChanceStructures();
@@ -12621,11 +12929,7 @@ function update(dt){
           if(Math.random() < 0.1) d.wormPending = true;
         }
       }
-      if(queuedFreeExpansions > 0 && !regionFullyExpanded()){
-        queuedFreeExpansions--;
-        expansionsUsedThisCycle++;
-        performExpansion('🎁 Queued Expansion!', '#7dd3fc');
-      } else if(wavesCompleted <= 4 || wavesCompleted % 4 === 0){
+      if(wavesCompleted <= 4 || wavesCompleted % 4 === 0){
         // CA660 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA660
         grantFreeExpansion();
       }
@@ -12742,8 +13046,8 @@ function render(ctx){
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   ctx.save();
   let shakeX = 0, shakeY = 0;
-  if(screenShakeUntil > gameTime){
-    const remain = (screenShakeUntil - gameTime) / 130;
+  if(screenShakeUntil > presentationTime){
+    const remain = (screenShakeUntil - presentationTime) / 130;
     shakeX = (Math.random()*2-1) * screenShakeMag * remain;
     shakeY = (Math.random()*2-1) * screenShakeMag * remain;
   } else {
@@ -12756,6 +13060,7 @@ function render(ctx){
   let __rpt = performance.now();
   const worldView = visibleWorldRect();
   blitWorldLayer(ctx, mapCanvas, worldView); // static map, pre-rendered once — see BOOT
+  if(graphicsQuality === 'high') drawAnimatedFlora(ctx, fxViewBounds());
   drawPendingRingReveal(ctx); // spiral map-growth: tiles already buildable (isInActiveRegion) but not yet baked into mapCanvas — see advanceRingReveal()
   renderPhaseTime.mapBlit += performance.now() - __rpt; __rpt = performance.now();
   if(settledDecalCanvasReady) blitWorldLayer(ctx, settledDecalCanvas, worldView); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
@@ -12782,19 +13087,19 @@ function render(ctx){
   }
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
-    const popAge = gameTime - gi.spawnTime;
+    const popAge = presentationTime - gi.spawnTime;
     const popLift = popAge < 450 ? -Math.sin(popAge/450*Math.PI)*16 : 0;
-    const bob = Math.sin(gameTime/300 + gi.id)*4 + popLift;
+    const bob = Math.sin(presentationTime/300 + gi.id)*4 + popLift;
     if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
     ctx.save();
     // CA668 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA668
     const isFoodOrTreat = gi.itemDef.isFood || gi.itemDef.isTreat || gi.itemDef.isHutLoot;
     const itemRarity = isFoodOrTreat ? { glowRadius: gi.itemDef.isTreat ? 26 : 16, hueMsPerDegree: gi.itemDef.isTreat ? 20 : 90 } : (ITEM_RARITIES[gi.itemDef.rarity] || ITEM_RARITIES.COMMON);
     const hueSpeed = itemRarity.hueMsPerDegree; // ms per degree — lower = faster cycle
-    const hue = (gameTime / hueSpeed + gi.id * 47) % 360;
+    const hue = (presentationTime / hueSpeed + gi.id * 47) % 360;
     const ringColorHex = `hsl(${hue.toFixed(0)}, 100%, 58%)`;
     // CA669 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA669
-    const glowPulse = 0.55 + Math.sin(gameTime/280 + gi.id)*0.25;
+    const glowPulse = 0.55 + Math.sin(presentationTime/280 + gi.id)*0.25;
     const glowRadius = itemRarity.glowRadius;
     const grad = ctx.createRadialGradient(gi.x, gi.y + bob, 0, gi.x, gi.y + bob, glowRadius);
     // CA670 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA670
@@ -12807,11 +13112,25 @@ function render(ctx){
     ctx.arc(gi.x, gi.y + bob, glowRadius, 0, Math.PI*2);
     ctx.fill();
     if(graphicsQuality !== 'low'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // ground items are few and short-lived, so this was low real impact, but matching the Low-graphics gate used everywhere else keeps the setting meaning the same thing consistently
+    if(!isFoodOrTreat && itemRarity.ringColor){
+      // RARITY-RING-01 (1.6.107): a steady ring in the item's rarity colour, on top of the rainbow glow, so a rare drop reads at a glance
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = itemRarity.ringColor; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(gi.x, gi.y + bob, 15, 0, Math.PI*2); ctx.stroke();
+    }
     ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
   }
   if(draggingGroundItem){
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,233,168,0.10)';
+    ctx.strokeStyle = 'rgba(255,233,168,0.55)';
+    ctx.lineWidth = 2;
+    for(const circle of activeItemReachCircles()){
+      ctx.beginPath(); ctx.arc(circle.x, circle.y, circle.r, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
     ctx.save();
     ctx.globalAlpha = 0.85;
     ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -13801,6 +14120,17 @@ function renderAttractMode(ctx, now){
   ctx.restore();
   ctx.restore();
 }
+// REAL-TIME-PRESENTATION-01 (1.6.105): things the player watches rather than fights run once per rendered frame in real
+// time, so they look identical at every game speed and keep working between waves: floating text, coin flights and
+// livestock wandering.
+function updatePresentationEffects(frameMs){
+  const clampedMs = Math.min(100, frameMs);
+  updateFloatingTexts(clampedMs);
+  updateCoinPickups(clampedMs);
+  for(const animal of enemyPool) if(animal.active && animal.isLivestock) animal.updateLivestockWander(clampedMs);
+}
+// Only combat during an actual wave fast-forwards. Between waves everything runs at 1x.
+function effectiveGameSpeed(){ return waveState === 'IDLE' ? 1 : gameSpeed; }
 function loop(now){
   requestAnimationFrame(loop);
   // MOBILE-FPS-CAP-01 (1.6.48) — see CHANGELOG.md § [1.6.48]. Skip the entire frame (simulation,
@@ -13835,11 +14165,13 @@ function loop(now){
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
     waveTimer += frameTime;
   }
-  accumulator += frameTime * gameSpeed;
+  updatePresentationEffects(frameTime);
+  const simulationSpeed = effectiveGameSpeed();
+  accumulator += frameTime * simulationSpeed;
   let ticksThisFrame = 0;
   // The bounded catch-up cap scales with the accepted frame gap and requested speed.
   const tickCapThisFrame = Math.min(MAX_SIMULATION_TICK_CAP,
-    Math.max(MAX_SIMULATION_TICKS_PER_FRAME, Math.ceil(maxFrameTimeMs * gameSpeed / FIXED_DT)));
+    Math.max(MAX_SIMULATION_TICKS_PER_FRAME, Math.ceil(maxFrameTimeMs * simulationSpeed / FIXED_DT)));
   perfStats.lastSimulationTickCap = tickCapThisFrame;
 
   resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
@@ -14014,44 +14346,6 @@ function fitStatRowToOneLine(){
 }
 window.addEventListener('resize', fitStatRowToOneLine);
 window.addEventListener('orientationchange', fitStatRowToOneLine);
-
-// CA734 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA734
-const OPT_BUTTON_MIN_FONT_PX = 9;
-const labelMeasureRange = document.createRange();
-// CA735 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA735
-function buttonLabelOverflows(button){
-  labelMeasureRange.selectNodeContents(button);
-  const style = getComputedStyle(button);
-  const contentWidth = button.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-  return labelMeasureRange.getBoundingClientRect().width > contentWidth + 0.5;
-}
-function fitOptRowToOneLine(rowId){
-  const row = document.getElementById(rowId);
-  if(!row) return;
-  for(const button of row.querySelectorAll('button')){
-    button.style.fontSize = '';
-    if(button.offsetParent === null) continue;
-    let fontPx = parseFloat(getComputedStyle(button).fontSize);
-    while(buttonLabelOverflows(button) && fontPx > OPT_BUTTON_MIN_FONT_PX){
-      fontPx -= 0.5;
-      button.style.fontSize = fontPx + 'px';
-    }
-  }
-}
-let inspectPanelRefitQueued = false;
-// CA736 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA736
-function queueInspectPanelRefit(){
-  if(inspectPanelRefitQueued) return;
-  inspectPanelRefitQueued = true;
-  requestAnimationFrame(() => { inspectPanelRefitQueued = false; fitOptRowsToOneLine(); });
-}
-function fitOptRowsToOneLine(){
-  fitOptRowToOneLine('inspUpgradeSellRow');
-  fitOptRowToOneLine('inspTargetMoveRow');
-  fitOptRowToOneLine('inspStatButtons');
-}
-window.addEventListener('resize', fitOptRowsToOneLine);
-window.addEventListener('orientationchange', fitOptRowsToOneLine);
 
 // CA737 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA737
 function fitNameplateToStatRow(){
@@ -14245,14 +14539,16 @@ canvas.addEventListener('pointerdown', (e) => {
     // CA743 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA743
     if(gameState === 'PLAYING'){
       const { x: worldX, y: worldY } = toCanvasCoords(e);
-      for(const gi of groundItems){
-        if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
-          draggingGroundItem = gi;
-          dragItemPos = { x: worldX, y: worldY };
-          break;
+      if(!tryCollectCoinAt(worldX, worldY)){
+        for(const gi of groundItems){
+          if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
+            draggingGroundItem = gi;
+            dragItemPos = { x: worldX, y: worldY };
+            break;
+          }
         }
+        if(!draggingGroundItem) tryMarkTargetAt(worldX, worldY);
       }
-      if(!draggingGroundItem) tryMarkTargetAt(worldX, worldY);
     }
   }
 });
@@ -14285,7 +14581,7 @@ canvas.addEventListener('pointermove', (e) => {
         const d = Math.hypot(t.x - raw.x, t.y - raw.y);
         if(d < nearestDist){ nearest = t; nearestDist = d; }
       }
-      dragItemPos = nearest ? { x: nearest.x, y: nearest.y } : raw;
+      dragItemPos = nearest ? { x: nearest.x, y: nearest.y } : clampToItemReach(raw, activeItemReachCircles(), draggingGroundItem);
     } else if(isDragging){
       const rect = getCanvasRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
@@ -14337,8 +14633,8 @@ function onPointerEnd(e){
       } else if(target && target.receiveItem(draggingGroundItem.itemDef)){
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
         const equippedDef = draggingGroundItem.itemDef;
-        spawnFloatingText(target.x, target.y - 40, equippedDef.isBarricade ? '🚧 Stored!' : equippedDef.icon + ' ' + equippedDef.name, '#8bc34a');
-        if(!equippedDef.isBarricade) spawnFloatingText(target.x, target.y - 54, itemStatSummary(equippedDef), '#ffe082');
+        spawnFloatingText(target.x, target.y - 40, equippedDef.isBarricade ? '🚧 Stored!' : equippedDef.icon + ' ' + equippedDef.name, '#8bc34a', ITEM_POPUP_LIFE_MS);
+        if(!equippedDef.isBarricade) spawnFloatingText(target.x, target.y - 54, itemStatSummary(equippedDef), '#ffe082', ITEM_POPUP_LIFE_MS);
         trackGameEvent('item_equipped', { item: equippedDef.id, rarity: equippedDef.rarity, tower_type: target.type, items_carried: target.equippedItems.length });
         playSound('click');
         if(selectedTower === target) updateInspectPanel();
@@ -14357,6 +14653,10 @@ function onPointerEnd(e){
           }
         }
         // CA748 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA748
+      }
+      if(!target && isDragging && groundItems.includes(draggingGroundItem)){
+        draggingGroundItem.x = dragItemPos.x; draggingGroundItem.y = dragItemPos.y;
+        playSound('click');
       }
     } else if(!isCancel && !draggingGroundItem && !isDragging){
       handleTap(e.clientX, e.clientY);
@@ -14565,17 +14865,16 @@ function buildTowerModal(){
   grid.innerHTML = '';
 
   const fullyExpanded = regionFullyExpanded();
-  const usedThisRound = expansionsUsedThisCycle >= EXPANSIONS_PER_CYCLE;
   const cost = expansionCost();
-  const canExpand = !fullyExpanded && !usedThisRound && waveState === 'IDLE' && gold >= cost;
+  const canExpand = !fullyExpanded && waveState === 'IDLE' && gold >= cost;
   const expandRow = document.createElement('div');
   expandRow.className = 'build-row expand-row' + (canExpand ? '' : ' disabled');
-  const expandLabel = fullyExpanded ? 'Max Size' : usedThisRound ? 'Used This Round' : ('Expand (💰' + cost + ')' + (EXPANSIONS_PER_CYCLE > 1 ? ' [' + (EXPANSIONS_PER_CYCLE - expansionsUsedThisCycle) + ' left]' : ''));
+  const expandLabel = fullyExpanded ? 'Max Size' : 'Expand (💰' + cost + ')';
   expandRow.innerHTML =
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map by one ring — only between waves. You also get one free every 4 waves cleared.</div>';
+    '<div class="build-row-blurb">Grows the map — only between waves, as many times as you can afford. You also get one free every 4 waves cleared.</div>';
   if(canExpand){
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
@@ -15653,7 +15952,7 @@ function generateDebugLog(){
   s += 'Flora items: ' + floraMap.size + '\n';
   s += 'Design contract: ' + (designContractProblems.length ? designContractProblems.join(' | ') : 'OK') + '\n';
   s += 'Ground items: ' + groundItems.length + '/' + MAX_GROUND_ITEMS + (groundItems.length ?
-    '  (oldest ' + Math.round((gameTime - Math.min(...groundItems.map(gi => gi.spawnTime)))/1000) + 's old, ' + (GROUND_ITEM_LIFESPAN/60000) + 'm lifespan)' : '') + '\n\n';
+    '  (oldest ' + Math.round((presentationTime - Math.min(...groundItems.map(gi => gi.spawnTime)))/1000) + 's old, ' + (GROUND_ITEM_LIFESPAN/60000) + 'm lifespan)' : '') + '\n\n';
 
   s += 'TOWER COMPOSITION\n';
   s += '------------------\n';
@@ -15806,7 +16105,6 @@ function updateInspectPanel(){
     statsInfoBtn.classList.add('hidden');
     barricadeInfoBtn.classList.remove('hidden');
     inspAuraBox.classList.add('hidden');
-    queueInspectPanelRefit();
     return;
   }
   const evoTrack = inspEvoBarTrack;
@@ -16014,7 +16312,6 @@ function updateInspectPanel(){
     btn.classList.toggle('primary-stat', stat === primaryStatOfSelected);
     btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : 'Support stat';
   }
-  queueInspectPanelRefit();
 }
 
 inspUpgradeBtn.addEventListener('pointerdown', (e) => {

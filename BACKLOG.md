@@ -1,5 +1,17 @@
 # Backlog
 
+## Low FPS with tiny JavaScript time — needs a device trace (2026-09-29)
+The owner's screenshots show 22-29 FPS while the debug overlay reports only 1-4 ms of game JavaScript per frame (update 0.2-0.9 ms, render 1.4-2.7 ms), and a headless Chromium run of v1.6.109 measured 0.1-0.4 ms update and 0.3-0.4 ms render, with low graphics at 55-60 FPS. So the ceiling is outside the game's JavaScript: canvas compositing, GPU or driver, browser throttling on a 2560x1440 window, or an extension. Next step is a Chrome Performance recording (or `chrome://gpu`) on that machine, not another guess at game code. Cheap experiments to try first: window size, hardware acceleration on or off, extensions disabled, and the Low graphics DPR cap.
+
+## Long-term vision — long road, environment-focused endgame (2026-09-29, direct request)
+
+The intended shape of the game over the long run: a very long road toward the end where the player interacts with the environment (scenery, clearing, resources) more than with the path itself. Not built; needs its own design pass.
+
+- **Raise the fixed world bounds — deferred, needs a save-compatible pass.** The owner does not want a hard max and is not worried about players reaching it, but the grid is `COLS` x `ROWS` around a centered start, so a bigger grid shifts stored tile coordinates in saves and multiplies map/decal canvas memory (about 42 MiB per canvas at 2x today). Do it with a fixed origin offset and a version bump in the save format. (original note:) Expansion is now uncapped per round, but `regionFullyExpanded()` still stops at `COLS` x `ROWS` (`Max Size`). A truly long road needs a larger or growable world, with the offscreen background and decal caches sized to match.
+- **Expansion cost curve — decided 2026-09-29: keep the steep curve, no discounts for clearing scenery.** (original note:) `expansionCost()` is `80 * 1.6^expansionLevel`, which grows very steeply. Revisit it (flatter curve, or environment-earned discounts) so long-road expansion stays playable.
+- **Environment-first endgame.** Weight scenery, clearing, wood/stone and structures toward the far end of the path; the existing end-of-path scenery bonus is a starting point.
+- **Scenery pacing.** Scenery currently starts after wave 1 (1.6.97). Tune density and type mix along the long road.
+
 ## From the food-drop concept review (external design notes, 2026-09-28) — assessed, not built
 
 Reviewed against the game as it stands (100 lives, Shop lives with rising cost, the Healing Fountain, item drops with six-slot inventories). The notes assume a "base health" pool with small heals; the game uses lives, and Shop lives are meant as a costly safety valve, so anything that adds maximum lives is treated with care.
@@ -18,7 +30,7 @@ Reviewed against the game as it stands (100 lives, Shop lives with rising cost, 
 - **Enemy-specific effects.** A few signature items with a small special effect, such as a Frost Shard that slows a little, or an Ember Core that adds burn, once the stat-only items have been played.
 - **Item swap and salvage.** Trade three Common items for one Uncommon of the player's choice, or salvage an item for gold.
 - **Codex.** A page listing every item found, with the enemy that drops it and a completion count.
-- **Rarity-tinted glow.** Tint the ground glow by rarity in addition to its size and speed, so a rare item reads at a glance.
+- **Rarity-tinted glow — done, 1.6.107 (`RARITY-RING-01`).** A steady rarity-coloured ring around dropped gear, on top of the rainbow glow.
 
 ## From the architecture research report (external notes on a 1.0.x snapshot, 2026-09-28) — verify before acting
 
@@ -61,10 +73,10 @@ real investigation or are too large to rush. Listed here so nothing gets lost.
   recharge ~2.5x the total time both hits took. Affects Axeman, dual-wield Swordsman, Squirtgun.
   Needs tracing each class's actual swing-timing state machine before touching it — not a one-line
   change.
-- **Inspect panel's button row looks cramped** — needs a real dynamic flex/wrap layout pass, not a
+- **Inspect panel's button row looks cramped — done, 1.6.108 (`INSPECT-WRAP-01`); confirm live at narrow widths.** (original note:) — needs a real dynamic flex/wrap layout pass, not a
   guess; should allow a second line without that line reading disproportionately smaller than the
   first.
-- **Melee range balance across classes** — owner reports Axeman reaching further than Spearman
+- **Melee range balance across classes — done, 1.6.108 (`MELEE-RANGE-BALANCE-01`); confirm live.** Root cause was the Cleric ignoring INT range scaling; hierarchy is now enforced by `validateRangeBalance()`. (original report:) — owner reports Axeman reaching further than Spearman
   despite Spearman's numbers being larger on paper, and Cleric/Priest should have the *longest*
   range of anyone (slowest attacker, biggest reach) but currently reads shorter than Axeman. The
   AXEMAN min-range theory was checked and ruled out this round (see CHANGELOG 1.6.60) — the real
@@ -73,8 +85,7 @@ real investigation or are too large to rush. Listed here so nothing gets lost.
   as the general design intent. Partially already true (Cleric/Pope/Swordsman/Spearman/Hammerman/
   Paladin/Berserker/Lancer are already in `NO_MIN_RANGE_TYPES`) but not audited end-to-end against
   every current and future class.
-- **Blowdart's dart appears to fire over the target's head** — a projectile spawn-height/trajectory
-  issue, not yet traced to the actual spawn-point code.
+- **Blowdart's dart appears to fire over the target's head — done, 1.6.95 (`PROJECTILE-AIM-01`).** The flight angle is recomputed from the muzzle; confirm live on a close-range Blowdart.
 
 ## From Game Programming Patterns (Nystrom) — checked, not attempted
 - **Incremental spatial-hash maintenance** — the book's canonical Spatial Partition pattern keeps
@@ -201,7 +212,7 @@ weren't reached this round:**
 Ideas, requests, and suggestions that have come up but aren't built yet. See `AGENTS.md` for the
 workflow this file follows — move items to `CHANGELOG.md` and delete them from here once shipped.
 
-- **Animated flora growth** — direct request: flora (seedlings especially) should bounce a little
+- **Animated flora growth — done for high graphics, 1.6.108 (`FLORA-GROWTH-01`); low graphics stays static by design.** (original note:) — direct request: flora (seedlings especially) should bounce a little
   and visually grow into a flower over time, rather than sitting static from the moment they spawn.
   Real scope, not a value tweak: flora is currently baked into the static offscreen map background
   (deliberately, for performance — see `drawMap()`'s own comment) with zero per-item state beyond
