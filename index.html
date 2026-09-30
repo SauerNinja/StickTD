@@ -42,6 +42,8 @@
   "operatingSystem": "Any",
   "inLanguage": "en",
   "isAccessibleForFree": true,
+  "license": "https://opensource.org/licenses/MIT",
+  "sameAs": ["https://github.com/SauerNinja/StickTD"],
   "author": { "@type": "Person", "name": "Setvin Noether" },
   "creator": { "@type": "Person", "name": "Setvin Noether" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
@@ -82,7 +84,7 @@
       (e.message || 'unknown error') + '\n' +
       'at ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + '\n\n' +
       (e.error && e.error.stack ? e.error.stack : '(no stack available)');
-    if(window.trackEvent) window.trackEvent('game_error', { message: String(e.message || 'unknown').slice(0, 100), source: String(e.filename || '').split('/').pop().slice(0, 60), line: e.lineno || 0 });
+    if(window.trackEvent) window.trackEvent('game_error', { message: String(e.message || 'unknown').slice(0, 100), script_file: String(e.filename || '').split('/').pop().slice(0, 60), line: e.lineno || 0 });
     // CA004 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA004
     (document.body || document.documentElement).appendChild(box);
   });
@@ -284,6 +286,9 @@
   .telemetry-bar span{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,rgba(241,196,15,0.85),rgba(241,196,15,0.45));}
   .telemetry-bar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.72em;color:#fff;text-shadow:0 1px 2px #000;font-weight:normal;}
   .telemetry-head{color:#aab4bd;font-size:0.72em;text-transform:uppercase;letter-spacing:0.5px;}
+  #itemCodexList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
+  #itemCodexList li{background:rgba(0,0,0,0.25);border:1px solid var(--wood-light);border-radius:6px;padding:5px 8px;}
+  #itemCodexList li.unseen{opacity:0.5;}
   #settings-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
   .settings-tab{background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
     border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;min-height:36px;}
@@ -937,6 +942,7 @@
           <button class="settings-tab active" data-tab="video">🖥️ Video</button>
           <button class="settings-tab" data-tab="audio">🔊 Audio</button>
           <button class="settings-tab" data-tab="game">🎮 Game</button>
+          <button class="settings-tab" data-tab="items">📖 Items</button>
           <button class="settings-tab" data-tab="stats">📊 Stats</button>
           <button class="settings-tab" data-tab="about">ℹ️ About</button>
         </div>
@@ -978,6 +984,10 @@
               </select>
               <input type="number" id="settingsDecalBudgetCustom" min="0" max="20000" step="50" class="hidden" style="width:100px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
             </label>
+          </div>
+          <div class="settings-panel hidden" data-panel="items">
+            <p id="itemCodexSummary"></p>
+            <ul id="itemCodexList"></ul>
           </div>
           <div class="settings-panel hidden" data-panel="stats">
             <p class="stats-hint">Per-tower telemetry for this run. Bars are relative to your best tower in each column.</p>
@@ -1234,7 +1244,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.139'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.153'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1928,6 +1938,7 @@ function craftItemOn(tower){
   const resultDef = makeItemInstance(lookupItemDef(recipe.result), 'crafted by ' + itemHolderLabel(tower));
   tower.equippedItems.push(resultDef);
   itemLogHeldBy(resultDef, tower);
+  refreshQuickUse(tower);
   tower.recomputeStats();
   tower.checkHeroStatus();
   spawnFloatingText(tower.x, tower.y - 44, (recipe.fuelCost ? '🍳 ' : '🔧 ') + resultDef.icon + ' ' + resultDef.name + '!', '#ffe066');
@@ -2662,6 +2673,26 @@ function validateDesignContract(){
   { const contractBarricade = [...activeBarricades][0];
     if(contractBarricade && findTouchingBarricade({ x: contractBarricade.x, y: contractBarricade.y, radius: 15, isLivestock: true }) !== null) problems.push('livestock and the troll never touch a barricade (WANDERER-PHASE-01)');
   }
+  { const slotWasUsed = randomEventSlotUsed;
+    openRandomEventSlot();
+    const firstClaim = tryClaimRandomEventSlot(), secondClaim = tryClaimRandomEventSlot();
+    if(!firstClaim || secondClaim) problems.push('random events share one slot per expand, so a second event cannot happen in the same expand (RANDOM-EVENT-SLOT-01)');
+    randomEventSlotUsed = slotWasUsed;
+  }
+  if(!isWithinEmojiSquare(10, -10, 0, 0, 20) || isWithinEmojiSquare(10.5, 0, 0, 0, 20) || isWithinEmojiSquare(0, -10.5, 0, 0, 20)) problems.push('the click area of an emoji is exactly its drawn square (EMOJI-HITBOX-01)');
+  { // MIN-RANGE-AUDIT-01 (1.6.147) — see CHANGELOG.md § [1.6.147]: strength and melee classes never have a minimum range; the Axeman only while throwing
+    const meleeLineageMissing = Object.keys(CLASS_ARCHETYPE).filter(type => CLASS_ARCHETYPE[type] === 'WARRIOR' && type !== 'AXEMAN' && !NO_MIN_RANGE_TYPES.has(type));
+    const rangedLineageExempt = Object.keys(CLASS_ARCHETYPE).filter(type => CLASS_ARCHETYPE[type] === 'ARCHER' && NO_MIN_RANGE_TYPES.has(type));
+    const axemanMelee = usesMinimumRangedRange({ type: 'AXEMAN', axeMode: 'MELEE' }), axemanThrowing = usesMinimumRangedRange({ type: 'AXEMAN', axeMode: 'RANGE' });
+    if(meleeLineageMissing.length || rangedLineageExempt.length || axemanMelee || !axemanThrowing) problems.push('minimum range: strength classes never have one (missing: ' + meleeLineageMissing.join(', ') + '), archer classes always do, and the Axeman only while throwing (MIN-RANGE-AUDIT-01)');
+  }
+  { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || declared.length > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
+    if(oversized.length) problems.push('analytics events over the Google Analytics limits (40-character names, 25 parameters): ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
+  }
+  { const reservedAnalyticsParams = ['source', 'medium', 'campaign', 'term', 'content', 'value', 'currency'];
+    const offending = Object.entries(TELEMETRY_EVENTS).filter(([, declared]) => declared.some(param => reservedAnalyticsParams.includes(param))).map(([name]) => name);
+    if(offending.length) problems.push('analytics events must not use parameter names Google Analytics reads as traffic source or revenue (source, medium, campaign, term, content, value, currency): ' + offending.join(', ') + ' (ANALYTICS-PARAMS-01)');
+  }
   if(PROJECTILE_AMMO_BY_TOWER.ARCHER !== undefined || Object.values(PROJECTILE_AMMO_BY_TOWER).includes('ARROW')) problems.push('only the Archer shoots arrows: every other ranged tower needs its own ammo kind (AMMO-KIND-01)');
   if(!bleedSourceAllowed({ type: 'ARCHER' }) || ['BLOWDART', 'GATLING', 'MARKSMAN', 'SNIPER', 'SWORDSMAN', 'AXEMAN', 'MAGE'].some(type => bleedSourceAllowed({ type }))) problems.push('bleeding starts only from Archer arrows (BLEED-ARROW-ONLY-01)');
   for(const [eventName, eventParams] of Object.entries(TELEMETRY_EVENTS)){
@@ -3338,8 +3369,9 @@ function finalizeRingExpansion(){
   scatterSceneryInRing(oldRegion, newRegion);
   ensureEndGuardScenery();
   scatterFloraInRing(oldRegion, newRegion);
-  if(expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame){
+  if(expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame && !randomEventSlotUsed){
     hutsSpawnedThisGame = spawnHuts(oldRegion, newRegion); // new tiles only, after scenery; never force a camp beside the finish or into an established build area
+    if(hutsSpawnedThisGame){ tryClaimRandomEventSlot(); logGameEvent('random event: hut camp'); }
   }
   const revealedBorderKeys = [...ringRevealed];
   ringRevealed.clear();
@@ -3372,6 +3404,7 @@ function expandRegion(){
   const cost = expansionCost();
   if(gold < cost) return false;
   gold -= cost;
+  openRandomEventSlot();
   performExpansion('🗺️ Map Expanded!', '#ffd700');
   return true;
 }
@@ -3453,7 +3486,7 @@ function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
   return null;
 }
 function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
-  if(countLivestockOnBoard() >= LIVESTOCK_MAX_ON_BOARD) return;
+  if(randomEventSlotUsed || countLivestockOnBoard() >= LIVESTOCK_MAX_ON_BOARD) return;
   if(Math.random() >= LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION) return;
   const candidates = revealedBorderKeys.filter(key => !pathCells.has(key));
   if(!candidates.length) return;
@@ -3462,6 +3495,8 @@ function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
   const typeKeys = Object.keys(LIVESTOCK_TYPES).filter(k => !LIVESTOCK_TYPES[k].isTroll);
   const type = typeKeys[Math.floor(Math.random()*typeKeys.length)];
   const animal = acquireActive(enemyPool);
+  if(!animal || !tryClaimRandomEventSlot()) return;
+  logGameEvent('random event: livestock (' + type + ')');
   animal.spawn(type, 1, false, false);
   animal.isLivestock = true;
   animal.x = livestockSpot.x; animal.y = livestockSpot.y;
@@ -3473,15 +3508,24 @@ const ARMOR_MIN_DAMAGE_SHARE = 0.5;
 const LUCKY_COIN_CHEST_CHANCE = 0.3;
 const BOSS_ATTACK_MULT = 5; // BOSS-AGGRO-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const BOSS_AGGRO_RADIUS = 300;
+// RANDOM-EVENT-SLOT-01 (1.6.140) — see CHANGELOG.md § [1.6.140]. Random events (wandering troll, chance structures such as the campfire, extra buildings, huts, livestock) share one slot per expand cycle.
+let randomEventSlotUsed = false;
+function openRandomEventSlot(){ randomEventSlotUsed = false; }
+function tryClaimRandomEventSlot(){
+  if(randomEventSlotUsed) return false;
+  randomEventSlotUsed = true;
+  return true;
+}
 const TROLL_EVENT_CHANCE_PER_WAVE = 0.18;
 const TROLL_ATTACK_RADIUS = 58, TROLL_ATTACK_INTERVAL_MS = 1600, TROLL_ATTACK_DAMAGE = 10, TROLL_AGGRO_RADIUS = 300, TROLL_HUNT_SPEED_MULT = 1.3; // TROLL-HUNT-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
 function maybeSpawnWanderingTroll(){
-  if(enemyPool.some(e => e.active && e.type === 'WANDERING_TROLL')) return;
+  if(randomEventSlotUsed || enemyPool.some(e => e.active && e.type === 'WANDERING_TROLL')) return;
   if(Math.random() >= TROLL_EVENT_CHANCE_PER_WAVE || !waypointsPx.length) return;
   const spot = pickNpcSpawnPointOutsideStickmanReach(null);
   if(!spot) return;
   const troll = acquireActive(enemyPool);
-  if(!troll) return;
+  if(!troll || !tryClaimRandomEventSlot()) return;
+  logGameEvent('random event: wandering troll');
   troll.spawn('WANDERING_TROLL', 1, false, false);
   troll.isLivestock = true; troll.isHostileNpc = true;
   troll.x = spot.x; troll.y = spot.y;
@@ -3619,19 +3663,19 @@ const QUEUE_PACK_GAP_PER_RADIUS = 1.6, QUEUE_PACK_MIN_GAP = 16; // PILE-PACK-01 
 const BARRICADE_CHIP_MS = 260; // how long a barricade shakes/flashes after losing a point
 const BARRICADE_HIT_INTERVAL_MS = 10000; // max 1 HP lost per 10s from ANY source — pile-up attackers and direct takeDamage() hits share this one limiter
 function findQueueCatchmentLeader(active, endExclusive, behind, maxTraveledGap, catchmentRadius){
-  // `active` is sorted by traveled descending and origTraveled is snapshotted in that order below.
+  // `active` is sorted by traveled descending and preSnapTraveled is snapshotted in that order below.
   // Binary-search the first plausible ahead unit; farther-ahead units cannot be catchment leaders.
   let low = 0, high = endExclusive;
   while(low < high){
     const mid = (low + high) >> 1;
-    if(active[mid].origTraveled - behind.origTraveled > maxTraveledGap) low = mid + 1;
+    if(active[mid].preSnapTraveled - behind.preSnapTraveled > maxTraveledGap) low = mid + 1;
     else high = mid;
   }
   let bestAhead = null, bestDist = Infinity;
   for(let j = low; j < endExclusive; j++){
     const ahead = active[j];
     if(!ahead.pileBlocked) continue;
-    const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
+    const d = Math.hypot(ahead.preSnapX-behind.preSnapX, ahead.preSnapY-behind.preSnapY);
     if(d < catchmentRadius && d < bestDist){ bestDist = d; bestAhead = ahead; }
   }
   return bestAhead;
@@ -3692,7 +3736,7 @@ function updateBarricadesAndPileup(){
   let anyBlockedSeed = false;
   for(const e of active){
     // CA120 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA120
-    e.queueSlotDist = undefined; e.origQX = e.x; e.origQY = e.y; e.origTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
+    e.queueSlotDist = undefined; e.preSnapX = e.x; e.preSnapY = e.y; e.preSnapTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
     if(e.pileBlocked){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
   }
   // CA121 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA121
@@ -3721,7 +3765,7 @@ function updateBarricadesAndPileup(){
   for(const e of active) e.followSpeedCap = undefined;
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
-    const d = Math.hypot(ahead.origQX-behind.origQX, ahead.origQY-behind.origQY);
+    const d = Math.hypot(ahead.preSnapX-behind.preSnapX, ahead.preSnapY-behind.preSnapY);
     // CA126 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA126
     const proximityBuffer = Math.min(14, (ahead.radius + behind.radius) * 0.3);
     if(d <= ahead.radius + behind.radius + proximityBuffer){
@@ -3858,6 +3902,7 @@ function treeRockKeepChance(proximity, tileKey){
 function spawnScenery(gx, gy, forceType, forcedSizeFrac){
   if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return;
   if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
+  if(!forceType && isEndRingTile(gx, gy)) return; // RING-ONLY-BIG-01 (1.6.142) — see CHANGELOG.md § [1.6.142]: the tiles touching a road end hold only big trees and rocks
   const S = CONFIG.SCENERY;
   const endProximity = pathEndProximity(gx, gy);
   let type;
@@ -3978,6 +4023,14 @@ function topUpCloseGuard(endTile){
     if(sceneryMap.has(spot.gx + ',' + spot.gy)) near++;
   }
 }
+function isEndRingTile(gx, gy){
+  if(!pathWaypointTiles || pathWaypointTiles.length < 2) return false;
+  const key = gx + ',' + gy;
+  for(const endTile of [pathWaypointTiles[0], pathWaypointTiles[pathWaypointTiles.length - 1]]){
+    for(const tile of endRingTiles(endTile)) if(tile.gx + ',' + tile.gy === key) return true;
+  }
+  return false;
+}
 function endRingTiles(endTile){
   const tiles = [];
   for(const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]){
@@ -3991,7 +4044,8 @@ function fillEndRing(endTile){ // the tiles touching a road end always hold a pr
     const key = tile.gx + ',' + tile.gy;
     if(!isInActiveRegion(tile.gx, tile.gy)) continue;
     const existing = sceneryMap.get(key);
-    if(existing && (existing.type === 'TREE' || existing.type === 'ROCK') && !existing.isClearing && (existing.scale - CONFIG.SCENERY.minScale) / (CONFIG.SCENERY.maxScale - CONFIG.SCENERY.minScale) < END_RING_MIN_SIZE_FRAC) sceneryMap.delete(key); // a smaller piece that landed on a ring tile is replaced by a prime-size one
+    const isBigTreeOrRock = existing && (existing.type === 'TREE' || existing.type === 'ROCK') && (existing.scale - CONFIG.SCENERY.minScale) / (CONFIG.SCENERY.maxScale - CONFIG.SCENERY.minScale) >= END_RING_MIN_SIZE_FRAC;
+    if(existing && !existing.isClearing && !existing.isChanceStructure && !isBigTreeOrRock) sceneryMap.delete(key); // a bush, crate or smaller piece that landed on a ring tile is replaced by a prime-size tree or rock
     if(!isTileBuildable(tile.gx, tile.gy) || tileHasHut(tile.gx, tile.gy)) continue;
     spawnScenery(tile.gx, tile.gy, Math.random() < END_GUARD_ROCK_SHARE ? 'ROCK' : 'TREE', END_RING_MIN_SIZE_FRAC + Math.random() * (1 - END_RING_MIN_SIZE_FRAC));
   }
@@ -4345,6 +4399,20 @@ const ITEM_USE_EFFECT_LIMIT = 16;
 const itemUseEffects = Array.from({ length: ITEM_USE_EFFECT_LIMIT }, () => ({ active: false }));
 let itemUseEffectIndex = 0;
 const itemTypesUsed = new Set();
+function renderItemCodex(){ // ITEM-CODEX-01 (1.6.145) — built when the Items tab opens, never per frame
+  const list = document.getElementById('itemCodexList');
+  list.textContent = '';
+  let used = 0;
+  for(const def of CONSUMABLE_BY_ID.values()){
+    const seen = itemTypesUsed.has(def.id);
+    if(seen) used++;
+    const entry = document.createElement('li');
+    entry.textContent = seen ? def.icon + ' ' + def.name : '❔ Not used yet';
+    if(!seen) entry.className = 'unseen';
+    list.appendChild(entry);
+  }
+  document.getElementById('itemCodexSummary').textContent = used + ' of ' + CONSUMABLE_BY_ID.size + ' consumables used so far.';
+}
 function recordFirstItemUse(def){
   if(itemTypesUsed.has(def.id)) return;
   itemTypesUsed.add(def.id);
@@ -4379,6 +4447,9 @@ function showItemUseFeedback(def, tower, itemClass, tier, parts){
   playItemUseSound(itemClass, tier, tower.x);
 }
 function drawItemUseEffects(ctx){
+  let anyEffect = false;
+  for(const effect of itemUseEffects) if(effect.active){ anyEffect = true; break; }
+  if(!anyEffect) return; // LAG-PASS-01 (1.6.143): nothing to draw on almost every frame
   const fxBounds = fxViewBounds();
   for(const effect of itemUseEffects){
     if(!effect.active) continue;
@@ -4494,7 +4565,7 @@ function updateTreatTacticalEffects(dt){
 function dropTreatFromBoss(enemy){
   const treat = TREAT_ITEMS[Math.floor(Math.random() * TREAT_ITEMS.length)];
   spawnGroundItem(enemy.x, enemy.y - 10, treat, 'boss treat');
-  trackGameEvent('item_dropped', { item: treat.id, rarity: 'TREAT', source: enemy.type });
+  trackGameEvent('item_dropped', { item: treat.id, rarity: 'TREAT', enemy_type: enemy.type });
   showToast(treat.icon + ' A ' + treat.name + ' appeared!');
 }
 function applyTreatItem(treatDef, nearTower, dropX, dropY){
@@ -4600,6 +4671,7 @@ function useStoredConsumable(tower, slotIndex){
   if(!isConsumableDef(def)) return false;
   tower.equippedItems.splice(slotIndex, 1);
   itemLogUsed(def, tower);
+  refreshQuickUse(tower);
   recordFirstItemUse(def);
   if(def.isHutLoot) applyHutLootItem(def, tower); else if(def.isStim) applyStimItem(def, tower); else if(def.isFood) applyFoodItem(def, tower); else applyTreatItem(def, tower, tower.x, tower.y);
   tower.recomputeStats();
@@ -4643,12 +4715,15 @@ function pickChanceStructureTile(){
 }
 function maybeSpawnChanceStructures(){
   for(const type of Object.keys(CONFIG.CHANCE_STRUCTURES)){
+    if(randomEventSlotUsed) break;
     const chance = chanceStructureSpawnChance(type);
     if(chance <= 0) continue;
     if(Math.random() >= chance){ chanceStructureDrySpells[type] = (chanceStructureDrySpells[type] || 0) + 1; continue; }
     const tile = pickChanceStructureTile();
     if(!tile) continue;
     const definition = CONFIG.CHANCE_STRUCTURES[type];
+    if(!tryClaimRandomEventSlot()) break;
+    logGameEvent('random event: ' + definition.name);
     spawnScenery(tile[0], tile[1], type);
     chanceStructureDrySpells[type] = 0;
     const item = sceneryMap.get(tile[0]+','+tile[1]);
@@ -4741,6 +4816,18 @@ function chanceStructureHoverLabel(item){
   return definition.emoji + ' ' + item.healPool + ' ❤️ left';
 }
 
+function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the point; big pieces reach into neighbouring tiles, so the tiles around are checked too
+  const tileX = Math.floor(worldX/TILE_SIZE), tileY = Math.floor(worldY/TILE_SIZE);
+  let best = null, bestDistance = Infinity;
+  for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++){
+    const key = (tileX + dx) + ',' + (tileY + dy);
+    const item = sceneryMap.get(key);
+    if(!item || !isWithinEmojiSquare(worldX, worldY, item.x, item.y + 2, TILE_SIZE * 0.72 * item.scale)) continue; // same size and centre drawOneSceneryItem() uses
+    const distance = Math.hypot(item.x - worldX, item.y + 2 - worldY);
+    if(distance < bestDistance){ bestDistance = distance; best = { key, item }; }
+  }
+  return best;
+}
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.isSuper){
     ctx.save();
@@ -4865,12 +4952,14 @@ const TELEMETRY_EVENTS = {
   wave_started: ['wave', 'lives', 'gold', 'towers', 'loose', 'unlocked_towers'],
   wave_completed: ['wave', 'duration_s', 'lives_start', 'lives_end', 'lives_lost', 'escaped', 'loose_peak', 'loose_end', 'loose_drain_lives', 'towers_downed', 'gold_start', 'gold_end', 'towers', 'fps_median', 'gap_p95_ms'],
   wave_milestone: ['waves_completed'],
+  engaged_player: ['waves_completed', 'duration_s'],
   tower_built: ['tower_type', 'cost', 'towers', 'first_of_type'],
   tower_upgraded: ['tower_type', 'level', 'cost'],
+  tower_sold: ['tower_type', 'level', 'refund'],
   tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
-  item_purchased: ['item', 'currency', 'cost'],
+  item_purchased: ['item', 'payment_type', 'cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
-  item_dropped: ['item', 'rarity', 'source'],
+  item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01 (1.6.149) — see CHANGELOG.md § [1.6.149]: never name a parameter source, medium, campaign, value or currency; GA4 reads those as traffic source or revenue
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
   item_guide_shown: [],
   item_crafted: ['result', 'tower_type'],
@@ -4890,7 +4979,7 @@ const TELEMETRY_EVENTS = {
   chance_structure_used: ['structure', 'healed', 'pool_left'],
   scenery_cleared: ['scenery_type'],
   shop_opened: ['gold'],
-  settings_changed: ['setting', 'value'],
+  settings_changed: ['setting', 'setting_value'],
   save_downloaded: ['waves_completed'],
   save_loaded: ['save_version', 'waves_completed'],
   progress_reset: ['kind'],
@@ -4898,13 +4987,19 @@ const TELEMETRY_EVENTS = {
   game_over: ['cause', 'wave_reached', 'waves_completed', 'duration_s', 'towers_built', 'towers_downed', 'lives_bought', 'loose_end', 'fps_median'],
   lag_detected: ['median_gap_ms', 'p95_gap_ms', 'towers_downed', 'enemies', 'loose', 'decals', 'particles'],
   session_summary: ['duration_s', 'max_wave', 'waves_completed', 'towers_built', 'ended_in_game_over'],
-  game_error: ['message', 'source', 'line']
+  game_error: ['message', 'script_file', 'line']
 };
 const TELEMETRY_RECENT_LIMIT = 200;
 const LAG_MEDIAN_GAP_THRESHOLD_MS = 90;
 const LAG_MIN_SAMPLES = 60;
 const telemetryRecent = [];
-const sessionTelemetry = { startedAtMs: 0, towersBuilt: 0, towersDowned: 0, gameOverReported: false };
+const sessionTelemetry = { startedAtMs: 0, towersBuilt: 0, towersDowned: 0, gameOverReported: false, engagedReported: false };
+const ENGAGED_PLAYER_WAVES = 5; // ENGAGED-PLAYER-01 (1.6.150) — see CHANGELOG.md § [1.6.150]: the single clearest 'this person really played' signal, sent at most once per session
+function reportEngagedPlayerOnce(){
+  if(sessionTelemetry.engagedReported || wavesCompleted < ENGAGED_PLAYER_WAVES) return;
+  sessionTelemetry.engagedReported = true;
+  trackGameEvent('engaged_player', { waves_completed: wavesCompleted, duration_s: Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000) });
+}
 const waveTelemetry = { startedAtGameTime: 0, livesAtStart: 0, goldAtStart: 0, escaped: 0, towersDowned: 0, loosePeak: 0, looseDrainLives: 0, lagReported: false };
 function trackGameEvent(name, params){
   const declaredParams = TELEMETRY_EVENTS[name];
@@ -5122,9 +5217,9 @@ function computeFinishLine(){
   const edgeX = end.x + ux*halfSpan, edgeY = end.y + uy*halfSpan;
   const pA = { x: edgeX + perpX*halfSpan, y: edgeY + perpY*halfSpan };
   const pB = { x: edgeX - perpX*halfSpan, y: edgeY - perpY*halfSpan };
-  const lowerP = pA.y >= pB.y ? pA : pB;
-  const upperP = pA.y >= pB.y ? pB : pA;
-  return { edgeX, edgeY, ux, uy, lowerP, upperP };
+  const lowerPolePoint = pA.y >= pB.y ? pA : pB;
+  const upperPolePoint = pA.y >= pB.y ? pB : pA;
+  return { edgeX, edgeY, ux, uy, lowerPolePoint, upperPolePoint };
 }
 // GROUND-DETAIL-01 (1.6.72) — see CHANGELOG.md § [1.6.72]
 const PATH_PEBBLE_TILE_CHANCE = 0.55;
@@ -5262,7 +5357,7 @@ function paintPathTileBase(ctx, gx, gy){
 // CA153 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA153
 function drawFinishCarpet(ctx, fl){
   if(!fl) return;
-  const { ux, uy, lowerP, upperP } = fl;
+  const { ux, uy, lowerPolePoint, upperPolePoint } = fl;
   const stripThickness = 16;
   const cols = 8, rows = 2; // 8x2 cells, each a true square (64px edge / 8 cols = 8px; 16px thickness / 2 rows = 8px)
   for(let row=0; row<rows; row++){
@@ -5270,8 +5365,8 @@ function drawFinishCarpet(ctx, fl){
     for(let col=0; col<cols; col++){
       const c0 = col/cols, c1 = (col+1)/cols;
       ctx.fillStyle = (col+row)%2===0 ? '#1a1a1a' : '#f0f0f0';
-      const outerX0 = upperP.x+(lowerP.x-upperP.x)*c0, outerY0 = upperP.y+(lowerP.y-upperP.y)*c0;
-      const outerX1 = upperP.x+(lowerP.x-upperP.x)*c1, outerY1 = upperP.y+(lowerP.y-upperP.y)*c1;
+      const outerX0 = upperPolePoint.x+(lowerPolePoint.x-upperPolePoint.x)*c0, outerY0 = upperPolePoint.y+(lowerPolePoint.y-upperPolePoint.y)*c0;
+      const outerX1 = upperPolePoint.x+(lowerPolePoint.x-upperPolePoint.x)*c1, outerY1 = upperPolePoint.y+(lowerPolePoint.y-upperPolePoint.y)*c1;
       ctx.beginPath();
       ctx.moveTo(outerX0 - ux*stripThickness*r0, outerY0 - uy*stripThickness*r0);
       ctx.lineTo(outerX1 - ux*stripThickness*r0, outerY1 - uy*stripThickness*r0);
@@ -5282,15 +5377,15 @@ function drawFinishCarpet(ctx, fl){
     }
   }
   ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(upperP.x, upperP.y); ctx.lineTo(lowerP.x, lowerP.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(upperPolePoint.x, upperPolePoint.y); ctx.lineTo(lowerPolePoint.x, lowerPolePoint.y); ctx.stroke();
 }
 // CA154 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA154
 function repaintFinishCarpetFootprint(ctx, fl){
   if(!fl) return;
-  const { ux, uy, lowerP, upperP } = fl;
+  const { ux, uy, lowerPolePoint, upperPolePoint } = fl;
   const stripThickness = 16;
-  const xs = [lowerP.x, upperP.x, lowerP.x - ux*stripThickness, upperP.x - ux*stripThickness];
-  const ys = [lowerP.y, upperP.y, lowerP.y - uy*stripThickness, upperP.y - uy*stripThickness];
+  const xs = [lowerPolePoint.x, upperPolePoint.x, lowerPolePoint.x - ux*stripThickness, upperPolePoint.x - ux*stripThickness];
+  const ys = [lowerPolePoint.y, upperPolePoint.y, lowerPolePoint.y - uy*stripThickness, upperPolePoint.y - uy*stripThickness];
   const gx0 = Math.floor(Math.min(...xs)/TILE_SIZE) - 1, gx1 = Math.ceil(Math.max(...xs)/TILE_SIZE) + 1;
   const gy0 = Math.floor(Math.min(...ys)/TILE_SIZE) - 1, gy1 = Math.ceil(Math.max(...ys)/TILE_SIZE) + 1;
   for(let gx=gx0; gx<=gx1; gx++){
@@ -6096,6 +6191,8 @@ let debugOverlay = false; // Debug mode: FPS, entity counts, wave phase, decal l
 let autoCameraPans = true; // camera moves itself to a killstreak holder; opt-out in Settings > Video
 let showFpsCounter = false; // small live FPS readout overlay, opt-in — separate from the full debug log, for players who just want a quick glance during play
 let screenShakeUserSet = false;
+// REDUCED-MOTION-01 (1.6.153) — see CHANGELOG.md § [1.6.153]. A player whose system asks for reduced motion starts with screen shake off and without the enemy hop and lean; the shake setting still overrides the default.
+const PREFERS_REDUCED_MOTION = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 let screenShakeEnabled = false;
 let autoRenderScaleEnabled = false, lowFpsOfferAnswered = false;
 let renderScaleFloorPercent = 75, renderScaleFloorUserSet = false;
@@ -6171,7 +6268,7 @@ function loadPrefs(){
     if(typeof p.autoCameraPans === 'boolean') autoCameraPans = p.autoCameraPans;
     if(typeof p.showUpdateNotice === 'boolean') showUpdateNotice = p.showUpdateNotice;
     if(typeof p.screenShakeEnabled === 'boolean'){ screenShakeEnabled = p.screenShakeEnabled; screenShakeUserSet = true; }
-    else screenShakeEnabled = graphicsQuality === 'high';
+    else screenShakeEnabled = graphicsQuality === 'high' && !PREFERS_REDUCED_MOTION;
     if(typeof p.frameCapEnabled === 'boolean') frameCapEnabled = p.frameCapEnabled;
     if(Number.isFinite(p.frameCapFps)) frameCapFpsUser = clampNum(Math.round(p.frameCapFps), FRAME_CAP_MIN_FPS, FRAME_CAP_MAX_FPS);
     if(typeof p.autoRenderScaleEnabled === 'boolean') autoRenderScaleEnabled = p.autoRenderScaleEnabled;
@@ -6411,7 +6508,7 @@ function dropItemsFromEnemy(enemy){
     const spread = dropped.length > 1 ? (i - (dropped.length-1)/2) * 22 : 0;
     if(item.id === 'LUCKY_COIN' || (item.isHutLoot && item.kind === 'gold')){ dropGoldBag(enemy.x + spread, enemy.y); continue; } // COIN-ITEM-BAG-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
     spawnGroundItem(enemy.x + spread, enemy.y - 6, item, 'enemy ' + enemy.type);
-    trackGameEvent('item_dropped', { item: item.id, rarity: item.rarity || category.toUpperCase(), source: enemy.type });
+    trackGameEvent('item_dropped', { item: item.id, rarity: item.rarity || category.toUpperCase(), enemy_type: enemy.type });
     if(item.rarity === 'RARE' || item.rarity === 'EPIC') showToast(item.icon + ' ' + ITEM_RARITIES[item.rarity].label + ' item: ' + item.name);
     else if(category === 'tonic') showToast(item.icon + ' ' + item.name + ' dropped!');
   }
@@ -6483,16 +6580,21 @@ let idCounter = 1;
 // wandering animal to have it hunted down for its meat. Clicking a different valid target moves the
 // mark; clicking empty space, or the mark dying, clears it.
 let markedTargetEnemy = null;
+// LAG-PASS-02 (1.6.144) — see CHANGELOG.md § [1.6.144]. Whether lane enemies or a fightable wanderer exist is remembered between ticks instead of rescanned every tick:
+// it is refreshed when an enemy spawns, a wanderer dies, the marked target changes, or the lane loop finds no lane enemy left to update.
+let enemyPresenceDirty = true, laneEnemiesPresent = false, targetableWandererPresent = false;
 function setMarkedTarget(enemy){
   markedTargetEnemy = enemy;
+  enemyPresenceDirty = true;
   if(enemy) trackGameEvent('target_marked', { target_type: enemy.isLivestock ? 'livestock' : 'enemy', enemy_type: enemy.type });
 }
 function tryMarkTargetAt(worldX, worldY){
   let closest = null, closestDistance = Infinity;
   for(const e of enemyPool){
     if(!e.active || e.escaped) continue;
+    if(!isWithinEmojiSquare(worldX, worldY, e.x, e.y, e.radius*2)) continue; // the enemy emoji is drawn at radius*2 px
     const distance = Math.hypot(e.x-worldX, e.y-worldY);
-    if(distance <= e.radius + 12 && distance < closestDistance){ closestDistance = distance; closest = e; }
+    if(distance < closestDistance){ closestDistance = distance; closest = e; }
   }
   if(closest){ setMarkedTarget(closest); return true; }
   return false;
@@ -7014,6 +7116,30 @@ const ASSIST_POOL_FRACTION = 0.28;
 const ESCAPED_CLEANUP_FRACTION = 0.25;
 const TRAINING_BAR_ROLLS = 2, TRAINING_ROLL_MIN = 1, TRAINING_ROLL_MAX = 3;
 function xpForNextLevel(){ return TRAINING_BAR_XP; }
+// PROMOTION-SCALE-01 (1.6.145) — see CHANGELOG.md § [1.6.145]. A promotion is worth 5 training bars of dice applied automatically (passive) and another 5 handed over as spendable points (active).
+const PROMOTION_BAR_MULTIPLIER = 5;
+const PROMOTION_PASSIVE_ROLLS = PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS, PROMOTION_SPENDABLE_ROLLS = PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS;
+function distributePromotionDice(totalDice, favoredStat){
+  const dice = { str: 0, dex: 0, int: 0 };
+  const stats = ['str', 'dex', 'int'];
+  if(favoredStat){
+    dice[favoredStat] = Math.ceil(totalDice / 2); // the class's main stat takes half the dice, the other two split the rest
+    const others = stats.filter(stat => stat !== favoredStat);
+    const rest = totalDice - dice[favoredStat];
+    const firstShare = Math.floor(rest / 2) + (rest % 2 && Math.random() < 0.5 ? 1 : 0);
+    dice[others[0]] = firstShare; dice[others[1]] = rest - firstShare;
+  } else {
+    const base = Math.floor(totalDice / 3);
+    for(const stat of stats) dice[stat] = base;
+    for(let extra = totalDice - base * 3; extra > 0; extra--) dice[stats[Math.floor(Math.random() * 3)]]++;
+  }
+  return dice;
+}
+function rollPromotionDice(count){
+  let total = 0;
+  for(let i = 0; i < count; i++) total += rollPromotionDie();
+  return total;
+}
 // CA242 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA242
 function rollTrainingBarPoints(){
   let points = 0;
@@ -7279,7 +7405,7 @@ function downloadSaveFile(){
   const blob = new Blob([text], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'savegame-' + state.seed + '.txt'; a.click();
+  a.href = url; a.download = 'StickTD-save-wave' + wavesCompleted + '-' + new Date().toISOString().slice(0, 10) + '.txt'; a.click(); // readable name (wave and date) so several saves do not all look alike
   URL.revokeObjectURL(url);
   showToast('💾 Saved (seed ' + state.seed + ')');
   trackGameEvent('save_downloaded', { waves_completed: wavesCompleted });
@@ -7296,6 +7422,7 @@ function migrateLegacyAttunement(t){
 }
 function restoreGameState(state){
   for(const e of enemyPool) e.active = false;
+  enemyPresenceDirty = true;
   for(const t of towerPool) t.active = false;
   activeBarricades.clear();
   for(const p of projectilePool) p.active = false;
@@ -7477,7 +7604,7 @@ const MIN_ZOOM = 0.6, MAX_ZOOM = 6; // ZOOM-CLOSER-01 (1.6.121) — see CHANGELO
 const FAST_FORWARD_SIMPLIFY_SPEED = 5; // FAST-SIMPLIFY-01 (1.6.125) — see CHANGELOG.md § [1.6.125]. At this speed and above, purely cosmetic motion and routine combat text are skipped
 function isFastForwardSimplified(){ return effectiveGameSpeed() >= FAST_FORWARD_SIMPLIFY_SPEED; }
 const ENEMY_STRIDE_LENGTH_PER_RADIUS = 0.5, ENEMY_HOP_PER_RADIUS = 0.2, ENEMY_TILT_RADIANS = 0.13, ENEMY_STRIDE_SQUASH = 0.12; // ENEMY-STRIDE-01 (1.6.124) — see CHANGELOG.md § [1.6.124]
-const FIT_MAX_ZOOM = 1; // START-ZOOM-01 (1.6.123) — see CHANGELOG.md § [1.6.123]. The automatic fit never zooms in past 1x; closer views are the player's choice
+const FIT_MAX_ZOOM = 1.5; // START-ZOOM-01 (1.6.123, raised 1.6.142) — see CHANGELOG.md § [1.6.142]. The automatic fit opens at a medium view, never closer than 1.5x; closer views are the player's choice
 const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
@@ -7658,6 +7785,7 @@ class Enemy{
   // Enemy family and wave-size radius changes therefore update weight automatically.
   get weight(){ return Math.max(0.25, (this.radius || 15) / 15); }
   spawn(type, hpMultiplier, isBig, isMini){
+    enemyPresenceDirty = true;
     const def = CONFIG.ENEMIES[type];
     this.id = idCounter++;
     this.type = type;
@@ -8644,9 +8772,11 @@ class Enemy{
     if(this.isLivestock && !LIVESTOCK_TYPES[this.type]) this.isLivestock = false; // LIVESTOCK-RECYCLE-01 safety net: a real enemy can never be treated as livestock
     if(this.isLivestock){
       this.active = false;
+      enemyPresenceDirty = true;
       if(markedTargetEnemy === this) markedTargetEnemy = null;
       const def = LIVESTOCK_TYPES[this.type];
       if(def.isTroll){
+        logGameEvent('wandering troll defeated');
         const bagCount = 2 + Math.floor(Math.random()*2);
         for(let b=0; b<bagCount; b++) dropGoldBag(this.x + (b-1)*14, this.y);
       } else {
@@ -8971,7 +9101,7 @@ class Enemy{
       bumpDy += Math.sin(this.flinchAngle) * this.flinchMag * flinchT;
     }
     ctx.save();
-    const isStriding = !this.isLivestock && speed > 5 && !isFastForwardSimplified();
+    const isStriding = !this.isLivestock && speed > 5 && !isFastForwardSimplified() && !PREFERS_REDUCED_MOTION;
     const strideAngle = this.traveled / Math.max(4, this.radius*ENEMY_STRIDE_LENGTH_PER_RADIUS) + this.id*1.3; // ENEMY-STRIDE-01 (1.6.124) — distance-driven, so a slower enemy steps slower but always visibly steps
     const strideLift = isStriding ? Math.abs(Math.sin(strideAngle)) : 0;
     const walkBob = this.isLivestock ? 0 : -strideLift * this.radius * ENEMY_HOP_PER_RADIUS;
@@ -9280,9 +9410,10 @@ class Tower{
     const purchased = makeItemInstance(def, 'shop purchase');
     this.equippedItems.push(purchased);
     itemLogHeldBy(purchased, this);
+    refreshQuickUse(this);
     this.recomputeStats();
     this.checkHeroStatus();
-    trackGameEvent('item_purchased', { item: def.id || def.name, currency: useFreeCharge ? 'free_charge' : (def.woodCost ? 'wood_stone' : 'gold'), cost: def.cost || def.woodCost || 0 });
+    trackGameEvent('item_purchased', { item: def.id || def.name, payment_type: useFreeCharge ? 'free_charge' : (def.woodCost ? 'wood_stone' : 'gold'), cost: def.cost || def.woodCost || 0 });
     return true;
   }
   // CA401 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA401
@@ -9292,6 +9423,7 @@ class Tower{
     const received = makeItemInstance(def, 'given');
     this.equippedItems.push(received);
     itemLogHeldBy(received, this);
+    refreshQuickUse(this);
     this.recomputeStats();
     this.checkHeroStatus();
     return true;
@@ -9301,6 +9433,7 @@ class Tower{
     if(!it) return false;
     this.equippedItems.splice(index, 1);
     itemLogReleased(it, 'sold back');
+    refreshQuickUse(this);
     if(it.cost > 0) gold += Math.floor(it.cost*0.5); // half refund
     if(it.woodCost) wood += Math.floor(it.woodCost*0.5);
     if(it.stoneCost) stone += Math.floor(it.stoneCost*0.5);
@@ -9412,8 +9545,8 @@ class Tower{
     // CA414 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA414
     const archetype = CLASS_ARCHETYPE[this.type];
     const favoredStat = archetype === 'WARRIOR' ? 'str' : archetype === 'ARCHER' ? 'dex' : archetype === 'MAGE' ? 'int' : null;
-    const rolled = { str: rollPromotionDie(), dex: rollPromotionDie(), int: rollPromotionDie() };
-    if(favoredStat) rolled[favoredStat] += rollPromotionDie();
+    const promotionDice = distributePromotionDice(PROMOTION_PASSIVE_ROLLS, favoredStat);
+    const rolled = { str: rollPromotionDice(promotionDice.str), dex: rollPromotionDice(promotionDice.dex), int: rollPromotionDice(promotionDice.int) };
     const granted = { str:0, dex:0, int:0 };
     for(const stat of ['str','dex','int']){
       for(let i = 0; i < rolled[stat]; i++){
@@ -9421,7 +9554,7 @@ class Tower{
         this[stat]++; granted[stat]++;
       }
     }
-    const spendablePoints = Math.min(this.promotionCapacity(), rollPromotionDie() + rollPromotionDie());
+    const spendablePoints = Math.min(this.promotionCapacity(), rollPromotionDice(PROMOTION_SPENDABLE_ROLLS));
     this.statPoints += spendablePoints;
     if(this.autoSpend) autoSpendStatPoints(this); // two additional promotion rolls become player-allocated points; promotion remains stat-only
     spawnFloatingText(this.x, this.y - 52, '💪+' + granted.str + ' 🏃+' + granted.dex + ' 🧠+' + granted.int, '#ffd700');
@@ -11821,7 +11954,7 @@ let coinIndex = 0;
 const CHEST_FOUNTAIN_COIN_COUNT = 18; // CHEST-BURST-02 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const CHEST_FOUNTAIN_MIDAIR_COUNT = 12;
 const COIN_GRAVITY_PX_PER_S2 = 900;
-const COIN_CLICK_RADIUS = 28;
+const COIN_EMOJI_PX = 12;
 function acquireCoinSlot(){
   const c = coinPickups[coinIndex];
   coinIndex = (coinIndex+1) % COIN_COUNT;
@@ -11850,7 +11983,12 @@ function spawnChestCoinFountain(x, y, totalGold){
 }
 // GOLD-BAG-CLICK-01 (1.6.138) — see CHANGELOG.md § [1.6.138]. A gold bag lies where it dropped and opens only when the player clicks it, then its coins pop out.
 // It never opens by itself: a bag left alone keeps its gold until it is clicked, and only credits that gold (unopened) if the ground is full or a very long time passes.
-const GOLD_BAG_LIMIT = 32, GOLD_BAG_CLICK_RADIUS = 30, GOLD_BAG_LIFESPAN_MS = 180000, GOLD_BAG_LANDED_CLICKABLE_MS = 350;
+// EMOJI-HITBOX-01 (1.6.146) — see CHANGELOG.md § [1.6.146]. Every emoji you can click (bags, coins, ground items, enemies, scenery) is hit exactly where it is drawn: its own square, at the size and centre it is drawn with.
+function isWithinEmojiSquare(worldX, worldY, centerX, centerY, emojiPx){
+  const half = emojiPx / 2;
+  return Math.abs(worldX - centerX) <= half && Math.abs(worldY - centerY) <= half;
+}
+const GOLD_BAG_LIMIT = 32, GOLD_BAG_EMOJI_PX = 26, GOLD_BAG_LIFESPAN_MS = 180000, GOLD_BAG_LANDED_CLICKABLE_MS = 350; // GOLD-BAG-HITBOX-01 (1.6.145) — see CHANGELOG.md § [1.6.145]: the click area is the bag emoji's own square
 const goldBags = Array.from({length: GOLD_BAG_LIMIT}, () => ({active:false,x:0,y:0,z:0,vx:0,vy:0,vz:0,airborne:false,gold:0,age:0}));
 function creditUnopenedBag(bag){
   gold += bag.gold;
@@ -11896,7 +12034,7 @@ function openGoldBag(bag){
 function tryOpenGoldBagAt(worldX, worldY){
   for(const bag of goldBags){
     if(!bag.active || (bag.airborne && bag.age < GOLD_BAG_LANDED_CLICKABLE_MS)) continue;
-    if(Math.hypot(bag.x - worldX, bag.y - worldY) > GOLD_BAG_CLICK_RADIUS) continue;
+    if(!isWithinEmojiSquare(worldX, worldY, bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX)) continue; // same centre and size the emoji is drawn with
     openGoldBag(bag);
     return true;
   }
@@ -11922,10 +12060,10 @@ function drawGoldBags(ctx){
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.beginPath(); ctx.ellipse(bag.x, bag.y + 4, 11, 4, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = 'rgba(255,226,140,0.42)';
-    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, 16, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX / 2 + 1, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,215,0,0.9)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, 16, 0, Math.PI*2); ctx.stroke();
-    ctx.font = pxFont(26);
+    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX / 2 + 1, 0, Math.PI*2); ctx.stroke();
+    ctx.font = pxFont(GOLD_BAG_EMOJI_PX);
     ctx.fillText('💰', bag.x, bag.y - bag.z - 4);
     if(!bag.airborne){
       ctx.font = 'bold 10px Verdana';
@@ -11935,10 +12073,16 @@ function drawGoldBags(ctx){
     }
   }
 }
+const GROUND_ITEM_EMOJI_PX = 22;
+function groundItemBobPx(gi){
+  const popAge = presentationTime - gi.spawnTime;
+  const popLift = popAge < 450 ? -Math.sin(popAge/450*Math.PI)*16 : 0;
+  return Math.sin(presentationTime/300 + gi.id)*4 + popLift;
+}
 function tryCollectCoinAt(worldX, worldY){
   for(const c of coinPickups){
     if(!c.active || c.airborne) continue;
-    if(Math.hypot(c.x - worldX, c.y - worldY) > COIN_CLICK_RADIUS) continue;
+    if(!isWithinEmojiSquare(worldX, worldY, c.x, c.y, COIN_EMOJI_PX)) continue;
     gold += c.value;
     spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#ffd700');
     playSound('click');
@@ -12005,7 +12149,7 @@ function drawCoinPickups(ctx){
     if(!c.active) continue;
     const remainFrac = 1 - c.age/c.lifespan;
     ctx.globalAlpha = remainFrac < 0.15 ? remainFrac/0.15 : 1; // only fades in the final 15% of its life, stays fully visible otherwise
-    ctx.font = '12px sans-serif';
+    ctx.font = COIN_EMOJI_PX + 'px sans-serif';
     if(c.airborne){
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.beginPath(); ctx.ellipse(c.x, c.y, 6, 3, 0, 0, Math.PI*2); ctx.fill();
@@ -13832,14 +13976,23 @@ function maybeShowWaveTutorialTip(){
 }
 // CA647 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA647
 const MAX_EXTRA_BUILDINGS_ON_BOARD = 3;
+function runWaveClearRandomEvents(){
+  const attempts = [maybeSpawnWanderingTroll, maybeSpawnChanceStructures, maybeSpawnExtraBuilding];
+  shuffleArray(attempts); // no event has priority; the first that succeeds takes the slot
+  for(const attempt of attempts){
+    if(randomEventSlotUsed) break;
+    attempt();
+  }
+}
 function maybeSpawnExtraBuilding(){
-  if(waveIndex < 20) return;
+  if(randomEventSlotUsed || waveIndex < 20) return;
   const liveBuildings = enemyPool.filter(e => e.active && e.isHutBuilding && !e.destroyed).length;
   if(liveBuildings >= MAX_EXTRA_BUILDINGS_ON_BOARD) return;
   const chance = Math.min(0.5, 0.08 + (waveIndex - 20) * 0.01); // 8% at wave 20, capped at 50%
   if(Math.random() >= chance) return;
   const tile = findHutPlacementTile();
-  if(!tile) return;
+  if(!tile || !tryClaimRandomEventSlot()) return;
+  logGameEvent('random event: extra building');
   if(waveIndex >= 30){
     const roll = Math.random();
     if(roll < 0.34) spawnHut(tile.x, tile.y);
@@ -13929,9 +14082,20 @@ function update(dt){
   // CA653 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA653
   updateBarricadesAndPileup();
   phaseTime.barricade += performance.now() - __pt; __pt = performance.now();
-  const anyActiveEnemies = enemyPool.some(e => e.active && !e.isLivestock); // TARGET-MARK-01 (1.6.94): livestock never block a wave from completing
+  if(enemyPresenceDirty){ // TARGET-MARK-01 (1.6.94): livestock never block a wave from completing; LAG-PASS-02 (1.6.144): a rescan happens only after one of the events listed at enemyPresenceDirty
+    laneEnemiesPresent = false; targetableWandererPresent = false;
+    for(const scanned of enemyPool){
+      if(!scanned.active) continue;
+      if(!scanned.isLivestock){ laneEnemiesPresent = true; break; }
+      if(scanned.isHostileNpc || scanned === markedTargetEnemy) targetableWandererPresent = true;
+    }
+    enemyPresenceDirty = false;
+  }
+  const anyActiveEnemies = laneEnemiesPresent, anyTargetableWanderer = targetableWandererPresent;
   if(anyActiveEnemies){
-    for(const e of enemyPool) if(e.active && !e.isLivestock) e.update(dt); // livestock wander in real time, see updatePresentationEffects()
+    let laneUpdated = 0;
+    for(const e of enemyPool) if(e.active && !e.isLivestock){ e.update(dt); laneUpdated++; } // livestock wander in real time, see updatePresentationEffects()
+    if(laneUpdated === 0) enemyPresenceDirty = true; // the last lane enemy is gone: look again once, for a wanderer to fight
     phaseTime.enemyUpdate += performance.now() - __pt; __pt = performance.now();
     resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
     resolveEnemyCollisions();
@@ -13939,7 +14103,6 @@ function update(dt){
     checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
     phaseTime.collision += performance.now() - __pt; __pt = performance.now();
   }
-  const anyTargetableWanderer = enemyPool.some(e => e.active && e.isLivestock && (e.isHostileNpc || e === markedTargetEnemy)); // TROLL-FIGHTS-BACK-01 (1.6.139) — see CHANGELOG.md § [1.6.139]
   const enemyHashLocal = (anyActiveEnemies || anyTargetableWanderer) ? buildEnemyHash() : EMPTY_ENEMY_HASH;
   enemyHash = enemyHashLocal; // keep the module-scope reference current for gore code that needs it
   phaseTime.hashBuild += performance.now() - __pt; __pt = performance.now();
@@ -13960,17 +14123,20 @@ function update(dt){
 
   if(waveState === 'ACTIVE'){
     // CA654 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA654
-    const anyAlive = enemyPool.some(e => e.active && !e.escaped && !e.isGuardian && !e.isHutBuilding && !e.isLivestock);
+    let anyAlive = false; // LAG-PASS-03 (1.6.152): a plain loop that stops at the first live enemy, no closure per tick
+    for(const candidate of enemyPool){
+      if(candidate.active && !candidate.escaped && !candidate.isGuardian && !candidate.isHutBuilding && !candidate.isLivestock){ anyAlive = true; break; }
+    }
     // CA655 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA655
     if(!anyAlive){
       waveState = 'IDLE';
       wavesCompleted++;
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
+      openRandomEventSlot();
       clearDonutShieldAtWaveEnd();
       clearRoundBuffs();
       burnCampfiresAtWaveEnd();
       if(lives < 20) barkFromRandomTower(BARK_TIER_IMPORTANT, '😮‍💨', BARK_LINES.CLOSE_CALL, BARK_CHANCE.CLOSE_CALL);
-      maybeSpawnWanderingTroll();
       maybeReportLag();
       trackGameEvent('wave_completed', {
         wave: waveIndex, duration_s: Math.round((gameTime - waveTelemetry.startedAtGameTime)/1000), lives_start: waveTelemetry.livesAtStart, lives_end: lives,
@@ -13979,6 +14145,7 @@ function update(dt){
         towers: countActiveTowers(), fps_median: perfMedianFps(), gap_p95_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95))
       });
       if(wavesCompleted % 5 === 0) trackGameEvent('wave_milestone', { waves_completed: wavesCompleted }); // every 5th wave only — every single wave would be noisy without adding real signal
+      reportEngagedPlayerOnce();
       // CA656 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA656
       if(ringRevealQueue.length) advanceRingReveal(1 + Math.floor(Math.random()*3));
       // CA657 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA657
@@ -13986,8 +14153,7 @@ function update(dt){
       processClericHealing();
       checkTowerUnlocks();
       maybeSpawnMoreScenery();
-      maybeSpawnChanceStructures();
-      maybeSpawnExtraBuilding();
+      runWaveClearRandomEvents();
       maybeShowWaveTutorialTip();
       if(wavesCompleted % 2 === 0 && moveCharges < MAX_MOVE_CHARGES){
         moveCharges++;
@@ -14167,9 +14333,7 @@ function render(ctx){
   }
   for(const gi of groundItems){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
-    const popAge = presentationTime - gi.spawnTime;
-    const popLift = popAge < 450 ? -Math.sin(popAge/450*Math.PI)*16 : 0;
-    const bob = Math.sin(presentationTime/300 + gi.id)*4 + popLift;
+    const bob = groundItemBobPx(gi);
     if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
     ctx.save();
     // CA668 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA668
@@ -14192,7 +14356,7 @@ function render(ctx){
     ctx.arc(gi.x, gi.y + bob, glowRadius, 0, Math.PI*2);
     ctx.fill();
     if(graphicsQuality !== 'low'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // ground items are few and short-lived, so this was low real impact, but matching the Low-graphics gate used everywhere else keeps the setting meaning the same thing consistently
-    ctx.font = '22px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = GROUND_ITEM_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
   }
@@ -14270,7 +14434,27 @@ if(typeof ResizeObserver !== 'undefined'){
   if(debugOverlayCanvasElement) debugOverlayResizeObserver.observe(debugOverlayCanvasElement);
   if(debugOverlayHudElement) debugOverlayResizeObserver.observe(debugOverlayHudElement);
 }
+// DEBUG-OVERLAY-CACHE-01 (1.6.152) — see CHANGELOG.md § [1.6.152]. The overlay's text and box size are rebuilt a few times a second, not every frame:
+// the per-frame cost is one rectangle and a handful of text draws from the cached layout.
+const DEBUG_OVERLAY_REFRESH_MS = 250;
+let debugOverlayLayout = null, debugOverlayBuiltAt = -1e9;
 function drawDebugOverlay(ctx){
+  const nowReal = performance.now();
+  if(nowReal - debugOverlayBuiltAt >= DEBUG_OVERLAY_REFRESH_MS || (debugOverlayLayout && (debugOverlayLayout.canvasW !== CANVAS_W || debugOverlayLayout.canvasH !== CANVAS_H))){
+    debugOverlayLayout = buildDebugOverlayLayout(ctx);
+    debugOverlayBuiltAt = nowReal;
+  }
+  const layout = debugOverlayLayout;
+  if(!layout) return;
+  ctx.save();
+  ctx.font = 'bold ' + layout.fontPx + 'px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(layout.boxLeft, layout.belowHudY, layout.boxWidth, layout.boxHeight);
+  ctx.fillStyle = '#7ee787';
+  for(let i = 0; i < layout.visibleLines.length; i++) ctx.fillText(layout.visibleLines[i], layout.boxLeft + 6, layout.belowHudY + 4 + i * layout.lineHeight);
+  ctx.restore();
+}
+function buildDebugOverlayLayout(ctx){
   let onPath = 0, escaped = 0, dying = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
@@ -14337,18 +14521,15 @@ function drawDebugOverlay(ctx){
   // Stay below the HUD/FPS counter. On short viewports, show the highest-priority lines that fit
   // rather than growing past the bottom of the screen.
   const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / lineHeight));
-  if(maxVisibleLines === 0) return;
+  if(maxVisibleLines === 0){ ctx.restore(); return null; }
   const visibleLines = lines.slice(0, maxVisibleLines);
   let maxLineWidth = 0;
   for(const line of visibleLines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
   const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
   const boxHeight = visibleLines.length * lineHeight + 8;
   const boxLeft = CANVAS_W - 6 - boxWidth; // right-anchored: grows leftward from the right edge
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(boxLeft, belowHudY, boxWidth, boxHeight);
-  ctx.fillStyle = '#7ee787';
-  visibleLines.forEach((line, i) => ctx.fillText(line, boxLeft + 6, belowHudY + 4 + i * lineHeight));
   ctx.restore();
+  return { visibleLines, fontPx, lineHeight, boxLeft, belowHudY, boxWidth, boxHeight, canvasW: CANVAS_W, canvasH: CANVAS_H };
 }
 const FPS_COUNTER_FONT_PX = 26; // FPS-CORNER-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
 let fpsShownValue = 60, fpsShownAt = -1e9;
@@ -15423,12 +15604,12 @@ function offerAutoRenderScale(){
   pauseStartedAtReal = Date.now();
   document.getElementById('perfOfferFloorText').textContent = (renderScaleFloorPercent >= 100 ? 75 : renderScaleFloorPercent) + '%';
   document.getElementById('perf-offer-modal').classList.remove('hidden');
-  trackGameEvent('settings_changed', { setting: 'render_scale_offer', value: 'shown' });
+  trackGameEvent('settings_changed', { setting: 'render_scale_offer', setting_value: 'shown' });
 }
 function answerAutoRenderScaleOffer(accept){
   document.getElementById('perf-offer-modal').classList.add('hidden');
   if(accept) setAutoRenderScale(true);
-  trackGameEvent('settings_changed', { setting: 'render_scale_offer', value: accept ? 'accepted' : 'declined' });
+  trackGameEvent('settings_changed', { setting: 'render_scale_offer', setting_value: accept ? 'accepted' : 'declined' });
   syncSettingsUI();
   resumeGame();
 }
@@ -15626,9 +15807,9 @@ function handleTap(clientX, clientY){
 
   if(!tryMarkTargetAt(worldX, worldY)) setMarkedTarget(null); // PIN-TAP-ONLY-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
 
-  const scenery = sceneryMap.get(gx+','+gy);
-  if(scenery){
-    startClearingScenery(scenery);
+  const sceneryHit = sceneryAtPoint(worldX, worldY);
+  if(sceneryHit){
+    startClearingScenery(sceneryHit.item);
     return;
   }
 
@@ -15740,7 +15921,7 @@ canvas.addEventListener('pointerdown', (e) => {
       const { x: worldX, y: worldY } = toCanvasCoords(e);
       if(!tryOpenGoldBagAt(worldX, worldY) && !tryCollectCoinAt(worldX, worldY)){
         for(const gi of groundItems){
-          if(Math.hypot(gi.x-worldX, gi.y-worldY) < 20){
+          if(isWithinEmojiSquare(worldX, worldY, gi.x, gi.y + groundItemBobPx(gi), GROUND_ITEM_EMOJI_PX)){
             draggingGroundItem = gi;
             dragItemPos = { x: worldX, y: worldY };
             break;
@@ -15803,9 +15984,8 @@ canvas.addEventListener('pointermove', (e) => {
   // CA746 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA746
   if(!isDragging && gameState === 'PLAYING'){
     const { x: worldX, y: worldY } = toCanvasCoords(e);
-    const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
-    const key = gx+','+gy;
-    hoveredSceneryKey = sceneryMap.has(key) ? key : null;
+    const sceneryHover = sceneryAtPoint(worldX, worldY);
+    hoveredSceneryKey = sceneryHover ? sceneryHover.key : null;
   }
 });
 
@@ -16414,6 +16594,7 @@ function beginSlotItemDrag(sourceTower, idx, e){
   if(!item) return;
   sourceTower.equippedItems.splice(idx, 1);
   itemLogReleased(item, 'on the ground (dragged out of ' + itemHolderLabel(sourceTower) + ')');
+  refreshQuickUse(sourceTower);
   sourceTower.recomputeStats();
   updateInspectPanel();
   const groundItem = spawnGroundItem(sourceTower.x, sourceTower.y, item);
@@ -16599,17 +16780,18 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
     tab.classList.add('active');
     const target = tab.dataset.tab;
     document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
+    if(target === 'items') renderItemCodex();
     playSound('click');
   });
 });
 document.getElementById('gfxHighRadio').addEventListener('change', () => {
   graphicsQuality = 'high'; setupCanvas(); applyQualityDefaultShake(); savePrefs();
-  trackGameEvent('settings_changed', { setting: 'graphics_quality', value: 'high' });
+  trackGameEvent('settings_changed', { setting: 'graphics_quality', setting_value: 'high' });
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'high'));
 });
 document.getElementById('gfxLowRadio').addEventListener('change', () => {
   graphicsQuality = 'low'; setupCanvas(); applyQualityDefaultShake(); savePrefs();
-  trackGameEvent('settings_changed', { setting: 'graphics_quality', value: 'low' });
+  trackGameEvent('settings_changed', { setting: 'graphics_quality', setting_value: 'low' });
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'low'));
 });
 document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
@@ -16654,7 +16836,7 @@ document.getElementById('settingsUpdateNoticeToggle').addEventListener('change',
 document.getElementById('settingsIntroTextToggle').addEventListener('change', (e) => {
   introTextEnabled = e.target.checked;
   savePrefs();
-  trackGameEvent('settings_changed', { setting: 'intro_text', value: e.target.checked });
+  trackGameEvent('settings_changed', { setting: 'intro_text', setting_value: e.target.checked });
 });
 document.getElementById('updateModalOk').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -16673,7 +16855,7 @@ document.getElementById('settingsFrameCapToggle').addEventListener('change', (e)
   frameCapNextAt = 0;
   syncSettingsUI();
   savePrefs();
-  trackGameEvent('settings_changed', { setting: 'frame_cap', value: frameCapEnabled ? String(frameCapFps()) : 'off' });
+  trackGameEvent('settings_changed', { setting: 'frame_cap', setting_value: frameCapEnabled ? String(frameCapFps()) : 'off' });
 });
 document.getElementById('settingsFrameCapSlider').addEventListener('input', (e) => {
   frameCapFpsUser = clampNum(parseInt(e.target.value, 10) || FRAME_CAP_MIN_FPS, FRAME_CAP_MIN_FPS, FRAME_CAP_MAX_FPS);
@@ -16688,7 +16870,7 @@ document.getElementById('settingsScreenShakeToggle').addEventListener('change', 
 });
 document.getElementById('settingsAutoRenderScaleToggle').addEventListener('change', (e) => {
   setAutoRenderScale(e.target.checked);
-  trackGameEvent('settings_changed', { setting: 'auto_render_scale', value: e.target.checked ? 'on' : 'off' });
+  trackGameEvent('settings_changed', { setting: 'auto_render_scale', setting_value: e.target.checked ? 'on' : 'off' });
 });
 document.getElementById('settingsRenderScaleResetBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -16706,14 +16888,14 @@ document.getElementById('settingsRenderScaleFloor').addEventListener('change', (
   renderScaleFloorUserSet = true;
   clampRenderScaleToFloor('lowest render resolution raised to ' + renderScaleFloorPercent + '%');
   savePrefs();
-  trackGameEvent('settings_changed', { setting: 'render_scale_floor', value: String(renderScaleFloorPercent) });
+  trackGameEvent('settings_changed', { setting: 'render_scale_floor', setting_value: String(renderScaleFloorPercent) });
 });
 function applyQualityDefaultShake(){
   if(!renderScaleFloorUserSet){
     renderScaleFloorPercent = defaultRenderScaleFloorPercent();
     clampRenderScaleToFloor('graphics profile default floor ' + renderScaleFloorPercent + '%');
   }
-  if(!screenShakeUserSet) screenShakeEnabled = graphicsQuality === 'high';
+  if(!screenShakeUserSet) screenShakeEnabled = graphicsQuality === 'high' && !PREFERS_REDUCED_MOTION;
   syncSettingsUI();
 }
 document.getElementById('downloadSaveBtn').addEventListener('pointerdown', (e) => {
@@ -17377,6 +17559,9 @@ function updateBuffPips(tower){
   }
   inspBuffPips.classList.toggle('hidden', inspBuffPips.childElementCount === 0);
 }
+function refreshQuickUse(tower){ // QUICK-USE-EVENTS-01 (1.6.144) — see CHANGELOG.md § [1.6.144]: the row changes only when an item is used or enters or leaves the inventory
+  if(tower === selectedTower) updateQuickSlots(tower, tower.type === 'BARRICADE');
+}
 function updateQuickSlots(tower, isBarricade){
   let shown = 0;
   if(!isBarricade && !inspPanelExpanded){
@@ -17670,6 +17855,7 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower) return;
   logGameEvent('sold ' + itemHolderLabel(selectedTower) + ' for ' + selectedTower.sellValue() + ' gold');
+  trackGameEvent('tower_sold', { tower_type: selectedTower.type, level: selectedTower.level, refund: selectedTower.sellValue() });
   gold += selectedTower.sellValue();
   for(const lostItem of selectedTower.equippedItems) itemLogReleased(lostItem, 'lost: ' + itemHolderLabel(selectedTower) + ' was sold');
   selectedTower.active = false;
@@ -17927,6 +18113,7 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   fitHudTopToOneLine(true);
   positionZoomControls(); // hud-top just went from display:none (height 0) to visible — this is the one place its real height needs recalculating outside of an actual resize/orientation-change, both already covered by their own listeners
   gameState = 'PLAYING';
+  centerCameraOnActiveRegion(); // the canvas now has its real size, so the start view is framed from it
   lastTime = performance.now();
   blowingLeaves = [];
   updateHUD();

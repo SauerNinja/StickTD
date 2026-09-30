@@ -1,9 +1,9 @@
 # Agent Instructions — Stick Tower Defense
 
-For any AI agent (Claude Code or otherwise) making changes to this repository. Detailed subsystem
-rationale, historical lessons, and best-practice notes live in `AGENTS_REFERENCE.md` — this file
-covers what to do and how; that one covers why, in depth, per subsystem. Read this file every
-session; open the reference doc only when a specific subsystem note is actually relevant.
+For any AI agent (Claude Code or otherwise) making changes to this repository. Part 1 covers what
+to do and how; Part 2 (below the standing rules and sections 0-8) holds the detailed subsystem
+rationale, historical lessons and best-practice notes. Read Part 1 every session; open the Part 2
+section for a subsystem only when it is actually relevant.
 
 ## 0. Get oriented from GitHub, not from an uploaded file
 
@@ -114,6 +114,40 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 - **UI holds up at every screen size.** Stat buttons and every scale-to-fit HUD element stay
   legible and correctly sized on a large screen, not just a small one — verify both ends, not just
   mobile.
+
+## Owner standing rules — apply to every change
+
+The owner has stated these repeatedly. They are written generally on purpose: the detail (names, constants, version history) lives in the section named at the end of each line, in code, and in `CHANGELOG.md`. A rule the owner states is baked in here and, where it can be tested, as a design contract check, so it cannot quietly regress. Refine a bullet before adding a new one.
+
+**How work is done**
+- **The owner supplies the evidence** (debug log, save file, screenshots, clips, opinion). Do not run long or arbitrary simulations to settle a balance or lag question; decide from these notes and the code, and ask for data when evidence is really needed. Short, targeted checks of your own change are fine.
+- **Check a report against the live version first.** Screenshots often come from an older build; the debug overlay shows the version. Say so plainly instead of assuming the fix failed.
+- **Never create new files unless the owner asks for one.** Fold guidance into `AGENTS.md`, `README.md`, `BACKLOG.md` or `CHANGELOG.md`; the game stays one `index.html` with its existing companions.
+- **Deliver the complete current `index.html` plus only the documents that changed**, flat and individually, never zipped. Every change gets a version bump, a changelog entry and, for a stated rule, a contract check.
+- **Player-facing text is professional.** No jokes, filler or dialogue on item use, and no tutorial hints for things that are obvious on their own. The README stays general and unshowy.
+
+**Things the player handles are objects first, actions second**
+- Nothing opens, applies or collects itself. Consumables go into a stickman's slots and are used by a click or hotkey; gold bags open only on a click. See *Consumables and the item log*.
+- One clear moment of feedback per use (what, exact amount, class colour, sound), timed on real time, fading out once. See *Consumables and the item log*.
+- Every clickable emoji is hit on its own drawn border, never a looser circle or a whole tile. See *Target marking* and `isWithinEmojiSquare()`.
+
+**World rules**
+- Wandering units (livestock, troll) never interact with the lane or barricades, never bounce, and are still fought by towers when hostile or marked. See *Loose enemies, chance structures*.
+- Random events happen at most once per expand, through one shared slot. See *Loose enemies, chance structures*.
+- Scenery is biggest on the tiles touching the road ends (always trees and rocks, never bushes), medium around them, small and tiny toward the middle; tiles the player has cleared rarely regrow. See *End-of-road scenery density*.
+- Bleeding comes only from arrows that stay stuck; every weapon draws its own ammo. See *Ammo kinds and bleeding*.
+- Enemies keep their spacing on the road and pack tightly when stacked at a barricade. See *Map, route and start-of-game rules*.
+- The camera opens at a medium view; the player decides to zoom in or out. See *Map, route and start-of-game rules*.
+- Game speed changes combat only; presentation (camera, text, items, animals) runs on real time, and cosmetic motion is reduced at the fastest speeds. See *Game speed and clocks*.
+- A system that asks for reduced motion starts with screen shake off and without the enemy hop and lean (`PREFERS_REDUCED_MOTION`); any new decorative motion checks it.
+
+**Progression sizes are multiples of one unit**
+- A training bar is the unit; a promotion is a fixed multiple of it, half automatic and half spendable, all as random rolls. Stims and meals last until the wave ends. See *Promotion size*.
+
+**Performance**
+- Prefer events over per-tick scans, no per-frame DOM work or allocation, fixed pools, and a cheap "anything to draw" exit on every draw routine. Measure before claiming a saving, and say when something is not measured. See *Lag-creep prevention protocol*.
+
+---
 
 ## 2. Evidence and intended behavior
 
@@ -281,10 +315,12 @@ look reasonable":
   used to sit under it). Full-history archaeology across every past version is not routine; do it
   only to resolve an actual, specific contradiction. A historical gap in old version numbers is a
   separate finding to note, never an invented entry to fill.
-- `BACKLOG.md` holds ideas, requests, and unfinished explicit asks that come up but aren't acted on
-  yet — add a line under `## Ideas` (or the relevant existing section) as they arise, without
-  turning a speculative suggestion into a commitment. Move an entry to `CHANGELOG.md` and delete it
-  from `BACKLOG.md` once actually shipped — never leave stale duplicates in both.
+- `BACKLOG.md` is the master list of everything still open, organized by what the item is waiting on
+  (owner setup, owner decisions, a real playthrough, evidence, scoped content, balance data, audio,
+  UI, repro-needed reports). Add new items to the matching section with a status tag, without turning
+  a speculative suggestion into a commitment. Move an entry to `CHANGELOG.md` and delete it from
+  `BACKLOG.md` once actually shipped — never leave stale duplicates in both, and never add a
+  round-by-round history section; history is the changelog and git.
 - Update the documentation actually affected by a change (README, the reference doc, BACKLOG) —
   not every unrelated document out of caution.
 
@@ -300,6 +336,7 @@ repeat analysis already given earlier in the same session.
   the file grows; treat a link as a starting point to search from, not a guaranteed address. Update
   an entry in the same change that adds a genuinely new named system.
 - **`CHANGELOG.md`** — full dated version history, newest first.
+- **Owner standing rules** (above) are the short list; the sections named in them (Consumables and the item log, Item codex, Promotion size, Ammo kinds and bleeding, Target marking, End-of-road scenery density, Loose enemies, chance structures, Game speed and clocks) hold the detail.
 - Detailed subsystem rationale (combat/stat formulas, audio architecture, gore/decal system, UI
   layout techniques, head/consent/SEO integration, Canvas/HTML5 best practices, historical
   lessons) lives below in Part 2 of this file — read the section relevant to the task, not the
@@ -454,13 +491,25 @@ Donut, Chocolate and Lollipop (in `TREAT_ITEMS`) each carry a secondary effect b
 
 Scenery near either end of the route (spawn flags, finish line) is denser and larger than mid-route, tapering over `END_SCENERY_RADIUS_TILES` route tiles (`pathEndProximity()`, `spawnExtraEndScenery()`, both called from `generateScenery()` and `scatterSceneryInRing()`). The random scale roll in `spawnScenery()` is biased toward the top of the range near the ends, and the tree/rock split shifts toward rock. Distance is measured along the route, not straight-line. Purpose: encourage building in the middle, keeping both ends open for the road to keep expanding.
 
-**Size gradient and harvested tiles (`END-RING-01`, `SCENERY-GRADIENT-01`).** Trees and rocks follow the distance from the road ends. The tiles that touch a road end, on the sides not taken by the route (normally three per end), always hold the biggest pieces: `fillEndRing()` runs after every wave and expansion, fills any free ring tile with a piece of at least `END_RING_MIN_SIZE_FRAC` (a piece the player has cleared grows back once the tile is empty, and a tile a tower or hut occupies is skipped), and replaces a smaller piece that landed there first. The end guards place medium pieces around the ring (`END_GUARD_MAX_SIZE_FRAC`). Everywhere else `treeRockSizeFrac()` sets the size from `pathEndProximity()`: medium near the ends, then medium-small, small and tiny toward the middle of the road, and `treeRockKeepChance()` thins them out the same way, so the middle carries mostly small and tiny pieces. A tile the player has cleared once is remembered (`harvestedTileKeys`, saved as `harvestedTiles`) and rarely grows a tree or rock again (`HARVESTED_TILE_KEEP_FACTOR`); the ring tiles ignore that memory. New pieces therefore appear mainly at the ends and on tiles never cleared. The design contract checks that the ring size stays above the gradient.
+**Size gradient and harvested tiles (`END-RING-01`, `SCENERY-GRADIENT-01`).** Trees and rocks follow the distance from the road ends. The tiles that touch a road end, on the sides not taken by the route (normally three per end), always hold the biggest pieces: `fillEndRing()` runs after every wave and expansion, fills any free ring tile with a piece of at least `END_RING_MIN_SIZE_FRAC` (a piece the player has cleared grows back once the tile is empty, and a tile a tower or hut occupies is skipped), and replaces a smaller piece that landed there first. Ring tiles hold only trees and rocks (`RING-ONLY-BIG-01`): random scenery never lands on them (`isEndRingTile()`), and `fillEndRing()` also replaces a bush, crate or smaller piece that got there first, so a potted plant never sits where a rock belongs. The end guards place medium pieces around the ring (`END_GUARD_MAX_SIZE_FRAC`). Everywhere else `treeRockSizeFrac()` sets the size from `pathEndProximity()`: medium near the ends, then medium-small, small and tiny toward the middle of the road, and `treeRockKeepChance()` thins them out the same way, so the middle carries mostly small and tiny pieces. A tile the player has cleared once is remembered (`harvestedTileKeys`, saved as `harvestedTiles`) and rarely grows a tree or rock again (`HARVESTED_TILE_KEEP_FACTOR`); the ring tiles ignore that memory. New pieces therefore appear mainly at the ends and on tiles never cleared. The design contract checks that the ring size stays above the gradient.
+
+## Analytics parameter names
+
+Event parameters in `TELEMETRY_EVENTS` must never be named `source`, `medium`, `campaign`, `term`, `content`, `value` or `currency` (`ANALYTICS-PARAMS-01`). Google Analytics reads those as traffic-source or revenue fields: an enemy name sent as `source` showed up as a session source ("GRUNT / (not set)"). Use a specific name instead (`enemy_type`, `script_file`, `setting_value`, `payment_type`). The design contract fails if a declared parameter uses one. Renaming a parameter starts a new series in Google Analytics; older events keep the old name.
+
+Key events are few and single-shot. `game_started`, `engaged_player` (sent at most once per session, after a few waves are cleared) and `save_downloaded` are the ones to mark as key events in Google Analytics; `wave_milestone` repeats every few waves, so it is a measurement event, not a key event. A new event meant to be a key event should fire at most once per session.
+
+**Where the master list lives.** The `TELEMETRY_EVENTS` table in `index.html` is the single master list of events and their parameters; nothing else restates it. The owner's one-time clicks in Google Analytics and Search Console (key events, custom dimensions, retention, site verification) live in `BACKLOG.md` in section 1 ("Owner setup"), not here. When a change adds a parameter worth reporting on, add it to that list's custom dimensions or metrics in the same change.
 
 ## First-time alerts and Introduction Text
 
 One-time explanatory popups (welcome, Item Guide, first enemy escape, first tower overrun) all go through `maybeShowFirstTimeAlert()` or the same localStorage-gate pattern, and all respect `introTextEnabled` (Settings → Game → "First-time tips and alerts"). Never add a second persistence mechanism for this category — fold new first-time popups into the existing `sticktd:prefs:v1` blob.
 
 ## Meat max-HP and livestock
+
+Random events share one slot per expand (`RANDOM-EVENT-SLOT-01`): the wandering troll, chance structures such as the campfire and fountain, extra buildings, hut camps and livestock all call `tryClaimRandomEventSlot()` before they spawn, and only the first to succeed in an expand gets it. A wave clear opens the slot (`openRandomEventSlot()`), then `runWaveClearRandomEvents()` tries the wave-clear events in shuffled order, so none has priority; the free expansion that follows, and any livestock or hut it would add, find the slot taken. A paid expansion opens a fresh slot. Each event that happens writes a "random event:" line to the game event log. New random events must claim the slot the same way; the design contract checks the slot semantics.
+
+Enemy presence is remembered between ticks, not rescanned every tick (`LAG-PASS-02`): `laneEnemiesPresent` and `targetableWandererPresent` are refreshed only when `enemyPresenceDirty` is set, which happens when an enemy spawns, a wanderer dies, the marked target changes, enemies are cleared, or the lane loop updates no lane enemy. While lane enemies exist the lane loop that already runs supplies the answer, so the check costs nothing per tick. Any new way to add or remove an enemy outside `spawn()` and `die()` must set the flag.
 
 Towers see a hostile wanderer (the troll) or a marked animal even when no lane enemy is alive (`TROLL-FIGHTS-BACK-01`): the per-tick enemy hash is built whenever a lane enemy, a hostile wanderer or the marked target exists, not only when lane enemies do. Between waves the troll is often the only enemy on the field, and an empty hash leaves every tower blind to it.
 
@@ -489,11 +538,19 @@ on an existing, already-built tower, stop — that pattern was removed on purpos
 
 Consumables follow Warcraft 3 custom-game item rules. Food, treats, stims, cooked meals, and hut loot such as tonics and pouches are picked up into a stickman's six item slots and are used only when the player clicks the slot or presses its number key (1-6), through `activateInventorySlot()` and `useStoredConsumable()`. Dropping a consumable on a stickman stores it (`receiveItem()`), dropping it elsewhere leaves it on the ground, and nothing applies a consumable on pickup, on drop, at the end of a wave or on expiry. `isConsumableDef()` is the single test for what counts as a consumable, and every new consumable definition must satisfy it and be registered in `CONSUMABLE_BY_ID` so saves restore it (`CONSUMABLE-STORED-01`, checked by the design contract).
 
-When a stickman's panel is collapsed, a quick-use row floats above it (`updateQuickSlots()`, `QUICK-USE-01`): one box per consumable in the inventory, each showing its slot number and icon, packed from the left with no gaps (a lone consumable in slot 6 sits in the first box). Passive items are skipped, the row is hidden when there is no consumable, when the panel is expanded (the full inventory is visible there) and for barricades. A click on a box uses the item; a drag out of a box works like a drag out of the inventory. The number keys keep working.
+When a stickman's panel is collapsed, a quick-use row floats above it (`updateQuickSlots()`, `QUICK-USE-01`): one box per consumable in the inventory, each showing its slot number and icon, packed from the left with no gaps (a lone consumable in slot 6 sits in the first box). Passive items are skipped, the row is hidden when there is no consumable, when the panel is expanded (the full inventory is visible there) and for barricades. A click on a box uses the item; a drag out of a box works like a drag out of the inventory. The number keys keep working. The row is refreshed by events, through `refreshQuickUse()`: when an item is used, bought, received, sold back, crafted or dragged out (plus the normal panel refresh on selecting or expanding), never on a timer or per frame. Any new place that adds or removes an inventory item must call it.
 
 Using a consumable is one deliberate moment (`showItemUseFeedback()`, `ITEM-USE-FEEDBACK-01`): the item's icon rises above the stickman, an exact readout sits under it (effect and amount, plus "Until the wave ends" for round buffs), a single ring in the item class colour expands once for tier 1 and 2 items, and a short synthesized motif plays. There are four item classes in `ITEM_USE_CLASSES` (heal green, power amber, haste blue, gain gold), each with a colour and a motif, and three tiers: 0 plain, 1 with ring, 2 with ring, longer hold and a closing note (cooked meals, boss treats, Hyper-Serum, max-life meat). The moment runs on real time, never on game speed, has no jokes or dialogue, and every part fades out once; nothing pulses or repeats. New consumables call `showItemUseFeedback()` from their apply function instead of spawning ad-hoc floating text, and the design contract checks that every class has a colour and motif. The first use of each item type writes one line to the game event log (`recordFirstItemUse()`, saved as `itemTypesUsed`). While a round buff is active the nameplate shows a pip (`updateBuffPips()`): stat icons and the percentage, merged when several stats share the same value. Stims and meals last until the wave ends, so the pip states that and shows no countdown.
 
-Every item is a per-copy instance (`makeItemInstance()`, an object whose prototype is the shared definition), so the Debug Log's ITEM LOG can follow one copy: time found and its source, each stickman that held it and for how long, time and user when used, and how it ended (used, expired, sold back, crafted away, lost with a sold unit). A new place that creates, moves, uses or destroys an item calls the matching `itemLog*` function. The GAME EVENT LOG in the same file records waves, escapes, broken barricades, sales, moves and stat points through `logGameEvent()`.
+Every clickable emoji is hit exactly where it is drawn (`EMOJI-HITBOX-01`): its own square, at the font size and centre it is drawn with, tested through `isWithinEmojiSquare()`. That covers gold bags (`GOLD_BAG_EMOJI_PX`), coins (`COIN_EMOJI_PX`), ground items (`GROUND_ITEM_EMOJI_PX` and `groundItemBobPx()`, so the box follows the bobbing item), enemies and livestock (a square of twice the radius) and scenery (`sceneryAtPoint()`, which also checks the neighbouring tiles because big pieces reach into them, using the same `TILE_SIZE * 0.72 * scale` size the piece is drawn at). Size and centre come from the same constant or function the draw code uses, so the hitbox and the picture cannot drift apart; a new clickable emoji must do the same. Combat collision radii are a separate gameplay value and are not part of this rule. Every item is a per-copy instance (`makeItemInstance()`, an object whose prototype is the shared definition), so the Debug Log's ITEM LOG can follow one copy: time found and its source, each stickman that held it and for how long, time and user when used, and how it ended (used, expired, sold back, crafted away, lost with a sold unit). A new place that creates, moves, uses or destroys an item calls the matching `itemLog*` function. The GAME EVENT LOG in the same file records waves, escapes, broken barricades, sales, moves and stat points through `logGameEvent()`.
+
+## Promotion size
+
+A promotion is worth five training bars (`PROMOTION_BAR_MULTIPLIER`, `PROMOTION-SCALE-01`): `PROMOTION_PASSIVE_ROLLS` dice of 1-3 applied automatically, split by `distributePromotionDice()` (half to the class's main stat, the rest shared between the other two, or an even split with no archetype), plus `PROMOTION_SPENDABLE_ROLLS` dice handed over as spendable points. A training bar stays at two dice, about 4 points, and promotions are expressed in multiples of it so the two stay in proportion. Stat caps still apply.
+
+## Item codex
+
+Settings has an Items tab (`renderItemCodex()`, `ITEM-CODEX-01`) that lists every consumable in `CONSUMABLE_BY_ID`: used types show icon and name, unused ones show as not used yet. It reads the saved first-use record (`itemTypesUsed`) and is built only when the tab opens.
 
 ## Ammo kinds and bleeding
 
@@ -588,7 +645,7 @@ Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgre
 ## Audio architecture
 
 First-tier reference: 5 uploaded game-audio books. The running plan (shipped vs. deferred, and
-why) lives in `BACKLOG.md` under "Audio mastery — deferred passes," since it's a living plan.
+why) lives in `BACKLOG.md` section 7 ("Audio — deferred passes"), since it's a living plan.
 
 - `playImpactSound()` is the single call site for every weapon-hit sound (in `applyDamage()`):
   throttles to one voice per weapon family per 35ms via `lastFamilyPlayAt` (bypassed for crits/
@@ -713,6 +770,8 @@ These invariants and the owner's current instructions define progression behavio
   at boot for waves 1–120.
 
 ## Lag-creep prevention protocol (mandatory for every change)
+
+Recent additions to the pattern: debug-only text is rebuilt a few times a second and cached (`buildDebugOverlayLayout()`), never per frame; "is anything alive" questions use a plain loop that stops at the first hit or a remembered flag (`enemyPresenceDirty`), never a closure per tick; a draw routine returns before doing any setup when it has nothing to draw.
 
 Lag in this project has repeatedly crept back through small, individually reasonable changes
 (history: 1.1.55 decal-heavy lag, 1.2.43–1.2.52 pan lag and baking, 1.3.1 → 1.3.7 bake regression,

@@ -182,7 +182,7 @@ An 18+ toggle in Settings → Game controls the game's forensic-style combat eff
 Each tower develops along two progression tracks, with **500 points per stat and 1,000 total**.
 
 - **Training (XP):** enemy defeats award XP, with the largest share going to the tower that lands the final hit. Towers that helped receive an assist share based on damage. Every 100 XP rolls **2 × (1–3) stat points**.
-- **Promotion (gold):** a promotion rolls 1–3 points into each stat and an additional 1–3 into the tower's main stat. Cost grows ×1.5 per rank (80 → 120 → 180 → 270 → …), with all rolls respecting the stat caps.
+- **Promotion (gold):** a promotion is worth five training bars: about 20 points rolled automatically across the stats (half of the dice into the tower's main stat) plus about 20 more points to spend yourself, all as random 1–3 rolls. Cost grows ×1.5 per rank (80 → 120 → 180 → 270 → …), with all rolls respecting the stat caps.
 
 **Milestones.** At **500 total trained stats**, name a tower. At **1,000**, earn its training trophy and convert its XP share into gold at 25 XP per coin.
 
@@ -314,27 +314,36 @@ Use the section headers around each destination to navigate when line references
 - `buildEnemyHash()` / `spatialCellKey()` / `queryNearby()` — integer-keyed spatial hash.
 - `applyPanInertia()` / `requestPausedRender()` — camera glide and paused-render coalescing.
 
+**Items, clicks and world rules** — search for these names:
+- `useStoredConsumable()` / `showItemUseFeedback()` / `ITEM_USE_CLASSES` — storing and using consumables, and the one-moment feedback on each use.
+- `refreshQuickUse()` / `updateQuickSlots()` / `updateBuffPips()` — the quick-use row above the panel and the nameplate buff pips.
+- `makeItemInstance()` / `itemLogReport()` / `logGameEvent()` / `renderItemCodex()` — the item log, game event log and Items tab.
+- `dropGoldBag()` / `tryOpenGoldBagAt()` / `isWithinEmojiSquare()` / `sceneryAtPoint()` — gold bags and the emoji-border click areas.
+- `tryClaimRandomEventSlot()` / `runWaveClearRandomEvents()` — one random event per expand.
+- `treeRockSizeFrac()` / `fillEndRing()` / `harvestedTileKeys` — scenery sizes by distance from the road ends and cleared-tile memory.
+- `enemyPresenceDirty` / `PROJECTILE_AMMO_BY_TOWER` / `bleedSourceAllowed()` / `frameCapIntervalMs()` — cached enemy presence, ammo shapes, bleed source and the frame-rate limit.
+
 **Major sections**
-- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1169)
-- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2663)
-- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3273)
-- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2185)
-- [`scheduleLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9498)
-- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1554)
-- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8188)
-- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1658)
-- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4893)
-- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5309)
-- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6408)
-- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6577)
-- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10679)
-- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11498)
-- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11766)
-- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12413)
-- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13864)
-- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14315)
-- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L16167)
-- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L16253)
+- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1244)
+- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2902)
+- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3565)
+- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2352)
+- [`spawnLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10827)
+- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1630)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9480)
+- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1734)
+- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5703)
+- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6121)
+- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7598)
+- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7772)
+- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12201)
+- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13049)
+- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13345)
+- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14017)
+- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15529)
+- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L16058)
+- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L18073)
+- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L18161)
 
 **Core gameplay systems**
 - [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1859)
