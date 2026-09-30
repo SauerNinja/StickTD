@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.154] - 2026-09-30 — Start view set to the owner's preferred zoom
+- **Start zoom 2.1x**: a new game, a loaded save and the reset-view button now frame the opening area at 2.1x (`FIT_MAX_ZOOM`, was 1.5x). The owner sent a screenshot of the view they want (zoom 2.11 in the debug overlay), which sits between the earlier 2.7x (too close) and 0.9x (too far). On a screen too small to fit the opening area at 2.1x the fit still shrinks to fit, and the player zooms freely from there.
+- **Verified**: syntax check; headless Chromium with no script errors and an empty design-contract list; the start zoom after pressing PLAY, from a forced zoom of 0.6, was measured at three screen sizes (2.1 at 2560 by 1300, 1280 by 720 and 390 by 844).
+
 ## [1.6.153] - 2026-09-30 — Reduced motion, readable save names, backlog clean-ups
 - **Reduced motion (`REDUCED-MOTION-01`)**: when the player's system asks for reduced motion, the game starts with screen shake off and without the enemy hop and lean. The shake setting still overrides the default, and everything else is unchanged.
 - **Readable save file names**: a saved game is now named like `StickTD-save-wave7-2026-09-30.txt` (waves cleared and date) instead of `savegame-` plus the seed, so several saves do not all look alike. Loading accepts any `.txt` name as before.

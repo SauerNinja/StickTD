@@ -137,7 +137,7 @@ The owner has stated these repeatedly. They are written generally on purpose: th
 - Scenery is biggest on the tiles touching the road ends (always trees and rocks, never bushes), medium around them, small and tiny toward the middle; tiles the player has cleared rarely regrow. See *End-of-road scenery density*.
 - Bleeding comes only from arrows that stay stuck; every weapon draws its own ammo. See *Ammo kinds and bleeding*.
 - Enemies keep their spacing on the road and pack tightly when stacked at a barricade. See *Map, route and start-of-game rules*.
-- The camera opens at a medium view; the player decides to zoom in or out. See *Map, route and start-of-game rules*.
+- The camera opens at the owner's chosen view, 2.1x (`FIT_MAX_ZOOM`; 2.7x was too close, 0.9x too far), smaller only when the screen cannot fit the opening area; the player decides to zoom in or out from there. See *Map, route and start-of-game rules*.
 - Game speed changes combat only; presentation (camera, text, items, animals) runs on real time, and cosmetic motion is reduced at the fastest speeds. See *Game speed and clocks*.
 - A system that asks for reduced motion starts with screen shake off and without the enemy hop and lean (`PREFERS_REDUCED_MOTION`); any new decorative motion checks it.
 

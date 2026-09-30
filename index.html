@@ -1244,7 +1244,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.153'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.154'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -7604,7 +7604,7 @@ const MIN_ZOOM = 0.6, MAX_ZOOM = 6; // ZOOM-CLOSER-01 (1.6.121) — see CHANGELO
 const FAST_FORWARD_SIMPLIFY_SPEED = 5; // FAST-SIMPLIFY-01 (1.6.125) — see CHANGELOG.md § [1.6.125]. At this speed and above, purely cosmetic motion and routine combat text are skipped
 function isFastForwardSimplified(){ return effectiveGameSpeed() >= FAST_FORWARD_SIMPLIFY_SPEED; }
 const ENEMY_STRIDE_LENGTH_PER_RADIUS = 0.5, ENEMY_HOP_PER_RADIUS = 0.2, ENEMY_TILT_RADIANS = 0.13, ENEMY_STRIDE_SQUASH = 0.12; // ENEMY-STRIDE-01 (1.6.124) — see CHANGELOG.md § [1.6.124]
-const FIT_MAX_ZOOM = 1.5; // START-ZOOM-01 (1.6.123, raised 1.6.142) — see CHANGELOG.md § [1.6.142]. The automatic fit opens at a medium view, never closer than 1.5x; closer views are the player's choice
+const FIT_MAX_ZOOM = 2.1; // START-ZOOM-01 (1.6.123, set to the owner's preferred view 1.6.154) — see CHANGELOG.md § [1.6.154]. The automatic fit opens at 2.1x (the owner's chosen start view, between 2.7x which was too close and 0.9x which was too far), smaller only if the screen cannot fit the opening area; the player zooms from there
 const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
