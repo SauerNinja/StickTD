@@ -8,7 +8,8 @@
 - More map expansions per wave and longer, more layered waves (requested; needs a design pass on expansion cost and wave pacing before any numbers change).
 - A complete measured balance audit of every tower class against enemy families and waves, with before and after results.
 - Build-menu nudge toward building (requested, wording unclear).
-- Balance follow-ups from BALANCE_REPORT.md: seeded wave harness, Marksman check, armor floor for rapid-fire towers.
+- Balance follow-up: the armor floor is 50% (1.6.122). A many-seed wave test (15+ seeds, guaranteed armored enemies, run until the wave is cleared) would be needed to judge it; four seeds could not (spread larger than any difference).
+- Live confirmation wanted for 1.6.121: pin position at several zoom levels, the barricade panel, and whether the Expand row ever stays greyed between waves with enough gold.
 - Hosting-side: submit sitemap.xml in Search Console and register GA4 custom dimensions; not code.
 
 ## Lag investigation next step (v1.6.120)

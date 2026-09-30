@@ -56,6 +56,7 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 - Face an endless sequence of waves with nine rotating archetypes and enemies that grow in size, strength, and rewards.
 - Play with a mouse on desktop or touch controls on mobile. Pan, zoom, pause, and set the simulation speed from the HUD.
 - Select an actively attacking tower to see its target's health, armor, and movement speed.
+- Armor reduces each hit, but every hit always deals at least half of its damage, so rapid-fire towers keep some value against Tanks and Bosses.
 
 ### Stat icon legend
 

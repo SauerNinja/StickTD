@@ -480,7 +480,11 @@
   #inspDpsBetween:hover #inspDpsVal{text-shadow:0 0 8px rgba(241,196,15,0.9);}
   #inspDpsVal{font-size:1.05em;font-weight:bold;color:var(--paper);text-shadow:0 0 4px rgba(241,196,15,0.5);}
   #inspDpsRangeVal{font-size:0.68em;color:var(--paper);opacity:0.75;}
-  .insp-opt-row button:not(.info-btn){flex:1 1 0;min-width:0;white-space:nowrap;}
+  .insp-opt-row button:not(.info-btn){flex:1 1 auto;min-width:max-content;white-space:nowrap;}
+  /* INSPECT-HIDDEN-01 (1.6.121) — see CHANGELOG.md § [1.6.121] */
+  #inspCombatRow.hidden, #inspStatsRow.hidden, #inspItemsRow.hidden, #inspEvoBarTrack.hidden, #inspDpsBetween.hidden, #inspEvoHint.hidden, #inspAuraBox.hidden{display:none !important;}
+  #inspRepairBtn, #inspUpgradeBtn{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;}
+  #inspRepairCost, #inspUpgradeCost{display:block;font-size:0.82em;opacity:0.92;}
   #inspFullOptions.hidden{display:none;}
   #inspNameplate{flex-basis:100%;display:flex;align-items:center;gap:6px;cursor:pointer;
     padding:2px 5px;margin:-3px -5px 0px;border-radius:6px;user-select:none;-webkit-user-select:none;}
@@ -804,7 +808,7 @@
           <button id="inspRepairBtn" class="hidden">🔨 Repair <span id="inspRepairCost"></span></button>
           <span id="inspDpsBetween" role="button" tabindex="0" title="How this class calculates damage"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span><span id="inspDpsRangeVal"></span></span>
           <button id="inspTargetBtn" title="Targeting priority">🎯 <span id="inspTargetMode"></span></button>
-          <button id="inspStoreBtn" class="hidden">📦 Store (pick up)</button>
+          <button id="inspStoreBtn" class="hidden">📦 Pick up</button>
         </div>
         <div class="insp-opt-row" id="inspTargetMoveRow">
           <button id="inspSellBtn">🏷️ Sell <span id="inspSellValue"></span></button>
@@ -1209,7 +1213,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.120'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.122'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3417,6 +3421,7 @@ function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
   animal.livestockWalking = false;
 }
 // WANDERING-TROLL-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
+const ARMOR_MIN_DAMAGE_SHARE = 0.5;
 const LUCKY_COIN_CHEST_CHANCE = 0.3;
 const BOSS_ATTACK_MULT = 5; // BOSS-AGGRO-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const BOSS_AGGRO_RADIUS = 300;
@@ -3778,8 +3783,17 @@ function spawnExtraEndScenery(cells, spawnedKeys){
   }
 }
 const SCENERY_FIRST_WAVE_INDEX = 1; // waveIndex counts waves started; scenery may appear only once the first wave has begun
+// HUT-CLEAR-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
+function tileHasHut(gx, gy){
+  for(const e of enemyPool){
+    if(e.active && e.isHutBuilding && Math.floor(e.x/TILE_SIZE) === gx && Math.floor(e.y/TILE_SIZE) === gy) return true;
+  }
+  return false;
+}
+const BIG_SCENERY_MIN_END_PROXIMITY = 0.4;
 function spawnScenery(gx, gy, forceType, forcedSizeFrac){
-  if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
+  if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return;
+  if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
   const S = CONFIG.SCENERY;
   const endProximity = pathEndProximity(gx, gy);
   if(!forceType && endProximity <= 0 && Math.random() >= MID_ROAD_SCENERY_KEEP_CHANCE) return;
@@ -3796,6 +3810,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac){
     else if(roll < 0.15) type = 'BUSH'; // BUSH-BERRIES-01 (1.6.93): a cheap, quick-clear scenery type that drops a random berry (fruit) item
     else if(roll < treeRockSplit + 0.06) type = 'TREE';
     else type = 'ROCK';
+    if((type === 'TREE' || type === 'ROCK') && endProximity < BIG_SCENERY_MIN_END_PROXIMITY) return; // SCENERY-ENDS-ONLY-01 (1.6.121) — big pieces only near the flags and finish line
   }
 
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[type];
@@ -3837,7 +3852,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac){
 // it tops each road end up to END_GUARD_MIN_PIECES nearby pieces, nearest tiles first, once per distinct end tile
 // (guardedRoadEndKeys), so it can run after every wave and expansion, guards each new end as the road grows, and
 // never re-fills space the player has paid to clear. Held back by the same first-level gate as all scenery (spawnScenery()).
-const END_GUARD_RADIUS_TILES = 4;
+const END_GUARD_RADIUS_TILES = 3;
 const END_GUARD_MIN_PIECES = 6;
 const END_GUARD_MIN_SIZE_FRAC = 0.7;
 const END_GUARD_ROCK_SHARE = 0.65;
@@ -3874,10 +3889,35 @@ function guardRoadEnd(endTile){
     if(sceneryMap.has(spot.gx + ',' + spot.gy)) existing++;
   }
 }
+// END-CLOSE-GUARD-01 (1.6.121) — see CHANGELOG.md § [1.6.121]. Every wave, each road end keeps at least this many big pieces within two tiles
+// so a tower can never wall off the flags or the finish line.
+const END_CLOSE_GUARD_RADIUS_TILES = 2, END_CLOSE_GUARD_MIN_PIECES = 3;
+function topUpCloseGuard(endTile){
+  let near = pieceCountNearTile(endTile, END_CLOSE_GUARD_RADIUS_TILES);
+  if(near >= END_CLOSE_GUARD_MIN_PIECES) return;
+  const candidates = [];
+  for(let gx = endTile.x - END_CLOSE_GUARD_RADIUS_TILES; gx <= endTile.x + END_CLOSE_GUARD_RADIUS_TILES; gx++){
+    for(let gy = endTile.y - END_CLOSE_GUARD_RADIUS_TILES; gy <= endTile.y + END_CLOSE_GUARD_RADIUS_TILES; gy++){
+      const distance = Math.abs(gx - endTile.x) + Math.abs(gy - endTile.y);
+      if(distance === 0 || distance > END_CLOSE_GUARD_RADIUS_TILES) continue;
+      if(!isTileBuildable(gx, gy) || tileHasHut(gx, gy)) continue;
+      candidates.push({ gx, gy, distance, tieBreak: Math.random() });
+    }
+  }
+  candidates.sort((a, b) => a.distance - b.distance || a.tieBreak - b.tieBreak);
+  for(const spot of candidates){
+    if(near >= END_CLOSE_GUARD_MIN_PIECES) break;
+    spawnScenery(spot.gx, spot.gy, Math.random() < END_GUARD_ROCK_SHARE ? 'ROCK' : 'TREE', END_GUARD_MIN_SIZE_FRAC + Math.random() * (1 - END_GUARD_MIN_SIZE_FRAC));
+    if(sceneryMap.has(spot.gx + ',' + spot.gy)) near++;
+  }
+}
 function ensureEndGuardScenery(){
   if(waveIndex < SCENERY_FIRST_WAVE_INDEX || !pathWaypointTiles || pathWaypointTiles.length < 2) return;
-  guardRoadEnd(pathWaypointTiles[0]);
-  guardRoadEnd(pathWaypointTiles[pathWaypointTiles.length - 1]);
+  const startTile = pathWaypointTiles[0], finishTile = pathWaypointTiles[pathWaypointTiles.length - 1];
+  guardRoadEnd(startTile);
+  guardRoadEnd(finishTile);
+  topUpCloseGuard(startTile);
+  topUpCloseGuard(finishTile);
 }
 function generateScenery(){
   sceneryMap.clear();
@@ -6156,7 +6196,9 @@ function activeItemReachCircles(){
 function clampItemToPlayable(point, fallback){
   if(isLooseWalkableAt(point.x, point.y)) return point;
   const center = nearestLooseWalkableTileCenter(point.x, point.y);
-  return center ? { x: center.x, y: center.y } : { x: fallback.x, y: fallback.y };
+  if(!center) return { x: fallback.x, y: fallback.y };
+  const half = TILE_SIZE/2 - 3; // stays on the edge of the playable area instead of snapping to a tile centre
+  return { x: clampNum(point.x, center.x - half, center.x + half), y: clampNum(point.y, center.y - half, center.y + half) };
 }
 function clampToItemReach(point, circles, fallback){
   if(!circles.length) return { x: fallback.x, y: fallback.y };
@@ -6198,20 +6240,20 @@ function tryMarkTargetAt(worldX, worldY){
 }
 function drawMarkedTargetIcon(ctx){
   if(!markedTargetEnemy || !markedTargetEnemy.active) return;
-  ctx.save();
-  ctx.font = Math.round(markedTargetEnemy.radius*1.1 + 10) + 'px sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // TARGET-PIN-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
-  const pinCycle = presentationTime % 10000;
-  let stab = 0;
-  if(pinCycle < 450){
-    const p = pinCycle / 450;
-    stab = p < 0.35 ? -Math.sin(p/0.35*Math.PI/2)*3 : Math.sin((p-0.35)/0.65*Math.PI)*8 - 3*(1-(p-0.35)/0.65);
-  }
   const pinFontPx = Math.round(markedTargetEnemy.radius*1.1 + 10);
-  ctx.translate(markedTargetEnemy.x + pinFontPx*0.28, markedTargetEnemy.y - markedTargetEnemy.radius - 16 + stab); // PIN-CENTER-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
-  ctx.rotate(-0.15);
-  ctx.fillText('📌', 0, 0);
+  // PIN-FOREHEAD-01 (1.6.121) — see CHANGELOG.md § [1.6.121]. The pin rests with its point on the forehead; once every 10 s of real time it
+  // draws out toward the top right, trembles, then stabs back in. presentationTime keeps it independent of game speed.
+  const pinCycle = presentationTime % 10000;
+  let pullback = 0, tremble = 0;
+  if(pinCycle < 320) pullback = 1 - Math.pow(1 - pinCycle/320, 2);
+  else if(pinCycle < 620){ pullback = 1; tremble = Math.sin((pinCycle-320)/18)*1.4; }
+  else if(pinCycle < 720){ const p = (pinCycle-620)/100; pullback = 1 - p*p; }
+  const foreheadX = markedTargetEnemy.x, foreheadY = markedTargetEnemy.y - markedTargetEnemy.radius*0.5;
+  const reach = pinFontPx*0.75*pullback;
+  ctx.save();
+  ctx.font = pinFontPx + 'px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('📌', foreheadX + pinFontPx*0.54 + reach*0.75 + tremble, foreheadY - pinFontPx*0.36 - reach*0.75);
   ctx.restore();
 }
 let hoverCell = null; // {gx,gy} - for build-placement snap preview and move-mode snap preview
@@ -6457,6 +6499,7 @@ function applyKillShake(enemy){
   screenShakeUntil = Math.max(screenShakeUntil, presentationTime + Math.min(KILL_SHAKE_MAX_MS, KILL_SHAKE_BASE_MS + enemy.weight * KILL_SHAKE_MS_PER_WEIGHT));
   screenShakeMag = Math.max(screenShakeMag, shakePx);
 }
+const DUAL_OFFHAND_DELAY_FRACTION = 0.45;
 const SHOCK_BURST_WINDOW_MS = 3000, SHOCK_BURST_RADIUS = 44, SHOCK_BURST_MAX_TARGETS = 4, SHOCK_BURST_HP_FRACTION = 0.3;
 let shockBurstActive = false;
 function dischargeShockBurst(dead, sourceTower){
@@ -7153,7 +7196,7 @@ function loadSaveFileText(text){
 /* =========================================================
    CAMERA (zoom + pan)
    ========================================================= */
-const MIN_ZOOM = 0.6, MAX_ZOOM = 2.5;
+const MIN_ZOOM = 0.6, MAX_ZOOM = 6; // ZOOM-CLOSER-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
 const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
@@ -8111,7 +8154,7 @@ class Enemy{
     // retain their established armor interaction.
     const holyBonus = (isHoly && this.isUndead);
     if(holyBonus) dmg = Math.round(dmg * 1.5);
-    if(this.armor && !ignoreArmor) dmg = Math.max(1, dmg - this.armor);
+    if(this.armor && !ignoreArmor) dmg = Math.max(1, dmg - this.armor, dmg * ARMOR_MIN_DAMAGE_SHARE); // ARMOR-FLOOR-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
     if(this.hasShield && this.shieldHp > 0){
       const absorbed = Math.min(this.shieldHp, dmg);
       this.shieldHp -= absorbed;
@@ -8961,6 +9004,7 @@ class Tower{
   }
   // CA401 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA401
   receiveItem(def){
+    if(this.type === 'BARRICADE') return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
     if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
     this.equippedItems.push(def);
     this.recomputeStats();
@@ -9568,7 +9612,7 @@ class Tower{
         this.target2 = secondary;
         if(secondary){
           this.isSwinging2 = true;
-          this.swingStart2 = gameTime;
+          this.swingStart2 = gameTime + this.swingDuration * DUAL_OFFHAND_DELAY_FRACTION; // DUAL-STAGGER-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
           this.hitSet2 = new Set();
           this.baseAngle2 = Math.atan2(secondary.y-this.y, secondary.x-this.x);
           this.lastSwordAngle2 = this.baseAngle2 - this.swingArc/2;
@@ -9588,7 +9632,10 @@ class Tower{
       this.renderSwordAngle = this.target ? this.angle : IDLE_WEAPON_ANGLE;
     }
     if(hasDual){
-      if(this.isSwinging2){
+      if(this.isSwinging2 && gameTime < this.swingStart2){
+        this.renderSwordAngle2 = this.baseAngle2 + this.swingOffset(0);
+        this.lastSwordAngle2 = this.baseAngle2 - this.swingArc/2;
+      } else if(this.isSwinging2){
         const t2 = Math.min(1, (gameTime-this.swingStart2)/this.swingDuration);
         const currAngle2 = this.baseAngle2 + this.swingOffset(t2);
         this.checkConeHits(nearby, this.lastSwordAngle2, currAngle2, this.hitSet2);
@@ -9901,7 +9948,8 @@ class Tower{
     // ELEMENT-TINT-01 (1.6.86): the element's themed emoji shows at the weapon tip while this tower
     // is actively aiming/attacking, small and only for elemental towers — never drawn while downed.
     if(elementTint && hasTargetPose && !isDisabled){
-      const emojiX = this.x + Math.cos(this.angle)*muzzleOffset, emojiY = this.y + Math.sin(this.angle)*muzzleOffset;
+      const elementEmojiReach = 26 * STICKMAN_SCALE; // TOWER-DRAW-CRASH-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
+      const emojiX = this.x + Math.cos(this.angle)*elementEmojiReach, emojiY = this.y + Math.sin(this.angle)*elementEmojiReach;
       ctx.save();
       ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = 0.85;
@@ -13560,7 +13608,7 @@ function update(dt){
           if(Math.random() < 0.1) d.wormPending = true;
         }
       }
-      if(wavesCompleted <= 4 || wavesCompleted % 4 === 0){
+      { // FREE-EXPAND-EVERY-WAVE-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
         // CA660 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA660
         grantFreeExpansion();
       }
@@ -13899,18 +13947,21 @@ function drawDebugOverlay(ctx){
   visibleLines.forEach((line, i) => ctx.fillText(line, boxLeft + 6, belowHudY + 4 + i * lineHeight));
   ctx.restore();
 }
-const FPS_COUNTER_FONT_PX = 18; // bumped from 13 per direct request ("make FPS bigger")
+const FPS_COUNTER_FONT_PX = 26; // FPS-CORNER-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
+let fpsShownValue = 60, fpsShownAt = -1e9;
 function drawFpsCounter(ctx){
-  const fps = Math.round(perfStats.smoothedFps || 60);
+  const nowReal = performance.now();
+  if(nowReal - fpsShownAt >= 1000){ fpsShownValue = Math.round(perfStats.smoothedFps || 60); fpsShownAt = nowReal; }
+  const fps = fpsShownValue;
   // FPS-DISPLAY-01 (1.6.56) — see CHANGELOG.md § [1.6.56]. Bigger and re-thresholded per direct
   // request: 30+ reads as healthy (green), 20-29 as a real but tolerable drop (yellow), anything
   // below 20 — including well below 10 — as a problem (red).
   ctx.fillStyle = fps >= 30 ? '#4caf50' : fps >= 20 ? '#ffc107' : '#f44336';
   ctx.font = 'bold ' + FPS_COUNTER_FONT_PX + 'px monospace';
-  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3;
-  ctx.strokeText(fps + ' FPS', CANVAS_W - 8, 4);
-  ctx.fillText(fps + ' FPS', CANVAS_W - 8, 4);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 4;
+  ctx.strokeText(fps + ' FPS', CANVAS_W - 10, CANVAS_H - 8);
+  ctx.fillText(fps + ' FPS', CANVAS_W - 10, CANVAS_H - 8);
 }
 // CA674 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA674
 function drawSpawnWarningMarker(ctx){
@@ -15166,6 +15217,8 @@ function handleTap(clientX, clientY){
     return;
   }
 
+  if(!tryMarkTargetAt(worldX, worldY)) setMarkedTarget(null); // PIN-TAP-ONLY-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
+
   const scenery = sceneryMap.get(gx+','+gy);
   if(scenery){
     startClearingScenery(scenery);
@@ -15285,7 +15338,6 @@ canvas.addEventListener('pointerdown', (e) => {
             break;
           }
         }
-        if(!draggingGroundItem) tryMarkTargetAt(worldX, worldY);
       }
     }
   }
@@ -15315,7 +15367,7 @@ canvas.addEventListener('pointermove', (e) => {
       const SNAP_RADIUS = 40;
       let nearest = null, nearestDist = SNAP_RADIUS;
       for(const t of towerPool){
-        if(!t.active) continue;
+        if(!t.active || t.type === 'BARRICADE') continue;
         const d = Math.hypot(t.x - raw.x, t.y - raw.y);
         if(d < nearestDist){ nearest = t; nearestDist = d; }
       }
@@ -15358,7 +15410,7 @@ function onPointerEnd(e){
 
   if(wasSinglePointer){
     if(!isCancel && draggingGroundItem){
-      const target = towerPool.find(t => t.active && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
+      const target = towerPool.find(t => t.active && t.type !== 'BARRICADE' && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
       if(draggingGroundItem.itemDef.isHutLoot){
         applyHutLootItem(draggingGroundItem.itemDef, target);
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
@@ -15624,7 +15676,7 @@ function buildTowerModal(){
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map — only between waves, as many times as you can afford. You also get one free every 4 waves cleared.</div>';
+    '<div class="build-row-blurb">Grows the map — only between waves, as many times as you can afford. You also get one free expansion for every wave cleared.</div>';
   if(canExpand){
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;

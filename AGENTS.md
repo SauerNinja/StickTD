@@ -817,3 +817,5 @@ so they never wrap.
 
 ## Weight and size rules (1.6.64)
 - **Derived weight is not saved state.** Enemy weight follows its current radius (15px = 1.0), and tower weight follows capped STR (1.0–1.5); visual size follows sqrt(weight). Keep these derived values synchronized automatically through getters, including after save loads and size-tier changes. Lancer damage uses target weight with a 0.5–1.75 multiplier.
+- Trees and rocks belong near the flags and finish line only; each road end keeps at least 3 big pieces within 2 tiles; nothing may grow on a hut.
+- Barricades have no stats, DPS or inventory in the panel and refuse items. Elements with `display` set by an id rule need an explicit hidden override, because `.hidden` alone will not hide them.
