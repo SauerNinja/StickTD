@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="StickTD — Stick Tower Defense">
 <meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=2">
+<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="StickTD, the stick tower defense battle: stick-figure archer, mage and swordsman on a castle tower defending a winding road from angry red enemies">
@@ -23,7 +23,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
 <meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=2">
+<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=3">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
 <script type="application/ld+json">
@@ -34,7 +34,7 @@
   "alternateName": "Stick Tower Defense",
   "description": "A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.",
   "url": "https://sauerninja.github.io/StickTD/",
-  "image": "https://sauerninja.github.io/StickTD/og-image.png?v=2",
+  "image": "https://sauerninja.github.io/StickTD/og-image.png?v=3",
   "genre": ["Tower Defense", "Strategy"],
   "gamePlatform": "Web Browser",
   "applicationCategory": "Game",
@@ -1244,7 +1244,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.158'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.159'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()

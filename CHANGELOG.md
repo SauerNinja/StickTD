@@ -1,9 +1,11 @@
 # Changelog
 
-## [1.6.158] - 2026-09-30 — New share image
-- **Share image**: `og-image.png` is replaced with the owner's StickTD cover art, cut to the 1200 by 630 size the page's tags already declared (the old file was 746 by 453, so the declared size was wrong). The art is shown whole, scaled to the full height, with a soft blurred extension of itself on each side; the rating badges along its bottom edge are left out so the picture does not imply an official game rating. The Open Graph, Twitter and structured-data tags now point at `og-image.png?v=2` so sites that cached the old picture fetch the new one, and the alternative text describes the picture.
-- **Rule**: the share image's size, cache number and no-rating-badge rule are in `AGENTS.md`.
-- **Verified**: the page's two structured-data blocks still parse; the image is 1200 by 630 and about 1.2 MB, under every platform's limit.
+## [1.6.159] - 2026-10-01 — Share image shows the whole art
+- **Share image redone**: the 1.6.158 version cut the picture off at the bottom and filled its sides with a blurred copy, which looked rough on GitHub and in previews. `og-image.png` now shows the owner's whole cover art, uncropped, scaled to the full 630 px height and centred on a clean dark background with a thin gold edge and no blur. It stays 1200 by 630 (about 1 MB). The art includes the rating-style badges at its bottom-left, because painting them out of the picture left visible smears; `AGENTS.md` notes that StickTD has no official rating. The page tags now point at `og-image.png?v=3` so sites that cached the previous picture fetch this one.
+- **Verified**: both structured-data blocks still parse; the image was viewed at full size.
+
+## [1.6.158] - 2026-09-30 — New share image (superseded by 1.6.159)
+- The share image was replaced with the owner's cover art cut to 1200 by 630 (the previous file was 746 by 453 although the tags declared 1200 by 630), and the tags gained a `?v=` cache number and a proper description of the picture. The cropping and blurred sides of that version were replaced in 1.6.159.
 
 ## [1.6.157] - 2026-09-30 — Bags as ordinary items, coins bounce off scenery, diamond, sizes, balance and more
 - **Gold bag is an ordinary item (`GOLD-BAG-ITEM-01`)**: no yellow ring and no gold number any more; a bag looks like every other ground item. Click it to open it where it lies, drag it to move it, or drop it on a stickman to open it there, and the coins pop out of wherever it is opened. A bag removed by the ground-item limit or its three-minute lifespan is credited unopened, so gold is never lost; unopened bags are still saved.
