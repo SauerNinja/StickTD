@@ -13,17 +13,17 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="StickTD — Stick Tower Defense">
 <meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=3">
+<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="StickTD, the stick tower defense battle: stick-figure archer, mage and swordsman on a castle tower defending a winding road from angry red enemies">
+<meta property="og:image:alt" content="StickTD, the stick tower defense battle: stick-figure archer, mage and swordsman on a castle tower defending a winding road from angry red enemies. Free in your browser, no download or sign-up, 100 waves of enemies: build towers, train heroes, grow the map">
 <meta property="og:url" content="https://sauerninja.github.io/StickTD/">
 <meta property="og:site_name" content="StickTD">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
 <meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=3">
+<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
 <script type="application/ld+json">
@@ -34,7 +34,7 @@
   "alternateName": "Stick Tower Defense",
   "description": "A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.",
   "url": "https://sauerninja.github.io/StickTD/",
-  "image": "https://sauerninja.github.io/StickTD/og-image.png?v=3",
+  "image": "https://sauerninja.github.io/StickTD/og-image.png?v=4",
   "genre": ["Tower Defense", "Strategy"],
   "gamePlatform": "Web Browser",
   "applicationCategory": "Game",
@@ -67,8 +67,19 @@
     'ad_personalization': 'denied'
   });
   gtag('js', new Date());
-  gtag('config', 'GT-TW5SNHS6'); // Google Tag container
-  gtag('config', 'G-B6H58BQ50N'); // GA4 destination
+  // PLATFORM-DETECT-01 (1.6.161) — see CHANGELOG.md § [1.6.161]. One Analytics stream covers every place the game is hosted. SameSite=None cookies let the tag keep its visitor id when the game
+  // runs inside another site's frame (itch.io), and the platform name rides on every game event so reports can split GitHub Pages from itch.io.
+  window.detectPlayPlatform = function(hostname, referrer, isEmbedded){
+    hostname = String(hostname || ''); referrer = String(referrer || '');
+    if(/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/.test(hostname) || (isEmbedded && /itch\.io/.test(referrer))) return 'itch.io';
+    if(/(^|\.)github\.io$/.test(hostname)) return 'github-pages';
+    if(!hostname) return 'local-file';
+    return 'other';
+  };
+  window.STICKTD_PLATFORM = window.detectPlayPlatform(location.hostname, document.referrer, window.top !== window);
+  var tagCookieOptions = { cookie_flags: 'SameSite=None;Secure' };
+  gtag('config', 'GT-TW5SNHS6', tagCookieOptions); // Google Tag container
+  gtag('config', 'G-B6H58BQ50N', tagCookieOptions); // GA4 destination
   // CA002 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA002
   window.trackEvent = function(name, params){
     try{ gtag('event', name, params || {}); }catch(e){ /* analytics is never allowed to break the game */ }
@@ -1244,7 +1255,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.159'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.161'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -5020,7 +5031,7 @@ const waveTelemetry = { startedAtGameTime: 0, livesAtStart: 0, goldAtStart: 0, e
 function trackGameEvent(name, params){
   const declaredParams = TELEMETRY_EVENTS[name];
   if(!declaredParams){ console.warn('trackGameEvent: "' + name + '" is not in TELEMETRY_EVENTS'); return; }
-  const payload = { game_version: GAME_VERSION, wave: waveIndex, quality: graphicsQuality };
+  const payload = { game_version: GAME_VERSION, wave: waveIndex, quality: graphicsQuality, platform: window.STICKTD_PLATFORM || 'other' };
   if(params){
     for(const key of declaredParams){
       if(params[key] === undefined) continue;

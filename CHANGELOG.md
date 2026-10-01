@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.161] - 2026-10-01 — Tell itch.io and GitHub Pages plays apart
+- **Platform on every event (`PLATFORM-DETECT-01`)**: one Analytics stream already receives plays from every place the game is hosted, so no second stream is needed. The page now works out where it is running (`github-pages`, `itch.io`, `local-file` or `other`, from `detectPlayPlatform()`, which also recognises itch.io's game frame by its host or by its referrer) and sends that as `platform` with every game event. Page views carry the hostname, so the two places can also be split with Analytics' Hostname dimension.
+- **Cookies for a framed game**: the Analytics tag now sets its cookies with `SameSite=None;Secure`. itch.io runs a game inside a frame from another domain, where the default cookies are often refused and every visit would look like a new visitor.
+- **Owner setup**: `platform` is added to the custom dimensions to register (section 1 of `BACKLOG.md`).
+- **Verified**: the page's structured data still parses and the game loads with no script errors; `detectPlayPlatform()` returned `github-pages` for a github.io host, `itch.io` for an itch.zone host, an itch.io host and a framed page whose referrer is itch.io, `local-file` for an empty host and `other` for anything else.
+
+## [1.6.160] - 2026-10-01 — Information in the share image's side panels
+- **Share image text**: the dark side panels of `og-image.png` now carry the information people see when the link is shared. Left: "FREE in your browser", "No download", "No sign-up". Right: "100 WAVES of enemies", "Build towers", "Train heroes", "Grow the map". The cover art stays whole in the middle. The Open Graph image description repeats the same facts for screen readers and search engines, and the picture's cache number is now `?v=4`.
+- **Verified**: both structured-data blocks still parse; the image was viewed at full size and is 1200 by 630 (about 1 MB).
+
 ## [1.6.159] - 2026-10-01 — Share image shows the whole art
 - **Share image redone**: the 1.6.158 version cut the picture off at the bottom and filled its sides with a blurred copy, which looked rough on GitHub and in previews. `og-image.png` now shows the owner's whole cover art, uncropped, scaled to the full 630 px height and centred on a clean dark background with a thin gold edge and no blur. It stays 1200 by 630 (about 1 MB). The art includes the rating-style badges at its bottom-left, because painting them out of the picture left visible smears; `AGENTS.md` notes that StickTD has no official rating. The page tags now point at `og-image.png?v=3` so sites that cached the previous picture fetch this one.
 - **Verified**: both structured-data blocks still parse; the image was viewed at full size.
