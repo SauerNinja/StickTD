@@ -13,17 +13,17 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="StickTD — Stick Tower Defense">
 <meta property="og:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="StickTD — Stick Tower Defense gameplay screenshot">
+<meta property="og:image:alt" content="StickTD, the stick tower defense battle: stick-figure archer, mage and swordsman on a castle tower defending a winding road from angry red enemies">
 <meta property="og:url" content="https://sauerninja.github.io/StickTD/">
 <meta property="og:site_name" content="StickTD">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
 <meta name="twitter:description" content="A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.">
-<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png">
+<meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=2">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
 <script type="application/ld+json">
@@ -34,7 +34,7 @@
   "alternateName": "Stick Tower Defense",
   "description": "A free browser-based Stick Tower Defense game — evolving towers, endless waves, and detailed procedural combat evidence effects.",
   "url": "https://sauerninja.github.io/StickTD/",
-  "image": "https://sauerninja.github.io/StickTD/og-image.png",
+  "image": "https://sauerninja.github.io/StickTD/og-image.png?v=2",
   "genre": ["Tower Defense", "Strategy"],
   "gamePlatform": "Web Browser",
   "applicationCategory": "Game",
@@ -1244,7 +1244,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.6.154'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
+const GAME_VERSION = '1.6.158'; // bump this on meaningful feature/balance changes — shown in Settings > About, on the start screen, and stamped into every save file
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -2027,20 +2027,20 @@ const CONFIG = {
       name: 'Swordsman', icon: '⚔️', baseCost: 50, unlocksAfterWave: 0,
       blurb: 'Melee sweep — hits everything in a cone in front of it. Picks a specialization at level 5.',
       tiers: [
-        { range: 90,  damage: 18, cooldown: 1550 }, // tier-1 cooldown raised 1350→1550 per direct feedback ("all stickmen probably have too fast hit speed starting off") — later tiers (earned through promotion) are untouched
-        { range: 100, damage: 28, cooldown: 700, upgradeCost: 80 },
-        { range: 115, damage: 42, cooldown: 620, upgradeCost: 120 },
-        { range: 125, damage: 58, cooldown: 570, upgradeCost: 175 },
-        { range: 135, damage: 78, cooldown: 520, upgradeCost: 245 }
+        { range: 90,  damage: 18, cooldown: 1700 }, // tier-1 cooldown raised 1350→1550 per direct feedback ("all stickmen probably have too fast hit speed starting off") — later tiers (earned through promotion) are untouched
+        { range: 100, damage: 28, cooldown: 770, upgradeCost: 80 },
+        { range: 115, damage: 42, cooldown: 680, upgradeCost: 120 },
+        { range: 125, damage: 58, cooldown: 630, upgradeCost: 175 },
+        { range: 135, damage: 78, cooldown: 570, upgradeCost: 245 }
       ]
     },
     ARCHER: {
       name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
       blurb: 'Draws the bow fully before loosing — slower arrows, but real power behind every shot. Arrows that bite deep stay in the target and leave it bleeding.',
       tiers: [
-        { range: 140, damage: 20, cooldown: 1300, drawTime: 800, projectileSpeed: 480 }, // tier-1 cooldown raised 1150→1300, same "too fast starting off" feedback as Swordsman
-        { range: 170, damage: 30, cooldown: 630, drawTime: 450, projectileSpeed: 540, upgradeCost: 95 },
-        { range: 200, damage: 44, cooldown: 520, drawTime: 400, projectileSpeed: 600, upgradeCost: 135 }
+        { range: 140, damage: 20, cooldown: 1430, drawTime: 800, projectileSpeed: 480 }, // tier-1 cooldown raised 1150→1300, same "too fast starting off" feedback as Swordsman
+        { range: 170, damage: 30, cooldown: 693, drawTime: 450, projectileSpeed: 540, upgradeCost: 95 },
+        { range: 200, damage: 44, cooldown: 572, drawTime: 400, projectileSpeed: 600, upgradeCost: 135 }
       ]
     },
     AXEMAN: {
@@ -2103,9 +2103,9 @@ const CONFIG = {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
       blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
       tiers: [
-        { range: 180, damage: 80,  cooldown: 6000, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
-        { range: 200, damage: 216, cooldown: 5400, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-        { range: 220, damage: 657, cooldown: 4800, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+        { range: 180, damage: 128,  cooldown: 7800, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+        { range: 200, damage: 346, cooldown: 7000, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+        { range: 220, damage: 1051, cooldown: 6200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
       ]
     },
     // CA060 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA060
@@ -2664,12 +2664,7 @@ function validateDesignContract(){
       lane.active = false; wanderer.active = false; wanderer.isLivestock = false; wanderer.isHostileNpc = false;
     }
   }
-  { const contractBag = goldBags[0], goldBefore = gold;
-    contractBag.active = true; contractBag.gold = 10; contractBag.airborne = false; contractBag.z = 0; contractBag.age = 0; contractBag.x = -500; contractBag.y = -500;
-    updateGoldBags(5000); updateCoinPickups(5000);
-    if(!contractBag.active || gold !== goldBefore) problems.push('a gold bag opens only when the player clicks it (GOLD-BAG-CLICK-01)');
-    contractBag.active = false;
-  }
+  if(!GOLD_BAG_ITEM.isGoldBag || isConsumableDef(GOLD_BAG_ITEM) || GOLD_BAG_LIFESPAN_MS < 120000) problems.push('a gold bag is an ordinary ground item that opens only when the player clicks it or drops it on a stickman, and keeps its gold if it leaves the ground (GOLD-BAG-ITEM-01)');
   { const contractBarricade = [...activeBarricades][0];
     if(contractBarricade && findTouchingBarricade({ x: contractBarricade.x, y: contractBarricade.y, radius: 15, isLivestock: true }) !== null) problems.push('livestock and the troll never touch a barricade (WANDERER-PHASE-01)');
   }
@@ -2692,6 +2687,18 @@ function validateDesignContract(){
   { const reservedAnalyticsParams = ['source', 'medium', 'campaign', 'term', 'content', 'value', 'currency'];
     const offending = Object.entries(TELEMETRY_EVENTS).filter(([, declared]) => declared.some(param => reservedAnalyticsParams.includes(param))).map(([name]) => name);
     if(offending.length) problems.push('analytics events must not use parameter names Google Analytics reads as traffic source or revenue (source, medium, campaign, term, content, value, currency): ' + offending.join(', ') + ' (ANALYTICS-PARAMS-01)');
+  }
+  { const scratchEnemy = new Enemy(); scratchEnemy.bleedUntil = 0; scratchEnemy.bleedStackDamages = [];
+    scratchEnemy.applyBleed(7, 1000, null); const oneArrow = scratchEnemy.bleedDamagePerTick;
+    scratchEnemy.applyBleed(7, 1000, null); scratchEnemy.applyBleed(7, 1000, null); const threeArrows = scratchEnemy.bleedDamagePerTick;
+    if(oneArrow <= 0 || threeArrows !== 3 * oneArrow) problems.push('bleed damage per tick must multiply with the number of stuck arrows: three arrows deal three times one (BLEED-MULTIPLIES-01)');
+  }
+  { const probeTime = performance.now();
+    const stale = lastCameraInteractionAt; lastCameraInteractionAt = -1e9;
+    const idleActive = isCameraMotionActive(probeTime);
+    markCameraInteraction(); const movingActive = isCameraMotionActive(performance.now());
+    lastCameraInteractionAt = stale;
+    if(idleActive || !movingActive || !String(loop).includes('isCameraMotionActive')) problems.push('camera motion must render at the screen\'s full refresh rate, never at the frame-rate limit: isCameraMotionActive() must be true while the camera moves and the main loop must consult it (CAMERA-SMOOTH-01)');
   }
   if(PROJECTILE_AMMO_BY_TOWER.ARCHER !== undefined || Object.values(PROJECTILE_AMMO_BY_TOWER).includes('ARROW')) problems.push('only the Archer shoots arrows: every other ranged tower needs its own ammo kind (AMMO-KIND-01)');
   if(!bleedSourceAllowed({ type: 'ARCHER' }) || ['BLOWDART', 'GATLING', 'MARKSMAN', 'SNIPER', 'SWORDSMAN', 'AXEMAN', 'MAGE'].some(type => bleedSourceAllowed({ type }))) problems.push('bleeding starts only from Archer arrows (BLEED-ARROW-ONLY-01)');
@@ -2907,6 +2914,7 @@ function runDebugSelfTests(){
    so existing tower placements are never disturbed.
    ========================================================= */
 let activeRegion = null;      // {x0,y0,x1,y1} inclusive tile bounds of the currently unlocked square
+let paidExpansions = 0;       // EXPANSION-PRICE-01 (1.6.157) — see CHANGELOG.md § [1.6.157]: the price of the next bought expansion grows only with expansions the player has bought, never with free ones from clearing waves
 let expansionLevel = 0;       // number of FULLY-completed rings so far (a ring mid-spiral-reveal doesn't count yet — see ringRevealQueue)
 let pathWaypointTiles = [];   // ordered [{x,y}] grid coords the path follows
 let pathCells = new Set();    // Set of "gx,gy" strings for quick lookup
@@ -2923,7 +2931,7 @@ const RING_REVEAL_INTERVAL_MS = 40;   // tick cadence for the reveal animation �
 const RING_REVEAL_TARGET_MS = 1200;   // target total time to fully reveal a ring, whatever its size
 
 function expansionCost(){
-  return Math.round(80 * Math.pow(1.6, expansionLevel));
+  return Math.round(80 * Math.pow(1.6, paidExpansions));
 }
 function regionFullyExpanded(){
   return activeRegion.x0 <= 0 && activeRegion.y0 <= 0 && activeRegion.x1 >= COLS-1 && activeRegion.y1 >= ROWS-1;
@@ -3191,6 +3199,7 @@ function initRegionAndPath(){
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
+  paidExpansions = 0;
   hutsSpawnedThisGame = false;
   latestExpansionTiles = [];
   ringRevealed = new Set(); ringRevealQueue = []; ringCandidateRegion = null; // fresh game — no in-progress ring carried over
@@ -3404,6 +3413,7 @@ function expandRegion(){
   const cost = expansionCost();
   if(gold < cost) return false;
   gold -= cost;
+  paidExpansions++;
   openRandomEventSlot();
   performExpansion('🗺️ Map Expanded!', '#ffd700');
   return true;
@@ -3602,7 +3612,7 @@ function findNearestActiveTower(x, y, maxDist){
 }
 
 function findTouchingBarricade(e){
-  if(e.isLivestock) return null; // WANDERER-PHASE-01 — livestock and the troll never touch a barricade
+  if(e.isLivestock || e.isBreakaway) return null; // WANDERER-PHASE-01 and BREAKAWAY-PHASE-01 — livestock and the troll never touch a barricade
   // CA109 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA109
   const touchDist = e.radius + 14;
   const touchDistSq = touchDist * touchDist;
@@ -3899,6 +3909,7 @@ function treeRockKeepChance(proximity, tileKey){
   const gradient = TREE_ROCK_MIN_KEEP_CHANCE + (1 - TREE_ROCK_MIN_KEEP_CHANCE) * proximity;
   return harvestedTileKeys.has(tileKey) ? gradient * HARVESTED_TILE_KEEP_FACTOR : gradient;
 }
+const FIXED_SCENERY_SCALE = { CHEST: 0.75, COIN_POUCH: 0.95 }; // the present and the treasure chest keep one size each, the chest larger than the present (1.6.157)
 function spawnScenery(gx, gy, forceType, forcedSizeFrac){
   if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return;
   if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
@@ -3914,7 +3925,6 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac){
     if(roll < 0.04) type = 'CHEST';
     else if(roll < 0.07) type = 'SUPPLY_CRATE';
     else if(roll < 0.09) type = 'COIN_POUCH'; // direct request — a rare scenery spawn that gives gold via the same coin-burst mechanic as Merchant's Money Bag
-    else if(roll < 0.12) type = 'ITEM';
     else if(roll < 0.15) type = 'BUSH'; // BUSH-BERRIES-01 (1.6.93): a cheap, quick-clear scenery type that drops a random berry (fruit) item
     else if(roll < treeRockSplit + 0.06) type = 'TREE';
     else type = 'ROCK';
@@ -3926,10 +3936,10 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac){
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[type];
   const isTreeOrRock = type === 'TREE' || type === 'ROCK';
   if(isTreeOrRock && forcedSizeFrac === undefined) forcedSizeFrac = treeRockSizeFrac(endProximity);
-  const isSuper = !chanceDefinition && !isTreeOrRock && Math.random() < S.superChance;
+  const isSuper = !chanceDefinition && !isTreeOrRock && FIXED_SCENERY_SCALE[type] === undefined && Math.random() < S.superChance;
   const baseScaleRoll = S.minScale + Math.random()*(S.maxScale-S.minScale);
   const endBiasedScale = baseScaleRoll + (S.maxScale - baseScaleRoll) * endProximity;
-  const scale = chanceDefinition ? chanceDefinition.scale : (isSuper ? S.maxScale : forcedSizeFrac !== undefined ? S.minScale + forcedSizeFrac*(S.maxScale-S.minScale) : Math.max(baseScaleRoll, endBiasedScale));
+  const scale = chanceDefinition ? chanceDefinition.scale : FIXED_SCENERY_SCALE[type] !== undefined ? FIXED_SCENERY_SCALE[type] : (isSuper ? S.maxScale : forcedSizeFrac !== undefined ? S.minScale + forcedSizeFrac*(S.maxScale-S.minScale) : Math.max(baseScaleRoll, endBiasedScale));
   const sizeFrac = (scale - S.minScale) / (S.maxScale - S.minScale); // 0..1
   const baseYield = Math.round(S.baseResourceYield * scale) * (isSuper ? S.superYieldMultiplier : 1);
 
@@ -4294,7 +4304,13 @@ function updateScenery(dt){
       } else if(item.type === 'COIN_POUCH'){
         if(Math.random() < LUCKY_COIN_CHEST_CHANCE/2) spawnGroundItem(item.x, item.y - 4, ITEM_BY_ID.get('LUCKY_COIN'), 'coin pouch');
         // CA143 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA143
-        spawnCoinBurst(item.x, item.y, 3 + Math.floor(Math.random()*5)); // 3-7
+        { // TREASURE-CHEST-BAGS-01 (1.6.157): always one to three cash bags
+          const treasureBagCount = 1 + Math.floor(Math.random()*3);
+          for(let bagIndex = 0; bagIndex < treasureBagCount; bagIndex++){
+            const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
+            dropGoldBag(item.x + (bagIndex - (treasureBagCount-1)/2)*16, item.y, bagGold);
+          }
+        }
         spawnParticles(item.x, item.y, '#ffd700', 10);
         playSound('wave');
       } else if(item.type === 'ITEM'){
@@ -6239,6 +6255,17 @@ function windMissPenalty(tower){
   if(archetype === 'MAGE') penalty += windStrength * windStrength * 0.15;
   return penalty;
 }
+// CAMERA-SMOOTH-01 (1.6.156) — see CHANGELOG.md § [1.6.156]. Moving the camera (drag pan, glide after release, zoom, pinch, tower follow, wave-start pan) always renders at the screen's full
+// refresh rate, whatever the frame-rate limit says. The limit exists to save power while watching; at 30 FPS a pan reads as lag, which is what the owner reported after the limit
+// became the default on Low graphics. A contract check fails if the main loop stops consulting isCameraMotionActive().
+const CAMERA_MOTION_FULL_RATE_MS = 400;
+let lastCameraInteractionAt = -1e9, cameraMotionFullRateFrames = 0;
+function markCameraInteraction(){ lastCameraInteractionAt = performance.now(); }
+function isCameraMotionActive(now){
+  if(now - lastCameraInteractionAt < CAMERA_MOTION_FULL_RATE_MS) return true;
+  if(panInertia.active || waveStartCameraPan || (cameraFollow && cameraFollow.phase === 'panning')) return true;
+  return isDragging && activePointers.size > 0;
+}
 let frameCapEnabled = true, frameCapFpsUser = null; // FRAME-CAP-01 (1.6.128) — see CHANGELOG.md § [1.6.128]
 const FRAME_CAP_MIN_FPS = 30, FRAME_CAP_MAX_FPS = 250, FRAME_CAP_STEP_FPS = 10, FRAME_CAP_EARLY_TOLERANCE_MS = 2;
 function defaultFrameCapFps(){ return graphicsQuality === 'high' ? 60 : 30; }
@@ -6352,7 +6379,7 @@ const MAX_GROUND_ITEMS = 24; // a real, previously-missing cap — nothing evict
 const GROUND_ITEM_LIFESPAN = 300000;
 const FOOD_ITEM_LIFESPAN = 120000; // INVENTORY-CONSUMABLES-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const TREAT_ITEM_LIFESPAN = 150000;
-function groundItemLifespan(gi){ return gi.itemDef.isStim ? TREAT_ITEM_LIFESPAN : gi.itemDef.isTreat ? TREAT_ITEM_LIFESPAN : (gi.itemDef.isFood || gi.itemDef.isHutLoot) ? FOOD_ITEM_LIFESPAN : GROUND_ITEM_LIFESPAN; } // 5 minutes uncollected and it despawns, same "accumulates over session length" fix as decal/bone lifespans got earlier this session
+function groundItemLifespan(gi){ return gi.itemDef.isGoldBag ? GOLD_BAG_LIFESPAN_MS : gi.itemDef.isStim ? TREAT_ITEM_LIFESPAN : gi.itemDef.isTreat ? TREAT_ITEM_LIFESPAN : (gi.itemDef.isFood || gi.itemDef.isHutLoot) ? FOOD_ITEM_LIFESPAN : GROUND_ITEM_LIFESPAN; } // 5 minutes uncollected and it despawns, same "accumulates over session length" fix as decal/bone lifespans got earlier this session
 let lastGroundItemSweep = 0;
 // ITEM-LOG-01 (1.6.132) — see CHANGELOG.md § [1.6.132]. Every item is a per-copy instance of its shared definition, so one copy can be followed from the moment it is found to the moment it is used or lost.
 const ITEM_LOG_LIMIT = 300;
@@ -6431,7 +6458,7 @@ function spawnGroundItem(x, y, itemDef, source){
       if(groundItems[i] === draggingGroundItem) continue;
       if(groundItems[i].spawnTime < oldestTime){ oldestTime = groundItems[i].spawnTime; oldestIdx = i; }
     }
-    if(oldestIdx !== -1){ itemLogReleased(groundItems[oldestIdx].itemDef, 'removed: ground item limit'); groundItems.splice(oldestIdx, 1); }
+    if(oldestIdx !== -1){ creditGroundBagGold(groundItems[oldestIdx]); itemLogReleased(groundItems[oldestIdx].itemDef, 'removed: ground item limit'); groundItems.splice(oldestIdx, 1); }
   }
   const item = { id: idCounter++, x, y, itemDef: makeItemInstance(itemDef, source), spawnTime: presentationTime };
   groundItems.push(item);
@@ -7378,13 +7405,13 @@ function serializeGameState(){
   const sceneryData = [...sceneryMap.entries()].map(([key, item]) => ({ key, item }));
   const harvestedTileData = [...harvestedTileKeys];
   const itemTypesUsedData = [...itemTypesUsed];
-  const goldBagData = goldBags.filter(bag => bag.active).map(bag => ({ x: bag.x, y: bag.y, gold: bag.gold }));
+  const goldBagData = groundItems.filter(gi => gi.itemDef.isGoldBag).map(gi => ({ x: gi.x, y: gi.y, gold: gi.itemDef.gold }));
   return {
     // CA249 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA249
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
     gold, lives, livesBought, waveIndex, wavesCompleted, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
-    globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel,
+    globalPassiveCounts, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions,
     latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
     // CA250 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA250
     ringRevealedArr: ringCandidateRegion ? [...ringRevealed] : undefined,
@@ -7430,7 +7457,6 @@ function restoreGameState(state){
   for(const s of skeletonPool) s.active = false; // same — skeletons are round-scoped, never saved
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
-  for(const bag of goldBags) bag.active = false;
   sceneryMap.clear();
   invalidateSpawnFlags();
   clearingScenery.length = 0;
@@ -7454,6 +7480,7 @@ function restoreGameState(state){
   globalPassiveCounts = state.globalPassiveCounts || {};
   activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
   expansionLevel = state.expansionLevel || 0;
+  paidExpansions = state.paidExpansions !== undefined ? state.paidExpansions : expansionLevel; // an older save counts every earlier expansion as bought, as before
   latestExpansionTiles = Array.isArray(state.latestExpansionTiles) ? state.latestExpansionTiles : [];
   // CA252 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA252
   if(state.ringCandidateRegion){
@@ -7494,11 +7521,10 @@ function restoreGameState(state){
   for(const harvestedKey of (state.harvestedTiles || [])) harvestedTileKeys.add(harvestedKey);
   itemTypesUsed.clear();
   for(const usedItemId of (state.itemTypesUsed || [])) itemTypesUsed.add(usedItemId);
+  groundItems = groundItems.filter(gi => !gi.itemDef.isGoldBag); // bags come from the save, never doubled with ones already on the ground
   for(const savedBag of (state.goldBags || [])){
     if(!Number.isFinite(savedBag.x) || !Number.isFinite(savedBag.y) || !Number.isFinite(savedBag.gold)) continue;
     dropGoldBag(savedBag.x, savedBag.y, savedBag.gold);
-    const restored = goldBags.find(bag => bag.active && bag.age === 0 && bag.airborne && bag.x === savedBag.x && bag.y === savedBag.y);
-    if(restored){ restored.airborne = false; restored.z = 0; }
   }
 
   for(const td of (state.towers || [])){
@@ -7738,6 +7764,7 @@ function clampCamera(){
 
 // zoom while keeping the world point under (canvasX,canvasY) fixed on screen
 function zoomAt(canvasX, canvasY, newZoom){
+  markCameraInteraction();
   cancelCameraFollow();
   newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
   const worldX = (canvasX - camera.x) / camera.zoom;
@@ -7936,7 +7963,11 @@ class Enemy{
       // LIVESTOCK-UNSTUCK-01 (1.6.109): an animal that ends up on ground it cannot walk (map change, odd spawn tile) would bounce in place
       // forever, because every step fails the walkable check. Move it to the middle of the active region's nearest walkable tile.
       const rescue = nearestLooseWalkableTileCenter(this.x, this.y);
-      if(rescue){ this.x = rescue.x; this.y = rescue.y; }
+      if(rescue){ // WANDERER-GLIDE-01 (1.6.157): walk back toward walkable ground instead of jumping there
+        const rescueDistance = Math.hypot(rescue.x - this.x, rescue.y - this.y) || 1;
+        const rescueStep = Math.min(rescueDistance, LIVESTOCK_TYPES[this.type].speed * LIVESTOCK_WALK_SPEED_MULT * 2.5 * dt/1000);
+        this.x += (rescue.x - this.x)/rescueDistance*rescueStep; this.y += (rescue.y - this.y)/rescueDistance*rescueStep;
+      }
     }
     if(this.type === 'WANDERING_TROLL'){
       this.trollAttackTimer = (this.trollAttackTimer||0) - dt;
@@ -8021,11 +8052,6 @@ class Enemy{
       if(this.stunnedUntil > gameTime){ spawnRoutineCombatText(this.x, this.y - this.radius - 14 - offset, '⭐ STUNNED', '#ffe066'); offset += 14; }
     }
     // CA279 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA279
-    this.bleedIconTimer = (this.bleedIconTimer||20000) - dt;
-    if(this.bleedIconTimer <= 0){
-      this.bleedIconTimer = 20000;
-      if(this.bleedUntil > gameTime) spawnBleedIcon(this.x, this.y - this.radius - 16);
-    }
     // CA280 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA280
     if(goreMode && this.hp > 0 && (this.hp < this.maxHp * 0.4 || this.bleedUntil > gameTime) && !(this.bloodProfile || getBloodProfile(this.type)).isDust){
       this.arterialDripTimer = (this.arterialDripTimer||0) - dt;
@@ -8092,10 +8118,12 @@ class Enemy{
         const beatIntensity = cessation * (0.55 + pulse*0.75) * hypoDamp;
         if(goreMode && !this.bloodProfile.isDust){
           const bio = this.bloodProfile;
-          spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*beatIntensity)), 160, 0.9, true);
-          if(Math.random() < beatIntensity) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), 1);
-          if(Math.random() < 0.3*cessation) spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.55), true, undefined, undefined, bio.viscous, undefined, bloodPoolSizeScale(this.radius));
-          if(Math.random() < 0.3*cessation) spawnDripTrail(this.x + (Math.random()-0.5)*6, this.y, hexToRgba(bio.dark, 0.55));
+          const bleedStacks = Math.max(1, this.bleedStackCount); // BLEED-MULTIPLIES-01 (1.6.155) — see CHANGELOG.md § [1.6.155]: the blood effect scales with the number of stuck arrows, like the damage does
+          spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*beatIntensity*bleedStacks)), 160, 0.9, true);
+          const satelliteDropCount = Math.floor(beatIntensity*bleedStacks + Math.random());
+          if(satelliteDropCount > 0) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), satelliteDropCount);
+          if(Math.random() < Math.min(1, 0.3*cessation*bleedStacks)) spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.55), true, undefined, undefined, bio.viscous, undefined, bloodPoolSizeScale(this.radius));
+          if(Math.random() < Math.min(1, 0.3*cessation*bleedStacks)) spawnDripTrail(this.x + (Math.random()-0.5)*6, this.y, hexToRgba(bio.dark, 0.55));
         }
         if(this.hp <= 0){ this.die(this.lastBleedSource, false); return; }
       }
@@ -10494,6 +10522,7 @@ const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01 (1.6.129) — see CHANGELOG.m
   GATLING: 'BULLET', GUNALINDER: 'BULLET', MARKSMAN: 'BULLET', SNIPER: 'BULLET',
   CRAZY_CHEF: 'KNIFE', GLAIVE: 'BLADE'
 };
+const BLEED_DAMAGE_PER_STRENGTH = 0.2; // BLEED-STRENGTH-01 (1.6.157): each point of the Archer's strength adds this much to every arrow's bleed per tick
 const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4; // BLEED-WHILE-STUCK-01 (1.6.131) — see CHANGELOG.md § [1.6.131]
 function bleedSourceAllowed(sourceTower){ return !!sourceTower && sourceTower.type === 'ARCHER'; } // BLEED-ARROW-ONLY-01 (1.6.129) — see CHANGELOG.md § [1.6.129]
 class Projectile{
@@ -10610,7 +10639,7 @@ class Projectile{
           const dx = -Math.cos(impactAngle)*stickDist + Math.cos(perp)*lateralJitter;
           const dy = -Math.sin(impactAngle)*stickDist + Math.sin(perp)*lateralJitter;
           hitEnemy.embeddedArrows.push({ dx, dy, angle: impactAngle + (Math.random()-0.5)*0.3 });
-          hitEnemy.applyBleed(Math.max(1, Math.round(hitEnemy.maxHp * BLEED_PER_ARROW_MAX_HP_SHARE)), BLEED_ARROW_REFRESH_MS, this.sourceTower); // each stuck arrow adds one bleed stack for as long as it stays in
+          hitEnemy.applyBleed(Math.max(1, Math.round(hitEnemy.maxHp * BLEED_PER_ARROW_MAX_HP_SHARE)) + BLEED_DAMAGE_PER_STRENGTH * (this.sourceTower.str || 0), BLEED_ARROW_REFRESH_MS, this.sourceTower); // each stuck arrow adds one bleed stack for as long as it stays in
         }
         if(goreMode) startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
       }
@@ -11955,10 +11984,33 @@ const CHEST_FOUNTAIN_COIN_COUNT = 18; // CHEST-BURST-02 (1.6.110) — see CHANGE
 const CHEST_FOUNTAIN_MIDAIR_COUNT = 12;
 const COIN_GRAVITY_PX_PER_S2 = 900;
 const COIN_EMOJI_PX = 12;
+function creditCoin(c, textColor){
+  if(c.isDiamond){ grantDiamondReward(c.x, c.y); return; }
+  gold += c.value;
+  if(textColor) spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, textColor);
+}
+function grantDiamondReward(x, y){ // DIAMOND-COIN-01 (1.6.157): the rare diamond from a bag gives what the old diamond scenery gave, a permanent passive upgrade
+  const upgrade = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
+  globalPassiveCounts[upgrade.id] = (globalPassiveCounts[upgrade.id]||0) + 1;
+  for(const t of towerPool) if(t.active) t.recomputeStats();
+  spawnFloatingText(x, y - 20, '✨ ' + upgrade.name, '#a78bfa', ITEM_POPUP_LIFE_MS);
+  spawnParticles(x, y, '#a78bfa', 12);
+  playSound('wave');
+}
+function findPointClearOfScenery(x, y){
+  for(let radius = 24; radius <= 144; radius += 24){
+    for(let step = 0; step < 8; step++){
+      const px = x + Math.cos(step*Math.PI/4)*radius, py = y + Math.sin(step*Math.PI/4)*radius;
+      if(!sceneryAtPoint(px, py)) return { x: px, y: py };
+    }
+  }
+  return { x, y };
+}
 function acquireCoinSlot(){
   const c = coinPickups[coinIndex];
   coinIndex = (coinIndex+1) % COIN_COUNT;
-  if(c.active) gold += c.value; // recycling a live coin must never lose its gold
+  if(c.active) creditCoin(c, null); // recycling a live coin must never lose its gold
+  c.bounces = 0; c.isDiamond = false;
   c.airborne = false; c.convertsMidair = false; c.z = 0; c.vz = 0; c.flightMs = 0; c.convertAtMs = 0;
   return c;
 }
@@ -11988,91 +12040,50 @@ function isWithinEmojiSquare(worldX, worldY, centerX, centerY, emojiPx){
   const half = emojiPx / 2;
   return Math.abs(worldX - centerX) <= half && Math.abs(worldY - centerY) <= half;
 }
-const GOLD_BAG_LIMIT = 32, GOLD_BAG_EMOJI_PX = 26, GOLD_BAG_LIFESPAN_MS = 180000, GOLD_BAG_LANDED_CLICKABLE_MS = 350; // GOLD-BAG-HITBOX-01 (1.6.145) — see CHANGELOG.md § [1.6.145]: the click area is the bag emoji's own square
-const goldBags = Array.from({length: GOLD_BAG_LIMIT}, () => ({active:false,x:0,y:0,z:0,vx:0,vy:0,vz:0,airborne:false,gold:0,age:0}));
-function creditUnopenedBag(bag){
-  gold += bag.gold;
-  spawnFloatingText(bag.x, bag.y - 14, '+💰' + bag.gold, '#e6c200');
-  bag.active = false;
-}
-function acquireGoldBagSlot(){
-  let oldest = goldBags[0];
-  for(const bag of goldBags){
-    if(!bag.active) return bag;
-    if(bag.age > oldest.age) oldest = bag;
-  }
-  creditUnopenedBag(oldest); // the ground is full: the oldest bag's gold is kept, never lost
-  return oldest;
-}
+// GOLD-BAG-ITEM-01 (1.6.157) — see CHANGELOG.md § [1.6.157]. A gold bag is an ordinary ground item: same look as every other item, no ring and no number. Click it to open it where it lies,
+// drag it to move it, or drop it on a stickman to open it there; its coins pop out of wherever it is opened. A bag that leaves the ground unopened keeps its gold.
+const GOLD_BAG_ITEM = { id: 'GOLD_BAG', name: 'Gold Bag', icon: '💰', rarity: 'COMMON', isGoldBag: true };
+const GOLD_BAG_LIFESPAN_MS = 180000, DIAMOND_BAG_CHANCE = 0.1, COIN_MAX_SCENERY_BOUNCES = 4;
 function dropGoldBag(x, y, goldOverride){
   const totalGold = goldOverride !== undefined ? Math.max(3, goldOverride) : 7 + Math.floor(Math.random()*8);
-  const bag = acquireGoldBagSlot();
-  const angle = Math.random()*Math.PI*2, sideSpeed = 20 + Math.random()*40;
-  bag.active = true; bag.x = x; bag.y = y; bag.z = 6; bag.gold = totalGold; bag.age = 0;
-  bag.vx = Math.cos(angle)*sideSpeed; bag.vy = Math.sin(angle)*sideSpeed*0.6; bag.vz = 150 + Math.random()*60; bag.airborne = true;
-  playSound('click');
+  const bagDefinition = Object.create(GOLD_BAG_ITEM);
+  bagDefinition.gold = totalGold;
+  return spawnGroundItem(x, y, bagDefinition, 'bounty');
 }
-function openGoldBag(bag){
+function creditGroundBagGold(groundItem){
+  const definition = groundItem.itemDef;
+  if(!definition.isGoldBag) return;
+  gold += definition.gold;
+  spawnFloatingText(groundItem.x, groundItem.y - 14, '+💰' + definition.gold, '#e6c200');
+}
+function launchCoin(c, x, y){
+  const angle = Math.random()*Math.PI*2, sideSpeed = 40 + Math.random()*70;
+  c.active = true; c.x = x; c.y = y; c.z = 6;
+  c.vx = Math.cos(angle)*sideSpeed; c.vy = Math.sin(angle)*sideSpeed*0.6;
+  c.vz = 180 + Math.random()*120;
+  c.airborne = true; c.convertsMidair = false; c.age = 0; c.lifespan = 20000 + Math.random()*10000;
+}
+function openGoldBag(groundItem, x, y){
+  const bagGold = groundItem.itemDef.gold;
+  groundItems = groundItems.filter(gi => gi !== groundItem);
+  itemLogReleased(groundItem.itemDef, 'opened');
   const coinCount = 3 + Math.floor(Math.random()*2);
-  const baseValue = Math.floor(bag.gold / coinCount);
-  const remainder = bag.gold - baseValue * coinCount;
+  const baseValue = Math.floor(bagGold / coinCount);
+  const remainder = bagGold - baseValue * coinCount;
   for(let i=0; i<coinCount; i++){
     const c = acquireCoinSlot();
-    const angle = Math.random()*Math.PI*2, sideSpeed = 40 + Math.random()*70;
-    c.active = true; c.x = bag.x; c.y = bag.y; c.z = 6;
-    c.vx = Math.cos(angle)*sideSpeed; c.vy = Math.sin(angle)*sideSpeed*0.6;
-    c.vz = 180 + Math.random()*120;
-    c.airborne = true; c.convertsMidair = false;
+    launchCoin(c, x, y);
     c.value = baseValue + (i === coinCount - 1 ? remainder : 0);
-    c.age = 0; c.lifespan = 20000 + Math.random()*10000;
   }
-  spawnFloatingText(bag.x, bag.y - 16, '💰 ' + bag.gold, '#ffd700');
-  spawnParticles(bag.x, bag.y, '#ffd700', 6);
+  if(Math.random() < DIAMOND_BAG_CHANCE){ // a rare diamond, coin-sized, comes out with the coins
+    const diamond = acquireCoinSlot();
+    launchCoin(diamond, x, y);
+    diamond.isDiamond = true; diamond.value = 0;
+  }
+  spawnParticles(x, y, '#ffd700', 6);
   playSound('click');
-  bag.active = false;
 }
-function tryOpenGoldBagAt(worldX, worldY){
-  for(const bag of goldBags){
-    if(!bag.active || (bag.airborne && bag.age < GOLD_BAG_LANDED_CLICKABLE_MS)) continue;
-    if(!isWithinEmojiSquare(worldX, worldY, bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX)) continue; // same centre and size the emoji is drawn with
-    openGoldBag(bag);
-    return true;
-  }
-  return false;
-}
-function updateGoldBags(dt){
-  for(const bag of goldBags){
-    if(!bag.active) continue;
-    bag.age += dt;
-    if(bag.age >= GOLD_BAG_LIFESPAN_MS){ creditUnopenedBag(bag); continue; }
-    if(!bag.airborne) continue;
-    bag.vz -= COIN_GRAVITY_PX_PER_S2*dt/1000;
-    bag.z += bag.vz*dt/1000;
-    bag.vx *= Math.pow(0.4, dt/1000); bag.vy *= Math.pow(0.4, dt/1000);
-    bag.x += bag.vx*dt/1000; bag.y += bag.vy*dt/1000;
-    if(bag.z <= 0){ bag.z = 0; bag.airborne = false; }
-  }
-}
-function drawGoldBags(ctx){
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for(const bag of goldBags){
-    if(!bag.active) continue;
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath(); ctx.ellipse(bag.x, bag.y + 4, 11, 4, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,226,140,0.42)';
-    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX / 2 + 1, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,215,0,0.9)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(bag.x, bag.y - bag.z - 4, GOLD_BAG_EMOJI_PX / 2 + 1, 0, Math.PI*2); ctx.stroke();
-    ctx.font = pxFont(GOLD_BAG_EMOJI_PX);
-    ctx.fillText('💰', bag.x, bag.y - bag.z - 4);
-    if(!bag.airborne){
-      ctx.font = 'bold 10px Verdana';
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.fillStyle = '#ffd700';
-      ctx.strokeText(String(bag.gold), bag.x, bag.y + 14);
-      ctx.fillText(String(bag.gold), bag.x, bag.y + 14);
-    }
-  }
-}
+
 const GROUND_ITEM_EMOJI_PX = 22;
 function groundItemBobPx(gi){
   const popAge = presentationTime - gi.spawnTime;
@@ -12083,8 +12094,7 @@ function tryCollectCoinAt(worldX, worldY){
   for(const c of coinPickups){
     if(!c.active || c.airborne) continue;
     if(!isWithinEmojiSquare(worldX, worldY, c.x, c.y, COIN_EMOJI_PX)) continue;
-    gold += c.value;
-    spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#ffd700');
+    creditCoin(c, '#ffd700');
     playSound('click');
     c.active = false;
     return true;
@@ -12108,8 +12118,7 @@ function updateCoinPickups(dt){
     c.age += dt;
     if(c.age >= c.lifespan){
       // CA562 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA562
-      gold += c.value;
-      spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#e6c200');
+      creditCoin(c, '#e6c200');
       c.active = false;
       continue;
     }
@@ -12124,8 +12133,19 @@ function updateCoinPickups(dt){
         spawnParticles(c.x, c.y - c.z, '#ffd700', 3);
         c.active = false;
       } else if(c.z <= 0){
-        c.z = 0; c.airborne = false;
-        c.vx *= 0.3; c.vy *= 0.3;
+        c.z = 0;
+        const blocker = sceneryAtPoint(c.x, c.y); // COIN-BOUNCE-01 (1.6.157): a coin never comes to rest on a tree or rock, where a click meant for it would clear the scenery
+        if(blocker && (c.bounces || 0) < COIN_MAX_SCENERY_BOUNCES){
+          c.bounces = (c.bounces || 0) + 1;
+          let awayX = c.x - blocker.item.x, awayY = c.y - (blocker.item.y + 2), awayLength = Math.hypot(awayX, awayY);
+          if(awayLength < 1){ const randomAngle = Math.random()*Math.PI*2; awayX = Math.cos(randomAngle); awayY = Math.sin(randomAngle); awayLength = 1; }
+          const kick = 70 + Math.random()*40;
+          c.vx = awayX/awayLength*kick; c.vy = awayY/awayLength*kick; c.vz = 140 + Math.random()*40; c.airborne = true; c.flightMs = 0;
+        } else {
+          if(blocker){ const clearSpot = findPointClearOfScenery(c.x, c.y); c.x = clearSpot.x; c.y = clearSpot.y; }
+          c.airborne = false;
+          c.vx *= 0.3; c.vy *= 0.3;
+        }
       }
       continue;
     }
@@ -12135,8 +12155,7 @@ function updateCoinPickups(dt){
     for(const t of towerPool){
       if(!t.active || t.disabledWavesLeft > 0) continue;
       if(Math.hypot(t.x-c.x, t.y-c.y) <= COIN_COLLECT_RADIUS){
-        gold += c.value;
-        spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, '#ffd700');
+        creditCoin(c, '#ffd700');
         c.active = false;
         break;
       }
@@ -12147,6 +12166,7 @@ function drawCoinPickups(ctx){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for(const c of coinPickups){
     if(!c.active) continue;
+    const coinGlyph = c.isDiamond ? '💎' : '🪙';
     const remainFrac = 1 - c.age/c.lifespan;
     ctx.globalAlpha = remainFrac < 0.15 ? remainFrac/0.15 : 1; // only fades in the final 15% of its life, stays fully visible otherwise
     ctx.font = COIN_EMOJI_PX + 'px sans-serif';
@@ -12156,10 +12176,10 @@ function drawCoinPickups(ctx){
       ctx.save();
       ctx.translate(c.x, c.y - c.z);
       ctx.scale(Math.max(0.25, Math.abs(Math.cos(c.flightMs*0.02))), 1);
-      ctx.fillText('🪙', 0, 0);
+      ctx.fillText(coinGlyph, 0, 0);
       ctx.restore();
     } else {
-      ctx.fillText('🪙', c.x, c.y);
+      ctx.fillText(coinGlyph, c.x, c.y);
     }
   }
   ctx.globalAlpha = 1;
@@ -13182,11 +13202,11 @@ const COLLISION_QUERY_CAP = 48;
 function resolveSweptEnemyCollisions(){
   const hash = buildEnemyHash();
   for(const e of enemyPool){
-    if(!e.active || e.prevX === undefined || e.isLivestock) continue; // WANDERER-PHASE-01 (1.6.137) — see CHANGELOG.md § [1.6.137]: livestock and the troll pass through everything
+    if(!e.active || e.prevX === undefined || e.isLivestock || e.isBreakaway) continue; // BREAKAWAY-PHASE-01 (1.6.157): an enemy breaking off to attack a stickman is on its own phase and touches neither barricades nor other enemies // WANDERER-PHASE-01 (1.6.137) — see CHANGELOG.md § [1.6.137]: livestock and the troll pass through everything
     const nearby = queryNearby(hash, e.x, e.y, e.radius*3 + 40);
     const collisionCap = Math.min(nearby.length, COLLISION_QUERY_CAP);
     for(let __ci=0; __ci<collisionCap; __ci++){ const other = nearby[__ci];
-      if(!other.active || other.prevX === undefined || other.isLivestock) continue;
+      if(!other.active || other.prevX === undefined || other.isLivestock || other.isBreakaway) continue;
       if(isCampRouteCrossing(e, other)) continue;
       if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions
       const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
@@ -13230,11 +13250,11 @@ function resolveEnemyCollisions(){
   for(let pass = 0; pass < PASSES; pass++){
     let correctionsThisPass = 0; // a pass that corrected nothing means the field is already settled — further passes would repeat identical work
     for(const e of enemyPool){
-      if(!e.active || e.isLivestock) continue;
+      if(!e.active || e.isLivestock || e.isBreakaway) continue;
       const nearby = queryNearby(hash, e.x, e.y, e.radius*3);
       const collisionCap = Math.min(nearby.length, COLLISION_QUERY_CAP);
       for(let __ci=0; __ci<collisionCap; __ci++){ const other = nearby[__ci];
-        if(!other.active || other.isLivestock) continue;
+        if(!other.active || other.isLivestock || other.isBreakaway) continue;
         if(isCampRouteCrossing(e, other)) continue;
         if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
         const dx = e.x - other.x, dy = e.y - other.y;
@@ -14058,7 +14078,7 @@ function update(dt){
     if(groundItems.length){
       groundItems = groundItems.filter(gi => {
         const stillThere = gi === draggingGroundItem || presentationTime - gi.spawnTime < groundItemLifespan(gi);
-        if(!stillThere) itemLogReleased(gi.itemDef, 'expired on the ground');
+        if(!stillThere){ creditGroundBagGold(gi); itemLogReleased(gi.itemDef, 'expired on the ground'); }
         return stillThere;
       });
     }
@@ -14395,7 +14415,6 @@ function render(ctx){
   drawFloatingTexts(ctx);
   drawItemUseEffects(ctx);
   drawCoinPickups(ctx);
-  drawGoldBags(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
   drawSpawnWarningMarker(ctx);
   drawWaveCountdown(ctx);
@@ -15390,7 +15409,6 @@ function updatePresentationEffects(frameMs){
   const clampedMs = Math.min(100, frameMs);
   updateFloatingTexts(clampedMs);
   updateCoinPickups(clampedMs);
-  updateGoldBags(clampedMs);
   updateBarks(clampedMs);
   for(const animal of enemyPool) if(animal.active && animal.isLivestock) animal.updateLivestockWander(clampedMs);
 }
@@ -15406,7 +15424,10 @@ function loop(now){
   // count — the next processed frame simply has a larger `frameTime` and the catch-up logic
   // (bounded by the speed-scaled cap calculated inside loop()) handles it.
   const frameCapMs = frameCapIntervalMs();
-  if(frameCapMs > 0){
+  if(frameCapMs > 0 && isCameraMotionActive(now)){
+    cameraMotionFullRateFrames++;
+    frameCapNextAt = now + frameCapMs; // the limit resumes cleanly after the camera stops, without a burst
+  } else if(frameCapMs > 0){
     if(now < frameCapNextAt - FRAME_CAP_EARLY_TOLERANCE_MS) return;
     frameCapNextAt = (now - frameCapNextAt > frameCapMs) ? now + frameCapMs : frameCapNextAt + frameCapMs; // keeps the average rate exact without a burst after a slow frame
   }
@@ -15919,7 +15940,7 @@ canvas.addEventListener('pointerdown', (e) => {
     // CA743 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA743
     if(gameState === 'PLAYING'){
       const { x: worldX, y: worldY } = toCanvasCoords(e);
-      if(!tryOpenGoldBagAt(worldX, worldY) && !tryCollectCoinAt(worldX, worldY)){
+      if(!tryCollectCoinAt(worldX, worldY)){
         for(const gi of groundItems){
           if(isWithinEmojiSquare(worldX, worldY, gi.x, gi.y + groundItemBobPx(gi), GROUND_ITEM_EMOJI_PX)){
             draggingGroundItem = gi;
@@ -15999,7 +16020,10 @@ function onPointerEnd(e){
   if(wasSinglePointer){
     if(!isCancel && draggingGroundItem){
       const target = towerPool.find(t => t.active && t.type !== 'BARRICADE' && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
-      if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01 (1.6.132) — a consumable dropped on a stickman is stored in its slots, never used on the spot
+      if(draggingGroundItem.itemDef.isGoldBag){ // GOLD-BAG-ITEM-01: dropped on a stickman it opens there; tapped without moving it opens where it lies; dragged elsewhere it is simply moved (below)
+        if(target) openGoldBag(draggingGroundItem, target.x, target.y - 4);
+        else if(!isDragging) openGoldBag(draggingGroundItem, draggingGroundItem.x, draggingGroundItem.y);
+      } else if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01 (1.6.132) — a consumable dropped on a stickman is stored in its slots, never used on the spot
         const def = draggingGroundItem.itemDef;
         if(target && target.receiveItem(def)){
           groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
@@ -17455,6 +17479,7 @@ function generateDebugLog(){
   s += 'Graphics processor (as reported to the browser): ' + renderEnvironment.gpuRenderer + (renderEnvironment.softwareRendering === true ? '  <-- SOFTWARE RENDERING: hardware acceleration looks off' : '') + '\n';
   s += 'Power: ' + renderEnvironment.battery + '   Screen: ' + screen.width + 'x' + screen.height + '\n';
   s += 'Frame pacing: ' + framePacingVerdict() + '\n';
+  s += 'Camera motion at full frame rate: ' + cameraMotionFullRateFrames + ' frames (the frame-rate limit never applies while the camera moves)\n';
   s += 'Frame rate cap: ' + (frameCapEnabled ? frameCapFps() + ' FPS (' + (frameCapFpsUser === null ? 'default for ' + graphicsQuality : 'player choice') + ')' : 'off') + '\n';
   s += 'Language: ' + navigator.language + '   Online: ' + navigator.onLine + '\n';
   s += 'Hardware threads: ' + (navigator.hardwareConcurrency || 'n/a') + '   Device memory: ' +
