@@ -1,12 +1,12 @@
-# Stick Tower Defense
+# StickTD — Stick Tower Defense
+
+A free browser tower defense game by SauerNinja.
+
+The road keeps growing. Build your defense, train the stickmen who hold it, and make room for the next wave. Clear 100 waves to reach endless play.
+
+**[Play StickTD](https://sauerninja.github.io/StickTD/)** · [Source on GitHub](https://github.com/SauerNinja/StickTD) · [Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)
 
 ![Stick Tower Defense gameplay](og-image.png)
-
-Build a stickman defense that grows with every wave. Train a roster of distinct towers, unlock new specialists, and shape a winding battlefield as your campaign expands. Gather resources, place barricades, equip your heroes, and adapt your strategy against an endless stream of enemies.
-
-**[Play it here](https://sauerninja.github.io/StickTD/)** · **[Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)**
-
-StickTD brings procedural stickman art, synthesized sound, and long-form tower progression to your browser. Downloadable saves let you carry a campaign between devices.
 
 ## Build your strategy
 
@@ -17,6 +17,7 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 3. **Shape elemental attacks.** Attunements and mixed effects add distinct combat traits to your towers.
 4. **Invest in growth.** Training and promotion give you more ways to develop each unit.
 5. **Expand your battlefield.** New route and build space open as your campaign advances.
+6. **Choose rewards for your run.** Milestone blessings, supplies and recovery help you shape a defense around the rewards you find.
 
 ## Contents
 
@@ -27,7 +28,7 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 - [Enemies](#enemies)
 - [Status effects](#status-effects)
 - [Blood & gore](#blood--gore)
-- [Leveling](#leveling)
+- [Training and Promotion](#training-and-promotion)
 - [Waves](#waves)
 - [Pathing & AI](#pathing--ai)
 - [Items & Heroes](#items--heroes)
@@ -46,12 +47,13 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 
 ## How to play
 
-- Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
+- Press **Play** to begin the regular campaign at Wave 1. On a fresh profile, a gentle 👆 beside **Build** points to the first defender menu and disappears after your first tower is placed. Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
 - Tap **Build**, choose a tower, then tap a hedge tile to place it. Each arrival gets a short class-flavored quip and a synthesized voice blip.
 - Select a tower to view its portrait, health, experience, and combat stats. Open its nameplate for upgrades, movement, selling, equipment, targeting, and stat allocation.
 - Train towers through combat and invest in their strengths. Stat milestones open specialist classes for your roster.
+- Earn a choice reward after wave 3 and every tenth wave. Tap 🎁 or its notification to choose. Each choice explains its effect, with current supplies and healing shown in the popup; pending rewards remain available while you continue playing and are included in saves.
 - The **speed control** (1x through 10x) only affects how fast enemies move and how fast towers attack; it never changes how long clearing a tree, rock or bush takes, or any other on-screen timer.
-- Clear waves to expand the winding battlefield. Free milestones and paid expansions extend the road a few tiles at a time, up to three purchases per idle period between waves. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
+- Press **Start Wave** to begin the opening round; between rounds, the same control reads **Next Wave**. Clear waves to expand the winding battlefield. Free milestones and paid expansions extend the road a few tiles at a time, up to three purchases per idle period between waves. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
 - The flags on the spawn tile ripple in a light, gusting breeze between waves and hang still once a wave begins.
 - Face an endless sequence of waves with nine rotating archetypes and enemies that grow in size, strength, and rewards.
 - Play with a mouse on desktop or touch controls on mobile. Pan, zoom, pause, and set the simulation speed from the HUD.
@@ -87,8 +89,8 @@ The stats row scales to fit on one line across panel widths.
 **Tower inspect panel — stat allocation**
 | Icon | Stat | What it does |
 |---|---|---|
-| 💪 | STR | +3% max HP per point for every class; additionally the sole source of damage for Warrior-archetype towers (Swordsman and its evolutions), on a curve built to keep scaling meaningfully into the late game |
-| 🏃 | DEX | Universal +3% attack speed, reduced miss chance, and 💥 crit chance per point for every class, regardless of archetype; additionally the sole source of damage for Archer-archetype towers |
+| 💪 | STR | Increases health with class-dependent, diminishing growth; drives Warrior-archetype damage and body weight |
+| 🏃 | DEX | Improves attack speed, accuracy and 💥 critical chance; drives Archer-archetype damage, with a smaller attack-speed share for those classes |
 | 🧠 | INT | Range grows in a straight line from the tower's starting range to its class maximum at 500 INT, plus 💥 critical damage per point; increases healing for Clerics and drives Mage damage |
 
 Warrior damage scales with STR, Archer damage with DEX, and Mage damage with INT. DEX improves accuracy and critical chance across the roster; INT improves range and critical damage. Critical hits begin at 2.5% chance and 1.20x damage, with DEX and INT increasing those values up to their caps.
@@ -120,6 +122,7 @@ Build a defense from classes with complementary strengths. Training and wave mil
 | ⚜️ Paladin | Holy attacks that cut through armor |
 | 🔫 Gatling | Rapid fire for clearing groups |
 | 🔪 Crazy Chef | Strength-driven kitchen knife thrower |
+| 🥷 Ninja | Alternating throwing stars, rapid sustained attacks and a close-range blind spot; earned through a hidden challenge |
 | 🎯 Blowdart | Fast darts that poison targets |
 | 🔫 Dual Squirt Gun | Dual-wielded elemental fire |
 | ♨️ Blow Gunner | Combines poison and chilling effects |
@@ -135,7 +138,7 @@ Build a defense from classes with complementary strengths. Training and wave mil
 | 👳 Merchant | Keeps the Shop available and earns bonus gold |
 | ⚙️ Glaive | Specialist attacks against huts and other structures |
 
-Proton, Dark Matter, and Quasar are mixed elemental effects carried by a tower's attacks. Their combinations bring burn, stun, and slow effects into a tower's existing combat style. See **Elements** under [Leveling](#leveling) for details.
+Proton, Dark Matter, and Quasar are mixed elemental effects carried by a tower's attacks. Their combinations bring burn, stun, and slow effects into a tower's existing combat style. See **Elements** under [Training and Promotion](#training-and-promotion) for details.
 
 Gold-tier upgrades improve range, cooldown, and class abilities while adding damage. A tower's primary stat remains its main source of combat growth.
 
@@ -169,7 +172,7 @@ Burn, curse (poison-style DoT), bleeding (see [Blood & gore](#blood--gore)), slo
 
 ## Blood & gore
 
-An 18+ toggle in Settings → Game controls the game's forensic-style combat effects. Every weapon and enemy brings its own visual signature to the battlefield.
+Blood and gore effects are on by default. Turn them off in Settings → Game. Every weapon and enemy brings its own visual signature to the battlefield.
 
 - Bladed swings leave curved cast-off arcs, blunt impacts create broad spatter and shockrings, and piercing attacks produce narrow forward streaks.
 - Impact scale reflects hit strength and enemy size. Species profiles distinguish insect hemolymph, undead residue, and the dust and stone chips of rock-bodied enemies.
@@ -177,12 +180,12 @@ An 18+ toggle in Settings → Game controls the game's forensic-style combat eff
 - Stains pass from fresh red through oxidized brown to aged, layered patterns. Individual lifetimes and local density limits preserve definition along busy paths.
 - Bone fragments, skulls, and burrowing worms add battlefield detail, with each effect drawn in its own layer.
 
-## Leveling
+## Training and Promotion
 
 Each tower develops along two progression tracks, with **500 points per stat and 1,000 total**.
 
-- **Training (XP):** enemy defeats award XP, with the largest share going to the tower that lands the final hit. Towers that helped receive an assist share based on damage. Every 100 XP rolls **2 × (1–3) stat points**.
-- **Promotion (gold):** a promotion is worth five training bars: about 20 points rolled automatically across the stats (half of the dice into the tower's main stat) plus about 20 more points to spend yourself, all as random 1–3 rolls. Cost grows ×1.5 per rank (80 → 120 → 180 → 270 → …), with all rolls respecting the stat caps.
+- **Training (XP):** enemy defeats award XP, with the largest share going to the tower that lands the final hit. Towers that helped receive an assist share based on damage. Every 100 XP rolls **2 × (1–3) stat points**. The inspect panel tracks this separately as Training XP and Training level.
+- **Promotion (gold):** each promotion raises the tower's **Rank** (Rank 1, Rank 2, and so on). A promotion is worth five training bars: about 20 points rolled automatically across the stats (half of the dice into the tower's main stat) plus about 20 more points to spend yourself, all as random 1–3 rolls. Cost grows ×1.5 per rank (80 → 120 → 180 → 270 → …), with all rolls respecting the stat caps.
 
 **Milestones.** At **500 total trained stats**, name a tower. At **1,000**, earn its training trophy and convert its XP share into gold at 25 XP per coin.
 
@@ -190,7 +193,7 @@ Each tower develops along two progression tracks, with **500 points per stat and
 
 **Elements.** At 100 points in a stat, a tower attunes to Fire (STR), Electric (DEX), or Ice (INT). Developing two stats to 500 combines their elements: Fire + Electric creates Proton, Fire + Ice creates Dark Matter, and Electric + Ice creates Quasar. These effects bring burn, stun, or slow traits to attacks. Elemental effects can appear on projectiles and melee strikes, with proc chance scaling through stat investment.
 
-**Class unlocks.** Stat milestones and wave progress reveal new specialists for the Build menu. Elemental attunement opens class-specific branches; some towers have further specialist paths.
+**Class unlocks.** Stat milestones and wave progress reveal new specialists in the Build menu’s **Stickmen Defenders** section. Elemental attunement opens class-specific branches; some towers have further specialist paths.
 
 **Spending points.** Tap a stat to spend one point or hold to continue spending. The panel previews upcoming progression milestones.
 
@@ -210,11 +213,11 @@ Enemies follow the road in single file, forming natural queues at Barricades. Sw
 
 ## Items & Heroes
 
-Defeated enemies sometimes leave an item on the road. Items shine with a rainbow glow that grows brighter with rarity, from Common through Uncommon and Rare to Epic. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found.
+Defeated enemies sometimes leave an item on the road. Equipment shines with a rarity-based glow, from Common through Uncommon and Rare to Epic; currency coins and bags glow gold. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found. Tennis Shoes grant +2 Dexterity and one extra tower move after each cleared wave; a rare Shovel can uncover food, bones or equipment when used nearby.
 
 - **Signature drops.** Many enemies carry an item of their own. Grunts may drop a Headband, Tanks a Granite Heart, Trolls a Bridge Toll, Zombies a Grave Charm and Wraiths a Spectral Veil, and Bosses always leave a special item along with a strong general one. Larger enemies are more likely to drop items than smaller ones.
 - **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. A stickman with spendable stat points can tick **Auto spend** beside them to have new points spent on his main stat automatically. Uncollected items wait on the battlefield for several minutes. Food, potions and other consumables wait in the slots until you tap them or press their number key.
-- **Item Guide.** The first item you find opens a short guide that explains items and the inventory.
+- **First map reward.** One of your first five eligible enemy defeats drops a map scroll. Click it to reveal a free expansion. Enemies can very rarely leave a gold map bag that grants a free expansion when clicked.
 - **Shop items.** The **Lucky Branch** 🌿 (+1 STR/+1 DEX/+1 INT, gold and wood) and the **Barricade** 🚧 (see Resources below) can be bought for the selected stickman. Global passive upgrades apply to every stickman you own, present and future.
 - **Heroes.** A stickman with all six slots filled is promoted to **Hero**, with a permanent stat bonus, a visible crown and its own sound. A stickman whose STR, DEX and INT total 100 becomes **Legendary**, a rarer milestone with its own permanent bonus, a name of your choice and the biggest fanfare in the game.
 
@@ -231,8 +234,8 @@ Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Food, Boss T
 - **Boss Treats.** Every Boss and Holiday Boss leaves behind a Treat — a single guaranteed reward bundling a life restore, experience, and sometimes bonus gold.
 - **Cooking and the Campfire.** 🔥 Now and then a Campfire — a fire on two crossed logs — appears near the road after the third wave. It is the only place to cook. Tap it to add wood (15 🪵 buys 2 fuel, up to 8); it burns one fuel at the end of every wave and goes cold at zero. A stickman standing near a lit fire can combine stored foods with the Combine button, spending fuel from the fire. Simple pairs cost 1 fuel: Bacon and Potato make a Breakfast Plate (attack speed), Steak and Carrot a Hearty Stew (restores health), Apple and Blueberries a Fruit Salad (range), Meat on the Bone and a Drumstick a Roast Feast (damage). Complex recipes take three or four foods and 2–3 fuel: Bacon, Potato and Corn make a Sunrise Skillet; Steak, Garlic and Hot Pepper a Fiery Ragout; Strawberries, Cherries and Blueberries a Berry Pie; Carrot, Potato, Corn and Hot Pepper a Harvest Curry that boosts damage, speed and range and heals. Meals are used like stims and last until the end of the round.
 - **Supply crates.** 📦 Crates found as scenery open for 10 gold and hold a stim: Adrenaline (attack speed), Combat Stim (damage), Spotter Scope (range), Field Medkit (heals 40%), or the rare Hyper-Serum (all three). Stim buffs last until the end of the round they are used in.
-- **Berry bushes.** 🪴 Potted bushes clear for a flat 5 gold, the cheapest clearance on the map, and drop berries.
-- **Gold bags and the wandering troll.** Chests and, rarely, fallen enemies spill gold bags of small coins. Trolls on the road also carry gold bags. Now and then a wandering troll strolls the road and clubs any stickman it stumbles upon; target it and defeat it for 2–3 bags.
+- **Berry bushes.** 🪴 Potted bushes are smaller, clear for a flat 5 gold, and drop two or three berries.
+- **Gold bags and the wandering troll.** Clicking a gold bag immediately adds its exact value to your player gold. Unopened bags keep their value and pay out automatically after three minutes. Coins from a chest or Merchant are separate currency pickups: click a landed coin to collect its value, or leave it to disappear after 5–15 seconds. Chests and, rarely, fallen enemies drop Gold Bags that pay their listed amount directly when opened. Trolls on the road also carry gold bags. From wave 5 onward, a wandering troll may stroll the road and club any stickman it stumbles upon; target it and defeat it for 2–3 bags.
 - **Stickman chatter.** Stickmen occasionally show a mood emoji and a short line at key moments — low health, a swarm, a leak, a boss kill, a close call. It only happens sometimes, for fun.
 - **Medical Supplies**, sold in the Shop, are held in reserve and used automatically: the Bandage and First Aid Kit restore lives on purchase, and the Defibrillator is carried until the moment it's needed — intercepting a defeat and reviving the base at 25% lives.
 
@@ -258,16 +261,16 @@ An enemy costs a life when its full body crosses the checkered finish line. An e
 
 ## Settings
 
-**Choose your visual style.** Low graphics is a good starting point for phones and laptops with integrated graphics. High graphics adds richer effects, including weight-based screen shake, for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch whenever you like. If play stays far below smooth for a long stretch, the game will offer an optional automatic resolution assist. You choose how low it may go — 75%, 50% or 25%, or never — and you can restore full sharpness at any time in Settings.
+**Choose your visual style.** Low graphics is the starting point for phones and laptops with integrated graphics, with automatic render resolution enabled to lower GPU load when frames stay slow; turn this assist off in Settings if you prefer full sharpness. High graphics adds richer effects, including weight-based screen shake, for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch whenever you like. The resolution assist checks frame pacing every few seconds and can lower render resolution after sustained slow frames. Its default Low-profile floor is 75%; you can set a different floor or turn the assist off in Settings → Video.
 
 
 Video (graphics quality: Low / High, trading off shadows and particle-heavy effects for
-performance), Audio (mute), Game (18+ gore toggle, save/load, and **Reset options**), and About (in-app README
+performance), Audio (overall, music and sound-effects levels, plus mute), Game (blood and gore toggle, save/load, and **Reset options**), Changes (recent release notes), and About (in-app README
 viewer/downloader, plus **Download Debug Log** — one text file with live performance stats, full
 game/settings state, audio engine status, entity pool counts, and browser/device info, for
 attaching to a bug report).
 
-**Reset options** (Settings → Game): **Clear Unlocks** removes every earned tower unlock, and **Clear All Cookies & Data** also removes the cookie choice, settings and tutorial progress. Both restart your run, so the cookie notice, welcome dialog, Item Guide and first-wave tips appear again with no towers and nothing unlocked. Each asks for confirmation first; downloaded save files are not touched.
+**Blood and gore** are on by default and can be turned off in Settings → Game. **Reset options** (Settings → Game): **Clear Unlocks** removes every earned tower unlock, and **Clear All Cookies & Data** also removes the cookie choice, settings and first-tower cue progress. Both restart your run, so Santa's cookie notice, the Build hand cue, Item Guide and enabled first-wave tips can appear again with no towers and nothing unlocked. Each asks for confirmation first; downloaded save files are not touched.
 
 ## Save / Load
 
@@ -277,7 +280,7 @@ Settings → Game → **Save Game** downloads a `.txt` file with a random seed a
 
 - **HTML5 Canvas 2D** draws stickmen, weapons, enemies, particles, and decals procedurally.
 - **Vanilla JavaScript** powers the game and its interface.
-- **Web Audio API** synthesizes sound effects.
+- **Web Audio API** synthesizes the original soundtrack and sound effects in the browser. The field arrangement gains a steady pulse during combat; music, sound effects and overall volume have separate controls.
 - The game lives in `index.html`, with `CHANGELOG.md` alongside it for in-game release notes.
 
 ## Project structure
@@ -318,10 +321,11 @@ Use the section headers around each destination to navigate when line references
 - `useStoredConsumable()` / `showItemUseFeedback()` / `ITEM_USE_CLASSES` — storing and using consumables, and the one-moment feedback on each use.
 - `refreshQuickUse()` / `updateQuickSlots()` / `updateBuffPips()` — the quick-use row above the panel and the nameplate buff pips.
 - `makeItemInstance()` / `itemLogReport()` / `logGameEvent()` / `renderItemCodex()` — the item log, game event log and Items tab.
+- `FIRST_MAP_DROP_KILL` / `GOLD_MAP_BAG_ITEM` / `serializeGameState()` — early free-expansion rewards and their save/load data.
 - `dropGoldBag()` / `tryOpenGoldBagAt()` / `isWithinEmojiSquare()` / `sceneryAtPoint()` — gold bags and the emoji-border click areas.
-- `tryClaimRandomEventSlot()` / `runWaveClearRandomEvents()` — one random event per expand.
+- `tryClaimRandomEventSlot()` / `runWaveClearRandomEvents()` — up to two endpoint events per expansion.
 - `treeRockSizeFrac()` / `fillEndRing()` / `harvestedTileKeys` — scenery sizes by distance from the road ends and cleared-tile memory.
-- `enemyPresenceDirty` / `PROJECTILE_AMMO_BY_TOWER` / `bleedSourceAllowed()` / `frameCapIntervalMs()` — cached enemy presence, ammo shapes, bleed source and the frame-rate limit.
+- `enemyPresenceDirty` / `PROJECTILE_AMMO_BY_TOWER` / `projectileStickKind()` / `bleedSourceAllowed()` / `frameCapIntervalMs()` — cached enemy presence, ammo shapes, embedded projectile bleed and the frame-rate limit.
 
 **Major sections**
 - [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1244)
@@ -401,7 +405,7 @@ Then open `http://localhost:8000/`. Serving the folder over HTTP(S) also enables
 
 See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and contributor guidance. Review the current game and source files before changing project behavior; record shipped changes in [CHANGELOG.md](CHANGELOG.md).
 
-## Version History
+## Version history
 
 See [CHANGELOG.md](CHANGELOG.md) for the full version history, and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
@@ -410,6 +414,4 @@ ideas not yet built.
 
 MIT — see [LICENSE](LICENSE).
 
-Based on thoughts by Setvin Noether ([@SauerNinja](https://github.com/SauerNinja)).
-
-Suggested citation: Setvin Noether, *Stick Tower Defense* (StickTD), https://sauerninja.github.io/StickTD/
+Made by [SauerNinja](https://github.com/SauerNinja).

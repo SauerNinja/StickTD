@@ -79,6 +79,19 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   owner hasn't explicitly confirmed. If a request sounds like it wants a mechanic changed, restate
   it back in one sentence and get an explicit yes before writing any code toward it.
 
+## Release safeguards
+
+- Sweep presentation-clock death animations once in `updatePresentationEffects()`, not on every fixed simulation tick. Preserve expiry boundaries and pooled-record order; new deaths within a frame have age zero.
+
+- Keep the gold coin glow cache bounded to one reusable canvas. Apply breathing and expiry through draw alpha, restore glyph alpha, and retain offscreen culling. Use `maxLivesNow()` for the lives meter and avoid unchanged numeric-property writes.
+
+- Loose pickup touch targets must stay at least 44 CSS pixels across after canvas and camera scaling; keep mouse precision. Select the closest eligible pickup. Consume coin-collection pointer releases so one tap cannot also select or build beneath a coin. Clear pointer bookkeeping on cancellation.
+
+- Clear temporary round buffs in `Tower.create()` before applying stats. Pool reuse and save restoration must never inherit the previous occupant's consumable effects.
+- Keep music scheduling bounded after stalls: skip elapsed steps rather than scheduling overdue voices. Disconnect finished music voice nodes. Test a stalled scheduler before changing its timing.
+- Ambient logs use five minutes of active real play, at most three on the board, and 15 Wood per click. Prevent overlapping spawns and huts; save their timer and positions; replace and validate restored logs rather than appending them. Older saves remain supported.
+- Review the first minute through an actual browser playthrough and listen on phone and desktop speakers. Syntax checks and a changelog entry do not prove gameplay feel or that every lag report is fixed.
+
 ## Design pillars — read before touching waves, balance, or gore
 
 - **Wave order and scale.** Every wave sends its smallest enemies in before anything bigger gets to
@@ -108,9 +121,9 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   should stretch its min/max damage roll further apart, not simply raise the midpoint — a heavily
   invested tower reads as swingier, not just stronger on average.
 - **Santa is the real final boss.** Highest HP in the game, replacing the ordinary boss on the
-  campaign's last wave, periodically summoning fast Cookie enemies instead of healing. The same
-  voice carries into the cookie-consent banner — large and dryly self-aware that the cookies are
-  for save data and debugging, framed as Santa keeping his own naughty-or-nice list.
+  campaign's last wave, periodically summoning fast Cookie enemies instead of healing. The
+  analytics-consent notice keeps Santa's cookie voice, naughty-or-nice framing and large Santa face,
+  with clear accept and decline actions; declining keeps analytics disabled while the game remains playable.
 - **UI holds up at every screen size.** Stat buttons and every scale-to-fit HUD element stay
   legible and correctly sized on a large screen, not just a small one — verify both ends, not just
   mobile.
@@ -124,7 +137,7 @@ The owner has stated these repeatedly. They are written generally on purpose: th
 - **Check a report against the live version first.** Screenshots often come from an older build; the debug overlay shows the version. Say so plainly instead of assuming the fix failed.
 - **Never create new files unless the owner asks for one.** Fold guidance into `AGENTS.md`, `README.md`, `BACKLOG.md` or `CHANGELOG.md`; the game stays one `index.html` with its existing companions.
 - **Deliver the complete current `index.html` plus only the documents that changed**, flat and individually, never zipped. Every change gets a version bump, a changelog entry and, for a stated rule, a contract check.
-- **Player-facing text is professional.** No jokes, filler or dialogue on item use, and no tutorial hints for things that are obvious on their own. The README stays general and unshowy.
+- **Player-facing text is professional.** No jokes, filler or dialogue on item use. First play uses no blocking tutorial or tower-choice/win popups; the approved gentle bobbing 👆 cues are beside Build until the first non-Barricade tower is placed; after the first fighter is built and before wave one starts, the cue points to Start Wave, then moves to Fast Forward when wave one starts. Each cue ends after its action and is remembered (`FIRST-BUILD-CUE-01`, `FIRST-PLAY-CUE-SEQUENCE-01`). Gameplay notifications stack at the top-left and can be clicked to expand their explanations; preserve Mark all read and individual dismissal (`NOTIFICATION-EXPLAIN-01`). The Build menu starts with **Map growth**, then puts every available fighter under **Stickmen Defenders**, with Fortifications and locked fighters in separate sections. Before the first round, the button says **Start Wave** with no number; between rounds it says **Next Wave**. The README stays general and unshowy.
 
 **Things the player handles are objects first, actions second**
 - Nothing opens, applies or collects itself. Consumables go into a stickman's slots and are used by a click or hotkey; gold bags open only on a click. See *Consumables and the item log*.
@@ -133,14 +146,14 @@ The owner has stated these repeatedly. They are written generally on purpose: th
 
 **World rules**
 - Wandering units (livestock, troll) never interact with the lane or barricades, never bounce or jump (they walk back to walkable ground instead of snapping), and are still fought by towers when hostile or marked. An enemy that has broken off to attack a stickman is on its own phase and never collides with barricades or other enemies (`BREAKAWAY-PHASE-01`). See *Loose enemies, chance structures*.
-- Random events happen at most once per expand, through one shared slot. The owner's refinement, not yet built: per expand, one event 3 to 5 squares from the spawn flags and one 3 to 5 squares from the finish line, only positive, easy, non-aggressive events until wave 5, and never announced to the player. See *Loose enemies, chance structures*.
+- Random events have a maximum of two claims per expansion cycle: one 3–5 route tiles from spawn flags and one 3–5 from the finish line. Before wave 5, events must be peaceful/helpful; hostile trolls and hut camps wait until wave 5. Never announce random-event spawns in player-facing UI; keep logs internal. Wave clears do not reset the cap. See *Loose enemies, chance structures*.
 - Scenery is biggest on the tiles touching the road ends (always trees and rocks, never bushes), medium around them, small and tiny toward the middle; tiles the player has cleared rarely regrow. See *End-of-road scenery density*.
-- Bleeding comes only from arrows that stay stuck; every weapon draws its own ammo. See *Ammo kinds and bleeding*.
+- Bleeding comes only from a projectile that stays stuck; every ranged weapon draws its own ammo. See *Ammo kinds and bleeding*.
 - Enemies keep their spacing on the road and pack tightly when stacked at a barricade. See *Map, route and start-of-game rules*.
 - The camera opens at the owner's chosen view, 2.1x (`FIT_MAX_ZOOM`; 2.7x was too close, 0.9x too far), smaller only when the screen cannot fit the opening area; the player decides to zoom in or out from there. See *Map, route and start-of-game rules*.
 - Game speed changes combat only; presentation (camera, text, items, animals) runs on real time, and cosmetic motion is reduced at the fastest speeds. See *Game speed and clocks*.
 - Camera motion (drag pan, glide, zoom, pinch, tower follow, wave-start pan) always renders at the screen's full refresh rate, whatever the frame-rate limit says (`CAMERA-SMOOTH-01`); the design contract fails if the main loop stops consulting `isCameraMotionActive()`. The price of the next bought expansion grows only with expansions the player has bought, never with free ones (`EXPANSION-PRICE-01`).
-- A system that asks for reduced motion starts with screen shake off and without the enemy hop and lean (`PREFERS_REDUCED_MOTION`); any new decorative motion checks it.
+- A system that asks for reduced motion starts with screen shake off and without the enemy hop and lean (`PREFERS_REDUCED_MOTION`); any new decorative motion checks it. Keep the outer dirt sparse, but frame it with stable, low-contrast baked detail so the opening map does not float in a blank void. Keep all decorative silhouettes outside active/path tiles; do not add click targets or per-frame work for ambience.
 
 **Progression sizes are multiples of one unit**
 - A training bar is the unit; a promotion is a fixed multiple of it, half automatic and half spendable, all as random rolls. Stims and meals last until the wave ends. See *Promotion size*.
@@ -205,7 +218,7 @@ look reasonable":
 - Automatic render resolution is opt-in and off by default, slow to react, and silent during play (debug overlay and log only). It never goes below the player's chosen lowest level (25%, 50%, 75% or 100% for never; default 75% on Low, 100% on High), including for a saved older step. It is offered once after sustained low frame rate and always reversible in Settings.
 - Screen shake scales with the killed enemy's weight and defaults on for High graphics and off for Low unless the player chose otherwise.
 - Wandering NPCs spawn outside every stickman's reach (skipped when none exists) and steer away from map edges instead of snapping back. Big scenery gathers at the road ends by the flags, with very little in the middle.
-- Stat items show only their rainbow glow, never a ring. Enemies never drop a coin item; gold arrives as a bag of small coins.
+- Stat items show only their rainbow glow, never a ring. Enemies never drop the retired Lucky Coin gear item; bounty gold arrives in clickable Gold Bags.
 - When handing work to another assistant, reference source files as plain-text raw.githubusercontent.com URLs, and describe every change completely.
 - Decorative emote and speech-bubble effects are chance-based, never guaranteed, capped at two bubbles on screen, timed in real time, and free of per-frame allocation.
 - Barricades are unlimited; price rises steeply with the number already on the field. Enemy displacement from misses or hits is render-only; real positions change only through path movement and collision resolution, and route-following enemies stay leashed to the lane.
@@ -437,7 +450,7 @@ The spawn flags are triangular pennants: a vertical hoist edge at the top of the
 
 Dirt-path tiles and buildable green tiles form one chessboard. Green is light where `(gx+gy)%2===0`; dirt is dark where `(gx+gy)%2===1`, so a dark dirt tile always touches light green. Path colors come only from `pathTileColor()` (`PATH_TILE_DARK`, `PATH_TILE_LIGHT`), used by both `drawMap()` and `paintPathTileBase()`. Both tones stay warm orange-brown (`#835528` and `#926438`), with the light tone slightly lighter than the `#8b5a2b` background.
 
-Ground details (pebbles on dirt, grass tufts on green) come from `paintPathPebbles()` and `paintGrassTufts()`, seeded per tile by `seedTileRandom(gx, gy, salt)`; never `Math.random()`, so a tile paints identically on every repaint. Details stay inside `GROUND_DETAIL_EDGE_MARGIN` of the tile edge, and every place that paints a path or buildable tile calls the shared painters. The seed includes `groundDetailRunSeed` (random per page load, saved with the game). The starting map takes a chosen budget from `pickStarterGroundDetails()`: 1 to 2 path tiles with 1 to 2 pebbles and 1 to 2 grass tiles with a tuft, the other starting tiles clean.
+Ground details (path pebbles, grass tufts on green) come from `paintPathPebbles()` and `paintGrassTufts()`, seeded per tile by `seedTileRandom(gx, gy, salt)`; never `Math.random()`, so a tile paints identically on every repaint. Details stay inside `GROUND_DETAIL_EDGE_MARGIN` of the tile edge, and every place that paints a path or buildable tile calls the shared painters. The seed includes `groundDetailRunSeed` (random per page load, saved with the game). The starting map takes a chosen budget from `pickStarterGroundDetails()`: 1 to 2 path tiles with 1 to 2 pebbles and 1 to 2 grass tiles with a tuft, the other starting tiles clean.
 
 ## Map, route and start-of-game rules
 
@@ -466,7 +479,7 @@ Idle weapon-arm angle for hand-held weapons is `IDLE_GRIP_ARM_ANGLE`: the arm ha
 
 ## Design contract
 
-Owner-decided rules are executable: `validateDesignContract()` runs at boot after `initRegionAndPath()`, never throws, and reports to the console and the Debug Log line "Design contract". It covers pole contrast, warm and ordered path tones, the chessboard, range balance, the route border, the starting position, corridor margin, pebble and starter budgets, enemy pace, telemetry catalog rules, loose-enemy rules, chance-structure rules, the idle weapon arm, flag wind direction, ammo kinds, the bleed source and consumable storage. A new owner rule gets a named constant and one check there. A check is never loosened to make a change pass.
+Owner-decided rules are executable: `validateDesignContract()` runs at boot after `initRegionAndPath()`, never throws, and reports to the console and the Debug Log line "Design contract". It covers pole contrast, warm and ordered path tones, the chessboard, range balance, the route border, the starting position, corridor margin, pebble and starter budgets, early reward timing, coin pickup lifespan, enemy pace, telemetry catalog rules, loose-enemy rules, chance-structure rules, the idle weapon arm, flag wind direction, ammo kinds, the bleed source and consumable storage. A new owner rule gets a named constant and one check there. A check is never loosened to make a change pass.
 
 **Range balance (`RANGE-BALANCE-01`).** Range grows linearly with INT from a tower's starting range to its `RANGE_CAPS` value at 500 INT (`interpolateRangeByInt()`), so a starting range sits well below the cap. Melee (WARRIOR archetype) has the shortest starting and maximum ranges, archer types (ARCHER) sit in the middle, and mage style (MAGE) has the longest. `RANGE_BANDS` holds the numbers per role (melee caps 140-220, archer caps 240-400, mage caps 400-520; starts at most 70%, 55% and 55% of the cap), `rangeRoleOf()` assigns roles from `CLASS_ARCHETYPE`, and Cleric, Pope, Merchant and Glaive are support exemptions (`RANGE_ROLE_OVERRIDES`). Every tower with a range has a `RANGE_CAPS` entry, because a missing one defaults to double its start.
 
@@ -490,9 +503,9 @@ Donut, Chocolate and Lollipop (in `TREAT_ITEMS`) each carry a secondary effect b
 
 ## End-of-road scenery density
 
-Scenery near either end of the route (spawn flags, finish line) is denser and larger than mid-route, tapering over `END_SCENERY_RADIUS_TILES` route tiles (`pathEndProximity()`, `spawnExtraEndScenery()`, both called from `generateScenery()` and `scatterSceneryInRing()`). The random scale roll in `spawnScenery()` is biased toward the top of the range near the ends, and the tree/rock split shifts toward rock. Distance is measured along the route, not straight-line. Purpose: encourage building in the middle, keeping both ends open for the road to keep expanding.
+Scenery near either end of the route (spawn flags, finish line) is denser and larger than mid-route, tapering over `END_SCENERY_RADIUS_TILES` route tiles (`pathEndProximity()`, `spawnExtraEndScenery()`, both called from `generateScenery()` and `scatterSceneryInRing()`). Expansion scenery targets a 60% tree / 40% rock split (`TREE_ROCK_TREE_SHARE_ON_EXPANSION`); end guard pieces follow the same 60/40 ratio. The size and spawn chance fall quadratically toward the middle so a few small trees or rocks remain without filling the central build area. Distance is measured along the route, not straight-line.
 
-**Size gradient and harvested tiles (`END-RING-01`, `SCENERY-GRADIENT-01`).** Trees and rocks follow the distance from the road ends. The tiles that touch a road end, on the sides not taken by the route (normally three per end), always hold the biggest pieces: `fillEndRing()` runs after every wave and expansion, fills any free ring tile with a piece of at least `END_RING_MIN_SIZE_FRAC` (a piece the player has cleared grows back once the tile is empty, and a tile a tower or hut occupies is skipped), and replaces a smaller piece that landed there first. Ring tiles hold only trees and rocks (`RING-ONLY-BIG-01`): random scenery never lands on them (`isEndRingTile()`), and `fillEndRing()` also replaces a bush, crate or smaller piece that got there first, so a potted plant never sits where a rock belongs. The end guards place medium pieces around the ring (`END_GUARD_MAX_SIZE_FRAC`). Everywhere else `treeRockSizeFrac()` sets the size from `pathEndProximity()`: medium near the ends, then medium-small, small and tiny toward the middle of the road, and `treeRockKeepChance()` thins them out the same way, so the middle carries mostly small and tiny pieces. A tile the player has cleared once is remembered (`harvestedTileKeys`, saved as `harvestedTiles`) and rarely grows a tree or rock again (`HARVESTED_TILE_KEEP_FACTOR`); the ring tiles ignore that memory. New pieces therefore appear mainly at the ends and on tiles never cleared. The design contract checks that the ring size stays above the gradient.
+**Size gradient and harvested tiles (`END-RING-01`, `SCENERY-GRADIENT-01`).** Trees and rocks follow the distance from the road ends. The tiles that touch a road end, on the sides not taken by the route (normally three per end), always hold the biggest pieces: `fillEndRing()` runs after every wave and expansion, fills any free ring tile with a piece of at least `END_RING_MIN_SIZE_FRAC` (a piece the player has cleared grows back once the tile is empty, and a tile a tower or hut occupies is skipped), and replaces a smaller piece that landed there first. Ring tiles hold only trees and rocks (`RING-ONLY-BIG-01`): random scenery never lands on them (`isEndRingTile()`), and `fillEndRing()` also replaces a bush, crate or smaller piece that got there first, so a potted plant never sits where a rock belongs. The end guards place medium pieces around the ring (`END_GUARD_MAX_SIZE_FRAC`). Everywhere else `treeRockSizeFrac()` sets the size from `pathEndProximity()`: medium near the ends, then medium-small, small and tiny toward the middle of the road, and `treeRockKeepChance()` thins them out the same way, so the middle carries mostly small and tiny pieces. A larger tree or rock can place one matching small scenery object on a free neighboring tile (`SMALL-SCENERY-CLUSTERS-01`); that emoji is half-size and its clear price is half the equivalent full-size piece. Small rocks from the wave 2–4 surge use the same small-object pricing. Never paint decorative pebble circles under rocks. A tile the player has cleared once is remembered (`harvestedTileKeys`, saved as `harvestedTiles`) and rarely grows a tree or rock again (`HARVESTED_TILE_KEEP_FACTOR`); the ring tiles ignore that memory. New pieces therefore appear mainly at the ends and on tiles never cleared. The design contract checks that the ring size stays above the gradient.
 
 ## Analytics parameter names
 
@@ -502,23 +515,23 @@ Key events are few and single-shot. `game_started`, `engaged_player` (sent at mo
 
 **Share image.** `og-image.png` in the repository root is the picture shown when the game is shared; it must be 1200 by 630 pixels (the size the `og:image:width` and `og:image:height` tags state) and is referenced with a `?v=` number in the Open Graph, Twitter and structured-data tags. When the picture changes, raise that number everywhere together so social sites fetch the new one instead of their cached copy. It shows the owner's cover art whole, never cropped, centred on a clean dark background with no blurred copy of the picture beside it; the dark side panels carry the information shown when the link is shared (free in your browser, no download or sign-up, 100 waves of enemies, build towers, train heroes, grow the map), so keep those lines true to the game and update them if any of it changes. The art contains ESRB-style rating badges at its bottom-left; StickTD has no official rating, so flag that before the image is reused anywhere a rating would be taken at face value (a store page, for example).
 
-**Where the game is played.** One Analytics stream serves every host. The tag keeps its cookies with `SameSite=None;Secure` so a visitor keeps one id inside another site's frame (itch.io), and every game event carries `platform` (`github-pages`, `itch.io`, `local-file` or `other`, from `detectPlayPlatform()`); page views carry the hostname instead. A new host the game is published on needs only a branch in `detectPlayPlatform()`, not a new stream.
+**Where the game is played.** One Analytics stream serves every host. The tag keeps its cookies with `SameSite=None;Secure` so a visitor keeps one id inside another site's frame (itch.io), and every game event carries `platform` (`github-pages`, `itch.io`, `gamejolt`, `local-file`, `embedded` or `other`, from `detectPlayPlatform()`, using recognized hostnames, referrers, accessible parent hosts and `utm_source` labels); page views carry the hostname instead. A new host the game is published on needs only a branch in `detectPlayPlatform()`, not a new stream.
 
 **Where the master list lives.** The `TELEMETRY_EVENTS` table in `index.html` is the single master list of events and their parameters; nothing else restates it. The owner's one-time clicks in Google Analytics and Search Console (key events, custom dimensions, retention, site verification) live in `BACKLOG.md` in section 1 ("Owner setup"), not here. When a change adds a parameter worth reporting on, add it to that list's custom dimensions or metrics in the same change.
 
 ## First-time alerts and Introduction Text
 
-One-time explanatory popups (welcome, Item Guide, first enemy escape, first tower overrun) all go through `maybeShowFirstTimeAlert()` or the same localStorage-gate pattern, and all respect `introTextEnabled` (Settings → Game → "First-time tips and alerts"). Never add a second persistence mechanism for this category — fold new first-time popups into the existing `sticktd:prefs:v1` blob.
+One-time explanatory notices (Item Guide, first enemy escape, first tower overrun) go through `maybeShowFirstTimeAlert()` or the established `sticktd:prefs:v1` gate and respect `introTextEnabled` (Settings → Game → "First-time tips and alerts"). Notices use the shared top-left stack and open their explanation when clicked. The first-build cue is not a popup: `stickTD_firstTowerBuilt` keeps the gentle Build hand hidden after a non-Barricade tower has been placed. The Fast Forward hand appears after the first fighter, then `stickTD_firstSpeedUpUsed` keeps it hidden after one speed control use. Do not restore a blocking first-run tutorial.
 
 ## Meat max-HP and livestock
 
-Random events share one slot per expand (`RANDOM-EVENT-SLOT-01`): the wandering troll, chance structures such as the campfire and fountain, extra buildings, hut camps and livestock all call `tryClaimRandomEventSlot()` before they spawn, and only the first to succeed in an expand gets it. A wave clear opens the slot (`openRandomEventSlot()`), then `runWaveClearRandomEvents()` tries the wave-clear events in shuffled order, so none has priority; the free expansion that follows, and any livestock or hut it would add, find the slot taken. A paid expansion opens a fresh slot. Each event that happens writes a "random event:" line to the game event log. New random events must claim the slot the same way; the design contract checks the slot semantics.
+Random events have two slots per expansion (`RANDOM-EVENT-SLOT-01`): the first targets buildable ground 3–5 route tiles from the spawn flags, and the second targets equivalent ground by the finish line. Chance structures, wandering trolls, extra buildings, hut camps and livestock claim through `tryClaimRandomEventSlot()`; wave clears never reset the count, while each paid or free expansion does. Wave-clear events are shuffled and stop when both claims are used. Before wave 5, only peaceful/helpful events may spawn; trolls and hut camps wait until wave 5. Do not announce event spawns through floating text or toasts; internal event logs remain. The design contract checks the two-claim cap.
 
 Enemy presence is remembered between ticks, not rescanned every tick (`LAG-PASS-02`): `laneEnemiesPresent` and `targetableWandererPresent` are refreshed only when `enemyPresenceDirty` is set, which happens when an enemy spawns, a wanderer dies, the marked target changes, enemies are cleared, or the lane loop updates no lane enemy. While lane enemies exist the lane loop that already runs supplies the answer, so the check costs nothing per tick. Any new way to add or remove an enemy outside `spawn()` and `die()` must set the flag.
 
 Towers see a hostile wanderer (the troll) or a marked animal even when no lane enemy is alive (`TROLL-FIGHTS-BACK-01`): the per-tick enemy hash is built whenever a lane enemy, a hostile wanderer or the marked target exists, not only when lane enemies do. Between waves the troll is often the only enemy on the field, and an empty hash leaves every tower blind to it.
 
-Gold bags (`GOLD-BAG-ITEM-01`) are ordinary ground items, drawn like every other item with no ring and no number: click one to open it where it lies, drag it to move it, or drop it on a stickman to open it there; its coins pop out of wherever it is opened. Nothing opens a bag automatically: not a stickman standing near it, not the end of a wave, not a timer. Every source (enemy bounty bags, the troll, chests, lucky-coin and hut gold items) calls `dropGoldBag()`. Gold is never lost: a bag removed by the ground-item limit or by its three-minute lifespan is credited unopened (`creditGroundBagGold()`), and bags on the ground are saved with the game (`goldBags`). Coins never come to rest on a tree or rock (`COIN-BOUNCE-01`): a landing coin bounces off scenery, and after a few bounces moves to the nearest clear spot, so a click meant for a coin cannot clear scenery. One bag in ten also pops a diamond, a coin-sized pickup that grants a permanent passive upgrade (`DIAMOND-COIN-01`). A treasure chest always drops one to three bags, and the present and treasure chest keep one fixed size each, the chest larger (`FIXED_SCENERY_SCALE`).
+Gold bags (`GOLD-BAG-COIN-BURST-01`) are ground-only pickups, never inventory items. Clicking one directly awards its listed 1–100 player Gold and emits 3–5 airborne coin pickups worth 1–6 Gold each; dropping a bag onto a stickman opens it at that location. Automatic payout on eviction or after three minutes also emits the coin burst; saved bags retain their value. Gold coin pickups award their value on a landed click or automatically on expiry after 5–15 seconds, exactly once; active coin slots are never overwritten; overflow slots shrink back to the base pool after collection/expiry. Coin and bag glows are gold. Coins bounce off trees and rocks before landing (`COIN-BOUNCE-01`). The retired Lucky Coin gear item is absent from drops; Silver Bell now uses Brass Compass. One bag in ten also pops a diamond pickup granting a permanent passive upgrade (`DIAMOND-COIN-01`). A treasure chest always drops one to three bags.
 
 Wandering units (livestock and the troll, every enemy with `isLivestock`) never interact with the lane (`WANDERER-PHASE-01`): they are skipped by both collision passes, by the barricade pile-up and by the follow-speed cap, so they cannot push, block or slow a lane enemy and are not pushed by one; they remain valid targets for towers when marked or hostile. They glide while wandering, with no hop or rocking rotation, and `findTouchingBarricade()` returns nothing for them, so they never touch, bump or count toward a barricade; the design contract checks that too. The design contract places a wanderer on top of a lane enemy and fails if either moves.
 
@@ -547,7 +560,9 @@ When a stickman's panel is collapsed, a quick-use row floats above it (`updateQu
 
 Using a consumable is one deliberate moment (`showItemUseFeedback()`, `ITEM-USE-FEEDBACK-01`): the item's icon rises above the stickman, an exact readout sits under it (effect and amount, plus "Until the wave ends" for round buffs), a single ring in the item class colour expands once for tier 1 and 2 items, and a short synthesized motif plays. There are four item classes in `ITEM_USE_CLASSES` (heal green, power amber, haste blue, gain gold), each with a colour and a motif, and three tiers: 0 plain, 1 with ring, 2 with ring, longer hold and a closing note (cooked meals, boss treats, Hyper-Serum, max-life meat). The moment runs on real time, never on game speed, has no jokes or dialogue, and every part fades out once; nothing pulses or repeats. New consumables call `showItemUseFeedback()` from their apply function instead of spawning ad-hoc floating text, and the design contract checks that every class has a colour and motif. The first use of each item type writes one line to the game event log (`recordFirstItemUse()`, saved as `itemTypesUsed`). While a round buff is active the nameplate shows a pip (`updateBuffPips()`): stat icons and the percentage, merged when several stats share the same value. Stims and meals last until the wave ends, so the pip states that and shows no countdown.
 
-Every clickable emoji is hit exactly where it is drawn (`EMOJI-HITBOX-01`): its own square, at the font size and centre it is drawn with, tested through `isWithinEmojiSquare()`. That covers gold bags (`GOLD_BAG_EMOJI_PX`), coins (`COIN_EMOJI_PX`), ground items (`GROUND_ITEM_EMOJI_PX` and `groundItemBobPx()`, so the box follows the bobbing item), enemies and livestock (a square of twice the radius) and scenery (`sceneryAtPoint()`, which also checks the neighbouring tiles because big pieces reach into them, using the same `TILE_SIZE * 0.72 * scale` size the piece is drawn at). Size and centre come from the same constant or function the draw code uses, so the hitbox and the picture cannot drift apart; a new clickable emoji must do the same. Combat collision radii are a separate gameplay value and are not part of this rule. Every item is a per-copy instance (`makeItemInstance()`, an object whose prototype is the shared definition), so the Debug Log's ITEM LOG can follow one copy: time found and its source, each stickman that held it and for how long, time and user when used, and how it ended (used, expired, sold back, crafted away, lost with a sold unit). A new place that creates, moves, uses or destroys an item calls the matching `itemLog*` function. The GAME EVENT LOG in the same file records waves, escapes, broken barricades, sales, moves and stat points through `logGameEvent()`.
+Touch exception: landed coins, diamonds and ambient logs use a minimum 44 CSS-pixel target converted through display scale and zoom; overlapping targets choose the nearest eligible pickup. Mouse geometry stays exact. Every other clickable emoji is hit where it is drawn (`EMOJI-HITBOX-01`): its own square, at the font size and centre it is drawn with, tested through `isWithinEmojiSquare()`. That covers gold bags (`GOLD_BAG_EMOJI_PX`), coins (`COIN_EMOJI_PX`), ground items (`GROUND_ITEM_EMOJI_PX` and `groundItemBobPx()`, so the box follows the bobbing item), enemies and livestock (a square of twice the radius) and scenery (`sceneryAtPoint()`, which also checks the neighbouring tiles because big pieces reach into them, using the same `TILE_SIZE * 0.72 * scale` size the piece is drawn at). Size and centre come from the same constant or function the draw code uses, so the hitbox and the picture cannot drift apart; a new clickable emoji must do the same. Combat collision radii are a separate gameplay value and are not part of this rule. Every item is a per-copy instance (`makeItemInstance()`, an object whose prototype is the shared definition), so the Debug Log's ITEM LOG can follow one copy: time found and its source, each stickman that held it and for how long, time and user when used, and how it ended (used, expired, sold back, crafted away, lost with a sold unit). A new place that creates, moves, uses or destroys an item calls the matching `itemLog*` function. The GAME EVENT LOG in the same file records waves, escapes, broken barricades, sales, moves and stat points through `logGameEvent()`.
+
+**Early rewards.** The first five eligible enemy kills guarantee a single map scroll (`FIRST-MAP-DROP-01`); its count and claimed state are saved. Clicking the scroll or a rare Gold Map Bag grants one free map expansion. Both items are included in save files if left on the ground and remain on the ground if the map is fully expanded. A regular gold bag credits its exact gold amount on opening and refreshes the HUD; if left unopened, it keeps its value for three minutes before automatic payout. Scattered currency coins award gold on click or automatically when their 5–15-second lifetime ends; opening a bag itself awards its listed gold. Tennis Shoes grant +2 DEX and one extra relocation charge after every cleared wave while carried, within the normal charge cap. A Shovel is a rare map-expansion drop and is used from inventory to dig within its carrier's range.
 
 ## Promotion size
 
@@ -559,9 +574,9 @@ Settings has an Items tab (`renderItemCodex()`, `ITEM-CODEX-01`) that lists ever
 
 ## Ammo kinds and bleeding
 
-Only the base Archer shoots arrows. Every other ranged tower has its own ammo kind in `PROJECTILE_AMMO_BY_TOWER`, drawn by `drawAmmoShape()`: darts for Blowdart and Blow Gunner, pellets for the Dual Squirt Gun, tiny lead bullets for Gatling, Gunalinder, Marksman and Sniper, knives for the Crazy Chef and a crescent blade for the Glaive. A new ranged tower is added to that table; a tower left out falls back to the arrow shape and fails the design contract check (`AMMO-KIND-01`).
+Only the base Archer shoots arrows. Every other ranged tower has its own ammo kind in `PROJECTILE_AMMO_BY_TOWER`, drawn by `drawAmmoShape()`: darts for Blowdart and Blow Gunner, pellets for the Dual Squirt Gun, tiny lead bullets for Gatling, Gunalinder, Marksman and Sniper, knives for the Crazy Chef and a crescent blade for the Glaive. Axeman uses a separately drawn axe when switched to ranged mode. A new ranged tower is added to that table; a tower left out falls back to the arrow shape and fails the design contract check (`AMMO-KIND-01`).
 
-Arrows that hit an enemy stay stuck in it (Archer only, up to four, `MAX_STUCK_ARROWS`). Each point of the Archer's strength adds `BLEED_DAMAGE_PER_STRENGTH` (0.2) to every arrow's bleed per tick (`BLEED-STRENGTH-01`), and there is no floating blood icon on bleeding enemies: only the damage numbers and the blood itself. Bleeding multiplies with the arrows in the target (`BLEED-MULTIPLIES-01`): each stuck arrow is one stack, damage per tick is the sum of the stacks (three arrows deal three times one arrow) and the blood effect (spray, drops, pools, drips) scales with the stack count; the design contract checks the damage rule. Each stuck arrow adds one bleed stack, and the bleed lasts as long as any arrow is stuck (`BLEED-WHILE-STUCK-01`): while an enemy carries an arrow its bleed is refreshed every update, and it ends only when the enemy dies or leaves play. Each arrow's stack deals `BLEED_PER_ARROW_MAX_HP_SHARE` of the enemy's maximum health per tick, kept small because the bleed does not expire. Bleeding starts only from an Archer hit, through `bleedSourceAllowed()` (`BLEED-ARROW-ONLY-01`); hits from melee, thrown, dart, gun and magic towers do not cause it. The ammo and bleed-source rules are part of the design contract.
+Projectiles can stick in an enemy (up to four, `MAX_STUCK_ARROWS`); only a projectile that successfully embeds can cause bleeding. STR controls the embed chance through `projectileStickChance()`; all Archer-archetype direct damage, including the Crazy Chef, scales with DEX (`PROJECTILE-STICK-01`, `ARCHER-DEX-DAMAGE-01`). A thrown Axeman axe can embed and bleed in ranged mode; a melee swing cannot. There is no floating blood icon on bleeding enemies: only the damage numbers and the blood itself. Bleeding multiplies with stuck projectiles in the target (`BLEED-MULTIPLIES-01`): each embedded projectile is one stack, damage per tick is the sum of the stacks (three stuck projectiles deal three times one) and the blood effect (spray, drops, pools, drips) scales with the stack count; the design contract checks the damage rule. Each embedded projectile adds one bleed stack, and the bleed lasts as long as any projectile is stuck (`BLEED-WHILE-STUCK-01`): while an enemy carries an embedded projectile its bleed is refreshed every update, and it ends only when the enemy dies or leaves play. Each projectile's stack deals `BLEED_PER_ARROW_MAX_HP_SHARE` of the enemy's maximum health per tick, kept small because the bleed does not expire. Bleeding starts only when an eligible projectile embeds, through `bleedSourceAllowed()`; the projectile kinds in `PROJECTILE_AMMO_BY_TOWER` can embed and bleed, while melee and magic hits cannot. The ammo and bleed-source rules are part of the design contract.
 
 ## Projectile aim
 
@@ -586,6 +601,7 @@ One global `markedTargetEnemy` (`setMarkedTarget()`, `tryMarkTargetAt()`, drawn 
 ## Build cost scaling
 
 `SCALING_COST_TYPES` covers every stickman type except Barricade and the max-one-per-board types; `SCALING_COST_GROWTH` (at least 2.25) multiplies cost per existing copy of that type on the board (`currentBuildCost()`). Never add a max-one-per-board type to the scaling list — `validateGameDefinitions()` rejects the contradiction.
+The starter price ladder is Swordsman 50 gold, Archer 60, Mage 70; preserve these anchors against the 150 starting gold. Repeated copies of the same class become substantially more expensive through the shared scaling rule. Swordsman also attacks at 1.2× its otherwise-calculated cooldown (`SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER`) to account for its low entry price and melee sweep; do not slow Archer or Mage through this class-specific adjustment (`STARTER-PRICE-LADDER-01`, `SWORDSMAN-RATE-01`).
 
 ## Food, treats and medical supplies
 
@@ -607,15 +623,14 @@ Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgre
 
 ## Combat & stats
 
-- Leveling is a genuine EXP system (`gainTowerExp()`), separate from the gold-tier `level` field
-  used for Upgrade-button tiers. Every tower has `xp`/`expLevel` (1-99) from kills, killstreak
-  milestones, gold-tier upgrades, and round survival. Each level-up grants exactly 1 stat point
-  (`allocateStat()`). `CLASS_ARCHETYPE` gates which stat boosts damage per class (STR→Warrior,
-  DEX→Archer, INT→Mage — exclusive, not additive across archetypes). Barricades are excluded from
-  EXP entirely. Separately, `Tower.upgrade()` (gold-tier tier-up) also grants automatic random
-  stat growth on top of the guaranteed tier bump: 3 rolls of 1-6 into a random stat, plus 1-3
-  guaranteed into the tower's own favored stat — additive to, not a replacement for, the EXP
-  system's manual point.
+- Training is a genuine EXP system (`gainTowerExp()`), separate from gold promotion rank. `Tower.level`
+  is the number of promotions and is shown to players as Rank; `xp`/`expLevel` track Training XP and
+  Training level independently. Kills, killstreak milestones, promotions, and round survival can
+  award XP; each completed 100-XP bar grants exactly 1 spendable stat point (`allocateStat()`).
+  `CLASS_ARCHETYPE` gates which stat boosts damage per class (STR→Warrior, DEX→Archer, INT→Mage —
+  exclusive, not additive across archetypes). Barricades are excluded from EXP entirely. Promotion
+  stat growth is governed by the current promotion rules in the Promotion section above; do not
+  describe it using obsolete tier-up dice or direct-damage bonuses.
 - `recomputeStats()` computes `missChance` via `computeMissChance()` — a front-loaded, two-segment
   curve, not a flat diminishing-returns formula. `BASE_MISS_CHANCE_BY_ARCHETYPE` sets the zero-DEX
   baseline (Mage 45% / Archer 40% / Warrior 30% — an explicit balance hierarchy), then the curve
@@ -649,8 +664,7 @@ Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgre
 
 ## Audio architecture
 
-First-tier reference: 5 uploaded game-audio books. The running plan (shipped vs. deferred, and
-why) lives in `BACKLOG.md` section 7 ("Audio — deferred passes"), since it's a living plan.
+First-tier reference: 5 uploaded game-audio books. The running plan for remaining listening and mix work lives in `BACKLOG.md` section 7 ("Audio — follow-up passes").
 
 - `playImpactSound()` is the single call site for every weapon-hit sound (in `applyDamage()`):
   throttles to one voice per weapon family per 35ms via `lastFamilyPlayAt` (bypassed for crits/
@@ -658,17 +672,23 @@ why) lives in `BACKLOG.md` section 7 ("Audio — deferred passes"), since it's a
   from its own persistent `id`; drops the secondary noise layer for routine hits at `gameSpeed >=
   5`. `SoundEngine.debugCounters` (impactRequested/Played/Suppressed/peakVoices) is always-on
   telemetry — inspect via `audioEngine.debugCounters`.
-- `tone()`'s optional `stablePitch` param opts out of the default random ±6% detune (cent-based,
-  not linear — a linear swing is asymmetric in perceived pitch since pitch is logarithmic). Every
-  UI confirmation sound uses it. `evolution`/`hero`/`legendary` share one A-root ascending motif
-  family rather than being disconnected fanfares — `hero` is a 2-note sibling, `legendary` extends
-  `evolution`'s 4-note pattern with a 5th note and a sustained double-stop. `isImportantAudioEvent
-  (eventType, context)` recognizes boss/selected-tower/crit/evolution — a classification seam for
-  a not-yet-built voice-priority pass. `SoundEngine.duck()` is its first consumer: dips
-  `master.gain` on `lose`/`levelup`/`evolution`/`hero`/`legendary` — deliberately not `wave`, which
-  has 9 call sites across different events and would over-trigger. Skips while muted; the mute
-  toggle calls `cancelScheduledValues()` before its direct assignment, since a plain assignment
-  doesn't cancel an in-flight duck's scheduled recovery ramp.
+- `tone()`'s optional `stablePitch` param opts out of the default random ±6% detune. UI sounds use
+  stable pitch. `evolution`/`hero`/`legendary` share an A-root ascending motif family; `hero` is a
+  2-note sibling and `legendary` extends `evolution` with a held double-stop. `isImportantAudioEvent`
+  recognizes boss/selected-tower/crit/evolution for future voice prioritization. `SoundEngine.duck()`
+  now dips `musicBus.gain` on `lose`/`levelup`/`evolution`/`hero`/`legendary`, preserving sound-effect
+  level. The mix controls use AudioParam ramps so dragging a slider or toggling mute cancels any
+  in-flight duck cleanly.
+- **Music and mix (`MUSIC-MIX-01`, 1.6.163).** `SoundEngine` routes effects through `sfxBus` and
+  score through `musicBus`, both into the existing master EQ/compressor. Settings persist overall,
+  music and effects levels; the default effects gain plus master gain preserves the previous SFX
+  level. `duck()` acts on the score bus only. The original 96 BPM 24-bar Dorian score uses an
+  `AudioContext.currentTime` lookahead scheduler; `setTimeout` wakes that scheduler but never times
+  individual notes. Field and active-wave arrangements share tempo and harmony, with a bar-aligned
+  phase change. Simulation speed does not alter music time. It starts on the Play gesture, pauses
+  with the game or hidden tab, and fades out on game over. Keep score voices separate from the
+  effects voice cap. The current pass has not had a real loudness/listening review; the remaining
+  audio plan is in `BACKLOG.md` section 7.
 - `randomJobQuote()` uses `randomNoRepeat()` (a per-key history ring buffer) instead of raw
   `Math.random()`, which could repeat the same line twice in a row.
 - Spawn/reaction chatter: `spawn_chatter` (2-part phrase, placement) and `chatter_short` (1 shorter
@@ -701,10 +721,10 @@ why) lives in `BACKLOG.md` section 7 ("Audio — deferred passes"), since it's a
   by the `goreMode` content toggle, never by graphics quality — full gore shows at any graphics
   setting if gore is enabled. This is a real, known tension with performance (Low graphics
   currently carries full gore cost) — flagged in `BACKLOG.md`, not silently changed.
-- Two toast popups share a pattern: `showWaveSummary()` (gold + per-class XP) and
-  `showNewEnemyToast()` (stats + ability note, first time a wave contains an unseen type, tracked
-  in `seenEnemyTypes` and persisted in saves). Both independent DOM elements with their own
-  `setTimeout` fade, so they can't clobber each other if triggered close together.
+- Gameplay notifications share `#notification-popups`, a top-left stack. `showWaveSummary()`,
+  `showNewEnemyToast()`, unlock notices and combat milestones add clickable inbox entries; clicking
+  opens the matching explanation. Keep overlapping notices stacked instead of centered over the
+  battlefield. The inbox is one unfiltered list with Mark all read, individual dismissal and expandable explanations.
 
 ## Performance
 
@@ -784,7 +804,7 @@ Lag in this project has repeatedly crept back through small, individually reason
 
 1. **Measure, don't guess.** Get a debug log captured *during* the lag (Settings > About >
    Download Debug Log). Compare raw rAF wall-gap vs Frame/Update/Render ms: a high wall gap with
-   healthy ms means browser/compositor contention, not game code.
+   healthy ms leaves GPU/compositor, audio, browser scheduling and unmeasured game work as candidates; it does not prove the cause.
 2. **State the cost of every new feature:** per-frame work, per-tick work (× up to 90 ticks/frame
    at 10×), allocation, cleanup, and how it scales with enemy/decal count.
 3. **No allocation in hot paths.** No string building, array literals, closures, `.filter/.map`,
@@ -835,18 +855,15 @@ Lag in this project has repeatedly crept back through small, individually reason
 
 ## Head block, consent, and SEO — don't casually reorder or trim
 
-`<head>` contains Google Analytics (`gtag.js`, ID `G-B6H58BQ50N`, gated behind Consent Mode v2)
+`<head>` contains the Google Analytics setup (ID `G-B6H58BQ50N`, fully gated until explicit consent)
 and SEO meta tags (title, description, keywords, robots, canonical, Open Graph including
 site_name/locale, Twitter card, schema.org `VideoGame` JSON-LD) with deliberate keyword choices.
 The GA ID is tied to a live property — don't regenerate without being asked. Favicon is an inline
 base64 data URI; OG/Twitter images point to `og-image.png` at the site root (a real file — a data
 URI there wouldn't be fetched by most social crawlers).
 
-Analytics only collects once the cookie-consent banner (top of `<body>`, fully self-contained) is
-accepted — Accept-only by request, no Decline; not accepting leaves the default-denied state.
-`gtag('consent','default',...)` must be the first `dataLayer` push, ahead of even `gtag('js',...)`.
-The banner text/button use `fitConsentBannerToOneLine()` (same scale-to-fit technique as the HUD)
-so they never wrap.
+No Google tag request, config, or event leaves the page before the player accepts the cookie banner (top of `<body>`, fully self-contained). Consent defaults to denied; the `gtag.js` script is appended only after the player accepts. Decline stores a denied choice and keeps gameplay usable without analytics. Keep Santa’s cookie voice and the clear accept and decline choices.
+The consent actions sit in a centered, wrapping button row so both choices remain usable on narrow screens.
 
 ## UI layout techniques
 
@@ -907,3 +924,71 @@ so they never wrap.
 - **Derived weight is not saved state.** Enemy weight follows its current radius (15px = 1.0), and tower weight follows capped STR (1.0–1.5); visual size follows sqrt(weight). Keep these derived values synchronized automatically through getters, including after save loads and size-tier changes. Lancer damage uses target weight with a 0.5–1.75 multiplier.
 - Trees and rocks belong near the flags and finish line only; each road end keeps at least 3 big pieces within 2 tiles; nothing may grow on a hut.
 - Barricades have no stats, DPS or inventory in the panel and refuse items. Elements with `display` set by an id rule need an explicit hidden override, because `.hidden` alone will not hide them.
+
+## Performance preservation and delivery
+Before delivery verify the historical protections: incremental decal promotion and throttled rebuilds, linear cleanup, pooled query/bucket/death records, cached flags/debug/presence, bounded wet-blood work, incremental expansion paint, bounded simulation catch-up and full-rate camera motion. Keep verification scripts as development tooling; the owner wants only changed game/repository files needed for upload, excluding favicon and OG art. Do not add a separate check script to the handoff. Compare a matched save/device/browser/speed/zoom through first-minute play, wave-9 downing, camera pan and long sessions before claiming measured smoothness. Reverting all old changes is unsafe: hash-container reuse was deliberately reversed after measurement, and debris must retain its correct depth.
+
+Spatial-query invariant: occupied-cell bounds may narrow empty lookup regions only; preserve the original candidate set and X/Y order. Compare randomized queries against the unbounded baseline before changing this broad phase.
+
+- First-use fingers: Next Wave becomes visible after the first fighting tower is built, before wave one; accepted first-wave start moves guidance immediately to Speed. First speed use after that dismisses both permanently. A pre-wave speed click must not consume guidance.
+
+### Reward, audio and inspector safeguards — 1.6.199
+
+Chest fountains use at most six positive-value coins while conserving their total gold. Ordinary chests add one or two gold bags. Bag bonus coins are 3–5 pickups worth 1–6 each; preserve the listed bag payment. Gold expiry credits once without a per-coin sound or text burst; diamonds retain manual collection. Combat music remains active for escaped enemies, and phase transitions stay aligned to a bar. Direct attackers take targeting priority within legal range, before ordinary/manual-mark ranking. Miss cues stay quiet and throttled; all SFX retain voice budgeting. Keep Sell, Move and Help in fixed first-row grid cells and axe mode in its own second row; move count is numeric, with no “left” suffix.
+
+### Notification and music safeguards — 1.6.200
+
+Notifications show concise titles; full explanation belongs in the details dialog, never beneath an inbox item or toast. Preserve history and readable wave/enemy results. Pause only a playing run for details and resume only a pause owned by the popup. Combat FM voices stop both oscillators and disconnect every node; standby/ordinary music retains the three-node path. Keep one music scheduler and no external audio dependencies. The DOS guide is inspiration, not a source of copied recordings.
+
+## Sound communication contract (1.6.201)
+Keep launch/swing cues distinct from landed impact feedback. Forward world X for unit/enemy sounds; center interface sounds. AUDIO_EVENT_GAPS uses AudioContext seconds, never simulation speed, and drops repeated presentation events without queuing. Preserve 28 ordinary / 32 important slots and node cleanup. Important player rewards get bounded headroom, not unlimited voices. Do not use completion fanfares while loose enemies remain. Every sound change needs source/lifecycle checks; listening quality and device FPS must be reported separately from emulated tests.
+
+## Music arrangement and budget (1.6.202)
+Keep standby/combat contrast, chord-relative original phrases and four-bar breathing space. Use AudioContext time and the existing scheduler; keep phase switches on bar boundaries and retain combat for loose enemies. reserveMusicVoice caps outstanding sources at six, counting FM modulator and carrier separately. Share ensureNoiseBuffer with SFX; disconnect every music/percussion graph. Reference MIDI files guide arrangement only and are not runtime dependencies. Report real listening and device performance separately from source/emulation tests.
+
+## Owner music direction and tempo (1.6.203)
+Prioritize original Warcraft-style martial brass with DOS groove and controlled half-time electronic weight; Orc 2 and C&C are preferred directions over playful Medivo-like material. Standby remains a separate 96 BPM arrangement; combat is 140 BPM, switched at bar boundaries through musicStepSeconds and AudioContext time. Keep cached single-source brass, shared noise, modest filter Q and six-source music budget. Do not infer listening quality from MIDI score analysis or adopt reference examples as current gameplay requirements. Audio references are inspiration and excluded from upload files.
+
+Enemy introduction detail dialogs must use their actual CONFIG enemy emoji, red border/title accent and separate base stat cells. Store enemyTypes with notification entries so history renders the right enemy; clear enemy styling/content when opening ordinary notices. Keep title-only toasts and no white circular emoji decoration.
+
+1.6.205 owner direction supersedes the strict outward-spiral requirement: expansions attempt short safe additions at both route ends and can form irregular shapes. Preserve old route/towers, bounds and live enemy segment continuity when prepending. Complete previous reveal before another purchase. Never promise growth through boxed endpoints. Default music is 100%, retaining saved user choices; retain bounded voices and separate planning/combat phases. Enemy detail cards include emoji-labelled base health/speed/gold, tier-derived kill XP and min–max weight using radius/15; no fabricated weight units or flat XP for families spanning tiers.
+
+1.6.206 audio: preserve persistent combat/feedback buses under SFX, bounded audio-clock focus ducking and 28+4 reserved source budget. Both tone/noise use priority; restore temporary event context in finally. Critical/selected impact bursts remain rate limited. Count actual source admission, not attempted calls. Keep central-screen sound clear while softening offscreen X/Y events; global important cues stay audible. Preserve 2-ms attacks, mild timbre variation, music identity and one scheduler. Reference AI documents can describe obsolete code: verify claims and never copy instructions to redesign visuals, stop work, introduce wind or declare subjective quality without audition.
+
+1.6.207: audio timestamp zero is valid; test undefined explicitly. Keep UI/spawn-chatter real-time gaps so bulk events do not consume priority slots. Suppress duplicate audio only, never gameplay actions.
+
+Device diagnostics must label browser estimates/limits. Reuse cached GPU probe; never infer CPU model, disk type or actual Canvas GPU from WebGL renderer. No hardware probing in hot loops or new analytics payloads.
+
+1.6.209 diagnostics: reuse existing histories/observers. Keep save history at 20 and sampled context history at 60, no more than once per second. Distinguish workload from callback gaps, label code units and unsupported audio latency honestly. Scheduler diagnostics must not replay skipped notes. No telemetry analytics transmission.
+
+1.6.211: retain 60 direct state transitions and 40 scalar death records; spike copies cover the last five seconds. Never retain unit references or infer causation. Failed preference writes are local diagnostics and must not prevent play.
+
+1.6.212: preserve active loose coin value, diamond status and expiry across saves; restoring replaces the prior run and settles saved coins. Decal timings measure synchronous work only; keep existing coalescing and visual behavior.
+
+1.6.213: GPU-informed graphics selection is a quiet first-run heuristic only; saved preference/load wins. Reuse the cached probe, keep software/unknown Low. Ordinary loose-item persistence uses recognized definitions and validated age/position; special bag/expansion paths remain separate.
+
+1.6.214: High always uses render step 0 (100%, DPR capped at 2), superseding lower saved High floors. Preserve Low scaling. Committed projectile bookkeeping resets only tracked targets; actual canvas reallocations require changed backing dimensions/DPR. Device performance and campaign balance still require play evidence.
+
+1.6.215: consumed pickup pointers must not pan or start inertia. Item dragging stays separate from pinch zoom; stop camera follow on pickup/item presses. Manual render scale is in Video; High remains 100%, Low choices disable automatic scaling. Verify touch/mouse feel in browser.
+
+1.6.216: pointer hover converts coordinates once and reuses unchanged grid cells. Item snap squared distance retains strict radius and first-on-tie behavior. Pinch reads two Map entries without spreading the entire Map.
+
+1.6.217: consent decline label is Play stealth. Multi-pointer owning-pointer end clears drag state without executing a single-pointer drop. That release only renamed the choice; the owner-requested Stealth challenge is implemented in 1.6.220.
+
+1.6.218: High stickman shadows project actual pose-renderer alpha using one reusable mask; no oval fallback, pixel readback or blur. Verify dense-scene cost in playtest.
+
+1.6.219: emoji ground shadows share stickman projection. Keep glyph cache bounded at 64 masks; use no readback/blur. Flags, barricades and cat/skeleton companions also use their actual silhouettes, not oval substitutes.
+
+1.6.220: preserve the owner-requested hidden Stealth wave-10 Santa challenge and permanent Ninja unlock. Run mode is captured on first wave start and saved. Match wave-100 Santa scaling without forced death or invulnerability; preserve small-to-big dispatch. Only a marked challenge Santa grants Ninja; reset the mark on pooled spawn. Resolve victory after death handling. Either post-encounter consent action records the choice and reloads; never enable analytics on decline. An unfinished wave-10 save retries from wave 9. Ninja alternates actual hand origins, uses STAR ammo and the existing bounded pools, remains fastest through round buffs, and retains a ranged blind spot. Test registration, Build/save/unlock, pool exhaustion and both outcome/consent paths. Challenge feasibility and device/audio quality require playtesting, not assertions.
+
+1.6.221: the last escaped enemy dying between waves emits one all-clear cue, via the existing voice budget. Do not add another frame scan or duplicate active-wave clear audio. Retain full save/load continuity for permanent Ninja, loose ordinary items/coins and explicit Stealth mode; inactive coin/death retries must not repay or replay. Native-canvas/mocked-DOM checks are not a substitute for physical-device FPS and audio listening.
+
+1.7.1: milestone rewards occur at completed wave 3 and every tenth wave. Preserve seeded distinct offers, exactly one claim, close-and-decide-later access and notification-disabled access. Run blessings add effective stats through runBoonCounts, separately from Shop pricing/globalPassiveCounts and trained-stat unlock totals. Validate/restore canonical pending IDs and reached milestones; older saves must not create retroactive rewards. Bound pending offers at eight and bank overflow as supplies. Use the existing detail dialog and its pause ownership; never resume a manually paused game. Add no frame scans, combat effects or runtime dependencies for choices. Keep the complete historical changelog plus concise release handoff context for a fresh agent. Automated/native-canvas tests are not device FPS or audio audition.
+
+- Global pause/resume keyboard shortcuts must ignore open native dialogs and editable INPUT/TEXTAREA/SELECT/contenteditable controls. Notification/reward dialog close handlers retain pause ownership; typing, arrow keys or confirming a reward must never resume combat behind a modal.
+
+- Milestone reward controls must support native button click activation (mouse/touch/Enter/Space) without a pointerdown duplicate claim. Show current Supply/Recovery benefit inside the popup, not only hover tooltips; previews and claims must share healing eligibility and caps. Recovery excludes inactive, zero-HP and downed fighters and barricades. Claimed Supply/Recovery notification details record actual delivered amounts.
+
+- Global gameplay shortcuts must defer to focused BUTTON/A/role=button controls so native Space/Enter activation works without pausing or resuming combat first. Held stat allocation must stop on blur, tab hiding or detailed notification/reward opening; queued callbacks must reject hidden-document work. Manual-pause stat allocation remains supported. Test keyboard default-event eligibility separately from direct click dispatch.
+
+- Notification bell/reward controls belong in the top HUD immediately left of Build and share its fit transform; list/toast stacks sit below the rendered HUD and first-play hand cues. Build and notification history close each other when opened. Use canvas-frame dimensions, border-box widths and remaining-height scroll bounds. Reposition on real size/cue changes with cached signatures; never add layout reads to every gameplay frame or cover Build with notification controls.

@@ -1,7 +1,7 @@
 {
   "name": "StickTD — Stick Tower Defense",
   "short_name": "StickTD",
-  "description": "A free browser-based Stick Tower Defense game with evolving towers, endless waves, and stylized forensic-inspired combat evidence effects.",
+  "description": "A free browser tower defense game. Build stickman towers, grow a winding battlefield, and face 100 waves before endless play.",
   "start_url": "https://sauerninja.github.io/StickTD/",
   "scope": "https://sauerninja.github.io/StickTD/",
   "display": "standalone",
