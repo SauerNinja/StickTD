@@ -2,9 +2,11 @@
 
 A free browser tower defense game by SauerNinja.
 
+Living peaceful animals can reproduce as the map expands, letting you keep a small farm.
+
 The road keeps growing. Build your defense, train the stickmen who hold it, and make room for the next wave. Clear 100 waves to reach endless play.
 
-**[Play StickTD](https://sauerninja.github.io/StickTD/)** · [Source on GitHub](https://github.com/SauerNinja/StickTD) · [Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)
+**[Play StickTD](https://sauerninja.github.io/StickTD/)** · [Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)
 
 ![Stick Tower Defense gameplay](og-image.png)
 
@@ -122,7 +124,7 @@ Build a defense from classes with complementary strengths. Training and wave mil
 | ⚜️ Paladin | Holy attacks that cut through armor |
 | 🔫 Gatling | Rapid fire for clearing groups |
 | 🔪 Crazy Chef | Strength-driven kitchen knife thrower |
-| 🥷 Ninja | Alternating throwing stars, rapid sustained attacks and a close-range blind spot; earned through a hidden challenge |
+| 🥷 Ninja | Alternating throwing stars, rapid sustained attacks and point-blank targeting; earned through a hidden challenge |
 | 🎯 Blowdart | Fast darts that poison targets |
 | 🔫 Dual Squirt Gun | Dual-wielded elemental fire |
 | ♨️ Blow Gunner | Combines poison and chilling effects |

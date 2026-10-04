@@ -8,6 +8,115 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## 1.7.35 notification acceptance
+
+- *Play-test*: verify history and transient notification left edges align with the bell on narrow phones and embedded previews, including resize, reward button visibility and onboarding guidance. Keep all panels inside the viewport and preserve mutual exclusion with Build.
+
+## 1.7.34 real-device acceptance
+
+- *Play-test*: load the delivered index at high quality on desktop and low quality on mobile. Verify flags, every available fighter, companions and crate/scenery silhouettes. The prior emoji ReferenceError is repaired and the native canvas full-page fixture passes; real browser/device acceptance remains required.
+- *Play-test*: finish a wave with Tennis Shoes while below the move-charge cap; verify the extra-move cue appears and no exception occurs.
+- *Play-test*: listen to full planning/combat cycles with SFX active, on phone speakers and headphones. Assess the warmer keys and FM bass, melody memorability, fatigue, bass clarity and immediate wave-start fade. Offline finite-output/voice-cap checks pass; no subjective listening or whole-mix loudness claim.
+- *Play-test*: retain first-five-minute FPS/frame pacing, mobile popup/options layout, two-ended grass-spaced expansion and all previous acceptance items. No fixture establishes lag-free behavior on every device.
+
+## 1.7.33 shop acceptance
+
+- **Play-test:** compare main Shop and empty-slot shortcut without/with a Merchant, including paused use. Down the Merchant with a shop open; old cards must deny without spending.
+- **Play-test:** change selected unit or mutate inventory while a shop control is retained; stale equipment/Remove must refresh without affecting the wrong unit/item. Valid equipment, medical/passive and removal behavior should be unchanged.
+
+
+## 1.7.32 input acceptance
+
+- **Play-test:** interrupt ground/inventory drags and camera pinch/pan with tab switching, app switching or lost touch capture; verify no lingering item ghost, unintended tap or duplicate payment and that the next gesture works. Items already removed from inventory stay on the ground if interrupted.
+- **Play-test:** confirm touch pickup target size after zoom, resize and rotation. Event-source fixtures passed; real browser interruptions and device frame pacing remain unmeasured.
+
+
+## 1.7.31 follow-up acceptance
+
+- **Play-test:** verify coin arrivals follow the HUD on resize/rotation and counted overflow remains readable; device frame-time improvement is not measured.
+- **Play-test:** verify Settings release notes start at the uploaded version after refreshing both index and changelog. Help, stat tooltips and the downloaded in-game README now describe current rules; translations/localization are not implemented.
+- **Owner decision:** current code has rapid killstreak milestones at 100–1,000. Older requested lifetime-kill milestones at 1,000–1,000,000 are a different progression design, not implemented by this documentation repair. Resolve design before changing combat/rewards.
+
+
+## 1.7.30 play-test acceptance
+
+- **Play-test:** verify notification details below the bell on portrait/landscape and desktop; confirm keyboard close and prior pause state restoration.
+- **Play-test:** compare bone glyphs before/after nearby deaths; verify white light remains compact with a 20% core increase and subtle breathing halo.
+- **Play-test:** check smooth enemy stride at 1x/2x, corners, breakaways and after pause; rendering interpolation cannot guarantee smoothness under actual frame stalls.
+- **Play-test:** confirm enemy/bag pickup and expiry flights reach the gold HUD without duplicate income; crowded bursts coalesce within 32 visual slots. Paused collections retain flights until resume; reduced motion intentionally suppresses travel.
+- **Play-test:** inspect compact crate/shadow and free item drops between adjacent fighters. Validate revised ordinary loose-coin/bag balance over real runs.
+
+
+## 1.7.29 scenery acceptance
+
+- **Play-test:** Check a fresh pre-wave expansion and an older empty expanded save: trees/rocks can now occupy reserved future exits, while towers cannot. Scenery on subsequently committed path tiles is removed through existing cleanup.
+- **Play-test:** Confirm no scenery replacement on populated/harvested saves; preserve the clean unexpanded opening. Check endpoint visual density and remaining build space on small maps. Individual tree/rock counts remain randomized.
+
+## 1.7.28 history audit and acceptance
+
+- **Play-test:** Compact white Mage staff light at High/Low, close zoom and silhouette shadows; the rainbow pinwheel is intentionally removed by the latest owner decision.
+- **Play-test:** Hut candidates on inward newly revealed land; retain tree/hut spacing, endpoint eligibility and finish-approach exclusion.
+- **Ready / Design pass:** Exactly one successful event per endpoint remains a specification gap. A distinct persisted once-per-wave Lost Bag and proposed +2 Stick item remain unbuilt; existing bags, death loot, Lucky Branch, Cat Snapper, chain lightning and Lancer are implemented. Do not duplicate them based on old notes.
+- **Evidence first:** Ground-item cap is soft when every item is protected from eviction. Design safe spawn failure/deferral across all callers before hard-capping; never destroy protected map pickups or return null to unchecked callers.
+- **Review coverage:** All 98 checkout-ref commits were screened; 47 absent historical function names reconciled with current replacements/intended removals in CHANGELOG [1.7.28]. This is broader source review, not proof of zero semantic regressions or physical-device acceptance. Do not claim every patch line was manually proven correct.
+
+## 1.7.27 acceptance checks
+
+- **Play-test:** Expand before starting wave 1 and verify trees/rocks appear with their existing sizes/shadows; keep the initial two build spaces usable. Follow a turning route that opens grass inside its old bounding rectangle and confirm scenery/flora populate newly revealed land without covering towers or path.
+
+## 1.7.26 acceptance checks
+
+- **Play-test:** While paused, drag an inventory item onto the ground and another fighter, cancel a touch drag, and use a bag/healing item. Check item preview, completed drop and HUD update immediately while combat stays paused.
+
+## 1.7.25 acceptance checks
+
+- **Play-test:** Fast item release away from a fighter, canceled touch gestures, and slot changes/source death during a pending press. Verify inventory transfers and quick use still feel immediate.
+
+## 1.7.24 acceptance checks
+
+- **Play-test:** Drop an item in the gap between adjacent fighters, then directly onto each fighter, at desktop zoom and on phone. The shared 16-pixel capture radius should leave the gap free while retaining intentional equip and full-inventory rejection.
+
+## 1.7.23 acceptance checks
+
+- **Play-test:** Listen to the immediate idle-to-wave fade with wave-start/threat sounds, mute/pause and escaped enemies still fighting. Evaluate the retained original score and quiet brass planning answer against the owner's desired StickTD identity; complete reference audition before claiming it was done.
+- **Play-test:** Confirm compact quick-item taps/drags on phone, with six items and expanded inventory. Verify zero-cost plant hover is silent and paid scenery retains its price.
+- **Play-test:** Check landed barricade rubble during zoom/pan and late-life expiry; verify bones/skulls remain visible with gore enabled, without reintroducing expensive per-frame cache rebuilds.
+- **Play-test:** Keep living animal farms through expand/save/reload; verify newborns do not cascade and eight-animal cap is suitable for play. Historical-save and overlapping restored livestock acceptance need real fixtures.
+- **Evidence first:** Supply a saved layout if an endpoint is already sealed. New expansions are atomic and free on rejection, but legacy route/tower relocation and finite-world exhaustion are not solved by this change.
+
+## Current chat reconciliation — 2026-10-04, upload candidate 1.7.30
+
+1.7.20 added a compact rainbow Mage orb (superseded by the owner’s white-light correction in 1.7.28), glyph-descent shadow anchors, placement models/denial, rendered aim smoothing, bounded positioned-gold-to-HUD flights, quiet pointer-stage cues, one visible plant and varied endpoint growth. Test on desktop/mobile; old crowded saves are preserved. Flights credit immediately and are cosmetic; other gold sources keep prior feedback. Pointer/plant sentence was interpreted as accompanying audio plus fewer plants.
+
+1.7.21 removes plant FREE labels and inspect horizontal scrolling, rejects full-inventory drops with buzzer/nearby hop, keeps settings tabs one row and moves debug/camera/tips to Game. High retains the compact Mage glow under load and continuous moving-unit coordinates. Full interpolation/frame pacing and narrow/long-value layout acceptance remain pending. Owner likes the DOS music direction; preserve it.
+
+1.7.22 restores selected gold tactical reach/orange target splash and removes ranged minimum exclusions by owner decision. Pins clear on real death/pool reuse; resolved death guards and stale-target rejection preserve one killer/payment and fractional assists. Coin Pouch scenery uses 💰. Both scores get recurring original pitch motifs and distinct short menu pairs; blood retains species colour across live/baked rendering. Actual-source/native audio lifecycle, combat, cue/scope and historical performance fixture tests pass; physical browser/audio/FPS acceptance remains open. History/changelog were indexed and relevant subsystem deltas traced, not every historical line proven correct.
+
+Code presence is not physical-browser acceptance. GitHub main remains 1.7.7 at the 2026-10-04 check; recent desktop preview screenshots show 1.7.19. Match each report to its own version.
+
+Outstanding implementation/design:
+- Endpoint events are partial: randomEventEndTileKeys uses alternating ends and route distance 3–5, with two event slots. Chance/placement failures can yield fewer events; exactly one successful event per end is not guaranteed. Previous review saying all endpoint placement was absent was too broad.
+- New paths preserve spacing and reserve exits; sealed/crowded legacy paths are not repaired. Rejecting a cramped branch does not guarantee growth at both ends indefinitely. World bounds are finite. Do not delete/move existing towers or relax grass gaps to force a repair.
+- Whole-game measured balance remains incomplete: class/enemy matchups, first-five-minute economy, present/gold flow, 1x engagement, boon progression and Stealth Santa/Ninja challenge difficulty require gameplay evidence.
+- Audio proposals remain: adaptive boss/end scoring, material-specific impacts, additional Bomber/Sniper envelopes and named palettes. Voice stealing/worklets/persistent oscillators are optional evidence-led proposals, not automatically required omissions.
+
+Implemented; acceptance still needed:
+- First fighter → Next Wave pointer → first-wave speed pointer → saved dismissal; scope expiry/inventory guard; fixed Sell/Move/help row; attacker priority and breakaway explanation; title-only notifications/detail popups; removed category controls/welcome notice; bell left of Build and reciprocal closing.
+- Pulsing loot gradients, expired coin credit, original synthesized bag/coin cues and bounded rewards; five-minute collectable logs; pickup/pan separation; render scale.
+- Stealth choice, hidden wave-10 Santa using wave-100 strength, secretly beatable encounter, permanent fastest dual-hand Ninja and both-choice reset. Browser reload/consent behaviour and challenge balance need acceptance.
+- High stickman/emoji silhouette shadows and drag shadows; enemy detail emoji/red border and stat/XP/weight labels; two-ended growth, finish-carpet cleanup, grass spacing, desktop inspect scaling and compact mobile debug. Old crowded route/scenery arrangements are not retroactively fixed.
+- GPU-renderer-based default High, saved preference precedence and rich truthful diagnostics. True 1 GiB VRAM gating, exact CPU model and SSD/HDD identity are unavailable through standard browser APIs; do not invent them.
+- Distinct planning/battle music, lower-register planning replies and phrase-dependent battle bass (1.7.17), reed sustain/filter articulation (1.7.18), recurring planning motif variations (1.7.19), default 100% with saved preferences, combat through escapees, original arrangement/expression passes, voice bounds, grouped effects, subtle miss cue and positional Y forwarding. Actual mix, mono/phone clarity and fatigue need listening.
+- Attract-line fix repaints uncovered drift edges; the exact cyan phone line has not been reproduced/confirmed resolved. Responsive layout still needs Android orientation, zoom, long stat values and target-panel positioning checks.
+
+1.7.16 skips unused desktop telemetry work on compact debug refreshes and fixes visible-row backdrop widths. Device performance remains unmeasured.
+
+Primary unresolved quality goals:
+- Phone rendering: supplied screenshots report about 23–30 FPS with render time dominating. Five-minute frame pacing, death spikes, long-session memory and High silhouette cost remain unmeasured on target devices. No zero-lag guarantee.
+- MIDI structure was analysed; every supplied song was not auditioned. Text/reference reviews do not prove every newly supplied textbook was read cover to cover. Complete listening/full-source coverage remain unfinished.
+- Top-100 quality, addictive first minute, zero regressions and mastered audio are goals, not test results. Do not substitute more speculative content for validating completed fixes.
+- Keep the seven cumulative upload files, detailed UTC changelog, time-neutral README and untouched favicon/OG/references. No private tests/ZIPs in upload delivery. Owner uploads manually.
+
 ## 1. Owner setup — one-time clicks outside the game (Google Analytics, Search Console, GitHub)
 
 None of this is done by the game or by an agent; tick items off as they are finished. Counts in Analytics include only visitors who accept analytics consent; visitors who decline or do not choose are not tracked, so totals are a floor.
@@ -87,10 +196,10 @@ Earlier captures showed short measured JavaScript phases alongside long frame ga
 - **Druid class.** A DEX-Mage with three switchable forms: Wolf Paws (default, rapid double-swing melee, short range), Bear Paws (single huge alternating-claw swing, short-range AoE, massive per-target damage, very slow) and Squid Tentacles (largest AoE, hits up to four random targets, lowest per-target damage). Full spec in the git history of this file.
 - **STR-Mage chain (original idea, unbuilt).** What shipped is different: Necromancer is a single-tier INT-scaled Mage specialization with a skeleton-raising mechanic, not the original three-tier chain. The unbuilt original was Mage grown STR-heavy to Rogue Sorcerer, Crazy Wizard, then Necromancer with an AoE finisher dealing 1-10% of the caster's own max HP per cast, a 120 s cooldown shared by every class with the ability, locked out below 10% HP. It would be the first deliberate exception to archetype-exclusive damage (only STR drives Warrior damage, only INT drives Mage damage), so it needs an explicit design decision.
 - **Warrior tree restructure (narrowed).** The additive half shipped: Axeman to Berserker and Spearman to Lancer, so every Swordsman branch has a second tier (Axeman was never renamed "Knight Errant"). Still unbuilt: a Hammerman that invests DEX, instead of continuing toward Paladin's INT path, branches into a distinct dual-wield class. That restructures an already-shipped part of the tree, with save-compatibility and balance risk. Overlaps the unlock-tree decision in section 2.
-- **Spearman rework.** Longer spear and a 360-degree spin attack hitting everything in its AoE, with a longer cooldown. Second-tier branches beyond Blowdart to Squirt Gun and Hammerman to Paladin do not exist for Spearman and Gatling.
+- **Spearman rework.** Longer spear and a 360-degree spin attack hitting everything in its AoE, with a longer cooldown. Spearman already has the Lancer second tier; do not treat that branch as unbuilt. The proposed spin attack is separate from that existing evolution.
 - **Dual-wield attack timing (Design pass).** Main hand connects, then the off hand a beat later, then a recharge about 2.5x the time both hits took. Affects Axeman, dual-wield Swordsman and Squirt Gun; needs each class's swing-timing state machine traced first.
 - **Boss signature move.** The boss is a stat-scaled Grunt-alike with periodic minions; a unique attack pattern was never built.
-- **Dota-style item economy, rest of it.** On-death item drops, and a Merchant gated behind wave 5 (a Merchant tower exists; check what remains before building).
+- **Dota-style item economy (Owner decision / Design pass).** On-death item drops and Merchant are implemented. Current Merchant unlock is after wave 15; the older wave-5 idea differs. Decide that gate and any further economy scope before changing it.
 - **Dwarf Builder NPC.** Hammerman-proportioned, bright orange, wobble-walk animation, plus much stronger scenery scale variance after wave 3 with isometric depth-sorted overlap for oversized trees and boulders (scenery size gradient exists; check what remains).
 - **Floating nametags and a minimap.** A WC3/WoW-style nametag above every tower (name, level, HP bar) and a radar-style overview of the whole map; the bottom panel covers the nametag's function today.
 - **Progression ideas from the wave-architecture handoff.** Apprentice catch-up (+50% assist XP below 25% of the leader); milestone reward choices every 10 waves; "Danger Contract" opt-in difficulty; melee and beam committed-damage tracking (projectiles only today); an explicit overkill column in the post-wave report; mid-wave save of the wave plan and dispatch cursor (saves between waves only today); watch the two-rolls-per-bar training in real play and add a diminishing effective-investment formula if late combat balloons.
@@ -109,7 +218,7 @@ Earlier captures showed short measured JavaScript phases alongside long frame ga
 
 Reference: the uploaded game-audio books as first-tier principles, `index.html` as the implementation authority. The initial score and independent music/effects controls shipped in 1.6.163; the remaining items need listening evidence or a measured use case.
 
-- **Complete world-Y audio forwarding (Ready).** Two-axis camera attenuation shipped in 1.6.206 for callers supplying Y. Audit remaining positional callers before extending; do not duplicate the attenuation system.
+- **World-Y attenuation acceptance (Play-test).** Missing positional callers forwarded in 1.7.15; confirm vertical camera attenuation on real speakers. Keep UI feedback nonpositional.
 - **Voice intelligence (Evidence first).** Important-event classification and four reserved slots shipped in 1.6.206. Voice stealing and richer per-family tiers remain optional follow-ups if essential cues are audibly lost.
 - **Audio subgroup acceptance (Play-test).** Combat and feedback buses shipped in 1.6.206. Verify cue clarity and ducking by listening; add no additional buses without a demonstrated mix need.
 - **Procedural impact model prototype.** Impulse plus resonant response for two cases only (blade on hard target, hammer on heavy target), compared against the current sound in real combat and dropped if worse.

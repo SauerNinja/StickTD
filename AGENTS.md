@@ -5,6 +5,18 @@ to do and how; Part 2 (below the standing rules and sections 0-8) holds the deta
 rationale, historical lessons and best-practice notes. Read Part 1 every session; open the Part 2
 section for a subsystem only when it is actually relevant.
 
+## Current owner decisions — 1.7.30 handoff
+
+These rules supersede older conflicting historical notes. Scenery uses isSceneryTileAvailable, not tower exit reservations; tower construction must still reserve future exits. Restored empty expanded maps may receive endpoint scenery only when no trees/rocks and no harvesting history exist, after tower restoration and before map rebake. Clear the per-run endpoint guard cache on restore. Mage staff light is compact WHITE with soft white falloff; the owner rejected the rainbow pinwheel, superseding the earlier rainbow request. Hut placement consumes actual latestExpansionTiles, including inward revealed land. The full-history symbol reconciliation and real unfinished specifications are recorded in CHANGELOG [1.7.28]; absence of an old function name is not proof of a removed feature. The unexpanded starting footprint remains clean, but completed expansions may spawn trees/rocks even before wave 1. Scenery and flora must use actual reveal keys so inward corridor grass is not mistaken for previously populated land; latestExpansionTiles uses those keys too. Paused item interactions request a single coalesced redraw with dirty HUD flushing before render; do not restore stale visuals or turn this into a continuous paused simulation/render loop. Resolve dragged release coordinates from pointerup using the same placement helper as pointermove. Inventory gestures must retain exact item identity and validate the living source before mutation/use. Item dragging uses itemDropTargetAt and a shared 16-world-pixel radius for preview, highlight and release; preserve the ground-placement gap between adjacent fighters instead of restoring broad magnetic capture. Accepted expansion must grow BOTH flag/start and finish ends with grass spacing and reachable exits. Validate before state/event-budget changes or charging; fail without payment/item consumption on blocked finite/legacy layouts. Do not restore a one-sided fallback.
+
+Latest owner direction (1.7.30) supersedes the bag-only policy: collected/expired non-diamond coins, bag payouts and automatic enemy gold income all launch gold HUD flights. Payments remain immediate and exactly once; animations never award a second payment. Use bounded pooled/coalesced visuals and respect reduced motion. Reset and save the pooled coin origin flag. Keep the compact consumable quick row inside the inspector's scrolling/clipping box. Do not display zero-cost scenery hover prices.
+
+Maintain decal promotion before drawing the baked layer. Landed barricade rubble stays on the ground/cache layer; bones/skulls retain visible existing rendering. Preserve bounded rebuild/expiry work. Enemy breakaway uses a short reduced-motion-aware enrage cue rather than floating text; clear its timestamp on pooled spawn.
+
+Wave-start music fading follows the roundStart cue synchronously; ducking must not cancel its 320-ms envelope. Keep audio-clock scheduling and voice caps. Farms breed only live peaceful pre-existing parents, at most two births per completed expansion and eight total animals; newborns cannot recursively breed. Preserve optional validated livestock saves.
+
+See CHANGELOG.md [1.7.23] for implementation evidence and playtest limits. The seven-file upload candidate is cumulative over GitHub 1.7.7; do not discard it just because main is older. Real device FPS, listening and mobile interaction acceptance remain open.
+
 ## 0. Get oriented from GitHub, not from an uploaded file
 
 `github.com/SauerNinja/StickTD`, `main` branch, is the authoritative source for this project —
@@ -80,6 +92,17 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   it back in one sentence and get an explicit yes before writing any code toward it.
 
 ## Release safeguards
+
+- 1.7.22 owner decision supersedes historical ranged blind spots: all fighters can target at point blank. Selected tactical reach is a gold dashed outline, with orange splash footprint at the living target where applicable; keep enemy white halos disabled. Clear manual pins on actual death and pool reuse. Reset deathResolved on spawn, commit it after revival before death side effects, and reject repeat damage/death calls. Preserve one killer and fractional assists.
+- Live and baked blood decals share the species-preserving drying curve. Keep crit/HP volume, weapon direction, gore toggle, bounded pools and incremental baking; do not add particles to improve realism. Coin Pouch scenery uses 💰, never the obscure 🪎 glyph. Original menu cues and recurring music identity retain source budgets, clock scheduling and node cleanup.
+
+- Potted plants have no FREE hover label; harvesting stays free. Full-inventory item drops buzz and pop the existing item nearby without losing or duplicating equipment. Gold/expansion pickups keep their independent action paths.
+- Settings tabs stay in one row, with narrow-screen horizontal access and hidden tab scrollbar. Debug overlay, camera-pan and first-tip controls belong in Game. Keep inspect vertical scrolling but no horizontal scrollbar; verify long values rather than merely clipping them.
+- Keep the small Mage glow stable in High, excluding preview/shadow passes. Continuous High moving-unit coordinates must not change simulation, aim or hit testing; Low keeps its inexpensive path. Preserve the owner-approved DOS musical direction.
+
+- Placement mode must deny occupied tower/scenery tiles without selecting, clearing or cancelling the chosen build type. Native model previews use neutral complete appearance fields and never create a simulated tower.
+- Keep Mage orb compact; rainbow facets obey reduced motion and cosmetic glow is excluded from physical silhouette masks. Rendered aim smoothing must never change attack direction, hit tests or projectile aim; retain active swing angles and reset pooled visual state.
+- Gold-to-HUD flights are cosmetic: credit once through existing reward logic immediately. Keep the 12-record/520 ms/80 ms launch bounds, no per-frame DOM measurements, reduced-motion suppression, empty exits and fresh-run reset. New plants cap at one currently present; preserve old save contents.
 
 - Sweep presentation-clock death animations once in `updatePresentationEffects()`, not on every fixed simulation tick. Preserve expiry boundaries and pooled-record order; new deaths within a frame have age zero.
 
@@ -992,3 +1015,39 @@ Device diagnostics must label browser estimates/limits. Reuse cached GPU probe; 
 - Global gameplay shortcuts must defer to focused BUTTON/A/role=button controls so native Space/Enter activation works without pausing or resuming combat first. Held stat allocation must stop on blur, tab hiding or detailed notification/reward opening; queued callbacks must reject hidden-document work. Manual-pause stat allocation remains supported. Test keyboard default-event eligibility separately from direct click dispatch.
 
 - Notification bell/reward controls belong in the top HUD immediately left of Build and share its fit transform; list/toast stacks sit below the rendered HUD and first-play hand cues. Build and notification history close each other when opened. Use canvas-frame dimensions, border-box widths and remaining-height scroll bounds. Reposition on real size/cue changes with cached signatures; never add layout reads to every gameplay frame or cover Build with notification controls.
+
+
+### Endpoint exit and inspect scaling (1.7.9)
+Expansion must preserve an unoccupied escape route from both termini to world boundary. Keep shared buildability exclusion for the reserved exits; do not solve blocked exits by deleting or moving existing towers. Finite world exhaustion and sealed legacy saves remain explicit limits. Inspect panel scales at desktop width/height breakpoints; measure its transformed rectangle for target-panel placement and keep short-screen overflow scrolling.
+
+
+### Green route spacing (1.7.12)
+Two-ended growth must consult routeSpacingViolationCount for every prospective extension and introduce no new contacts between nonlocal route cells. Keep normal consecutive road/corner connections and the one-tile surrounding grass painter. Preserve old-save geometry rather than rerouting units or deleting towers. Reject a cramped branch; never relax spacing to force expansion.
+
+### 1.7.30 visual and interaction continuity
+
+Notification details remain native accessible dialogs with pause/resume, but anchor beneath the bell and clamp to the visible viewport. Do not center them again. SUPPLY_CRATE visual scale is capped at 0.68, including hit testing/depth/shadow; saved yield/cost/scale data is unchanged. Bones explicitly set white glyph fill instead of inheriting blood color. Keep the Mage core white, 20% larger with a restrained breathing halo. Remove “drag to move” copy. Empty ground never magnetizes to tile centers during item dragging; valid ground keeps its free coordinates, invalid ground keeps the last valid drag point. The 16-world-pixel unit snap rule remains. Enemy movement uses render-only previous-tick snapshots and fractional coordinates at both graphics settings; collision prevX/prevY and combat timing remain independent. Ordinary enemy bonus loose coin chance is 15% (1–3 gold); random whole bag chance is 1/500. Keep dedicated Troll/Large/livestock payouts unchanged.
+
+### 1.7.31 explanation and flight maintenance
+
+Coin flight admission must not measure DOM layout. Measure the live gold HUD destination once per active draw after HUD flush; use getCanvasRect and initialize launch viewport dimensions on every pooled-slot reuse. Preserve bounded visuals and immediate exact payment. No idle measurement/continuous paused loop.
+
+Keep Help, inspector tooltips and exported in-game README aligned with recomputeStats, TRAINING_BAR_ROLLS, training/mastery thresholds, MAX_ITEM_SLOTS and BARRICADE_HIT_INTERVAL_MS. Do not restore old +6 INT range, 100-stat naming, four-slot Hero, one-point training or two-second barricade claims. Current 100–1,000 killstreak milestones are documented, not a shipped lifetime-kill redesign. Changelog parser must accept ASCII/en/em dashes and UTC suffixes used in the delivered file.
+
+### 1.7.32 interrupted input
+
+Keep cancelPointerGesture on blur, hidden-document transitions and unexpected canvas capture loss. Clear state before releasing captures; normal completed pointerup must not trigger cancellation side effects. Cancellation clears input/overlay/inertia only: no tap, use, equip, payment or new item. Inventory items already dragged out remain as their existing ground item. Reuse the coalesced paused redraw and cached canvas rectangle for touch pickup size.
+
+### 1.7.33 shop safety
+
+Route every Shop entrance through guarded openShopModal/requireShopAccess. Preserve the existing living-Merchant rule and valid paused shopping. Shop buttons recheck access at activation; equipment targets retain exact active selected tower identity, and Remove retains exact item/slot identity. Stale controls refresh without spending/removing. Do not add Merchant guards to ordinary receiveItem, starter equipment or ground drag paths.
+
+### 1.7.34 startup and sound handoff
+
+Crate-specific shadow transforms belong only in drawEmojiGroundShadow. Never globally replace shared transform expressions: drawFinishFlagPole, drawStickmanGroundShadow and drawCompanionGroundShadow have no emoji variable. Include high-quality full-page rendering when reviewing shadow changes; isolated snippets missed this regression. Bind DOM controls explicitly rather than relying on element-ID globals. Tennis Shoes wave-clear text uses inverse camera coordinates and CANVAS_W, not an undefined viewWidth. Ninja has an intentional 230 range cap; the validator now accepts that existing value.
+
+FM keys and bass each allocate two oscillators. Preserve the six-voice music limit and count modulators. New PDF review covers all 15 sheets/58 printed pages; its proposals must be compared with actual code before being described as missing features. Retain the shared motif and separate planning/combat roles, protected start-wave envelope and node cleanup. Offline PCM checks validate finite output/voice bounds, not listening or device performance. See CHANGELOG [1.7.34] for exact evidence and the owned startup regression.
+
+### 1.7.35 notification alignment
+
+Notification panel/stack left position is measured from the bell box relative to canvas-frame; width must account for that inset. Do not restore a fixed eight-pixel left edge or onboarding-finger vertical spacer. Refresh on panel open, preserve cached layout updates and build/history mutual exclusion.

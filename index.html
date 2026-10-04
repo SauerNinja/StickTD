@@ -54,7 +54,7 @@
 <!-- Analytics is loaded only after the player grants consent. -->
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+  function gtag(){window.dataLayer.push(arguments);}
   // CA001 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA001
   gtag('consent', 'default', {
     'analytics_storage': 'denied',
@@ -240,14 +240,14 @@
   .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
     border-radius:50%;background:var(--danger);box-shadow:0 0 4px var(--danger);}
 
-  #notification-popups{position:absolute;top:var(--notification-content-top,100px);left:8px;box-sizing:border-box;width:min(350px,calc(100% - 16px));max-height:max(0px,min(52vh,440px,calc(100% - var(--notification-content-top,100px) - 8px)));display:flex;flex-direction:column;gap:6px;overflow:auto;z-index:9;pointer-events:none;}
+  #notification-popups{position:absolute;top:var(--notification-content-top,100px);left:var(--notification-content-left,8px);box-sizing:border-box;width:min(350px,calc(100% - var(--notification-content-left,8px) - 8px));max-height:max(0px,min(52vh,440px,calc(100% - var(--notification-content-top,100px) - 8px)));display:flex;flex-direction:column;gap:6px;overflow:auto;z-index:9;pointer-events:none;}
   #unlock-toast{display:none;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid var(--gold);border-radius:8px;
     padding:8px 12px;color:var(--paper);font-weight:bold;font-size:clamp(11px,1.8vw,14px);text-align:left;}
   #unlock-toast.show{display:block;pointer-events:auto;cursor:pointer;}
   #notification-bell{position:relative;display:flex;align-items:center;flex:none;pointer-events:auto;}
   #notification-bell button{background:rgba(40,33,24,0.92);color:var(--paper);border:1px solid var(--gold);border-radius:8px;padding:6px 9px;min-height:38px;font:inherit;font-weight:bold;cursor:pointer;}
   #notification-badge{color:#ffe082;margin-left:3px;}
-  #notification-panel{position:absolute;top:var(--notification-content-top,100px);left:8px;box-sizing:border-box;width:min(330px,calc(100% - 16px));max-height:max(0px,min(55vh,420px,calc(100% - var(--notification-content-top,100px) - 8px)));overflow:auto;z-index:12;pointer-events:auto;background:rgba(25,22,18,0.97);border:1px solid var(--gold);border-radius:8px;padding:10px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,0.5);}
+  #notification-panel{position:absolute;top:var(--notification-content-top,100px);left:var(--notification-content-left,8px);box-sizing:border-box;width:min(330px,calc(100% - var(--notification-content-left,8px) - 8px));max-height:max(0px,min(55vh,420px,calc(100% - var(--notification-content-top,100px) - 8px)));overflow:auto;z-index:12;pointer-events:auto;background:rgba(25,22,18,0.97);border:1px solid var(--gold);border-radius:8px;padding:10px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,0.5);}
   #notification-panel.hidden{display:none;}
   #notification-list{list-style:none;margin:8px 0 0;padding:0;}
   #notification-list li{display:flex;gap:8px;align-items:flex-start;padding:7px 2px;border-top:1px solid rgba(255,255,255,0.12);font-size:13px;white-space:normal;}
@@ -332,7 +332,7 @@
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #settings-modal.hidden{display:none;}
   #settings-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
-    max-width:460px;width:100%;display:flex;flex-direction:column;overflow:hidden;}
+    max-width:700px;width:calc(100% - 20px);display:flex;flex-direction:column;overflow:hidden;}
   #settings-modal-header{display:flex;align-items:center;justify-content:space-between;
     padding:12px 14px;border-bottom:2px solid var(--wood-light);}
   #settings-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
@@ -348,9 +348,10 @@
   #itemCodexList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
   #itemCodexList li{background:rgba(0,0,0,0.25);border:1px solid var(--wood-light);border-radius:6px;padding:5px 8px;}
   #itemCodexList li.unseen{opacity:0.5;}
-  #settings-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
-  .settings-tab{background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
-    border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;min-height:36px;}
+  #settings-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
+  #settings-tabs::-webkit-scrollbar{display:none;}
+  .settings-tab{flex:0 0 auto;white-space:nowrap;background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
+    border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;min-height:44px;}
   .settings-tab.active{border-color:var(--gold);background:rgba(241,196,15,0.2);}
   /* fixed max-height: this is what guarantees expanding About content scrolls internally
      instead of resizing/reflowing the modal or anything behind it */
@@ -492,6 +493,10 @@
   #targetHpBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:0.58em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
   #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
+  #inspect-panel{transform-origin:bottom left;max-height:calc((100dvh - 100px)/var(--inspect-scale,1));overflow-y:auto;overflow-x:hidden;transform:scale(var(--inspect-scale,1));}
+  @media(min-width:1000px) and (min-height:650px){#inspect-panel{--inspect-scale:1.25;}}
+  @media(min-width:1600px) and (min-height:850px){#inspect-panel{--inspect-scale:1.5;}}
+  @media(min-width:2400px) and (min-height:1100px){#inspect-panel{--inspect-scale:1.8;}}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
   /* INSPECT-WRAP-01 (1.6.108): option rows wrap onto a second line at full text size instead of shrinking labels to fit one line.
@@ -627,8 +632,8 @@
   #inspItemsRow{flex-basis:100%;display:flex;flex-direction:column;gap:6px;
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
   #inspItemSlots{display:flex;flex-wrap:wrap;gap:6px;}
-  /* QUICK-USE-01 (1.6.134) — see CHANGELOG.md § [1.6.134]. Usable items float above the compact panel; only the slots that hold a consumable are shown, packed from the left. */
-  #inspQuickSlots{position:absolute;left:-2px;bottom:calc(100% + 6px);display:flex;gap:6px;padding:5px;
+  /* QUICK-USE-01 (1.6.134) — see CHANGELOG.md § [1.6.134]. Usable items sit inside the compact panel; only the slots that hold a consumable are shown, packed from the left. */
+  #inspQuickSlots{position:relative;display:flex;flex-wrap:wrap;gap:6px;padding:5px;margin-bottom:6px;max-width:100%;box-sizing:border-box;
     background:rgba(0,0,0,0.55);border:1px solid rgba(241,196,15,0.3);border-radius:7px;}
   #inspQuickSlots.hidden,.quick-slot.hidden{display:none;}
   .item-slot,.quick-slot{flex:0 0 auto;width:34px;height:34px;border-radius:5px;
@@ -679,12 +684,12 @@
   #buildBtnWrap{position:relative;display:flex;flex:none;}
   #speedBtnWrap{position:relative;display:inline-flex;}
   #nextWaveBtnWrap{position:relative;display:inline-flex;}
-  #first-speed-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:27px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85));animation:firstBuildHandBob 1.25s ease-in-out infinite;}
+  #first-speed-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:27px;line-height:1;pointer-events:none;animation:firstBuildHandBob 1.25s ease-in-out infinite;}
   #first-speed-hint.hidden{display:none;}
-  #first-next-wave-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:27px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85));animation:firstBuildHandBob 1.25s ease-in-out infinite;}
+  #first-next-wave-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:27px;line-height:1;pointer-events:none;animation:firstBuildHandBob 1.25s ease-in-out infinite;}
   #first-next-wave-hint.hidden{display:none;}
   @media (prefers-reduced-motion:reduce){#first-speed-hint,#first-next-wave-hint{animation:none;}}
-  #first-build-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:30px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85));animation:firstBuildHandBob 1.25s ease-in-out infinite;}
+  #first-build-hint{position:absolute;top:calc(100% + 1px);left:50%;z-index:7;transform:translateX(-50%);font-size:30px;line-height:1;pointer-events:none;animation:firstBuildHandBob 1.25s ease-in-out infinite;}
   #first-build-hint.hidden{display:none;}
   @keyframes firstBuildHandBob{0%,100%{margin-top:0;}50%{margin-top:-5px;}}
   @media (prefers-reduced-motion:reduce){#first-build-hint{animation:none;}}
@@ -731,7 +736,8 @@
   #inspAxeModeBtn{grid-column:1 / -1;grid-row:2;}
 
   #waveSummaryGold,#waveSummaryXpList,#newEnemyList{display:none;}
-  #notification-detail-popup{width:min(420px,calc(100vw - 32px));max-height:75vh;box-sizing:border-box;overflow:auto;background:#241b12;border:2px solid var(--detail-accent,var(--gold));border-radius:8px;color:var(--paper);padding:20px;}
+  #notification-detail-popup{
+  position:fixed;margin:0;left:12px;top:64px;width:min(420px,calc(100vw - 32px));max-height:75vh;box-sizing:border-box;overflow:auto;background:#241b12;border:2px solid var(--detail-accent,var(--gold));border-radius:8px;color:var(--paper);padding:20px;}
   #runRewardBtn{padding:7px 10px;border:1px solid var(--gold);border-radius:6px;background:var(--wood);color:var(--paper);font:inherit;cursor:pointer;margin-right:6px;}
   #runRewardBtn[hidden]{display:none;}
   .run-reward-choice{display:block;width:100%;text-align:left;background:#342719;color:var(--paper);border:1px solid #8c713f;border-radius:6px;padding:12px;margin-top:10px;font:inherit;cursor:pointer;}
@@ -805,7 +811,7 @@
     <p id="consentOpenSource">StickTD is
     <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener" onclick="if(window.trackEvent) window.trackEvent('outbound_click', {destination:'github'});">open source</a>.
     You can also inspect or build the game yourself.</p>
-    <div id="consentActions"><button id="consentAccept" type="button">🍪 Give Santa Cookies</button><button id="consentDecline" type="button">🥷 Play stealth</button></div>
+    <div id="consentActions"><button id="consentAccept" type="button">🍪 Give Santa Cookies</button><button id="consentDecline" type="button">🥷 Play Stealth</button></div>
   </div>
 </div>
 <script>
@@ -1080,9 +1086,6 @@
               </select>
             </label>
             <button type="button" id="settingsRenderScaleResetBtn" class="settings-inline-btn">Restore full resolution</button>
-            <label><input type="checkbox" id="settingsDebugToggle"> 🛠️ Debug overlay — FPS, entities, wave phase, version (default off)</label>
-            <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
-            <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
               <span>🩸 Max blood decals — higher looks better, costs more frame time in dense waves</span>
               <select id="settingsDecalBudget" style="margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
@@ -1111,6 +1114,10 @@
             <label><input type="checkbox" id="settingsMuteToggle"> Mute all sound</label>
           </div>
           <div class="settings-panel hidden" data-panel="game">
+            <label><input type="checkbox" id="settingsDebugToggle"> 🛠️ Debug overlay — FPS, entities, wave phase, version (default off)</label>
+            <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
+            <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
+
             <p id="analyticsConsentState">Analytics are off until you choose to allow them.</p>
             <button type="button" id="analyticsConsentBtn" class="settings-inline-btn">Review Analytics Choice</button>
             <label><input type="checkbox" id="settingsGoreToggle"> 🩸 Blood and gore effects (default on)</label>
@@ -1187,22 +1194,14 @@
         <h2>❓ How Everything Works</h2>
 
         <h3>⭐ Training and Promotion</h3>
-        <p>Each tower has a promotion Rank and a separate Training level. Gold promotions raise Rank; they do not replace the Training XP bar. Kills, killstreaks, promotions, and surviving a round can grant Training XP. Every completed 100 XP grants exactly 1 stat point.</p>
+        <p>Each tower has a promotion Rank and a separate Training level. Gold promotions raise Rank; they do not replace the Training XP bar. Kills, killstreaks, promotions, and surviving a round can grant Training XP. Each completed 100 XP bar rolls two lots of 1–3 spendable stat points, limited by remaining capacity. Promotions grant both automatic stat rolls and extra points for you to spend.</p>
 
         <h3>💪 Stats</h3>
-        <p><b>STR:</b> +3% max HP per point for everyone, plus +8% damage per point (scaling even
-        better at heavy investment) — but only for
-        <b>Warrior</b>-archetype towers. <br>
-        <b>DEX:</b> +3% attack speed, accuracy, and 💥 crit chance per
-        point for everyone, plus +6% damage per point — but only for <b>Archer</b>-style towers.<br>
-        <b>INT:</b> +6 range and 💥 crit damage multiplier per point for everyone, plus +6% damage
-        per point — but only for
-        <b>Mage</b>-archetype towers.<br>
-        Dota-style: each class only gets bonus damage from its own preferred stat, never from the
-        other two. Every 5 points invested, the next 5 are worth progressively less — heavy
-        investment in one stat is never worthless, just increasingly inefficient. Points come from
-        leveling up (see above), plus a little randomly whenever you spend gold to upgrade a
-        tower's tier.</p>
+        <p><b>STR:</b> grows health, weight and body size. Warrior classes also use it for direct damage.<br>
+        <b>DEX:</b> improves attack speed, accuracy and critical chance. Archer classes also use it for direct damage.<br>
+        <b>INT:</b> grows reach toward each class's range cap and increases critical damage. Mage classes also use it for direct damage.</p>
+        <p>Damage grows only from the class's preferred stat. Speed and critical bonuses have diminishing returns; equipment, class abilities and active buffs also affect the final numbers. Tap the DPS number for your selected unit's calculation.</p>
+        <p>Train up to 500 points in one stat and 1,000 combined. Equipment and passive bonuses are separate from those trained-point limits.</p>
 
         <h3>⚔️ Archetypes</h3>
         <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
@@ -1220,16 +1219,16 @@
         its hint.</p>
 
         <h3>🎒 Items & Heroes</h3>
-        <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 slots per tower — fill all 6 to awaken it as a Hero with a permanent bonus to every stat.</p>
+        <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 inventory slots per tower. Fill all 6 with equipment to awaken a Hero with a permanent bonus to every stat; consumables do not count toward that equipment requirement.</p>
 
-        <h3>🏆 100 Total Stats</h3>
-        <p>A tower that reaches 100 combined STR+DEX+INT becomes Legendary — you'll name it, and it permanently gains +10% size, +5% max HP, and +5% damage reduction.</p>
+        <h3>✒️ Naming &amp; Mastery</h3>
+        <p>At 500 combined trained stats, you can name your stickman. At 1,000, it earns a trophy and further XP converts to gold at 25 XP per coin.</p>
 
         <h3>🔥 Status Effects</h3>
         <p><b>Burn:</b> ticks 4% max HP damage every 0.5s. <b>Poison:</b> flat damage every 0.6s, strength set by the Blowdart that applied it. <b>Slow/Stun:</b> from Mage and Hammerman. <b>Shield:</b> absorbs a set amount of damage before HP is touched, regenerating over time when not hit.</p>
 
         <h3>⚡ Kill Streaks</h3>
-        <p>Kills within 1.2 seconds of each other build a streak — the same tower has to keep landing hits fast, or it resets. Every 10 kills in a row unlocks a tier, from Killing Spree up to Ascended at 100, each granting a bonus stat point.</p>
+        <p>The same stickman must keep landing kills within 1.2 seconds; a gap or another stickman taking the next kill resets the streak. Milestones run from Killing Spree at 100 kills to Ascended at 1,000 and grant a brief Bloodlust effect.</p>
 
         <h3>💀 Downed Towers</h3>
         <p>If a tower's HP hits 0, it's overrun and locked out of action for the next 2 full waves before recovering.</p>
@@ -1248,11 +1247,8 @@
         can still be picked back up (📦 Store) and re-placed or moved for free afterward, since
         it's already paid for.</p>
         <p>A Barricade's HP is its literal block-strength (shown as a fraction, e.g. 7/10) — it
-        only loses HP while something is actively pressed against it, at most 1 point every 2
-        seconds, so a single Barricade can hold a chokepoint for a long time before breaking.</p>
-        <p>The map starts small and expands ring by ring as you clear waves — at most one
-        expansion per round, plus a free one every few waves. The path is regenerated (and
-        re-checked against your existing towers) every time the map expands.</p>
+        loses at most 1 HP every 10 seconds, with the first point requiring a full contact interval. All attackers share that limit, so a Barricade can hold a chokepoint before breaking.</p>
+        <p>Each accepted expansion extends both ends of the existing path and reveals surrounding grass. Existing towers stay in place; blocked growth does not spend your expansion payment. Extra expansions wait for the next round.</p>
         <button id="barricade-help-modal-close">Got it</button>
       </div>
     </div>
@@ -1317,7 +1313,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.7'; // see CHANGELOG.md § [1.7.7]
+const GAME_VERSION = '1.7.35'; // see CHANGELOG.md § [1.7.35]
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1385,12 +1381,13 @@ function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX){
   if(!mask){
     mask=document.createElement('canvas'); mask.width=64; mask.height=64;
     const m=mask.getContext('2d'); m.font='40px '+(family || 'serif'); m.textAlign='center'; m.textBaseline='middle';
+    const descent=m.measureText(emoji).actualBoundingBoxDescent; mask.footRatio=Number.isFinite(descent) ? Math.max(0,descent)/40 : 0.45;
     m.fillText(emoji,32,32); m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,64,64);
     if(emojiShadowMasks.size>=64) emojiShadowMasks.delete(emojiShadowMasks.keys().next().value);
     emojiShadowMasks.set(key,mask);
   }
-  const factor=size/40,foot=size*0.45;
-  ctx.save(); ctx.globalAlpha*=0.24; ctx.translate(x,y+foot); ctx.transform(1,0,-0.55,0.34,0,0);
+  const factor=size/40,foot=size*mask.footRatio;
+  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+foot); ctx.transform(1,0,emoji==='📦' ? -0.28 : -0.55,emoji==='📦' ? 0.22 : 0.34,0,0);
   ctx.scale(stretchX || 1,1); ctx.drawImage(mask,-32*factor,-32*factor-foot,64*factor,64*factor); ctx.restore();
 }
 const JOB_COLORS = {
@@ -1503,7 +1500,7 @@ const TOWER_STRATEGY = {
   AXEMAN:    { icon: '🪓', text: 'Switch-hitter: toggle between melee and thrown axes once per wave. Read the wave, then commit — it can\'t change its mind again until the next one.' },
   SPEARMAN:  { icon: '🔱', text: 'Reach fighter: longer melee range than any other Warrior, so it can hit before enemies close in. Place it one tile back from the chokepoint, not right on it.' },
   GATLING:   { icon: '🔫', text: 'Sustained rate of fire over raw per-hit power. Best against long, high-count waves (Swarm, The Grind) where uptime matters more than a single big hit.' },
-  NINJA: { icon:'🥷', text:'Rapid alternating stars reward focused fire. Light damage per hit, and enemies inside the minimum range are left to your melee defenders.' },
+  NINJA: { icon:'🥷', text:'Rapid alternating stars reward focused fire. Light damage per hit, with no close-range blind spot.' },
   BLOWDART:  { icon: '🧪', text: 'Poison DoT specialist: modest hit damage, but the poison keeps ticking after the shot lands. Strong against tanky single targets that will stay in range a while.' },
   SQUIRTGUN: { icon: '💧', text: 'Dual-gun acid DoT, Blowdart\'s bigger sibling. Two independent damage-over-time stacks instead of one — thrives the same way, just harder.' },
   BOMBER:    { icon: '💣', text: 'The only splash-damage tower — one shot hits every enemy in its blast radius. Built for dense clumps (Swarm, Elite Vanguard), wasted on a single isolated target.' },
@@ -1546,17 +1543,10 @@ const RANGE_BANDS = {
 const RANGE_ROLE_BY_ARCHETYPE = { WARRIOR: 'MELEE', ARCHER: 'RANGED', MAGE: 'CASTER' };
 const RANGE_ROLE_OVERRIDES = { CLERIC: 'SUPPORT', POPE: 'SUPPORT', MERCHANT: 'SUPPORT', GLAIVE: 'SUPPORT' };
 function rangeRoleOf(type){ return RANGE_ROLE_OVERRIDES[type] || RANGE_ROLE_BY_ARCHETYPE[CLASS_ARCHETYPE[type]] || null; }
-// Ranged fighters hold fire when a target crowds their personal space. The dashed ring shown for a
-// selected ranged tower marks this clear zone; enemy radius is added to the threshold so bodies
-// stay outside it too. Melee fighters (and non-attacking support units) keep their own behavior.
-const MIN_RANGED_ATTACK_RANGE = 44;
-const NO_MIN_RANGE_TYPES = new Set(['SWORDSMAN','SPEARMAN','HAMMERMAN','PALADIN','BERSERKER','LANCER','CLERIC','POPE','BARRICADE']);
-function usesMinimumRangedRange(tower){
+const MELEE_REST_POSE_TYPES = new Set(['SWORDSMAN','SPEARMAN','HAMMERMAN','PALADIN','BERSERKER','LANCER','CLERIC','POPE','BARRICADE']);
+function usesRangedRestPose(tower){
   if(tower.type === 'AXEMAN') return tower.axeMode === 'RANGE';
-  return !NO_MIN_RANGE_TYPES.has(tower.type);
-}
-function minimumTargetDistance(tower, enemy){
-  return usesMinimumRangedRange(tower) ? MIN_RANGED_ATTACK_RANGE + (enemy.radius || 0) : 0;
+  return !MELEE_REST_POSE_TYPES.has(tower.type);
 }
 // CA015 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA015
 function diminishingStatValue(points, perPoint){
@@ -1999,7 +1989,7 @@ function applyHutLootItem(lootDef, nearTower){
     if(healed > 0){ lives += healed; showLivesChange(healed); }
     showItemUseFeedback(lootDef, nearTower, 'HEAL', lootTier, ['Lives +' + lootDef.amount]);
   }
-  else if(lootDef.kind === 'gold'){ gold += lootDef.amount; showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['Gold +' + lootDef.amount]); }
+  else if(lootDef.kind === 'gold'){ gold += lootDef.amount; if(nearTower) launchGoldHudFlight(nearTower.x,nearTower.y); showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['Gold +' + lootDef.amount]); }
   else if(nearTower){ gainTowerExp(nearTower, lootDef.amount); showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['XP +' + lootDef.amount]); }
 }
 // ITEM-CRAFTING-01 (1.6.96) — see CHANGELOG.md § [1.6.96]. WC3-style consumable recipes, entirely
@@ -2245,7 +2235,7 @@ const CONFIG = {
   TOWERS: {
     NINJA: {
       name:'Ninja', icon:'🥷', baseCost:300, unlocksAfterWave:0,
-      blurb:'Alternates throwing stars from each hand. The fastest sustained attacker, with light individual hits and a close-range blind spot.',
+      blurb:'Alternates throwing stars from each hand. The fastest sustained attacker, with light individual hits and point-blank targeting.',
       tiers:[
         {range:120,damage:2,cooldown:60,projectileSpeed:620},
         {range:135,damage:3,cooldown:55,projectileSpeed:660,upgradeCost:120},
@@ -2798,7 +2788,8 @@ function validateRangeBalance(){
     const rangeCap = RANGE_CAPS[type];
     if(!(rangeCap > 0)){ problems.push(type + ' has no RANGE_CAPS entry, so its cap would silently default to double its start (RANGE-BALANCE-01)'); continue; }
     if(startingRange < band.start[0] || startingRange > band.start[1]) problems.push(type + ' starting range ' + startingRange + ' is outside the ' + role + ' band ' + band.start[0] + '-' + band.start[1] + ' (RANGE-BALANCE-01)');
-    if(rangeCap < band.cap[0] || rangeCap > band.cap[1]) problems.push(type + ' range cap ' + rangeCap + ' is outside the ' + role + ' band ' + band.cap[0] + '-' + band.cap[1] + ' (RANGE-BALANCE-01)');
+    const capFloor=type==='NINJA' ? 230 : band.cap[0];
+    if(rangeCap < capFloor || rangeCap > band.cap[1]) problems.push(type + ' range cap ' + rangeCap + ' is outside the ' + role + ' band ' + capFloor + '-' + band.cap[1] + ' (RANGE-BALANCE-01)');
     if(startingRange / rangeCap > band.maxStartShareOfCap) problems.push(type + ' starts at ' + Math.round(startingRange/rangeCap*100) + '% of its cap; ' + role + ' towers must start at most ' + Math.round(band.maxStartShareOfCap*100) + '% so range grows with INT (RANGE-BALANCE-01)');
     const tierRanges = def.tiers.map(tier => tier.range);
     for(let i=1; i<tierRanges.length; i++) if(tierRanges[i] < tierRanges[i-1]) problems.push(type + ' tier ranges must not shrink (RANGE-BALANCE-01)');
@@ -2886,7 +2877,7 @@ function validateDesignContract(){
     const consentButton = document.getElementById('consentAccept');
     const consentDecline = document.getElementById('consentDecline');
     const consentBanner = document.getElementById('consent-banner');
-    if(!santaFace || !santaLine || !santaLine.textContent.includes('naughty or nice') || !consentButton || consentButton.textContent.trim() !== '🍪 Give Santa Cookies' || !consentDecline || consentDecline.textContent.trim() !== '🥷 Play stealth' || !consentBanner || consentBanner.querySelectorAll('button').length !== 2 || !String(window.declineStickTDAnalyticsConsent).includes("'denied'")) problems.push('the Santa consent notice must offer clear accept and decline actions (ANALYTICS-CHOICE-01)');
+    if(!santaFace || !santaLine || !santaLine.textContent.includes('naughty or nice') || !consentButton || consentButton.textContent.trim() !== '🍪 Give Santa Cookies' || !consentDecline || consentDecline.textContent.trim() !== '🥷 Play Stealth' || !consentBanner || consentBanner.querySelectorAll('button').length !== 2 || !String(window.declineStickTDAnalyticsConsent).includes("'denied'")) problems.push('the Santa consent notice must offer clear accept and decline actions (ANALYTICS-CHOICE-01)');
   }
   { const settingsButton = document.getElementById('startSettingsBtn');
     const qualityPicker = document.getElementById('quality-picker');
@@ -2906,7 +2897,7 @@ function validateDesignContract(){
   if(!String(buildTowerModal).includes('Stickmen Defenders') || !String(buildTowerModal).includes("addBuildSection('Fortifications')") || String(buildTowerModal).includes('Starter defenders') || String(buildTowerModal).includes('Specialist defenders')) problems.push('all available fighter characters must share Stickmen Defenders, with fortifications and locked characters in their own sections (BUILD-MENU-GROUPS-02)');
   if(!(String(buildTowerModal).indexOf("addBuildSection('Map growth')") >= 0 && String(buildTowerModal).indexOf("addBuildSection('Map growth')") < String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')"))) problems.push('Map growth must be the first section in Build (BUILD-MAP-GROWTH-ORDER-01)');
   if(document.getElementById('notification-filters') || /notificationFilter|notificationCategory/.test(String(renderNotificationPanel) + String(recordNotification))) problems.push('the notification inbox must use one unfiltered list without category buttons (NOTIFICATION-INBOX-SIMPLE-01)');
-  if(String(Enemy.prototype.draw).includes('this.radius*1.08') || String(Enemy.prototype.draw).includes('this.pack &&') || String(Tower.prototype.draw).includes('this.range, 0, Math.PI*2') || String(Tower.prototype.draw).includes('rgba(255,255,255,0.25)')) problems.push('enemy hit flashes, wolf packs and selected units must not draw white outline circles (NO-WHITE-HALO-01)');
+  if(String(Enemy.prototype.draw).includes('this.radius*1.08') || String(Enemy.prototype.draw).includes('this.pack &&') || String(Tower.prototype.draw).includes('rgba(255,255,255,0.25)')) problems.push('enemy hit flashes, wolf packs and selected units must not draw white outline circles (NO-WHITE-HALO-01)');
   { const popupStack = document.getElementById('notification-popups');
     if(!popupStack || ['unlock-toast','wave-summary-toast','new-enemy-toast','killstreak-banner'].some(id => document.getElementById(id)?.parentElement !== popupStack) || !document.getElementById('notification-detail-popup') || !String(openNotificationEntry).includes('popup.showModal()')) problems.push('gameplay notifications must share the top-left popup stack and open their explanation when selected (NOTIFICATION-EXPLAIN-01)');
   }
@@ -2949,12 +2940,8 @@ function validateDesignContract(){
     randomEventSlotsUsed = slotsWasUsed;
   }
   if(!isWithinEmojiSquare(10, -10, 0, 0, 20) || isWithinEmojiSquare(10.5, 0, 0, 0, 20) || isWithinEmojiSquare(0, -10.5, 0, 0, 20)) problems.push('the click area of an emoji is exactly its drawn square (EMOJI-HITBOX-01)');
-  { // MIN-RANGE-AUDIT-01 (1.6.147) — see CHANGELOG.md § [1.6.147]: strength and melee classes never have a minimum range; the Axeman only while throwing
-    const meleeLineageMissing = Object.keys(CLASS_ARCHETYPE).filter(type => CLASS_ARCHETYPE[type] === 'WARRIOR' && type !== 'AXEMAN' && !NO_MIN_RANGE_TYPES.has(type));
-    const rangedLineageExempt = Object.keys(CLASS_ARCHETYPE).filter(type => CLASS_ARCHETYPE[type] === 'ARCHER' && NO_MIN_RANGE_TYPES.has(type));
-    const axemanMelee = usesMinimumRangedRange({ type: 'AXEMAN', axeMode: 'MELEE' }), axemanThrowing = usesMinimumRangedRange({ type: 'AXEMAN', axeMode: 'RANGE' });
-    if(meleeLineageMissing.length || rangedLineageExempt.length || axemanMelee || !axemanThrowing) problems.push('minimum range: strength classes never have one (missing: ' + meleeLineageMissing.join(', ') + '), archer classes always do, and the Axeman only while throwing (MIN-RANGE-AUDIT-01)');
-  }
+  if(String(Tower.prototype.findTarget).includes('minimumTargetDistance') || String(Tower.prototype.update).includes('minimumTargetDistance')) problems.push('fighters must attack close targets without a minimum-range exclusion');
+  if(!String(drawSelectedTowerRange).includes('tower.targetingRange') || !String(drawSelectedTowerRange).includes('232,182,65') || !String(Enemy.prototype.spawn).includes('this.deathResolved = false') || !String(Enemy.prototype.die).includes('setMarkedTarget(null)')) problems.push('selected tactical reach and pooled pin/death lifecycle must remain protected');
   { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || declared.length > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
     if(oversized.length) problems.push('analytics events over the Google Analytics limits (40-character names, 25 parameters): ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
   }
@@ -3420,21 +3407,88 @@ function routeSpacingBuffer(oldPath, connectsAtStart){
   }
   return buffer;
 }
+function pathTipExit(point, occupied){
+  let best = null;
+  for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const exit=[];
+    let x=point.x+dx,y=point.y+dy;
+    while(x>=0 && x<COLS && y>=0 && y<ROWS && !occupied.has(x+','+y)){
+      exit.push({x,y}); x+=dx; y+=dy;
+    }
+    if(exit.length && (x<0 || x>=COLS || y<0 || y>=ROWS) && (!best || exit.length<best.length)) best=exit;
+  }
+  if(best) return best;
+  const queue=[point], parents=new Map([[point.x+','+point.y,null]]);
+  for(let i=0;i<queue.length;i++){
+    const current=queue[i];
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const tile={x:current.x+dx,y:current.y+dy}, key=tile.x+','+tile.y;
+      if(tile.x<0 || tile.x>=COLS || tile.y<0 || tile.y>=ROWS || occupied.has(key) || parents.has(key)) continue;
+      parents.set(key,current); queue.push(tile);
+      let tail=null;
+      for(const [rx,ry] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const ray=[]; let x=tile.x+rx,y=tile.y+ry;
+        while(x>=0 && x<COLS && y>=0 && y<ROWS && !occupied.has(x+','+y) && !parents.has(x+','+y)){
+          ray.push({x,y});x+=rx;y+=ry;
+        }
+        if(x<0 || x>=COLS || y<0 || y>=ROWS){tail=ray;break;}
+      }
+      if(tail){
+        const exit=[]; let cursor=tile;
+        while(cursor!==point){exit.push(cursor); cursor=parents.get(cursor.x+','+cursor.y);}
+        return exit.reverse().concat(tail);
+      }
+    }
+  }
+  return null;
+}
+let pathExitReservationPath=null, pathExitReservationTowers='', pathExitReservedKeys=new Set();
+function reservedPathExitTile(gx,gy){
+  if(!pathWaypointTiles.length) return false;
+  const towers=towerPool.filter(tower=>tower.active);
+  const towerKey=towers.map(tower=>tower.gridX+','+tower.gridY).join(';');
+  if(pathExitReservationPath!==pathWaypointTiles || pathExitReservationTowers!==towerKey){
+    const occupied=new Set(pathCells);
+    for(const tower of towers) occupied.add(tower.gridX+','+tower.gridY);
+    const reserved=new Set();
+    for(const tip of [pathWaypointTiles[0],pathWaypointTiles[pathWaypointTiles.length-1]]){
+      const exit=pathTipExit(tip,occupied);
+      if(exit) for(const tile of exit) reserved.add(tile.x+','+tile.y);
+    }
+    pathExitReservationPath=pathWaypointTiles; pathExitReservationTowers=towerKey; pathExitReservedKeys=reserved;
+  }
+  return pathExitReservedKeys.has(gx+','+gy);
+}
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
   const occupied = new Set(oldPath.map(p => p.x+','+p.y));
   for(const t of towerPool) if(t.active) occupied.add(t.gridX+','+t.gridY);
-  const length = Math.max(2,Math.min(3,arcLength || 2));
+  const maxLength = Math.max(2,Math.min(3,arcLength || 2));
+  const turnFirst = Math.random()<0.5;
+  const existingSpacingViolations=routeSpacingViolationCount(oldPath);
   function grow(point){
+    const length = maxLength===3 && Math.random()<0.5 ? 2 : maxLength;
     const addition = [];
     function walk(tip){
-      if(addition.length === length) return true;
+      if(addition.length === length) return !!pathTipExit(tip,occupied);
       const directions = [[1,0],[-1,0],[0,1],[0,-1]];
       for(let i=directions.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [directions[i],directions[j]]=[directions[j],directions[i]]; }
+      const previous=addition.length>1 ? addition[addition.length-2] : addition.length ? point : point===oldPath[0] ? oldPath[1] : oldPath[oldPath.length-2];
+      if(previous && Math.random()<0.75){
+        const straightX=tip.x-previous.x,straightY=tip.y-previous.y;
+        directions.sort((a,b)=>{
+          const aa=a[0]===straightX && a[1]===straightY ? 1 : 0;
+          const bb=b[0]===straightX && b[1]===straightY ? 1 : 0;
+          return turnFirst ? aa-bb : bb-aa;
+        });
+      }
       for(const [dx,dy] of directions){
         const tile = {x:tip.x+dx,y:tip.y+dy}, key=tile.x+','+tile.y;
         if(tile.x<newRegion.x0 || tile.x>newRegion.x1 || tile.y<newRegion.y0 || tile.y>newRegion.y1 || occupied.has(key)) continue;
         occupied.add(key); addition.push(tile);
-        if(walk(tile)) return true;
+        const candidate=point===oldPath[0] ? [...addition.slice().reverse(),...oldPath] : [...start.slice().reverse(),...oldPath,...addition];
+        if(routeSpacingViolationCount(candidate)>existingSpacingViolations){addition.pop();occupied.delete(key);continue;}
+        const otherTip = point === oldPath[0] ? oldPath[oldPath.length-1] : (start.length ? start[start.length-1] : oldPath[0]);
+        if(pathTipExit(otherTip,occupied) && walk(tile)) return true;
         addition.pop(); occupied.delete(key);
       }
       return false;
@@ -3443,14 +3497,13 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
     return addition;
   }
   const last = oldPath[oldPath.length-1];
-  let start = [], finish = [], best = {start:[],finish:[]};
+  let start = [], finish = [];
   for(let attempt=0;attempt<8;attempt++){
     for(const tile of [...start,...finish]) occupied.delete(tile.x+','+tile.y);
     start = grow(oldPath[0]); finish = grow(last);
-    if(start.length+finish.length > best.start.length+best.finish.length) best = {start:start.slice(),finish:finish.slice()};
-    if(start.length && finish.length) break;
+    if(start.length && finish.length && pathTipExit(start[start.length-1],occupied) && pathTipExit(finish[finish.length-1],occupied)) break;
   }
-  if(!start.length || !finish.length){ start=best.start; finish=best.finish; }
+  if(!start.length || !finish.length || !pathTipExit(start[start.length-1],occupied) || !pathTipExit(finish[finish.length-1],occupied)) return oldPath;
   return [...start.reverse(),...oldPath,...finish];
 }
 // CA096 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA096
@@ -3482,6 +3535,7 @@ const GUARDIAN_COMBAT_LEASH = 260;
 let hutsSpawnedThisGame = false;
 let latestExpansionTiles = [];
 function initRegionAndPath(){
+  for(const flight of goldHudFlights) flight.active=false;goldHudFlightCount=0;lastGoldHudFlightAt=-1e9;
   const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
@@ -3499,47 +3553,19 @@ function initRegionAndPath(){
 }
 function performExpansion(label, labelColor){
   if(ringCandidateRegion){ advanceRingReveal(ringRevealQueue.length); if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); }
-  if(!ringCandidateRegion) openRandomEventSlot();
   // CA099 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA099
   if(!ringCandidateRegion){
-    beginNextRingReveal();
+    if(!beginNextRingReveal()) return false;
+    openRandomEventSlot();
     pendingRingLabel = label; pendingRingLabelColor = labelColor; // shown once the ring actually closes, not on each partial reveal
   }
   // CA100 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA100
   advanceRingReveal(1 + Math.floor(Math.random()*3));
   if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
   updateHUD();
+  return true;
 }
 let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
-// MAP-GROWTH-FOCUS-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. Direct request: "way too much growth
-// happening per expansion and it's not focused on the road — the grass should just be next to the
-// road, not a full scene growing in the other direction." Only grows the region edges the path's
-// current tip is actually near, instead of puffing the bounding box out by 1 on all 4 sides every
-// single expansion regardless of where the path is heading. Cuts both the wasted tiles baked/
-// rendered on the far side (a real lag contributor at high expansion levels) and the visual
-// ballooning away from the road.
-const REGION_GROWTH_EDGE_MARGIN = 1; // how close to an edge the path tip must be to grow that edge
-function nextRegionTowardPathTip(){
-  const tips = [pathWaypointTiles[0], pathWaypointTiles[pathWaypointTiles.length-1]];
-  let x0 = activeRegion.x0, y0 = activeRegion.y0, x1 = activeRegion.x1, y1 = activeRegion.y1;
-  if(tips.some(t => t.x-activeRegion.x0 <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.x0 > 0) x0 = activeRegion.x0-1;
-  if(tips.some(t => activeRegion.x1-t.x <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.x1 < COLS-1) x1 = activeRegion.x1+1;
-  if(tips.some(t => t.y-activeRegion.y0 <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.y0 > 0) y0 = activeRegion.y0-1;
-  if(tips.some(t => activeRegion.y1-t.y <= REGION_GROWTH_EDGE_MARGIN) && activeRegion.y1 < ROWS-1) y1 = activeRegion.y1+1;
-  // Safety net: the tip should always end up near an edge each expansion (that's where the last
-  // arc landed), but if it's ever well inside with no edge qualifying, grow whichever edge is
-  // nearest so the region can never stall without growing at all.
-  if(x0===activeRegion.x0 && y0===activeRegion.y0 && x1===activeRegion.x1 && y1===activeRegion.y1){
-    const candidates = [];
-    if(activeRegion.x0 > 0) candidates.push({d:Math.min(...tips.map(t=>t.x-activeRegion.x0)), apply:() => { x0 = activeRegion.x0-1; }});
-    if(activeRegion.x1 < COLS-1) candidates.push({d:Math.min(...tips.map(t=>activeRegion.x1-t.x)), apply:() => { x1 = activeRegion.x1+1; }});
-    if(activeRegion.y0 > 0) candidates.push({d:Math.min(...tips.map(t=>t.y-activeRegion.y0)), apply:() => { y0 = activeRegion.y0-1; }});
-    if(activeRegion.y1 < ROWS-1) candidates.push({d:Math.min(...tips.map(t=>activeRegion.y1-t.y)), apply:() => { y1 = activeRegion.y1+1; }});
-    if(!candidates.length) return activeRegion;
-    candidates.sort((a,b) => a.d-b.d)[0].apply();
-  }
-  return { x0, y0, x1, y1 };
-}
 // CA796 — see CHANGELOG.md § [1.6.62] Cached corridor repaint. Expansion commits the new
 // route before its grass animation finishes. Repaint the new route plus its bounded neighborhood
 // immediately, including old-region tiles whose buildable status changed with the wider corridor.
@@ -3575,14 +3601,20 @@ function paintCommittedExpansionPath(oldPath){
   }
 }
 function beginNextRingReveal(){
-  const newRegion = nextRegionTowardPathTip();
-  ringCandidateRegion = newRegion;
-  // PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md § [1.6.0]. Every expansion winds the spiral outward
-  // by a short arc (2-3 tiles) instead of the old alternating "entire new ring becomes path" jump.
-  const arcLength = PATH_GROWTH_TILES_MIN + Math.floor(Math.random()*(PATH_GROWTH_TILES_MAX-PATH_GROWTH_TILES_MIN+1));
-  const oldPath = pathWaypointTiles;
-  const previouslyBorderingKeys = nearPathTileSet;
-  pathWaypointTiles = extendPathWithNewRing(oldPath, newRegion, arcLength);
+  const previousFinishLine = computeFinishLine();
+  const arcLength=PATH_GROWTH_TILES_MIN+Math.floor(Math.random()*(PATH_GROWTH_TILES_MAX-PATH_GROWTH_TILES_MIN+1));
+  const oldPath=pathWaypointTiles, candidate=extendPathWithNewRing(oldPath,{x0:0,y0:0,x1:COLS-1,y1:ROWS-1},arcLength);
+  if(candidate===oldPath || candidate.length===oldPath.length) return false;
+  const newRegion={...activeRegion};
+  for(const tile of candidate){
+    newRegion.x0=Math.max(0,Math.min(newRegion.x0,tile.x-PATH_BUILDABLE_MARGIN));
+    newRegion.y0=Math.max(0,Math.min(newRegion.y0,tile.y-PATH_BUILDABLE_MARGIN));
+    newRegion.x1=Math.min(COLS-1,Math.max(newRegion.x1,tile.x+PATH_BUILDABLE_MARGIN));
+    newRegion.y1=Math.min(ROWS-1,Math.max(newRegion.y1,tile.y+PATH_BUILDABLE_MARGIN));
+  }
+  ringCandidateRegion=newRegion;
+  const previouslyBorderingKeys=nearPathTileSet;
+  pathWaypointTiles=candidate;
   const prepended = pathWaypointTiles.findIndex(tile => tile.x===oldPath[0].x && tile.y===oldPath[0].y);
   if(prepended > 0){
     for(const enemy of enemyPool) if(enemy.active){ enemy.pathIndex += prepended; enemy.traveled += prepended*TILE_SIZE; }
@@ -3609,10 +3641,15 @@ function beginNextRingReveal(){
   const distanceFromOldTip = tile => Math.min(Math.hypot(tile.x-oldTip.x,tile.y-oldTip.y),Math.hypot(tile.x-oldPath[0].x,tile.y-oldPath[0].y));
   revealTiles.sort((tileA, tileB) => distanceFromOldTip(tileA) - distanceFromOldTip(tileB));
   paintCommittedExpansionPath(oldPath);
+  const finishCtx=mapCanvas.getContext('2d');
+  finishCtx.setTransform(dprValue,0,0,dprValue,0,0);
+  repaintFinishCarpetFootprint(finishCtx,previousFinishLine);
+  drawFinishCarpet(finishCtx,computeFinishLine());
   // CA102 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA102
   ringRevealQueue = revealTiles;
   ringRevealTotalTiles = ringRevealQueue.length; // PATHING-MASTER-01 (1.5.9) — see CHANGELOG.md § [1.5.9]
   ringRevealTimer = 0;
+  return true;
 }
 // CA103 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA103
 function advanceRingReveal(n){
@@ -3660,8 +3697,7 @@ function finalizeRingExpansion(){
   const oldRegion = { ...activeRegion };
   const oldFinishLine = computeFinishLine(); // captured BEFORE the path terminus moves — this is exactly the carpet footprint the incremental patch below needs to erase
   const newRegion = ringCandidateRegion;
-  latestExpansionTiles = ringBoundaryTiles(newRegion).filter(t =>
-    t.x<oldRegion.x0 || t.x>oldRegion.x1 || t.y<oldRegion.y0 || t.y>oldRegion.y1);
+  latestExpansionTiles = [...ringRevealed].map(key=>{ const [x,y]=key.split(',').map(Number); return {x,y}; });
   activeRegion = newRegion;
   expansionLevel++;
   rebuildPathCellsAndPx();
@@ -3669,9 +3705,9 @@ function finalizeRingExpansion(){
     sceneryMap.delete(tile.x+','+tile.y);
     floraMap.delete(tile.x+','+tile.y);
   }
-  scatterSceneryInRing(oldRegion, newRegion);
+  scatterSceneryInRing(oldRegion, newRegion, ringRevealed);
   ensureEndGuardScenery();
-  scatterFloraInRing(oldRegion, newRegion);
+  scatterFloraInRing(oldRegion, newRegion, ringRevealed);
   if(randomEventHostileAllowed(waveIndex) && expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame && randomEventSlotsUsed < 2){
     hutsSpawnedThisGame = spawnHuts(oldRegion, newRegion); // new tiles only, after scenery; never force a camp beside the finish or into an established build area
     if(hutsSpawnedThisGame){ tryClaimRandomEventSlot(); logGameEvent('random event: hut camp'); }
@@ -3682,6 +3718,7 @@ function finalizeRingExpansion(){
   pendingRevealTileKeys.clear();
   ringCandidateRegion = null;
   maybeAddBonusGrassTile(revealedBorderKeys);
+  breedLivestockOnExpansion();
   maybeSpawnLivestockOnExpansion(revealedBorderKeys);
   maybeDropExpansionShovel(revealedBorderKeys);
   // CA105 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA105
@@ -3707,15 +3744,15 @@ function expandRegion(){
   if(regionFullyExpanded()) return false;
   const cost = expansionCost();
   if(gold < cost) return false;
+  if(!performExpansion('🗺️ Map Expanded!', '#ffd700')) return false;
   gold -= cost;
   paidExpansions++;
-  performExpansion('🗺️ Map Expanded!', '#ffd700');
+  updateHUD();
   return true;
 }
 function grantFreeExpansion(){
   if(regionFullyExpanded()) return false;
-  performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
-  return true;
+  return performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
 }
 // EARLY-REWARD-USE-01 — see CHANGELOG.md § [1.6.166] Expansion pickup use, EARLY-REWARD-USE-01.
 function resolveExpansionPickupUse(expand, consume, blocked){
@@ -3816,7 +3853,8 @@ const LIVESTOCK_TYPES = {
   WANDERING_TROLL: { emoji: '🧌', meatId: 'STEAK', speed: 16, radius: 19, isTroll: true }
 };
 const LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION = 0.35;
-const LIVESTOCK_MAX_ON_BOARD = 4;
+const LIVESTOCK_MAX_ON_BOARD = 8;
+const LIVESTOCK_BREED_CHANCE=0.25,LIVESTOCK_BIRTHS_PER_EXPANSION=2;
 const LIVESTOCK_WANDER_RETARGET_MS = 2500;
 const LIVESTOCK_WALK_MS_MIN = 900, LIVESTOCK_WALK_MS_MAX = 2200;
 const LIVESTOCK_IDLE_MS_MIN = 700, LIVESTOCK_IDLE_MS_MAX = 2400;
@@ -3868,6 +3906,43 @@ function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
   animal.x = livestockSpot.x; animal.y = livestockSpot.y;
   animal.retargetTimer = Math.random()*LIVESTOCK_IDLE_MS_MAX;
   animal.livestockWalking = false;
+}
+function findLivestockBirthSpot(parent){
+  for(let attempt=0;attempt<12;attempt++){
+    const angle=Math.random()*Math.PI*2, distance=parent.radius+LIVESTOCK_TYPES[parent.type].radius+8;
+    const x=parent.x+Math.cos(angle)*distance,y=parent.y+Math.sin(angle)*distance;
+    if(x<8 || y<8 || x>WORLD_MAX_W-8 || y>WORLD_MAX_H-8 || !isLooseWalkableAt(x,y)) continue;
+    if(enemyPool.some(e=>e.active && Math.hypot(e.x-x,e.y-y)<e.radius+LIVESTOCK_TYPES[parent.type].radius+4)) continue;
+    if(towerPool.some(t=>t.active && Math.hypot(t.x-x,t.y-y)<LIVESTOCK_TYPES[parent.type].radius+18)) continue;
+    return {x,y};
+  }
+  return null;
+}
+function breedLivestockOnExpansion(){
+  const parents=enemyPool.filter(e=>e.active && e.hp>0 && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].isTroll);
+  let population=countLivestockOnBoard(),births=0;
+  for(const parent of parents){
+    if(population>=LIVESTOCK_MAX_ON_BOARD || births>=LIVESTOCK_BIRTHS_PER_EXPANSION) break;
+    if(Math.random()>=LIVESTOCK_BREED_CHANCE) continue;
+    const spot=findLivestockBirthSpot(parent);
+    if(!spot) continue;
+    const animal=acquireActive(enemyPool);if(!animal) break;
+    animal.spawn(parent.type,1,false,false);animal.isLivestock=true;animal.x=spot.x;animal.y=spot.y;
+    animal.retargetTimer=LIVESTOCK_IDLE_MS_MAX;animal.livestockWalking=false;
+    population++;births++;
+  }
+}
+function restoreLivestock(savedAnimals){
+  if(!Array.isArray(savedAnimals)) return;
+  for(const saved of savedAnimals.slice(0,LIVESTOCK_MAX_ON_BOARD)){
+    if(!saved || !LIVESTOCK_TYPES[saved.type] || LIVESTOCK_TYPES[saved.type].isTroll || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) continue;
+    if(saved.x<8 || saved.y<8 || saved.x>WORLD_MAX_W-8 || saved.y>WORLD_MAX_H-8 || !isLooseWalkableAt(saved.x,saved.y)) continue;
+    const animal=acquireActive(enemyPool);if(!animal) break;
+    animal.spawn(saved.type,1,false,false);animal.isLivestock=true;animal.x=saved.x;animal.y=saved.y;
+    if(Number.isFinite(saved.radius)) animal.radius=clampNum(saved.radius,CONFIG.ENEMIES[saved.type].radius*0.8,CONFIG.ENEMIES[saved.type].radius*1.2);
+    animal.hp=Math.max(1,Math.round(animal.maxHp*clampNum(Number(saved.healthFraction)||1,0.01,1)));
+    animal.retargetTimer=LIVESTOCK_IDLE_MS_MAX;animal.livestockWalking=false;
+  }
 }
 // WANDERING-TROLL-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const ARMOR_MIN_DAMAGE_SHARE = 0.5;
@@ -4174,7 +4249,7 @@ function isTileBuildable(gx, gy, ignoreTower, forType){
     const unlocked = (activeRegion && gx>=activeRegion.x0 && gx<=activeRegion.x1 && gy>=activeRegion.y0 && gy<=activeRegion.y1) || ringRevealed.has(key);
     if(!onPath || !unlocked) return false;
   } else {
-    if(onPath || !isInActiveRegion(gx, gy)) return false; // other towers remain off the route
+    if(onPath || !isInActiveRegion(gx, gy) || reservedPathExitTile(gx,gy)) return false; // other towers remain off the route
   }
   if(sceneryMap.has(key)) return false;
   if(towerPool.some(t => t.active && t !== ignoreTower && t.gridX===gx && t.gridY===gy)) return false;
@@ -4243,7 +4318,7 @@ function spawnExtraEndScenery(cells, spawnedKeys){
     if(proximity > 0 && Math.random() < proximity * END_SCENERY_MAX_COVERAGE_BONUS) spawnScenery(cx, cy);
   }
 }
-const SCENERY_FIRST_WAVE_INDEX = 1; // waveIndex counts waves started; scenery may appear only once the first wave has begun
+const SCENERY_FIRST_WAVE_INDEX = 1;
 // HUT-CLEAR-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
 function tileHasHut(gx, gy){
   for(const e of enemyPool){
@@ -4268,8 +4343,22 @@ function treeRockKeepChance(proximity, tileKey){
 const FIXED_SCENERY_SCALE = { CHEST: 0.75, COIN_POUCH: 0.95, BUSH: 0.68 }; // the potted berry bush stays compact beside trees, rocks and chests
 const SMALL_SCENERY_SIZE_MULTIPLIER = 0.5, SMALL_SCENERY_COST_MULTIPLIER = 0.5, SMALL_SCENERY_BUDDY_CHANCE = 0.5;
 function smallSceneryHarvestCost(fullSizeCost){ return Math.max(1, Math.round(fullSizeCost * SMALL_SCENERY_COST_MULTIPLIER)); }
+function isSceneryTileAvailable(gx,gy){
+  if(gx<0 || gx>=COLS || gy<0 || gy>=ROWS) return false;
+  const key=gx+','+gy;
+  return !pathCells.has(key) && isInActiveRegion(gx,gy) && !sceneryMap.has(key) && !tileHasHut(gx,gy) && !towerPool.some(t=>t.active && t.gridX===gx && t.gridY===gy);
+}
+function repairMissingExpansionScenery(){
+  if(expansionLevel<=0 || harvestedTileKeys.size || !sceneryGrowthAllowed()) return;
+  for(const item of sceneryMap.values()) if(item.type==='TREE' || item.type==='ROCK') return;
+  if(!pathWaypointTiles || pathWaypointTiles.length<2) return;
+  for(const end of [pathWaypointTiles[0],pathWaypointTiles[pathWaypointTiles.length-1]]){ guardRoadEnd(end); topUpCloseGuard(end); }
+}
+function sceneryGrowthAllowed(){
+  return waveIndex>=SCENERY_FIRST_WAVE_INDEX || expansionLevel>0;
+}
 function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
-  if(waveIndex < SCENERY_FIRST_WAVE_INDEX) return;
+  if(!sceneryGrowthAllowed()) return;
   if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
   if(!forceType && isEndRingTile(gx, gy)) return; // RING-ONLY-BIG-01 (1.6.142) — see CHANGELOG.md § [1.6.142]: the tiles touching a road end hold only big trees and rocks
   const S = CONFIG.SCENERY;
@@ -4292,6 +4381,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     } else if(endProximity <= 0 && Math.random() >= MID_ROAD_SCENERY_KEEP_CHANCE) return;
   }
 
+  if(type==='BUSH'){ for(const item of sceneryMap.values()) if(item.type==='BUSH') return; }
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[type];
   const isTreeOrRock = type === 'TREE' || type === 'ROCK';
   if(isTreeOrRock && forcedSizeFrac === undefined) forcedSizeFrac = treeRockSizeFrac(endProximity);
@@ -4334,7 +4424,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++){
       if(dx === 0 && dy === 0) continue;
       const nx = gx + dx, ny = gy + dy;
-      if(isEndRingTile(nx, ny) || !isTileBuildable(nx, ny) || tileHasHut(nx, ny)) continue;
+      if(isEndRingTile(nx, ny) || !isSceneryTileAvailable(nx, ny) || tileHasHut(nx, ny)) continue;
       neighbours.push([nx, ny]);
     }
     if(neighbours.length){
@@ -4349,7 +4439,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
 // walling off the lane; paying to clear one is the player's option for expanding into that space. Idempotent:
 // it tops each road end up to END_GUARD_MIN_PIECES nearby pieces, nearest tiles first, once per distinct end tile
 // (guardedRoadEndKeys), so it can run after every wave and expansion, guards each new end as the road grows, and
-// never re-fills space the player has paid to clear. Held back by the same first-level gate as all scenery (spawnScenery()).
+// never re-fills space the player has paid to clear.
 const END_GUARD_RADIUS_TILES = 3;
 const END_GUARD_MIN_PIECES = 6;
 const END_GUARD_MIN_SIZE_FRAC = 0.4, END_GUARD_MAX_SIZE_FRAC = 0.7;
@@ -4374,7 +4464,7 @@ function guardRoadEnd(endTile){
     for(let gy = endTile.y - END_GUARD_RADIUS_TILES; gy <= endTile.y + END_GUARD_RADIUS_TILES; gy++){
       const distance = Math.abs(gx - endTile.x) + Math.abs(gy - endTile.y);
       if(distance === 0 || distance > END_GUARD_RADIUS_TILES) continue;
-      if(!isTileBuildable(gx, gy)) continue;
+      if(!isSceneryTileAvailable(gx, gy)) continue;
       candidates.push({ gx, gy, distance, tieBreak: Math.random() });
     }
   }
@@ -4398,7 +4488,7 @@ function topUpCloseGuard(endTile){
     for(let gy = endTile.y - END_CLOSE_GUARD_RADIUS_TILES; gy <= endTile.y + END_CLOSE_GUARD_RADIUS_TILES; gy++){
       const distance = Math.abs(gx - endTile.x) + Math.abs(gy - endTile.y);
       if(distance === 0 || distance > END_CLOSE_GUARD_RADIUS_TILES) continue;
-      if(!isTileBuildable(gx, gy) || tileHasHut(gx, gy)) continue;
+      if(!isSceneryTileAvailable(gx, gy) || tileHasHut(gx, gy)) continue;
       candidates.push({ gx, gy, distance, tieBreak: Math.random() });
     }
   }
@@ -4432,12 +4522,12 @@ function fillEndRing(endTile){ // the tiles touching a road end always hold a pr
     const existing = sceneryMap.get(key);
     const isBigTreeOrRock = existing && (existing.type === 'TREE' || existing.type === 'ROCK') && (existing.scale - CONFIG.SCENERY.minScale) / (CONFIG.SCENERY.maxScale - CONFIG.SCENERY.minScale) >= END_RING_MIN_SIZE_FRAC;
     if(existing && !existing.isClearing && !existing.isChanceStructure && !isBigTreeOrRock) sceneryMap.delete(key); // a bush, crate or smaller piece that landed on a ring tile is replaced by a prime-size tree or rock
-    if(!isTileBuildable(tile.gx, tile.gy) || tileHasHut(tile.gx, tile.gy)) continue;
+    if(!isSceneryTileAvailable(tile.gx, tile.gy) || tileHasHut(tile.gx, tile.gy)) continue;
     spawnScenery(tile.gx, tile.gy, Math.random() < END_GUARD_ROCK_SHARE ? 'ROCK' : 'TREE', END_RING_MIN_SIZE_FRAC + Math.random() * (1 - END_RING_MIN_SIZE_FRAC));
   }
 }
 function ensureEndGuardScenery(){
-  if(waveIndex < SCENERY_FIRST_WAVE_INDEX || !pathWaypointTiles || pathWaypointTiles.length < 2) return;
+  if(!sceneryGrowthAllowed() || !pathWaypointTiles || pathWaypointTiles.length < 2) return;
   const startTile = pathWaypointTiles[0], finishTile = pathWaypointTiles[pathWaypointTiles.length - 1];
   fillEndRing(startTile);
   fillEndRing(finishTile);
@@ -4547,12 +4637,12 @@ function seedStartingBarricades(){
 }
 
 // CA136 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA136
-function scatterSceneryInRing(oldRegion, newRegion){
+function scatterSceneryInRing(oldRegion, newRegion, newlyRevealedKeys){
   const cells = [];
   for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
     for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
-      if(wasActive) continue;
+      if(newlyRevealedKeys ? !newlyRevealedKeys.has(gx+','+gy) : wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
       // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. newRegion is a bounding
       // rectangle, not the actual near-path corridor — a cell inside it can still paint as plain
@@ -4570,12 +4660,12 @@ function scatterSceneryInRing(oldRegion, newRegion){
   spawnExtraEndScenery(cells, spawnedKeys);
 }
 // CA138 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA138
-function scatterFloraInRing(oldRegion, newRegion){
+function scatterFloraInRing(oldRegion, newRegion, newlyRevealedKeys){
   const cells = [];
   for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
     for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
-      if(wasActive) continue;
+      if(newlyRevealedKeys ? !newlyRevealedKeys.has(gx+','+gy) : wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
       // SCENERY-CORRIDOR-01 (1.6.51) — see CHANGELOG.md § [1.6.51]. Same corridor guard as
       // scatterSceneryInRing() above — this is the direct fix for flora (trees) appearing outside
@@ -4602,7 +4692,7 @@ function maybeSpawnMoreScenery(){
   const empties = [];
   for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
     for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(isTileBuildable(gx,gy) && (!harvestedTileKeys.has(gx + ',' + gy) || Math.random() < HARVESTED_TILE_KEEP_FACTOR)) empties.push([gx,gy]);
+      if(isSceneryTileAvailable(gx,gy) && (!harvestedTileKeys.has(gx + ',' + gy) || Math.random() < HARVESTED_TILE_KEEP_FACTOR)) empties.push([gx,gy]);
     }
   }
   if(!empties.length) return;
@@ -4715,6 +4805,7 @@ function updateScenery(dt){
         spawnFloatingText(item.x, item.y - 20, msg.trim(), '#c9a86a');
         if(item.isSuper){
           gold += CONFIG.SCENERY.superBonusGold;
+
           spawnFloatingText(item.x, item.y - 36, '+' + CONFIG.SCENERY.superBonusGold + '💰 SUPER!', '#ffd700');
         }
         spawnParticles(item.x, item.y, item.type === 'TREE' ? '#4caf50' : '#9aa0a6', item.isSuper ? 16 : 8);
@@ -5086,8 +5177,9 @@ function activateInventorySlot(tower, slotIndex){
   if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return;
   const def = tower.equippedItems[slotIndex];
   if(!def) return;
-  if(isConsumableDef(def)){ useStoredConsumable(tower, slotIndex); return; }
+  if(isConsumableDef(def)){ useStoredConsumable(tower, slotIndex); if(gameState==='PAUSED') requestPausedRender(); return; }
   spawnFloatingText(tower.x, tower.y - 40, def.icon + ' ' + def.name, '#ffe082', ITEM_POPUP_LIFE_MS);
+  if(gameState==='PAUSED') requestPausedRender();
 }
 // CHANCE-STRUCTURES-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
 const chanceStructureDrySpells = {};
@@ -5244,11 +5336,14 @@ function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the
   for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++){
     const key = (tileX + dx) + ',' + (tileY + dy);
     const item = sceneryMap.get(key);
-    if(!item || !isWithinEmojiSquare(worldX, worldY, item.x, item.y + 2, TILE_SIZE * 0.72 * item.scale)) continue; // same size and centre drawOneSceneryItem() uses
+    if(!item || !isWithinEmojiSquare(worldX, worldY, item.x, item.y + 2, sceneryVisualSize(item))) continue; // same size and centre drawOneSceneryItem() uses
     const distance = Math.hypot(item.x - worldX, item.y + 2 - worldY);
     if(distance < bestDistance){ bestDistance = distance; best = { key, item }; }
   }
   return best;
+}
+function sceneryVisualSize(item){
+  return TILE_SIZE*0.72*(item.type==='SUPPLY_CRATE' ? Math.min(0.68,item.scale) : item.scale);
 }
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
@@ -5268,7 +5363,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
-  const emoji = chanceDefinition ? chanceDefinition.emoji : item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '🪎' : '💎';
+  const emoji = chanceDefinition ? chanceDefinition.emoji : item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
   drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',1);
   if(chanceDefinition){
     // CHANCE-STRUCTURE-GLOW-01 (1.6.91) — see CHANGELOG.md § [1.6.91]. A soft radial glow behind the
@@ -5295,7 +5390,7 @@ function drawOneSceneryItem(ctx, key, item, size){
       ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(barX, barY, barW, 5);
       ctx.fillStyle = '#ffe9a8'; ctx.fillRect(barX, barY, barW*progress, 5);
       ctx.restore();
-    } else if(key === hoveredSceneryKey){
+    } else if(key === hoveredSceneryKey && item.type !== 'BUSH'){
       ctx.font = 'bold 10px Verdana'; ctx.fillStyle = '#7dd3fc';
       ctx.fillText(chanceStructureHoverLabel(item), item.x, item.y - size*0.5 - 6);
     }
@@ -5328,12 +5423,12 @@ function drawOneSceneryItem(ctx, key, item, size){
     ctx.arc(item.x, item.y, r, -Math.PI/2, -Math.PI/2 + progress*Math.PI*2);
     ctx.stroke();
     ctx.restore();
-  } else if(key === hoveredSceneryKey){
+  } else if(key === hoveredSceneryKey && sceneryClearCost(item)>0){
     // cost label only shown while hovered/tapped, not cluttering the map at all times
     ctx.font = 'bold 10px Verdana';
     ctx.textAlign = 'center';
     const displayCost = sceneryClearCost(item); // reflects the Axeman/Hammerman discount, if any — see sceneryClearCost()
-    const costStr = displayCost > 0 ? '💰'+displayCost : 'FREE';
+    const costStr = '💰'+displayCost;
     ctx.fillStyle = displayCost > 0 ? '#fff' : '#7dd3fc';
     ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
   }
@@ -5591,7 +5686,7 @@ function drawDepthSortedLayer(ctx){
   for(const [key, item] of sceneryMap){
     if(item.x < viewLeft || item.x > viewRight || item.y < viewTop || item.y > viewBottom) continue;
     visibleSceneryCount++;
-    const size = TILE_SIZE * 0.72 * item.scale;
+    const size = sceneryVisualSize(item);
     const baseY = item.y + size*0.5; // the item's "feet" — same anchor tallStretch already uses, so depth matches what visually reads as its base
     const o = getDepthSortItem(poolIdx++); o.sortY = baseY; o.kind = 's'; o.key = key; o.item = item; o.size = size;
     depthSortItems.push(o);
@@ -5640,7 +5735,12 @@ function drawDepthSortedLayer(ctx){
   for(const it of depthSortItems){
     switch(it.kind){
       case 's': drawOneSceneryItem(ctx, it.key, it.item, it.size); break;
-      case 'e': it.e.draw(ctx); break;
+      case 'e': {
+        const e=it.e,blend=gameState==='PLAYING' ? Math.min(1,accumulator/FIXED_DT) : 1;
+        ctx.save();
+        if(!e.isLivestock && Number.isFinite(e.renderPrevX) && Number.isFinite(e.renderPrevY))ctx.translate((e.renderPrevX-e.x)*(1-blend),(e.renderPrevY-e.y)*(1-blend));
+        e.draw(ctx);ctx.restore();break;
+      }
       case 't': it.t.draw(ctx, it.t === selectedTower); break;
       case 'r': drawTowerScroll(ctx, it.t, it.scrollY); break;
       case 'f': {
@@ -6174,6 +6274,7 @@ function resizeMapCanvasForDpr(){
   }
 }
 
+const buildPreviewAppearance={preview:true,lowGfx:true,hasTarget:false,weaponScale:1,weaponThickness:1,drawProgress:0,castProgress:0,chargeProgress:0,swingProgress:0,throwProgress:0,str:0,int:0};
 function drawBuildPreview(ctx){
   if(!hoverCell) return;
   if(!selectedBuildType && !moveModeTower) return;
@@ -6192,6 +6293,15 @@ function drawBuildPreview(ctx){
   ctx.lineWidth = 2;
   roundedRectPath(ctx, tx+4, ty+4, TILE_SIZE-8, TILE_SIZE-8, 10);
   ctx.fill(); ctx.stroke();
+  ctx.globalAlpha=valid ? 0.65 : 0.35;
+  const previewType=moveModeTower ? moveModeTower.type : selectedBuildType;
+  if(previewType==='BARRICADE'){
+    ctx.font=pxFont(28*STICKMAN_SCALE);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🚧',tx+TILE_SIZE/2,ty+TILE_SIZE/2);
+  } else {
+    const colors=JOB_COLORS[previewType] || JOB_COLORS.SWORDSMAN;
+    buildPreviewAppearance.skinMain=colors.main;buildPreviewAppearance.skinShade=colors.shade;
+    drawStickman(ctx,tx+TILE_SIZE/2,ty+TILE_SIZE/2,IDLE_WEAPON_ANGLE,1,previewType,buildPreviewAppearance);
+  }
   ctx.restore();
 }
 
@@ -6208,9 +6318,9 @@ function acquireActive(pool){
 
 // MUSIC-MIX-01 — see CHANGELOG.md § [1.6.163] Audio mix and adaptive score, MUSIC-MIX-01.
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
-const MUSIC_TEMPO_BPM = 96;
+const MUSIC_TEMPO_BPM = 104;
 const MUSIC_STEP_SECONDS = 60 / MUSIC_TEMPO_BPM / 2;
-const MUSIC_COMBAT_TEMPO_BPM = 140;
+const MUSIC_COMBAT_TEMPO_BPM = 144;
 const MUSIC_COMBAT_ROOTS = [38,38,41,36,38,43,41,38,38,36,43,38];
 const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
 const MUSIC_STEPS_PER_BAR = 8;
@@ -6220,26 +6330,56 @@ const MUSIC_MINOR_INTERVALS = [0,2,3,5,7,9,10,12,14,17];
 const MUSIC_MAJOR_INTERVALS = [0,2,4,5,7,9,11,12,14,17];
 const MUSIC_BASS_ROOTS = [38, 43, 36, 45, 38, 48, 43, 45, 38, 43, 36, 45];
 const MUSIC_MELODY = [
-  [0,null,2,null,4,null,2,null],[1,null,2,4,null,4,5,null],[4,null,2,null,0,null,1,null],[2,null,1,null,0,null,null,null],
-  [0,null,4,null,5,null,4,null],[2,null,1,null,0,null,1,null],[4,null,5,null,7,null,5,null],[4,null,2,null,1,null,0,null],
-  [0,null,2,null,4,null,7,null],[5,null,4,null,2,null,1,null],[4,null,5,null,7,null,5,null],[4,null,2,null,0,null,2,null],
-  [3,null,4,null,5,null,7,null],[5,null,4,null,2,null,4,null],[5,null,7,null,6,null,4,null],[2,null,1,null,0,null,null,null],
-  [4,null,5,null,7,null,8,null],[7,null,5,null,4,null,2,null],[0,null,2,null,4,null,5,null],[7,null,5,null,4,null,2,null],
-  [4,null,5,null,7,null,9,null],[7,null,5,null,4,null,5,null],[2,null,4,null,5,null,7,null],[4,null,2,null,1,null,0,null]
+  [0,null,4,1,null,2,0,null],
+  [4,1,null,2,null,3,1,null],
+  [4,null,1,2,null,0,1,null],
+  [2,null,1,null,0,null,null,null],
+  [0,null,4,null,1,null,0,null],
+  [2,null,1,null,0,null,1,null],
+  [4,null,1,null,2,null,4,null],
+  [2,null,1,null,4,null,0,null],
+  [0,null,4,null,1,null,0,null],
+  [4,null,1,null,2,null,0,null],
+  [4,null,1,null,2,null,5,null],
+  [2,null,1,null,0,null,1,null],
+  [0,null,4,null,1,null,2,null],
+  [4,null,1,null,3,null,2,null],
+  [5,null,4,null,1,null,2,null],
+  [2,null,1,null,0,null,null,null],
+  [7,null,4,null,8,null,7,null],
+  [4,null,1,null,2,null,0,null],
+  [0,null,4,null,1,null,2,null],
+  [4,null,2,null,1,null,0,null],
+  [0,null,4,null,1,null,5,null],
+  [4,null,1,null,2,null,4,null],
+  [2,null,4,null,1,null,2,null],
+  [4,null,2,null,1,null,0,null]
 ];
 const MUSIC_COMBAT_MELODY = [
-  [0,null,4,2,null,1,0,null],[null,4,2,null,3,1,null,0],
-  [0,null,0,4,null,2,null,1],[4,null,3,1,0,null,null,null],
-  [0,4,null,2,null,3,1,null],[null,2,0,null,4,3,null,0],
-  [4,null,7,2,null,4,1,0],[3,1,null,2,0,null,null,null],
-  [0,null,4,null,7,5,4,null],[2,4,null,5,null,4,2,null],
-  [4,null,7,5,4,null,2,1],[2,1,null,0,null,null,null,null],
-  [0,2,null,4,7,null,5,4],[null,5,4,null,2,1,null,0],
-  [4,5,null,7,9,null,7,4],[2,null,1,0,null,null,null,null],
-  [0,null,7,4,null,5,4,2],[4,null,5,7,null,4,2,1],
-  [0,4,null,7,9,null,7,5],[4,2,null,1,0,null,null,null],
-  [0,4,7,null,5,4,null,2],[4,null,7,9,7,null,5,4],
-  [7,5,null,4,2,1,null,0],[4,null,2,1,0,null,null,null]
+  [0,null,4,1,null,2,0,null],
+  [null,4,1,null,2,3,null,0],
+  [0,null,4,1,null,2,null,0],
+  [4,null,2,1,0,null,null,null],
+  [0,4,null,1,null,3,0,null],
+  [null,4,1,null,2,3,null,0],
+  [4,null,7,1,null,2,4,0],
+  [3,2,null,1,0,null,null,null],
+  [0,null,4,null,1,2,0,null],
+  [4,1,null,2,null,4,0,null],
+  [4,null,7,1,2,null,4,0],
+  [2,1,null,0,null,null,null,null],
+  [0,4,null,1,2,null,7,4],
+  [null,4,1,null,2,3,null,0],
+  [4,7,null,1,2,null,9,4],
+  [2,null,1,0,null,null,null,null],
+  [0,null,4,1,null,2,4,0],
+  [4,null,1,2,null,7,4,0],
+  [0,4,null,1,2,null,7,4],
+  [4,2,null,1,0,null,null,null],
+  [0,4,1,null,2,4,null,0],
+  [4,null,7,1,2,null,7,4],
+  [7,4,null,1,2,1,null,0],
+  [4,null,2,1,0,null,null,null]
 ];
 function midiToFrequency(note){ return 440 * Math.pow(2, (note - 69) / 12); }
 const AUDIO_EVENT_GAPS = Object.freeze({
@@ -6356,8 +6496,20 @@ class SoundEngine{
     this.musicBus.gain.cancelScheduledValues(now);
     this.musicBus.gain.setTargetAtTime(this.musicPaused ? 0 : audioMusicVolume, now, 0.04);
   }
-  setMusicPhase(phase){
-    if(phase === 'field' || phase === 'wave') this.requestedMusicPhase = phase;
+  setMusicPhase(phase, fadeNow=false){
+    if(phase !== 'field' && phase !== 'wave') return;
+    this.requestedMusicPhase=phase;
+    if(!fadeNow || this.musicPhase===phase || !this.unlocked || !this.musicBus || this.musicPaused) return;
+    const now=this.ctx.currentTime, gain=this.musicBus.gain;
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(gain.value,now);
+    gain.linearRampToValueAtTime(0.0001,now+0.12);
+    gain.setValueAtTime(0.0001,now+0.14);
+    gain.linearRampToValueAtTime(audioMusicVolume,now+0.32);
+    this.musicTransitionUntil=now+0.32;
+    this.musicPhase=phase;
+    this.musicStep=(Math.ceil(this.musicStep/MUSIC_STEPS_PER_BAR)*MUSIC_STEPS_PER_BAR)%MUSIC_CYCLE_STEPS;
+    this.musicNextTime=now+0.14;
   }
   setMusicPaused(paused){
     this.musicPaused = !!paused;
@@ -6426,7 +6578,9 @@ class SoundEngine{
       if(this.musicVoiceExpiry[i] > now) this.musicVoiceExpiry[write++] = this.musicVoiceExpiry[i];
     }
     this.musicVoiceExpiry.length = write;
-    if(write + count > 6) return false;
+    let overlapping=0;
+    for(const expiry of this.musicVoiceExpiry) if(expiry>startTime) overlapping++;
+    if(overlapping + count > 6) return false;
     for(let i=0;i<count;i++) this.musicVoiceExpiry.push(startTime + duration + 0.015);
     return true;
   }
@@ -6455,28 +6609,35 @@ class SoundEngine{
   }
   musicTone(freq, startTime, duration, type, peak){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0 || !freq) return;
-    if(!this.reserveMusicVoice(startTime, duration, type === 'fm' ? 2 : 1)) return;
+    const fmVoice = type === 'fm' || type === 'fmkeys' || type === 'fmbass';
+    if(!this.reserveMusicVoice(startTime, duration, fmVoice ? 2 : 1)) return;
     const osc = this.ctx.createOscillator();
     const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
     const endTime = startTime + duration;
-    osc.type = type === 'fm' ? 'sine' : type === 'pluck' || type === 'reed' ? 'triangle' : type === 'brass' || type === 'wobble' ? 'sawtooth' : type === 'kick' || type === 'snap' ? 'sine' : type;
+    osc.type = fmVoice ? 'sine' : type === 'pluck' || type === 'reed' ? 'triangle' : type === 'brass' || type === 'wobble' ? 'sawtooth' : type === 'kick' || type === 'snap' ? 'sine' : type;
     if(type === 'brass' && this.brassWave) osc.setPeriodicWave(this.brassWave);
     let modulator = null, modulationGain = null;
-    if(type === 'fm'){
+    if(fmVoice){
       modulator = this.ctx.createOscillator();
       modulationGain = this.ctx.createGain();
       modulator.type = 'sine';
-      modulator.frequency.setValueAtTime(freq * 2, startTime);
-      modulationGain.gain.setValueAtTime(freq * 1.1, startTime);
-      modulationGain.gain.exponentialRampToValueAtTime(freq * 0.08, endTime);
+      const ratio = type === 'fmkeys' ? 1 : 2;
+      const index = type === 'fmbass' ? 2.4 : type === 'fmkeys' ? 0.65 : 1.1;
+      modulator.frequency.setValueAtTime(freq * ratio, startTime);
+      modulationGain.gain.setValueAtTime(freq * index, startTime);
+      modulationGain.gain.exponentialRampToValueAtTime(freq * (type === 'fmkeys' ? 0.12 : 0.06), startTime + duration * 0.72);
+      modulationGain.gain.exponentialRampToValueAtTime(freq * 0.025, endTime);
       modulator.connect(modulationGain); modulationGain.connect(osc.frequency);
       modulator.start(startTime); modulator.stop(endTime + 0.015);
     }
     filter.type = 'lowpass';
-    const cutoff = type === 'wobble' ? 260 : type === 'kick' ? 500 : type === 'snap' ? 900 : type === 'fm' ? 2200 : type === 'brass' ? 1500 : type === 'reed' ? 1700 : type === 'pluck' ? 2400 : type === 'triangle' ? 2600 : 900;
+    const cutoff = type === 'fmbass' ? 720 : type === 'fmkeys' ? 1900 : type === 'wobble' ? 260 : type === 'kick' ? 500 : type === 'snap' ? 900 : type === 'fm' ? 2200 : type === 'brass' ? 1500 : type === 'reed' ? 1700 : type === 'pluck' ? 2400 : type === 'triangle' ? 2600 : 900;
     filter.frequency.setValueAtTime(cutoff, startTime);
+    if(type === 'reed') filter.frequency.exponentialRampToValueAtTime(1100, endTime);
     if(type === 'pluck' || type === 'brass') filter.frequency.exponentialRampToValueAtTime(type === 'pluck' ? 700 : 650, endTime);
+    if(type === 'fmbass') filter.frequency.exponentialRampToValueAtTime(320, startTime + duration * 0.45);
+    if(type === 'fmkeys') filter.frequency.exponentialRampToValueAtTime(850, endTime);
     filter.Q.value = type === 'wobble' ? 1.8 : 0.35;
     if(type === 'wobble'){
       filter.frequency.exponentialRampToValueAtTime(720, startTime + duration * 0.3);
@@ -6484,8 +6645,9 @@ class SoundEngine{
       filter.frequency.exponentialRampToValueAtTime(430, endTime);
     }
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(peak, startTime + (type === 'reed' ? 0.028 : type === 'pluck' ? 0.004 : 0.012));
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * 0.22), startTime + Math.max(0.04, duration * 0.42));
+    gain.gain.linearRampToValueAtTime(peak, startTime + Math.min(duration * 0.25, type === 'reed' ? 0.028 : type === 'pluck' || type === 'fmbass' ? 0.004 : type === 'fmkeys' ? 0.008 : 0.012));
+    const sustainTime = type === 'reed' ? duration * 0.70 : Math.min(duration * 0.85, Math.max(0.04, duration * 0.42));
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * (type === 'reed' ? 0.65 : 0.22)), startTime + sustainTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
     osc.frequency.setValueAtTime(freq, startTime);
     if(type === 'kick' || type === 'snap') osc.frequency.exponentialRampToValueAtTime(type === 'kick' ? 46 : 95, startTime + duration * 0.6);
@@ -6513,23 +6675,28 @@ class SoundEngine{
         this.musicTone(195, time, 0.065, 'snap', 0.075);
       }
       if(!breath && (beatStep === 1 || beatStep === 3 || beatStep === 6)){
-        const offset = beatStep === 6 ? 7 : section === 1 && beatStep === 3 ? 12 : 0;
-        this.musicTone(midiToFrequency(chord + offset), time, 0.16, 'wobble', section === 1 ? 0.12 : 0.09);
+        const offset = beatStep === 6 ? (phraseBar === 2 ? 12 : 7) : beatStep === 3 ? (phraseBar === 1 ? 7 : phraseBar === 2 ? 5 : section === 1 ? 12 : 0) : 0;
+        this.musicTone(midiToFrequency(chord + offset), time + (beatStep === 3 ? 0.003 : 0), 0.14, section === 1 ? 'wobble' : 'fmbass', section === 1 ? 0.12 : 0.085);
       }
-      if(beatStep === 7 && phraseBar === 1) this.musicPercussion(time, false);
-    } else if(beatStep === 0 || beatStep === 4 && !breath){
-      this.musicTone(midiToFrequency(chord + (beatStep === 4 ? 7 : 0)), time, 0.27, 'triangle', 0.075);
+      if(beatStep === 7 && (phraseBar === 1 || phraseBar === 3 && section > 0)) this.musicPercussion(time, false);
+    } else if(!breath && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
+      this.musicTone(midiToFrequency(chord + (beatStep === 3 ? 7 : beatStep === 6 ? 12 : 0)), time, beatStep === 0 ? 0.27 : 0.16, section === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
     }
-    const degree = (combat ? MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length] : MUSIC_MELODY[bar])[beatStep];
+    const cadence=!combat && phraseBar===3 && beatStep===2;
+    const degree = cadence ? 0 : (combat ? MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length] : MUSIC_MELODY[bar])[beatStep];
     if(degree !== null && !breath){
       const intervals = combat ? MUSIC_PHRYGIAN_INTERVALS : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
       const octave = combat && section === 2 && beatStep === 2 ? 12 : 0;
-      const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (phraseBar === 2 ? 'reed' : 'pluck');
-      this.musicTone(midiToFrequency(chord + (combat ? 12 : 24) + intervals[degree] + octave), time, combat ? (beatStep === 0 ? 0.25 : 0.13) : voice === 'reed' ? 0.25 : 0.18, voice, combat ? 0.11 : 0.095);
+      const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (cadence ? 'reed' : section === 0 || phraseBar === 2 ? 'fmkeys' : 'pluck');
+      const duration=combat ? (beatStep===0 ? 0.25 : beatStep%2 ? 0.11 : 0.15) : cadence ? this.musicStepSeconds()*1.65 : voice==='reed' ? 0.28 : voice==='fmkeys' ? 0.24 : beatStep%2 ? 0.13 : 0.20;
+      const accent=beatStep===0 ? 1 : beatStep%2 ? 0.78 : 0.90;
+      const phraseGain=phraseBar===3 ? 0.82 : section===1 ? 0.94 : 1;
+      this.musicTone(midiToFrequency(chord + (combat ? 12 : 24) + intervals[degree] + octave), time, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain);
     }
-    if(!combat && phraseBar === 1 && (beatStep === 3 || beatStep === 7)){
-      const interval = beatStep === 3 ? (minor ? 3 : 4) : 7;
-      this.musicTone(midiToFrequency(chord + 24 + interval), time, 0.10, 'pluck', 0.03);
+    if(!combat && (phraseBar === 1 || phraseBar === 2 && section > 0) && (beatStep === 3 || beatStep === 7) && !breath){
+      const third = minor ? 3 : 4;
+      const interval = phraseBar === 1 ? (beatStep === 3 ? 7 : third) : (beatStep === 3 ? third : 7);
+      this.musicTone(midiToFrequency(chord + 12 + interval), time + 0.004, 0.14, phraseBar===1 ? 'pluck' : 'fmkeys', 0.027);
     }
   }
   // CA179 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA179
@@ -6578,6 +6745,7 @@ class SoundEngine{
   duck(amountDb, durationSec){
     if(!this.unlocked || isMuted || this.musicPaused || this.musicBaseGain <= 0) return;
     const now = this.ctx.currentTime;
+    if(now < (this.musicTransitionUntil || 0)) return;
     const baseline = this.musicBaseGain;
     const duckGain = baseline * Math.pow(10, amountDb / 20);
     this.musicBus.gain.cancelScheduledValues(now);
@@ -6838,9 +7006,9 @@ class SoundEngine{
         break;
 
       // CA198 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA198
-      case 'click':    this.tone(600, 0.035, 'sine', undefined, 0, false, 0, false, true, 0.09); break; // minor UI tick — tabs, toggles, selections
-      case 'ui_open':   this.tone(500, 0.07, 'sine', 780, undefined, undefined, undefined, undefined, true); break; // modal opening — short upward blip
-      case 'ui_close':  this.tone(500, 0.07, 'sine', 320, undefined, undefined, undefined, undefined, true); break; // modal closing — short downward blip
+      case 'click': this.tone(1174.66,0.032,'triangle',undefined,0,false,0,false,true,0.055); this.tone(1567.98,0.040,'sine',undefined,0,false,0.018,false,true,0.035); break;
+      case 'ui_open': this.tone(783.99,0.045,'triangle',undefined,0,false,0,true,true,0.07); this.tone(1174.66,0.075,'sine',undefined,0,false,0.035,true,true,0.055); break;
+      case 'ui_close': this.tone(1174.66,0.040,'triangle',undefined,0,false,0,true,true,0.055); this.tone(783.99,0.055,'sine',undefined,0,false,0.025,true,true,0.04); break;
       case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true, true); break; // purchase — cheerful two-note chime
       case 'ui_deny':   this.tone(220, 0.075, 'triangle', 140, 0, false, 0, true, true, 0.14); break; // blocked/disabled action — low buzz
       case 'stat_spend': // allocating a stat point — deliberately warmer and more lingering than
@@ -7372,7 +7540,7 @@ function dropItemsFromEnemy(enemy){
     showToast('A rare map bag! Click it for a free expansion.');
     trackGameEvent('item_dropped', { item: GOLD_MAP_BAG_ITEM.id, rarity: GOLD_MAP_BAG_ITEM.rarity, enemy_type: enemy.type });
   }
-  if(Math.random() < 1/200) dropGoldBag(enemy.x + (Math.random()-0.5)*18, enemy.y);
+  if(Math.random() < 1/500) dropGoldBag(enemy.x + (Math.random()-0.5)*18, enemy.y);
   const tier = enemyDropTier(enemy);
   const dropped = [];
   if(tier === 'BOSS'){
@@ -7437,6 +7605,24 @@ let dragItemPos = { x:0, y:0 }; // current world-space position of the item whil
 // ITEM-MOVE-01 (1.6.104) — see CHANGELOG.md § [1.6.104]. A dragged ground item can be set down anywhere on the map,
 // but only inside the reach (targeting range circle) of at least one fighting stickman. Outside every circle the
 // item slides to the nearest point on the closest circle's edge; with no stickman to reach it, it cannot move.
+const ITEM_DROP_SNAP_RADIUS=16;
+function itemDropTargetAt(point){
+  let nearest=null,nearestDistSquared=ITEM_DROP_SNAP_RADIUS*ITEM_DROP_SNAP_RADIUS;
+  for(const tower of towerPool){
+    if(!tower.active || tower.type==='BARRICADE') continue;
+    const dx=tower.x-point.x,dy=tower.y-point.y,distanceSquared=dx*dx+dy*dy;
+    if(distanceSquared<nearestDistSquared){nearest=tower;nearestDistSquared=distanceSquared;}
+  }
+  return nearest;
+}
+function draggedItemPositionAt(point,item){
+  const target=itemDropTargetAt(point);
+  if(target)return {x:target.x,y:target.y};
+  const free=clampToItemReach(point,activeItemReachCircles(),item);
+  if(isLooseWalkableAt(free.x,free.y))return free;
+  const fallback=dragItemPos || item;
+  return {x:fallback.x,y:fallback.y};
+}
 function activeItemReachCircles(){
   const circles = [];
   for(const tower of towerPool){
@@ -7569,6 +7755,7 @@ function toggleNotificationPanel(open){
   const shouldOpen = open === undefined ? panel.classList.contains('hidden') : open;
   panel.classList.toggle('hidden', !shouldOpen);
   if(shouldOpen){
+    positionNotificationControls(true);
     if(!towerModalEl.classList.contains('hidden')) closeTowerModal();
     renderNotificationPanel();
   }
@@ -7622,9 +7809,23 @@ function openNotificationEntry(id, overrideEntry){
     notificationPopupPausedGame = gameState === 'PLAYING';
     stopStatHold();
     if(notificationPopupPausedGame){ recordStateTransition('PAUSED'); gameState = 'PAUSED'; audioEngine.setMusicPaused(true); }
+    positionNotificationDetail(popup);
     popup.showModal();
+    positionNotificationDetail(popup);
   }
 }
+function positionNotificationDetail(popup){
+  const bell=document.getElementById('notificationBellOpen').getBoundingClientRect();
+  const viewport=window.visualViewport;
+  const left=viewport ? viewport.offsetLeft : 0, top=viewport ? viewport.offsetTop : 0;
+  const width=viewport ? viewport.width : window.innerWidth, height=viewport ? viewport.height : window.innerHeight;
+  popup.style.width=Math.min(420,Math.max(0,width-24))+'px';
+  const y=Math.max(top+12,Math.min(bell.bottom+8,top+height-100));
+  popup.style.left=Math.max(left+12,Math.min(bell.left,left+width-Math.min(420,width-24)-12))+'px';
+  popup.style.top=y+'px';popup.style.maxHeight=Math.max(60,top+height-y-12)+'px';
+}
+window.addEventListener('resize',()=>{const popup=document.getElementById('notification-detail-popup');if(popup.open)positionNotificationDetail(popup);});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{const popup=document.getElementById('notification-detail-popup');if(popup.open)positionNotificationDetail(popup);});
 const notificationDetailPopup = document.getElementById('notification-detail-popup');
 notificationDetailPopup.addEventListener('keydown', e => e.stopPropagation());
 notificationDetailPopup.addEventListener('pointerdown', e => e.stopPropagation());
@@ -7636,7 +7837,7 @@ document.getElementById('notification-detail-close').addEventListener('click', (
 document.getElementById('runRewardBtn').addEventListener('pointerdown',e=>e.stopPropagation());
 document.getElementById('runRewardBtn').addEventListener('click',e=>{e.stopPropagation();openRunReward();});
 function notificationTitle(message){
-  if(/enemy left the path|breaking off/i.test(message)) return '⚡ Enemy breaking off';
+  if(/enemy left the path|breaking off/i.test(message)) return '😡 Enemy aggression';
   if(/enemy escaped.*wandering/i.test(message)) return '🏃 Enemy escaped';
   return message;
 }
@@ -8029,12 +8230,12 @@ function dpsBreakdownText(t){
 let _changelogCache = null;
 async function loadChangelogEntries(){
   if(_changelogCache) return _changelogCache;
-  const res = await fetch('CHANGELOG.md');
+  const res = await fetch('CHANGELOG.md',{cache:'no-cache'});
   if(!res.ok) throw new Error('CHANGELOG.md fetch failed: ' + res.status);
   const text = await res.text();
   const entries = [];
   // CA236 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA236
-  const headingRe = /^## \[([^\]]+)\] - (\S+)(?: — (.+))?$/gm;
+  const headingRe = /^## \[([^\]]+)\] [—–-] (\S+)(?: \(UTC\))?(?: [—–-] (.+))?$/gm;
   const matches = [...text.matchAll(headingRe)];
   for(let i = 0; i < matches.length; i++){
     const m = matches[i];
@@ -8159,6 +8360,7 @@ function gainTowerExp(tower, amount){
     if(earnedGold > 0){
       tower.masteryXpRemainder -= earnedGold * MASTERY_XP_PER_GOLD;
       gold += earnedGold;
+
       spawnXpText(tower.x, tower.y - 22, earnedGold, true);
     }
     return;
@@ -8188,7 +8390,7 @@ function gainTowerExp(tower, amount){
     spawnFloatingText(tower.x, tower.y - 40, '+' + pointsGainedThisCall + ' STAT' + (pointsGainedThisCall === 1 ? '' : 'S') + '!', '#ffd23f');
     if(tower.hp > tower.maxHp * LEVELUP_FANFARE_MIN_HP_FRACTION){
       playSound('levelup');
-      playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: 40 });
+      playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: 40 }, tower.y);
     } // bright, excited — an upward reaction
   }
   if(selectedTower === tower) updateInspectPanel();
@@ -8308,7 +8510,7 @@ function requestStickmanBark(tower, tier, emoji, lines, style, chance){
   target.textWidth = null;
   target.emoji = emoji; target.timer = BARK_LIFE_MS;
   tower.lastBarkAt = presentationTime;
-  playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: tier === BARK_TIER_VITAL ? -50 : 25 });
+  playSound('chatter_short', tower.x, { archetype: CLASS_ARCHETYPE[tower.type], pitchBias: tier === BARK_TIER_VITAL ? -50 : 25 }, tower.y);
 }
 function updateBarks(frameMs){
   for(const slot of barkPool){
@@ -8391,7 +8593,8 @@ function serializeGameState(){
     // CA249 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA249
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
     looseInventory: groundItems.filter(gi=>!gi.itemDef.isGoldBag && !gi.itemDef.isMapScroll && !gi.itemDef.isExpansionBag && itemDefinitionForSavedId(gi.itemDef.id)).map(gi=>({x:gi.x,y:gi.y,itemId:gi.itemDef.id,age:Math.max(0,presentationTime-gi.spawnTime),legacyLuckyCoin:!!gi.itemDef.legacyLuckyCoin})),
-    looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,age:c.age,lifespan:c.lifespan})),
+    livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].isTroll).slice(0,LIVESTOCK_MAX_ON_BOARD).map(e=>({type:e.type,x:e.x,y:e.y,radius:e.radius,healthFraction:e.hp/e.maxHp})),
+    looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,fromGoldBag:!!c.fromGoldBag,age:c.age,lifespan:c.lifespan})),
     gold, lives, livesBought, waveIndex:stealthRun && waveIndex===10 && !stealthSantaDefeated?9:waveIndex, wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, firstTenEnemyKillCount, firstMapScrollDropped, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
     globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions,
@@ -8446,6 +8649,7 @@ function restoreGameState(state){
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
   sceneryMap.clear();
+  guardedRoadEndKeys.clear();
   invalidateSpawnFlags();
   clearingScenery.length = 0;
   // Loading replaces the current run; unsaved loose loot cannot cross into it.
@@ -8537,6 +8741,7 @@ function restoreGameState(state){
   }
 
   restoreLooseCoins(state.looseCoins);
+  restoreLivestock(state.livestock);
   restoreLooseInventory(state.looseInventory);
 
   for(const td of (state.towers || [])){
@@ -8588,6 +8793,7 @@ function restoreGameState(state){
   }
 
   waveState = 'IDLE'; resetWaveDispatch();
+  repairMissingExpansionScenery();
   screenShakeUntil = 0; screenShakeMag = 0;
   rebakeMap();
   if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
@@ -8739,7 +8945,7 @@ let pausedRenderQueued = false;
 function requestPausedRender(){
   if(pausedRenderQueued) return;
   pausedRenderQueued = true;
-  requestAnimationFrame(() => { pausedRenderQueued = false; if(gameState !== 'START') render(ctx); });
+  requestAnimationFrame(() => { pausedRenderQueued = false; if(gameState !== 'START'){ flushHUDIfDirty(); render(ctx); } });
 }
 // CA266 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA266
 const PAN_INERTIA_DECAY_PER_MS = 0.005;
@@ -8837,6 +9043,9 @@ class Enemy{
   // Enemy family and wave-size radius changes therefore update weight automatically.
   get weight(){ return Math.max(0.25, (this.radius || 15) / 15); }
   spawn(type, hpMultiplier, isBig, isMini){
+    if(markedTargetEnemy === this) setMarkedTarget(null);
+    this.deathResolved = false;
+    this.renderPrevX=undefined;this.renderPrevY=undefined;this.renderPrevTraveled=undefined;
     enemyPresenceDirty = true;
     const def = CONFIG.ENEMIES[type];
     this.id = idCounter++;
@@ -8915,6 +9124,7 @@ class Enemy{
     this.attackBumpTarget = null;
     // CA272 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA272
     this.willBreakaway = Math.random() < (def.breakawayChance || 0);
+    this.aggroStartedAt=-1;
     this.breakawayDone = false;
     this.isBreakaway = false;
     this.breakawayTarget = null;
@@ -9168,7 +9378,7 @@ class Enemy{
     // CA288 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA288
     if(((this.type === 'BOSS' || this.type === 'SANTA') || this.isTroll) && !this.enrageCueFired && this.hp > 0 && this.hp < this.maxHp * 0.3){
       this.enrageCueFired = true;
-      playSound('enrage', this.x);
+      playSound('enrage', this.x, undefined, this.y);
     }
     if(this.pileBlocked){
       this.vx = 0; this.vy = 0;
@@ -9270,7 +9480,7 @@ class Enemy{
         if(typeof camera !== 'undefined'){
           const onScreenX = this.x*camera.zoom + camera.x, onScreenY = this.y*camera.zoom + camera.y;
           if(onScreenX > -80 && onScreenX < CANVAS_W+80 && onScreenY > -80 && onScreenY < CANVAS_H+80){
-            playSound('footstep', this.x, this.footstepWeight);
+            playSound('footstep', this.x, this.footstepWeight, this.y);
           }
         }
       }
@@ -9371,7 +9581,7 @@ class Enemy{
         tower.takeDamage(Math.max(1, Math.round(12 * ENEMY_DAMAGE_SCALE)), null);
         spawnDebrisNear(tower.x, tower.y);
         spawnFloatingText(this.x, this.y - this.radius - 8, '🥢 Swing!', '#8a5a2b');
-        playSound('monster_swing', this.x);
+        playSound('monster_swing', this.x, undefined, this.y);
       }
     }
     const target = waypointsPx[this.pathIndex-1];
@@ -9392,11 +9602,11 @@ class Enemy{
     const target = findNearestActiveTower(this.x, this.y, 320);
     if(!target){ this.breakawayDone = true; return; } // nothing worth breaking away for — stay on path
     this.isBreakaway = true;
-    playSound('threat', this.x);
+    playSound('threat', this.x, undefined, this.y);
     maybeShowFirstTimeAlert('stickTD_firstBreakawaySeen', '⚡ An enemy left the path to attack a tower. Defend the threatened unit or move it to safety.', '#ff8a65');
     this.breakawayTarget = target;
     this.breakAttackTimer = 0;
-    spawnFloatingText(this.x, this.y - this.radius - 6, '⚡ Breaking off!', '#ff8844');
+    this.aggroStartedAt=presentationTime;
   }
   updateBreakaway(dt){
     // CA299 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA299
@@ -9437,7 +9647,7 @@ class Enemy{
   }
   reachEnd(){
     loseLife(1);
-    playSound('threat', this.x);
+    playSound('threat', this.x, undefined, this.y);
     maybeShowFirstTimeAlert(FIRST_ESCAPE_SEEN_KEY, '🏃 An enemy escaped and is wandering — it will attack your towers if left alone!', '#ff8a65');
     waveTelemetry.escaped++;
     waveTelemetry.loosePeak = Math.max(waveTelemetry.loosePeak, countLooseEnemies() + 1);
@@ -9600,7 +9810,7 @@ class Enemy{
     }
   }
   applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit, ignoreArmor){
-    if(!this.active) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
+    if(!this.active || this.deathResolved) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     // CA313 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA313
     const isGraveTarget = (this.isHutBuilding && this.buildingKind === 'GRAVE') || (this.isGuardian && this.hutRef && this.hutRef.buildingKind === 'GRAVE');
     if(isGraveTarget && !isHoly) amount = Math.max(1, Math.round(amount * 0.05));
@@ -9825,7 +10035,7 @@ class Enemy{
     if(this.hp <= 0) this.die(sourceTower, forStreak);
   }
   die(sourceTower, forStreak){
-    if(!this.active) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
+    if(!this.active || this.deathResolved) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
     recordUnitDeath('enemy',this.type,this.escaped ? 'escaped enemy defeated' : 'defeated');
     if(this.isLivestock && !LIVESTOCK_TYPES[this.type]) this.isLivestock = false; // LIVESTOCK-RECYCLE-01 safety net: a real enemy can never be treated as livestock
     if(this.isLivestock){
@@ -9855,6 +10065,8 @@ class Enemy{
       playSound('wave');
       return; // not actually dead yet — no bounty, no kill credit, skip normal death handling
     }
+    this.deathResolved = true;
+    if(markedTargetEnemy === this) setMarkedTarget(null);
     if(this.splits && !this.hasSplit) this.spawnSplitChildren();
     dischargeShockBurst(this, sourceTower);
     // recordContribution() runs before HP subtraction, so it cannot detect the lethal hit.
@@ -9864,7 +10076,9 @@ class Enemy{
     applyKillShake(this);
     if((this.type === 'BOSS' || this.type === 'SANTA') && sourceTower) requestStickmanBark(sourceTower, BARK_TIER_IMPORTANT, '😎', BARK_LINES.BOSS_KILL, 0, BARK_CHANCE.BOSS_KILL);
     if(this.type === 'TROLL' && !this.escaped){ for(let b=0; b<2; b++) dropGoldBag(this.x + (b*2-1)*10, this.y); }
-    else if(Math.random() < 0.015 && !this.escaped) dropGoldBag(this.x, this.y);
+    else if(Math.random() < 0.15 && !this.escaped){
+      const coin=acquireCoinSlot();coin.value=1+Math.floor(Math.random()*3);coin.age=0;coin.lifespan=coinPickupLifespan();coin.active=true;launchCoin(coin,this.x,this.y);
+    }
     spawnDeathAnim(this.x, this.y, this.emoji, this.radius); // brief squash-and-fade in place of an instant vanish
     this.active = false;
     if(this.escaped && waveState==='IDLE' && gameState==='PLAYING' && countLooseEnemies()===0) playSound('wave_clear');
@@ -9895,6 +10109,8 @@ class Enemy{
       dropGoldBag(this.x + 10, this.y, bountyGold - firstBagGold);
     } else {
       gold += bountyGold;
+      if(bountyGold>0)launchGoldHudFlight(this.x,this.y);
+      
       if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     }
     dropItemsFromEnemy(this);
@@ -10019,8 +10235,8 @@ class Enemy{
           spawnParticles(this.x, this.y, bio.spray, Math.max(3, Math.round(9*goreScale)), 130, 0.9, false, undefined, undefined, 0.5);
         }
         // CA367 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA367
-        if(!bio.isDust && Math.random() < 0.12) spawnBoneDebris(this.x, this.y, this.radius);
-        if(!bio.isDust && Math.random() < 0.05) spawnSkullDrop(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.32) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.10) spawnSkullDrop(this.x, this.y, this.radius);
         if(Math.random() < 0.55){
           // CA368 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA368
           const decalArch = arch === 'WARRIOR' ? resolveWeaponSubtype(sourceTower) : arch;
@@ -10051,7 +10267,7 @@ class Enemy{
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
     // CA371 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA371
-    playSound('gore_death', this.x, goreScale);
+    playSound('gore_death', this.x, goreScale, this.y);
     updateHUD();
     const deathElapsedMs = performance.now() - deathStartedAt;
     enemyDeathTiming.count++;
@@ -10157,10 +10373,11 @@ class Enemy{
     }
     ctx.save();
     const isStriding = !this.isLivestock && speed > 5 && !isFastForwardSimplified() && !PREFERS_REDUCED_MOTION;
-    const strideAngle = this.traveled / Math.max(4, this.radius*ENEMY_STRIDE_LENGTH_PER_RADIUS) + this.id*1.3; // ENEMY-STRIDE-01 (1.6.124) — distance-driven, so a slower enemy steps slower but always visibly steps
+    const strideDistance=Number.isFinite(this.renderPrevTraveled) && gameState==='PLAYING' ? this.renderPrevTraveled+(this.traveled-this.renderPrevTraveled)*Math.min(1,accumulator/FIXED_DT) : this.traveled;
+    const strideAngle = strideDistance / Math.max(4, this.radius*ENEMY_STRIDE_LENGTH_PER_RADIUS) + this.id*1.3; // ENEMY-STRIDE-01 (1.6.124) — distance-driven, so a slower enemy steps slower but always visibly steps
     const strideLift = isStriding ? Math.abs(Math.sin(strideAngle)) : 0;
     const walkBob = this.isLivestock ? 0 : -strideLift * this.radius * ENEMY_HOP_PER_RADIUS;
-    ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy+walkBob)+0.5);
+    ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
     if(isStriding){
       const strideStretch = 1 + (strideLift - 0.5) * ENEMY_STRIDE_SQUASH; // taller at the top of the hop, wider on landing
       ctx.rotate(Math.cos(strideAngle) * ENEMY_TILT_RADIANS); // lean toward the stepping side, alternating each step
@@ -10175,15 +10392,26 @@ class Enemy{
       const squash = 1/stretch;
       ctx.rotate(angle); ctx.scale(stretch, squash); ctx.rotate(-angle);
     }
+    const aggroAge=presentationTime-this.aggroStartedAt;
+    if(this.aggroStartedAt>=0 && aggroAge>=0 && aggroAge<600 && !PREFERS_REDUCED_MOTION){
+      const tension=Math.sin(Math.PI*aggroAge/600);
+      ctx.scale(1+tension*0.08,1+tension*0.08);
+      ctx.rotate(Math.sin(aggroAge/35)*tension*0.025);
+    }
     // CA376 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA376
     ctx.fillStyle = '#000000';
     ctx.font = pxFont(this.radius*2);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(this.emoji, 0, 0);
+    if(this.aggroStartedAt>=0 && aggroAge>=0 && aggroAge<600){
+      ctx.strokeStyle='#b92320';ctx.lineWidth=Math.max(1.5,this.radius*0.11);ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(-this.radius*0.55,-this.radius*0.34);ctx.lineTo(-this.radius*0.12,-this.radius*0.17);
+      ctx.moveTo(this.radius*0.55,-this.radius*0.34);ctx.lineTo(this.radius*0.12,-this.radius*0.17);ctx.stroke();
+    }
     ctx.restore();
     if(this.embeddedArrows && this.embeddedArrows.length){
       ctx.save();
-      ctx.translate(Math.round(this.x+bumpDx)+0.5, Math.round(this.y+bumpDy+walkBob)+0.5);
+      ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
       for(const a of this.embeddedArrows){
         ctx.save();
         ctx.translate(a.dx, a.dy);
@@ -10237,6 +10465,7 @@ class Tower{
     this.target = null;
     this.cooldownTimer = 0;
     this.angle = type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
+    this.poseDrawAngle=this.angle; this.poseDrawTime=presentationTime;
     this.renderSwordAngle = IDLE_WEAPON_ANGLE;
     this.targetMode = 'FIRST';
     this.totalSpent = CONFIG.TOWERS[type].baseCost;
@@ -10662,16 +10891,16 @@ class Tower{
   findTarget(nearby){
     let attacker = null, attackerDistance = Infinity;
     for(const enemy of nearby){
-      if(!enemy.active || enemy.attackBumpTarget !== this) continue;
+      if(!enemy.active || enemy.deathResolved || enemy.hp<=0 || enemy.attackBumpTarget !== this) continue;
       const distance = Math.hypot(enemy.x-this.x, enemy.y-this.y);
-      if(distance <= this.targetingRange && distance >= minimumTargetDistance(this, enemy) && distance < attackerDistance){ attacker = enemy; attackerDistance = distance; }
+      if(distance <= this.targetingRange && distance < attackerDistance){ attacker = enemy; attackerDistance = distance; }
     }
     if(attacker){ this.target = attacker; return; }
     // TARGET-MARK-01 (1.6.94): the marked target (see setMarkedTarget()) always wins while in range and
-    // not blocked by the minimum-range rule, ahead of every other consideration below.
+    // after immediate attackers, ahead of ordinary target ranking.
     if(markedTargetEnemy && markedTargetEnemy.active && !markedTargetEnemy.escaped){
       const markedDistance = Math.hypot(markedTargetEnemy.x-this.x, markedTargetEnemy.y-this.y);
-      if(markedDistance <= this.targetingRange && markedDistance >= minimumTargetDistance(this, markedTargetEnemy)){
+      if(markedDistance <= this.targetingRange){
         this.target = markedTargetEnemy;
         return;
       }
@@ -10682,14 +10911,15 @@ class Tower{
     const range = this.targetingRange;
     let best = null, bestScore = -Infinity;
     for(const e of nearby){
+      if(!e.active || e.deathResolved || e.hp<=0) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
-      if(d > range || d < minimumTargetDistance(this,e)) continue;
+      if(d > range) continue;
       const score = this.targetScore(e, d);
       if(score > bestScore){ bestScore = score; best = e; }
     }
     if(this.target && this.target.active){
       const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
-      if(d <= range && d >= minimumTargetDistance(this,this.target)){
+      if(d <= range){
         const currentScore = this.targetScore(this.target, d);
         const threshold = currentScore >= 0 ? currentScore*hysteresisMult : currentScore*hysteresisMultNeg;
         if(!best || best === this.target || bestScore <= threshold) return;
@@ -10712,7 +10942,7 @@ class Tower{
         skipScan = this.cooldownTimer > 0; // updateClericSmite/updatePopeSmite already no-op entirely in that state — no behavior change, just skips the scan that fed them nothing
       } else if(this.cooldownTimer > 0 && this.target && this.target.active){
         const dCur = Math.hypot(this.target.x-this.x, this.target.y-this.y);
-        if(dCur <= this.targetingRange && dCur >= minimumTargetDistance(this,this.target)) skipScan = true;
+        if(dCur <= this.targetingRange) skipScan = true;
         else this.target = null; // fell out of range mid-cooldown — drop it so the scan below finds a real target instead of the tower silently holding a dead aim until cooldown expires
       }
     }
@@ -10744,7 +10974,7 @@ class Tower{
         const predY = this.target.y + this.target.vy*timeToImpact;
         this.angle = Math.atan2(predY-this.y, predX-this.x);
       }
-    } else if((usesMinimumRangedRange(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')){
+    } else if((usesRangedRestPose(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')){
       // CA421 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA421
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
@@ -10773,7 +11003,7 @@ class Tower{
     if(this.telemetry) this.telemetry.shotsFired++;
     target.applyDamage(holyDamage, this, true, true, false, true, true);
     spawnHolyBeam(target.x, target.y, '#fff3c4');
-    playSound('cast_cleric', this.x);
+    playSound('cast_cleric', this.x, undefined, this.y);
     this.cooldownTimer = this.cooldown;
   }
   // CA423 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA423
@@ -10789,7 +11019,7 @@ class Tower{
     }
     spawnShockring(this.x, this.y, hexToRgba('#ffe9a8', 0.75), this.range);
     spawnShockring(this.x, this.y, hexToRgba('#e6bb61', 0.45), 30);
-    playSound('cast_cleric', this.x);
+    playSound('cast_cleric', this.x, undefined, this.y);
     this.cooldownTimer = this.cooldown;
   }
   // Called from a breakaway enemy's attack. Returns true if this hit dropped the tower to 0 HP.
@@ -10812,7 +11042,7 @@ class Tower{
     // CA425 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA425
     if(this.type !== 'BARRICADE' && (!this.lastHitChatterAt || gameTime - this.lastHitChatterAt > 2500)){
       this.lastHitChatterAt = gameTime;
-      playSound('chatter_short', this.x, { archetype: CLASS_ARCHETYPE[this.type], pitchBias: -40 });
+      playSound('chatter_short', this.x, { archetype: CLASS_ARCHETYPE[this.type], pitchBias: -40 }, this.y);
     }
     if(statusType === 'BURN') this.burnUntil = gameTime + 3000;
     if(statusType === 'ICE') this.iceSlowUntil = Math.max(this.iceSlowUntil, gameTime + 3000);
@@ -11019,7 +11249,7 @@ class Tower{
         this.baseAngle = this.angle;
         this.lastSwordAngle = this.baseAngle - this.swingArc/2;
         this.cooldownTimer = this.meleeCooldown;
-        playSound('swing_axe', this.x);
+        playSound('swing_axe', this.x, undefined, this.y);
       } else {
         if(this.fireAxeThrow()) this.cooldownTimer = this.cooldown; // pool exhausted this frame — stay off cooldown and retry next frame otherwise
       }
@@ -11086,7 +11316,7 @@ class Tower{
       p.missRevealAt = gameTime + (dist/this.projectileSpeed)*1000;
     }
     this.renderSwordAngle = angle;
-    playSound('throw_axe', this.x);
+    playSound('throw_axe', this.x, undefined, this.y);
     return true;
   }
 
@@ -11109,7 +11339,7 @@ class Tower{
       const meleeSound = (this.type === 'SPEARMAN' || this.type === 'LANCER') ? 'swing_pierce'
         : (this.type === 'HAMMERMAN' || this.type === 'PALADIN') ? 'swing_blunt'
         : 'swing_blade'; // Swordsman, Axeman, Berserker
-      playSound(meleeSound, this.x);
+      playSound(meleeSound, this.x, undefined, this.y);
 
       if(hasDual){
         const secondary = this.findSecondaryTarget(nearby);
@@ -11154,7 +11384,7 @@ class Tower{
   findSecondaryTarget(nearby){
     let best = null, bestScore = -Infinity;
     for(const e of nearby){
-      if(e === this.target) continue;
+      if(!e.active || e.deathResolved || e.hp<=0 || e === this.target) continue;
       const d = Math.hypot(e.x-this.x, e.y-this.y);
       if(d > this.range) continue;
       const score = this.targetScore(e, d);
@@ -11364,7 +11594,7 @@ class Tower{
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
     // CA453 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA453
     const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const hasTargetPose = !!this.target || (!usesMinimumRangedRange(this) &&
+    const hasTargetPose = !!this.target || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
     const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
@@ -11381,7 +11611,12 @@ class Tower{
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
     const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
-    const drawAngle = usesSwingAngle ? this.renderSwordAngle : this.angle;
+    const desiredDrawAngle = usesSwingAngle ? this.renderSwordAngle : this.angle;
+    const poseElapsed = Math.min(100,Math.max(0,presentationTime-(this.poseDrawTime || presentationTime)));
+    this.poseDrawTime=presentationTime;
+    if(!Number.isFinite(this.poseDrawAngle) || this.isSwinging || this.isSwinging2 || PREFERS_REDUCED_MOTION) this.poseDrawAngle=desiredDrawAngle;
+    else this.poseDrawAngle += Math.atan2(Math.sin(desiredDrawAngle-this.poseDrawAngle),Math.cos(desiredDrawAngle-this.poseDrawAngle))*(1-Math.exp(-poseElapsed/75));
+    const drawAngle = this.poseDrawAngle;
 
     if(this.isHero){
       const pulse = Math.sin(performance.now()/200)*1.5;
@@ -11419,7 +11654,7 @@ class Tower{
     // is actively aiming/attacking, small and only for elemental towers — never drawn while downed.
     if(elementTint && hasTargetPose && !isDisabled){
       const elementEmojiReach = 26 * STICKMAN_SCALE; // TOWER-DRAW-CRASH-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
-      const emojiX = this.x + Math.cos(this.angle)*elementEmojiReach, emojiY = this.y + Math.sin(this.angle)*elementEmojiReach;
+      const emojiX = this.x + Math.cos(drawAngle)*elementEmojiReach, emojiY = this.y + Math.sin(drawAngle)*elementEmojiReach;
       ctx.save();
       ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.globalAlpha = 0.85;
@@ -11571,7 +11806,7 @@ class Projectile{
     if(this.isGuaranteedMiss){
       if(!this.missRevealed && gameTime >= this.missRevealAt){
         this.missRevealed = true;
-        playSound('miss', this.x);
+        playSound('miss', this.x, undefined, this.y);
         if(this.trackedTarget) spawnFloatingText(this.trackedTarget.x, this.trackedTarget.y - this.trackedTarget.radius - 6, 'MISS', '#aaaaaa');
         spawnParticles(this.x, this.y, '#999999', 2);
       }
@@ -12267,7 +12502,7 @@ function spawnBoneDebris(x, y, enemyRadius){
     const decal = {
       x: x + Math.cos(scatterAngle)*scatterDist, y: y + Math.sin(scatterAngle)*scatterDist,
       color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: presentationTime,
-      isEmojiDrop: true, char: '🦴', size: Math.max(6, enemyRadius*sizeFrac*2), rot: Math.random()*Math.PI*2
+      isEmojiDrop: true, char: '🦴', size: Math.max(9, enemyRadius*sizeFrac*2), rot: Math.random()*Math.PI*2
     };
     pushDecal(decal);
   }
@@ -12289,7 +12524,7 @@ function spawnSkullDrop(x, y, enemyRadius){
   const decal = {
     x: x + (Math.random()-0.5)*enemyRadius*0.5, y: y + (Math.random()-0.5)*enemyRadius*0.5,
     color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: presentationTime,
-    isEmojiDrop: true, char: '💀', size: Math.max(10, enemyRadius), rot: (Math.random()-0.5)*0.6
+    isEmojiDrop: true, char: '💀', size: Math.max(12, enemyRadius), rot: (Math.random()-0.5)*0.6
   };
   pushDecal(decal);
 }
@@ -12474,6 +12709,7 @@ function isDecalBakeEligible(d){
   const lifeT = decalLifeT(d);
   const age = presentationTime - d.spawnTime;
   // CA528 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA528
+  if(d.isRubble) return age>=0 && lifeT<0.90;
   if(d.isEmojiDrop || d.isWorm) return false;
   if(d.isDrop) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
   if(d.blobs !== undefined) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
@@ -12482,18 +12718,13 @@ function isDecalBakeEligible(d){
 // Same oxidation curve drawOneDecal() uses for lifeT <= 0.85 (no fade-out inside the bake window).
 function agedBloodColor(d, lifeT){
   const rgb = d.rgb;
-  let r, g, b;
-  if(lifeT < 0.033){
-    const t = lifeT / 0.033;
-    r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
-  } else {
-    const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
-    r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
-  }
+  const wetLift=1+0.18*(1-Math.min(1,Math.max(0,lifeT)*(d.lifespan || DECAL_LIFESPAN)/DECAL_BAKE_MIN_AGE_MS));
+  const r=Math.min(255,Math.round(rgb.r*wetLift)),g=Math.min(255,Math.round(rgb.g*wetLift)),b=Math.min(255,Math.round(rgb.b*wetLift));
   return 'rgba(' + r + ',' + g + ',' + b + ',' + rgb.a + ')';
 }
 function stampSettledDebris(sctx, d){
   sctx.save();
+  sctx.globalAlpha=1;sctx.fillStyle='#d8c6a6';
   sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
   sctx.font = Math.round(d.size) + 'px serif';
   sctx.translate(d.x, d.y);
@@ -12573,7 +12804,7 @@ function sweepSettledDecals(expiredBakedCount){
   const sinceRebuild = presentationTime - lastSettledDecalRebuild;
   if((settledDecalRebuildPending && sinceRebuild >= SETTLED_DECAL_REBUILD_MIN_MS) || (agingDropBaked && sinceRebuild >= DECAL_AGING_RESTAMP_MS)) rebuildSettledDecalCanvas();
 }
-function drawDecals(ctx){
+function maintainDecals(){
   // CA531 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA531
   if(presentationTime - lastDecalExpirySweep >= DECAL_EXPIRY_SWEEP_INTERVAL){
     lastDecalExpirySweep = presentationTime;
@@ -12592,11 +12823,17 @@ function drawDecals(ctx){
     decals.length = write;
     sweepSettledDecals(expiredBakedCount);
   }
+}
+function drawDecals(ctx){
   const bounds = decalViewBounds();
   perfStats.totalDecals = decals.length;
   perfStats.visibleDecals = 0;
   depthSortedDecalsThisFrame.length = 0;
   for(const d of decals){
+    if(d.isRubble){
+      if(!d.baked && decalVisible(d,bounds)) drawOneDecal(ctx,d);
+      continue;
+    }
     if(d.isEmojiDrop || d.isWorm){
       if(decalVisible(d, bounds)) depthSortedDecalsThisFrame.push(d);
       continue;
@@ -12662,13 +12899,8 @@ function drawOneDecal(ctx, d){
       } else {
       // CA537 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA537
       const rgb = d.rgb;
-      if(lifeT < 0.033){
-        const t = lifeT / 0.033;
-        r = Math.round(255 + (150-255)*t); g = Math.round(40 + (55-40)*t); b = Math.round(40 + (30-40)*t);
-      } else {
-        const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
-        r = Math.round(150 + (rgb.r-150)*t); g = Math.round(55 + (rgb.g-55)*t); b = Math.round(30 + (rgb.b-30)*t);
-      }
+      const wetLift=1+0.18*(1-Math.min(1,Math.max(0,lifeT)*(d.lifespan || DECAL_LIFESPAN)/DECAL_BAKE_MIN_AGE_MS));
+      r=Math.min(255,Math.round(rgb.r*wetLift));g=Math.min(255,Math.round(rgb.g*wetLift));b=Math.min(255,Math.round(rgb.b*wetLift));
       // CA538 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA538
       const fadeT = lifeT > 0.85 ? (lifeT - 0.85)/0.15 : 0;
       const fadeOut = 1 - fadeT*fadeT;
@@ -12724,6 +12956,7 @@ function drawOneDecal(ctx, d){
       ctx.globalAlpha = d.isRubble ? clampNum((1 - decalLifeT(d)) / 0.1, 0, 1) : 1; // bone never fades; rubble only over its final 10%
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = Math.round(d.size*growT) + 'px serif';
+      ctx.fillStyle='#fff';ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0;
       ctx.translate(d.x, d.y);
       ctx.rotate(d.rot);
       ctx.fillText(d.char, 0, 0);
@@ -13055,7 +13288,7 @@ function maybeSpawnAmbientLog(){
 }
 function pickupHitSizeWorld(emojiPx, pointerType){
   if(pointerType !== 'touch') return emojiPx;
-  const rect = canvas.getBoundingClientRect();
+  const rect = getCanvasRect();
   if(!(rect.width > 0) || !(camera.zoom > 0)) return emojiPx;
   return Math.max(emojiPx, 44 * CANVAS_W / rect.width / camera.zoom);
 }
@@ -13109,14 +13342,49 @@ function restoreLooseCoins(savedCoins){
     if(!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.y) || !Number.isFinite(saved.value) || saved.value < 0 || !Number.isFinite(saved.lifespan) || saved.lifespan <= 0) continue;
     if(saved.x < 0 || saved.y < 0 || saved.x > WORLD_MAX_W || saved.y > WORLD_MAX_H) continue;
     const c = acquireCoinSlot();
-    c.x=saved.x; c.y=saved.y; c.value=Math.floor(saved.value); c.isDiamond=saved.isDiamond === true;
+    c.x=saved.x; c.y=saved.y; c.value=Math.floor(saved.value); c.isDiamond=saved.isDiamond === true; c.fromGoldBag=saved.fromGoldBag === true;
     c.age=Number.isFinite(saved.age) ? Math.max(0,Math.min(saved.age,saved.lifespan)) : 0;
     c.lifespan=saved.lifespan; c.vx=0; c.vy=0; c.active=true;
   }
 }
+const goldHudFlights=Array.from({length:32},()=>({active:false}));
+let goldHudFlightCount=0, lastGoldHudFlightAt=-1e9;
+function launchGoldHudFlight(x,y){
+  if(PREFERS_REDUCED_MOTION || (gameState!=='PLAYING' && gameState!=='PAUSED') || document.hidden) return;
+  let flight=goldHudFlights.find(f=>!f.active);
+  if(!flight){
+    flight=goldHudFlights.reduce((a,b)=>a.age<b.age ? a : b);
+    flight.count=(flight.count || 1)+1;return;
+  }
+  flight.x=x*camera.zoom+camera.x;flight.y=y*camera.zoom+camera.y;
+  flight.startWidth=CANVAS_W;flight.startHeight=CANVAS_H;
+  flight.age=0;flight.count=1;flight.active=true;goldHudFlightCount++;lastGoldHudFlightAt=presentationTime;
+}
+function updateGoldHudFlights(dt){
+  if(!goldHudFlightCount) return;
+  for(const flight of goldHudFlights) if(flight.active){ flight.age+=dt; if(flight.age>=680){flight.active=false;goldHudFlightCount--;} }
+}
+function drawGoldHudFlights(ctx){
+  if(!goldHudFlightCount) return;
+  const canvasRect=getCanvasRect(),target=goldVal.getBoundingClientRect();
+  if(!canvasRect.width || !canvasRect.height)return;
+  const tx=(target.left+target.width/2-canvasRect.left)*CANVAS_W/canvasRect.width;
+  const ty=(target.top+target.height/2-canvasRect.top)*CANVAS_H/canvasRect.height;
+  ctx.save();ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
+  for(const f of goldHudFlights) if(f.active){
+    const t=Math.min(1,f.age/680),p=t*t*(3-2*t),arc=Math.sin(t*Math.PI);
+    const startX=f.x*CANVAS_W/f.startWidth,startY=f.y*CANVAS_H/f.startHeight;
+    const x=startX+(tx-startX)*p+arc*18,y=startY+(ty-startY)*p-arc*38;
+    ctx.globalAlpha=t>0.88 ? (1-t)/0.12 : 1;
+    ctx.fillStyle='#fff';ctx.fillText('🪙',x,y);
+    if(f.count>1){ctx.font='bold 10px sans-serif';ctx.fillStyle='#ffe082';ctx.fillText('×'+f.count,x+10,y+8);ctx.font='14px sans-serif';}
+  }
+  ctx.restore();
+}
 function creditCoin(c, textColor){
   if(c.isDiamond){ grantDiamondReward(c.x, c.y); return; }
   gold += c.value;
+  launchGoldHudFlight(c.x,c.y);
   if(textColor) spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, textColor);
   updateHUD();
 }
@@ -13150,7 +13418,7 @@ function acquireCoinSlot(){
     coinPoolMayShrink = true;
   }
   c.active = false;
-  c.bounces = 0; c.isDiamond = false;
+  c.bounces = 0; c.isDiamond = false; c.fromGoldBag=false;
   c.airborne = false; c.z = 0; c.vz = 0; c.flightMs = 0;
   return c;
 }
@@ -13205,6 +13473,7 @@ function creditGroundBagGold(groundItem){
   const definition = groundItem.itemDef;
   if(!definition.isGoldBag) return;
   gold += definition.gold;
+  launchGoldHudFlight(groundItem.x,groundItem.y);
   spawnGoldBagCoinBurst(groundItem.x, groundItem.y);
   spawnFloatingText(groundItem.x, groundItem.y - 14, '+💰' + definition.gold, '#e6c200');
   updateHUD();
@@ -13222,11 +13491,13 @@ function spawnGoldBagCoinBurst(x, y){
     const coin = acquireCoinSlot();
     launchCoin(coin, x + (Math.random()-0.5)*16, y - 3);
     coin.value = rollGoldBagCoinValue();
+    coin.fromGoldBag=true;
   }
 }
 function openGoldBag(groundItem, x, y){
   const bagGold = groundItem.itemDef.gold;
   gold += bagGold;
+  launchGoldHudFlight(x,y);
   spawnFloatingText(x, y - 16, '+💰' + bagGold, '#ffd700');
   spawnGoldBagCoinBurst(x, y);
   groundItems = groundItems.filter(gi => gi !== groundItem);
@@ -13253,7 +13524,7 @@ function tryCollectCoinAt(worldX, worldY, pointerType){
   const coin = nearestPickupAt(coinPickups, worldX, worldY, pickupHitSizeWorld(COIN_EMOJI_PX, pointerType), item => item.active && !item.airborne);
   if(!coin) return false;
   creditCoin(coin, '#ffd700');
-  playSound('coin', coin.x);
+  playSound('coin', coin.x, undefined, coin.y);
   coin.active = false;
   trimInactiveCoinPoolTail();
   return true;
@@ -13632,11 +13903,23 @@ function drawStickmanGroundShadow(ctx,x,y,angle,level,type,extra){
   const ms=Math.min(1,96/(80*Math.max(bx,by)*STICKMAN_SCALE*ls));
   const m=stickmanShadowCtx;
   m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
-  m.save(); m.translate(128,128); m.scale(ms,ms); drawStickman(m,0,0,angle,level,type,extra); m.restore();
+  m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
   m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
   const footY=20*by*STICKMAN_SCALE*ls;
   ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+footY); ctx.transform(1,0,-0.55,0.34,0,0);
   ctx.drawImage(stickmanShadowMask,-128/ms,-128/ms-footY,256/ms,256/ms); ctx.restore();
+}
+function drawMageStaffLight(ctx,x,y,radius,shadowPass,glow){
+  radius*=1.2;
+  const breath=PREFERS_REDUCED_MOTION ? 0.65 : 0.5+0.5*Math.sin(presentationTime/650+x*0.11);
+  if(glow && !shadowPass){
+    ctx.fillStyle='rgba(255,255,255,'+(0.08+breath*0.14)+')';
+    ctx.beginPath();ctx.arc(x,y,radius+1.8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,'+(0.18+breath*0.20)+')';
+    ctx.beginPath();ctx.arc(x,y,radius+0.8,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle=shadowPass ? '#000' : '#fff';
+  ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
 }
 function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinMain = (extra && extra.skinMain) || '#f5f0e6';
@@ -13647,7 +13930,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
                    scaleY: (extra && extra.buildScaleY) || (JOB_BUILD[type] && JOB_BUILD[type].scaleY) || 1 };
 
   ctx.save();
-  ctx.translate(Math.round(x)+0.5, Math.round(y)+0.5);
+  ctx.translate((graphicsQuality==='high' ? x : Math.round(x))+0.5, (graphicsQuality==='high' ? y : Math.round(y))+0.5);
   const lunge = (extra && extra.lungeAmt) || 0;
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
   if(extra && !extra.hasTarget){
@@ -13885,22 +14168,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const buttX = handX - Math.cos(staffAngle)*7, buttY = handY - Math.sin(staffAngle)*7;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
-    const pulse = 3 + Math.sin(performance.now()/220)*1 + cast*3; // brief extra flash on cast
     const charge = extra.chargeProgress || 0;
-    const orbColor = level >= 3 ? '#a78bfa' : '#7dd3fc';
-    if(!lowGfx){
-      // CA585 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA585
-      ctx.fillStyle = level >= 3 ? `rgba(167,139,250,${(0.25+charge*0.35).toFixed(2)})` : `rgba(125,211,252,${(0.25+charge*0.35).toFixed(2)})`;
-      ctx.beginPath(); ctx.arc(tipX,tipY,pulse+5+charge*7,0,Math.PI*2); ctx.fill();
-    }
-    ctx.fillStyle = orbColor;
-    ctx.beginPath(); ctx.arc(tipX,tipY,pulse+2+charge*3,0,Math.PI*2); ctx.fill();
-    if(charge > 0.85 && !lowGfx){
-      // final flicker right before release — small bright core flashing faster as it gets closer to firing
-      const flicker = 0.5 + 0.5*Math.sin(performance.now()/60);
-      ctx.fillStyle = `rgba(255,255,255,${(flicker*(charge-0.85)/0.15).toFixed(2)})`;
-      ctx.beginPath(); ctx.arc(tipX,tipY,pulse*0.6,0,Math.PI*2); ctx.fill();
-    }
+    const pulse = 2.1 + charge*0.6 + cast*0.4;
+    drawMageStaffLight(ctx,tipX,tipY,pulse,!!extra.shadowPass,!lowGfx || graphicsQuality==='high' && !extra.preview);
     }
   } else if(type === 'BOMBER'){
     // small pouch of spare shells on the hip — was the only class with zero distinguishing gear
@@ -14981,7 +15251,6 @@ function countLooseEnemies(){
 function startNextWave(){
   if(waveState !== 'IDLE') return;
   if(waveIndex === 0){ stealthRun=window.analyticsConsentChoice==='denied'; markFirstWaveStarted(); }
-  audioEngine.setMusicPhase('wave');
   // CA635 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA635
   if(Math.random() < 0.02){
     spawnLeafGust();
@@ -15027,6 +15296,7 @@ function startNextWave(){
   for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
   playSound('roundStart');
+  audioEngine.setMusicPhase('wave',true);
   updateHUD();
 }
 // CA639 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA639
@@ -15045,9 +15315,7 @@ function findHutPlacementTile(oldRegion, newRegion){
   for(const t of towerPool) if(t.active) blockedPlacementTiles.add(t.gridX+','+t.gridY);
   const finishTile = pathWaypointTiles[pathWaypointTiles.length-1];
   const eventEndKeys = new Set(randomEventEndTileKeys());
-  const newlyOpened = oldRegion && newRegion
-    ? ringBoundaryTiles(newRegion).filter(t => t.x<oldRegion.x0 || t.x>oldRegion.x1 || t.y<oldRegion.y0 || t.y>oldRegion.y1)
-    : latestExpansionTiles;
+  const newlyOpened = latestExpansionTiles;
   for(const {x:gx,y:gy} of newlyOpened){
     const key = gx+','+gy;
     if(!isInActiveRegion(gx,gy) || pathCells.has(key) || blockedPlacementTiles.has(key)) continue;
@@ -15319,7 +15587,7 @@ function update(dt){
   const anyActiveEnemies = laneEnemiesPresent, anyTargetableWanderer = targetableWandererPresent;
   if(anyActiveEnemies){
     let laneUpdated = 0;
-    for(const e of enemyPool) if(e.active && !e.isLivestock){ e.update(dt); laneUpdated++; } // livestock wander in real time, see updatePresentationEffects()
+    for(const e of enemyPool) if(e.active && !e.isLivestock){ e.renderPrevX=e.x;e.renderPrevY=e.y;e.renderPrevTraveled=e.traveled;e.update(dt); laneUpdated++; } // livestock wander in real time, see updatePresentationEffects()
     if(laneUpdated === 0) enemyPresenceDirty = true; // the last lane enemy is gone: look again once, for a wanderer to fight
     phaseTime.enemyUpdate += performance.now() - __pt; __pt = performance.now();
     resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
@@ -15385,7 +15653,7 @@ function update(dt){
       }
       if(moveCharges < MAX_MOVE_CHARGES && towerPool.some(t => t.active && t.equippedItems.some(item => item.id === 'TENNIS_SHOES'))){
         moveCharges++;
-        spawnFloatingText(camera.x + viewWidth/2, camera.y + 38, '👟 Extra move ready', '#ffe082');
+        spawnFloatingText((CANVAS_W/2-camera.x)/camera.zoom, (38-camera.y)/camera.zoom, '👟 Extra move ready', '#ffe082');
       }
       // CA658 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA658
       if(wavesCompleted % 5 === 0 && freeBarricadesLeft < MAX_FREE_BARRICADES){
@@ -15503,6 +15771,25 @@ function updateTargetFrame(){
 }
 // CA665 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA665
 // TARGET-MARK-01 (1.6.94): drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
+function drawSelectedTowerRange(ctx){
+  const tower=selectedTower;
+  if(!tower || !tower.active || tower.type==='BARRICADE') return;
+  const radius=tower.targetingRange || tower.range;
+  if(!(radius>0)) return;
+  ctx.save();
+  ctx.shadowBlur=0;
+  ctx.lineWidth=1.5/Math.max(0.25,camera.zoom);
+  ctx.fillStyle='rgba(232,182,65,0.045)';
+  ctx.strokeStyle='rgba(232,182,65,0.72)';
+  ctx.setLineDash([6/Math.max(0.25,camera.zoom),4/Math.max(0.25,camera.zoom)]);
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+  const splash=(tower.splashRadius || 0)+(towerElement(tower)==='QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
+  if(splash>0 && tower.target && tower.target.active){
+    ctx.strokeStyle='rgba(225,110,45,0.8)';
+    ctx.beginPath();ctx.arc(tower.target.x,tower.target.y,splash,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawSelectedTowerArrow(ctx){
   if(!selectedTower || !selectedTower.active) return;
   const bob = Math.sin(presentationTime/260) * 7; // GAME-SPEED-SCOPE-01 (1.6.93): a UI pointer, not gameplay — must not speed up with 2x/3x/5x/10x
@@ -15510,7 +15797,7 @@ function drawSelectedTowerArrow(ctx){
   ctx.save();
   ctx.font = '26px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if(graphicsQuality !== 'low'){ ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 8; }
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
   ctx.fillText('👇', selectedTower.x, arrowY);
   ctx.restore();
 }
@@ -15539,10 +15826,12 @@ function render(ctx){
   if(graphicsQuality === 'high') drawAnimatedFlora(ctx, fxViewBounds());
   drawPendingRingReveal(ctx); // spiral map-growth: tiles already buildable (isInActiveRegion) but not yet baked into mapCanvas — see advanceRingReveal()
   renderPhaseTime.mapBlit += performance.now() - __rpt; __rpt = performance.now();
+  maintainDecals();
   if(settledDecalCanvasReady) blitWorldLayer(ctx, settledDecalCanvas, worldView); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
   // CA667 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA667
   drawDecals(ctx);
   renderPhaseTime.decals += performance.now() - __rpt; __rpt = performance.now();
+  drawSelectedTowerRange(ctx);
   drawBuildPreview(ctx);
   drawBarricadeChunks(ctx);
   drawDeathAnims(ctx);
@@ -15566,8 +15855,12 @@ function render(ctx){
     if(draggingGroundItem === gi) continue; // drawn separately below, at the drag cursor instead of its resting spot
     const bob = groundItemBobPx(gi);
     if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
-    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'serif',1);
     ctx.save();
+    if(Number.isFinite(gi.rejectStartedAt) && presentationTime-gi.rejectStartedAt<240 && !PREFERS_REDUCED_MOTION){
+      const t=Math.max(0,(presentationTime-gi.rejectStartedAt)/240),p=1-Math.pow(1-t,2);
+      ctx.translate((gi.rejectFromX-gi.x)*(1-p),(gi.rejectFromY-gi.y)*(1-p)-Math.sin(t*Math.PI)*10);
+    }
+    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'serif',1);
     // CA668 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA668
     const isFoodOrTreat = gi.itemDef.isFood || gi.itemDef.isTreat || gi.itemDef.isHutLoot;
     const isGoldCurrencyItem = !!gi.itemDef.isGoldBag || !!(gi.itemDef.isHutLoot && gi.itemDef.kind === 'gold');
@@ -15604,11 +15897,12 @@ function render(ctx){
     ctx.restore();
     ctx.save();
     ctx.globalAlpha = 0.85;
+    drawEmojiGroundShadow(ctx,draggingGroundItem.itemDef.icon,dragItemPos.x,dragItemPos.y,26,'sans-serif',1);
     ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(draggingGroundItem.itemDef.icon, dragItemPos.x, dragItemPos.y);
     ctx.restore();
     // CA671 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA671
-    const hoverTarget = towerPool.find(t => t.active && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
+    const hoverTarget = itemDropTargetAt(dragItemPos);
     if(hoverTarget){
       ctx.save();
       ctx.font = '20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -15634,6 +15928,7 @@ function render(ctx){
   drawWaveCountdown(ctx);
 
   ctx.restore();
+  drawGoldHudFlights(ctx);
   drawBossCompass(ctx);
   updateAndDrawBlowingLeaves(ctx);
   if(showFpsCounter) drawFpsCounter(ctx);
@@ -15687,6 +15982,7 @@ function drawDebugOverlay(ctx){
   ctx.restore();
 }
 function buildDebugOverlayLayout(ctx){
+  const compact=CANVAS_W<600;
   let onPath = 0, escaped = 0, dying = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
@@ -15694,7 +15990,14 @@ function buildDebugOverlayLayout(ctx){
     if(e.hp <= 0) dying++;
   }
   const phase = activeWavePlan && activeWavePlan.phases[waveDispatch.phaseIndex];
-  const lines = [
+  const lines = compact ? [
+    'v'+GAME_VERSION+' '+graphicsQuality+' '+Math.round(perfStats.smoothedFps || 0)+' FPS',
+    'frame '+(perfStats.frameMs || 0).toFixed(1)+' update '+(perfStats.updateMs || 0).toFixed(1)+' render '+(perfStats.renderMs || 0).toFixed(1)+'ms',
+    'wave '+waveIndex+' '+waveState+' enemies '+(onPath+escaped),
+    'towers '+countActive(towerPool)+' shots '+countActive(projectilePool)+' decals '+decals.length,
+    'CPU '+(navigator.hardwareConcurrency || '?')+' threads RAM ~'+(navigator.deviceMemory || '?')+'GiB',
+    'GPU '+String(renderEnvironment.gpuRenderer).slice(0,30)
+  ] : [
     'v' + GAME_VERSION + '  ' + graphicsQuality + '  ' + Math.round(perfStats.smoothedFps || 0) + ' FPS',
     'CPU ' + (navigator.hardwareConcurrency || '?') + ' logical threads; model unavailable',
     'GPU (WebGL probe) ' + String(renderEnvironment.gpuRenderer).slice(0,72),
@@ -15708,8 +16011,8 @@ function buildDebugOverlayLayout(ctx){
     'scale: ' + lastGovernorDecision
   ];
   // CA672 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA672
-  const liveTowers = towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
-  if(liveTowers.length){
+  const liveTowers = compact ? [] : towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
+  if(!compact && liveTowers.length){
     lines.push('--- tower telemetry (top ' + Math.min(10, liveTowers.length) + ' by dmg) ---');
     for(let i=0; i<Math.min(10, liveTowers.length); i++){
       const t = liveTowers[i];
@@ -15723,7 +16026,8 @@ function buildDebugOverlayLayout(ctx){
     if(liveTowers.length > 10) lines.push('+' + (liveTowers.length - 10) + ' more towers not shown');
   }
   ctx.save();
-  ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  const baseFontPx=compact ? 8 : 11;
+  ctx.font = 'bold '+baseFontPx+'px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   // DEBUG-OVERLAY-WIDTH-01 (1.6.3) — see CHANGELOG.md § [1.6.3]. Restores a fix that existed on
   // main before this session's file chain branched off an older commit and lost it: the backdrop
   // used to be a flat 340px wide, sized before per-tower telemetry existed — a telemetry row
@@ -15744,28 +16048,28 @@ function buildDebugOverlayLayout(ctx){
   // available canvas width at the default 11px, the whole overlay's font scales down (bounded by
   // MIN_DEBUG_FONT_PX) and every line is re-measured at that size — one line each, always.
   const MIN_DEBUG_FONT_PX = 7;
-  const availableWidth = CANVAS_W - 24;
-  let longestLineWidth = 0, defaultVisibleLineWidth = 0;
-  const defaultVisibleCount = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / 14));
+  const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : CANVAS_W-24;
+  let longestLineWidth = 0;
+  const measuredLineWidths = [];
   for(let i=0;i<lines.length;i++){
     const width = ctx.measureText(lines[i]).width;
     longestLineWidth = Math.max(longestLineWidth, width);
-    if(i < defaultVisibleCount) defaultVisibleLineWidth = Math.max(defaultVisibleLineWidth, width);
+    measuredLineWidths.push(width);
   }
-  let fontPx = 11;
+  let fontPx = baseFontPx;
   if(longestLineWidth > availableWidth && longestLineWidth > 0){
-    fontPx = Math.max(MIN_DEBUG_FONT_PX, Math.floor(11 * (availableWidth / longestLineWidth)));
+    fontPx = Math.max(MIN_DEBUG_FONT_PX, Math.floor(baseFontPx * (availableWidth / longestLineWidth)));
     ctx.font = 'bold ' + fontPx + 'px monospace';
   }
-  const lineHeight = fontPx + 3;
+  const lineHeight = fontPx + (compact ? 2 : 3);
   // Stay below the HUD/FPS counter. On short viewports, show the highest-priority lines that fit
   // rather than growing past the bottom of the screen.
   const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / lineHeight));
   if(maxVisibleLines === 0){ ctx.restore(); return null; }
   const visibleLines = lines.slice(0, maxVisibleLines);
-  let maxLineWidth = fontPx === 11 ? defaultVisibleLineWidth : 0;
-  if(fontPx !== 11){
-    for(const line of visibleLines) maxLineWidth = Math.max(maxLineWidth, ctx.measureText(line).width);
+  let maxLineWidth = 0;
+  for(let i=0;i<visibleLines.length;i++){
+    maxLineWidth = Math.max(maxLineWidth, fontPx === baseFontPx ? measuredLineWidths[i] : ctx.measureText(visibleLines[i]).width);
   }
   const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
   const boxHeight = visibleLines.length * lineHeight + 8;
@@ -16410,6 +16714,8 @@ function renderAttractMode(ctx, now){
   st.enemies = st.enemies.filter(e => !e.dead || now - e.spawnedAt < 400); // keep briefly for flash
 
   ctx.save();
+  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  ctx.fillStyle='#8b5a2b'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
   // CA694 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA694
   const driftT = now / 9000;
   const driftZoom = 1 + 0.018 + 0.017*Math.sin(driftT);
@@ -16696,6 +17002,7 @@ function updatePresentationEffects(frameMs){
   const clampedMs = Math.min(100, frameMs);
   updateFloatingTexts(clampedMs);
   updateCoinPickups(clampedMs);
+  updateGoldHudFlights(clampedMs);
   ambientLogElapsedMs += clampedMs;
   if(ambientLogElapsedMs >= AMBIENT_LOG_INTERVAL_MS){ ambientLogElapsedMs %= AMBIENT_LOG_INTERVAL_MS; maybeSpawnAmbientLog(); }
   updateBarks(clampedMs);
@@ -16979,7 +17286,10 @@ function positionNotificationControls(force=false){
   notificationLayoutSignature=sig;
   const frameRect=frame.getBoundingClientRect(),hudRect=hud.getBoundingClientRect();
   const hudBottom=hudRect.height>0?Math.max(0,hudRect.bottom-frameRect.top):0;
-  const top=Math.ceil(hudBottom+(hudRect.height>0 && hasCue?34:0)+8);
+  const bellRect=bell.getBoundingClientRect();
+  const contentLeft=Math.max(8,Math.min(bellRect.left-frameRect.left,Math.max(8,frameRect.width-80)));
+  frame.style.setProperty('--notification-content-left',contentLeft+'px');
+  const top=Math.ceil(hudBottom+4);
   frame.style.setProperty('--notification-controls-top',top+'px');
   const contentTop=top;
   frame.style.setProperty('--notification-content-top',contentTop+'px');
@@ -17122,14 +17432,16 @@ function handleTap(clientX, clientY, pointerType){
 
   const sceneryHit = sceneryAtPoint(worldX, worldY);
   if(sceneryHit){
+    if(selectedBuildType){playSound('ui_deny');return;}
     startClearingScenery(sceneryHit.item);
     return;
   }
 
   const existing = towerPool.find(t => t.active && t.gridX===gx && t.gridY===gy);
   if(existing){
+    if(selectedBuildType){ playSound('ui_deny'); return; }
     selectedTower = existing;
-    playSound('spawn_chatter', existing.x, CLASS_ARCHETYPE[existing.type]); // the unit answers when you select it
+    playSound('spawn_chatter', existing.x, CLASS_ARCHETYPE[existing.type], existing.y); // the unit answers when you select it
     startCameraFollow(existing);
     inspPanelExpanded = existing.statPoints > 0; // skip the extra tap when there's something to spend
     selectedBuildType = null;
@@ -17144,7 +17456,7 @@ function handleTap(clientX, clientY, pointerType){
       spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '🔒 Expand map first', '#e63946');
       return;
     }
-    if(!isTileBuildable(gx, gy, null, selectedBuildType)) return;
+    if(!isTileBuildable(gx, gy, null, selectedBuildType)){ playSound('ui_deny'); return; }
     if(!isTowerTypeAvailable(selectedBuildType)){
       spawnFloatingText(gx*TILE_SIZE+TILE_SIZE/2, gy*TILE_SIZE+TILE_SIZE/2, '⛔ Only one ' + CONFIG.TOWERS[selectedBuildType].name + ' at a time', '#e63946');
       showToast('⛔ Only one ' + CONFIG.TOWERS[selectedBuildType].name + ' can stand at a time. Sell or move the existing one first.');
@@ -17169,7 +17481,7 @@ function handleTap(clientX, clientY, pointerType){
       trackGameEvent('tower_built', { tower_type: selectedBuildType, cost: currentBuildCost(selectedBuildType), towers: countActiveTowers(), first_of_type: isFirstOfType });
     }
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
-    playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type]);
+    playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type], t.y);
     selectedBuildType = null;
     selectedTower = t;
     if(t.type !== 'BARRICADE') markFirstFighterBuilt();
@@ -17273,15 +17585,8 @@ canvas.addEventListener('pointermove', (e) => {
     if(!isDragging && Math.hypot(dx,dy) > DRAG_THRESHOLD) isDragging = true;
     if(draggingGroundItem){
       const raw = toCanvasCoords(e);
-      // CA744 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA744
-      const SNAP_RADIUS = 40;
-      let nearest = null, nearestDistSquared = SNAP_RADIUS*SNAP_RADIUS;
-      for(const t of towerPool){
-        if(!t.active || t.type === 'BARRICADE') continue;
-        const dx = t.x-raw.x, dy = t.y-raw.y, distanceSquared = dx*dx+dy*dy;
-        if(distanceSquared < nearestDistSquared){ nearest = t; nearestDistSquared = distanceSquared; }
-      }
-      dragItemPos = nearest ? { x: nearest.x, y: nearest.y } : clampItemToPlayable(clampToItemReach(raw, activeItemReachCircles(), draggingGroundItem), draggingGroundItem);
+      dragItemPos = draggedItemPositionAt(raw,draggingGroundItem);
+      if(gameState==='PAUSED') requestPausedRender();
     } else if(isDragging){
       const rect = getCanvasRect();
       const scaleX = CANVAS_W / rect.width, scaleY = CANVAS_H / rect.height;
@@ -17306,6 +17611,14 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 
+function rejectFullInventoryDrop(item,target){
+  playSound('ui_deny');
+  const direction=Math.atan2(dragItemPos.y-target.y,dragItemPos.x-target.x);
+  const angle=Number.isFinite(direction) ? direction : Math.PI/4;
+  item.rejectFromX=target.x;item.rejectFromY=target.y;item.rejectStartedAt=presentationTime;
+  item.x=Math.max(8,Math.min(COLS*TILE_SIZE-8,target.x+Math.cos(angle)*38));
+  item.y=Math.max(8,Math.min(ROWS*TILE_SIZE-8,target.y+Math.sin(angle)*38));
+}
 function onPointerEnd(e){
   const wasSinglePointer = activePointers.size === 1 && e.pointerId === dragPointerId;
   const isCancel = e.type === 'pointercancel' || !wasSinglePointer;
@@ -17316,7 +17629,8 @@ function onPointerEnd(e){
 
   if(wasSinglePointer || e.pointerId === dragPointerId){
     if(!isCancel && draggingGroundItem){
-      const target = towerPool.find(t => t.active && t.type !== 'BARRICADE' && Math.hypot(t.x-dragItemPos.x, t.y-dragItemPos.y) < 26);
+      if(isDragging) dragItemPos=draggedItemPositionAt(toCanvasCoords(e),draggingGroundItem);
+      const target = itemDropTargetAt(dragItemPos);
       if(draggingGroundItem.itemDef.isMapScroll){
         if(!isDragging) useFreeExpansionPickup(draggingGroundItem, '#7dd3fc');
       } else if(draggingGroundItem.itemDef.isExpansionBag){
@@ -17333,7 +17647,7 @@ function onPointerEnd(e){
           playSound('click');
           if(selectedTower === target) updateInspectPanel();
         } else if(target){
-          spawnFloatingText(target.x, target.y - 40, 'Item slots full (' + MAX_ITEM_SLOTS + '/' + MAX_ITEM_SLOTS + ')', '#ff8a80');
+          rejectFullInventoryDrop(draggingGroundItem,target);
         }
       } else if(target && target.receiveItem(draggingGroundItem.itemDef)){
         groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
@@ -17343,7 +17657,7 @@ function onPointerEnd(e){
         playSound('click');
         if(selectedTower === target) updateInspectPanel();
       } else if(target && target.equippedItems.length >= MAX_ITEM_SLOTS){
-        spawnFloatingText(target.x, target.y - 40, 'Item slots full (' + MAX_ITEM_SLOTS + '/' + MAX_ITEM_SLOTS + ')', '#ff8a80');
+        rejectFullInventoryDrop(draggingGroundItem,target);
       } else if(draggingGroundItem.itemDef.isBarricade){
         // CA747 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA747
         const gx = Math.floor(dragItemPos.x / TILE_SIZE), gy = Math.floor(dragItemPos.y / TILE_SIZE);
@@ -17368,6 +17682,7 @@ function onPointerEnd(e){
     // CA749 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA749
     draggingGroundItem = null;
     dragPointerId = null; dragStartClient = null; isDragging = false;
+    if(gameState==='PAUSED') requestPausedRender();
   }
 }
 canvas.addEventListener('pointerup', onPointerEnd);
@@ -17452,6 +17767,8 @@ const inspStoreBtn = document.getElementById('inspStoreBtn');
 const inspStrBtn = document.getElementById('inspStrBtn');
 const inspStrVal = document.getElementById('inspStrVal');
 const statsInfoBtn = document.getElementById('statsInfoBtn');
+const inspUpgradeBtn=document.getElementById('inspUpgradeBtn');
+const inspTargetBtn=document.getElementById('inspTargetBtn');
 const inspUpgradeCost = document.getElementById('inspUpgradeCost');
 const inspSellBtn = document.getElementById('inspSellBtn');
 const inspSellValue = document.getElementById('inspSellValue');
@@ -17852,11 +18169,23 @@ function closeTowerModal(){
   playSound('ui_close');
 }
 
+function requireShopAccess(){
+  if(gameState!=='PLAYING' && gameState!=='PAUSED')return false;
+  if(merchantShopOpen())return true;
+  document.getElementById('shop-modal').classList.add('hidden');
+  showToast('🔒 Shop needs a living Merchant');playSound('ui_deny');
+  return false;
+}
+function shopTowerIsCurrent(tower){
+  return !!(tower && tower.active && selectedTower===tower);
+}
 function openShopModal(){
+  if(!requireShopAccess())return false;
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
   playSound('ui_open');
   trackGameEvent('shop_opened', { gold });
+  return true;
 }
 function closeShopModal(){
   document.getElementById('shop-modal').classList.add('hidden');
@@ -17868,7 +18197,8 @@ function buildShopGrid(){
   grid.innerHTML = '';
 
   // CA765 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA765
-  const towerSelected = !!(selectedTower && selectedTower.active);
+  const shopTower=selectedTower;
+  const towerSelected = !!(shopTower && shopTower.active);
   note.innerHTML = (towerSelected
     ? 'Buying for your selected ' + selectedTower.def.name + '.'
     : 'Select any tower on the map to buy or manage its items.') +
@@ -17884,7 +18214,9 @@ function buildShopGrid(){
       removeBtn.textContent = 'Remove';
       removeBtn.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        if(selectedTower.unequipItem(idx)){ playSound('click'); updateHUD(); updateInspectPanel(); buildShopGrid(); }
+        if(!requireShopAccess())return;
+        if(!shopTowerIsCurrent(shopTower) || shopTower.equippedItems[idx]!==it){buildShopGrid();return;}
+        if(shopTower.unequipItem(idx)){ playSound('click'); updateHUD(); updateInspectPanel(); buildShopGrid(); }
       });
       row.appendChild(removeBtn);
       grid.appendChild(row);
@@ -17914,7 +18246,9 @@ function buildShopGrid(){
     if(canBuy){
       card.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        if(selectedTower.buyItem(def)){
+        if(!requireShopAccess())return;
+        if(!shopTowerIsCurrent(shopTower)){buildShopGrid();return;}
+        if(shopTower.buyItem(def)){
           playSound('click');
           updateHUD();
           updateInspectPanel();
@@ -17944,6 +18278,7 @@ function buildShopGrid(){
     if(canBuy){
       card.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
+        if(!requireShopAccess())return;
         if(buyMedicalItem(def)){ updateHUD(); buildShopGrid(); }
       });
     }
@@ -17968,6 +18303,7 @@ function buildShopGrid(){
       '<div class="cost">💰' + cost + '</div>';
     card.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
+      if(!requireShopAccess())return;
       if(buyPassive(def.id)) buildShopGrid();
     });
     grid.appendChild(card);
@@ -18004,10 +18340,6 @@ document.getElementById('shopBtn').addEventListener('pointerdown', (e) => {
   unlockAudio();
   if(gameState !== 'PLAYING') return;
   if(moveModeTower) exitMoveMode();
-  if(!merchantShopOpen()){
-    showToast('🔒 Shop needs a living Merchant');
-    return;
-  }
   openShopModal();
 });
 document.getElementById('shopModalClose').addEventListener('pointerdown', (e) => {
@@ -18019,9 +18351,10 @@ document.getElementById('shop-modal').addEventListener('pointerdown', (e) => {
 });
 let pendingSlotPress = null;
 const SLOT_DRAG_THRESHOLD_PX = 8;
-function beginSlotItemDrag(sourceTower, idx, e){
+function beginSlotItemDrag(sourceTower, idx, e, expectedItem){
+  if(!sourceTower.active || !['PLAYING','PAUSED'].includes(gameState)) return;
   const item = sourceTower.equippedItems[idx];
-  if(!item) return;
+  if(!item || item!==expectedItem) return;
   sourceTower.equippedItems.splice(idx, 1);
   itemLogReleased(item, 'on the ground (dragged out of ' + itemHolderLabel(sourceTower) + ')');
   refreshQuickUse(sourceTower);
@@ -18035,17 +18368,18 @@ function beginSlotItemDrag(sourceTower, idx, e){
   dragStartClient = { x: e.clientX, y: e.clientY };
   isDragging = true;
   canvas.setPointerCapture(e.pointerId);
+  if(gameState==='PAUSED') requestPausedRender();
 }
 document.querySelectorAll('.item-slot, .quick-slot').forEach(slot => {
   slot.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    if(!selectedTower) return;
+    if(!selectedTower || !selectedTower.active) return;
     const idx = +slot.dataset.slot;
     if(!selectedTower.equippedItems[idx]){
       openShopModal();
       return;
     }
-    pendingSlotPress = { idx, tower: selectedTower, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+    pendingSlotPress = { idx, item:selectedTower.equippedItems[idx], tower: selectedTower, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
   });
 });
 window.addEventListener('pointermove', (e) => {
@@ -18053,15 +18387,32 @@ window.addEventListener('pointermove', (e) => {
   if(!press || e.pointerId !== press.pointerId) return;
   if(Math.hypot(e.clientX - press.x, e.clientY - press.y) < SLOT_DRAG_THRESHOLD_PX) return;
   pendingSlotPress = null;
-  beginSlotItemDrag(press.tower, press.idx, e);
+  beginSlotItemDrag(press.tower, press.idx, e, press.item);
 });
 window.addEventListener('pointerup', (e) => {
   const press = pendingSlotPress;
   if(!press || e.pointerId !== press.pointerId) return;
   pendingSlotPress = null;
-  if(gameState === 'PLAYING' || gameState === 'PAUSED') activateInventorySlot(press.tower, press.idx);
+  if((gameState === 'PLAYING' || gameState === 'PAUSED') && press.tower.active && press.tower.equippedItems[press.idx]===press.item) activateInventorySlot(press.tower, press.idx);
 });
+function cancelPointerGesture(){
+  const hadItemDrag=!!draggingGroundItem;
+  const pointerIds=Array.from(activePointers.keys());
+  activePointers.clear();collectedPickupPointers.clear();
+  pendingSlotPress=null;draggingGroundItem=null;
+  dragPointerId=null;dragStartClient=null;isDragging=false;pinchStartDist=null;
+  stopPanInertia();
+  for(const id of pointerIds){
+    if(canvas.hasPointerCapture(id)){
+      try{canvas.releasePointerCapture(id);}catch(error){}
+    }
+  }
+  if(gameState==='PAUSED' || hadItemDrag)requestPausedRender();
+}
 window.addEventListener('pointercancel', () => { pendingSlotPress = null; });
+window.addEventListener('blur',cancelPointerGesture);
+canvas.addEventListener('lostpointercapture',e=>{if(activePointers.has(e.pointerId))cancelPointerGesture();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelPointerGesture();});
 document.addEventListener('keydown', (e) => {
   if(gameState !== 'PLAYING' || e.ctrlKey || e.metaKey || e.altKey) return;
   if(document.querySelector('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(document.activeElement?.tagName) || document.activeElement?.closest?.('[role="button"]')) return;
@@ -18448,12 +18799,12 @@ function getReadmeText(){
 '-----------\n' +
 'Tap Build, pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, ' +
 'sell, move, buy it gear from the Shop, or change its targeting priority. The map starts tiny ' +
-'(2x2 tiles) and grows outward in rings as you clear waves — some expansions are free milestones, ' +
+'(2x2 tiles) and extends both ends of its winding path — some expansions are free milestones, ' +
 'others you buy with gold, but only one expansion can happen per round; extra ones queue for the next.\n\n' +
 'TOWERS\n' +
 '------\n' +
 'Swordsman - melee cone sweep, the starting warrior.\n' +
-'Archer - ranged, now draws the bow before firing: slower arrows, but real power behind each shot.\n' +
+'Archer - ranged bow attacks with a visible draw before firing.\n' +
 'Axeman - dual-wields hand axes, manually toggles between a close swing and a ranged throw.\n' +
 'Spearman - long melee reach, slow but hard-hitting.\n' +
 'Lancer - a knight lance whose damage scales with enemy weight, up to 1.75x on the heaviest foes.\n' +
@@ -18463,7 +18814,7 @@ function getReadmeText(){
 'Bomber - splash damage against groups.\n' +
 'Gatling - very fast, low damage per shot, shreds swarms.\n' +
 'Barricade - does not attack. Extremely tough, can be placed directly on the enemy path, and ' +
-'freezes the first enemy that touches it (and anything queued behind it) for 10 seconds before breaking.\n\n' +
+'holds back enemies while they chip its 10 HP, at most one point per 10 seconds across all attackers.\n\n' +
 'ENEMIES\n' +
 '-------\n' +
 'Every wave marches in strict size order: all Tiny enemies first, then Small, then Standard, and only on ' +
@@ -18476,7 +18827,7 @@ function getReadmeText(){
 'The killing blow earns full XP (Tiny 17, Small 20, Standard 25, Large 40, Boss 50); every 100 XP rolls ' +
 '2 x (1-3) stat points, capped at 500 per stat and 1000 total per stickman. At 500 total you can name ' +
 'the unit; at 1000 it is fully trained, earns a trophy, and its XP share becomes gold (25 XP = 1 gold). ' +
-'Promote buys stat rolls only — it never changes damage, cooldown or range. STR also increases stickman weight and rendered size; enemy weight follows body size (15px radius = 1.0).\n\n' +
+'Promote grants automatic stat rolls and extra spendable points. The resulting stats improve combat; promotion adds no separate damage bonus. STR also increases stickman weight and rendered size; enemy weight follows body size (15px radius = 1.0).\n\n' +
 'ELEMENTS\n' +
 '--------\n' +
 'At 100 in a stat a stickman attunes: STR=Fire (burn), DEX=Electric (shock), INT=Ice (chill). ' +
@@ -18484,7 +18835,7 @@ function getReadmeText(){
 'Fire+Ice=Dark Matter (stuns), Electric+Ice=Quasar (blinds). Proton, Quasar and Dark Matter are ' +
 'elements, not towers. Every attack carries your element — projectiles and melee swings take its ' +
 'colour, and the proc chance rises with the attuned stat, from 8% up to 32% at 500.\n\n' +
-'An Archer that trains 100 STR unlocks the Crazy Chef: a knife-thrower who scales on Strength, ' +
+'An Archer that trains 100 STR unlocks the Crazy Chef: a knife-thrower whose direct damage scales on DEX, ' +
 'hurling five kitchen knives then restocking for ten seconds.\n\n' +
 'Tap the DPS number on a selected unit to see exactly how its damage is calculated. Tap a stat to spend one, hold to keep spending. Towers that only helped split a small ' +
 'assist share. Enemies that crossed the finish only pay a reduced cleanup share. FARM targeting chases ' +
@@ -18492,7 +18843,7 @@ function getReadmeText(){
 'ITEMS AND HEROES\n' +
 '----------------\n' +
 'Every tower starts with a free class-specific item. Buy better gear per class from the Shop, plus ' +
-'global passive upgrades that apply to every tower you own. A tower with all 4 item slots filled ' +
+'global passive upgrades that apply to every tower you own. A tower with all 6 inventory slots filled with equipment ' +
 'awakens into a Hero, with a permanent stat bonus and a visible crown.\n\n' +
 'RESOURCES\n' +
 '---------\n' +
@@ -18975,11 +19326,11 @@ document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) =>
   const content = document.getElementById('about-expand-content');
   const willShow = content.classList.contains('hidden');
   if(willShow){
-    content.innerHTML = '<p>8 distinct tower classes, each with its own color, body shape, and combat role. ' +
-      'The map starts as a tiny 2x2 area and grows ring by ring — one expansion per round at most, extra ' +
+    content.innerHTML = '<p>Train and unlock stickman classes with distinct bodies, weapons and combat roles. ' +
+      'The map starts as a tiny 2x2 area and extends both ends of its winding path — one expansion per round at most, extra ' +
       'ones queue for the next. Enemies occasionally break off the path to attack a tower directly; ' +
       'Barricades placed on the path can temporarily jam the whole line behind them, and enemies now ' +
-      'queue up single-file instead of overlapping. Items are bought per-class from the Shop and equip ' +
+      'queue up single-file. Items are bought per-class from the Shop and equip ' +
       'directly onto a tower — fully-geared towers awaken as Heroes.</p>';
     e.target.textContent = 'Less info ▴';
   } else {
@@ -19217,15 +19568,9 @@ function updateInspectPanel(){
   fitStatRowToOneLine();
   fitNameplateToStatRow();
   const arch = CLASS_ARCHETYPE[t.type];
-  inspStrBtn.title = arch === 'WARRIOR'
-    ? 'Strength: +8% damage (scales better at heavy investment) and +3% max HP per point'
-    : 'Strength: +3% max HP per point (this class\'s damage stat is ' + (arch === 'ARCHER' ? 'DEX' : arch === 'MAGE' ? 'INT' : 'none') + ')';
-  inspIntBtn.title = arch === 'MAGE'
-    ? 'Intelligence: +6 range, 💥 crit damage multiplier, and +6% damage per point'
-    : 'Intelligence: +6 range and 💥 crit damage multiplier per point';
-  inspDexBtn.title = arch === 'ARCHER'
-    ? 'Dexterity: +3% attack speed, accuracy, 💥 crit chance, and +6% damage per point'
-    : 'Dexterity: +3% attack speed, accuracy, and 💥 crit chance per point';
+  inspStrBtn.title = 'Strength: grows health, weight and body size' + (arch==='WARRIOR' ? '; also increases this class’s direct damage.' : '.');
+  inspIntBtn.title = 'Intelligence: grows reach toward this class’s range cap and increases critical damage' + (arch==='MAGE' ? '; also increases direct damage.' : '.');
+  inspDexBtn.title = 'Dexterity: improves attack speed, accuracy and critical chance' + (arch==='ARCHER' ? '; also increases this class’s direct damage.' : '.');
   // CA781 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA781
   const auraBox = inspAuraBox;
   const strategy = TOWER_STRATEGY[t.type];
@@ -19269,7 +19614,7 @@ function updateInspectPanel(){
       slot.textContent = item.icon;
       slot.title = isConsumableDef(item)
         ? item.name + ' — click or press ' + (i + 1) + ' to use; drag to another stickman or onto the map'
-        : item.name + (itemStatSummary(item) ? ' — ' + itemStatSummary(item) : '') + ' — drag to move';
+        : item.name + (itemStatSummary(item) ? ' — ' + itemStatSummary(item) : '');
       slot.classList.add('filled');
       slot.classList.toggle('usable', isConsumableDef(item));
     } else {
@@ -19585,6 +19930,11 @@ function writeFirstPlayFlag(key){
 function firstWaveWasStarted(){ return firstWaveStartedInSession || readFirstPlayFlag(FIRST_WAVE_STARTED_KEY, false); }
 function firstNextWaveWasUsed(){ return firstNextWaveUsedInSession || readFirstPlayFlag(FIRST_NEXT_WAVE_USED_KEY, false); }
 function firstSpeedUpWasUsed(){ return firstSpeedUpUsedInSession || readFirstPlayFlag(FIRST_SPEED_UP_USED_KEY, false); }
+const firstCueSoundsSeen=new Set();
+function soundFirstPlayCue(id){
+  if(gameState!=='PLAYING' || firstCueSoundsSeen.has(id) || document.hidden) return;
+  firstCueSoundsSeen.add(id);playSound('click');
+}
 function syncFirstPlayCues(){
   const nextHint = document.getElementById('first-next-wave-hint');
   const speedHint = document.getElementById('first-speed-hint');
@@ -19592,6 +19942,10 @@ function syncFirstPlayCues(){
   const sequenceDismissed = firstSpeedUpWasUsed();
   if(nextHint) nextHint.classList.toggle('hidden', !(!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()));
   if(speedHint) speedHint.classList.toggle('hidden', !(sequenceStarted && !sequenceDismissed));
+  const buildHint=document.getElementById('first-build-hint');
+  if(!sequenceStarted && !sequenceDismissed && !firstFighterWasBuilt() && buildHint && !buildHint.classList.contains('hidden')) soundFirstPlayCue('build');
+  else if(!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()) soundFirstPlayCue('wave');
+  else if(sequenceStarted && !sequenceDismissed) soundFirstPlayCue('speed');
   positionNotificationControls();
 }
 function markFirstWaveStarted(){
