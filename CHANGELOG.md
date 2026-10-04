@@ -1,5 +1,71 @@
 # Changelog
 
+## [1.7.36] — 2026-10-04 (UTC)
+
+### Ice rework, wave-clear fanfare and an evolving score
+
+- Owner decisions applied: Blow Gunner stays a buildable tower and gains elements like every other fighter (verified: a Blow Gunner with 250 STR and 250 INT becomes Dark Matter); gold bag averages, specialist prices and the Hacker selection behavior stand.
+- Ice: freeze now lasts 2 to 5 seconds, scaling with INT (3.5 s at 250, 5 s at 500; 10 s before). It is the rarest element to proc, at 45% of the Fire or Electric chance for a pure Ice stickman (measured 0.144 against 0.32 at 500 stat points) and a 45% gate on the Ice half of Dark Matter and Quasar. Frozen enemies take 30% more damage (measured ratio 1.30). The lane code already stops followers behind a frozen enemy through the follower speed cap, so a frozen unit blocks the queue; this was read from the code, not run in a full wave.
+- Wave-clear sound: replaced the three quiet notes with a layered fanfare: a rising brass arpeggio, a held major chord with octave bass and reverb, two timpani hits and a cymbal swell, with the music ducked 4 dB for 1.8 s, transposed to the key the music is in. Verified 17 voices, no errors, and a peak of 0.52 of full scale over boss music.
+- Evolving score (MUSIC-EVOLVE-01): the cycle counter now carries across loop wraps, so each 24-bar cycle moves the arrangement to a new key (0, +5, -5, +3 semitones in the first four cycles, verified) and every ten completed waves adds a further shift (+5 at wave 30, verified), across ten seasons. Combat gained a drum fill and snare roll on the last bar of each phrase, an accent every eighth bar, a counter-melody on the second and third bars of a phrase, an intensity layer of arpeggiated plucks when more than half of 18 enemies are on the field (scanned every 300 ms together with the boss check), and lead timing and level humanization of about plus or minus 4 ms and 8%. Field music swaps its keys and pluck voices on odd cycles.
+- Not verified: how the new fanfare and variations sound; only errors, voice counts and levels were measured. The owner's goal that the music beat the best DOS music is a listening target I cannot confirm from here.
+- Random path generation: the owner wants the existing generator improved. The generator function reviewed this session builds a serpentine with a 30% chance of a one-tile bump per row; the growth logic that calls it was not read in full, so no path change is in this release.
+
+### Click-only gold flights, boss music, mix level and a wind fix
+
+- Gold flight rule (owner decision, supersedes the 1.7.30 direction): coins fly to the gold counter only when the player clicks a coin or opens a Gold Bag. Removed the flight from enemy bounty income, expired coins, bags auto-credited by expiry or the ground-item limit, and gold loot consumables. Gold is still credited immediately and exactly once. Added design-contract check GOLD-FLIGHT-CLICK-01. Verified: a kill, an auto-credited bag and an expired coin launch zero flights; a clicked coin and an opened bag launch one each.
+- Boss music: when a Boss or Santa is alive on the field the score switches at the next bar to a boss arrangement: 152 bpm, Phrygian throughout, wobble bass, a second kick on the backbeat and hats on every off-beat. Boss presence is cached for 300 ms so the per-frame phase choice never scans the enemy pool each frame. Returns to the normal combat arrangement when no boss remains.
+- Mix level (MIX-LEVEL-01): measured on the live master bus in headless Chromium with a tap before the output. Peaks with the old master gain were 0.13 field, 0.19 wave, 0.19 boss and 0.37 for a loud burst of sixty attack and death sounds over boss music; music loudness sat near -34 dBFS, quiet for a default. Master output gain raised from 0.5 to 0.75 (+3.5 dB); remeasured peaks 0.19 field, 0.29 wave and boss, 0.33 burst, all far below clipping, with the compressor and voice cap unchanged. Not verified: how the new level sounds on real speakers and phones.
+- Wind fix: the flag-wind ambience only started when the wind strength changed, so after the first click it stayed silent until a wave had come and gone. It now starts when music starts. Verified wind gain reaches about 0.02 in the field phase.
+- Hack Menu: added +1,000 and +10,000 wood and stone, +100,000 gold, +25 stat points to every stickman and Expand the map now.
+
+### Hacks option and the Hacker stickman
+
+- New gameplay option *Hacks enabled* (Settings > Game, off by default, saved with preferences). When on, the Build menu gains a Hacks section containing the Hacker; when off the Hacker is not buildable, though an existing one stays on the board.
+- Hacker: priced 150 gold (nothing buildable is free), 20 maximum health, no attack, no damage, no stats, no experience, no promotions or elements, and no weapon. He is drawn holding an open laptop. His update returns early so he never targets, trains or acts.
+- Stealth: taking damage triggers a smoke screen and eight seconds of stealth. He is drawn faint with smoke puffs, any enemy currently breaking away toward him gives up, and findNearestActiveTower skips him while stealthed. Direct damage (area-of-effect, explosions) still reaches him because it bypasses targeting.
+- One per board: the Hacker is in the one-per-board list, which counts active towers, so a downed Hacker still blocks a second.
+- Tapping him opens the Hack Menu (reusing the Settings modal styling) instead of the normal inspector. Actions: +100, +1,000 or +10,000 gold, +100 wood, +100 stone, heal and revive all stickmen, +5 stat points to every stickman, defeat every enemy on the field (repeated damage passes so damage variance cannot leave one alive), stickmen invulnerable and free building toggles. None of it is saved with the game; any use sets a flag that the debug log prints.
+- Hacker quips added to the job-quote table so the definitions validator passes. Added design-contract check HACKER-01.
+- Verified in headless Chromium: off by default; buildable only when enabled; 20 HP; zero damage; stealth on hit; hidden from enemy targeting; still hurt by direct damage; downed Hacker blocks a second; menu opens on selection and closes on deselect; gold, heal, invulnerable, free-build and defeat-all actions work (defeat-all passed six repeated runs); rendered test sheet shows the laptop and the stealth smoke; no page errors and the design contract is clean. Not verified: how the placement flow and menu feel on a phone-sized screen, and whether the Hack Menu needs more rows once you start using it.
+
+### Elements are earned, never built (owner rule, restated for the third time)
+
+- Proton, Dark Matter and Quasar are element states of a stickman, not towers. A mistaken gold price on them is reverted and they are excluded from the price check; a new contract check (ELEMENT-INFUSION-01) also requires that they never appear in the starter or evolved build lists.
+- Infusion threshold raised from 100 to 250 stat points (new constant ELEMENT_INFUSE_THRESHOLD) and the mix threshold lowered from 500 to 250 (MIXED_PAIR_THRESHOLD). Any stickman, including evolved classes such as Hammerman and Gatling, can be infused; the Barricade cannot. Mapping: STR Fire, DEX Electric, INT Ice; Fire + Electric Proton, Fire + Ice Dark Matter, Electric + Ice Quasar. A stickman holding all three stats at 250 or more mixes from its two highest stats (ties go STR, then DEX, then INT), computed by mixedElementFor(); a mix is cleared again if its stats fall below 250. The owner's three statements of the rule are consolidated into AGENTS.md § Elements.
+- Effects: Fire burns (a fire bleed), Ice freezes, Electric chains lightning. A mixed element now applies both component effects on one proc, replacing the old separate Proton melt, Dark Matter stun and Quasar slow. Quasar's existing splash bonus is unchanged.
+- Weapon enchantment: an elemental stickman always shows its element on the weapon, drawn steadily (no pulsing): a glowing line along the weapon in each component colour and the element emoji at the tip. Mixed elements show both colours and both emoji; the skin tint also covers the mixed elements. Low graphics skips the soft glow.
+- Existing saves: a tower previously attuned at 100 loses that element until its stat reaches 250, and mixed states are re-evaluated; unlocked classes stay unlocked.
+- Verified in headless Chromium: thresholds (249 none, 250 Fire, Electric or Ice), all three mixes, both component effects per proc, evolved-class infusion, a rendered test sheet showing each weapon enchantment, no page errors, design contract clean. Not verified: how it reads at normal zoom during a real wave, and balance of ice freezing for ten seconds at the larger proc counts.
+
+### Music and ambience pass
+
+- Reference review of the supplied MIDI files (structure only; no melodies were transcribed): combat music in the Orc and Red Alert style rests on a tonic pedal with the flat seventh or flat sixth, minor or harmonic-minor scale tones, a steady march snare and an uneven accent grouping. Combat melody now uses a minor scale with a flat sixth and a leading tone instead of constant flat-second Phrygian; the Phrygian colour is kept for the last bar of each climax section.
+- Combat bass gains a flat-seventh pedal on the off-beat, soft march snare taps on beats two and four from the second section onward, and a 3+3+2 kick accent on the last bar of each phrase for an uneven lurch. All new notes pass through the existing six-voice music limit.
+- Music bus lowpass sweep: the field arrangement sits under a gentle 3.2 kHz lowpass and opens to 14 kHz when a wave starts, then closes again after the wave, on bar boundaries. Tempo stays on the audio clock and does not follow game speed.
+- Ambient wind: a looped noise source through bandpass and 140 Hz highpass filters follows the existing flag-wind strength (audible only between waves, very quiet, routed through the sound-effects volume). It stops on pause and when music stops.
+- Verified in headless Chromium: page loads with no errors, design contract reports no problems, the filter reads 3200 Hz in the field phase, 14000 Hz in combat and returns to about 3200 Hz afterward, and the wind gain rises with flag wind. Not verified: how it sounds, mix balance against sound effects, and device performance; those need listening on the owner's hardware.
+- Not done in this release: lag optimizations (need a debug log from a real run), the randomized path generator (needs spec approval), and any retuning of the 100-wave curve. Environment interaction is exploratory only; the owner will specify additions one at a time from playtesting.
+
+### Every fighter has a gold price
+
+- Owner rule: nothing buildable costs zero, because an unlocked class still has to be paid for to use. Eleven specialist classes had a gold price of 0; each now costs more than its parent class, scaled by power: Lancer 550, Berserker 600, Paladin 650, Cat Snapper 450, Necromancer 550, Pope 800, Crazy Chef 500, Dual Squirt Gun 650, Blow Gunner 700, Gunalinder 550, Sniper 800. Proton, Dark Matter and Quasar were wrongly priced in the first draft of this change; they are elements, not towers, and are restored to unbuildable (see the element entry above). Same-class copies keep the existing price ladder; one-per-board classes keep their limit.
+- Added design-contract check NO-FREE-FIGHTERS-01 so a zero price cannot return. The Barricade is paid in wood and stone (first one free at the start of a run) and is exempt.
+- Prices are first-pass balance numbers from parent cost and measured damage per second; the owner's playtest decides whether any are too high or low. Not verified: that every specialist price is reachable at the wave where its unlock requirement is typically met.
+
+### Gold bag coin numbers set to the owner's values
+
+- Owner confirmed: each Gold Bag still pays 1–100 Gold directly, and its burst spawns 3–9 collectible coins worth 1–25 Gold each. Constants GOLD_BAG_MAX_COINS (5→9) and GOLD_BAG_MAX_COIN_VALUE (6→25) and the matching design-contract check (GOLD-BAG-COIN-BURST-01) updated together so the contract cannot flag the new values. Coins remain pooled, bounce off scenery and are never added to inventory. Burst coin value no longer needs to conserve a fixed total; the direct bag payout is separate.
+- Verified in headless Chromium: page loads clean, validateDesignContract() reports no problems, scripts parse. Not verified: economy balance at the larger payouts (a bag now averages about 50 direct Gold plus about 65 Gold in coins); the owner's playtest decides whether that is too generous.
+
+### Documentation consistency audit against live 1.7.35
+
+- Audit of GitHub main (1.7.35) before any gameplay change. Loaded in headless Chromium: no page errors or console warnings, validateDesignContract() returned no problems, all six executable script blocks pass a syntax check, 270 HTML IDs are unique, and the manifest, sitemap, LICENSE, robots.txt, favicon and OG image resolve. No crash-level regression was found.
+- AGENTS.md carried session-narration headings and sentences ("1.7.30 handoff", "seven-file upload candidate", "1.7.34 startup and sound handoff"). Rewritten as evergreen standing rules (Standing owner decisions, Rendering and sound safeguards, Notification layout) with every technical rule preserved; "handoff" wording replaced with "report" in the workflow steps. No rule was removed.
+- GAME_VERSION advanced to 1.7.36 so the constant, changelog and documents agree. No gameplay, rendering or audio code changed in this release.
+- Open items recorded in BACKLOG.md: music and sound polish plan; debug log from a real run needed to target lag.
+- Not verified: real-device frame rate, listening quality and mobile interaction. Tower build costs of 0 for evolution classes (Paladin, Berserker, Lancer and similar) are stat-unlocked specialists, not purchases; whether the owner's earlier cost request is satisfied by that design needs confirmation.
+
 ## [1.7.35] — 2026-10-04 (UTC)
 
 ### Notification panel aligned to the bell

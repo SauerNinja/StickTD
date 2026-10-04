@@ -8,6 +8,13 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## Owner decisions
+
+- *Play-test* — Gold bag payouts (1–100 direct, 3–9 coins worth 1–25 each) are about three times the previous total; confirm the economy still feels earned.
+- *Play-test* — Music pass shipped (minor combat scale with leading tone, bass pedal, march taps, 3+3+2 accent, calm-to-wave lowpass sweep, flag-wind ambience). Listen and report mix balance. Boss arrangement, evolving keys, fills, counter-melody, intensity layer and the wave-clear fanfare shipped. Still open: listening feedback.
+- *Owner decision* — Path generation: owner wants the existing generator improved so growth follows wilder random patterns while staying a single lane. Proposal pending: read the full growth code, then add pattern variants (switchbacks, S-curves, loops, spirals) with safety checks that no tower is trapped. No code changed yet.
+- *Evidence* — Debug log from a real run on the device that lags (late waves, large map, high speed) to target the slow phase before any optimization.
+
 ## 1.7.35 notification acceptance
 
 - *Play-test*: verify history and transient notification left edges align with the bell on narrow phones and embedded previews, including resize, reward button visibility and onboarding guidance. Keep all panels inside the viewport and preserve mutual exclusion with Build.

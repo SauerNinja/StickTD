@@ -328,15 +328,15 @@
   .build-row-blurb.show{display:block;}
   .build-row-lock{flex-basis:100%;font-size:10.5px;color:var(--danger);padding-left:36px;}
 
-  #settings-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:24;
+  #settings-modal, #hack-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:24;
     display:flex;align-items:center;justify-content:center;padding:16px;}
-  #settings-modal.hidden{display:none;}
-  #settings-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
+  #settings-modal.hidden, #hack-modal.hidden{display:none;}
+  #settings-modal-inner, #hack-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
     max-width:700px;width:calc(100% - 20px);display:flex;flex-direction:column;overflow:hidden;}
-  #settings-modal-header{display:flex;align-items:center;justify-content:space-between;
+  #settings-modal-header, #hack-modal-header{display:flex;align-items:center;justify-content:space-between;
     padding:12px 14px;border-bottom:2px solid var(--wood-light);}
-  #settings-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
-  #settingsModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
+  #settings-modal-header h2, #hack-modal-header h2{margin:0;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
+  #settingsModalClose, #hackModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     width:36px;height:36px;min-width:36px;min-height:36px;cursor:pointer;font-size:16px;}
   .stats-hint{color:#c9d1d9;font-size:0.8em;margin:0 0 8px;}
   .telemetry-row{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3, minmax(0,1fr));gap:6px;align-items:center;margin-bottom:6px;}
@@ -355,6 +355,12 @@
   .settings-tab.active{border-color:var(--gold);background:rgba(241,196,15,0.2);}
   /* fixed max-height: this is what guarantees expanding About content scrolls internally
      instead of resizing/reflowing the modal or anything behind it */
+  #hack-modal-body{padding:14px;overflow-y:auto;max-height:340px;color:var(--paper);}
+  #hack-modal-body h3{margin:12px 0 6px;color:var(--gold);font-size:14px;}
+  #hack-modal-body .hack-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  #hack-modal-body button{background:#1f3a1a;color:var(--paper);border:1px solid var(--gold);border-radius:6px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:13px;}
+  #hack-modal-body button.on{background:#2e7d32;}
+  #hack-modal-body .hack-note{font-size:12px;opacity:0.8;margin:4px 0;}
   #settings-body{padding:14px;overflow-y:auto;max-height:320px;color:var(--paper);}
   .settings-panel.hidden{display:none;}
   #settingsDecalBudgetCustom.hidden{display:none;}
@@ -1045,6 +1051,15 @@
       </div>
     </div>
 
+    <div id="hack-modal" class="hidden">
+      <div id="hack-modal-inner">
+        <div id="hack-modal-header">
+          <h2>💻 Hack Menu</h2>
+          <button id="hackModalClose" aria-label="Close">✕</button>
+        </div>
+        <div id="hack-modal-body"></div>
+      </div>
+    </div>
     <div id="settings-modal" class="hidden">
       <div id="settings-modal-inner">
         <div id="settings-modal-header">
@@ -1121,6 +1136,7 @@
             <p id="analyticsConsentState">Analytics are off until you choose to allow them.</p>
             <button type="button" id="analyticsConsentBtn" class="settings-inline-btn">Review Analytics Choice</button>
             <label><input type="checkbox" id="settingsGoreToggle"> 🩸 Blood and gore effects (default on)</label>
+            <label><input type="checkbox" id="settingsHacksToggle"> 💻 Hacks enabled (default off — unlocks the Hacker stickman and his developer menu)</label>
             <label><input type="checkbox" id="settingsZoomControlsToggle"> 🔍 On-screen zoom buttons (default off — pinch/scroll to zoom already works)</label>
             <p style="margin-top:14px;">Your progress isn't auto-saved. Download a save file any time, and load it later (or on another device) to pick up exactly where you left off.</p>
             <button id="downloadSaveBtn">💾 Save Game (.txt)</button>
@@ -1313,7 +1329,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.35'; // see CHANGELOG.md § [1.7.35]
+const GAME_VERSION = '1.7.36'; // see CHANGELOG.md § [1.7.36]
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1461,6 +1477,7 @@ const JOB_QUOTES = {
   GATLING:   ["Say hello to my everything.", "Spin it up!", "Rate of fire: maximum.", "Barrels hot!", "Keep 'em coming."],
   MERCHANT:  ["Business is business.", "Everything has a price.", "Gold well spent, gold well earned.", "Step right up.", "I never miss a sale."],
   GLAIVE:    ["Structures fall, one by one.", "No wall stands forever.", "Reload's worth the wait.", "Foundations crack under this.", "Precision over speed."],
+  HACKER:    ["Just checking my email.", "I'm in.", "Loading... 99%.", "Nothing to see here.", "Have you tried turning it off and on?"],
   CLERIC:    ["None shall fall today.", "Be still, and be healed.", "The undead have no place here.", "Grace and judgment.", "Faith mends what's broken."],
   POPE:      ["Let all be judged as one.", "The light spares no evil.", "By my word, be cleansed.", "None escape this grace.", "The faithful stand eternal."],
   BLOWDART:  ["One prick is all it takes.", "The poison does the rest.", "Fast hands, sharp aim.", "A little sting, a lot of damage.", "Silent and precise."],
@@ -1657,7 +1674,7 @@ const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   NINJA:'ARCHER', ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER', MERCHANT:'ARCHER', GLAIVE:'ARCHER',
   GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER', BLOW_GUNNER:'ARCHER',
-  MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE', NECROMANCER:'MAGE',
+  MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE', NECROMANCER:'MAGE', HACKER:'MAGE',
   // CA025 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA025
   CAT_SNAPPER:'MAGE',
   // CA026 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA026
@@ -1729,9 +1746,12 @@ const ATTUNEMENT_ICON = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️' };
 const ELEMENT_SKIN_TINTS = {
   FIRE:     { skinMain: '#ff9466', skinShade: '#cc4a1f' },
   ELECTRIC: { skinMain: '#fde68a', skinShade: '#d4a017' },
-  ICE:      { skinMain: '#bfe8fd', skinShade: '#4fa8d8' }
+  ICE:      { skinMain: '#bfe8fd', skinShade: '#4fa8d8' },
+  PROTON:      { skinMain: '#ffb069', skinShade: '#d4701f' },
+  DARK_MATTER: { skinMain: '#a8a0cf', skinShade: '#5a4f8a' },
+  QUASAR:      { skinMain: '#cfe6ff', skinShade: '#6aa0e0' }
 };
-const ELEMENT_ATTACK_EMOJI = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️' };
+const ELEMENT_ATTACK_EMOJI = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️', PROTON: '☄️', DARK_MATTER: '🌑', QUASAR: '🌟' };
 function tintSkinTowardElement(nativeHex, elementHex, blendAmount){
   const native = hexToRgbChannels(nativeHex), element = hexToRgbChannels(elementHex);
   const blended = native.map((channel, i) => Math.round(channel + (element[i]-channel)*blendAmount));
@@ -1751,7 +1771,13 @@ const HYBRID_SPECIALIZATIONS = {
   MAGE: {}
 };
 // CA039 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA039
-const MIXED_PAIR_THRESHOLD = 500;
+// ELEMENT-INFUSION-01 (1.7.36) — see CHANGELOG.md § [1.7.36]. Elements are earned by a stickman, never built as towers.
+const ELEMENT_INFUSE_THRESHOLD = 250;
+const MIXED_PAIR_THRESHOLD = 250;
+// ICE-BLOCK-01 (1.7.36): Ice is the rarest element to proc but the most effective: it freezes for 2 to 5 seconds (longer with INT),
+// the frozen enemy blocks the units queued behind it, and frozen enemies take extra damage.
+const ICE_PROC_SHARE = 0.45, ICE_FREEZE_MIN_MS = 2000, ICE_FREEZE_MAX_MS = 5000, FROZEN_DAMAGE_MULT = 1.3;
+const ELEMENT_COMPONENTS = { PROTON:['FIRE','ELECTRIC'], DARK_MATTER:['FIRE','ICE'], QUASAR:['ELECTRIC','ICE'] };
 // CA040 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA040
 const QUASAR_ELEMENT_SPLASH_RADIUS = 40;
 const MIXED_ELEMENT_RULES = [
@@ -1778,7 +1804,9 @@ const EVOLUTIONS = {
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
 const EVOLVED_TOWER_TYPES = ['NINJA','HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','BERSERKER','LANCER','CRAZY_CHEF','MERCHANT','GLAIVE']; // reachable via evolution OR a pure wave gate (Merchant/Glaive have no evolution path at all, same as this list already accommodates for the wave-gate side of Axeman/Spearman/Hammerman) — never built directly before being unlocked one way or the other
 // CA046 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA046
-const MAX_ONE_PER_BOARD_TYPES = ['PALADIN','SQUIRTGUN','SNIPER','POPE','NECROMANCER'];
+const MAX_ONE_PER_BOARD_TYPES = ['PALADIN','SQUIRTGUN','SNIPER','POPE','NECROMANCER','HACKER'];
+const HACK_TOWER_TYPES = ['HACKER']; // buildable only while Hacks are enabled in Settings; never part of normal progression
+const HACKER_STEALTH_MS = 8000, HACKER_MAX_HP = 20;
 // CA047 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA047
 const SCALING_COST_TYPES = ['NINJA', 'SWORDSMAN', 'ARCHER', 'AXEMAN', 'SPEARMAN', 'HAMMERMAN', 'BERSERKER', 'LANCER', 'MAGE', 'CAT_SNAPPER', 'SNAPCASTER', 'BOMBER', 'MERCHANT', 'GLAIVE', 'GATLING', 'CLERIC', 'CRAZY_CHEF', 'BLOWDART', 'BLOW_GUNNER', 'PROTON', 'DARK_MATTER', 'QUASAR', 'GUNALINDER', 'MARKSMAN']; // PRICE-SCALING-01 (1.6.83): every buildable stickman type except Barricade (wood/stone) and the max-one-per-board types (PALADIN, SQUIRTGUN, SNIPER, POPE, NECROMANCER) // PRICE-SCALING-01 (1.6.83): every buildable stickman type except Barricade (wood/stone, not gold)
 const SCALING_COST_GROWTH = 2.25; // cost multiplier per existing on-board copy of that type — e.g. a 50-gold base becomes ~113/253/569 gold for the 2nd/3rd/4th copy
@@ -1989,7 +2017,7 @@ function applyHutLootItem(lootDef, nearTower){
     if(healed > 0){ lives += healed; showLivesChange(healed); }
     showItemUseFeedback(lootDef, nearTower, 'HEAL', lootTier, ['Lives +' + lootDef.amount]);
   }
-  else if(lootDef.kind === 'gold'){ gold += lootDef.amount; if(nearTower) launchGoldHudFlight(nearTower.x,nearTower.y); showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['Gold +' + lootDef.amount]); }
+  else if(lootDef.kind === 'gold'){ gold += lootDef.amount; showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['Gold +' + lootDef.amount]); }
   else if(nearTower){ gainTowerExp(nearTower, lootDef.amount); showItemUseFeedback(lootDef, nearTower, 'GAIN', lootTier, ['XP +' + lootDef.amount]); }
 }
 // ITEM-CRAFTING-01 (1.6.96) — see CHANGELOG.md § [1.6.96]. WC3-style consumable recipes, entirely
@@ -2290,7 +2318,7 @@ const CONFIG = {
       ]
     },
     PALADIN: {
-      name: 'Paladin', icon: '⚜️', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Paladin', icon: '⚜️', baseCost: 650, unlocksAfterWave: 0,
       blurb: 'A Hammerman pushed to the INT extreme — every hit deals holy pure damage, bypassing armor entirely, on top of the stun.',
       tiers: [
         { range: 100, damage: 24, cooldown: 1000, stunMs: 550 },
@@ -2300,7 +2328,7 @@ const CONFIG = {
     },
     // CA058 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA058
     BERSERKER: {
-      name: 'Berserker', icon: '👹', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Berserker', icon: '👹', baseCost: 600, unlocksAfterWave: 0,
       blurb: 'An Axeman pushed to the STR extreme — trades the throw-toggle\'s finesse for a much wider, harder cleave that catches more of a crowd in one swing.',
       tiers: [
         { range: 105, damage: 32, cooldown: 900 },
@@ -2310,7 +2338,7 @@ const CONFIG = {
     },
     // CA059 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA059
     LANCER: {
-      name: 'Lancer', icon: '🎯', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Lancer', icon: '🎯', baseCost: 550, unlocksAfterWave: 0,
       blurb: 'A Spearman pushed to the DEX extreme — wields a knight lance whose impact scales with enemy weight, dealing more damage to larger targets.',
       tiers: [
         { range: 140, damage: 44, cooldown: 1700 },
@@ -2329,7 +2357,7 @@ const CONFIG = {
     },
     // CA060 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA060
     CAT_SNAPPER: {
-      name: 'Cat Snapper', icon: '🐈‍⬛', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Cat Snapper', icon: '🐈‍⬛', baseCost: 450, unlocksAfterWave: 0,
       blurb: "Throws a temporary shadow cat at its target instead of dealing damage directly. The cat latches on, scratching its target every beat or so for a few seconds before it runs off — capped at 2 cats out at once per Cat Snapper.",
       tiers: [
         { range: 175, damage: 8,  cooldown: 1350, projectileSpeed: 300, catAttackCooldown: 900, catLifetime: 3500, maxActiveCats: 2 },
@@ -2384,6 +2412,13 @@ const CONFIG = {
         { range: 190, damage: 10, cooldown: 90,  projectileSpeed: 640, upgradeCost: 150 }
       ]
     },
+    HACKER: {
+      name: 'Hacker', icon: '💻', baseCost: 150, unlocksAfterWave: 0,
+      blurb: "Never attacks and has no stats, no promotions and almost no health. Just sits there holding a laptop. When attacked he vanishes behind a smoke screen and goes stealth, though area-of-effect attacks can still hurt him. Tap him to open the Hack menu. Needs Hacks enabled in Settings; only one Hacker can be on the field at a time, even while downed.",
+      tiers: [
+        { range: 0, damage: 0, cooldown: 999999 }
+      ]
+    },
     BARRICADE: {
       name: 'Barricade', icon: '🚧', baseCost: 0, woodCost: 600, stoneCost: 300, unlocksAfterWave: 0,
       blurb: "Doesn't attack — just a tough obstacle. Bought directly from Build, not Shop — tap Barricade in the Build menu, then tap a valid path tile to place it. Costs wood and stone (or free, using a banked free-barricade charge). Enemies never deliberately target it, but it physically blocks the path — nothing can push past a live one to reach your base, breakaway enemies included.",
@@ -2402,7 +2437,7 @@ const CONFIG = {
     },
     // CA063 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA063
     NECROMANCER: {
-      name: 'Necromancer', icon: '💀', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Necromancer', icon: '💀', baseCost: 550, unlocksAfterWave: 0,
       blurb: "Mage's STR-attuned specialization, reached at 500 STR — fires a dark bolt attack, and at the start of every round raises a small band of skeleton minions near itself to help hold the line. The skeletons crumble back to dust the instant the round ends, then a fresh band rises with the next one.",
       tiers: [
         { range: 175, damage: 30, cooldown: 2200, projectileSpeed: 900,  skeletonCount: 2, skeletonDamage: 6,  skeletonCooldown: 900, skeletonRange: 70 },
@@ -2411,7 +2446,7 @@ const CONFIG = {
       ]
     },
     POPE: {
-      name: 'Pope', icon: '🧑‍🦳', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Pope', icon: '🧑‍🦳', baseCost: 800, unlocksAfterWave: 0,
       blurb: "Cleric's ultimate form, reached at 500 INT with 750+ total trained stats — the curse is no longer aimed at a single target. Every enemy within range is struck at once in a holy nova, still dealing 5x tick damage against the undead. Still heals your lowest-HP tower once per wave.",
       tiers: [
         { range: 160, damage: 30, cooldown: 8000, healAmount: 80, curseDuration: 4000 },
@@ -2420,7 +2455,7 @@ const CONFIG = {
       ]
     },
     CRAZY_CHEF: {
-      name: 'Crazy Chef', icon: '🔪', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Crazy Chef', icon: '🔪', baseCost: 500, unlocksAfterWave: 0,
       blurb: 'Unlocked by an Archer reaching 100 STR. A ranged bruiser who scales on Strength, not Dexterity: she hurls a burst of five kitchen knives, then spends ten seconds restocking her block.',
       tiers: [
         { range: 130, damage: 16, cooldown: 400, projectileSpeed: 430 },
@@ -2438,7 +2473,7 @@ const CONFIG = {
       ]
     },
     SQUIRTGUN: {
-      name: 'Dual Squirt Gun', icon: '🔫', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Dual Squirt Gun', icon: '🔫', baseCost: 650, unlocksAfterWave: 0,
       blurb: 'A Blowdart pushed to the DEX extreme — twin water pistols spraying corrosive green acid, firing even faster with a longer-lingering burn than the dart it evolved from.',
       tiers: [
         { range: 125, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
@@ -2448,7 +2483,7 @@ const CONFIG = {
     },
     // CA064 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA064
     BLOW_GUNNER: {
-      name: 'Blow Gunner', icon: '♨️', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Blow Gunner', icon: '♨️', baseCost: 700, unlocksAfterWave: 0,
       blurb: "Archer's Fire+Ice hybrid, reached by pushing STR and INT both to 500 rather than just one. Every dart carries a scalding steam-vapor sting — Blowdart's poison DoT and a brief chilling slow, together on the same hit.",
       tiers: [
         { range: 125, damage: 9,  cooldown: 300, projectileSpeed: 460, poisonDamage: 4, poisonDuration: 3200, slowFactor: 0.2,  slowDuration: 900 },
@@ -2487,7 +2522,7 @@ const CONFIG = {
       ]
     },
     GUNALINDER: {
-      name: 'Gunalinder', icon: '🔫', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Gunalinder', icon: '🔫', baseCost: 550, unlocksAfterWave: 0,
       blurb: 'A Bomber pushed to the INT extreme — trades splash for precision, firing all six chambers of a revolver in a rapid burst before a long reload.',
       tiers: [
         { range: 150, damage: 9,  cooldown: 1700, burstCount: 6, burstDelay: 90, projectileSpeed: 380 },
@@ -2496,7 +2531,7 @@ const CONFIG = {
       ]
     },
     SNIPER: {
-      name: 'Sniper', icon: '🎯', baseCost: 0, unlocksAfterWave: 0,
+      name: 'Sniper', icon: '🎯', baseCost: 800, unlocksAfterWave: 0,
       blurb: 'A Gunalinder pushed to the deepest INT investment in the game — one devastating shot at the longest range of any tower, at the cost of a very slow reload.',
       tiers: [
         { range: 200, damage: 120, cooldown: 2800, projectileSpeed: 600 },
@@ -2685,7 +2720,7 @@ function validateGameDefinitions(){
   // CA077 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA077
   const KNOWN_UNREACHABLE_LEGACY_TYPES = ['PROTON','DARK_MATTER','QUASAR']; // element states, deliberately never buildable — see their own comments above TOWER_UNLOCK_SOURCE_BY_TARGET
   for(const type of towerTypes){
-    if(STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type) || KNOWN_UNREACHABLE_LEGACY_TYPES.includes(type)) continue;
+    if(STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type) || KNOWN_UNREACHABLE_LEGACY_TYPES.includes(type) || HACK_TOWER_TYPES.includes(type)) continue;
     problems.push('CONFIG.TOWERS.' + type + ' is not in STARTER_TOWER_TYPES, EVOLVED_TOWER_TYPES, or KNOWN_UNREACHABLE_LEGACY_TYPES — it has no known path to ever being built, on purpose or by accident');
   }
 
@@ -2919,7 +2954,7 @@ function validateDesignContract(){
     }
   }
   if(!GOLD_BAG_ITEM.isGoldBag || isConsumableDef(GOLD_BAG_ITEM) || GOLD_BAG_LIFESPAN_MS < 120000) problems.push('a gold bag is an ordinary ground item that opens only when clicked or dropped on a stickman and keeps its gold if it leaves the ground (GOLD-BAG-ITEM-01)');
-  if(GOLD_BAG_MIN_GOLD !== 1 || GOLD_BAG_MAX_GOLD !== 100 || normalizeGoldBagGold(0) !== 1 || normalizeGoldBagGold(1000) !== 100 || GOLD_BAG_MIN_COINS !== 3 || GOLD_BAG_MAX_COINS !== 5 || GOLD_BAG_MIN_COIN_VALUE !== 1 || GOLD_BAG_MAX_COIN_VALUE !== 6 || Tower.prototype.receiveItem.call({ type:'SWORDSMAN', equippedItems:[] }, GOLD_BAG_ITEM) !== false || !String(openGoldBag).includes('spawnGoldBagCoinBurst') || !String(creditGroundBagGold).includes('spawnGoldBagCoinBurst')) problems.push('Gold Bags pay 1–100 player Gold, spawn 3–5 collectible 1–6 Gold coins on open or automatic payout, and stay out of inventory (GOLD-BAG-COIN-BURST-01)');
+  if(GOLD_BAG_MIN_GOLD !== 1 || GOLD_BAG_MAX_GOLD !== 100 || normalizeGoldBagGold(0) !== 1 || normalizeGoldBagGold(1000) !== 100 || GOLD_BAG_MIN_COINS !== 3 || GOLD_BAG_MAX_COINS !== 9 || GOLD_BAG_MIN_COIN_VALUE !== 1 || GOLD_BAG_MAX_COIN_VALUE !== 25 || Tower.prototype.receiveItem.call({ type:'SWORDSMAN', equippedItems:[] }, GOLD_BAG_ITEM) !== false || !String(openGoldBag).includes('spawnGoldBagCoinBurst') || !String(creditGroundBagGold).includes('spawnGoldBagCoinBurst')) problems.push('Gold Bags pay 1–100 player Gold, spawn 3–9 collectible 1–25 Gold coins on open or automatic payout, and stay out of inventory (GOLD-BAG-COIN-BURST-01)');
   if(AMBIENT_LOG_INTERVAL_MS !== 300000 || AMBIENT_LOG_WOOD !== 15 || AMBIENT_LOG_MAX_ON_BOARD !== 3 || !String(tryCollectAmbientLog).includes('wood += log.wood') || !String(handleTap).includes('tryCollectAmbientLog')) problems.push('ambient logs should appear on a five-minute active-play cadence, remain clickable, and grant wood without entering inventory (AMBIENT-LOG-01)');
   if(!/spawnParticles\(tile\[0\]\*TILE_SIZE/.test(String(maybeSpawnChanceStructures)) || /\bitem\./.test(String(maybeSpawnChanceStructures))) problems.push('chance structure effects must use their selected tile coordinates and never reference an undefined item (CHANCE-STRUCTURE-SPAWN-CRASH-01)');
   if(!String(applyStimItem).includes('expiresAfterWave') || !String(clearRoundBuffs).includes('expiresAfterWave') || !String(useStoredConsumable).includes('!tower.active')) problems.push('round-only scope and combat consumables must expire at wave end and safely ignore stale inventory actions (ROUND-BUFF-LIFETIME-01)');
@@ -2976,6 +3011,11 @@ function validateDesignContract(){
   if(!isExpansionPickupItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || !isExpansionPickupItem({ itemDef: GOLD_MAP_BAG_ITEM }) || isExpansionPickupItem({ itemDef: GOLD_BAG_ITEM }) || canEvictGroundItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || canEvictGroundItem({ itemDef: GOLD_MAP_BAG_ITEM }) || !canEvictGroundItem({ itemDef: GOLD_BAG_ITEM })) problems.push('ground-item pressure must preserve free-expansion pickups without protecting ordinary gold bags (EARLY-REWARD-PRESERVE-01)');
   if(promotionRankLabel(1) !== 'Rank 1' || promotionRankLabel(7) !== 'Rank 7') problems.push('the promotion count must be labeled Rank, separate from Training XP (PROMOTION-RANK-LABEL-01)');
   if(nextWaveActionLabel(0) !== 'Start Wave' || nextWaveActionLabel(1) !== 'Next Wave') problems.push('the first wave action must say Start Wave without a wave number, then return to Next Wave (FIRST-WAVE-ACTION-01)');
+  { const freeFighters = Object.entries(CONFIG.TOWERS).filter(([type, def]) => !['BARRICADE','PROTON','DARK_MATTER','QUASAR'].includes(type) && !(def.baseCost > 0)).map(([type]) => type); if(freeFighters.length) problems.push('every buildable fighter must have a gold price above zero (Barricade is paid in wood and stone; Proton, Dark Matter and Quasar are elements, not towers): ' + freeFighters.join(', ') + ' (NO-FREE-FIGHTERS-01)'); }
+  if(ELEMENT_INFUSE_THRESHOLD !== 250 || MIXED_PAIR_THRESHOLD !== 250 || !ELEMENT_COMPONENTS.PROTON || ELEMENT_COMPONENTS.PROTON.join() !== 'FIRE,ELECTRIC' || ELEMENT_COMPONENTS.DARK_MATTER.join() !== 'FIRE,ICE' || ELEMENT_COMPONENTS.QUASAR.join() !== 'ELECTRIC,ICE' || ['PROTON','DARK_MATTER','QUASAR'].some(type => STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type)) || mixedElementFor({str:250,dex:250,int:250}) !== 'PROTON' || mixedElementFor({str:260,dex:300,int:280}) !== 'QUASAR' || mixedElementFor({str:300,dex:0,int:250}) !== 'DARK_MATTER' || mixedElementFor({str:300,dex:249,int:0}) !== null || !String(Tower.prototype.draw).includes('ELEMENT-ENCHANT-01')) problems.push('elements are earned, never built: 250 STR/DEX/INT infuses Fire/Electric/Ice, a second element at 250 mixes into Proton (Fire+Electric), Dark Matter (Fire+Ice) or Quasar (Electric+Ice), and an elemental stickman always shows an enchantment on the weapon (ELEMENT-INFUSION-01)');
+  if(!CONFIG.TOWERS.HACKER || !(CONFIG.TOWERS.HACKER.baseCost > 0) || CONFIG.TOWERS.HACKER.tiers[0].damage !== 0 || !MAX_ONE_PER_BOARD_TYPES.includes('HACKER') || !HACK_TOWER_TYPES.includes('HACKER') || STARTER_TOWER_TYPES.includes('HACKER') || EVOLVED_TOWER_TYPES.includes('HACKER') || HACKER_MAX_HP > 25 || typeof Tower.prototype.goStealth !== 'function' || !String(findNearestActiveTower).includes('stealthUntil')) problems.push('the Hacker is a hacks-only stickman: priced above zero, never attacks, tiny health, one per board even when downed, stealth hides him from enemy targeting, and he never appears in normal progression (HACKER-01)');
+  if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
+  if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
   if(CONFIG.TOWERS.SWORDSMAN.baseCost !== 50 || CONFIG.TOWERS.ARCHER.baseCost !== 60 || CONFIG.TOWERS.MAGE.baseCost !== 70 || SCALING_COST_GROWTH < 2.25 || Math.round(CONFIG.TOWERS.SWORDSMAN.baseCost * SCALING_COST_GROWTH) !== 113) problems.push('starter costs must remain Swordsman 50, Archer 60, Mage 70, with same-class copies becoming substantially more expensive (STARTER-PRICE-LADDER-01)');
   if(applyClassCooldownBalance('SWORDSMAN', 1700 * 1.2) !== 2448 || applyClassCooldownBalance('ARCHER', 1430 * 1.2) !== 1716 || applyClassCooldownBalance('MAGE', 7800 * 1.2) !== 9360) problems.push('Swordsman must attack 20% slower while Archer and Mage retain their existing base cooldowns (SWORDSMAN-RATE-01)');
   { const entries = [{ id: 1, read: false }, { id: 2, read: false }];
@@ -4029,7 +4069,7 @@ function findNearestActiveTower(x, y, maxDist){
   // CA108 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA108
   const candidates = [];
   for(const t of towerPool){
-    if(!t.active || t.disabledWavesLeft > 0 || t.type === 'BARRICADE') continue; // Barricades are obstacles, not attackable "real towers" — breakaway/troll-swing/escaped-wander targeting must never pick one as its destination. A live barricade can still physically block a breakaway enemy's path (see updateBreakaway()'s own blocker check), just never be the thing it deliberately walks toward.
+    if(!t.active || t.disabledWavesLeft > 0 || t.type === 'BARRICADE' || (t.type === 'HACKER' && t.stealthUntil > gameTime)) continue; // Barricades are obstacles, not attackable "real towers" — breakaway/troll-swing/escaped-wander targeting must never pick one as its destination. A live barricade can still physically block a breakaway enemy's path (see updateBreakaway()'s own blocker check), just never be the thing it deliberately walks toward.
     const d = Math.hypot(t.x-x, t.y-y);
     if(d > (maxDist || Infinity)) continue;
     const tauntWeight = 1 + diminishingStatValue(t.str || 0, 0.08);
@@ -6051,6 +6091,7 @@ function updateFlagWind(dtMs){
   if(flagWindStrength === targetStrength) return;
   if(targetStrength > flagWindStrength) flagWindStrength = Math.min(targetStrength, flagWindStrength + dtMs/FLAG_WIND_RISE_MS);
   else flagWindStrength = Math.max(targetStrength, flagWindStrength - dtMs/FLAG_WIND_FALL_MS);
+  audioEngine.setWindLevel(flagWindStrength);
 }
 const FLAG_FORESHORTEN_STRENGTH = 0.16;
 const flagRipple = new Float32Array(FLAG_SEGMENTS + 1);
@@ -6318,11 +6359,16 @@ function acquireActive(pool){
 
 // MUSIC-MIX-01 — see CHANGELOG.md § [1.6.163] Audio mix and adaptive score, MUSIC-MIX-01.
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
+const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX burst over boss music peaked at 0.37 of full scale with the old 0.5 gain, so +3.5 dB still leaves about 4 dB of headroom before the compressor
 const MUSIC_TEMPO_BPM = 104;
 const MUSIC_STEP_SECONDS = 60 / MUSIC_TEMPO_BPM / 2;
 const MUSIC_COMBAT_TEMPO_BPM = 144;
+const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 0, 5, 7, 3]; // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
+const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
+const MUSIC_BOSS_TEMPO_BPM = 152; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
 const MUSIC_COMBAT_ROOTS = [38,38,41,36,38,43,41,38,38,36,43,38];
 const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
+const MUSIC_COMBAT_INTERVALS = [0,2,3,5,7,8,11,12,14,17];
 const MUSIC_STEPS_PER_BAR = 8;
 const MUSIC_BARS = 24;
 const MUSIC_CYCLE_STEPS = MUSIC_STEPS_PER_BAR * MUSIC_BARS;
@@ -6467,14 +6513,19 @@ class SoundEngine{
     this.masterEQ.gain.value = -4;
     this.masterEQ.connect(this.saturation);
     this.master = this.ctx.createGain();
-    this.master.gain.value = isMuted ? 0 : 0.5 * audioMasterVolume;
+    this.master.gain.value = isMuted ? 0 : MASTER_OUTPUT_GAIN * audioMasterVolume;
     this.sfxBus = this.ctx.createGain();
     this.sfxBus.gain.value = audioSfxVolume;
     this.musicBus = this.ctx.createGain();
     this.musicBus.gain.value = audioMusicVolume;
     this.musicBaseGain = audioMusicVolume;
     this.sfxBus.connect(this.master);
-    this.musicBus.connect(this.master);
+    this.musicFilter = this.ctx.createBiquadFilter();
+    this.musicFilter.type = 'lowpass';
+    this.musicFilter.frequency.value = 3200;
+    this.musicFilter.Q.value = 0.5;
+    this.musicBus.connect(this.musicFilter);
+    this.musicFilter.connect(this.master);
     this.combatBus = this.ctx.createGain();
     this.feedbackBus = this.ctx.createGain();
     this.combatBus.gain.value = 1;
@@ -6489,7 +6540,7 @@ class SoundEngine{
     if(!this.unlocked) return;
     const now = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(now);
-    this.master.gain.setTargetAtTime(isMuted ? 0 : 0.5 * audioMasterVolume, now, 0.025);
+    this.master.gain.setTargetAtTime(isMuted ? 0 : MASTER_OUTPUT_GAIN * audioMasterVolume, now, 0.025);
     this.sfxBus.gain.cancelScheduledValues(now);
     this.sfxBus.gain.setTargetAtTime(audioSfxVolume, now, 0.025);
     this.musicBaseGain = audioMusicVolume;
@@ -6497,7 +6548,7 @@ class SoundEngine{
     this.musicBus.gain.setTargetAtTime(this.musicPaused ? 0 : audioMusicVolume, now, 0.04);
   }
   setMusicPhase(phase, fadeNow=false){
-    if(phase !== 'field' && phase !== 'wave') return;
+    if(phase !== 'field' && phase !== 'wave' && phase !== 'boss') return;
     this.requestedMusicPhase=phase;
     if(!fadeNow || this.musicPhase===phase || !this.unlocked || !this.musicBus || this.musicPaused) return;
     const now=this.ctx.currentTime, gain=this.musicBus.gain;
@@ -6514,6 +6565,7 @@ class SoundEngine{
   setMusicPaused(paused){
     this.musicPaused = !!paused;
     if(!this.unlocked || !this.musicBus) return;
+    this.setWindLevel(this.musicPaused ? 0 : flagWindStrength);
     const now = this.ctx.currentTime;
     this.musicBus.gain.cancelScheduledValues(now);
     this.musicBus.gain.setTargetAtTime(this.musicPaused ? 0 : audioMusicVolume, now, this.musicPaused ? 0.025 : 0.08);
@@ -6525,6 +6577,8 @@ class SoundEngine{
     this.musicPaused = !!(document.hidden || gameState === 'PAUSED');
     this.musicStep = 0;
     this.musicNextTime = this.ctx.currentTime + 0.08;
+    this.windLevel = undefined;
+    this.setWindLevel(this.musicPaused ? 0 : flagWindStrength);
     const tick = () => {
       if(!this.musicStarted) return;
       const now = this.ctx.currentTime;
@@ -6537,12 +6591,14 @@ class SoundEngine{
           this.debugCounters.musicLateRecoveries++;
           this.debugCounters.musicSkippedSteps += skipped;
           this.debugCounters.musicWorstLatenessMs = Math.max(this.debugCounters.musicWorstLatenessMs, (now-this.musicNextTime)*1000);
+          this.musicCycle = (this.musicCycle || 0) + Math.floor((this.musicStep + skipped) / MUSIC_CYCLE_STEPS);
           this.musicStep = (this.musicStep + skipped) % MUSIC_CYCLE_STEPS;
           this.musicNextTime += skipped * stepSeconds;
         }
         const horizon = now + 0.14;
         while(this.musicNextTime <= horizon){
           this.scheduleMusicStep(this.musicStep, this.musicNextTime);
+          if(this.musicStep + 1 >= MUSIC_CYCLE_STEPS) this.musicCycle = (this.musicCycle || 0) + 1;
           this.musicStep = (this.musicStep + 1) % MUSIC_CYCLE_STEPS;
           this.musicNextTime += this.musicStepSeconds();
         }
@@ -6556,6 +6612,7 @@ class SoundEngine{
     this.musicTimer = null;
     this.musicStarted = false;
     this.musicPaused = true;
+    this.setWindLevel(0);
     if(this.unlocked && this.musicBus){
       const now = this.ctx.currentTime;
       this.musicBus.gain.cancelScheduledValues(now);
@@ -6568,8 +6625,44 @@ class SoundEngine{
     for(let h=1;h<17;h++) imag[h] = (h % 2 ? 1 : 0.65) / Math.pow(h, 1.35);
     this.brassWave = this.ctx.createPeriodicWave(real, imag);
   }
+  sweepMusicFilter(time, open){
+    this.musicFilterOpen = open;
+    if(!this.musicFilter) return;
+    const at = Math.max(time, this.ctx.currentTime), frequency = this.musicFilter.frequency;
+    frequency.cancelScheduledValues(at);
+    frequency.setValueAtTime(frequency.value, at);
+    frequency.setTargetAtTime(open ? 14000 : 3200, at, open ? 0.3 : 0.5);
+  }
+  setWindLevel(strength){
+    if(!this.unlocked || !this.noiseBuffer) return;
+    const level = this.musicPaused ? 0 : strength;
+    if(this.windLevel === level) return;
+    this.windLevel = level;
+    if(!this.windGain){
+      if(level <= 0) return;
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.noiseBuffer;
+      source.loop = true;
+      this.windBand = this.ctx.createBiquadFilter();
+      this.windBand.type = 'bandpass';
+      this.windBand.Q.value = 0.6;
+      const highpass = this.ctx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 140;
+      this.windGain = this.ctx.createGain();
+      this.windGain.gain.value = 0;
+      source.connect(this.windBand);
+      this.windBand.connect(highpass);
+      highpass.connect(this.windGain);
+      this.windGain.connect(this.sfxBus);
+      source.start();
+    }
+    const now = this.ctx.currentTime;
+    this.windBand.frequency.setTargetAtTime(380 + 260*level, now, 0.4);
+    this.windGain.gain.setTargetAtTime(0.022*level, now, 0.4);
+  }
   musicStepSeconds(){
-    return 60 / (this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2;
+    return 60 / (this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2;
   }
   reserveMusicVoice(startTime, duration, count=1){
     const now = this.ctx.currentTime;
@@ -6662,11 +6755,19 @@ class SoundEngine{
     const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
     const beatStep = step % MUSIC_STEPS_PER_BAR;
     if(beatStep === 0) this.musicPhase = this.requestedMusicPhase;
-    const combat = this.musicPhase === 'wave';
+    const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
+    const boss = this.musicPhase === 'boss';
+    if(beatStep === 0 && combat !== this.musicFilterOpen) this.sweepMusicFilter(time, combat);
     const phraseBar = bar % 4;
     const section = Math.floor(bar / 8);
-    const chord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
-    const minor = chord !== 36 && chord !== 48;
+    const cycleIndex = this.musicCycle || 0;
+    let shift = (MUSIC_CYCLE_SHIFTS[cycleIndex % MUSIC_CYCLE_SHIFTS.length] + MUSIC_SEASON_SHIFTS[Math.min(9, Math.floor(wavesCompleted / 10))]) % 12;
+    if(shift > 6) shift -= 12;
+    this.musicShift = shift;
+    const baseChord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
+    const chord = baseChord + shift;
+    const minor = baseChord !== 36 && baseChord !== 48;
+    const intensity = this.musicIntensity || 0;
     const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : 4);
     if(combat){
       if(beatStep === 0 || section === 1 && beatStep === 3 || section === 2 && beatStep === 6) this.musicTone(138, time, 0.15, 'kick', beatStep === 0 ? 0.15 : 0.10);
@@ -6676,22 +6777,32 @@ class SoundEngine{
       }
       if(!breath && (beatStep === 1 || beatStep === 3 || beatStep === 6)){
         const offset = beatStep === 6 ? (phraseBar === 2 ? 12 : 7) : beatStep === 3 ? (phraseBar === 1 ? 7 : phraseBar === 2 ? 5 : section === 1 ? 12 : 0) : 0;
-        this.musicTone(midiToFrequency(chord + offset), time + (beatStep === 3 ? 0.003 : 0), 0.14, section === 1 ? 'wobble' : 'fmbass', section === 1 ? 0.12 : 0.085);
+        this.musicTone(midiToFrequency(chord + offset), time + (beatStep === 3 ? 0.003 : 0), 0.14, (section === 1 || boss) ? 'wobble' : 'fmbass', (section === 1 || boss) ? 0.12 : 0.085);
       }
       if(beatStep === 7 && (phraseBar === 1 || phraseBar === 3 && section > 0)) this.musicPercussion(time, false);
+      if(!breath && beatStep === 5) this.musicTone(midiToFrequency(chord + 10), time, 0.11, 'fmbass', 0.06);
+      if(boss && beatStep === 4) this.musicTone(138, time, 0.12, 'kick', 0.11);
+      if(boss && beatStep % 2 === 1) this.musicPercussion(time, false);
+      if(section > 0 && (beatStep === 2 || beatStep === 6)) this.musicPercussion(time, false);
+      if(section > 0 && phraseBar === 3 && beatStep === 6) this.musicTone(138, time, 0.12, 'kick', 0.09);
+      if(phraseBar === 3 && beatStep >= 6) this.musicPercussion(time, beatStep === 7);
+      if(bar % 8 === 7 && beatStep === 7) this.musicTone(195, time, 0.07, 'snap', 0.09);
+      if(!breath && (phraseBar === 1 || phraseBar === 2) && beatStep === 5) this.musicTone(midiToFrequency(chord + 12 + MUSIC_COMBAT_INTERVALS[2 + bar % 3]), time + 0.004, 0.12, 'fmkeys', 0.04);
+      if(!breath && intensity > 0.5 && beatStep % 2 === 0) this.musicTone(midiToFrequency(chord + 24 + [0, 7, 12, 7][(beatStep / 2) % 4]), time, 0.09, 'pluck', 0.032 * intensity);
     } else if(!breath && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
       this.musicTone(midiToFrequency(chord + (beatStep === 3 ? 7 : beatStep === 6 ? 12 : 0)), time, beatStep === 0 ? 0.27 : 0.16, section === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
     }
     const cadence=!combat && phraseBar===3 && beatStep===2;
     const degree = cadence ? 0 : (combat ? MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length] : MUSIC_MELODY[bar])[beatStep];
     if(degree !== null && !breath){
-      const intervals = combat ? MUSIC_PHRYGIAN_INTERVALS : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
+      const intervals = combat ? (boss || section === 2 && phraseBar === 3 ? MUSIC_PHRYGIAN_INTERVALS : MUSIC_COMBAT_INTERVALS) : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
       const octave = combat && section === 2 && beatStep === 2 ? 12 : 0;
-      const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (cadence ? 'reed' : section === 0 || phraseBar === 2 ? 'fmkeys' : 'pluck');
+      const keysFirst = (section === 0 || phraseBar === 2) !== (cycleIndex % 2 === 1);
+      const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (cadence ? 'reed' : keysFirst ? 'fmkeys' : 'pluck');
       const duration=combat ? (beatStep===0 ? 0.25 : beatStep%2 ? 0.11 : 0.15) : cadence ? this.musicStepSeconds()*1.65 : voice==='reed' ? 0.28 : voice==='fmkeys' ? 0.24 : beatStep%2 ? 0.13 : 0.20;
       const accent=beatStep===0 ? 1 : beatStep%2 ? 0.78 : 0.90;
       const phraseGain=phraseBar===3 ? 0.82 : section===1 ? 0.94 : 1;
-      this.musicTone(midiToFrequency(chord + (combat ? 12 : 24) + intervals[degree] + octave), time, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain);
+      this.musicTone(midiToFrequency(chord + (combat ? 12 : 24) + intervals[degree] + octave), time + (Math.random() - 0.5) * 0.008, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain*(0.92 + Math.random()*0.16));
     }
     if(!combat && (phraseBar === 1 || phraseBar === 2 && section > 0) && (beatStep === 3 || beatStep === 7) && !breath){
       const third = minor ? 3 : 4;
@@ -6981,12 +7092,25 @@ class SoundEngine{
         this.tone(370, 0.075, 'triangle', 330, eventPan, false, 0, true, true, 0.14);
         this.tone(277, 0.10, 'triangle', 247, eventPan, false, 0.10, true, true, 0.12);
         break;
-      case 'wave_clear':
-        this.duck(-2, 0.35);
-        this.tone(523.25, 0.08, 'sine', undefined, 0, false, 0, true, true, 0.14);
-        this.tone(659.25, 0.10, 'sine', undefined, 0, false, 0.075, true, true, 0.12);
-        this.tone(784, 0.16, 'triangle', undefined, 0, false, 0.15, true, true, 0.10);
+      case 'wave_clear': {
+        // WAVE-CLEAR-FANFARE-01 (1.7.36): a layered victory fanfare — rising brass arpeggio, a held major chord with octave bass,
+        // timpani hits and a cymbal swell, transposed to the key the music is currently in.
+        this.duck(-4, 1.8);
+        const ratio = Math.pow(2, (this.musicShift || 0) / 12);
+        const rise = [[440, 0], [587.33, 0.12], [739.99, 0.24], [880, 0.36]];
+        for(const [freq, delay] of rise){
+          this.tone(freq*ratio, 0.16, 'sawtooth', undefined, 0, false, delay, true, true, 0.075);
+          this.tone(freq*2*ratio, 0.12, 'triangle', undefined, 0, false, delay, true, true, 0.04);
+        }
+        const hold = 0.52;
+        [293.66, 440, 587.33, 739.99].forEach((freq, k) => this.tone(freq*ratio, 1.1, k % 2 ? 'triangle' : 'sawtooth', undefined, 0, true, hold, true, true, 0.07));
+        this.tone(146.83*ratio, 1.1, 'sine', undefined, 0, false, hold, true, true, 0.16);
+        this.tone(110*ratio, 0.3, 'sine', 55*ratio, 0, false, 0, true, true, 0.2);
+        this.tone(110*ratio, 0.5, 'sine', 55*ratio, 0, false, hold, true, true, 0.22);
+        this.noise(0.9, 5200, 'highpass', 0, true, hold, 0.08);
+        this.noise(0.18, 260, 'lowpass', 0, false, 0, 0.2);
         break;
+      }
 
       // CA196 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA196
       case 'footstep': {
@@ -7173,6 +7297,7 @@ function currentBarricadeCost(){
   return { wood: Math.round(BARRICADE_COST_BASE_WOOD * growth), stone: Math.round(BARRICADE_COST_BASE_STONE * growth) };
 }
 function canAffordTower(type){
+  if(hackFreeBuild && type !== 'BARRICADE') return true;
   if(type === 'BARRICADE'){
     if(freeBarricadesLeft > 0) return true;
     const bc = currentBarricadeCost();
@@ -7203,6 +7328,8 @@ function refreshHeavyVisualLoadState(){
   if(perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS) perfStats.depthSortPressureFrames++;
   if(underHeavyVisualLoad) perfStats.adaptiveVisualFrames++;
 }
+let hacksEnabled = false; // gameplay option in Settings > Game: unlocks the Hacker stickman and his developer menu
+let hackGodMode = false, hackFreeBuild = false, hacksUsed = false;
 let goreMode = true; // optional blood-and-gore effects, enabled by default and controlled in Settings > Game
 // INTRO-TEXT-01 (1.6.84) — see CHANGELOG.md § [1.6.84]. Folded into the existing localStorage-based
 // prefs system (sticktd:prefs:v1) rather than a second, cookie-specific mechanism: every other toggle
@@ -7288,7 +7415,7 @@ const PREFS_KEY = 'sticktd:prefs:v1';
 function savePrefs(){
   const started = performance.now();
   try{
-    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, decalBudgetOverride });
+    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, hacksEnabled, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, decalBudgetOverride });
     const jsonDone = performance.now();
     localStorage.setItem(PREFS_KEY,payload);
     retainDiagnostic(extendedDiagnostics.saves,{time:new Date().toISOString(),kind:'preferences',success:true,jsonMs:jsonDone-started,writeMs:performance.now()-jsonDone,codeUnits:payload.length},20);
@@ -7303,6 +7430,7 @@ function loadPrefs(){
     const p = JSON.parse(raw);
     if(p.graphicsQuality === 'high' || p.graphicsQuality === 'low') graphicsQuality = p.graphicsQuality;
     if(typeof p.goreMode === 'boolean') goreMode = p.goreMode;
+    if(typeof p.hacksEnabled === 'boolean') hacksEnabled = p.hacksEnabled;
     if(typeof p.introTextEnabled === 'boolean') introTextEnabled = p.introTextEnabled;
     if(typeof p.isMuted === 'boolean') isMuted = p.isMuted;
     if(Number.isFinite(p.audioMasterVolume)) audioMasterVolume = clampNum(p.audioMasterVolume, 0, 1);
@@ -7340,6 +7468,7 @@ loadPrefs();
   syncAudioVolumeControls();
   const goreToggleSettings = document.getElementById('settingsGoreToggle');
   if(goreToggleSettings) goreToggleSettings.checked = goreMode;
+  { const hacksToggleSettings = document.getElementById('settingsHacksToggle'); if(hacksToggleSettings) hacksToggleSettings.checked = hacksEnabled; }
 })();
 // CA218 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA218
 (function syncDecalBudgetToDOM(){
@@ -7880,6 +8009,7 @@ function isTowerUnlocked(type){
 // tower's own gate — reading as "I select it, tap a tile, and nothing happens." This is the one
 // source of truth both the Build menu's display and the actual placement confirm now share.
 function isTowerBuildableNow(type){
+  if(HACK_TOWER_TYPES.includes(type)) return hacksEnabled;
   return STARTER_TOWER_TYPES.includes(type) ? isTowerUnlocked(type) : unlockedTowerTypes.has(type);
 }
 function checkTowerUnlocks(){
@@ -8040,23 +8170,30 @@ const ELEMENT_VISUALS = {
 const ELEMENT_LABELS = { PROTON:'☄️ Proton', QUASAR:'🌟 Quasar', DARK_MATTER:'🌑 Dark Matter', FIRE:'🔥 Fire', ICE:'🧊 Ice', ELECTRIC:'⚡ Electric' };
 function towerElement(tower){ return tower ? (tower.elementState || tower.attunement) : null; }
 function towerDisplayName(tower){ return (tower.legendaryName || tower.def.name) + ' ' + tower.def.icon; }
+// ELEMENT-INFUSION-01 (1.7.36): a stickman's mixed element comes from its two highest stats that are at least
+// MIXED_PAIR_THRESHOLD (ties go STR, then DEX, then INT). One qualifying stat is a single element; none is no element.
+const MIXED_ELEMENT_BY_PAIR = { 'str+dex':'PROTON', 'str+int':'DARK_MATTER', 'dex+int':'QUASAR' };
+function mixedElementFor(tower){
+  const order = ['str','dex','int'];
+  const ready = order.filter(stat => (tower[stat] || 0) >= MIXED_PAIR_THRESHOLD)
+    .sort((a, b) => ((tower[b] || 0) - (tower[a] || 0)) || (order.indexOf(a) - order.indexOf(b)));
+  if(ready.length < 2) return null;
+  return MIXED_ELEMENT_BY_PAIR[[ready[0], ready[1]].sort((a, b) => order.indexOf(a) - order.indexOf(b)).join('+')];
+}
 function refreshElementState(tower){
   if(!tower || tower.type === 'BARRICADE') return;
-  for(const rule of MIXED_ELEMENT_RULES){
-    if(rule.test(tower)){
-      if(tower.elementState !== rule.element){
-        tower.elementState = rule.element;
-        playSound('legendary');
-        spawnFloatingText(tower.x, tower.y - 46, ELEMENT_LABELS[rule.element] + ' unlocked!', '#c792ea');
-        showToast(ELEMENT_LABELS[rule.element] + ' — ' + towerDisplayName(tower) + ' mixed a new element!');
-      }
-      return;
-    }
-  }
+  const element = mixedElementFor(tower);
+  if(element === (tower.elementState || null)) return;
+  tower.elementState = element;
+  if(!element) return;
+  playSound('legendary');
+  spawnFloatingText(tower.x, tower.y - 46, ELEMENT_LABELS[element] + ' unlocked!', '#c792ea');
+  showToast(ELEMENT_LABELS[element] + ' — ' + towerDisplayName(tower) + ' mixed a new element!');
 }
 function attunementProcChance(tower){
   const stat = tower.attunement === 'FIRE' ? tower.str : tower.attunement === 'ELECTRIC' ? tower.dex : tower.attunement === 'ICE' ? tower.int : Math.max(tower.str, tower.dex, tower.int);
-  return ATTUNEMENT_PROC_MIN + (ATTUNEMENT_PROC_MAX - ATTUNEMENT_PROC_MIN) * cappedStatPoints(stat || 0) / STAT_EFFECT_CAP;
+  const chance = ATTUNEMENT_PROC_MIN + (ATTUNEMENT_PROC_MAX - ATTUNEMENT_PROC_MIN) * cappedStatPoints(stat || 0) / STAT_EFFECT_CAP;
+  return (!tower.elementState && tower.attunement === 'ICE') ? chance * ICE_PROC_SHARE : chance;
 }
 // ELEMENT-EFFECTS-01 (1.6.88) — see CHANGELOG.md § [1.6.88]. Electric attunement arcs from the struck
 // enemy to nearby ones (plain array scan — chain counts are small, no spatial hash needed), stunning
@@ -8129,45 +8266,33 @@ function drawLightningArcs(ctx){
   }
   ctx.restore();
 }
-function applyAttunementStatus(tower, enemy){
-  if(!tower || !tower.active || !enemy || !enemy.active) return;
-  const element = tower.elementState || tower.attunement; // a mixed element supersedes the base attunement
-  if(!element) return;
-  if(Math.random() >= attunementProcChance(tower)) return;
-  const labelY = enemy.y - enemy.radius - 14;
+// ELEMENT-INFUSION-01 (1.7.36): Fire burns like bleed but fire, Ice freezes, Electric chains lightning. A mixed element
+// (Proton = Fire+Electric, Dark Matter = Fire+Ice, Quasar = Electric+Ice) applies both of its component effects on the same proc.
+function applyElementComponent(tower, enemy, element, labelY){
   switch(element){
-    // ELEMENT-EFFECTS-01 (1.6.88) — see CHANGELOG.md § [1.6.88]. Fire burns for 10s and stacks freely
-    // with bleeding/poison since each DoT tracks its own independent *Until timer on the enemy — this
-    // was already true structurally, just needed the duration raised. Ice fully freezes (not merely
-    // slows) for 10s, shown with an orbiting 🧊 distinct from Electric's ⚡ stun icon. Electric arcs to
-    // nearby enemies instead of only stunning the one hit.
     case 'FIRE':
       enemy.applyBurn(10000, tower);
       spawnRoutineCombatText(enemy.x, labelY, '🔥 Burning!', '#ff8844');
       break;
     case 'ICE':
-      enemy.applyFreeze(10000);
+      if(tower.elementState && Math.random() >= ICE_PROC_SHARE) break;
+      enemy.applyFreeze(ICE_FREEZE_MIN_MS + (ICE_FREEZE_MAX_MS - ICE_FREEZE_MIN_MS) * cappedStatPoints(tower.int || 0) / STAT_EFFECT_CAP);
       spawnRoutineCombatText(enemy.x, labelY, '🧊 Frozen!', '#7dd3fc');
       break;
     case 'ELECTRIC':
       enemy.shockedUntil = gameTime + SHOCK_BURST_WINDOW_MS;
       spawnChainLightning(tower, enemy);
       break;
-    // CA231 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA231
-    case 'PROTON':
-      enemy.applyBurn(5000, tower);
-      enemy.applyDamage(Math.round(tower.damage * 0.25), tower, false, false, true, false);
-      spawnRoutineCombatText(enemy.x, labelY, '☢️ Melting!', '#ff5722');
-      break;
-    case 'QUASAR':
-      enemy.applySlow(0.55, 3000);
-      spawnRoutineCombatText(enemy.x, labelY, '🌟 Blinded!', '#c792ea');
-      break;
-    case 'DARK_MATTER':
-      enemy.applyStun(900);
-      spawnRoutineCombatText(enemy.x, labelY, '🌑 Stunned!', '#9aa4ad');
-      break;
   }
+}
+function applyAttunementStatus(tower, enemy){
+  if(!tower || !tower.active || !enemy || !enemy.active) return;
+  const element = tower.elementState || tower.attunement; // a mixed element supersedes the base attunement
+  if(!element) return;
+  if(Math.random() >= attunementProcChance(tower)) return;
+  const labelY = enemy.y - enemy.radius - 14;
+  const parts = ELEMENT_COMPONENTS[element] || [element];
+  for(let i = 0; i < parts.length; i++) applyElementComponent(tower, enemy, parts[i], labelY - i*12);
 }
 function nextElementMixNote(tower){
   if(tower.elementState) return ELEMENT_LABELS[tower.elementState];
@@ -8631,7 +8756,7 @@ function downloadSaveFile(){
 // CA251 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA251
 function migrateLegacyAttunement(t){
   const candidates = [['str', t.str||0], ['dex', t.dex||0], ['int', t.int||0]]
-    .filter(([, v]) => v >= ATTUNEMENT_THRESHOLD);
+    .filter(([, v]) => v >= ELEMENT_INFUSE_THRESHOLD);
   if(candidates.length === 0) return null; // nothing qualifies — stays unattuned, correct and expected for virtually every real save
   const maxVal = Math.max(...candidates.map(([, v]) => v));
   const topStats = candidates.filter(([, v]) => v === maxVal);
@@ -9830,6 +9955,7 @@ class Enemy{
     // retain their established armor interaction.
     const holyBonus = (isHoly && this.isUndead);
     if(holyBonus) dmg = Math.round(dmg * 1.5);
+    if(this.frozenUntil > gameTime) dmg = Math.round(dmg * FROZEN_DAMAGE_MULT); // ICE-BLOCK-01 shatter bonus
     if(this.armor && !ignoreArmor) dmg = Math.max(1, dmg - this.armor, dmg * ARMOR_MIN_DAMAGE_SHARE); // ARMOR-FLOOR-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
     if(this.hasShield && this.shieldHp > 0){
       const absorbed = Math.min(this.shieldHp, dmg);
@@ -10109,7 +10235,6 @@ class Enemy{
       dropGoldBag(this.x + 10, this.y, bountyGold - firstBagGold);
     } else {
       gold += bountyGold;
-      if(bountyGold>0)launchGoldHudFlight(this.x,this.y);
       
       if(bountyMult > 1) spawnFloatingText(this.x, this.y - this.radius - 20, '🍀 +' + bountyGold, '#7cfc7c');
     }
@@ -10480,7 +10605,8 @@ class Tower{
     this.stunMs = 0; // HAMMERMAN only, from tier config
     this.isDrawing = false; this.drawStart = 0; this.drawProgress = 0; this.baseDrawTime = 0; // ARCHER only
     // CA380 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA380
-    this.maxHp = type === 'BARRICADE' ? 10 : (type === 'HAMMERMAN' ? 180 : 100);
+    this.maxHp = type === 'BARRICADE' ? 10 : (type === 'HACKER' ? HACKER_MAX_HP : (type === 'HAMMERMAN' ? 180 : 100));
+    this.stealthUntil = 0;
     this.baseMaxHp = this.maxHp; // snapshot — STR's HP bonus and the Legendary bonus both multiply on top of this, not on top of each other
     this.legendaryHpMult = 1;
     this.goldMult = 1; // 🍀 Luck — recalculated properly in recomputeStats() once DEX is known
@@ -10681,6 +10807,7 @@ class Tower{
       if(this.meleeRange) this.meleeRange = Math.round(this.meleeRange * roundBuffs.range);
     }
     this.goldMult = 1; // 🍀 Luck removed per direct feedback ("luck is confusing, suggest removing for now") — forced to a permanent neutral 1 here rather than deleting the goldMult plumbing (bounty calc, inspect panel) outright, so every downstream reader just sees "no bonus" and the inspect panel's Luck row auto-hides itself (see its own luckPct===0 check) without needing its own separate change.
+    if(this.type === 'HACKER'){ this.maxHp = HACKER_MAX_HP; this.hp = Math.min(this.hp, this.maxHp); }
   }
   // Purchase and equip a type-matching shop item with gold (starter items have cost 0, used at creation).
   buyItem(def){
@@ -10763,6 +10890,7 @@ class Tower{
       this.checkAttunementAndSpecialization();
       return;
     }
+    this.infuseElements();
     const evoMap = EVOLUTIONS[this.type];
     if(!evoMap) return; // not a base class, or has no further tier to unlock
     let targetType = null;
@@ -10771,13 +10899,30 @@ class Tower{
     else if(evoMap.int && this.int >= evoMap.int.threshold) targetType = evoMap.int.target;
     if(targetType) unlockTowerTypeBuild(targetType);
   }
+  // ELEMENT-INFUSION-01 (1.7.36): every stickman, not only the three starting classes, can be infused at 250 in a stat
+  // and mixes a second element at 250 in another stat. Evolved classes use this; base classes also unlock branches above.
+  infuseElements(){
+    if(this.type === 'BARRICADE') return;
+    if(this.attunement && (this[ATTUNEMENT_STAT_BY_ELEMENT[this.attunement]] || 0) < ELEMENT_INFUSE_THRESHOLD) this.attunement = null;
+    if(!this.attunement){
+      if(this.str >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.str;
+      else if(this.dex >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
+      else if(this.int >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.int;
+      if(this.attunement){
+        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Infused!', '#ffd700');
+        playSound('levelup');
+      }
+    }
+    refreshElementState(this);
+  }
   // CA403 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA403
   checkAttunementAndSpecialization(){
+    if(this.attunement && (this[ATTUNEMENT_STAT_BY_ELEMENT[this.attunement]] || 0) < ELEMENT_INFUSE_THRESHOLD) this.attunement = null;
     if(CLASS_ARCHETYPE[this.type] === 'ARCHER' && this.str >= ATTUNEMENT_THRESHOLD) unlockTowerTypeBuild('CRAZY_CHEF'); // an Archer who trains Strength learns to throw knives
     if(!this.attunement){
-      if(this.str >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.str;
-      else if(this.dex >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
-      else if(this.int >= ATTUNEMENT_THRESHOLD) this.attunement = ATTUNEMENTS.int;
+      if(this.str >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.str;
+      else if(this.dex >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
+      else if(this.int >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.int;
       if(this.attunement){
         // CA404 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA404
         const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
@@ -10930,6 +11075,7 @@ class Tower{
 
   update(dt, enemyHash){
     this.updateHealthStatus(dt);
+    if(this.type === 'HACKER') return; // HACKER-01: never targets, attacks, trains or promotes
     if(this.disabledUntil > gameTime || this.disabledWavesLeft > 0) return; // overrun by a breakaway enemy — can't act until it recovers
     const iceMult = this.iceSlowUntil > gameTime ? 0.5 : 1;
     const chocolateMult = chocolateAtkSpeedBuffUntil > gameTime ? (1 + CHOCOLATE_ATK_SPEED_BONUS) : 1;
@@ -11023,7 +11169,16 @@ class Tower{
     this.cooldownTimer = this.cooldown;
   }
   // Called from a breakaway enemy's attack. Returns true if this hit dropped the tower to 0 HP.
+  // HACKER-01 (1.7.36): when attacked the Hacker drops a smoke screen and goes stealth; enemies stop choosing him
+  // (see findNearestActiveTower) but direct area damage still reaches him.
+  goStealth(){
+    this.stealthUntil = gameTime + HACKER_STEALTH_MS;
+    spawnParticles(this.x, this.y, '#9aa4ad', graphicsQuality === 'low' ? 6 : 14);
+    spawnFloatingText(this.x, this.y - 44, '💨 Stealth', '#cfd8dc');
+    for(const enemy of enemyPool) if(enemy.active && enemy.breakawayTarget === this && typeof enemy.endBreakaway === 'function') enemy.endBreakaway();
+  }
   takeDamage(amount, statusType){
+    if(hackGodMode && this.type !== 'BARRICADE') return false;
     if(this.type === 'BARRICADE'){
       if(!barricadeAttackReady(this)) return this.hp <= 0;
       chipBarricade(this);
@@ -11034,6 +11189,7 @@ class Tower{
     this.hp = Math.max(0, this.hp - reduced);
     spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
     lastCombatDamageAt = presentationTime;
+    if(this.type === 'HACKER') this.goStealth();
     if(this.hp > 0){
       const hpFrac = this.hp / this.maxHp;
       if(hpFrac < 0.25) requestStickmanBark(this, BARK_TIER_VITAL, '🤕', BARK_LINES.CRITICAL, 1, BARK_CHANCE.CRITICAL);
@@ -11649,16 +11805,45 @@ class Tower{
       extra.skinMain = DOWNED_TOWER_SKIN_MAIN;
       extra.skinShade = DOWNED_TOWER_SKIN_SHADE;
     }
+    const hackerStealth = this.type === 'HACKER' && this.stealthUntil > gameTime;
+    if(hackerStealth){
+      ctx.save(); ctx.globalAlpha = 0.3;
+    }
     drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
-    // ELEMENT-TINT-01 (1.6.86): the element's themed emoji shows at the weapon tip while this tower
-    // is actively aiming/attacking, small and only for elemental towers — never drawn while downed.
-    if(elementTint && hasTargetPose && !isDisabled){
-      const elementEmojiReach = 26 * STICKMAN_SCALE; // TOWER-DRAW-CRASH-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
-      const emojiX = this.x + Math.cos(drawAngle)*elementEmojiReach, emojiY = this.y + Math.sin(drawAngle)*elementEmojiReach;
+    if(hackerStealth){
+      ctx.restore();
+      ctx.save(); ctx.fillStyle = 'rgba(160,170,178,0.35)';
+      for(let puff = 0; puff < 4; puff++){
+        const puffAngle = puff*1.7 + this.id, puffR = 9 + (puff%2)*5;
+        ctx.beginPath(); ctx.arc(this.x + Math.cos(puffAngle)*puffR, this.y - 6 + Math.sin(puffAngle)*puffR*0.6, 7 + (puff%3), 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // ELEMENT-ENCHANT-01 (1.7.36): a stickman carrying an element always shows it on the weapon — a steady glowing
+    // charge along the weapon in each component colour plus the element emoji at the tip. Mixed elements show both.
+    if(activeElement && !isDisabled){
+      const enchantParts = ELEMENT_COMPONENTS[activeElement] || [activeElement];
+      const enchantFrom = 8 * STICKMAN_SCALE, enchantTo = 26 * STICKMAN_SCALE;
+      const dirX = Math.cos(drawAngle), dirY = Math.sin(drawAngle), perpX = -dirY, perpY = dirX;
       ctx.save();
-      ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.globalAlpha = 0.85;
-      ctx.fillText(ELEMENT_ATTACK_EMOJI[activeElement], emojiX, emojiY - 6);
+      ctx.lineCap = 'round';
+      for(let p = 0; p < enchantParts.length; p++){
+        const shift = enchantParts.length > 1 ? (p === 0 ? -1.6 : 1.6) : 0;
+        const visuals = ELEMENT_VISUALS[enchantParts[p]];
+        const x1 = this.x + dirX*enchantFrom + perpX*shift, y1 = this.y + dirY*enchantFrom + perpY*shift;
+        const x2 = this.x + dirX*enchantTo + perpX*shift, y2 = this.y + dirY*enchantTo + perpY*shift;
+        if(graphicsQuality !== 'low'){
+          ctx.globalAlpha = 0.35; ctx.strokeStyle = visuals.color; ctx.lineWidth = 6;
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        }
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = visuals.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for(let p = 0; p < enchantParts.length; p++){
+        const along = enchantTo + 5 + p*10;
+        ctx.fillText(ELEMENT_ATTACK_EMOJI[enchantParts[p]], this.x + dirX*along, this.y + dirY*along - 4);
+      }
       ctx.restore();
     }
     if(isDisabled){
@@ -13381,10 +13566,11 @@ function drawGoldHudFlights(ctx){
   }
   ctx.restore();
 }
-function creditCoin(c, textColor){
+// GOLD-FLIGHT-CLICK-01 (1.7.36): coins fly up to the gold counter only when the player clicks a coin or opens a bag.
+function creditCoin(c, textColor, withFlight){
   if(c.isDiamond){ grantDiamondReward(c.x, c.y); return; }
   gold += c.value;
-  launchGoldHudFlight(c.x,c.y);
+  if(withFlight) launchGoldHudFlight(c.x,c.y);
   if(textColor) spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, textColor);
   updateHUD();
 }
@@ -13457,8 +13643,8 @@ function isWithinEmojiSquare(worldX, worldY, centerX, centerY, emojiPx){
 const GOLD_BAG_ITEM = { id: 'GOLD_BAG', name: 'Gold Bag', icon: '💰', rarity: 'COMMON', isGoldBag: true };
 const GOLD_BAG_LIFESPAN_MS = 180000, DIAMOND_BAG_CHANCE = 0.1, COIN_MAX_SCENERY_BOUNCES = 4;
 const GOLD_BAG_MIN_GOLD = 1, GOLD_BAG_MAX_GOLD = 100;
-const GOLD_BAG_MIN_COINS = 3, GOLD_BAG_MAX_COINS = 5;
-const GOLD_BAG_MIN_COIN_VALUE = 1, GOLD_BAG_MAX_COIN_VALUE = 6;
+const GOLD_BAG_MIN_COINS = 3, GOLD_BAG_MAX_COINS = 9;
+const GOLD_BAG_MIN_COIN_VALUE = 1, GOLD_BAG_MAX_COIN_VALUE = 25;
 function rollGoldBagGold(){ return GOLD_BAG_MIN_GOLD + Math.floor(Math.random()*(GOLD_BAG_MAX_GOLD-GOLD_BAG_MIN_GOLD+1)); }
 function rollGoldBagCoinCount(){ return GOLD_BAG_MIN_COINS + Math.floor(Math.random()*(GOLD_BAG_MAX_COINS-GOLD_BAG_MIN_COINS+1)); }
 function rollGoldBagCoinValue(){ return GOLD_BAG_MIN_COIN_VALUE + Math.floor(Math.random()*(GOLD_BAG_MAX_COIN_VALUE-GOLD_BAG_MIN_COIN_VALUE+1)); }
@@ -13473,7 +13659,6 @@ function creditGroundBagGold(groundItem){
   const definition = groundItem.itemDef;
   if(!definition.isGoldBag) return;
   gold += definition.gold;
-  launchGoldHudFlight(groundItem.x,groundItem.y);
   spawnGoldBagCoinBurst(groundItem.x, groundItem.y);
   spawnFloatingText(groundItem.x, groundItem.y - 14, '+💰' + definition.gold, '#e6c200');
   updateHUD();
@@ -13523,7 +13708,7 @@ function groundItemBobPx(gi){
 function tryCollectCoinAt(worldX, worldY, pointerType){
   const coin = nearestPickupAt(coinPickups, worldX, worldY, pickupHitSizeWorld(COIN_EMOJI_PX, pointerType), item => item.active && !item.airborne);
   if(!coin) return false;
-  creditCoin(coin, '#ffd700');
+  creditCoin(coin, '#ffd700', true);
   playSound('coin', coin.x, undefined, coin.y);
   coin.active = false;
   trimInactiveCoinPoolTail();
@@ -14282,6 +14467,25 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
+  } else if(type === 'HACKER'){
+    // HACKER-01 (1.7.36): no weapon at all — both hands hold an open laptop in front of the chest.
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    const typingHand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 - 0.55, armLen, skinMain, -0.15);
+    ctx.save();
+    ctx.translate(typingHand.handX, typingHand.handY - 1);
+    ctx.fillStyle = '#37474f';
+    ctx.fillRect(-8, 0, 16, 2.4);
+    ctx.fillStyle = '#263238';
+    ctx.fillRect(-7, -10, 14, 10);
+    ctx.fillStyle = '#7dd3fc';
+    ctx.fillRect(-5.8, -8.8, 11.6, 7.6);
+    ctx.strokeStyle = '#0d47a1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(-4, -6.4); ctx.lineTo(-1.6, -5); ctx.lineTo(-4, -3.6); ctx.moveTo(0, -3.4); ctx.lineTo(3.6, -3.4); ctx.stroke();
+    ctx.restore();
+    if(!lowGfx){
+      ctx.fillStyle = '#212121';
+      ctx.beginPath(); ctx.arc(0, -29, 5.2, Math.PI, 0); ctx.fill();
+    }
   } else if(type === 'CLERIC'){
     const isCasting = !!(extra && extra.hasTarget);
     // off-hand: relaxed at the opposite side always
@@ -16996,8 +17200,28 @@ function renderAttractMode(ctx, now){
 // REAL-TIME-PRESENTATION-01 (1.6.105): things the player watches rather than fights run once per rendered frame in real
 // time, so they look identical at every game speed and keep working between waves: floating text, coin flights and
 // livestock wandering.
+// MUSIC-BOSS-01 (1.7.36): cached every 300 ms so the per-frame phase choice never scans the enemy pool each frame.
+let bossFieldCheckAt = 0, bossFieldCached = false;
+function scanFieldForMusic(){
+  let boss = false, enemies = 0;
+  for(const enemy of enemyPool){
+    if(!enemy.active || enemy.deathResolved || enemy.escaped || enemy.isLivestock || enemy.isGuardian || enemy.isHutBuilding) continue;
+    enemies++;
+    if(enemy.type === 'BOSS' || enemy.type === 'SANTA') boss = true;
+  }
+  audioEngine.musicIntensity = Math.min(1, enemies / 18);
+  return boss;
+}
+function bossIsOnField(){
+  const now = performance.now();
+  if(now - bossFieldCheckAt > 300){
+    bossFieldCheckAt = now;
+    bossFieldCached = scanFieldForMusic();
+  }
+  return bossFieldCached;
+}
 function updatePresentationEffects(frameMs){
-  audioEngine.setMusicPhase(waveState !== 'IDLE' || countLooseEnemies() > 0 ? 'wave' : 'field');
+  audioEngine.setMusicPhase(waveState !== 'IDLE' || countLooseEnemies() > 0 ? (bossIsOnField() ? 'boss' : 'wave') : 'field');
   updateDeathAnims();
   const clampedMs = Math.min(100, frameMs);
   updateFloatingTexts(clampedMs);
@@ -17470,7 +17694,7 @@ function handleTap(clientX, clientY, pointerType){
       if(freeBarricadesLeft > 0) freeBarricadesLeft--;
       else { const bc = currentBarricadeCost(); wood -= bc.wood; stone -= bc.stone; }
     } else {
-      gold -= currentBuildCost(selectedBuildType);
+      if(!hackFreeBuild) gold -= currentBuildCost(selectedBuildType);
     }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     // CA742 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA742
@@ -17949,7 +18173,7 @@ function refreshBuildMenuAvailability(grid){
 let buildMenuSignature = null;
 function buildTowerModal(){
   const grid = document.getElementById('tower-modal-grid');
-  const signature = STARTER_TOWER_TYPES.map(type => type+':'+isTowerBuildableNow(type)).join('|') + '|' + [...unlockedTowerTypes].sort().join('|');
+  const signature = 'hacks:' + hacksEnabled + '|' + STARTER_TOWER_TYPES.map(type => type+':'+isTowerBuildableNow(type)).join('|') + '|' + [...unlockedTowerTypes].sort().join('|');
   if(buildMenuSignature === signature && grid.children.length){
     refreshBuildMenuAvailability(grid);
     return;
@@ -18155,6 +18379,27 @@ function buildTowerModal(){
     grid.appendChild(row);
   }
   appendBarricadeSection();
+  if(hacksEnabled){
+    addBuildSection('Hacks');
+    const def = CONFIG.TOWERS.HACKER;
+    const atCapacity = !isTowerTypeAvailable('HACKER');
+    const affordable = gold >= def.baseCost;
+    const costLabel = '💰' + def.baseCost;
+    const row = document.createElement('div');
+    row.dataset.buildType = 'HACKER';
+    row.className = 'build-row' + (selectedBuildType === 'HACKER' ? ' selected' : '');
+    row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + (atCapacity ? ' <span style="color:#e63946">(already on the field)</span>' : !affordable ? ' <span style="color:#e63946">(need ' + costLabel + ')</span>' : '') + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + def.blurb + '</div>';
+    row.addEventListener('pointerdown', (e) => {
+      if(e.target.classList.contains('help-btn')) return;
+      e.stopPropagation();
+      if(gold < def.baseCost || !isTowerTypeAvailable('HACKER')) return;
+      selectedBuildType = 'HACKER'; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
+      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+    });
+    const hackerHelp = row.querySelector('.help-btn'), hackerBlurb = row.querySelector('.build-row-blurb');
+    hackerHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); hackerBlurb.classList.toggle('show'); });
+    grid.appendChild(row);
+  }
 }
 function openTowerModal(){
   toggleNotificationPanel(false);
@@ -18164,6 +18409,76 @@ function openTowerModal(){
   refreshTrayUI();
   playSound('ui_open');
 }
+// HACKER-01 (1.7.36): the Hacker's developer menu. Every action is a plain game-state edit and marks the run as hacked
+// so the debug log shows it. Not saved with the game; the toggles reset on reload.
+let hackMenuOpenFor = null;
+function openHackMenu(tower){
+  const modal = document.getElementById('hack-modal');
+  if(!modal) return;
+  hackMenuOpenFor = tower;
+  modal.classList.remove('hidden');
+  const body = document.getElementById('hack-modal-body');
+  const grant = (label, apply) => '<button type="button" data-hack="' + label + '">' + label + '</button>';
+  body.innerHTML =
+    '<p class="hack-note">💰 ' + Math.floor(gold) + ' &nbsp; 🪵 ' + Math.floor(wood) + ' &nbsp; 🪨 ' + Math.floor(stone) + '</p>' +
+    '<h3>Gold</h3><div class="hack-row">' + ['+💰100','+💰1,000','+💰10,000','+💰100,000'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Wood</h3><div class="hack-row">' + ['+🪵100','+🪵1,000','+🪵10,000'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Stone</h3><div class="hack-row">' + ['+🪨100','+🪨1,000','+🪨10,000'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Stickmen</h3><div class="hack-row">' + ['Heal and revive all','+5 stat points to all','+25 stat points to all'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Field</h3><div class="hack-row">' + ['Defeat every enemy now','Expand the map now'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Rules</h3><div class="hack-row"><button type="button" data-hack="god" class="' + (hackGodMode ? 'on' : '') + '">Stickmen invulnerable: ' + (hackGodMode ? 'ON' : 'off') + '</button>' +
+    '<button type="button" data-hack="free" class="' + (hackFreeBuild ? 'on' : '') + '">Free building: ' + (hackFreeBuild ? 'ON' : 'off') + '</button></div>' +
+    '<p class="hack-note">Hacks are for testing and play-around. They are not saved and mark the debug log.</p>';
+}
+function closeHackMenu(){
+  const modal = document.getElementById('hack-modal');
+  if(modal) modal.classList.add('hidden');
+  hackMenuOpenFor = null;
+}
+function runHackAction(action){
+  hacksUsed = true;
+  switch(action){
+    case '+💰100': gold += 100; break;
+    case '+💰1,000': gold += 1000; break;
+    case '+💰10,000': gold += 10000; break;
+    case '+💰100,000': gold += 100000; break;
+    case '+🪵100': wood += 100; break;
+    case '+🪵1,000': wood += 1000; break;
+    case '+🪵10,000': wood += 10000; break;
+    case '+🪨100': stone += 100; break;
+    case '+🪨1,000': stone += 1000; break;
+    case '+🪨10,000': stone += 10000; break;
+    case 'Expand the map now':
+      if(waveState === 'IDLE' && !regionFullyExpanded()){ gold += expansionCost(); expandRegion(); }
+      break;
+    case 'Heal and revive all':
+      for(const t of towerPool){ if(!t.active || t.type === 'BARRICADE') continue; t.hp = t.maxHp; t.disabledUntil = 0; t.disabledWavesLeft = 0; }
+      break;
+    case '+5 stat points to all':
+    case '+25 stat points to all': {
+      const points = action === '+5 stat points to all' ? 5 : 25;
+      for(const t of towerPool){ if(t.active && t.type !== 'BARRICADE' && t.type !== 'HACKER') t.statPoints = (t.statPoints || 0) + points; }
+      break;
+    }
+    case 'Defeat every enemy now':
+      for(const enemy of enemyPool){
+        for(let pass = 0; pass < 4 && enemy.active && !enemy.deathResolved; pass++) enemy.applyDamage((enemy.maxHp + (enemy.shieldHp || 0)) * 3 + 100, null, false, false, false, false, true);
+      }
+      break;
+    case 'god': hackGodMode = !hackGodMode; break;
+    case 'free': hackFreeBuild = !hackFreeBuild; break;
+  }
+  playSound('click');
+  updateHUD();
+  if(hackMenuOpenFor) openHackMenu(hackMenuOpenFor);
+}
+document.getElementById('hack-modal-body').addEventListener('click', (e) => {
+  const button = e.target.closest('button[data-hack]');
+  if(button) runHackAction(button.dataset.hack);
+});
+document.getElementById('hackModalClose').addEventListener('click', () => {
+  selectedTower = null; cancelCameraFollow(); closeHackMenu(); updateInspectPanel();
+});
 function closeTowerModal(){
   towerModalEl.classList.add('hidden');
   playSound('ui_close');
@@ -18518,6 +18833,7 @@ function syncSettingsUI(){
   document.getElementById('gfxLowRadio').checked = graphicsQuality === 'low';
   document.getElementById('settingsMuteToggle').checked = isMuted;
   document.getElementById('settingsGoreToggle').checked = goreMode;
+  document.getElementById('settingsHacksToggle').checked = hacksEnabled;
   document.getElementById('settingsZoomControlsToggle').checked = showZoomControls;
   document.getElementById('settingsFpsToggle').checked = showFpsCounter;
   document.getElementById('settingsDebugToggle').checked = debugOverlay;
@@ -18614,6 +18930,11 @@ function bindAudioVolumeControl(inputId, outputId, kind){
 bindAudioVolumeControl('audioMasterVolume','audioMasterValue','master');
 bindAudioVolumeControl('audioMusicVolume','audioMusicValue','music');
 bindAudioVolumeControl('audioSfxVolume','audioSfxValue','sfx');
+document.getElementById('settingsHacksToggle').addEventListener('change', (e) => {
+  hacksEnabled = e.target.checked; savePrefs();
+  buildMenuSignature = null;
+  if(!hacksEnabled) closeHackMenu();
+});
 document.getElementById('settingsGoreToggle').addEventListener('change', (e) => {
   goreMode = e.target.checked; savePrefs();
   if(!goreMode){ decals.length = 0; decalIndex = 0; }
@@ -19233,6 +19554,7 @@ function generateDebugLog(){
   s += 'Decals: ' + decals.length + ' (cap ' + decalCapacity() + ')\n';
   s += 'Scenery items: ' + sceneryMap.size + '\n';
   s += 'Flora items: ' + floraMap.size + '\n';
+  if(hacksUsed) s += 'Hack menu used this run: yes\n';
   s += 'Design contract: ' + (designContractProblems.length ? designContractProblems.join(' | ') : 'OK') + '\n';
   s += 'Ground items: ' + groundItems.length + '/' + MAX_GROUND_ITEMS + (groundItems.length ?
     '  (oldest ' + Math.round((presentationTime - Math.min(...groundItems.map(gi => gi.spawnTime)))/1000) + 's old, ' + (GROUND_ITEM_LIFESPAN/60000) + 'm lifespan)' : '') + '\n\n';
@@ -19288,6 +19610,7 @@ function generateDebugLog(){
   for(const reported of telemetryRecent) s += '  +' + reported.atSecond + 's  ' + reported.name + '  ' + JSON.stringify(reported.payload) + '\n';
   s += '\n' + itemLogReport();
   s += '\n' + gameEventReport() + '\n';
+  if(hacksUsed) s += 'Hack menu used this run: yes\n';
   s += 'Design contract: ' + (designContractProblems.length ? designContractProblems.join(' | ') : 'OK') + '\n';
 
   return s;
@@ -19400,6 +19723,8 @@ function updateQuickSlots(tower, isBarricade){
 }
 let hpBarShowPercent = false; // toggled by clicking the HP bar — see the click handler near the other inspect-panel button wiring
 function updateInspectPanel(){
+  if(selectedTower && selectedTower.type === 'HACKER'){ inspectPanel.classList.add('hidden'); openHackMenu(selectedTower); return; }
+  closeHackMenu();
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
   inspectPanel.classList.remove('hidden');
   inspFullOptions.classList.toggle('hidden', !inspPanelExpanded);
@@ -19461,7 +19786,7 @@ function updateInspectPanel(){
     if(!t.attunement){
       const stats = ['str','dex','int'];
       const bestValue = Math.max(...stats.map(k => t[k] || 0));
-      const readyStat = stats.find(k => (t[k] || 0) >= ATTUNEMENT_THRESHOLD);
+      const readyStat = stats.find(k => (t[k] || 0) >= ELEMENT_INFUSE_THRESHOLD);
       if(readyStat){
         const element = ATTUNEMENTS[readyStat];
         evoHint.textContent = ATTUNEMENT_ICON[element] + ' Ready to attune!';
@@ -19471,7 +19796,7 @@ function updateInspectPanel(){
         const leadingStat = stats.find(k => (t[k] || 0) === bestValue);
         const leadingElement = ATTUNEMENTS[leadingStat];
         evoHint.textContent = bestValue > 0
-          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ATTUNEMENT_THRESHOLD - bestValue) + ' points till ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase()
+          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ELEMENT_INFUSE_THRESHOLD - bestValue) + ' points till ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase()
           : '🎓 Spend points to start training — ' + (leadingPreferredStat ? leadingPreferredStat.toUpperCase() + ' is preferred' : 'any stat');
       }
       evoHint.classList.remove('hidden');

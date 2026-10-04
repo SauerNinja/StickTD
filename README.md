@@ -140,7 +140,7 @@ Build a defense from classes with complementary strengths. Training and wave mil
 | 👳 Merchant | Keeps the Shop available and earns bonus gold |
 | ⚙️ Glaive | Specialist attacks against huts and other structures |
 
-Proton, Dark Matter, and Quasar are mixed elemental effects carried by a tower's attacks. Their combinations bring burn, stun, and slow effects into a tower's existing combat style. See **Elements** under [Training and Promotion](#training-and-promotion) for details.
+Proton, Dark Matter, and Quasar are mixed elements earned by a stickman, not towers. Each combines the burn, freeze, and chain-lightning effects of its two parent elements. See **Elements** under [Training and Promotion](#training-and-promotion) for details.
 
 Gold-tier upgrades improve range, cooldown, and class abilities while adding damage. A tower's primary stat remains its main source of combat growth.
 
@@ -193,7 +193,9 @@ Each tower develops along two progression tracks, with **500 points per stat and
 
 **Stat growth.** STR improves health and Warrior damage; DEX improves attack speed, accuracy, and critical chance, and drives Archer damage; INT improves range and critical damage, and drives Mage damage. Each tower's archetype defines its primary damage stat.
 
-**Elements.** At 100 points in a stat, a tower attunes to Fire (STR), Electric (DEX), or Ice (INT). Developing two stats to 500 combines their elements: Fire + Electric creates Proton, Fire + Ice creates Dark Matter, and Electric + Ice creates Quasar. These effects bring burn, stun, or slow traits to attacks. Elemental effects can appear on projectiles and melee strikes, with proc chance scaling through stat investment.
+**Hacks.** Turn on *Hacks enabled* in Settings > Game to unlock the Hacker, a stickman who never fights. He sits holding a laptop, slips behind a smoke screen when attacked, and only one can be on the field at a time. Tap him to open the Hack Menu, a developer-style panel for granting resources, healing your roster, clearing enemies, and changing a few rules. Hacks are off by default and are not saved with your game.
+
+**Elements.** Elements are earned by a stickman, never built as towers. At 250 points in a stat, any stickman is infused with Fire (STR), Electric (DEX), or Ice (INT), and its weapon visibly glows with that element. Infusing a second stat to 250 mixes the elements: Fire + Electric becomes Proton, Fire + Ice becomes Dark Matter, and Electric + Ice becomes Quasar. With all three stats at 250, the two highest stats decide. Fire burns like a bleed, Electric chains lightning between enemies, and Ice, the rarest to trigger but the most effective, freezes an enemy for two to five seconds so it blocks the line behind it and takes extra damage; a mixed element applies both of its effects. Elemental effects appear on projectiles and melee strikes with a proc chance that scales with stat investment.
 
 **Class unlocks.** Stat milestones and wave progress reveal new specialists in the Build menu’s **Stickmen Defenders** section. Elemental attunement opens class-specific branches; some towers have further specialist paths.
 

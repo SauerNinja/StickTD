@@ -5,17 +5,40 @@ to do and how; Part 2 (below the standing rules and sections 0-8) holds the deta
 rationale, historical lessons and best-practice notes. Read Part 1 every session; open the Part 2
 section for a subsystem only when it is actually relevant.
 
-## Current owner decisions — 1.7.30 handoff
+## Standing owner decisions
 
-These rules supersede older conflicting historical notes. Scenery uses isSceneryTileAvailable, not tower exit reservations; tower construction must still reserve future exits. Restored empty expanded maps may receive endpoint scenery only when no trees/rocks and no harvesting history exist, after tower restoration and before map rebake. Clear the per-run endpoint guard cache on restore. Mage staff light is compact WHITE with soft white falloff; the owner rejected the rainbow pinwheel, superseding the earlier rainbow request. Hut placement consumes actual latestExpansionTiles, including inward revealed land. The full-history symbol reconciliation and real unfinished specifications are recorded in CHANGELOG [1.7.28]; absence of an old function name is not proof of a removed feature. The unexpanded starting footprint remains clean, but completed expansions may spawn trees/rocks even before wave 1. Scenery and flora must use actual reveal keys so inward corridor grass is not mistaken for previously populated land; latestExpansionTiles uses those keys too. Paused item interactions request a single coalesced redraw with dirty HUD flushing before render; do not restore stale visuals or turn this into a continuous paused simulation/render loop. Resolve dragged release coordinates from pointerup using the same placement helper as pointermove. Inventory gestures must retain exact item identity and validate the living source before mutation/use. Item dragging uses itemDropTargetAt and a shared 16-world-pixel radius for preview, highlight and release; preserve the ground-placement gap between adjacent fighters instead of restoring broad magnetic capture. Accepted expansion must grow BOTH flag/start and finish ends with grass spacing and reachable exits. Validate before state/event-budget changes or charging; fail without payment/item consumption on blocked finite/legacy layouts. Do not restore a one-sided fallback.
+These rules supersede older conflicting historical notes. Scenery uses isSceneryTileAvailable, not tower exit reservations; tower construction must still reserve future exits. Restored empty expanded maps may receive endpoint scenery only when no trees/rocks and no harvesting history exist, after tower restoration and before map rebake. Clear the per-run endpoint guard cache on restore. Mage staff light is compact WHITE with soft white falloff; the owner rejected the rainbow pinwheel, superseding the earlier rainbow request. Hut placement consumes actual latestExpansionTiles, including inward revealed land. Absence of an old function name is not proof of a removed feature; consult CHANGELOG.md before concluding something is missing. The unexpanded starting footprint remains clean, but completed expansions may spawn trees/rocks even before wave 1. Scenery and flora must use actual reveal keys so inward corridor grass is not mistaken for previously populated land; latestExpansionTiles uses those keys too. Paused item interactions request a single coalesced redraw with dirty HUD flushing before render; do not restore stale visuals or turn this into a continuous paused simulation/render loop. Resolve dragged release coordinates from pointerup using the same placement helper as pointermove. Inventory gestures must retain exact item identity and validate the living source before mutation/use. Item dragging uses itemDropTargetAt and a shared 16-world-pixel radius for preview, highlight and release; preserve the ground-placement gap between adjacent fighters instead of restoring broad magnetic capture. Accepted expansion must grow BOTH flag/start and finish ends with grass spacing and reachable exits. Validate before state/event-budget changes or charging; fail without payment/item consumption on blocked finite/legacy layouts. Do not restore a one-sided fallback.
 
-Latest owner direction (1.7.30) supersedes the bag-only policy: collected/expired non-diamond coins, bag payouts and automatic enemy gold income all launch gold HUD flights. Payments remain immediate and exactly once; animations never award a second payment. Use bounded pooled/coalesced visuals and respect reduced motion. Reset and save the pooled coin origin flag. Keep the compact consumable quick row inside the inspector's scrolling/clipping box. Do not display zero-cost scenery hover prices.
+### Elements (owner rules; enforced by the design contract, ELEMENT-INFUSION-01)
+
+1. **Elements are never towers.** Proton, Dark Matter and Quasar, like Fire, Electric and Ice, are states a stickman earns. They never have a gold price, a Build-menu entry or a tower definition that can be built.
+2. **Infusion.** Any stickman (every class except the Barricade) reaching 250 STR, 250 DEX or 250 INT is infused with Fire, Electric or Ice respectively.
+3. **Mixing.** A second stat at 250 mixes the elements: STR + DEX is Proton (Fire + Electric), STR + INT is Dark Matter (Fire + Ice), DEX + INT is Quasar (Electric + Ice). With all three stats at 250 the two highest stats decide, ties going STR, then DEX, then INT.
+4. **Effects.** Attacks only sometimes apply the element, with a proc chance that grows with the stat. Fire burns like a bleed but fire and Electric chains lightning between enemies. Ice freezes for 2 to 5 seconds (longer with INT), blocks the units queued behind it and makes the frozen enemy take 30% more damage; Ice is the rarest element to proc (about 45% of the Fire or Electric chance) and the most effective. A mixed element applies both of its component effects on the same proc.
+5. **Weapon enchantment.** An elemental stickman always shows its element on the weapon: a steady glow in each component colour plus the element emoji at the tip. It is drawn at all times, never only while attacking, never pulsing, and a mixed element shows both colours. No element means no enchantment.
+6. **Fighters keep their classes.** Elements add to a class; they do not replace it, and class unlock paths are unchanged. Blow Gunner is a buildable tower and gains elements exactly like every other fighter.
+
+### Music and sound (owner rules)
+
+The score must beat the best DOS-era music and never feel boring: it keeps evolving rather than looping. Each 24-bar cycle moves the whole arrangement to a new key and every ten completed waves shifts it again; combat adds drum fills, a counter-melody, an intensity layer that grows with the number of enemies on the field, and light timing and level humanization. A Boss or Santa on the field switches to the boss arrangement. The wave-clear sound is a layered fanfare transposed to the current key. All scheduling stays on the audio clock, within the voice caps, and independent of game speed (MUSIC-EVOLVE-01, MUSIC-BOSS-01, WAVE-CLEAR-FANFARE-01).
+
+### Hacker and Hacks (owner rules; enforced by the design contract, HACKER-01)
+
+1. **Hacks are an opt-in gameplay option.** Settings > Game has "Hacks enabled", off by default and saved with the other preferences. Only when it is on does the Build menu show a Hacks section with the Hacker.
+2. **The Hacker never fights.** No attack, no damage, no stats, no experience, no promotions or elements, negligible health, and no weapon: he stands holding an open laptop. He is priced above zero like every other fighter.
+3. **Stealth.** When attacked he drops a smoke screen and goes stealth for a few seconds, drawn faint with smoke puffs, and enemies stop choosing him as a target. Area-of-effect and other direct damage still reach him.
+4. **One per board.** Only one Hacker may exist at a time, even while downed.
+5. **Hack menu.** Tapping the Hacker opens the Hack Menu instead of the normal inspector: grant gold, wood and stone, heal and revive all stickmen, add stat points to every stickman, defeat every enemy on the field, stickmen invulnerable, and free building. It works like a developer menu, is not saved with the game, and marks the debug log as hacked.
+
+No fighter is ever free: every unlockable and specialist class carries a gold price above its parent class, scaled by power, and the design contract enforces it. The Barricade is paid in wood and stone and is exempt.
+
+Gold flights: coins fly up to the gold counter only when the player clicks a coin or opens a Gold Bag (by click or by dropping it on a stickman), as a deliberate dopamine reward. They never fly on an enemy defeat, an expired coin, an automatic payout or a removed bag; those credit gold immediately with no flight. Payments remain immediate and exactly once; animations never award a second payment. Use bounded pooled/coalesced visuals and respect reduced motion. Reset and save the pooled coin origin flag. The design contract enforces this (GOLD-FLIGHT-CLICK-01).
 
 Maintain decal promotion before drawing the baked layer. Landed barricade rubble stays on the ground/cache layer; bones/skulls retain visible existing rendering. Preserve bounded rebuild/expiry work. Enemy breakaway uses a short reduced-motion-aware enrage cue rather than floating text; clear its timestamp on pooled spawn.
 
 Wave-start music fading follows the roundStart cue synchronously; ducking must not cancel its 320-ms envelope. Keep audio-clock scheduling and voice caps. Farms breed only live peaceful pre-existing parents, at most two births per completed expansion and eight total animals; newborns cannot recursively breed. Preserve optional validated livestock saves.
 
-See CHANGELOG.md [1.7.23] for implementation evidence and playtest limits. The seven-file upload candidate is cumulative over GitHub 1.7.7; do not discard it just because main is older. Real device FPS, listening and mobile interaction acceptance remain open.
+Real-device frame rate, listening and mobile interaction acceptance stay open until the owner reports them.
 
 ## 0. Get oriented from GitHub, not from an uploaded file
 
@@ -221,7 +244,7 @@ The owner has stated these repeatedly. They are written generally on purpose: th
   function being edited misses exactly the class of bug this file's regression list exists to
   prevent.
 - **For an authorized implementation task, continue through**: inspection → a small, cohesive
-  patch → relevant tests → handoff. Don't stop at a plan without a real blocker.
+  patch → relevant tests → report. Don't stop at a plan without a real blocker.
 - **Ask only when ambiguity materially affects behavior, compatibility, scope, or authority** —
   not for routine implementation choices. Never silently choose a new save-format or gameplay
   policy on the asker's behalf.
@@ -361,7 +384,7 @@ look reasonable":
 - Update the documentation actually affected by a change (README, the reference doc, BACKLOG) —
   not every unrelated document out of caution.
 
-## 7. Concise final handoff
+## 7. Concise final report
 
 End of a work session, report: what actually changed, what tests were actually executed (and their
 result), any known limitation, and remaining work. Do not dump an unchanged full file, and don't
@@ -949,7 +972,7 @@ The consent actions sit in a centered, wrapping button row so both choices remai
 - Barricades have no stats, DPS or inventory in the panel and refuse items. Elements with `display` set by an id rule need an explicit hidden override, because `.hidden` alone will not hide them.
 
 ## Performance preservation and delivery
-Before delivery verify the historical protections: incremental decal promotion and throttled rebuilds, linear cleanup, pooled query/bucket/death records, cached flags/debug/presence, bounded wet-blood work, incremental expansion paint, bounded simulation catch-up and full-rate camera motion. Keep verification scripts as development tooling; the owner wants only changed game/repository files needed for upload, excluding favicon and OG art. Do not add a separate check script to the handoff. Compare a matched save/device/browser/speed/zoom through first-minute play, wave-9 downing, camera pan and long sessions before claiming measured smoothness. Reverting all old changes is unsafe: hash-container reuse was deliberately reversed after measurement, and debris must retain its correct depth.
+Before delivery verify the historical protections: incremental decal promotion and throttled rebuilds, linear cleanup, pooled query/bucket/death records, cached flags/debug/presence, bounded wet-blood work, incremental expansion paint, bounded simulation catch-up and full-rate camera motion. Keep verification scripts as development tooling; the owner wants only changed game/repository files needed for upload, excluding favicon and OG art. Do not add a separate check script to the delivered files. Compare a matched save/device/browser/speed/zoom through first-minute play, wave-9 downing, camera pan and long sessions before claiming measured smoothness. Reverting all old changes is unsafe: hash-container reuse was deliberately reversed after measurement, and debris must retain its correct depth.
 
 Spatial-query invariant: occupied-cell bounds may narrow empty lookup regions only; preserve the original candidate set and X/Y order. Compare randomized queries against the unbounded baseline before changing this broad phase.
 
@@ -1006,7 +1029,7 @@ Device diagnostics must label browser estimates/limits. Reuse cached GPU probe; 
 
 1.6.221: the last escaped enemy dying between waves emits one all-clear cue, via the existing voice budget. Do not add another frame scan or duplicate active-wave clear audio. Retain full save/load continuity for permanent Ninja, loose ordinary items/coins and explicit Stealth mode; inactive coin/death retries must not repay or replay. Native-canvas/mocked-DOM checks are not a substitute for physical-device FPS and audio listening.
 
-1.7.1: milestone rewards occur at completed wave 3 and every tenth wave. Preserve seeded distinct offers, exactly one claim, close-and-decide-later access and notification-disabled access. Run blessings add effective stats through runBoonCounts, separately from Shop pricing/globalPassiveCounts and trained-stat unlock totals. Validate/restore canonical pending IDs and reached milestones; older saves must not create retroactive rewards. Bound pending offers at eight and bank overflow as supplies. Use the existing detail dialog and its pause ownership; never resume a manually paused game. Add no frame scans, combat effects or runtime dependencies for choices. Keep the complete historical changelog plus concise release handoff context for a fresh agent. Automated/native-canvas tests are not device FPS or audio audition.
+1.7.1: milestone rewards occur at completed wave 3 and every tenth wave. Preserve seeded distinct offers, exactly one claim, close-and-decide-later access and notification-disabled access. Run blessings add effective stats through runBoonCounts, separately from Shop pricing/globalPassiveCounts and trained-stat unlock totals. Validate/restore canonical pending IDs and reached milestones; older saves must not create retroactive rewards. Bound pending offers at eight and bank overflow as supplies. Use the existing detail dialog and its pause ownership; never resume a manually paused game. Add no frame scans, combat effects or runtime dependencies for choices. Keep the complete historical changelog plus concise release context for a fresh agent. Automated/native-canvas tests are not device FPS or audio audition.
 
 - Global pause/resume keyboard shortcuts must ignore open native dialogs and editable INPUT/TEXTAREA/SELECT/contenteditable controls. Notification/reward dialog close handlers retain pause ownership; typing, arrow keys or confirming a reward must never resume combat behind a modal.
 
@@ -1042,12 +1065,12 @@ Keep cancelPointerGesture on blur, hidden-document transitions and unexpected ca
 
 Route every Shop entrance through guarded openShopModal/requireShopAccess. Preserve the existing living-Merchant rule and valid paused shopping. Shop buttons recheck access at activation; equipment targets retain exact active selected tower identity, and Remove retains exact item/slot identity. Stale controls refresh without spending/removing. Do not add Merchant guards to ordinary receiveItem, starter equipment or ground drag paths.
 
-### 1.7.34 startup and sound handoff
+### Rendering and sound safeguards
 
-Crate-specific shadow transforms belong only in drawEmojiGroundShadow. Never globally replace shared transform expressions: drawFinishFlagPole, drawStickmanGroundShadow and drawCompanionGroundShadow have no emoji variable. Include high-quality full-page rendering when reviewing shadow changes; isolated snippets missed this regression. Bind DOM controls explicitly rather than relying on element-ID globals. Tennis Shoes wave-clear text uses inverse camera coordinates and CANVAS_W, not an undefined viewWidth. Ninja has an intentional 230 range cap; the validator now accepts that existing value.
+Crate-specific shadow transforms belong only in drawEmojiGroundShadow; shared transform expressions are never replaced globally, because drawFinishFlagPole, drawStickmanGroundShadow and drawCompanionGroundShadow have no emoji variable. Review shadow changes with a full-page render, since isolated snippets hide this class of regression. Bind DOM controls explicitly instead of relying on element-ID globals. Tennis Shoes wave-clear text uses inverse camera coordinates and CANVAS_W. Ninja keeps its intentional 230 range cap, which the validator accepts.
 
-FM keys and bass each allocate two oscillators. Preserve the six-voice music limit and count modulators. New PDF review covers all 15 sheets/58 printed pages; its proposals must be compared with actual code before being described as missing features. Retain the shared motif and separate planning/combat roles, protected start-wave envelope and node cleanup. Offline PCM checks validate finite output/voice bounds, not listening or device performance. See CHANGELOG [1.7.34] for exact evidence and the owned startup regression.
+FM keys and bass each allocate two oscillators; keep the six-voice music limit and count modulators. Reference-document proposals are compared with the actual code before being described as missing features. Keep the shared motif, the separate planning and combat roles, the protected start-wave envelope and node cleanup. Offline PCM checks validate finite output and voice bounds, not listening or device performance.
 
-### 1.7.35 notification alignment
+### Notification layout
 
 Notification panel/stack left position is measured from the bell box relative to canvas-frame; width must account for that inset. Do not restore a fixed eight-pixel left edge or onboarding-finger vertical spacer. Refresh on panel open, preserve cached layout updates and build/history mutual exclusion.
