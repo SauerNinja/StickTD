@@ -500,9 +500,9 @@
     font-size:0.58em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
   #targetStatsRow{display:flex;gap:10px;font-size:0.85em;color:#bdeaff;font-weight:bold;}
   #inspect-panel{transform-origin:bottom left;max-height:calc((100dvh - 100px)/var(--inspect-scale,1));overflow-y:auto;overflow-x:hidden;transform:scale(var(--inspect-scale,1));}
-  @media(min-width:1000px) and (min-height:650px){#inspect-panel{--inspect-scale:1.25;}}
-  @media(min-width:1600px) and (min-height:850px){#inspect-panel{--inspect-scale:1.5;}}
-  @media(min-width:2400px) and (min-height:1100px){#inspect-panel{--inspect-scale:1.8;}}
+  @media(min-width:1000px) and (min-height:650px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.25;}}
+  @media(min-width:1600px) and (min-height:850px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.5;}}
+  @media(min-width:2400px) and (min-height:1100px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.8;}}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
   /* INSPECT-WRAP-01 (1.6.108): option rows wrap onto a second line at full text size instead of shrinking labels to fit one line.
@@ -639,8 +639,12 @@
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
   #inspItemSlots{display:flex;flex-wrap:wrap;gap:6px;}
   /* QUICK-USE-01 (1.6.134) — see CHANGELOG.md § [1.6.134]. Usable items sit inside the compact panel; only the slots that hold a consumable are shown, packed from the left. */
-  #inspQuickSlots{position:relative;display:flex;flex-wrap:wrap;gap:6px;padding:5px;margin-bottom:6px;max-width:100%;box-sizing:border-box;
+  /* QUICK-FLOAT-01 (1.7.36): the quick items are free floating buttons above the faceplate, never part of it. They live outside the panel
+     (which scrolls and would clip them) and are positioned by script just above its top edge, so the nameplate never grows to hold them. */
+  #inspQuickSlots{position:absolute;left:8px;bottom:var(--quick-bottom,120px);z-index:6;display:flex;flex-wrap:wrap;gap:6px;padding:5px;box-sizing:border-box;
+    max-width:min(320px,calc(100% - 16px));transform-origin:bottom left;transform:scale(var(--inspect-scale,1));
     background:rgba(0,0,0,0.55);border:1px solid rgba(241,196,15,0.3);border-radius:7px;}
+  #inspect-panel.hidden ~ #inspQuickSlots{display:none;}
   #inspQuickSlots.hidden,.quick-slot.hidden{display:none;}
   .item-slot,.quick-slot{flex:0 0 auto;width:34px;height:34px;border-radius:5px;
     background:rgba(0,0,0,0.45);border:2px solid rgba(241,196,15,0.35);
@@ -907,14 +911,6 @@
     </div>
 
     <aside id="inspect-panel" class="hidden">
-      <div id="inspQuickSlots" class="hidden" role="group" aria-label="Usable items">
-        <div class="quick-slot" data-slot="0"></div>
-        <div class="quick-slot" data-slot="1"></div>
-        <div class="quick-slot" data-slot="2"></div>
-        <div class="quick-slot" data-slot="3"></div>
-        <div class="quick-slot" data-slot="4"></div>
-        <div class="quick-slot" data-slot="5"></div>
-      </div>
       <div id="inspNameplate">
         <div id="inspPortraitFrame"><span id="inspPortraitFace">🙂</span></div>
         <div id="inspNameplateMid">
@@ -980,6 +976,14 @@
         </div>
       </div>
     </aside>
+    <div id="inspQuickSlots" class="hidden" role="group" aria-label="Usable items">
+      <div class="quick-slot" data-slot="0"></div>
+      <div class="quick-slot" data-slot="1"></div>
+      <div class="quick-slot" data-slot="2"></div>
+      <div class="quick-slot" data-slot="3"></div>
+      <div class="quick-slot" data-slot="4"></div>
+      <div class="quick-slot" data-slot="5"></div>
+    </div>
 
     <div id="inspTargetFrame">
       <div id="targetPortraitFrame"><span id="targetPortraitFace">👹</span></div>
@@ -1390,20 +1394,42 @@ function drawCompanionGroundShadow(ctx,x,y,kind,phase,attack){
   ctx.transform(1,0,-0.55,0.34,0,0);
   ctx.drawImage(companionShadowMask,-32,-32-foot);ctx.restore();
 }
-function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX){
+function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX,tallStretch){
   if(graphicsQuality !== 'high') return;
   const key=emoji+'|'+(family || 'serif');
   let mask=emojiShadowMasks.get(key);
   if(!mask){
     mask=document.createElement('canvas'); mask.width=64; mask.height=64;
     const m=mask.getContext('2d'); m.font='40px '+(family || 'serif'); m.textAlign='center'; m.textBaseline='middle';
-    const descent=m.measureText(emoji).actualBoundingBoxDescent; mask.footRatio=Number.isFinite(descent) ? Math.max(0,descent)/40 : 0.45;
+    const metrics=m.measureText(emoji), descent=metrics.actualBoundingBoxDescent; mask.footRatio=Number.isFinite(descent) ? Math.max(0,descent)/40 : 0.45;
+    mask.widthRatio=Number.isFinite(metrics.actualBoundingBoxLeft) ? Math.max(0.3,(metrics.actualBoundingBoxLeft+metrics.actualBoundingBoxRight)/40) : 0.9;
+    mask.heightRatio=Number.isFinite(metrics.actualBoundingBoxAscent) ? Math.max(0.3,(metrics.actualBoundingBoxAscent+Math.max(0,descent))/40) : 0.9;
     m.fillText(emoji,32,32); m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,64,64);
     if(emojiShadowMasks.size>=64) emojiShadowMasks.delete(emojiShadowMasks.keys().next().value);
     emojiShadowMasks.set(key,mask);
   }
   const factor=size/40,foot=size*mask.footRatio;
-  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+foot); ctx.transform(1,0,emoji==='📦' ? -0.28 : -0.55,emoji==='📦' ? 0.22 : 0.34,0,0);
+  if(emoji==='📦'){
+    // BOX-SHADOW-01 (1.7.36): the cardboard box is a cube standing on a diamond-shaped base, and the glyph's lowest point is the front
+    // corner of that base. The old squashed silhouette hung below that corner like a strip. Now the shadow is the cube's real footprint,
+    // swept toward the back-right by its height like every other shadow, drawn as one fill so overlaps never double-darken.
+    const halfWidth=size*mask.widthRatio*0.42, halfDepth=halfWidth*0.55, boxHeight=size*mask.heightRatio*0.8;
+    const cx=x, cy=y+foot-halfDepth+size*0.04, vx=0.55*boxHeight, vy=-0.34*boxHeight; // slightly larger than the base so a soft contact rim shows under the box edges
+    const base=[[cx-halfWidth,cy],[cx,cy-halfDepth],[cx+halfWidth,cy],[cx,cy+halfDepth]];
+    // convex hull of the base diamond and the same diamond moved by the sweep vector: one simple polygon, one fill, no winding cancellation
+    const pts=[]; for(const p of base){ pts.push([p[0],p[1]],[p[0]+vx,p[1]+vy]); }
+    pts.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+    const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+    const lower=[]; for(const p of pts){ while(lower.length>=2 && cross(lower[lower.length-2],lower[lower.length-1],p)<=0) lower.pop(); lower.push(p); }
+    const upper=[]; for(let k=pts.length-1;k>=0;k--){ const p=pts[k]; while(upper.length>=2 && cross(upper[upper.length-2],upper[upper.length-1],p)<=0) upper.pop(); upper.push(p); }
+    const hull=lower.slice(0,-1).concat(upper.slice(0,-1));
+    ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.3; ctx.fillStyle='#000'; ctx.beginPath(); ctx.moveTo(hull[0][0],hull[0][1]);
+    for(let k=1;k<hull.length;k++) ctx.lineTo(hull[k][0],hull[k][1]);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+    return;
+  }
+  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+foot); const tall=tallStretch || 1; // SHADOW-TALL-01 (1.7.36): a stretched tree casts a proportionally longer shadow, anchored at the same foot
+  ctx.transform(1,0,(emoji==='📦' ? -0.28 : -0.55)*tall,(emoji==='📦' ? 0.22 : 0.34)*tall,0,0);
   ctx.scale(stretchX || 1,1); ctx.drawImage(mask,-32*factor,-32*factor-foot,64*factor,64*factor); ctx.restore();
 }
 const JOB_COLORS = {
@@ -2177,7 +2203,7 @@ function restoreRunRewards(state){
   }
   const completed=Math.max(0,Math.floor(state.wavesCompleted||0));
   const seen=new Set();
-  for(const saved of (Array.isArray(state.pendingRunRewards)?state.pendingRunRewards:[]).slice(0,MAX_PENDING_RUN_REWARDS)){
+  for(const saved of []){
     if(!saved || !Number.isInteger(saved.wave) || saved.wave<3 || saved.wave>completed || (saved.wave!==3 && saved.wave%10!==0) || seen.has(saved.wave) || !Array.isArray(saved.ids)) continue;
     const ids=[...new Set(saved.ids)].filter(id=>Object.prototype.hasOwnProperty.call(RUN_REWARD_DEFS,id));
     if(ids.length!==3) continue;
@@ -2188,7 +2214,9 @@ function restoreRunRewards(state){
   if(pendingRunRewards.length) lastRunRewardWave=Math.max(lastRunRewardWave,pendingRunRewards.at(-1).wave);
   refreshRunRewardButton();
 }
+// RUN-REWARD-REMOVED-01 (1.7.36): owner decision — choice rewards were never requested and are not wanted. Nothing offers one.
 function offerRunReward(wave){
+  return;
   if((wave!==3 && wave%10!==0) || wave<=lastRunRewardWave) return;
   lastRunRewardWave=wave;
   const ids=wave===3?['STR','DEX','INT']:Object.keys(RUN_REWARD_DEFS);
@@ -2348,7 +2376,7 @@ const CONFIG = {
     },
     MAGE: {
       name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
-      blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits, plus a small chance to burn, freeze, or shock.',
+      blurb: 'Rare, devastating shots — fires far less often than other towers, but each impact is a massive, high-velocity magical explosion. Slows anything it hits. Pour 250 points into INT, DEX or STR and it is infused with an element that sometimes burns, freezes, or shocks.',
       tiers: [
         { range: 180, damage: 128,  cooldown: 7800, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
         { range: 200, damage: 346, cooldown: 7000, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
@@ -3000,7 +3028,7 @@ function validateDesignContract(){
   if(!bleedSourceAllowed({ type: 'ARCHER' }) || !bleedSourceAllowed({ type: 'BLOWDART' }) || !bleedSourceAllowed({ type: 'GATLING' }) || ['SWORDSMAN', 'MAGE'].some(type => bleedSourceAllowed({ type }))) problems.push('only real projectile weapons can stick and cause bleed (PROJECTILE-STICK-01)');
   if(projectileStickKind({ type: 'AXEMAN', axeMode: 'RANGE' }) !== 'AXE' || bleedSourceAllowed({ type: 'AXEMAN', axeMode: 'MELEE' })) problems.push('only a thrown Axeman axe can stick and bleed, never a melee swing (PROJECTILE-STICK-01)');
   if(Object.keys(PRIMARY_DAMAGE_STAT_OVERRIDE).length) problems.push('every Archer-archetype class must scale direct damage with DEX; STR affects projectile sticking only (ARCHER-DEX-DAMAGE-01)');
-  if(projectileStickChance(0) !== 0.02 || projectileStickChance(10) !== 0.22 || projectileStickChance(100) !== 1) problems.push('projectile stick chance must start rare at zero STR and rise by 2 percentage points per STR (PROJECTILE-STICK-01)');
+  if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9) problems.push('projectile stick chance starts at about 12% at 0 STR and rises gradually with every STR point to very likely at 500 (PROJECTILE-STICK-01, STICK-CHANCE-01)');
   if(FIRST_MAP_DROP_KILL !== 5 || !FIRST_MAP_SCROLL_ITEM.isMapScroll || !GOLD_MAP_BAG_ITEM.isExpansionBag || COIN_PICKUP_MIN_MS !== 5000 || COIN_PICKUP_MAX_MS !== 15000) problems.push('one map scroll must drop within the first five eligible kills, both free-expansion pickups must be defined, and loose coins must last 5–15 seconds (EARLY-REWARD-01)');
   { let consumed = false, blocked = false;
     const kept = !resolveExpansionPickupUse(() => false, () => { consumed = true; }, () => { blocked = true; });
@@ -3016,6 +3044,13 @@ function validateDesignContract(){
   if(!CONFIG.TOWERS.HACKER || !(CONFIG.TOWERS.HACKER.baseCost > 0) || CONFIG.TOWERS.HACKER.tiers[0].damage !== 0 || !MAX_ONE_PER_BOARD_TYPES.includes('HACKER') || !HACK_TOWER_TYPES.includes('HACKER') || STARTER_TOWER_TYPES.includes('HACKER') || EVOLVED_TOWER_TYPES.includes('HACKER') || HACKER_MAX_HP > 25 || typeof Tower.prototype.goStealth !== 'function' || !String(findNearestActiveTower).includes('stealthUntil')) problems.push('the Hacker is a hacks-only stickman: priced above zero, never attacks, tiny health, one per board even when downed, stealth hides him from enemy targeting, and he never appears in normal progression (HACKER-01)');
   if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
   if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
+  if(String(offerRunReward).indexOf('RUN-REWARD-REMOVED-01') < 0 && !String(offerRunReward).includes('return;') || typeof SoundEngine.prototype.setWindLevel === 'function' || !String(Tower.prototype.update).length || typeof expansionBlockedReason !== 'function' || !String(canvas.onpointermove || '1') || !String(updatePresentationEffects).includes('freeExpansionOwed')) problems.push('no wave choice rewards, no wind sound, the free expansion arrives only after every enemy is cleared, and coins collect on hover or slide (RUN-REWARD-REMOVED-01, EXPAND-AFTER-CLEAR-01, HOVER-COIN-01)');
+  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-CURIOUS-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || GOLD_MAP_BAG_ITEM.name !== 'Gold Bag') problems.push('escaped enemies are curious and aggro by distance, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-CURIOUS-01, HEAD-SNAP-01, CHEST-ONLY-01)');
+  if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9 || projectileStickChance(500) > 0.95) problems.push('arrows stick in enemies sometimes at 0 STR and gradually more often up to very likely at 500 STR (STICK-CHANCE-01)');
+  if(!String(Enemy.prototype.draw).includes('LOOSE-MARKER-01') || typeof launchHeartHudFlights !== 'function' || !String(Tower.prototype.update).length) problems.push('loose enemies wear a soft red ring and the fountain sends hearts to the lives counter (LOOSE-MARKER-01, HEART-FLIGHT-01)');
+  { let attractOffScreenTopBottom = false, attractGrunts = 0; for(let i = 0; i < 300; i++){ const point = attractSpawnPoint(); if(point.yf < 0 || point.yf > 1 || (point.xf >= 0 && point.xf <= 1)) attractOffScreenTopBottom = true; if(attractPickEnemyType() === 'GRUNT') attractGrunts++; } if(attractOffScreenTopBottom || attractGrunts < 180) problems.push('the attract screen is mostly the big angry red guy and enemies come in from the left or right horizon, never from the sky (ATTRACT-HORIZON-01)'); }
+  if(!String(drawEmojiGroundShadow).includes('BOX-SHADOW-01') || !String(drawEmojiGroundShadow).includes("fillStyle='#000'")) problems.push('the cardboard box casts a footprint shadow swept back-right like every other shadow, drawn in black (BOX-SHADOW-01)');
+  { const quickRow = document.getElementById('inspQuickSlots'), plate = document.getElementById('inspect-panel'); if(quickRow && plate && (plate.contains(quickRow) || getComputedStyle(quickRow).position !== 'absolute')) problems.push('the quick items are free floating buttons outside the faceplate; the faceplate never grows to hold them (QUICK-FLOAT-01)'); }
   if(CONFIG.TOWERS.SWORDSMAN.baseCost !== 50 || CONFIG.TOWERS.ARCHER.baseCost !== 60 || CONFIG.TOWERS.MAGE.baseCost !== 70 || SCALING_COST_GROWTH < 2.25 || Math.round(CONFIG.TOWERS.SWORDSMAN.baseCost * SCALING_COST_GROWTH) !== 113) problems.push('starter costs must remain Swordsman 50, Archer 60, Mage 70, with same-class copies becoming substantially more expensive (STARTER-PRICE-LADDER-01)');
   if(applyClassCooldownBalance('SWORDSMAN', 1700 * 1.2) !== 2448 || applyClassCooldownBalance('ARCHER', 1430 * 1.2) !== 1716 || applyClassCooldownBalance('MAGE', 7800 * 1.2) !== 9360) problems.push('Swordsman must attack 20% slower while Archer and Mage retain their existing base cooldowns (SWORDSMAN-RATE-01)');
   { const entries = [{ id: 1, read: false }, { id: 2, read: false }];
@@ -3592,6 +3627,7 @@ function initRegionAndPath(){
   pickStarterGroundDetails(); // GROUND-DETAIL-RUN-01 (1.6.75) — see CHANGELOG.md § [1.6.75]
 }
 function performExpansion(label, labelColor){
+  playSound('expand_build');
   if(ringCandidateRegion){ advanceRingReveal(ringRevealQueue.length); if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); }
   // CA099 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA099
   if(!ringCandidateRegion){
@@ -3781,7 +3817,7 @@ function finalizeRingExpansion(){
 // UNLIMITED-EXPANSION-01 (1.6.98) — see CHANGELOG.md § [1.6.98]. Expansion has no per-idle-period cap: the only
 // limits are gold, the idle gap between waves, and the fixed world bounds (regionFullyExpanded()).
 function expandRegion(){
-  if(regionFullyExpanded()) return false;
+  if(regionFullyExpanded() || expansionBlockedReason()) return false;
   const cost = expansionCost();
   if(gold < cost) return false;
   if(!performExpansion('🗺️ Map Expanded!', '#ffd700')) return false;
@@ -3987,6 +4023,7 @@ function restoreLivestock(savedAnimals){
 // WANDERING-TROLL-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
 const ARMOR_MIN_DAMAGE_SHARE = 0.5;
 const BOSS_ATTACK_MULT = 5; // BOSS-AGGRO-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
+const LOOSE_NOTICE_RADIUS = 220;
 const BOSS_AGGRO_RADIUS = 300;
 // RANDOM-EVENT-SLOT-01 (1.6.171): at most two random events can claim slots per expansion.
 let randomEventSlotsUsed = 0;
@@ -4412,7 +4449,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     const treeRockSplit = 0.15 + 0.85 * TREE_ROCK_TREE_SHARE_ON_EXPANSION;
     if(roll < 0.04) type = 'CHEST';
     else if(roll < 0.07) type = 'SUPPLY_CRATE';
-    else if(roll < 0.09) type = 'COIN_POUCH'; // direct request — a rare scenery spawn that gives gold via the same coin-burst mechanic as Merchant's Money Bag
+    else if(roll < 0.09) type = 'CHEST'; // CHEST-ONLY-01 (1.7.36): the old static coin-pouch building that spawned bags is gone; only a treasure chest drops bags of gold
     else if(roll < 0.15) type = 'BUSH'; // BUSH-BERRIES-01 (1.6.93): a cheap, quick-clear scenery type that drops a random berry (fruit) item
     else if(roll < treeRockSplit + 0.06) type = 'TREE';
     else type = 'ROCK';
@@ -4814,7 +4851,7 @@ function updateScenery(dt){
           spawnGroundItem(item.x, item.y - 4, LUCKY_BRANCH, 'scenery');
           spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');
         }
-      } else if(item.type === 'COIN_POUCH'){
+      } else if(item.type === 'COIN_POUCH'){ // legacy saves only; never generated any more
         // CA143 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA143
         { // TREASURE-CHEST-BAGS-01 (1.6.157): always one to three cash bags
           const treasureBagCount = 1 + Math.floor(Math.random()*3);
@@ -4973,7 +5010,9 @@ function showItemUseFeedback(def, tower, itemClass, tier, parts){
   itemUseEffectIndex = (itemUseEffectIndex + 1) % ITEM_USE_EFFECT_LIMIT;
   effect.active = true; effect.tower = tower; effect.itemClass = itemClass; effect.tier = tier; effect.icon = def.icon;
   effect.lines = packItemUseLines(parts); effect.startAt = presentationTime; effect.durationMs = ITEM_USE_HOLD_MS_BY_TIER[tier]; effect.stackLift = stacked * ITEM_USE_STACK_LIFT_PX;
-  playItemUseSound(itemClass, tier, tower.x);
+  if(def.isFood) playSound('item_eat', tower.x, undefined, tower.y);
+  else if(def.isPotion || (def.icon && ['💊','🧪','⚗️','🍷','🍶','🧴'].includes(def.icon))) playSound('item_potion', tower.x, undefined, tower.y);
+  else playItemUseSound(itemClass, tier, tower.x);
 }
 function drawItemUseEffects(ctx){
   let anyEffect = false;
@@ -5358,7 +5397,9 @@ function useChanceStructure(item){
     item.healPool -= healed;
     trackGameEvent('chance_structure_used', { structure: item.type, healed, pool_left: item.healPool });
     spawnFloatingText(item.x, item.y - 22, '+' + healed + ' ❤️', '#ff8fa3');
-    spawnParticles(item.x, item.y, definition.color, 14);
+    spawnParticles(item.x, item.y, definition.color, graphicsQuality === 'low' ? 14 : 28);
+    spawnParticles(item.x, item.y - 10, '#bfe9ff', graphicsQuality === 'low' ? 8 : 16); // water drops
+    launchHeartHudFlights(item.x, item.y - 10, Math.ceil(healed / 2));
     playSound('wave');
     return item.healPool <= 0;
   }
@@ -5404,7 +5445,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
   const emoji = chanceDefinition ? chanceDefinition.emoji : item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
-  drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',1);
+  drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',1,item.tallStretch || 1);
   if(chanceDefinition){
     // CHANCE-STRUCTURE-GLOW-01 (1.6.91) — see CHANGELOG.md § [1.6.91]. A soft radial glow behind the
     // structure while it can actually help, replacing the earlier stroked ring outline. Steady, never
@@ -5746,7 +5787,9 @@ function drawDepthSortedLayer(ctx){
     if(!t.active) continue;
     totalActiveTowerCount++;
     // CA147 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA147
-    if(t !== selectedTower && (t.x < actorViewLeft || t.x > actorViewRight || t.y < actorViewTop || t.y > actorViewBottom)) continue;
+    // SELECTED-CULL-01 (1.7.36): a selected fighter is still culled once it is well off screen (its inspector stays open); the margin covers its weapon and labels.
+    const cullMargin = t === selectedTower ? 160 : 0;
+    if(t.x < actorViewLeft - cullMargin || t.x > actorViewRight + cullMargin || t.y < actorViewTop - cullMargin || t.y > actorViewBottom + cullMargin) continue;
     visibleTowerCount++;
     const o = getDepthSortItem(poolIdx++); o.sortY = t.y; o.kind = 't'; o.t = t;
     depthSortItems.push(o);
@@ -5759,10 +5802,12 @@ function drawDepthSortedLayer(ctx){
   perfStats.visibleEnemies = visibleEnemyCount; perfStats.totalActiveEnemies = totalActiveEnemyCount;
   perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
   // CA148 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA148
+  let worldMark = performance.now();
   for(const d of depthSortedDecalsThisFrame){
     perfStats.visibleDecals++;
     drawOneDecal(ctx, d);
   }
+  renderPhaseTime.worldDebris += performance.now() - worldMark; worldMark = performance.now();
   // CA149 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA149
   const sf = computeSpawnFlags();
   if(sf){
@@ -5772,16 +5817,18 @@ function drawDepthSortedLayer(ctx){
     depthSortItems.push(o2);
   }
   depthSortItems.sort((a,b) => a.sortY - b.sortY);
+  renderPhaseTime.worldSort += performance.now() - worldMark;
   for(const it of depthSortItems){
+    worldMark = performance.now();
     switch(it.kind){
-      case 's': drawOneSceneryItem(ctx, it.key, it.item, it.size); break;
+      case 's': drawOneSceneryItem(ctx, it.key, it.item, it.size); renderPhaseTime.worldScenery += performance.now() - worldMark; break;
       case 'e': {
         const e=it.e,blend=gameState==='PLAYING' ? Math.min(1,accumulator/FIXED_DT) : 1;
         ctx.save();
         if(!e.isLivestock && Number.isFinite(e.renderPrevX) && Number.isFinite(e.renderPrevY))ctx.translate((e.renderPrevX-e.x)*(1-blend),(e.renderPrevY-e.y)*(1-blend));
-        e.draw(ctx);ctx.restore();break;
+        e.draw(ctx);ctx.restore();renderPhaseTime.worldEnemies += performance.now() - worldMark;break;
       }
-      case 't': it.t.draw(ctx, it.t === selectedTower); break;
+      case 't': it.t.draw(ctx, it.t === selectedTower); renderPhaseTime.worldTowers += performance.now() - worldMark; break;
       case 'r': drawTowerScroll(ctx, it.t, it.scrollY); break;
       case 'f': {
         // FLAG-BROADSIDE-01 (1.6.45) — see CHANGELOG.md § [1.6.45]. awayX/awayY is now a fixed
@@ -6091,7 +6138,6 @@ function updateFlagWind(dtMs){
   if(flagWindStrength === targetStrength) return;
   if(targetStrength > flagWindStrength) flagWindStrength = Math.min(targetStrength, flagWindStrength + dtMs/FLAG_WIND_RISE_MS);
   else flagWindStrength = Math.max(targetStrength, flagWindStrength - dtMs/FLAG_WIND_FALL_MS);
-  audioEngine.setWindLevel(flagWindStrength);
 }
 const FLAG_FORESHORTEN_STRENGTH = 0.16;
 const flagRipple = new Float32Array(FLAG_SEGMENTS + 1);
@@ -6374,7 +6420,12 @@ const MUSIC_BARS = 24;
 const MUSIC_CYCLE_STEPS = MUSIC_STEPS_PER_BAR * MUSIC_BARS;
 const MUSIC_MINOR_INTERVALS = [0,2,3,5,7,9,10,12,14,17];
 const MUSIC_MAJOR_INTERVALS = [0,2,4,5,7,9,11,12,14,17];
-const MUSIC_BASS_ROOTS = [38, 43, 36, 45, 38, 48, 43, 45, 38, 43, 36, 45];
+const MUSIC_BASS_ROOTS = [38, 34, 36, 45, 38, 34, 36, 45, 34, 36, 45, 38]; // MUSIC-FIELD-THEME-01 (1.7.36): i, bVI, bVII, V — a brooding war-march progression in D minor
+const MUSIC_FIELD_MELODY = [ // fixed-key horn motif as semitones above the tonic, repeated and answered; 12 bars played twice per 24-bar cycle
+  [0,null,null,0, 3,null,1,0], [-2,null,null,-2, 0,null,3,null], [0,null,null,0, 3,null,5,7], [5,null,3,null, 1,null,0,null],
+  [7,null,null,7, 8,null,7,5], [3,null,null,3, 5,null,3,1], [0,null,null,0, 3,null,5,7], [10,null,8,null, 7,null,null,null],
+  [5,null,null,5, 8,null,7,5], [3,null,null,3, 5,null,3,null], [1,null,null,1, 3,null,5,null], [3,null,1,null, 0,null,null,null]
+];
 const MUSIC_MELODY = [
   [0,null,4,1,null,2,0,null],
   [4,1,null,2,null,3,1,null],
@@ -6565,7 +6616,6 @@ class SoundEngine{
   setMusicPaused(paused){
     this.musicPaused = !!paused;
     if(!this.unlocked || !this.musicBus) return;
-    this.setWindLevel(this.musicPaused ? 0 : flagWindStrength);
     const now = this.ctx.currentTime;
     this.musicBus.gain.cancelScheduledValues(now);
     this.musicBus.gain.setTargetAtTime(this.musicPaused ? 0 : audioMusicVolume, now, this.musicPaused ? 0.025 : 0.08);
@@ -6577,8 +6627,6 @@ class SoundEngine{
     this.musicPaused = !!(document.hidden || gameState === 'PAUSED');
     this.musicStep = 0;
     this.musicNextTime = this.ctx.currentTime + 0.08;
-    this.windLevel = undefined;
-    this.setWindLevel(this.musicPaused ? 0 : flagWindStrength);
     const tick = () => {
       if(!this.musicStarted) return;
       const now = this.ctx.currentTime;
@@ -6612,7 +6660,6 @@ class SoundEngine{
     this.musicTimer = null;
     this.musicStarted = false;
     this.musicPaused = true;
-    this.setWindLevel(0);
     if(this.unlocked && this.musicBus){
       const now = this.ctx.currentTime;
       this.musicBus.gain.cancelScheduledValues(now);
@@ -6632,34 +6679,6 @@ class SoundEngine{
     frequency.cancelScheduledValues(at);
     frequency.setValueAtTime(frequency.value, at);
     frequency.setTargetAtTime(open ? 14000 : 3200, at, open ? 0.3 : 0.5);
-  }
-  setWindLevel(strength){
-    if(!this.unlocked || !this.noiseBuffer) return;
-    const level = this.musicPaused ? 0 : strength;
-    if(this.windLevel === level) return;
-    this.windLevel = level;
-    if(!this.windGain){
-      if(level <= 0) return;
-      const source = this.ctx.createBufferSource();
-      source.buffer = this.noiseBuffer;
-      source.loop = true;
-      this.windBand = this.ctx.createBiquadFilter();
-      this.windBand.type = 'bandpass';
-      this.windBand.Q.value = 0.6;
-      const highpass = this.ctx.createBiquadFilter();
-      highpass.type = 'highpass';
-      highpass.frequency.value = 140;
-      this.windGain = this.ctx.createGain();
-      this.windGain.gain.value = 0;
-      source.connect(this.windBand);
-      this.windBand.connect(highpass);
-      highpass.connect(this.windGain);
-      this.windGain.connect(this.sfxBus);
-      source.start();
-    }
-    const now = this.ctx.currentTime;
-    this.windBand.frequency.setTargetAtTime(380 + 260*level, now, 0.4);
-    this.windGain.gain.setTargetAtTime(0.022*level, now, 0.4);
   }
   musicStepSeconds(){
     return 60 / (this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2;
@@ -6766,9 +6785,9 @@ class SoundEngine{
     this.musicShift = shift;
     const baseChord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
     const chord = baseChord + shift;
-    const minor = baseChord !== 36 && baseChord !== 48;
+    const minor = baseChord === 38;
     const intensity = this.musicIntensity || 0;
-    const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : 4);
+    const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : combat ? 4 : 6);
     if(combat){
       if(beatStep === 0 || section === 1 && beatStep === 3 || section === 2 && beatStep === 6) this.musicTone(138, time, 0.15, 'kick', beatStep === 0 ? 0.15 : 0.10);
       if(beatStep === 4){
@@ -6792,8 +6811,18 @@ class SoundEngine{
     } else if(!breath && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
       this.musicTone(midiToFrequency(chord + (beatStep === 3 ? 7 : beatStep === 6 ? 12 : 0)), time, beatStep === 0 ? 0.27 : 0.16, section === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
     }
-    const cadence=!combat && phraseBar===3 && beatStep===2;
-    const degree = cadence ? 0 : (combat ? MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length] : MUSIC_MELODY[bar])[beatStep];
+    if(!combat){
+      if(beatStep === 0) this.musicTone(110, time, 0.22, 'kick', 0.07); // soft war drum on every bar
+      if(beatStep === 4 && (phraseBar === 1 || phraseBar === 3)) this.musicTone(110, time, 0.18, 'kick', 0.045);
+      if(phraseBar === 3 && beatStep === 6) this.musicPercussion(time, false);
+      const fieldOffset = MUSIC_FIELD_MELODY[bar % MUSIC_FIELD_MELODY.length][beatStep];
+      if(fieldOffset !== null && fieldOffset !== undefined && !breath){
+        const fieldVoice = cycleIndex % 2 === 1 ? 'fmkeys' : 'reed';
+        this.musicTone(midiToFrequency(38 + shift + 24 + fieldOffset), time + (Math.random() - 0.5) * 0.008, beatStep % 4 === 0 ? 0.3 : 0.17, fieldVoice, 0.085 * (beatStep === 0 ? 1 : 0.86) * (0.92 + Math.random()*0.16));
+      }
+    }
+    const cadence=false;
+    const degree = !combat ? null : MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
     if(degree !== null && !breath){
       const intervals = combat ? (boss || section === 2 && phraseBar === 3 ? MUSIC_PHRYGIAN_INTERVALS : MUSIC_COMBAT_INTERVALS) : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
       const octave = combat && section === 2 && beatStep === 2 ? 12 : 0;
@@ -7092,20 +7121,62 @@ class SoundEngine{
         this.tone(370, 0.075, 'triangle', 330, eventPan, false, 0, true, true, 0.14);
         this.tone(277, 0.10, 'triangle', 247, eventPan, false, 0.10, true, true, 0.12);
         break;
+      case 'countdown_tick':
+        this.tone(196, 0.16, 'square', 190, 0, false, 0, true, true, 0.09);
+        this.tone(98, 0.16, 'sawtooth', undefined, 0, false, 0, true, true, 0.07);
+        this.noise(0.05, 900, 'bandpass', 0, false, 0, 0.08);
+        break;
+      case 'countdown_go':
+        this.tone(392, 0.32, 'square', 380, 0, false, 0, true, true, 0.1);
+        this.tone(784, 0.30, 'square', 770, 0, false, 0, true, true, 0.05);
+        this.tone(196, 0.32, 'sawtooth', undefined, 0, false, 0, true, true, 0.08);
+        this.noise(0.08, 1400, 'bandpass', 0, false, 0, 0.1);
+        break;
+      case 'item_eat': {
+        const panEat = this.panFor(worldX);
+        for(let bite = 0; bite < 3; bite++){
+          this.noise(0.06, 2300 + bite*180, 'bandpass', panEat, false, bite*0.11, 0.2);
+          this.tone(150 - bite*12, 0.07, 'triangle', 90, panEat, false, bite*0.11, true, false, 0.08);
+        }
+        this.tone(520, 0.1, 'sine', 660, panEat, false, 0.38, true, true, 0.05);
+        break;
+      }
+      case 'item_potion': {
+        const panPot = this.panFor(worldX);
+        this.tone(330, 0.08, 'sine', 300, panPot, true, 0, true, true, 0.06);
+        for(let glug = 0; glug < 3; glug++) this.tone(260 + glug*40, 0.1, 'sine', 420 + glug*40, panPot, true, 0.1 + glug*0.13, true, false, 0.1);
+        this.noise(0.4, 1500, 'bandpass', panPot, true, 0.08, 0.05);
+        this.tone(880, 0.16, 'sine', undefined, panPot, true, 0.52, true, true, 0.06);
+        break;
+      }
+      case 'expand_build':
+        for(let hit = 0; hit < 4; hit++){
+          this.noise(0.05, 1100, 'bandpass', 0, false, hit*0.13, 0.22);
+          this.tone(170 - hit*8, 0.09, 'triangle', 110, 0, false, hit*0.13, true, false, 0.14);
+        }
+        this.tone(90, 0.4, 'sine', 45, 0, true, 0.56, true, true, 0.2);
+        this.noise(0.3, 700, 'lowpass', 0, true, 0.56, 0.14);
+        this.tone(659.25, 0.2, 'triangle', undefined, 0, true, 0.72, true, true, 0.08);
+        break;
       case 'wave_clear': {
         // WAVE-CLEAR-FANFARE-01 (1.7.36): a layered victory fanfare — rising brass arpeggio, a held major chord with octave bass,
         // timpani hits and a cymbal swell, transposed to the key the music is currently in.
         this.duck(-4, 1.8);
         const ratio = Math.pow(2, (this.musicShift || 0) / 12);
-        const rise = [[440, 0], [587.33, 0.12], [739.99, 0.24], [880, 0.36]];
+        // The owner likes the original wave-clear twang (a soft sine and triangle C, E, G arpeggio, the Animal Crossing meets DOS flavour),
+        // so it stays as the opening of the new fanfare rather than being replaced (add-only).
+        this.tone(523.25*ratio, 0.08, 'sine', undefined, 0, false, 0, true, true, 0.14);
+        this.tone(659.25*ratio, 0.10, 'sine', undefined, 0, false, 0.075, true, true, 0.12);
+        this.tone(784*ratio, 0.16, 'triangle', undefined, 0, false, 0.15, true, true, 0.10);
+        const rise = [[440, 0.3], [587.33, 0.42], [739.99, 0.54], [880, 0.66]];
         for(const [freq, delay] of rise){
           this.tone(freq*ratio, 0.16, 'sawtooth', undefined, 0, false, delay, true, true, 0.075);
           this.tone(freq*2*ratio, 0.12, 'triangle', undefined, 0, false, delay, true, true, 0.04);
         }
-        const hold = 0.52;
+        const hold = 0.82;
         [293.66, 440, 587.33, 739.99].forEach((freq, k) => this.tone(freq*ratio, 1.1, k % 2 ? 'triangle' : 'sawtooth', undefined, 0, true, hold, true, true, 0.07));
         this.tone(146.83*ratio, 1.1, 'sine', undefined, 0, false, hold, true, true, 0.16);
-        this.tone(110*ratio, 0.3, 'sine', 55*ratio, 0, false, 0, true, true, 0.2);
+        this.tone(110*ratio, 0.3, 'sine', 55*ratio, 0, false, 0.3, true, true, 0.2);
         this.tone(110*ratio, 0.5, 'sine', 55*ratio, 0, false, hold, true, true, 0.22);
         this.noise(0.9, 5200, 'highpass', 0, true, hold, 0.08);
         this.noise(0.18, 260, 'lowpass', 0, false, 0, 0.2);
@@ -7502,6 +7573,12 @@ loadPrefs();
   customInput.addEventListener('input', applyFromControls);
 })();
 let waveIndex = 0;          // number of waves started
+let freeExpansionOwed = 0; // EXPAND-AFTER-CLEAR-01 (1.7.36): the free expansion for a cleared wave arrives only once every enemy is gone
+function expansionBlockedReason(){
+  if(waveState !== 'IDLE') return 'Wave in progress';
+  if(countLooseEnemies() > 0) return 'Defeat every enemy first';
+  return '';
+}
 let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (activeWavePlan dispatching outcome-gated batches, see advanceWaveDispatch()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
 let everBuiltFighter = false; // true the moment the player has ever had an active non-Barricade tower — see checkAllFightersDown(), which uses this to distinguish "wiped mid-wave" from "hasn't built anything yet"
 // CA220 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA220
@@ -7511,7 +7588,7 @@ let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the w
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
 let barricadeQueueStartedAt = 0; // when the current unbroken stretch of congestion began — drives the 15s force-resume safety valve so spawning can never pause permanently, even if the player has no way left to break the jam
-let waveTimer = 0;
+let waveTimer = 0, countdownBeatPlayed = -1;
 // CA221 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA221
 const sessionStartRealTime = Date.now();
 // CA222 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA222
@@ -7634,7 +7711,7 @@ const LOOT_TONIC_SOURCES = [
 let lootWaveTracked = -1, lootRegularDropsThisWave = 0;
 const FIRST_MAP_DROP_KILL = 5;
 const FIRST_MAP_SCROLL_ITEM = Object.freeze({ id: 'FIRST_MAP_SCROLL', name: 'Map', icon: '🗺️', rarity: 'SPECIAL', isMapScroll: true, cost: 0, isDropOnly: true });
-const GOLD_MAP_BAG_ITEM = Object.freeze({ id: 'GOLD_MAP_BAG', name: 'Gold Map Bag', icon: '💰', rarity: 'RARE', isExpansionBag: true, cost: 0, isDropOnly: true });
+const GOLD_MAP_BAG_ITEM = Object.freeze({ id: 'GOLD_MAP_BAG', name: 'Gold Bag', icon: '💰', rarity: 'RARE', isExpansionBag: true, cost: 0, isDropOnly: true });
 let firstTenEnemyKillCount = 0, firstMapScrollDropped = false;
 function pickFromList(list){ return list[Math.floor(Math.random() * list.length)]; }
 function pickFoodOfKind(kindName){ return pickFromList(FOOD_ITEMS.filter(item => item.kind === kindName)); }
@@ -7666,7 +7743,7 @@ function dropItemsFromEnemy(enemy){
   }
   if(Math.random() < 1/250 && groundItems.length < MAX_GROUND_ITEMS){
     spawnGroundItem(enemy.x + (Math.random()-0.5)*18, enemy.y - 8, GOLD_MAP_BAG_ITEM, 'rare enemy drop');
-    showToast('A rare map bag! Click it for a free expansion.');
+    showToast('A gold bag with a map inside! Click it for a free expansion.');
     trackGameEvent('item_dropped', { item: GOLD_MAP_BAG_ITEM.id, rarity: GOLD_MAP_BAG_ITEM.rarity, enemy_type: enemy.type });
   }
   if(Math.random() < 1/500) dropGoldBag(enemy.x + (Math.random()-0.5)*18, enemy.y);
@@ -7739,7 +7816,9 @@ function itemDropTargetAt(point){
   let nearest=null,nearestDistSquared=ITEM_DROP_SNAP_RADIUS*ITEM_DROP_SNAP_RADIUS;
   for(const tower of towerPool){
     if(!tower.active || tower.type==='BARRICADE') continue;
-    const dx=tower.x-point.x,dy=tower.y-point.y,distanceSquared=dx*dx+dy*dy;
+    // HEAD-SNAP-01 (1.7.36): the whole stickman counts, so hovering over the head snaps as readily as hovering over the body.
+    const dx=tower.x-point.x,dy=tower.y-point.y,dyHead=tower.y-28-point.y,dyTorso=tower.y-12-point.y;
+    const distanceSquared=Math.min(dx*dx+dy*dy, dx*dx+dyHead*dyHead, dx*dx+dyTorso*dyTorso);
     if(distanceSquared<nearestDistSquared){nearest=tower;nearestDistSquared=distanceSquared;}
   }
   return nearest;
@@ -9842,16 +9921,22 @@ class Enemy{
       if(isBossType){
         const bossTarget = findNearestActiveTower(this.x, this.y, BOSS_AGGRO_RADIUS);
         if(bossTarget){ this.escapedAttackTarget = bossTarget; this.escapedAttackTimer = 0; }
-      } else if(Math.random() < 0.5){
-        // CA306 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA306
-        const target = findNearestActiveTower(this.x, this.y, 140);
-        if(target){ this.escapedAttackTarget = target; this.escapedAttackTimer = 0; }
+      } else {
+        // LOOSE-CURIOUS-01 (1.7.36): the closer an escaped enemy wanders to a stickman, the likelier it is to aggro that stickman
+        // (about 8% at the edge of its notice radius rising to about 90% when touching); farther away it only drifts toward them.
+        const target = findNearestActiveTower(this.x, this.y, LOOSE_NOTICE_RADIUS);
+        this.curiousTarget = target || null;
+        if(target){
+          const closeness = 1 - Math.min(1, Math.hypot(target.x - this.x, target.y - this.y) / LOOSE_NOTICE_RADIUS);
+          if(Math.random() < 0.08 + 0.82 * closeness * closeness){ this.escapedAttackTarget = target; this.escapedAttackTimer = 0; }
+        }
       }
     }
     this.wanderRepickTimer -= dt;
     if(this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = 900 + Math.random()*1400;
-      const ang = Math.random()*Math.PI*2;
+      let ang = Math.random()*Math.PI*2;
+      if(this.curiousTarget && this.curiousTarget.active && Math.random() < 0.6) ang = Math.atan2(this.curiousTarget.y - this.y, this.curiousTarget.x - this.x) + (Math.random() - 0.5) * 0.9; // curious: ambles toward a nearby stickman
       const bumbleSpeed = this.packedSpeed() * 0.4; // slower, aimless — reads as "loose," not still fleeing somewhere
       this.wanderVx = Math.cos(ang)*bumbleSpeed;
       this.wanderVy = Math.sin(ang)*bumbleSpeed;
@@ -10403,6 +10488,12 @@ class Enemy{
   draw(ctx){
     ctx.save();
     ctx.globalAlpha = 1.0; // strictly bracket every enemy draw pass so no leftover alpha/composite state from a previous draw call (this enemy or another) can wash this one out
+    if(this.escaped && !this.isLivestock && !this.isGuardian && !this.isHutBuilding){
+      // LOOSE-MARKER-01 (1.7.36): a soft pulsing red ring marks every loose enemy; they quietly cost health while loose.
+      const pulse = 0.5 + 0.5*Math.sin(presentationTime/450);
+      ctx.save(); ctx.strokeStyle = 'rgba(255,70,70,' + (0.35 + 0.35*pulse).toFixed(2) + ')'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 7 + pulse*2, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+    }
     // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]. The translucent aura RINGS below are purely
     // decorative reinforcement of information the status icons (drawStatusIcons calls) already
     // convey — under heavy visual load we skip only these rings, never the icons themselves, so
@@ -11964,8 +12055,11 @@ const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01 (1.6.129) — see CHANGELOG.m
   CRAZY_CHEF: 'KNIFE', GLAIVE: 'BLADE'
 };
 const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4; // BLEED-WHILE-STUCK-01 (1.6.131) — see CHANGELOG.md § [1.6.131]
-const PROJECTILE_STICK_BASE_CHANCE = 0.02, PROJECTILE_STICK_PER_STRENGTH = 0.02;
-function projectileStickChance(strength){ return clampNum(PROJECTILE_STICK_BASE_CHANCE + Math.max(0, strength || 0)*PROJECTILE_STICK_PER_STRENGTH, 0, 1); }
+// STICK-CHANCE-01 (1.7.36): arrows sticking in enemies had fallen to 2% with a 2%-per-point slope, so it almost never happened below
+// 50 STR and was always on above it. Restored to a visible baseline that rises gradually with every STR point: about 12% at 0 STR,
+// about 52% at 250 and about 92% at 500 (the stat effect cap).
+const PROJECTILE_STICK_BASE_CHANCE = 0.12, PROJECTILE_STICK_PER_STRENGTH = 0.0016;
+function projectileStickChance(strength){ return clampNum(PROJECTILE_STICK_BASE_CHANCE + Math.min(STAT_EFFECT_CAP, Math.max(0, strength || 0))*PROJECTILE_STICK_PER_STRENGTH, 0, 0.95); }
 function projectileStickKind(sourceTower){
   if(!sourceTower) return null;
   if(sourceTower.type === 'ARCHER') return 'ARROW';
@@ -13532,6 +13626,38 @@ function restoreLooseCoins(savedCoins){
     c.lifespan=saved.lifespan; c.vx=0; c.vy=0; c.active=true;
   }
 }
+// HEART-FLIGHT-01 (1.7.36): hearts rise from a Healing Fountain and fly up to the lives counter so the heal is obvious.
+const heartHudFlights = Array.from({length:12},()=>({active:false}));
+let heartHudFlightCount = 0;
+function launchHeartHudFlights(x, y, count){
+  if(PREFERS_REDUCED_MOTION || (gameState!=='PLAYING' && gameState!=='PAUSED') || document.hidden) return;
+  const hearts = Math.max(1, Math.min(6, count));
+  for(let i = 0; i < hearts; i++){
+    const flight = heartHudFlights.find(f => !f.active);
+    if(!flight) return;
+    flight.x = x*camera.zoom + camera.x + (i - (hearts-1)/2)*10; flight.y = y*camera.zoom + camera.y;
+    flight.startWidth = CANVAS_W; flight.startHeight = CANVAS_H; flight.age = -i*90; flight.active = true; heartHudFlightCount++;
+  }
+}
+function updateHeartHudFlights(dt){
+  if(!heartHudFlightCount) return;
+  for(const flight of heartHudFlights) if(flight.active){ flight.age += dt; if(flight.age >= 900){ flight.active = false; heartHudFlightCount--; } }
+}
+function drawHeartHudFlights(ctx){
+  if(!heartHudFlightCount) return;
+  const canvasRect = getCanvasRect(), target = livesVal.getBoundingClientRect();
+  if(!canvasRect.width || !canvasRect.height) return;
+  const tx = (target.left + target.width/2 - canvasRect.left)*CANVAS_W/canvasRect.width;
+  const ty = (target.top + target.height/2 - canvasRect.top)*CANVAS_H/canvasRect.height;
+  ctx.save(); ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for(const f of heartHudFlights) if(f.active && f.age >= 0){
+    const t = Math.min(1, f.age/900), p = t*t*(3 - 2*t), arc = Math.sin(t*Math.PI);
+    const startX = f.x*CANVAS_W/f.startWidth, startY = f.y*CANVAS_H/f.startHeight;
+    ctx.globalAlpha = t > 0.9 ? (1 - t)/0.1 : 1;
+    ctx.fillText('❤️', startX + (tx - startX)*p + arc*14, startY + (ty - startY)*p - arc*30);
+  }
+  ctx.restore();
+}
 const goldHudFlights=Array.from({length:32},()=>({active:false}));
 let goldHudFlightCount=0, lastGoldHudFlightAt=-1e9;
 function launchGoldHudFlight(x,y){
@@ -13684,6 +13810,7 @@ function openGoldBag(groundItem, x, y){
   gold += bagGold;
   launchGoldHudFlight(x,y);
   spawnFloatingText(x, y - 16, '+💰' + bagGold, '#ffd700');
+  spawnFloatingText(x, y - 32, '🪙 more coins to grab!', '#ffe082'); // BAG-PAYOUT-TEXT-01 (1.7.36): the bag pays immediately, then its coins are a second reward
   spawnGoldBagCoinBurst(x, y);
   groundItems = groundItems.filter(gi => gi !== groundItem);
   itemLogReleased(groundItem.itemDef, 'opened');
@@ -15488,7 +15615,7 @@ function startNextWave(){
   showToast(plan.label);
   resetWaveDispatch();
   activeWavePlan = plan;
-  waveTimer = 0;
+  waveTimer = 0; countdownBeatPlayed = -1;
   waveIndex++;
   waveState = 'SPAWNING';
   logGameEvent('wave started: lives ' + lives + ', gold ' + gold + ', speed ' + gameSpeed + 'x');
@@ -15878,7 +16005,7 @@ function update(dt){
       }
       { // FREE-EXPAND-EVERY-WAVE-01 (1.6.121) — see CHANGELOG.md § [1.6.121]
         // CA660 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA660
-        grantFreeExpansion();
+        freeExpansionOwed++;
       }
       if(wavesCompleted % 10 === 0){
         showMilestoneToast(wavesCompleted);
@@ -16133,6 +16260,7 @@ function render(ctx){
 
   ctx.restore();
   drawGoldHudFlights(ctx);
+  drawHeartHudFlights(ctx);
   drawBossCompass(ctx);
   updateAndDrawBlowingLeaves(ctx);
   if(showFpsCounter) drawFpsCounter(ctx);
@@ -16252,7 +16380,7 @@ function buildDebugOverlayLayout(ctx){
   // available canvas width at the default 11px, the whole overlay's font scales down (bounded by
   // MIN_DEBUG_FONT_PX) and every line is re-measured at that size — one line each, always.
   const MIN_DEBUG_FONT_PX = 7;
-  const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : CANVAS_W-24;
+  const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : Math.min(CANVAS_W-24, 520); // DEBUG-WRAP-01 (1.7.36): long lines wrap instead of widening the panel
   let longestLineWidth = 0;
   const measuredLineWidths = [];
   for(let i=0;i<lines.length;i++){
@@ -16260,10 +16388,24 @@ function buildDebugOverlayLayout(ctx){
     longestLineWidth = Math.max(longestLineWidth, width);
     measuredLineWidths.push(width);
   }
-  let fontPx = baseFontPx;
+  const fontPx = baseFontPx;
   if(longestLineWidth > availableWidth && longestLineWidth > 0){
-    fontPx = Math.max(MIN_DEBUG_FONT_PX, Math.floor(baseFontPx * (availableWidth / longestLineWidth)));
-    ctx.font = 'bold ' + fontPx + 'px monospace';
+    const wrappedLines = [];
+    for(const line of lines){
+      let rest = line, first = true;
+      while(rest.length){
+        let fit = rest.length;
+        while(fit > 1 && ctx.measureText((first ? '' : '  ') + rest.slice(0, fit)).width > availableWidth) fit--;
+        let cut = fit;
+        if(fit < rest.length){ const space = rest.lastIndexOf(' ', fit); if(space > fit * 0.4) cut = space; }
+        wrappedLines.push((first ? '' : '  ') + rest.slice(0, cut).trimEnd());
+        rest = rest.slice(cut).trimStart();
+        first = false;
+      }
+    }
+    lines.splice(0, lines.length, ...wrappedLines);
+    measuredLineWidths.length = 0;
+    for(const wrapped of lines) measuredLineWidths.push(ctx.measureText(wrapped).width);
   }
   const lineHeight = fontPx + (compact ? 2 : 3);
   // Stay below the HUD/FPS counter. On short viewports, show the highest-priority lines that fit
@@ -16409,8 +16551,9 @@ function resetPhaseTime(){
   for(const k in phaseTime) phaseTime[k] = 0;
 }
 // CA687 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA687
-const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0 };
-const renderPhaseMaxSeen = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0 };
+const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0 }; // WORLD-SUBPHASES-01 (1.7.36): depthSorted is the whole world pass; the world* keys split it
+function phaseLabel(key){ return key === 'depthSorted' ? 'worldDrawing(whole pass, not only sorting)' : key; }
+const renderPhaseMaxSeen = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0 };
 function resetRenderPhaseTime(){
   for(const k in renderPhaseTime) renderPhaseTime[k] = 0;
 }
@@ -16836,19 +16979,22 @@ function attractPhaseAt(loopMs){
 }
 // CA692 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA692
 function attractSpawnPoint(){
-  const side = Math.floor(Math.random()*4);
-  const pad = 0.08; // was 0.12 — enemies now spend less of their walk fully off-screen before becoming visible
-  let xf, yf;
-  if(side === 0){ xf = Math.random(); yf = -pad; }               // top
-  else if(side === 1){ xf = Math.random(); yf = 1 + pad; }        // bottom
-  else if(side === 2){ xf = -pad; yf = Math.random(); }           // left
-  else { xf = 1 + pad; yf = Math.random(); }                      // right
-  return { xf, yf };
+  // ATTRACT-HORIZON-01 (1.7.36): enemies walk in from the left or right edge along the ground band, as if coming over the
+  // horizon, and never drop in from the top or bottom of the screen.
+  const fromLeft = Math.random() < 0.5, pad = 0.08;
+  return { xf: fromLeft ? -pad : 1 + pad, yf: 0.38 + Math.random()*0.42 };
 }
 function attractFormationCenter(){
   let cx = 0, cy = 0;
   for(const f of ATTRACT_FORMATION){ cx += f.xf; cy += f.yf; }
   return { xf: cx/ATTRACT_FORMATION.length, yf: cy/ATTRACT_FORMATION.length };
+}
+// The attract screen is mostly the big angry red guy (the Grunt), with the occasional tank and a few others for variety.
+function attractPickEnemyType(){
+  const roll = Math.random();
+  if(roll < 0.72) return 'GRUNT';
+  if(roll < 0.86) return 'TANK';
+  return ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)];
 }
 function attractSpawnEnemy(now){
   const spawn = attractSpawnPoint();
@@ -16858,7 +17004,7 @@ function attractSpawnEnemy(now){
   const targetXf = clampNum(center.xf + (Math.random()*2-1)*jitter, 0.08, 0.92);
   const targetYf = clampNum(center.yf + (Math.random()*2-1)*jitter, 0.08, 0.92);
   return {
-    type: ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)],
+    type: attractPickEnemyType(),
     fromXf: spawn.xf, fromYf: spawn.yf, toXf: targetXf, toYf: targetYf,
     t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false // halved from 0.00028-0.00038 — a saunter, not a rush, per direct request
   };
@@ -17220,13 +17366,20 @@ function bossIsOnField(){
   }
   return bossFieldCached;
 }
+let softwareRenderingNoticeShown = false;
 function updatePresentationEffects(frameMs){
+  if(!softwareRenderingNoticeShown && renderEnvironment.softwareRendering === true && gameState === 'PLAYING'){
+    softwareRenderingNoticeShown = true; // GPU-NOTICE-01 (1.7.36): the browser is drawing on the CPU; a quiet bell note says how to fix it, never a popup
+    recordNotification('🖥️ Graphics acceleration is off', 'Your browser is drawing the game on the CPU (' + renderEnvironment.gpuRenderer + '). Turning on hardware acceleration in the browser settings (Settings, System, Use graphics acceleration when available, then restart) usually makes play much smoother. You can also pick Low graphics in Settings.');
+  }
+  if(freeExpansionOwed > 0 && waveState === 'IDLE' && countLooseEnemies() === 0){ freeExpansionOwed--; if(!grantFreeExpansion()) freeExpansionOwed = 0; }
   audioEngine.setMusicPhase(waveState !== 'IDLE' || countLooseEnemies() > 0 ? (bossIsOnField() ? 'boss' : 'wave') : 'field');
   updateDeathAnims();
   const clampedMs = Math.min(100, frameMs);
   updateFloatingTexts(clampedMs);
   updateCoinPickups(clampedMs);
   updateGoldHudFlights(clampedMs);
+  updateHeartHudFlights(clampedMs);
   ambientLogElapsedMs += clampedMs;
   if(ambientLogElapsedMs >= AMBIENT_LOG_INTERVAL_MS){ ambientLogElapsedMs %= AMBIENT_LOG_INTERVAL_MS; maybeSpawnAmbientLog(); }
   updateBarks(clampedMs);
@@ -17274,6 +17427,8 @@ function loop(now){
   // CA720 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA720
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
     waveTimer += frameTime;
+    const countdownBeat = Math.min(3, Math.floor(waveTimer / 1000)); // COUNTDOWN-BUZZER-01 (1.7.36): a buzzer on 3, 2, 1 and a higher one on GO
+    if(countdownBeat > countdownBeatPlayed){ countdownBeatPlayed = countdownBeat; playSound(countdownBeat < 3 ? 'countdown_tick' : 'countdown_go'); }
   }
   updatePresentationEffects(frameTime);
   const simulationSpeed = effectiveGameSpeed();
@@ -17788,6 +17943,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  if(gameState === 'PLAYING' && !draggingGroundItem && coinPickups.length){ const hoverPoint = toCanvasCoords(e); tryCollectCoinAt(hoverPoint.x, hoverPoint.y, e.pointerType); } // HOVER-COIN-01 (1.7.36): a mouse hover or a finger sliding over a coin collects it
   if(collectedPickupPointers.has(e.pointerId)) return;
   if(activePointers.size === 2 && (draggingGroundItem || collectedPickupPointers.size)) return;
   const prev = activePointers.get(e.pointerId);
@@ -18106,7 +18262,7 @@ function updateHUDImmediate(){
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞');
   const looseCount = countLooseEnemies();
-  setHudText(looseNotice, looseCount ? '🏃 ' + looseCount + ' loose' : '');
+  setHudText(looseNotice, looseCount ? '🏃 ' + looseCount + ' loose · costing ❤️' : '');
   looseNotice.hidden = !looseCount;
   const waveProgress = document.getElementById('waveProgress');
   if(waveProgress){
@@ -18142,8 +18298,9 @@ function refreshBuildMenuAvailability(grid){
   if(expandRow){
     const full = regionFullyExpanded();
     const cost = expansionCost();
-    expandRow.classList.toggle('disabled', full || waveState !== 'IDLE' || gold < cost);
-    const label = full ? 'Max Size' : 'Expand (💰'+cost+')';
+    const blocked = expansionBlockedReason();
+    expandRow.classList.toggle('disabled', full || !!blocked || gold < cost);
+    const label = full ? 'Max Size' : blocked ? 'Expand — ' + blocked : gold < cost ? 'Expand (💰'+cost+') — need more gold' : 'Expand (💰'+cost+')';
     const name = expandRow.querySelector('.name');
     if(name.textContent !== label) name.textContent = label;
   }
@@ -18187,18 +18344,18 @@ function buildTowerModal(){
   const canExpand = !fullyExpanded && waveState === 'IDLE' && gold >= cost;
   const expandRow = document.createElement('div');
   expandRow.className = 'build-row expand-row' + (canExpand ? '' : ' disabled');
-  const expandLabel = fullyExpanded ? 'Max Size' : 'Expand (💰' + cost + ')';
+  const expandLabel = fullyExpanded ? 'Max Size' : expansionBlockedReason() ? 'Expand — ' + expansionBlockedReason() : gold < cost ? 'Expand (💰' + cost + ') — need more gold' : 'Expand (💰' + cost + ')';
   expandRow.innerHTML =
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map — only between waves, as many times as you can afford. You also get one free expansion for every wave cleared.</div>';
+    '<div class="build-row-blurb">Grows the map. Available between waves once every enemy is defeated, including any that escaped. Each cleared wave also gives one free expansion, which arrives when the last enemy falls. If this row is greyed out, its label says why.</div>';
   {
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
       e.stopPropagation();
       unlockAudio();
-      if(regionFullyExpanded() || waveState !== 'IDLE' || gold < expansionCost()) return;
+      if(regionFullyExpanded() || expansionBlockedReason() || gold < expansionCost()) return;
       if(expandRegion()){ updateHUD(); closeTowerModal(); }
     });
   }
@@ -19191,7 +19348,7 @@ function tickDistributionLine(){
   const pct = n => (n/hist.length*100).toFixed(0);
   return 'Tick distribution (last ' + hist.length + ' frames): 0 ticks ' + pct(buckets['0']) + '%,  1 tick ' +
     pct(buckets['1']) + '%,  2 ticks ' + pct(buckets['2']) + '%,  3+ ticks ' + pct(buckets['3+']) +
-    '%  (healthy 1x play should be overwhelmingly "1 tick"; a large "3+" slice at normal speed is the actual spiral-of-death signature, not just a high max)';
+    '%  (at 1x, healthy play is overwhelmingly "1 tick" and a large "3+" slice is the spiral-of-death signature; at 2x and above several ticks per frame are expected, so judge them against the requested speed, not on their own)';
 }
 function generateDebugLog(){
   const now = new Date();
@@ -19263,7 +19420,7 @@ function generateDebugLog(){
   s += 'Worst wall-clock gap this session: ' + perfStats.worstWallGapMs.toFixed(2) + 'ms, at wave ' + perfStats.worstWallGapAtWave + '\n';
   s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / current speed-scaled cap ' + perfStats.lastSimulationTickCap + ', base ' + MAX_SIMULATION_TICKS_PER_FRAME + ' at 1x)\n';
   s += 'Adaptive detail: ' + (underHeavyVisualLoad ? 'active' : 'inactive') + ', ' + perfStats.adaptiveVisualFrames +
-    ' rendered frame(s) active; depth-sort pressure ' + perfStats.depthSortPressureFrames + ' frame(s) above ' +
+    ' rendered frame(s) active; world-drawing pressure ' + perfStats.depthSortPressureFrames + ' frame(s) above ' +
     HEAVY_VISUAL_LOAD_DEPTH_SORT_MS.toFixed(1) + 'ms (' + HEAVY_VISUAL_LOAD_HOLD_FRAMES + '-frame hold)\n';
   s += 'Worst frame this session: ' + perfStats.worstFrameMs.toFixed(2) + 'ms, at wave ' + perfStats.worstFrameAtWave +
     ', ' + perfStats.worstFrameTicks + ' ticks that frame (separate from the rolling-window max above — ' +
@@ -19292,8 +19449,8 @@ function generateDebugLog(){
       s += '   decal rebuilds: ' + e.decalRebuildCount + ', last ms ' + e.decalRebuildLastMs + '\n';
       s += '   recent deaths (last 5s, maximum 40): ' + JSON.stringify(e.recentDeaths) + '\n';
       s += '   audio: ' + e.audioState + ', effects/music sources ' + e.audioVoices + '/' + e.musicVoices + '\n';
-      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
-      s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
+      s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
     }
   }
   appendHistoricalPerfEvents('SESSION SLOW-FRAME SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', frame workload >=16.7ms)', perfStats.slowFrameEvents, 'frame');
@@ -19319,8 +19476,8 @@ function generateDebugLog(){
     s += '   decal rebuilds: ' + e.decalRebuildCount + ', last ms ' + e.decalRebuildLastMs + '\n';
       s += '   recent deaths (last 5s, maximum 40): ' + JSON.stringify(e.recentDeaths) + '\n';
       s += '   audio: ' + e.audioState + ', effects/music sources ' + e.audioVoices + '/' + e.musicVoices + '\n';
-      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
-    s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => k + '=' + v.toFixed(3)).join(' ') + '\n';
+      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
+    s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
   }
   s += '\nLONG-SESSION PERFORMANCE TREND (completed active-play minute windows)\n';
   s += '--------------------------------------------------------------------\n';
@@ -19340,7 +19497,7 @@ function generateDebugLog(){
         'ms  render avg/max ' + e.averageRenderMs.toFixed(2) + '/' + e.maxRenderMs.toFixed(2) +
         'ms  callback gap avg/max ' + e.averageCallbackGapMs.toFixed(2) + '/' + e.maxCallbackGapMs.toFixed(2) +
         'ms  slow frames/gaps ' + e.slowFrames + '/' + e.longGaps + '\n';
-      s += '   adaptive detail ' + e.adaptiveDetailFrames + '/' + e.frames + ' frames (' + e.adaptiveDetailFramePercent.toFixed(1) + '%), depth-sort pressure frames ' + e.depthSortPressureFrames + '\n';
+      s += '   adaptive detail ' + e.adaptiveDetailFrames + '/' + e.frames + ' frames (' + e.adaptiveDetailFramePercent.toFixed(1) + '%), world-drawing pressure frames ' + e.depthSortPressureFrames + '\n';
       s += '   camera moving ' + e.cameraMovingFrames + '/' + e.frames + ' frames (' + e.cameraMovingFramePercent.toFixed(1) + '%), slow while moving ' +
         e.cameraMovingSlowFrames + ', render avg moving/stationary ' + e.averageMovingRenderMs.toFixed(2) + '/' +
         e.averageStationaryRenderMs.toFixed(2) + 'ms, max pan ' + e.maxCameraMovePixels.toFixed(2) + 'px, max zoom Δ ' +
@@ -19464,12 +19621,14 @@ function generateDebugLog(){
   const renderPhaseLabels = { mapBlit: 'Static map blit (drawImage)', decals: 'drawDecals() — blood pools/streaks/debris',
     depthSorted: 'drawDepthSortedLayer() — scenery+enemies+towers+debris', groundItems: 'Ground items + drag overlay',
     minionsProjectiles: 'Cat/Skeleton/Projectile draw loops', particlesText: 'drawParticles()+drawFloatingTexts()',
-    overlays: 'Post-camera overlays (boss compass/leaves/wave countdown)' };
+    overlays: 'Post-camera overlays (boss compass/leaves/wave countdown)',
+    worldSort: '  of world pass: depth sort', worldScenery: '  of world pass: scenery drawing', worldEnemies: '  of world pass: enemy drawing',
+    worldTowers: '  of world pass: fighter drawing (with shadows)', worldDebris: '  of world pass: bones, worms and rubble' };
   let renderPhaseTotalThisFrame = 0;
-  for(const k in renderPhaseTime) renderPhaseTotalThisFrame += renderPhaseTime[k];
+  for(const k in renderPhaseTime) if(k.indexOf('world') !== 0) renderPhaseTotalThisFrame += renderPhaseTime[k]; // the world* keys are parts of depthSorted and must not be counted twice
   for(const k in renderPhaseTime){
     const pct = renderPhaseTotalThisFrame > 0 ? (renderPhaseTime[k]/renderPhaseTotalThisFrame*100) : 0;
-    s += '  ' + renderPhaseLabels[k].padEnd(48) + renderPhaseTime[k].toFixed(3) + 'ms this frame' +
+    s += '  ' + (renderPhaseLabels[k] || k).padEnd(48) + renderPhaseTime[k].toFixed(3) + 'ms this frame' +
       '  (' + pct.toFixed(1) + '%,  worst frame ever: ' + renderPhaseMaxSeen[k].toFixed(3) + 'ms)\n';
   }
   s += '\n';
@@ -19675,6 +19834,14 @@ document.getElementById('inspAxeModeBtn').addEventListener('pointerdown', (e) =>
 // CA773 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA773
 
 const inspQuickSlots = document.getElementById('inspQuickSlots');
+function positionQuickSlots(){
+  const rect = inspectPanel.getBoundingClientRect();
+  if(!rect.height) return;
+  const parent = inspQuickSlots.offsetParent ? inspQuickSlots.offsetParent.getBoundingClientRect() : null;
+  const bottomGap = parent ? Math.max(0, parent.bottom - rect.bottom) : 8;
+  inspQuickSlots.style.setProperty('--quick-bottom', (bottomGap + rect.height + 6) + 'px');
+}
+if(typeof ResizeObserver === 'function') new ResizeObserver(positionQuickSlots).observe(inspectPanel);
 const quickSlotElements = [...document.querySelectorAll('.quick-slot')];
 const inspBuffPips = document.getElementById('inspBuffPips');
 const BUFF_PIP_ROWS = [['damage', '⚔️', 'POWER'], ['speed', '⚡', 'HASTE'], ['range', '🎯', 'HASTE']];
@@ -19720,6 +19887,7 @@ function updateQuickSlots(tower, isBarricade){
   }
   for(let i = shown; i < quickSlotElements.length; i++){ quickSlotElements[i].classList.add('hidden'); quickSlotElements[i].textContent = ''; }
   inspQuickSlots.classList.toggle('hidden', shown === 0);
+  positionQuickSlots();
 }
 let hpBarShowPercent = false; // toggled by clicking the HP bar — see the click handler near the other inspect-panel button wiring
 function updateInspectPanel(){
@@ -19977,7 +20145,7 @@ function updateInspectPanel(){
     btn.disabled = noPoints || statCapped;
     btn.classList.toggle('has-points', !noPoints && !statCapped);
     btn.classList.toggle('primary-stat', stat === primaryStatOfSelected);
-    btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : 'Support stat';
+    btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : stat === 'int' ? 'Intelligence — drives Mage damage and every stickman\'s accuracy' : 'Support stat';
   }
 }
 

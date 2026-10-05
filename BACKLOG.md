@@ -8,6 +8,12 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## Performance investigation (from the owner's recorded run)
+
+- *Evidence* — Browser reports software rendering (Basic Render Driver); confirm the owner's Chrome hardware acceleration setting, then compare frame cost at the same resolution with it on.
+- *Play-test* — Split the broad drawing timer; test scenery and bone sprite caching, off-screen culling of a selected fighter, a real-time adaptive detail hold, and per-category decal counts. Measure before and after at the same board, zoom, speed and resolution.
+- *Owner decision* — Stat balance ideas raised in outside reviews (accuracy curve, 15-point diminishing brackets, auto-spend marginal utility) are held until frame delivery is fixed; none is applied.
+
 ## Owner decisions
 
 - *Play-test* — Gold bag payouts (1–100 direct, 3–9 coins worth 1–25 each) are about three times the previous total; confirm the economy still feels earned.

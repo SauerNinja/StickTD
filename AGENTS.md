@@ -22,6 +22,21 @@ These rules supersede older conflicting historical notes. Scenery uses isScenery
 
 The score must beat the best DOS-era music and never feel boring: it keeps evolving rather than looping. Each 24-bar cycle moves the whole arrangement to a new key and every ten completed waves shifts it again; combat adds drum fills, a counter-melody, an intensity layer that grows with the number of enemies on the field, and light timing and level humanization. A Boss or Santa on the field switches to the boss arrangement. The wave-clear sound is a layered fanfare transposed to the current key. All scheduling stays on the audio clock, within the voice caps, and independent of game speed (MUSIC-EVOLVE-01, MUSIC-BOSS-01, WAVE-CLEAR-FANFARE-01).
 
+### Standing owner rules added from playtests (1.7.36)
+
+1. **No choice rewards.** The owner never asked for wave or milestone reward choices and does not want them; nothing offers one (RUN-REWARD-REMOVED-01).
+2. **No wind.** No wind sounds and no wind effect on accuracy anywhere in the game. The flag pennant may still flutter visually.
+3. **Expansion after clear.** The free expansion for a cleared wave, and any paid expansion, arrive only once every enemy is defeated, including escaped ones. A disabled Expand row says why in its label (EXPAND-AFTER-CLEAR-01).
+4. **Coins collect on hover or slide.** A mouse passing over a coin, or a finger sliding over it, collects it; bags still open on click or drop.
+5. **Bags and chests.** Bags are only gold bags; a gold bag has a rare chance to contain a map. There is no separate "rare map bag", and there is never a static gold-bag building. A treasure chest may drop bags of gold.
+6. **Intelligence** drives Mage damage and every stickman's accuracy; it is not merely a support stat.
+7. **Regression checks.** Compare against GitHub history when the owner reports something that used to work, name the version where it changed, and restore it. Report regressions found by that comparison every release.
+8. **Sound inspirations.** The owner's DOS references stand for all music work: Warcraft Orc 2, Command and Conquer Bigfoot, Tyrian, One Must Fall, Jazz Jackrabbit, Heroes of Might and Magic and Might and Magic V, with the Animal Crossing-like twang of the wave-clear fanfare liked. Idle music must sound like a coherent martial theme, never random notes; battle music is the standard to match.
+
+### Quick items and the faceplate (owner rule, QUICK-FLOAT-01)
+
+The quick item buttons are free floating buttons above the stickman faceplate, outside it. The faceplate never expands, grows or swallows them, and when it is not expanded it is always its normal size. The row lives outside the scrolling panel, is positioned just above the panel's top edge by script, scales with the panel, hides with it, and stays out of the way of the panel's own layout. Never put the quick items inside the faceplate, never make the faceplate taller or wider to make room for them, and never merge them into the nameplate row; any future change to the inspector must keep this exactly. The design contract checks both that the row is outside the panel and that it is absolutely positioned. Regression history: in 1.6.159 the row was absolutely positioned above the panel; later it was moved inside the panel as a normal block, which made the plate grow.
+
 ### Hacker and Hacks (owner rules; enforced by the design contract, HACKER-01)
 
 1. **Hacks are an opt-in gameplay option.** Settings > Game has "Hacks enabled", off by default and saved with the other preferences. Only when it is on does the Build menu show a Hacks section with the Hacker.

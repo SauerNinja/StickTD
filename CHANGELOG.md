@@ -2,6 +2,70 @@
 
 ## [1.7.36] — 2026-10-04 (UTC)
 
+### Playtest feedback, first batch
+
+From the owner's screenshots and notes. Done and verified in headless Chromium (game loads clean, design contract clean):
+- Wave and milestone choice rewards removed (offerRunReward returns immediately; saved pending rewards are ignored). Never requested.
+- The ambient wind sound added earlier in this release is removed completely. The older gameplay wind was already forced to zero strength, so nothing wind-related affects accuracy.
+- Intelligence tooltip now reads that it drives Mage damage and every stickman's accuracy (it said "Support stat").
+- Expand: both the free expansion for a cleared wave and paid expansion now wait until every enemy, including escaped ones, is defeated. The Expand row label states the reason when greyed out (wave in progress, defeat every enemy first, need more gold) and the help text is rewritten to match. Verified the blocked reasons and that an owed free expansion is granted once the field is clear. Expanding plays a new build sound (four hammer taps, a stone thud and a chime).
+- Coins collect when the mouse hovers over them or a finger slides over them (pointer move on the canvas, bounded to the existing coin pool). Verified a hover collects and credits the coin. Bags still need a click or drop.
+- Countdown buzzer: a buzzer on 3, 2 and 1 and a higher one on GO, new sounds countdown_tick and countdown_go.
+- Item sounds: eating food plays a crunch, potions and capsules play a decanter glug, other items keep their existing chimes (item_eat, item_potion).
+- Idle music rewritten: it wandered because its melody followed the chord roots. It now plays a fixed-key horn motif in D minor, repeated and answered, over an i, bVI, bVII, V progression with a soft war drum on every bar and a snare tap before each phrase turns, in the Orc 2 spirit. The key still moves each cycle and season. Verified 110 melody notes per 24-bar cycle across 14 pitches without errors. Not verified: how it sounds.
+- Debug panel: long lines now wrap at 520 px instead of widening or shrinking the panel. Not verified visually because the panel only draws in play; the code runs without errors.
+
+Second batch, after comparing against GitHub history (99 commits; checked 1.6.120, 1.6.159 and 1.7.36):
+- Regression found: a static coin-pouch scenery building that dropped one to three gold bags when harvested (TREASURE-CHEST-BAGS-01, added in 1.6.157 after the 1.6.120 baseline). It is no longer generated; that spawn roll is now a treasure chest, which is the only thing that drops bags of gold. Old saved pouches still behave as chests.
+- Regression found: the "Gold Map Bag" drop and its "rare map bag" message (not present in 1.6.120). It is now an ordinary Gold Bag that has a rare chance of a map inside, with the message "A gold bag with a map inside!".
+- Escaped enemies are curious: within 220 px of a stickman they amble toward it and aggro with a chance that rises with closeness, checked about every one to two seconds. Measured per-check odds: 6% at 200 px, 23% at 120 px, 64% at 40 px.
+- Dragging an item: the head and torso now count as part of the stickman, so hovering over the head snaps to it as readily as the body (verified a point above the head resolves to the stickman).
+- Not verified: how curiosity reads in a real wave, and the quick-menu regression, which was not found in the history samples checked.
+
+Third batch:
+- Regression found by comparing 1.6.120 and 1.6.159 with 1.7.36: arrows sticking in enemies had collapsed to a 2% chance with a 2% per-point slope, so it almost never happened at low STR and was always on from 50 STR. Restored to a gradual scale: 12% at 0 STR, 28% at 100, 52% at 250 and 92% at 500 (measured). The stale design-contract check that enforced the old numbers is replaced (STICK-CHANCE-01).
+- Healing Fountain: using it now splashes extra water drops and sends hearts that fly up to the lives counter (one heart per two lives healed, up to six, pooled and bounded, skipped for reduced motion). Verified the flights launch, finish and clear without errors.
+- Loose enemies: each now wears a soft pulsing dashed red ring (checked on a rendered test), and the HUD note reads "N loose · costing ❤️". No screen flash.
+- Not verified: how the fountain flights and rings read at normal zoom during a real wave.
+
+Fourth batch, from the owner's recorded run and debug log (as summarized in two outside reviews, which I checked rather than trusted):
+- Finding that matters most: the owner's screenshots show the browser reporting its graphics processor as Microsoft Basic Render Driver (Direct3D11), which is software rendering, even though the machine has a high-end GPU. The game already detects this (renderEnvironment.softwareRendering). Software drawing cost grows with pixel count: in this environment, which is also software-rendered, a 1600 by 900 frame cost about 16.7 ms once the canvas was flushed, while the recorded JavaScript time was only about 0.3 ms, so drawing cost is mostly invisible to the frame timers. A 2560 by 1305 window has about 2.9 times the pixels, which would put a similar frame near 48 ms, consistent with the 60 ms spikes in the log. This points at browser graphics acceleration and resolution, not at entity counts or sorting.
+- The suggestion that the per-fighter shadow redraw is the culprit was tested and not supported: with the shadow function stubbed out the frame cost fell only from 16.7 to 15.8 ms, and the function was not even called in the benchmark setup. No shadow caching was added.
+- New quiet notification in the bell (never a popup) when software rendering is detected, explaining how to turn on hardware acceleration in the browser and that Low graphics helps (GPU-NOTICE-01).
+- Verified bug fixed: a stretched tree drew its shadow without the stretch. The shadow now lengthens with the tree and stays anchored at the same foot (SHADOW-TALL-01); checked on a rendered sheet of normal and stretched trees, a box, a rock and a plant. The cardboard box shadow looked plausible in the sheet, so its reported problem is not yet identified; a screenshot would help.
+- Recorded but not changed, pending measurement: split the broad "depth sorted" timer into scenery, enemies, towers, shadows and debris and relabel it world drawing; test caching scenery and settled bones as sprites; cull a selected fighter's world drawing when off screen; make the adaptive detail hold use real time instead of frames; show tick demand relative to the requested speed in the debug report; count decals by category (live blood, baked blood, bones, worms, rubble); show the last completed minute's performance beside the current one. The High graphics preset forces the render scale floor to 100%, so the automatic resolution governor cannot lower it; that is by design and is the reason the log showed no scale changes.
+
+Quick item menu regression (owner screenshots, before and after):
+- Found by comparing 1.6.159 with 1.7.36: the quick item row was absolutely positioned above the faceplate in 1.6.159, and by 1.7.35 it had become a normal block inside the panel (position relative with a bottom margin), which made the faceplate grow to swallow it. The panel now scrolls on small screens, which would clip a floating child, so the row could not simply be restored in place.
+- Fix (QUICK-FLOAT-01): the row is a separate element outside the panel, right after it, absolutely positioned just above the panel's top edge by script (kept in sync by a resize observer), scaled with the panel through the same scale variable, and hidden whenever the panel is hidden. The faceplate keeps its normal size. Verified in Chromium at 1600 by 900: the panel measures 120 px high and 480 px wide with and without a quick item, the row sits 6 px above it and outside it, a render shows the item floating in its own box like the owner's reference, tapping the slot keeps the stickman selected, and the row hides with the panel. A contract check forbids moving it back inside.
+- Not verified: dragging items out of the floating row onto stickmen (the same slot elements and handlers are used, only their parent moved) and the expanded panel on very small phones.
+
+Cardboard box shadow (owner screenshot, enlarged and compared with a tree):
+- Cause: every item shadow is a flattened copy of the item's silhouette anchored at the glyph's lowest point. A box is a cube standing on a diamond base, and its lowest point is the front corner of that base, so the flattened copy hung under the front corner as a thin strip that poked out on both sides, while the real footprint sat hidden behind the cube. It also did not read as cast in the same direction as the trees.
+- Fix (BOX-SHADOW-01): the box now casts its real footprint, a diamond slightly larger than the base so a soft contact rim shows under its lower edges, swept toward the back right by the box's height like the trees and rocks, as one polygon and one fill. Checked on an enlarged render next to a tree and a rock at two sizes. Caught during testing: my first attempt filled with the canvas's leftover colour and drew nothing visible; the shadow now sets black explicitly, and a contract check requires it.
+- Not verified: how it looks in your browser at your zoom and with Low graphics (shadows are drawn only on High).
+
+Diagnostics (from the outside reviews of the recorded run):
+- The broad "depth sorted" render timer is now split into depth sort, scenery, enemies, fighters (with their shadows) and bones, worms and rubble. They print under the whole pass in the debug log, per frame and with worst-frame maxima, and the whole pass is relabelled "worldDrawing (whole pass, not only sorting)" so it is no longer mistaken for sorting alone. "Depth-sort pressure" now reads "world-drawing pressure". The percentage total counts only the top-level phases so the parts are not counted twice (WORLD-SUBPHASES-01).
+- Tick distribution text now says several ticks per frame are expected at 2x and above and should be judged against the requested speed.
+- Bug caught by testing before shipping: the new phase keys were not registered in the debug log's label table, which made exporting the log throw an error. Fixed and verified that the log exports (about 14,500 characters) with the new lines.
+- Not done: relabel and speed-aware tick demand beyond the wording above, decal counts by category, last-minute performance in the overlay, a real-time adaptive detail hold, and a compact attack-state line on the fighter panel.
+
+Audio follow-up (owner asked whether all music and sound matched expectations):
+- Correction: my wave-clear fanfare had replaced the original soft C, E, G twang that the owner said they like. That broke the add-only rule. The original three notes now open the fanfare and the brass, chord, timpani and cymbal parts follow them, so the twang stays.
+- Remeasured on the live master bus after the idle rewrite: idle music peaks 0.22 at about -33 dBFS, battle peaks 0.27 at about -31 dBFS, the fanfare peaks 0.61. The first four idle bars are D4 D4 F4 D#4 D4 C4 C4 D4 F4 D4 D4 F4 G4 A4 G4 F4 D#4: a D minor motif that leans on the flat second (D#) for the Orc 2 menace.
+- Not verified anywhere: how any of it sounds. Item sounds exist only for food and potions; other items (maps, scrolls, stims, gold bags) keep their older chimes.
+
+Fifth batch:
+- Attract screen: it is now mostly the big angry red guy (the Grunt at 72%, Tanks at 14%, the old variety pool for the rest), and enemies walk in from the left or right edge along the ground band, as if over the horizon, never from the top or bottom. Verified on a real capture of the attract loop (red faces entering from the sides, no console errors) and by a contract check over 300 sampled spawns (ATTRACT-HORIZON-01). The Grunt is my reading of "the big angry red guy"; tell me if you meant the Tank.
+- Mage blurb said it had starter chances to burn, freeze or shock. Those effects only come from element infusion at 250 points, so the blurb now says so.
+- A selected fighter is now culled from world drawing once it is well off screen (160 px margin for its weapon and labels); its inspector stays open (SELECTED-CULL-01).
+- Opening a Gold Bag now also shows "more coins to grab!" so the two-part payout is clear; the direct credit and exactly-once payment are unchanged.
+- README claimed three expansion purchases per idle period; the code has no such limit. The README now matches the code and the Expand help text.
+- Not done: time of day changing with each scene (needs a decision on what counts as a scene), quick menu floating above the player plate (needs a screenshot), bone distribution, curved paths and wave variety, a slower expand animation, cleaner panning, and the blood-effect check.
+
+Not done yet (next batches): attract screen with the big angry red guy coming over the horizon, time of day changing with each scene, escaped enemies wandering and aggroing by distance, a clearer loose-enemy and HP-loss indicator, fountain water and heart flights, the quick menu floating above the player plate, snapping a dragged item to a stickman's head, restoring archer arrows that stick in enemies (STR raises the chance), bone size and position distribution, the cardboard box shadow, removing any static gold-bag building and the "rare map bag", curved and less straight paths, wave formation variety, a slower cleaner expand animation, and cleaner panning. Regression comparison against GitHub history is pending and will be reported.
+
 ### Ice rework, wave-clear fanfare and an evolving score
 
 - Owner decisions applied: Blow Gunner stays a buildable tower and gains elements like every other fighter (verified: a Blow Gunner with 250 STR and 250 INT becomes Dark Matter); gold bag averages, specialist prices and the Hacker selection behavior stand.
@@ -16,7 +80,7 @@
 - Gold flight rule (owner decision, supersedes the 1.7.30 direction): coins fly to the gold counter only when the player clicks a coin or opens a Gold Bag. Removed the flight from enemy bounty income, expired coins, bags auto-credited by expiry or the ground-item limit, and gold loot consumables. Gold is still credited immediately and exactly once. Added design-contract check GOLD-FLIGHT-CLICK-01. Verified: a kill, an auto-credited bag and an expired coin launch zero flights; a clicked coin and an opened bag launch one each.
 - Boss music: when a Boss or Santa is alive on the field the score switches at the next bar to a boss arrangement: 152 bpm, Phrygian throughout, wobble bass, a second kick on the backbeat and hats on every off-beat. Boss presence is cached for 300 ms so the per-frame phase choice never scans the enemy pool each frame. Returns to the normal combat arrangement when no boss remains.
 - Mix level (MIX-LEVEL-01): measured on the live master bus in headless Chromium with a tap before the output. Peaks with the old master gain were 0.13 field, 0.19 wave, 0.19 boss and 0.37 for a loud burst of sixty attack and death sounds over boss music; music loudness sat near -34 dBFS, quiet for a default. Master output gain raised from 0.5 to 0.75 (+3.5 dB); remeasured peaks 0.19 field, 0.29 wave and boss, 0.33 burst, all far below clipping, with the compressor and voice cap unchanged. Not verified: how the new level sounds on real speakers and phones.
-- Wind fix: the flag-wind ambience only started when the wind strength changed, so after the first click it stayed silent until a wave had come and gone. It now starts when music starts. Verified wind gain reaches about 0.02 in the field phase.
+- Wind ambience: shipped earlier in this release and later removed at the owner's request (see the playtest entry); nothing wind-related plays.
 - Hack Menu: added +1,000 and +10,000 wood and stone, +100,000 gold, +25 stat points to every stickman and Expand the map now.
 
 ### Hacks option and the Hacker stickman
