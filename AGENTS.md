@@ -22,6 +22,18 @@ These rules supersede older conflicting historical notes. Scenery uses isScenery
 
 The score must beat the best DOS-era music and never feel boring: it keeps evolving rather than looping. Each 24-bar cycle moves the whole arrangement to a new key and every ten completed waves shifts it again; combat adds drum fills, a counter-melody, an intensity layer that grows with the number of enemies on the field, and light timing and level humanization. A Boss or Santa on the field switches to the boss arrangement. The wave-clear sound is a layered fanfare transposed to the current key. All scheduling stays on the audio clock, within the voice caps, and independent of game speed (MUSIC-EVOLVE-01, MUSIC-BOSS-01, WAVE-CLEAR-FANFARE-01).
 
+### One kind of bag (owner rule, ONE-KIND-OF-BAG-01)
+
+There is only one kind of bag, the normal gold bag, and it carries the luck roll: about one bag in a hundred lets a Map fall out when it is opened or times out, and a Map gives a free expansion when clicked. Never create a "map bag", a "rare bag", or any other special bag kind; rare outcomes are luck rolls on the normal bag (a diamond one time in ten, a map one time in a hundred).
+
+### Diamonds, loose-enemy glow and introduction arrows (owner rules, 1.7.42)
+
+A gold bag drops a diamond about one time in ten; diamonds fall into the landscape like coins but are collected only by a click or tap, never by hovering or sliding, and pay 1 to 100 gold plus the permanent passive upgrade (DIAMOND-GOLD-01, DIAMOND-CLICK-01). Loose enemies are marked with a soft red glow in the same family as the glow on items, never a circle or any outline (LOOSE-GLOW-01). The build, next wave and speed-up introduction arrows play on every new playthrough, are not remembered between visits, and have no Settings option (INTRO-EVERY-GAME-01). The owner dislikes circles and rings as markers: prefer glows.
+
+### Release rule: version every upload (owner rule, RELEASE-VERSION-01)
+
+Every file delivery that changes `index.html` must, in the same delivery: (1) bump `GAME_VERSION` in `index.html`; (2) add or extend a dated, numbered top entry in `CHANGELOG.md` (`## [x.y.z] — date (UTC)`) that describes only what changed since the previous version, with `###` subheadings; (3) update `README.md` for anything player-facing that changed; and (4) update `AGENTS.md` and `BACKLOG.md` when rules or open items change. The owner commits each upload to GitHub, so an upload that keeps the old version number cannot be told apart from the previous one. Never reuse a version number for different files. Before delivering, confirm the version in `index.html`, the top changelog heading and the README agree. This was broken in the 1.7.36 session, when many uploads all said 1.7.36; it was repaired in 1.7.37.
+
 ### Standing owner rules added from playtests (1.7.36)
 
 1. **No choice rewards.** The owner never asked for wave or milestone reward choices and does not want them; nothing offers one (RUN-REWARD-REMOVED-01).
@@ -33,9 +45,13 @@ The score must beat the best DOS-era music and never feel boring: it keeps evolv
 7. **Regression checks.** Compare against GitHub history when the owner reports something that used to work, name the version where it changed, and restore it. Report regressions found by that comparison every release.
 8. **Sound inspirations.** The owner's DOS references stand for all music work: Warcraft Orc 2, Command and Conquer Bigfoot, Tyrian, One Must Fall, Jazz Jackrabbit, Heroes of Might and Magic and Might and Magic V, with the Animal Crossing-like twang of the wave-clear fanfare liked. Idle music must sound like a coherent martial theme, never random notes; battle music is the standard to match.
 
+### More enemies, never harder enemies (owner rule, MORE-ENEMIES-01)
+
+The owner does not want the game harder, but wants more enemies to attack, because attacking enemies is most of what the player does. Little, small and standard counts are multiplied by 1.5 (1.2 after wave 50); never raise enemy health, speed or damage to add difficulty without the owner asking for it. Large and Boss counts stay as they are.
+
 ### Expansion size, road length and tempo (owner rules)
 
-An expansion adds 1 to 3 route tiles in total, never more (EXPAND-SIZE-01). Coins last 15 to 20 seconds (COIN-LIFETIME-01). The longer the road is compared with what is expected for the wave, the more little and standard enemies come, up to 2.5 times, and Large and Boss counts never change (ROUTE-SCALES-WAVE-01). From wave 2 batches arrive 25% closer together (TEMPO-01). The owner finds the tempo weak and the game too easy; keep raising intensity when asked, and ask for numbers before changing enemy health, speed or damage. An expansion reveals about as much grass as route it adds (1 route tile gives about 1 grass, 2 give 2, 3 give 3); other border tiles stay dirt, and the first expansion still opens the starting border in full (GRASS-MATCHES-PATH-01).
+An expansion adds 1 to 3 route tiles in total, never more (EXPAND-SIZE-01). Coins last 15 to 20 seconds (COIN-LIFETIME-01). The longer the road is compared with what is expected for the wave, the more little and standard enemies come, up to 2.5 times, and Large and Boss counts never change (ROUTE-SCALES-WAVE-01). From wave 2 batches arrive 25% closer together (TEMPO-01). The owner first found the tempo weak and the game too easy, then said they do not want it harder and want more enemies instead; add enemies, not strength, and ask for numbers before changing enemy health, speed or damage. At least 45% of all grass tiles stay clear of trees and rocks so there is always room to build (ROOM-TO-BUILD-01). Event props (chests, crates, bushes) never fill more than 30% of the grass (PROP-CAP-01). The road is always surrounded by grass and the green area is only ever added to: no border tile is ever trimmed, turned to dirt or taken away except by the road itself growing onto it, and a stickman is never left on the road or off the grass by an expansion; road growth avoids fighters first and moves them onto grass only if it must (GRASS-NEVER-SHRINKS-01, TOWERS-STAY-PUT-01). This replaced the earlier grass-matches-route trimming, which broke this rule and was removed in 1.7.41.
 
 ### Wave formations (owner rule, WAVE-FORMATION-01)
 

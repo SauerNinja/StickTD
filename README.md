@@ -180,7 +180,7 @@ Blood and gore effects are on by default. Turn them off in Settings → Game. Ev
 - Impact scale reflects hit strength and enemy size. Species profiles distinguish insect hemolymph, undead residue, and the dust and stone chips of rock-bodied enemies.
 - Running drips, bleeding wounds, barricade transfer smears, and footprints give combat a visible trail across the map.
 - Stains pass from fresh red through oxidized brown to aged, layered patterns. Individual lifetimes and local density limits preserve definition along busy paths.
-- Bone fragments, skulls, and burrowing worms add battlefield detail, with each effect drawn in its own layer.
+- Bone fragments of varied size, skulls (more often from bigger enemies), and burrowing worms add battlefield detail, with each effect drawn in its own layer. Red-blooded enemies show bright fresh blood that darkens to their own shade; other enemies keep their own colour.
 
 ## Training and Promotion
 
@@ -207,6 +207,8 @@ Each tower develops along two progression tracks, with **500 points per stat and
 
 Every wave follows a size order: Tiny, Small, Standard, then Large enemies and Bosses on every fifth wave. Dispatch advances as each group clears the route or reaches the finish. Larger enemies move more slowly, bring greater strength, and offer more XP. Enemies walk at a measured pace and arrive well spaced, so your towers have time to line up each target. Wave plans include plentiful smaller foes alongside major threats.
 
+Every wave from the second on is dealt in one of six formations: a steady stream, a surge of big groups, a trickle of small ones, alternating pulses, building pressure, or an irregular rhythm. Sometimes a family travels together in convoys. The same non-steady formation never comes twice in a row. The longer your road is compared with what is expected for the wave, the more small and standard enemies come and the bigger each group is (up to 2.5 times), so a huge road on the first wave means a bigger first wave. Batches arrive a quarter closer together from the second wave on. Every wave also has half again as many small and standard enemies as its base plan (a smaller bonus after wave 50), so there is always plenty to fight; enemies are exactly as strong as before.
+
 The opening 15 waves introduce enemy families gradually, with a short guide to each type's health, speed, bounty, and abilities. End-of-wave summaries report gold gained and experience earned by class.
 
 After wave 100, nine rotating wave archetypes provide varied pacing, enemy mixes, and combat challenges. Bosses can summon Grunt minions, with a compass marker to track those out of view. Spacing keeps the entrance clear as groups arrive.
@@ -215,13 +217,15 @@ After wave 100, nine rotating wave archetypes provide varied pacing, enemy mixes
 
 Enemies follow the road in single file, forming natural queues at Barricades. Swept collision checks keep fast-moving units in contact with the route and one another. Dispatch adapts to a backed-up queue, and a safety timeout helps combat resume if movement stalls. Waypoint margins guide clean turns around spiral corners.
 
+Each expansion adds one to three route tiles in total, and the road is always surrounded by grass: the green area is only ever added to, and a stickman is never left outside it. The road grows in varied styles: mostly normal winding, with zigzags, long runs, and now and then a wild hook or coil. It is kept from cutting itself off, and the road avoids the tiles your stickmen stand on; if it ever must take one, that stickman is moved onto the nearest grass. Expansions are available between waves once every enemy, including any that escaped, is defeated.
+
 ## Items & Heroes
 
 Defeated enemies sometimes leave an item on the road. Equipment shines with a rarity-based glow, from Common through Uncommon and Rare to Epic; currency coins and bags glow gold. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found. Tennis Shoes grant +2 Dexterity and one extra tower move after each cleared wave; a rare Shovel can uncover food, bones or equipment when used nearby.
 
 - **Signature drops.** Many enemies carry an item of their own. Grunts may drop a Headband, Tanks a Granite Heart, Trolls a Bridge Toll, Zombies a Grave Charm and Wraiths a Spectral Veil, and Bosses always leave a special item along with a strong general one. Larger enemies are more likely to drop items than smaller ones.
 - **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. A stickman with spendable stat points can tick **Auto spend** beside them to have new points spent on his main stat automatically. Uncollected items wait on the battlefield for several minutes. Food, potions and other consumables wait in the slots until you tap them or press their number key.
-- **First map reward.** One of your first five eligible enemy defeats drops a map scroll. Click it to reveal a free expansion. Enemies can very rarely leave a gold map bag that grants a free expansion when clicked.
+- **First map reward.** One of your first five eligible enemy defeats drops a map scroll. Click it to reveal a free expansion. There is only one kind of bag, the normal gold bag, and it has a luck roll: about one bag in a hundred lets a Map fall out when it opens or times out. Click the Map for a free expansion.
 - **Shop items.** The **Lucky Branch** 🌿 (+1 STR/+1 DEX/+1 INT, gold and wood) and the **Barricade** 🚧 (see Resources below) can be bought for the selected stickman. Global passive upgrades apply to every stickman you own, present and future.
 - **Heroes.** A stickman with all six slots filled is promoted to **Hero**, with a permanent stat bonus, a visible crown and its own sound. A stickman whose STR, DEX and INT total 100 becomes **Legendary**, a rarer milestone with its own permanent bonus, a name of your choice and the biggest fanfare in the game.
 
@@ -239,7 +243,7 @@ Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Food, Boss T
 - **Cooking and the Campfire.** 🔥 Now and then a Campfire — a fire on two crossed logs — appears near the road after the third wave. It is the only place to cook. Tap it to add wood (15 🪵 buys 2 fuel, up to 8); it burns one fuel at the end of every wave and goes cold at zero. A stickman standing near a lit fire can combine stored foods with the Combine button, spending fuel from the fire. Simple pairs cost 1 fuel: Bacon and Potato make a Breakfast Plate (attack speed), Steak and Carrot a Hearty Stew (restores health), Apple and Blueberries a Fruit Salad (range), Meat on the Bone and a Drumstick a Roast Feast (damage). Complex recipes take three or four foods and 2–3 fuel: Bacon, Potato and Corn make a Sunrise Skillet; Steak, Garlic and Hot Pepper a Fiery Ragout; Strawberries, Cherries and Blueberries a Berry Pie; Carrot, Potato, Corn and Hot Pepper a Harvest Curry that boosts damage, speed and range and heals. Meals are used like stims and last until the end of the round.
 - **Supply crates.** 📦 Crates found as scenery open for 10 gold and hold a stim: Adrenaline (attack speed), Combat Stim (damage), Spotter Scope (range), Field Medkit (heals 40%), or the rare Hyper-Serum (all three). Stim buffs last until the end of the round they are used in.
 - **Berry bushes.** 🪴 Potted bushes are smaller, clear for a flat 5 gold, and drop two or three berries.
-- **Gold bags and the wandering troll.** Clicking a gold bag immediately adds its exact value to your player gold. Unopened bags keep their value and pay out automatically after three minutes. Coins from a chest or Merchant are separate currency pickups: click a landed coin to collect its value, or leave it to disappear after 5–15 seconds. Chests and, rarely, fallen enemies drop Gold Bags that pay their listed amount directly when opened. Trolls on the road also carry gold bags. From wave 5 onward, a wandering troll may stroll the road and club any stickman it stumbles upon; target it and defeat it for 2–3 bags.
+- **Gold bags and the wandering troll.** Clicking a gold bag immediately adds its exact value to your player gold. Unopened bags keep their value and pay out automatically after three minutes. Coins from a chest or Merchant are separate currency pickups: click a landed coin to collect its value, or leave it to disappear after 5–15 seconds. Chests and, rarely, fallen enemies drop Gold Bags that pay their listed amount directly when opened. Trolls on the road also carry gold bags. From wave 5 onward, a wandering troll may stroll the road and club any stickman it stumbles upon; target it and defeat it for 2–3 bags. About one bag in ten also drops a diamond that falls into the landscape like a coin; hovering never collects a diamond, you have to click or tap it, and it pays 1 to 100 gold plus a permanent passive upgrade.
 - **Stickman chatter.** Stickmen occasionally show a mood emoji and a short line at key moments — low health, a swarm, a leak, a boss kill, a close call. It only happens sometimes, for fun.
 - **Medical Supplies**, sold in the Shop, are held in reserve and used automatically: the Bandage and First Aid Kit restore lives on purchase, and the Defibrillator is carried until the moment it's needed — intercepting a defeat and reviving the base at 25% lives.
 
@@ -261,11 +265,13 @@ Now and then, when a wave is cleared, a rare structure appears on the grass besi
 
 Start with 100 lives. Extra lives are available in the Shop, with costs that rise after each purchase.
 
-An enemy costs a life when its full body crosses the checkered finish line. An enemy that gets through and is still alive is *loose*, and each loose enemy costs another life every 6 seconds until it is defeated, so a wave that slips past keeps the pressure on. The count appears under the Next Wave button and clears when none are left. Loose enemies stay on the road and its grass border. Any change to your lives appears beside the health counter, red when you lose lives and green when you gain them. Escaped enemies remain on the map as live targets across waves, and defeating them earns a gold and XP cleanup reward. During breaks between waves, wandering enemies may hunt nearby towers.
+An enemy costs a life when its full body crosses the checkered finish line. An enemy that gets through and is still alive is *loose*, and each loose enemy costs another life every 6 seconds until it is defeated, so a wave that slips past keeps the pressure on. The count appears under the Next Wave button and clears when none are left. Loose enemies stay on the road and its grass border. Any change to your lives appears beside the health counter, red when you lose lives and green when you gain them. Escaped enemies remain on the map as live targets across waves, and defeating them earns a gold and XP cleanup reward. During breaks between waves, wandering enemies may hunt nearby towers. A loose enemy sits in a soft red glow so it is easy to find.
 
 ## Settings
 
 **Choose your visual style.** Low graphics is the starting point for phones and laptops with integrated graphics, with automatic render resolution enabled to lower GPU load when frames stay slow; turn this assist off in Settings if you prefer full sharpness. High graphics adds richer effects, including weight-based screen shake, for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch whenever you like. The resolution assist checks frame pacing every few seconds and can lower render resolution after sustained slow frames. Its default Low-profile floor is 75%; you can set a different floor or turn the assist off in Settings → Video.
+
+An introduction (bouncing hand arrows) points to Build, then Start Wave, then the speed button, and plays on every new playthrough.
 
 
 Video (graphics quality: Low / High, trading off shadows and particle-heavy effects for
@@ -411,7 +417,7 @@ See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and cont
 
 ## Version history
 
-See [CHANGELOG.md](CHANGELOG.md) for the full version history, and [BACKLOG.md](BACKLOG.md) for
+Current version: **1.7.43**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
 
 ## License

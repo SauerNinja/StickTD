@@ -1337,7 +1337,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.36'; // see CHANGELOG.md § [1.7.36]
+const GAME_VERSION = '1.7.43'; // see CHANGELOG.md § [1.7.43]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -3033,14 +3033,14 @@ function validateDesignContract(){
   if(projectileStickKind({ type: 'AXEMAN', axeMode: 'RANGE' }) !== 'AXE' || bleedSourceAllowed({ type: 'AXEMAN', axeMode: 'MELEE' })) problems.push('only a thrown Axeman axe can stick and bleed, never a melee swing (PROJECTILE-STICK-01)');
   if(Object.keys(PRIMARY_DAMAGE_STAT_OVERRIDE).length) problems.push('every Archer-archetype class must scale direct damage with DEX; STR affects projectile sticking only (ARCHER-DEX-DAMAGE-01)');
   if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9) problems.push('projectile stick chance starts at about 12% at 0 STR and rises gradually with every STR point to very likely at 500 (PROJECTILE-STICK-01, STICK-CHANCE-01)');
-  if(FIRST_MAP_DROP_KILL !== 5 || !FIRST_MAP_SCROLL_ITEM.isMapScroll || !GOLD_MAP_BAG_ITEM.isExpansionBag || COIN_PICKUP_MIN_MS !== 15000 || COIN_PICKUP_MAX_MS !== 20000) problems.push('one map scroll must drop within the first five eligible kills, both free-expansion pickups must be defined, and loose coins must last 15-20 seconds (COIN-LIFETIME-01)');
+  if(FIRST_MAP_DROP_KILL !== 5 || !FIRST_MAP_SCROLL_ITEM.isMapScroll || COIN_PICKUP_MIN_MS !== 15000 || COIN_PICKUP_MAX_MS !== 20000) problems.push('one map scroll must drop within the first five eligible kills, both free-expansion pickups must be defined, and loose coins must last 15-20 seconds (COIN-LIFETIME-01)');
   { let consumed = false, blocked = false;
     const kept = !resolveExpansionPickupUse(() => false, () => { consumed = true; }, () => { blocked = true; });
     let consumedOnSuccess = false;
     const used = resolveExpansionPickupUse(() => true, () => { consumedOnSuccess = true; }, () => {});
     if(!kept || consumed || !blocked || !used || !consumedOnSuccess) problems.push('a map pickup must remain available when expansion is blocked and be consumed only after a successful expansion (EARLY-REWARD-USE-01)');
   }
-  if(!isExpansionPickupItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || !isExpansionPickupItem({ itemDef: GOLD_MAP_BAG_ITEM }) || isExpansionPickupItem({ itemDef: GOLD_BAG_ITEM }) || canEvictGroundItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || canEvictGroundItem({ itemDef: GOLD_MAP_BAG_ITEM }) || !canEvictGroundItem({ itemDef: GOLD_BAG_ITEM })) problems.push('ground-item pressure must preserve free-expansion pickups without protecting ordinary gold bags (EARLY-REWARD-PRESERVE-01)');
+  if(!isExpansionPickupItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || isExpansionPickupItem({ itemDef: GOLD_BAG_ITEM }) || canEvictGroundItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || !canEvictGroundItem({ itemDef: GOLD_BAG_ITEM })) problems.push('ground-item pressure must preserve free-expansion pickups without protecting ordinary gold bags (EARLY-REWARD-PRESERVE-01)');
   if(promotionRankLabel(1) !== 'Rank 1' || promotionRankLabel(7) !== 'Rank 7') problems.push('the promotion count must be labeled Rank, separate from Training XP (PROMOTION-RANK-LABEL-01)');
   if(nextWaveActionLabel(0) !== 'Start Wave' || nextWaveActionLabel(1) !== 'Next Wave') problems.push('the first wave action must say Start Wave without a wave number, then return to Next Wave (FIRST-WAVE-ACTION-01)');
   { const freeFighters = Object.entries(CONFIG.TOWERS).filter(([type, def]) => !['BARRICADE','PROTON','DARK_MATTER','QUASAR'].includes(type) && !(def.baseCost > 0)).map(([type]) => type); if(freeFighters.length) problems.push('every buildable fighter must have a gold price above zero (Barricade is paid in wood and stone; Proton, Dark Matter and Quasar are elements, not towers): ' + freeFighters.join(', ') + ' (NO-FREE-FIGHTERS-01)'); }
@@ -3049,9 +3049,9 @@ function validateDesignContract(){
   if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
   if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
   if(String(offerRunReward).indexOf('RUN-REWARD-REMOVED-01') < 0 && !String(offerRunReward).includes('return;') || typeof SoundEngine.prototype.setWindLevel === 'function' || !String(Tower.prototype.update).length || typeof expansionBlockedReason !== 'function' || !String(canvas.onpointermove || '1') || !String(updatePresentationEffects).includes('freeExpansionOwed')) problems.push('no wave choice rewards, no wind sound, the free expansion arrives only after every enemy is cleared, and coins collect on hover or slide (RUN-REWARD-REMOVED-01, EXPAND-AFTER-CLEAR-01, HOVER-COIN-01)');
-  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-CURIOUS-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || GOLD_MAP_BAG_ITEM.name !== 'Gold Bag') problems.push('escaped enemies are curious and aggro by distance, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-CURIOUS-01, HEAD-SNAP-01, CHEST-ONLY-01)');
+  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-CURIOUS-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || typeof GOLD_MAP_BAG_ITEM !== 'undefined') problems.push('escaped enemies are curious and aggro by distance, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-CURIOUS-01, HEAD-SNAP-01, CHEST-ONLY-01)');
   if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9 || projectileStickChance(500) > 0.95) problems.push('arrows stick in enemies sometimes at 0 STR and gradually more often up to very likely at 500 STR (STICK-CHANCE-01)');
-  if(!String(Enemy.prototype.draw).includes('LOOSE-MARKER-01') || typeof launchHeartHudFlights !== 'function' || !String(Tower.prototype.update).length) problems.push('loose enemies wear a soft red ring and the fountain sends hearts to the lives counter (LOOSE-MARKER-01, HEART-FLIGHT-01)');
+  if(!String(Enemy.prototype.draw).includes('LOOSE-GLOW-01') || typeof launchHeartHudFlights !== 'function' || !String(Tower.prototype.update).length) problems.push('loose enemies sit in a soft red glow with no ring and the fountain sends hearts to the lives counter (LOOSE-GLOW-01, HEART-FLIGHT-01)');
   { let attractOffScreenTopBottom = false, attractGrunts = 0; for(let i = 0; i < 300; i++){ const point = attractSpawnPoint(); if(point.yf < 0 || point.yf > 1 || (point.xf >= 0 && point.xf <= 1)) attractOffScreenTopBottom = true; if(attractPickEnemyType() === 'GRUNT') attractGrunts++; } if(attractOffScreenTopBottom || attractGrunts < 180) problems.push('the attract screen is mostly the big angry red guy and enemies come in from the left or right horizon, never from the sky (ATTRACT-HORIZON-01)'); }
   if(!String(drawEmojiGroundShadow).includes('BOX-SHADOW-01') || !String(drawEmojiGroundShadow).includes("fillStyle='#000'")) problems.push('the cardboard box casts a footprint shadow swept back-right like every other shadow, drawn in black (BOX-SHADOW-01)');
   { const quickRow = document.getElementById('inspQuickSlots'), plate = document.getElementById('inspect-panel'); if(quickRow && plate && (plate.contains(quickRow) || getComputedStyle(quickRow).position !== 'absolute')) problems.push('the quick items are free floating buttons outside the faceplate; the faceplate never grows to hold them (QUICK-FLOAT-01)'); }
@@ -3068,7 +3068,17 @@ function validateDesignContract(){
   if(typeof refreshAttackState !== 'function' || typeof decalCategoryCounts !== 'function' || !String(generateDebugLog).includes('decalCategoryCounts')) problems.push('the debug log counts debris by category and the fighter portrait shows its attack state without changing the plate size (DECAL-CATEGORIES-01, ATTACK-STATE-01)');
   { const lengthSaved = pathWaypointTiles; pathWaypointTiles = Array.from({ length: 60 }, (_, i) => ({ x: i, y: 0 })); const grown = tierPopulationForWave(1).TINY, bigSame = tierPopulationForWave(20).LARGE; pathWaypointTiles = lengthSaved; const base = tierPopulationForWave(1).TINY; if(!(grown > base) || grown > Math.round(base*2.5) + 1 || routeLengthFactor(1) < 1) problems.push('a much longer road brings more enemies, never fewer, up to 2.5 times (ROUTE-SCALES-WAVE-01)'); }
   if(!String(render).includes('PAN-SNAP-01') || !String(SoundEngine.prototype.playEvent).includes("'item_scroll'") || !String(SoundEngine.prototype.playEvent).includes("'item_inject'")) problems.push('the camera draws at whole device pixels while panning and scrolls and injectors have their own sounds (PAN-SNAP-01)');
-  if(typeof dirtTileKeys === 'undefined' || !String(beginNextRingReveal).includes('GRASS-MATCHES-PATH-01') || !String(serializeGameState).includes('dirtTiles')) problems.push('an expansion reveals about as much grass as route it adds, and the choice is saved (GRASS-MATCHES-PATH-01)');
+  if(dirtTileKeys.size !== 0 || !String(beginNextRingReveal).includes('GRASS-NEVER-SHRINKS-01') || String(beginNextRingReveal).includes('dirtTileKeys.add')) problems.push('the road is always surrounded by grass and the green area is only ever added to (GRASS-NEVER-SHRINKS-01)');
+  if(typeof pickRoadGrowthStyle !== 'function' || typeof relocateTowersOffRoute !== 'function' || !String(extendPathWithNewRing).includes('orderRoadDirections') || String(extendPathWithNewRing).includes('towerPool') || typeof activeTowerTileKeys !== 'function') problems.push('roads grow in varied styles, mostly normal and sometimes wild, avoid fighters when they can, and move them onto grass when they cannot (ROAD-VARIETY-01, ROAD-FREEDOM-01, TOWERS-STAY-PUT-01)');
+  if(!String(extendPathWithNewRing).includes('ROAD-ESCAPE-01') || !String(extendPathWithNewRing).includes('spacingAllowance')) problems.push('the road keeps growing when one end is boxed in or the spacing rule blocks it, instead of cutting itself off (ROAD-ESCAPE-01)');
+  { const savedRoute = pathWaypointTiles; pathWaypointTiles = Array.from({ length: 4 + 2*10 }, (_, i) => ({ x: i, y: 0 })); const normalMax = batchSizeRangeForWave(10, 'TINY')[1]; pathWaypointTiles = Array.from({ length: 4 + 2*10 + 30 }, (_, i) => ({ x: i, y: 0 })); const longMax = batchSizeRangeForWave(10, 'TINY')[1]; pathWaypointTiles = savedRoute; if(!(longMax > normalMax) || batchSizeRangeForWave(1, 'TINY')[1] !== 1 || batchSizeRangeForWave(10, 'BOSS')[1] !== 1) problems.push('groups are larger on a longer road, with wave 1 and boss batches unchanged (GROUP-SIZE-ROUTE-01)'); }
+  if(!/^\d+\.\d+\.\d+$/.test(GAME_VERSION) || GAME_VERSION === '1.7.36') problems.push('every upload has its own version, bumped together with the changelog and README (RELEASE-VERSION-01)');
+  if(typeof keepRoomToBuild !== 'function' || !String(finalizeRingExpansion).includes('keepRoomToBuild')) problems.push('every expansion leaves at least half of its new grass clear so there is room to build (ROOM-TO-BUILD-01)');
+  if(ENEMY_COUNT_MULTIPLIER < 1.2 || ENEMY_COUNT_MULTIPLIER > 2.5 || tierPopulationForWave(1).TINY < 12) problems.push('there are more enemies to fight on every wave without making any enemy stronger (MORE-ENEMIES-01)');
+  if(document.getElementById('replayIntroBtn') || !document.getElementById('first-build-hint') || !document.getElementById('first-next-wave-hint') || !document.getElementById('first-speed-hint') || String(firstFighterWasBuilt).includes('localStorage')) problems.push('the introduction arrows (build, next wave, speed up) play on every new playthrough and are not remembered between visits (INTRO-EVERY-GAME-01)');
+  if(!String(maybeSpawnRandomEventsOnExpansion).includes('PROP-CAP-01')) problems.push('event props never crowd out the room to build (PROP-CAP-01)');
+  if(DIAMOND_BAG_CHANCE !== 0.1 || DIAMOND_MIN_GOLD !== 1 || DIAMOND_MAX_GOLD !== 100 || !String(creditCoin).includes('DIAMOND-GOLD-01') || !String(tryCollectCoinAt).includes('hoverOnly') || String(Enemy.prototype.draw).includes('setLineDash')) problems.push('a gold bag drops a diamond one time in ten, a diamond is worth 1 to 100 gold and needs a click, and loose enemies glow red with no ring (DIAMOND-GOLD-01, DIAMOND-CLICK-01, LOOSE-GLOW-01)');
+  if(MAP_FROM_BAG_CHANCE !== 0.01 || typeof GOLD_MAP_BAG_ITEM !== 'undefined' || typeof rollMapFromBag !== 'function' || !String(openGoldBag).includes('rollMapFromBag') || !String(creditGroundBagGold).includes('rollMapFromBag') || String(dropItemsFromEnemy).includes('GOLD_MAP_BAG')) problems.push('there is only one kind of bag, the normal gold bag, and a map falls out of about one bag in a hundred (ONE-KIND-OF-BAG-01)');
   if(CONFIG.TOWERS.SWORDSMAN.baseCost !== 50 || CONFIG.TOWERS.ARCHER.baseCost !== 60 || CONFIG.TOWERS.MAGE.baseCost !== 70 || SCALING_COST_GROWTH < 2.25 || Math.round(CONFIG.TOWERS.SWORDSMAN.baseCost * SCALING_COST_GROWTH) !== 113) problems.push('starter costs must remain Swordsman 50, Archer 60, Mage 70, with same-class copies becoming substantially more expensive (STARTER-PRICE-LADDER-01)');
   if(applyClassCooldownBalance('SWORDSMAN', 1700 * 1.2) !== 2448 || applyClassCooldownBalance('ARCHER', 1430 * 1.2) !== 1716 || applyClassCooldownBalance('MAGE', 7800 * 1.2) !== 9360) problems.push('Swordsman must attack 20% slower while Archer and Mage retain their existing base cooldowns (SWORDSMAN-RATE-01)');
   { const entries = [{ id: 1, read: false }, { id: 2, read: false }];
@@ -3324,8 +3334,8 @@ function regionFullyExpanded(){
 // forest/building corridor visually frames the road instead of letting brown road dominate.
 const PATH_BUILDABLE_MARGIN = 1; // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
 let nearPathTileSet = new Set();
-// GRASS-MATCHES-PATH-01 (1.7.36): owner decision — an expansion reveals about as much grass as it adds route: 1 route tile gives about 1 grass tile, 2 give 2, 3 give 3.
-// Border tiles beside the new route that are not chosen become bare dirt for good (not buildable, no scenery); the grass kept is the best connected to existing grass.
+// GRASS-NEVER-SHRINKS-01 (1.7.41): owner decision, replacing the grass-matches-route trimming of 1.7.37 to 1.7.40 — the road is always surrounded by grass and the green area is only ever
+// added to. dirtTileKeys stays empty (kept so old code paths and saves that mention it still load); a saved list from 1.7.37 to 1.7.40 is ignored on load.
 const dirtTileKeys = new Set();
 function rebuildNearPathTileSet(){
   const next = new Set();
@@ -3559,36 +3569,99 @@ function reservedPathExitTile(gx,gy){
 // PATH-WINDY-01 (1.7.36): half of all expansions used to prefer continuing straight, so the road often grew long straight runs. Most expansions now
 // prefer turning (the spacing and exit-room rules still decide what is possible), so the road keeps winding.
 let pathTurnFirstChance = 0.85;
+// ROAD-VARIETY-01 (1.7.36): owner decision — roads should have vast possibilities, mostly normal but sometimes wild. Each expansion draws a growth style:
+// TURN (the normal winding), ZIGZAG, STRAIGHT, HOOK (keep curling the same way, making loops and coils) or DRIFT (random). Normal growth favours open space so the road
+// does not coil itself shut; wild growth (the HOOK and DRIFT styles, plus one in eight expansions) mostly ignores open space and takes tight, surprising shapes.
+// Whatever the style, the spacing and exit rules still decide what is possible, so a road can be wild but never cuts itself off.
+const ROAD_GROWTH_STYLE_WEIGHTS = [['TURN', 0.47], ['ZIGZAG', 0.17], ['STRAIGHT', 0.12], ['HOOK', 0.14], ['DRIFT', 0.10]];
+const ROAD_WILD_STYLES = new Set(['HOOK', 'DRIFT']), ROAD_WILD_CHANCE = 0.12;
+function pickRoadGrowthStyle(){
+  let roll = Math.random();
+  for(const [style, weight] of ROAD_GROWTH_STYLE_WEIGHTS){ if(roll < weight) return style; roll -= weight; }
+  return 'TURN';
+}
+function roadOpenness(tile, occupied, region){
+  let free = 0;
+  for(let dx = -2; dx <= 2; dx++) for(let dy = -2; dy <= 2; dy++){
+    const x = tile.x + dx, y = tile.y + dy;
+    if(x < 0 || x >= COLS || y < 0 || y >= ROWS || occupied.has(x+','+y)) continue;
+    free++;
+  }
+  return free / 25;
+}
+function orderRoadDirections(chain, occupied, region, style, wild){
+  const tip = chain[chain.length-1], previous = chain[chain.length-2], beforePrevious = chain[chain.length-3];
+  const straight = previous ? [tip.x - previous.x, tip.y - previous.y] : null;
+  const lastTurn = (previous && beforePrevious) ? ((previous.x - beforePrevious.x)*(tip.y - previous.y) - (previous.y - beforePrevious.y)*(tip.x - previous.x)) : 0;
+  const scored = [[1,0],[-1,0],[0,1],[0,-1]].map(dir => {
+    const tile = { x: tip.x + dir[0], y: tip.y + dir[1] };
+    let stylePull = 0;
+    if(straight){
+      const isStraight = dir[0] === straight[0] && dir[1] === straight[1];
+      const turn = straight[0]*dir[1] - straight[1]*dir[0];
+      if(style === 'STRAIGHT') stylePull = isStraight ? 1 : 0;
+      else if(style === 'TURN') stylePull = isStraight ? 0 : 1;
+      else if(style === 'HOOK') stylePull = lastTurn && Math.sign(turn) === Math.sign(lastTurn) ? 1.2 : 0;
+      else if(style === 'ZIGZAG') stylePull = lastTurn && turn && Math.sign(turn) !== Math.sign(lastTurn) ? 1.2 : (isStraight ? 0 : 0.3);
+    }
+    const openWeight = wild ? 0.4 : 2.2, styleWeight = style === 'DRIFT' ? 0.2 : 1.5, randomWeight = wild ? 1.8 : 0.7;
+    return { dir, score: roadOpenness(tile, occupied, region)*openWeight + stylePull*styleWeight + Math.random()*randomWeight };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map(entry => entry.dir);
+}
+// Towers that sit where the road now runs are moved to the nearest free buildable tile (expansions only happen between waves, with no enemies out).
+function activeTowerTileKeys(){ const keys = []; for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') keys.push(tower.gridX+','+tower.gridY); return keys; }
+function relocateTowersOffRoute(){
+  for(const tower of towerPool){
+    if(!tower.active || tower.type === 'BARRICADE') continue;
+    const here = tower.gridX+','+tower.gridY;
+    if(!pathCells.has(here) && (isInActiveRegion(tower.gridX, tower.gridY) || pendingRevealTileKeys.has(here) || nearPathTileSet.has(here))) continue;
+    let best = null;
+    // first choice: the nearest free buildable tile; second choice: the nearest grass tile, clearing its tree, rock or bush for the stickman
+    for(const clearScenery of [false, true]){
+      for(let radius = 1; radius <= 40 && !best; radius++){
+        for(let dx = -radius; dx <= radius && !best; dx++) for(let dy = -radius; dy <= radius; dy++){
+          if(Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+          const gx = tower.gridX + dx, gy = tower.gridY + dy, key = gx+','+gy;
+          if(!clearScenery){ if(isTileBuildable(gx, gy, tower, tower.type)){ best = { gx, gy }; break; } }
+          else if(nearPathTileSet.has(key) && !pathCells.has(key) && !pendingRevealTileKeys.has(key) && !reservedPathExitTile(gx, gy) && !towerPool.some(t => t.active && t !== tower && t.gridX === gx && t.gridY === gy)){
+            const item = sceneryMap.get(key);
+            if(!item || item.type === 'TREE' || item.type === 'ROCK' || item.type === 'BUSH'){ if(item) sceneryMap.delete(key); best = { gx, gy }; break; }
+          }
+        }
+      }
+      if(best) break;
+    }
+    if(best){ tower.setGridPosition(best.gx, best.gy); spawnFloatingText(tower.x, tower.y - 20, 'Moved onto the grass', '#ffe082'); logGameEvent(itemHolderLabel(tower) + ' moved onto the grass at tile ' + best.gx + ',' + best.gy + ' because the road grew'); }
+  }
+}
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
+  // ROAD-FREEDOM-01 (1.7.36): towers never block road growth, because they can move; any tower the road grows over is relocated after the growth is committed.
   const occupied = new Set(oldPath.map(p => p.x+','+p.y));
-  for(const t of towerPool) if(t.active) occupied.add(t.gridX+','+t.gridY);
+  const towerTileKeys = activeTowerTileKeys().filter(key => !occupied.has(key));
+  const growthStyle = pickRoadGrowthStyle();
+  const wildGrowth = ROAD_WILD_STYLES.has(growthStyle) || Math.random() < ROAD_WILD_CHANCE;
   const totalGrowth = Math.max(1, Math.min(3, arcLength || 2));
   const flip = Math.random() < 0.5;
   const startGrowth = flip ? Math.ceil(totalGrowth/2) : Math.floor(totalGrowth/2), finishGrowth = totalGrowth - startGrowth;
-  const turnFirst = Math.random() < pathTurnFirstChance;
   const existingSpacingViolations=routeSpacingViolationCount(oldPath);
+  let spacingAllowance = 0; // ROAD-ESCAPE-01: only raised when a strict growth is impossible
   function grow(point, length){
     const addition = [];
     if(length <= 0) return addition;
+    const behind = point === oldPath[0] ? [oldPath[2], oldPath[1], oldPath[0]] : [oldPath[oldPath.length-3], oldPath[oldPath.length-2], oldPath[oldPath.length-1]];
+    const chainBase = behind.filter(Boolean);
     function walk(tip){
       if(addition.length === length) return !!pathTipExit(tip,occupied);
-      const directions = [[1,0],[-1,0],[0,1],[0,-1]];
-      for(let i=directions.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [directions[i],directions[j]]=[directions[j],directions[i]]; }
-      const previous=addition.length>1 ? addition[addition.length-2] : addition.length ? point : point===oldPath[0] ? oldPath[1] : oldPath[oldPath.length-2];
-      if(previous && Math.random()<0.75){
-        const straightX=tip.x-previous.x,straightY=tip.y-previous.y;
-        directions.sort((a,b)=>{
-          const aa=a[0]===straightX && a[1]===straightY ? 1 : 0;
-          const bb=b[0]===straightX && b[1]===straightY ? 1 : 0;
-          return turnFirst ? aa-bb : bb-aa;
-        });
-      }
+      const chain = chainBase.concat(addition);
+      const directions = orderRoadDirections(chain, occupied, newRegion, growthStyle, wildGrowth);
       for(const [dx,dy] of directions){
         const tile = {x:tip.x+dx,y:tip.y+dy}, key=tile.x+','+tile.y;
         if(tile.x<newRegion.x0 || tile.x>newRegion.x1 || tile.y<newRegion.y0 || tile.y>newRegion.y1 || occupied.has(key)) continue;
         occupied.add(key); addition.push(tile);
         const candidate=point===oldPath[0] ? [...addition.slice().reverse(),...oldPath] : [...start.slice().reverse(),...oldPath,...addition];
-        if(routeSpacingViolationCount(candidate)>existingSpacingViolations){addition.pop();occupied.delete(key);continue;}
+        if(routeSpacingViolationCount(candidate)>existingSpacingViolations+spacingAllowance){addition.pop();occupied.delete(key);continue;}
         const otherTip = point === oldPath[0] ? oldPath[oldPath.length-1] : (start.length ? start[start.length-1] : oldPath[0]);
         if(pathTipExit(otherTip,occupied) && walk(tile)) return true;
         addition.pop(); occupied.delete(key);
@@ -3599,14 +3672,29 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
     return addition;
   }
   const last = oldPath[oldPath.length-1];
+  // ROAD-ESCAPE-01 (1.7.36): owner report — the road can cut itself off from expansion. Measured cause: a tip can have a clear way to the map edge and still be unable to
+  // grow, because every neighbouring tile touches a distant stretch of its own road (the spacing rule), and the old code insisted on growing both ends by their
+  // planned share. Growth now falls back in stages instead of giving up: the planned split, then all the growth at the first end, then all at the other end, and only
+  // if all of those fail does the spacing rule bend a little (two, then five touching tiles), so the road keeps growing as long as there is any room.
   let start = [], finish = [];
-  for(let attempt=0;attempt<8;attempt++){
-    for(const tile of [...start,...finish]) occupied.delete(tile.x+','+tile.y);
-    start = grow(oldPath[0], startGrowth); finish = grow(last, finishGrowth);
-    if((!startGrowth || start.length) && (!finishGrowth || finish.length) && pathTipExit(start.length ? start[start.length-1] : oldPath[0],occupied) && pathTipExit(finish.length ? finish[finish.length-1] : last,occupied)) break;
+  const plans = [[startGrowth, finishGrowth, 0, 8], [totalGrowth, 0, 0, 4], [0, totalGrowth, 0, 4], [startGrowth, finishGrowth, 2, 4], [totalGrowth, 0, 2, 3], [0, totalGrowth, 2, 3], [startGrowth, finishGrowth, 5, 4], [totalGrowth, 0, 5, 3], [0, totalGrowth, 5, 3], [startGrowth, finishGrowth, 12, 4], [totalGrowth, 0, 12, 4], [0, totalGrowth, 12, 4], [1, 0, 30, 6], [0, 1, 30, 6]];
+  // TOWERS-STAY-PUT-01 (1.7.41): growth first avoids every tile a stickman stands on, so an expansion normally never touches a fighter; only if no growth is possible that way
+  // are fighters treated as movable (and then moved to the nearest grass by relocateTowersOffRoute, clearing scenery for them if they must).
+  for(const avoidTowers of [true, false]){
+  if(avoidTowers){ for(const key of towerTileKeys) occupied.add(key); } else { for(const key of towerTileKeys) occupied.delete(key); }
+  for(const [planStart, planFinish, allowance, tries] of plans){
+    spacingAllowance = allowance;
+    for(let attempt=0; attempt<tries; attempt++){
+      start = grow(oldPath[0], planStart); finish = grow(last, planFinish);
+      const okay = (!planStart || start.length === planStart) && (!planFinish || finish.length === planFinish)
+        && pathTipExit(start.length ? start[start.length-1] : oldPath[0], occupied) && pathTipExit(finish.length ? finish[finish.length-1] : last, occupied);
+      if(okay) return [...start.reverse(),...oldPath,...finish];
+      for(const tile of [...start,...finish]) occupied.delete(tile.x+','+tile.y);
+      start = []; finish = [];
+    }
   }
-  if((startGrowth && !start.length) || (finishGrowth && !finish.length) || !pathTipExit(start.length ? start[start.length-1] : oldPath[0],occupied) || !pathTipExit(finish.length ? finish[finish.length-1] : last,occupied)) return oldPath;
-  return [...start.reverse(),...oldPath,...finish];
+  }
+  return oldPath;
 }
 // CA096 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA096
 function buildFallbackPath(region){
@@ -3725,27 +3813,8 @@ function beginNextRingReveal(){
     for(const enemy of enemyPool) if(enemy.active){ enemy.pathIndex += prepended; enemy.traveled += prepended*TILE_SIZE; }
   }
   rebuildPathCellsAndPx();
-  { // GRASS-MATCHES-PATH-01: keep about one new grass tile per new route tile, preferring tiles that connect to existing grass
-    const addedRouteCount = candidate.length - oldPath.length;
-    const freshBorder = [...nearPathTileSet].filter(key => !previouslyBorderingKeys.has(key));
-    if(addedRouteCount > 0 && freshBorder.length > addedRouteCount){
-      const oldRouteKeys = new Set(oldPath.map(p => p.x+','+p.y));
-      const score = key => {
-        const [bx, by] = key.split(',').map(Number);
-        let connected = 0, nextToNewRoute = 0;
-        for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++){
-          if(!dx && !dy) continue;
-          const nk = (bx+dx)+','+(by+dy);
-          if(previouslyBorderingKeys.has(nk)) connected++;
-          if(pathCells.has(nk) && !oldRouteKeys.has(nk) && (!dx || !dy)) nextToNewRoute++;
-        }
-        return connected*2 + nextToNewRoute*3 + Math.random()*0.9;
-      };
-      freshBorder.sort((a, b) => score(b) - score(a));
-      for(let n = addedRouteCount; n < freshBorder.length; n++) dirtTileKeys.add(freshBorder[n]);
-      rebuildNearPathTileSet();
-    }
-  }
+  relocateTowersOffRoute(); // ROAD-FREEDOM-01
+  // GRASS-NEVER-SHRINKS-01 (1.7.41): the road is always framed by grass, and grass is only ever added to; no border tile is trimmed or turned to dirt.
   // PATH-BORDER-01 (1.6.76) — see CHANGELOG.md § [1.6.76]
   const oldTip = oldPath[oldPath.length-1];
   const oldPathKeys = new Set(oldPath.map(p => p.x+','+p.y));
@@ -3819,6 +3888,21 @@ function driveRingReveal(dt){
   }
 }
 // CA104 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA104
+// ROOM-TO-BUILD-01 (1.7.37): with grass matched to the route there are only a handful of grass tiles per expansion, and every new tile lies beside a road end, where the
+// guard scenery goes; once the road moves on, those old guard trees and rocks stayed behind (measured: 24 to 28 grass tiles after twelve expansions, only 1 clear, so
+// nowhere to put a tower without harvesting first). After each expansion at least 45% of all grass tiles, rounded up, are now kept clear; the surplus trees and rocks
+// are removed at random, never from the tiles beside the current road ends, which keep their guard scenery as designed.
+const MIN_CLEAR_GRASS_FRACTION = 0.45;
+function keepRoomToBuild(){
+  const grass = [...nearPathTileSet].filter(key => !pathCells.has(key));
+  if(!grass.length) return;
+  const mustBeFree = Math.ceil(grass.length * MIN_CLEAR_GRASS_FRACTION);
+  let free = grass.filter(key => !sceneryMap.has(key)).length;
+  if(free >= mustBeFree) return;
+  const removable = grass.filter(key => { const item = sceneryMap.get(key); if(!item) return false; const [gx, gy] = key.split(',').map(Number); return !isEndRingTile(gx, gy) && (item.type === 'TREE' || item.type === 'ROCK'); });
+  for(let n = removable.length - 1; n > 0; n--){ const m = Math.floor(Math.random()*(n+1)); [removable[n], removable[m]] = [removable[m], removable[n]]; }
+  for(const key of removable){ if(free >= mustBeFree) break; sceneryMap.delete(key); free++; }
+}
 function finalizeRingExpansion(){
   const oldRegion = { ...activeRegion };
   const oldFinishLine = computeFinishLine(); // captured BEFORE the path terminus moves — this is exactly the carpet footprint the incremental patch below needs to erase
@@ -3834,6 +3918,7 @@ function finalizeRingExpansion(){
   scatterSceneryInRing(oldRegion, newRegion, ringRevealed);
   ensureEndGuardScenery();
   scatterFloraInRing(oldRegion, newRegion, ringRevealed);
+  keepRoomToBuild(); // ROOM-TO-BUILD-01
   if(randomEventHostileAllowed(waveIndex) && expansionLevel >= HUT_MIN_EXPANSION_LEVEL && !hutsSpawnedThisGame && randomEventSlotsUsed < 2){
     hutsSpawnedThisGame = spawnHuts(oldRegion, newRegion); // new tiles only, after scenery; never force a camp beside the finish or into an established build area
     if(hutsSpawnedThisGame){ tryClaimRandomEventSlot(); logGameEvent('random event: hut camp'); }
@@ -3886,7 +3971,7 @@ function resolveExpansionPickupUse(expand, consume, blocked){
   consume();
   return true;
 }
-function isExpansionPickupItem(item){ return !!(item && item.itemDef && (item.itemDef.isMapScroll || item.itemDef.isExpansionBag)); }
+function isExpansionPickupItem(item){ return !!(item && item.itemDef && item.itemDef.isMapScroll); }
 function canEvictGroundItem(item){ return item !== draggingGroundItem && !isExpansionPickupItem(item); }
 function useFreeExpansionPickup(groundItem, color){
   return resolveExpansionPickupUse(grantFreeExpansion, () => {
@@ -4055,6 +4140,14 @@ function maybeSpawnRandomEventsOnExpansion(revealedBorderKeys){
       const due = Object.keys(CONFIG.CHANCE_STRUCTURES).filter(type => chanceStructureSpawnChance(type) > 0);
       choice = due.length ? due[Math.floor(Math.random()*due.length)] : 'CHEST';
       if(due.length) chanceStructureDrySpells[choice] = 0;
+    }
+    // PROP-CAP-01 (1.7.40): found by the regression review. With only one to three grass tiles per expansion, two event props per expansion (chests, crates, bushes)
+    // filled most of the grass (about 20 props on 24 tiles after ten expansions), leaving only 25% of it free to build on. A new prop is now skipped while the board already
+    // holds as many unharvested props as 30% of the grass (never fewer than two); harvesting them, or a bigger map, brings events back.
+    if(choice === 'CHEST' || choice === 'SUPPLY_CRATE' || choice === 'BUSH'){
+      let props = 0; for(const item of sceneryMap.values()) if(item.type === 'CHEST' || item.type === 'SUPPLY_CRATE' || item.type === 'BUSH') props++;
+      const propLimit = Math.max(2, Math.floor(nearPathTileSet.size * 0.3));
+      if(props >= propLimit) continue;
     }
     const key = candidates[Math.floor(Math.random()*candidates.length)];
     const [gx, gy] = key.split(',').map(Number);
@@ -5107,7 +5200,7 @@ function showItemUseFeedback(def, tower, itemClass, tier, parts){
   itemUseEffectIndex = (itemUseEffectIndex + 1) % ITEM_USE_EFFECT_LIMIT;
   effect.active = true; effect.tower = tower; effect.itemClass = itemClass; effect.tier = tier; effect.icon = def.icon;
   effect.lines = packItemUseLines(parts); effect.startAt = presentationTime; effect.durationMs = ITEM_USE_HOLD_MS_BY_TIER[tier]; effect.stackLift = stacked * ITEM_USE_STACK_LIFT_PX;
-  if(def.isMapScroll || def.isExpansionBag) playSound('item_scroll', tower.x, undefined, tower.y);
+  if(def.isMapScroll) playSound('item_scroll', tower.x, undefined, tower.y);
   else if(/stim|adrenaline|syringe|inject|serum|shot\b/i.test(def.name || '')) playSound('item_inject', tower.x, undefined, tower.y);
   else if(def.isFood) playSound('item_eat', tower.x, undefined, tower.y);
   else if(def.isPotion || (def.icon && ['💊','🧪','⚗️','🍷','🍶','🧴'].includes(def.icon))) playSound('item_potion', tower.x, undefined, tower.y);
@@ -7890,7 +7983,16 @@ const LOOT_TONIC_SOURCES = [
 let lootWaveTracked = -1, lootRegularDropsThisWave = 0;
 const FIRST_MAP_DROP_KILL = 5;
 const FIRST_MAP_SCROLL_ITEM = Object.freeze({ id: 'FIRST_MAP_SCROLL', name: 'Map', icon: '🗺️', rarity: 'SPECIAL', isMapScroll: true, cost: 0, isDropOnly: true });
-const GOLD_MAP_BAG_ITEM = Object.freeze({ id: 'GOLD_MAP_BAG', name: 'Gold Bag', icon: '💰', rarity: 'RARE', isExpansionBag: true, cost: 0, isDropOnly: true });
+// ONE-KIND-OF-BAG-01 (1.7.43): owner decision — there is only one kind of bag, the normal gold bag, and it has a luck roll: about one bag in a hundred lets a Map fall out when it is opened.
+// The separate "map bag" item (id GOLD_MAP_BAG) and its 1 in 250 enemy drop are gone; a saved one from an older version loads as a Map.
+const MAP_FROM_BAG_CHANCE = 0.01, LEGACY_MAP_BAG_ID = 'GOLD_MAP_BAG';
+function rollMapFromBag(x, y){
+  if(Math.random() >= MAP_FROM_BAG_CHANCE || groundItems.length >= MAX_GROUND_ITEMS) return false;
+  spawnGroundItem(x + (Math.random()-0.5)*20, y - 10, FIRST_MAP_SCROLL_ITEM, 'gold bag');
+  showToast('A map fell out of the bag! Click it for a free expansion.');
+  trackGameEvent('item_dropped', { item: FIRST_MAP_SCROLL_ITEM.id, rarity: FIRST_MAP_SCROLL_ITEM.rarity, enemy_type: 'gold_bag' });
+  return true;
+}
 let firstTenEnemyKillCount = 0, firstMapScrollDropped = false;
 function pickFromList(list){ return list[Math.floor(Math.random() * list.length)]; }
 function pickFoodOfKind(kindName){ return pickFromList(FOOD_ITEMS.filter(item => item.kind === kindName)); }
@@ -7919,11 +8021,6 @@ function dropItemsFromEnemy(enemy){
       showToast('Map found. Click it for a free expansion.');
       trackGameEvent('item_dropped', { item: FIRST_MAP_SCROLL_ITEM.id, rarity: FIRST_MAP_SCROLL_ITEM.rarity, enemy_type: enemy.type });
     }
-  }
-  if(Math.random() < 1/250 && groundItems.length < MAX_GROUND_ITEMS){
-    spawnGroundItem(enemy.x + (Math.random()-0.5)*18, enemy.y - 8, GOLD_MAP_BAG_ITEM, 'rare enemy drop');
-    showToast('A gold bag with a map inside! Click it for a free expansion.');
-    trackGameEvent('item_dropped', { item: GOLD_MAP_BAG_ITEM.id, rarity: GOLD_MAP_BAG_ITEM.rarity, enemy_type: enemy.type });
   }
   if(Math.random() < 1/500) dropGoldBag(enemy.x + (Math.random()-0.5)*18, enemy.y);
   const tier = enemyDropTier(enemy);
@@ -8971,14 +9068,14 @@ function serializeGameState(){
   const harvestedTileData = [...harvestedTileKeys];
   const itemTypesUsedData = [...itemTypesUsed];
   const goldBagData = groundItems.filter(gi => gi.itemDef.isGoldBag).map(gi => ({ x: gi.x, y: gi.y, gold: gi.itemDef.gold }));
-  const savedExpansionItems = groundItems.filter(gi => gi.itemDef.isMapScroll || gi.itemDef.isExpansionBag).map(gi => ({ x: gi.x, y: gi.y, itemId: gi.itemDef.id }));
+  const savedExpansionItems = groundItems.filter(gi => gi.itemDef.isMapScroll).map(gi => ({ x: gi.x, y: gi.y, itemId: gi.itemDef.id }));
   return {
     // CA249 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA249
     seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
-    looseInventory: groundItems.filter(gi=>!gi.itemDef.isGoldBag && !gi.itemDef.isMapScroll && !gi.itemDef.isExpansionBag && itemDefinitionForSavedId(gi.itemDef.id)).map(gi=>({x:gi.x,y:gi.y,itemId:gi.itemDef.id,age:Math.max(0,presentationTime-gi.spawnTime),legacyLuckyCoin:!!gi.itemDef.legacyLuckyCoin})),
+    looseInventory: groundItems.filter(gi=>!gi.itemDef.isGoldBag && !gi.itemDef.isMapScroll && itemDefinitionForSavedId(gi.itemDef.id)).map(gi=>({x:gi.x,y:gi.y,itemId:gi.itemDef.id,age:Math.max(0,presentationTime-gi.spawnTime),legacyLuckyCoin:!!gi.itemDef.legacyLuckyCoin})),
     livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].isTroll).slice(0,LIVESTOCK_MAX_ON_BOARD).map(e=>({type:e.type,x:e.x,y:e.y,radius:e.radius,healthFraction:e.hp/e.maxHp})),
     looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,fromGoldBag:!!c.fromGoldBag,age:c.age,lifespan:c.lifespan})),
-    gold, lives, livesBought, waveIndex:stealthRun && waveIndex===10 && !stealthSantaDefeated?9:waveIndex, wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], dirtTiles: [...dirtTileKeys], bonusMaxLivesFromMeat,
+    gold, lives, livesBought, waveIndex:stealthRun && waveIndex===10 && !stealthSantaDefeated?9:waveIndex, wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, firstTenEnemyKillCount, firstMapScrollDropped, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
     globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions,
     latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
@@ -9054,7 +9151,7 @@ function restoreGameState(state){
   hasDefibrillator = !!state.hasDefibrillator;
   donutShieldHits = state.donutShieldHits || 0;
   bonusGrassTiles.clear(); for(const key of (state.bonusGrassTiles||[])) bonusGrassTiles.add(key);
-  dirtTileKeys.clear(); for(const key of (state.dirtTiles||[])) if(typeof key === 'string') dirtTileKeys.add(key);
+  dirtTileKeys.clear(); // a dirt list saved by 1.7.37 to 1.7.40 is ignored: those tiles are grass again
   rebuildNearPathTileSet();
   bonusMaxLivesFromMeat = state.bonusMaxLivesFromMeat || 0;
   chocolateAtkSpeedBuffUntil = 0; lollipopZones.length = 0; // temporary buffs never persist across a save
@@ -9121,7 +9218,7 @@ function restoreGameState(state){
   }
   for(const savedItem of (state.expansionItems || [])){
     if(!Number.isFinite(savedItem.x) || !Number.isFinite(savedItem.y)) continue;
-    const itemDef = savedItem.itemId === FIRST_MAP_SCROLL_ITEM.id ? FIRST_MAP_SCROLL_ITEM : savedItem.itemId === GOLD_MAP_BAG_ITEM.id ? GOLD_MAP_BAG_ITEM : null;
+    const itemDef = (savedItem.itemId === FIRST_MAP_SCROLL_ITEM.id || savedItem.itemId === LEGACY_MAP_BAG_ID) ? FIRST_MAP_SCROLL_ITEM : null; // a saved map bag from 1.7.42 or older becomes a Map
     if(itemDef) spawnGroundItem(savedItem.x, savedItem.y, itemDef, 'restored from save');
   }
 
@@ -9220,7 +9317,7 @@ function validateSaveShape(state){
   if(state.harvestedTiles !== undefined && !Array.isArray(state.harvestedTiles)) return false;
   if(state.itemTypesUsed !== undefined && !Array.isArray(state.itemTypesUsed)) return false;
   if(state.goldBags !== undefined && !Array.isArray(state.goldBags)) return false;
-  if(state.expansionItems !== undefined && (!Array.isArray(state.expansionItems) || state.expansionItems.some(item => !item || !Number.isFinite(item.x) || !Number.isFinite(item.y) || ![FIRST_MAP_SCROLL_ITEM.id, GOLD_MAP_BAG_ITEM.id].includes(item.itemId)))) return false;
+  if(state.expansionItems !== undefined && (!Array.isArray(state.expansionItems) || state.expansionItems.some(item => !item || !Number.isFinite(item.x) || !Number.isFinite(item.y) || ![FIRST_MAP_SCROLL_ITEM.id, LEGACY_MAP_BAG_ID].includes(item.itemId)))) return false;
   return true;
 }
 function loadSaveFileText(text){
@@ -10670,11 +10767,14 @@ class Enemy{
     ctx.save();
     ctx.globalAlpha = 1.0; // strictly bracket every enemy draw pass so no leftover alpha/composite state from a previous draw call (this enemy or another) can wash this one out
     if(this.escaped && !this.isLivestock && !this.isGuardian && !this.isHutBuilding){
-      // LOOSE-MARKER-01 (1.7.36): a dashed red glow ring marks every loose enemy and pulses gently so it is easy to spot; they quietly cost health while loose.
-      // Owner confirmed pulsing glows are fine (only phasing of things the player needs is forbidden), and the enemy itself is always fully visible.
-      const pulse = 0.5 + 0.5*Math.sin(presentationTime/450);
-      ctx.save(); ctx.strokeStyle = 'rgba(255,70,70,' + (0.35 + 0.35*pulse).toFixed(2) + ')'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -(presentationTime/90) % 9;
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 7 + pulse*2, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+      // LOOSE-GLOW-01 (1.7.42): owner dislikes the red ring; a loose enemy now sits in a soft red glow, the same idea as the glow on items, with no outline anywhere.
+      // It brightens and dims gently (pulsing glows are fine; only phasing of things the player needs is not) and the enemy itself is always fully drawn.
+      const glowPulse = 0.5 + 0.5*Math.sin(presentationTime/500), glowRadius = this.radius*2.6 + glowPulse*3;
+      const halo = ctx.createRadialGradient(this.x, this.y, this.radius*0.4, this.x, this.y, glowRadius);
+      halo.addColorStop(0, 'rgba(255,50,50,' + (0.42 + 0.18*glowPulse).toFixed(2) + ')');
+      halo.addColorStop(0.55, 'rgba(255,60,60,' + (0.16 + 0.08*glowPulse).toFixed(2) + ')');
+      halo.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.save(); ctx.fillStyle = halo; ctx.fillRect(this.x - glowRadius, this.y - glowRadius, glowRadius*2, glowRadius*2); ctx.restore();
     }
     // PERF-02 (1.6.9) — see CHANGELOG.md § [1.6.9]. The translucent aura RINGS below are purely
     // decorative reinforcement of information the status icons (drawStatusIcons calls) already
@@ -13829,7 +13929,7 @@ function restoreLooseInventory(savedItems){
   for(const saved of savedItems.slice(0,MAX_GROUND_ITEMS)){
     if(!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.y) || saved.x<0 || saved.y<0 || saved.x>WORLD_MAX_W || saved.y>WORLD_MAX_H) continue;
     const def = itemDefinitionForSavedId(saved.itemId);
-    if(!def || def.isGoldBag || def.isMapScroll || def.isExpansionBag) continue;
+    if(!def || def.isGoldBag || def.isMapScroll) continue;
     const gi = spawnGroundItem(saved.x,saved.y,def,'restored from save');
     gi.spawnTime = presentationTime - (Number.isFinite(saved.age) ? Math.max(0,Math.min(saved.age,GROUND_ITEM_LIFESPAN)) : 0);
     applyLegacyLuckyCoinMigration(gi.itemDef,saved.itemId,saved.legacyLuckyCoin === true);
@@ -13914,7 +14014,16 @@ function drawGoldHudFlights(ctx){
 }
 // GOLD-FLIGHT-CLICK-01 (1.7.36): coins fly up to the gold counter only when the player clicks a coin or opens a bag.
 function creditCoin(c, textColor, withFlight){
-  if(c.isDiamond){ grantDiamondReward(c.x, c.y); return; }
+  if(c.isDiamond){
+    // DIAMOND-GOLD-01 (1.7.42): owner decision — a diamond is worth 1 to 100 gold when clicked, on top of the permanent passive upgrade it already gave.
+    const diamondGold = DIAMOND_MIN_GOLD + Math.floor(Math.random()*(DIAMOND_MAX_GOLD - DIAMOND_MIN_GOLD + 1));
+    gold += diamondGold;
+    if(withFlight) launchGoldHudFlight(c.x, c.y);
+    spawnFloatingText(c.x, c.y - 34, '+💎' + diamondGold, '#8ee8ff');
+    grantDiamondReward(c.x, c.y);
+    updateHUD();
+    return;
+  }
   gold += c.value;
   if(withFlight) launchGoldHudFlight(c.x,c.y);
   if(textColor) spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, textColor);
@@ -13987,7 +14096,7 @@ function isWithinEmojiSquare(worldX, worldY, centerX, centerY, emojiPx){
 }
 // GOLD-BAG-ITEM-01 (1.6.157) — see CHANGELOG.md § [1.6.157]. A gold bag is an ordinary ground item. Clicking it pays directly; unopened bags keep their gold.
 const GOLD_BAG_ITEM = { id: 'GOLD_BAG', name: 'Gold Bag', icon: '💰', rarity: 'COMMON', isGoldBag: true };
-const GOLD_BAG_LIFESPAN_MS = 180000, DIAMOND_BAG_CHANCE = 0.1, COIN_MAX_SCENERY_BOUNCES = 4;
+const GOLD_BAG_LIFESPAN_MS = 180000, DIAMOND_BAG_CHANCE = 0.1, DIAMOND_MIN_GOLD = 1, DIAMOND_MAX_GOLD = 100, COIN_MAX_SCENERY_BOUNCES = 4;
 const GOLD_BAG_MIN_GOLD = 1, GOLD_BAG_MAX_GOLD = 100;
 const GOLD_BAG_MIN_COINS = 3, GOLD_BAG_MAX_COINS = 9;
 const GOLD_BAG_MIN_COIN_VALUE = 1, GOLD_BAG_MAX_COIN_VALUE = 25;
@@ -14006,6 +14115,7 @@ function creditGroundBagGold(groundItem){
   if(!definition.isGoldBag) return;
   gold += definition.gold;
   spawnGoldBagCoinBurst(groundItem.x, groundItem.y);
+  rollMapFromBag(groundItem.x, groundItem.y); // ONE-KIND-OF-BAG-01: a bag paid out by timing out gets the same luck roll
   spawnFloatingText(groundItem.x, groundItem.y - 14, '+💰' + definition.gold, '#e6c200');
   updateHUD();
 }
@@ -14032,6 +14142,7 @@ function openGoldBag(groundItem, x, y){
   spawnFloatingText(x, y - 16, '+💰' + bagGold, '#ffd700');
   spawnFloatingText(x, y - 32, '🪙 more coins to grab!', '#ffe082'); // BAG-PAYOUT-TEXT-01 (1.7.36): the bag pays immediately, then its coins are a second reward
   spawnGoldBagCoinBurst(x, y);
+  rollMapFromBag(x, y); // ONE-KIND-OF-BAG-01: the luck roll
   groundItems = groundItems.filter(gi => gi !== groundItem);
   itemLogReleased(groundItem.itemDef, 'opened');
   if(Math.random() < DIAMOND_BAG_CHANCE){ // a rare diamond, coin-sized, comes out with the coins
@@ -14052,8 +14163,9 @@ function groundItemBobPx(gi){
   const popLift = popAge < 450 ? -Math.sin(popAge/450*Math.PI)*16 : 0;
   return Math.sin(presentationTime/300 + gi.id)*4 + popLift;
 }
-function tryCollectCoinAt(worldX, worldY, pointerType){
-  const coin = nearestPickupAt(coinPickups, worldX, worldY, pickupHitSizeWorld(COIN_EMOJI_PX, pointerType), item => item.active && !item.airborne);
+function tryCollectCoinAt(worldX, worldY, pointerType, hoverOnly){
+  // DIAMOND-CLICK-01 (1.7.42): hovering or sliding over coins collects coins, but a diamond is only ever collected by a deliberate click or tap.
+  const coin = nearestPickupAt(coinPickups, worldX, worldY, pickupHitSizeWorld(COIN_EMOJI_PX, pointerType), item => item.active && !item.airborne && !(hoverOnly && item.isDiamond));
   if(!coin) return false;
   creditCoin(coin, '#ffd700', true);
   playSound('coin', coin.x, undefined, coin.y);
@@ -15523,8 +15635,15 @@ function scaledPopulation(population, waveNumber){
   for(const tier of ['TINY','SMALL','STANDARD']) if(population[tier]) population[tier] = Math.round(population[tier] * factor);
   return population;
 }
+// MORE-ENEMIES-01 (1.7.38): owner decision — the game should not get harder, but since all you do is attack enemies, there should be more of them. The little, small and
+// standard counts are multiplied by ENEMY_COUNT_MULTIPLIER on every wave; enemy health, speed, damage, bounty and the Large and Boss counts are untouched, so each enemy is exactly as
+// strong as before, there are simply more of them to fight, farm and level on.
+const ENEMY_COUNT_MULTIPLIER = 1.5, LATE_ENEMY_COUNT_MULTIPLIER = 1.2; // after wave 50 the counts are already in the hundreds, so the extra is smaller to protect frame rate
 function tierPopulationForWave(waveNumber){
-  return scaledPopulation(baseTierPopulationForWave(waveNumber), waveNumber);
+  const population = baseTierPopulationForWave(waveNumber);
+  const countMultiplier = waveNumber > 50 ? LATE_ENEMY_COUNT_MULTIPLIER : ENEMY_COUNT_MULTIPLIER;
+  for(const tier of ['TINY','SMALL','STANDARD']) if(population[tier]) population[tier] = Math.max(1, Math.round(population[tier] * countMultiplier));
+  return scaledPopulation(population, waveNumber);
 }
 function baseTierPopulationForWave(waveNumber){
   if(waveNumber < EARLY_WAVE_POPULATION.length) return Object.assign({ TINY:0, SMALL:0, STANDARD:0, LARGE:0, BOSS:0 }, EARLY_WAVE_POPULATION[waveNumber]);
@@ -15539,11 +15658,14 @@ function baseTierPopulationForWave(waveNumber){
   return population;
 }
 // CA628 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA628
+// GROUP-SIZE-ROUTE-01 (1.7.37): owner decision — groups are bigger the longer the road is. The batch size range is multiplied by the same road-length factor that scales the
+// enemy counts (never for Boss batches or wave 1, and Large batches grow only half as fast), so a long road brings both more enemies and larger groups of them.
 function batchSizeRangeForWave(waveNumber, sizeTier){
   if(sizeTier === 'BOSS') return [1, 1];
   if(waveNumber === 1) return [1, 1];
-  if(waveNumber <= 50) return ({ TINY:[3,5], SMALL:[2,5], STANDARD:[2,4], LARGE:[2,3] })[sizeTier];
-  return ({ TINY:[7,10], SMALL:[6,9], STANDARD:[5,8], LARGE:[5,7] })[sizeTier];
+  const base = waveNumber <= 50 ? ({ TINY:[3,5], SMALL:[2,5], STANDARD:[2,4], LARGE:[2,3] })[sizeTier] : ({ TINY:[7,10], SMALL:[6,9], STANDARD:[5,8], LARGE:[5,7] })[sizeTier];
+  const factor = sizeTier === 'LARGE' ? 1 + (routeLengthFactor(waveNumber) - 1)*0.5 : routeLengthFactor(waveNumber);
+  return [Math.max(1, Math.round(base[0]*factor)), Math.max(1, Math.round(base[1]*factor))];
 }
 function chapterFamilyForWave(waveNumber){
   if(waveNumber > CAMPAIGN_WAVE_COUNT) return null;
@@ -18235,7 +18357,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
-  if(gameState === 'PLAYING' && !draggingGroundItem && coinPickups.length){ const hoverPoint = toCanvasCoords(e); tryCollectCoinAt(hoverPoint.x, hoverPoint.y, e.pointerType); } // HOVER-COIN-01 (1.7.36): a mouse hover or a finger sliding over a coin collects it
+  if(gameState === 'PLAYING' && !draggingGroundItem && coinPickups.length){ const hoverPoint = toCanvasCoords(e); tryCollectCoinAt(hoverPoint.x, hoverPoint.y, e.pointerType, true); } // HOVER-COIN-01 (1.7.36): a mouse hover or a finger sliding over a coin collects it
   if(collectedPickupPointers.has(e.pointerId)) return;
   if(activePointers.size === 2 && (draggingGroundItem || collectedPickupPointers.size)) return;
   const prev = activePointers.get(e.pointerId);
@@ -18305,8 +18427,6 @@ function onPointerEnd(e){
       const target = itemDropTargetAt(dragItemPos);
       if(draggingGroundItem.itemDef.isMapScroll){
         if(!isDragging) useFreeExpansionPickup(draggingGroundItem, '#7dd3fc');
-      } else if(draggingGroundItem.itemDef.isExpansionBag){
-        if(!isDragging) useFreeExpansionPickup(draggingGroundItem, '#ffd700');
       } else if(draggingGroundItem.itemDef.isGoldBag){ // GOLD-BAG-ITEM-01: dropped on a stickman it opens there; tapped without moving it opens where it lies; dragged elsewhere it is simply moved (below)
         if(target) openGoldBag(draggingGroundItem, target.x, target.y - 4);
         else if(!isDragging) openGoldBag(draggingGroundItem, draggingGroundItem.x, draggingGroundItem.y);
@@ -20729,9 +20849,10 @@ function readFirstPlayFlag(key, fallback){
 function writeFirstPlayFlag(key){
   try{ localStorage.setItem(key, '1'); }catch(e){}
 }
-function firstWaveWasStarted(){ return firstWaveStartedInSession || readFirstPlayFlag(FIRST_WAVE_STARTED_KEY, false); }
-function firstNextWaveWasUsed(){ return firstNextWaveUsedInSession || readFirstPlayFlag(FIRST_NEXT_WAVE_USED_KEY, false); }
-function firstSpeedUpWasUsed(){ return firstSpeedUpUsedInSession || readFirstPlayFlag(FIRST_SPEED_UP_USED_KEY, false); }
+// INTRO-EVERY-GAME-01 (1.7.42): owner decision — the build, next wave and speed-up arrows play on every new playthrough, so nothing about them is remembered between visits any more.
+function firstWaveWasStarted(){ return firstWaveStartedInSession; }
+function firstNextWaveWasUsed(){ return firstNextWaveUsedInSession; }
+function firstSpeedUpWasUsed(){ return firstSpeedUpUsedInSession; }
 const firstCueSoundsSeen=new Set();
 function soundFirstPlayCue(id){
   if(gameState!=='PLAYING' || firstCueSoundsSeen.has(id) || document.hidden) return;
@@ -20752,30 +20873,24 @@ function syncFirstPlayCues(){
 }
 function markFirstWaveStarted(){
   firstWaveStartedInSession = true;
-  writeFirstPlayFlag(FIRST_WAVE_STARTED_KEY);
   syncFirstPlayCues();
 }
 function markFirstNextWaveUsed(){
   if(!firstWaveWasStarted() || firstNextWaveWasUsed()) return;
   firstNextWaveUsedInSession = true;
-  writeFirstPlayFlag(FIRST_NEXT_WAVE_USED_KEY);
   syncFirstPlayCues();
 }
 function markFirstNextWaveCueAction(){ markFirstNextWaveUsed(); }
 function markFirstFighterBuilt(){
   firstFighterBuiltInSession = true;
-  try{ localStorage.setItem(FIRST_TOWER_BUILT_KEY, '1'); }catch(e){}
   const hint = document.getElementById('first-build-hint');
   if(hint) hint.classList.add('hidden');
   syncFirstPlayCues();
 }
-function firstFighterWasBuilt(){
-  try{ return firstFighterBuiltInSession || localStorage.getItem(FIRST_TOWER_BUILT_KEY) === '1'; }catch(e){ return firstFighterBuiltInSession; }
-}
+function firstFighterWasBuilt(){ return firstFighterBuiltInSession; }
 function markFirstSpeedUpUsed(){
   if(!firstWaveWasStarted() && waveIndex === 0 && wavesCompleted === 0) return;
   firstSpeedUpUsedInSession = true;
-  writeFirstPlayFlag(FIRST_SPEED_UP_USED_KEY);
   const hint = document.getElementById('first-speed-hint');
   if(hint) hint.classList.add('hidden');
 }

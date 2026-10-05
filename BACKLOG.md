@@ -8,6 +8,13 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## 1.7.43 open items
+- Decision needed: should a diamond pay gold only (dropping the permanent passive upgrade)? Both are paid now.
+- Decided (1.7.38): not harder, more enemies. Open: whether the per-enemy bounty should drop so gold and XP per wave stay where they were, and whether the 25% tighter batch gaps (TEMPO-01) should be relaxed.
+- Decision needed: what counts as a scene for time of day on the playing field (skipped for now by the owner).
+- Tune from play: the share of grass kept clear of trees and rocks (45%, ROOM-TO-BUILD-01); too little wood or stone early means lower it, too cramped means raise it.
+- Possible: show the formation name on the wave label; tune the formation mix from play.
+
 ## Wave formations (shipped) and what is left
 - Shipped: six formations per wave (see AGENTS). Open: show the formation name on the wave label if you want players to see it; tune the formation mix from play (for example more surges late).
 - Open: panning cleanliness, in-game time of day, extra item sounds, wilder road shapes (needs approval).
