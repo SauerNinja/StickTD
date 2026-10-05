@@ -33,6 +33,26 @@ The score must beat the best DOS-era music and never feel boring: it keeps evolv
 7. **Regression checks.** Compare against GitHub history when the owner reports something that used to work, name the version where it changed, and restore it. Report regressions found by that comparison every release.
 8. **Sound inspirations.** The owner's DOS references stand for all music work: Warcraft Orc 2, Command and Conquer Bigfoot, Tyrian, One Must Fall, Jazz Jackrabbit, Heroes of Might and Magic and Might and Magic V, with the Animal Crossing-like twang of the wave-clear fanfare liked. Idle music must sound like a coherent martial theme, never random notes; battle music is the standard to match.
 
+### Expansion size, road length and tempo (owner rules)
+
+An expansion adds 1 to 3 route tiles in total, never more (EXPAND-SIZE-01). Coins last 15 to 20 seconds (COIN-LIFETIME-01). The longer the road is compared with what is expected for the wave, the more little and standard enemies come, up to 2.5 times, and Large and Boss counts never change (ROUTE-SCALES-WAVE-01). From wave 2 batches arrive 25% closer together (TEMPO-01). The owner finds the tempo weak and the game too easy; keep raising intensity when asked, and ask for numbers before changing enemy health, speed or damage. An expansion reveals about as much grass as route it adds (1 route tile gives about 1 grass, 2 give 2, 3 give 3); other border tiles stay dirt, and the first expansion still opens the starting border in full (GRASS-MATCHES-PATH-01).
+
+### Wave formations (owner rule, WAVE-FORMATION-01)
+
+Waves from the second on are dealt in varied formations (steady, surge, trickle, pulses, building pressure, irregular), never the same non-steady formation twice in a row. Formations change only rhythm: size phases stay ascending, boss phases and wave 1 are untouched, unit counts and XP and gold budgets are unchanged, and total spawn time stays near the steady pacing. The fighter portrait ring shows attack state in colour only and never changes the plate size. Visual effects guard against phasing (nothing needed on screen may fade or flicker in and out of existence), but glows may pulse freely.
+
+### Idle music and sound effects must not repeat (owner rule, FIELD-VARIATION-01 and SFX-VARIANT-01)
+
+The idle music rotates four arrangements (theme, answer, contrast, development) with seeded per-bar variation and must never play the same 24 bars twice; sound effects rotate five pitch and colour variants and never play the same variant twice in a row, except sounds whose pitch carries meaning. The owner's complaint was "boring or repetitive": keep adding variety, never remove it, and keep the idle theme coherent and martial in the Orc 2 spirit, not random.
+
+### Blood colour (owner rule, FRESH-BLOOD-01)
+
+Every enemy keeps its own blood colour, but most enemies have realistic red blood, and fresh red blood must look fresh: bright red at impact, darkening to the enemy's own shade. Only enemies whose blood is not red keep their own colour from the start. The attract screen's big angry red guy is the Grunt.
+
+### Random events (owner rule, ONE-EVENT-PER-END-01)
+
+Each expansion makes at most one positive random event within 3 to 5 route squares of the spawn flags and one within 3 to 5 squares of the finish carpet, never more. Chests, supply crates, berry bushes, farm animals, fountains and campfires are all random events and share these slots; ordinary scenery tiles only grow trees and rocks. Hostile events stay gated until wave 5 and take slots first. The expand reveal animation runs in real time, at one calm pace at every game speed, and each new attract scene changes the time of day.
+
 ### Quick items and the faceplate (owner rule, QUICK-FLOAT-01)
 
 The quick item buttons are free floating buttons above the stickman faceplate, outside it. The faceplate never expands, grows or swallows them, and when it is not expanded it is always its normal size. The row lives outside the scrolling panel, is positioned just above the panel's top edge by script, scales with the panel, hides with it, and stays out of the way of the panel's own layout. Never put the quick items inside the faceplate, never make the faceplate taller or wider to make room for them, and never merge them into the nameplate row; any future change to the inspector must keep this exactly. The design contract checks both that the row is outside the panel and that it is absolutely positioned. Regression history: in 1.6.159 the row was absolutely positioned above the panel; later it was moved inside the panel as a normal block, which made the plate grow.
@@ -951,9 +971,7 @@ The consent actions sit in a centered, wrapping button row so both choices remai
 - A discrete instantaneous event (impact, death, decal appearing) renders at full final size on
   the exact frame it happens — no grow-in/fade-in, which decouples "when it visually finishes" from
   "when it happened" and reads as delayed/buggy.
-- Nothing fades in and out repeatedly — no `globalAlpha` or rgba-alpha modulated by a continuous
-  `sin()` on a warning banner, marker, or indicator. The only acceptable fade is one-way, out,
-  permanently. Position and color can still pulse or bob for attention; opacity does not cycle.
+- Guard against phasing: nothing the player needs to see or click (an enemy, a fighter, an item, a coin, a bag, a banner, a marker) may fade in and out, flicker, or vanish and return as if it were phasing in and out of existence. Owner clarification (1.7.36): this rule is about phasing only. Glows may pulse in and out freely: the glow of an item, a coin, an enemy or a ring around one is fine to brighten and dim. A one-way fade out when something permanently goes away is fine too.
 - Render-only cosmetic offsets live in `draw()`, never touch the entity's real `x`/`y` — mutating
   authoritative position for a visual effect risks desyncing pathing/collision that same frame.
 - HTML5 semantics: the UI is built from generic `<div>`s throughout (checked directly — zero

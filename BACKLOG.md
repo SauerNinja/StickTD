@@ -8,6 +8,10 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## Wave formations (shipped) and what is left
+- Shipped: six formations per wave (see AGENTS). Open: show the formation name on the wave label if you want players to see it; tune the formation mix from play (for example more surges late).
+- Open: panning cleanliness, in-game time of day, extra item sounds, wilder road shapes (needs approval).
+
 ## Performance investigation (from the owner's recorded run)
 
 - *Evidence* — Browser reports software rendering (Basic Render Driver); confirm the owner's Chrome hardware acceleration setting, then compare frame cost at the same resolution with it on.
@@ -18,7 +22,7 @@ This is the single list of everything still open. Shipped work is removed and li
 
 - *Play-test* — Gold bag payouts (1–100 direct, 3–9 coins worth 1–25 each) are about three times the previous total; confirm the economy still feels earned.
 - *Play-test* — Music pass shipped (minor combat scale with leading tone, bass pedal, march taps, 3+3+2 accent, calm-to-wave lowpass sweep, flag-wind ambience). Listen and report mix balance. Boss arrangement, evolving keys, fills, counter-melody, intensity layer and the wave-clear fanfare shipped. Still open: listening feedback.
-- *Owner decision* — Path generation: owner wants the existing generator improved so growth follows wilder random patterns while staying a single lane. Proposal pending: read the full growth code, then add pattern variants (switchbacks, S-curves, loops, spirals) with safety checks that no tower is trapped. No code changed yet.
+- *Owner decision* — Path generation: roads now prefer turning (85%), measured shorter straight runs. Wilder shapes (switchbacks, S-curves, loops) still need your approval and trapped-tower safety checks before any code.
 - *Evidence* — Debug log from a real run on the device that lags (late waves, large map, high speed) to target the slow phase before any optimization.
 
 ## 1.7.35 notification acceptance
