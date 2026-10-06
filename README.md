@@ -55,7 +55,7 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 - Train towers through combat and invest in their strengths. Stat milestones open specialist classes for your roster.
 - Earn a choice reward after wave 3 and every tenth wave. Tap 🎁 or its notification to choose. Each choice explains its effect, with current supplies and healing shown in the popup; pending rewards remain available while you continue playing and are included in saves.
 - The **speed control** (1x through 10x) only affects how fast enemies move and how fast towers attack; it never changes how long clearing a tree, rock or bush takes, or any other on-screen timer.
-- Press **Start Wave** to begin the opening round; between rounds, the same control reads **Next Wave**. Clear waves to expand the winding battlefield. The free expansion for each cleared wave and any paid expansions extend the road a few tiles at a time. They are available between waves once every enemy, including escaped ones, is defeated, and you can buy as many as you can afford. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
+- Press **Start Wave** to begin the opening round; between rounds, the same control reads **Next Wave**. Clear waves to expand the winding battlefield. The free expansion for each cleared wave and any paid expansions extend the road a few tiles at a time. They are available between waves, even while an enemy that escaped is still loose: each cleared wave gives one free expansion as soon as it ends, and you can buy one more expansion per wave. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
 - The flags on the spawn tile ripple in a light, gusting breeze between waves and hang still once a wave begins.
 - Face an endless sequence of waves with nine rotating archetypes and enemies that grow in size, strength, and rewards.
 - Play with a mouse on desktop or touch controls on mobile. Pan, zoom, pause, and set the simulation speed from the HUD.
@@ -217,9 +217,9 @@ After wave 100, nine rotating wave archetypes provide varied pacing, enemy mixes
 
 Enemies follow the road in single file, forming natural queues at Barricades. Swept collision checks keep fast-moving units in contact with the route and one another. Dispatch adapts to a backed-up queue, and a safety timeout helps combat resume if movement stalls. Waypoint margins guide clean turns around spiral corners.
 
-Each expansion adds one to three route tiles in total, and the road is always surrounded by grass: the green area is only ever added to, and a stickman is never left outside it. The road grows in varied styles: mostly normal winding, with zigzags, long runs, and now and then a wild hook or coil. It is kept from cutting itself off, and the road avoids the tiles your stickmen stand on; if it ever must take one, that stickman is moved onto the nearest grass. Expansions are available between waves once every enemy, including any that escaped, is defeated.
+Each expansion grows both ends of the road by the same one to three tiles, and the road is always surrounded by grass: the green area is only ever added to, and a stickman is never left outside it. The road grows in varied styles: mostly normal winding, with zigzags, long runs, and now and then a wild hook or coil. It is kept from cutting itself off, and the road avoids the tiles your stickmen stand on; if it ever must take one, that stickman is moved onto the nearest grass. Expansions are available between waves once every enemy, including any that escaped, is defeated.
 
-Each expansion also makes one random event near the spawn flags and one near the finish: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (a meat, a fruit and a vegetable), a wood pile, a stone cairn, a bird nest or a mushroom patch. Presents are the rarest and are a loot roll (coins, a gold bag, a stim or berries), so a gold bag comes from only about three presents in ten. Trees come in three kinds and trees and rocks are mirrored and sized differently, so no two corners of the map look alike.
+Each expansion also makes one random event near the spawn flags and one near the finish: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (a meat, a fruit and a vegetable), a wood pile, a bird nest or a mushroom patch. Presents are the rarest and are a loot roll (coins, a gold bag, a stim or berries), so a gold bag comes from only about three presents in ten. Near the start the land is green meadow with leafy trees. Far down a very long road the world changes in wavy patches, like biomes: cool Pinewood with evergreens and sandy Dunes with palm trees. Trees and rocks are mirrored and sized differently, so no two corners of the map look alike.
 
 ## Items & Heroes
 
@@ -234,7 +234,7 @@ Defeated enemies sometimes leave an item on the road. Equipment shines with a ra
 
 ## Food & Medical Supplies
 
-Fallen enemies, picnic baskets, bushes and mushroom patches leave food: Fruit, Vegetables, and Meat. Food is eaten the moment you drop it on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon: **meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX**. Boss Treats and stims are still carried like any other item: drag one onto a stickman to store it in an item slot, then click the slot or press its key to use it.
+Fallen enemies, picnic baskets, bushes and mushroom patches leave food: Fruit, Vegetables, and Meat. Food is eaten the moment you drop it on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon: **meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX**. Every food gives 1 to 3 points of its stat and 1 to 10 experience, rolled when it is eaten. Boss Treats and stims are still carried like any other item: drag one onto a stickman to store it in an item slot, then click the slot or press its key to use it.
 
 - **Fruit** — +1 INT, plus a little experience scaled to how far the campaign has progressed.
 - **Vegetables** — +1 DEX (a Hot Pepper gives +2), plus a small heal.
@@ -419,7 +419,7 @@ See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and cont
 
 ## Version history
 
-Current version: **1.7.53**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
+Current version: **1.7.75**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
 
 ## License
@@ -432,6 +432,6 @@ When you use **Move** on a stickman he now walks to the new tile with a walking 
 
 Items are meant to feel like finds: only a small share of defeated enemies drop one, supplies are more common than tonics and gear, and rare and epic gear is uncommon (about 7% and 1% of gear rolls).
 
-While you clear a tree, rock or bush, a retro clock-wipe circle fills clockwise behind it in 1970s colours until it is done.
+While you clear a tree, rock or bush, a yellow gradient clock-wipe circle fills clockwise behind it until it is done.
 
 The Hero Shop (it needs a living Merchant) also has a **Market** of rations (+2 STR, INT or DEX, eaten at once), a **Training Yard** (experience for a stickman) and a **Travelling Merchant** with three new pieces of gear every wave; the prices rise with every purchase, so there is always somewhere to spend gold.

@@ -8,6 +8,13 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## 1.7.75 open items
+- Real frame loss that the game cannot see (owner, 1.7.53 build): the overlay showed 37 to 41 FPS and gaps of 21 to 29 ms while update, render and HUD together took under 1 ms and the worst JavaScript frame in a minute was 6 ms. Time spent outside the page's JavaScript (the graphics process, compositing, a recorder or another tab) is the suspect, not the game code. Needs one Chrome Performance trace of a lagging attack (record 10 s, with the GPU lane visible), or the exported debug log from that moment, to say which.
+- Candidates if the trace points at drawing: the image smoothing quality of the full-screen map and decal blits (`imageSmoothingQuality = 'high'`), per-frame emoji text at changing sizes (each new size costs a glyph raster), and the fixed 60 FPS limit on a display that is not 60 Hz.
+
+## 1.7.70 open items
+- Sharpness when zoomed in (owner, screenshot at 5.2 times zoom): ground tiles, blood and pebbles are baked at one pixel per world pixel, so they blur above about 1.5 times zoom while live-drawn emoji, stickmen, trees and rocks stay crisp. A zoom-aware cache would be about 10,000 by 6,600 pixels (about 280 MB) at 5 times, over the canvas limits, so it needs tiles: re-bake only the visible tiles at the current zoom, with a budget per frame, and fall back to the 1 times cache while a tile is pending. Measure the cost on the owner's machine before building.
+
 ## 1.7.51 open items
 - Take on the owner's machine: panning against stationary frame cost (the camera bypasses the frame cap), and the transition cost of a render-scale change (it resizes and rebuilds both world caches); the new overlay figures and downing capture will show whether either matters.
 - Candidate lag work, only if a real log points at it: bake scenery and its shadows into the static layer (about 2 ms each on a 37-item board in software drawing), and separate viewport render scale from world cache scale.

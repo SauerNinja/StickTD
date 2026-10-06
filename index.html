@@ -194,7 +194,7 @@
      secondary resources that shouldn't compete for attention with the primary two. Only color/
      weight — no size or spacing change, so this can't affect the tight-fit top bar's width. */
   #goldVal{color:var(--gold);font-weight:bold;}
-  #livesVal{color:#ff9e96;font-weight:bold;}
+  #livesVal{color:#ff9e96;font-weight:bold;display:inline-block;} /* inline-block so the HEART-BREAK-01 arrival flash can scale it */
   #livesMeter{width:40px;height:9px;vertical-align:middle;}
   #waveProgress{width:40px;height:7px;vertical-align:middle;}
   #livesMeter::-webkit-meter-bar{background:rgba(0,0,0,0.35);border-radius:4px;border:none;}
@@ -520,6 +520,26 @@
     border:1px solid rgba(241,196,15,0.35);border-radius:8px;width:42px;min-width:42px;min-height:40px;padding:6px;font-size:1.1em;line-height:1;
     cursor:pointer;}
   #startSettingsBtn:hover{border-color:var(--gold);}
+  /* START-CHANGES-BTN-01 (1.7.54): bottom-left of the attract screen, opens Settings on the Changes tab. */
+  #startChangesBtn{position:absolute;left:14px;bottom:14px;background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
+    border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
+  #startChangesBtn:hover{border-color:var(--gold);}
+  /* CHANGES-SILVER-MODAL-01 (1.7.57): the silver version dialog from 1.6.161, restored and opened on demand by the See changes button. */
+  #update-modal{position:absolute;inset:0;background:rgba(6,10,6,0.94);z-index:30;display:flex;align-items:center;justify-content:center;padding:18px;}
+  #update-modal.hidden{display:none;}
+  #update-modal-inner{background:linear-gradient(165deg,#2b2b30 0%,#17171b 60%,#0d0d10 100%);
+    border:2px solid #c8ccd4;border-radius:14px;padding:22px 26px;max-width:560px;width:100%;max-height:82%;overflow:auto;
+    box-shadow:0 0 40px rgba(200,204,212,0.25);text-align:center;}
+  #updateVersionBig{font-family:Georgia,'Times New Roman',serif;font-size:3.2em;font-weight:bold;letter-spacing:2px;
+    background:linear-gradient(180deg,#ffffff 0%,#cfd6de 45%,#8b95a1 55%,#e8edf3 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 6px rgba(0,0,0,0.5);}
+  #updateTitle{color:#e8edf3;margin:2px 0 10px;font-size:1.05em;letter-spacing:1px;text-transform:uppercase;}
+  #updateHighlights{color:var(--paper);text-align:left;font-size:0.88em;line-height:1.55;margin:0 0 14px;
+    max-height:46vh;overflow-y:auto;padding:4px 10px 4px 4px;border-top:1px solid rgba(200,204,212,0.25);border-bottom:1px solid rgba(200,204,212,0.25);}
+  #updateHighlights ul{margin:4px 0 10px;padding-left:20px;}
+  #updateHighlights a{color:#cfd6de;}
+  .update-entry-head{color:#cfd6de;font-weight:bold;font-size:0.95em;margin-top:8px;letter-spacing:0.3px;}
+  #updateFooterNote{color:#8b95a1;font-size:0.78em;letter-spacing:0.5px;text-transform:uppercase;margin:8px 0 10px;}
   .settings-changelog{max-height:58vh;overflow:auto;text-align:left;line-height:1.45;}
   .settings-changelog-entry{border-bottom:1px solid rgba(255,255,255,0.14);padding:6px 0;}
   .settings-changelog-entry h3{font-size:0.95em;color:var(--gold);margin:5px 0;}
@@ -1287,6 +1307,17 @@
         <button id="startSettingsBtn" title="Options" aria-label="Options">⚙️</button>
       </div>
       <button class="big-btn" id="playBtn">▶ PLAY</button>
+      <button id="startChangesBtn" title="See what changed in this version">🗒️ See changes</button>
+    </div>
+
+    <div id="update-modal" class="hidden">
+      <div id="update-modal-inner">
+        <div id="updateVersionBig"></div>
+        <h3 id="updateTitle">What's new</h3>
+        <div id="updateHighlights"></div>
+        <div id="updateFooterNote"></div>
+        <button class="big-btn" id="updateModalOk">OK</button>
+      </div>
     </div>
 
     <div id="dps-breakdown-modal" class="hidden">
@@ -1337,7 +1368,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.53'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.75'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1363,6 +1394,57 @@ function pxFont(size){
   return _pxFontCache[px] || (_pxFontCache[px] = px + 'px serif');
 }
 // CA009 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA009
+// ENEMY-ATTACK-ANIM-01 (1.7.58): an enemy hitting a stickman or barricade winds up, lunges and recoils in step with its attack timer, and puffs an
+// Animal Crossing style anger mark and steam from its head. Pure drawing: it reads the attack timer and never changes when damage lands.
+const LIVESTOCK_EMOTE_MIN_GAP_MS = 7000, LIVESTOCK_EMOTE_GAP_SPREAD_MS = 9000, LIVESTOCK_EMOTE_LIFE_MS = 1500;
+// MAGE-RECOIL-01 (1.7.61): casting kicks the staff back (equal and opposite to the bolt), flips the tip up, pushes the body back, and flashes the orb with a ring and sparks.
+const MAGE_CAST_RECOIL_MS = 450;
+function mageRecoilKick(castProgress){ return castProgress * castProgress * (1 + 0.35 * Math.sin((1 - castProgress) * Math.PI * 3)); }
+function smoothStep01(x){ const q = x < 0 ? 0 : x > 1 ? 1 : x; return q * q * (3 - 2 * q); }
+function attackLungeAmount(phase){
+  if(phase < 0.25) return 1 - smoothStep01(phase / 0.25);
+  if(phase < 0.6) return 0;
+  if(phase < 0.88) return -0.45 * smoothStep01((phase - 0.6) / 0.28);
+  return -0.45 + 1.45 * smoothStep01((phase - 0.88) / 0.12);
+}
+function attackAngerPopScale(phase){
+  if(phase >= 0.55 && phase < 0.7){ const q = (phase - 0.55) / 0.15; return smoothStep01(q) * (1 + 0.3 * Math.sin(q * Math.PI)); }
+  if(phase >= 0.7 && phase < 0.88) return 1;
+  if(phase >= 0.88) return 1 + 0.25 * Math.sin(((phase - 0.88) / 0.12) * Math.PI);
+  if(phase < 0.3) return 1 - smoothStep01(phase / 0.3);
+  return 0;
+}
+function drawAngerMark(ctx, x, y, size, popScale, wiggle){
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(wiggle); ctx.scale(popScale, popScale);
+  ctx.lineCap = 'round';
+  for(let pass = 0; pass < 2; pass++){
+    ctx.strokeStyle = pass === 0 ? '#7f1d1d' : '#ff4b4b';
+    ctx.lineWidth = pass === 0 ? size * 0.62 : size * 0.38;
+    ctx.beginPath();
+    for(let arm = 0; arm < 4; arm++){
+      const centreAngle = arm * Math.PI / 2 + Math.PI / 4;
+      ctx.moveTo(Math.cos(centreAngle - 0.5) * size, Math.sin(centreAngle - 0.5) * size);
+      ctx.arc(0, 0, size, centreAngle - 0.5, centreAngle + 0.5);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawAngerSteam(ctx, x, y, radius, phase){
+  if(phase < 0.6) return;
+  const rise = (phase - 0.6) / 0.4;
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  for(let puff = 0; puff < 2; puff++){
+    const t = (rise + puff * 0.45) % 1;
+    ctx.globalAlpha = 0.7 * (1 - t);
+    ctx.beginPath();
+    ctx.arc(x + (puff ? 1 : -1) * radius * (0.35 + 0.25 * t), y - radius * (0.95 + 0.8 * t), radius * 0.2 * (0.6 + t), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
 function drawStatusIcons(ctx, cx, cy, radius, emoji, count, periodMs, orbitAboveHead){
   const t = performance.now();
   ctx.font = pxFont(radius * (orbitAboveHead ? 0.85 : 0.55));
@@ -2964,7 +3046,7 @@ function validateDesignContract(){
   if(![...FOOD_ITEMS, ...TREAT_ITEMS, ...STIM_ITEMS, ...MEAL_ITEMS, ...HUT_LOOT_ITEMS, ...LOOT_TONIC_ITEMS, SHOVEL_ITEM].every(isConsumableDef)) problems.push('every consumable must be stored in a stickman\'s slots and used by a click or hotkey, never on the spot (CONSUMABLE-STORED-01)');
   if(!(TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE + TREE_ROCK_SIZE_FRAC_SPREAD/2 < END_RING_MIN_SIZE_FRAC && END_GUARD_MAX_SIZE_FRAC <= END_RING_MIN_SIZE_FRAC && TREE_ROCK_SIZE_FRAC_AT_MIDDLE < TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE && HARVESTED_TILE_KEEP_FACTOR < 0.5)) problems.push('scenery: the ring tiles at the road ends hold the biggest pieces, size shrinks toward the middle, and cleared tiles rarely regrow trees or rocks (SCENERY-GRADIENT-01)');
   if(!String(buildTowerModal).includes('Stickmen Defenders') || !String(buildTowerModal).includes("addBuildSection('Fortifications')") || String(buildTowerModal).includes('Starter defenders') || String(buildTowerModal).includes('Specialist defenders')) problems.push('all available fighter characters must share Stickmen Defenders, with fortifications and locked characters in their own sections (BUILD-MENU-GROUPS-02)');
-  if(!(String(buildTowerModal).indexOf("addBuildSection('Map growth')") >= 0 && String(buildTowerModal).indexOf("addBuildSection('Map growth')") < String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')"))) problems.push('Map growth must be the first section in Build (BUILD-MAP-GROWTH-ORDER-01)');
+  if(!(String(buildTowerModal).indexOf("addBuildSection('Structures')") >= 0 && String(buildTowerModal).indexOf("addBuildSection('Structures')") < String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')"))) problems.push('Structures (Expand) must be the first section in Build (BUILD-MAP-GROWTH-ORDER-01)');
   if(document.getElementById('notification-filters') || /notificationFilter|notificationCategory/.test(String(renderNotificationPanel) + String(recordNotification))) problems.push('the notification inbox must use one unfiltered list without category buttons (NOTIFICATION-INBOX-SIMPLE-01)');
   if(String(Enemy.prototype.draw).includes('this.radius*1.08') || String(Enemy.prototype.draw).includes('this.pack &&') || String(Tower.prototype.draw).includes('rgba(255,255,255,0.25)')) problems.push('enemy hit flashes, wolf packs and selected units must not draw white outline circles (NO-WHITE-HALO-01)');
   { const popupStack = document.getElementById('notification-popups');
@@ -3082,7 +3164,7 @@ function validateDesignContract(){
   if(DIAMOND_BAG_CHANCE !== 0.1 || DIAMOND_MIN_GOLD !== 1 || DIAMOND_MAX_GOLD !== 100 || !String(creditCoin).includes('DIAMOND-GOLD-01') || !String(tryCollectCoinAt).includes('hoverOnly') || String(Enemy.prototype.draw).includes('setLineDash')) problems.push('a gold bag drops a diamond one time in ten, a diamond is worth 1 to 100 gold and needs a click, and loose enemies glow red with no ring (DIAMOND-GOLD-01, DIAMOND-CLICK-01, LOOSE-GLOW-01)');
   if(MAP_FROM_BAG_CHANCE !== 0.01 || typeof GOLD_MAP_BAG_ITEM !== 'undefined' || typeof rollMapFromBag !== 'function' || !String(openGoldBag).includes('rollMapFromBag') || !String(creditGroundBagGold).includes('rollMapFromBag') || String(dropItemsFromEnemy).includes('GOLD_MAP_BAG')) problems.push('there is only one kind of bag, the normal gold bag, and a map falls out of about one bag in a hundred (ONE-KIND-OF-BAG-01)');
   if(typeof rollTreeVariant !== 'function' || TREE_VARIANT_EMOJI.length < 3 || RANDOM_EVENT_CHOICES[0][0] !== 'CHEST' || RANDOM_EVENT_CHOICES[0][1] > 0.1 || !String(spawnScenery).includes('SCENERY-VARIETY-01')) problems.push('trees and rocks come in varied kinds, shapes and facings, and presents are the rarest event (SCENERY-VARIETY-01, EVENT-VARIETY-01)');
-  { const kinds = new Set(RANDOM_EVENT_CHOICES.map(c => c[0])); const total = RANDOM_EVENT_CHOICES.reduce((a, c) => a + c[1], 0); if(kinds.size < 10 || Math.abs(total - 1) > 0.001 || typeof grantEventProp !== 'function' ) problems.push('there are ten kinds of random event and their chances add up to one (EVENT-VARIETY-01)'); }
+  { const kinds = new Set(RANDOM_EVENT_CHOICES.map(c => c[0])); const total = RANDOM_EVENT_CHOICES.reduce((a, c) => a + c[1], 0); if(kinds.size < 9 || Math.abs(total - 1) > 0.001 || typeof grantEventProp !== 'function' ) problems.push('there are nine kinds of random event and their chances add up to one (EVENT-VARIETY-01)'); }
   if(typeof Tower.prototype.walkTo !== 'function' || typeof Tower.prototype.advanceWalk !== 'function' || !String(attemptMoveTower).includes('walkTo') || !String(creditCoin).includes('withFlight') || !String(spawnGroundItem).includes('ITEM-ARC-01') || !String(Tower.prototype.update).includes('MOVE-WALKS-01')) problems.push('moved stickmen walk to their new tile, dropped items fly out in an arc, and faded coins fly to the counter (MOVE-WALKS-01, ITEM-ARC-01, COIN-FADE-FLIGHT-01)');
   { // OWNER-LEDGER-01 (1.7.44): the owner's rules from play-testing, checked together so none of them can quietly regress (see the Owner rules ledger at the top of AGENTS.md)
     const src = fn => String(fn);
@@ -3104,7 +3186,7 @@ function validateDesignContract(){
     if(broken.length) problems.push('owner rules ledger broken: ' + broken.join('; ') + ' (OWNER-LEDGER-01)');
   }
   if(!(LOOT_KILL_ODDS.supply < 1/150) || !(LOOT_KILL_ODDS.gear < 1/900) || ITEM_RARITIES.EPIC.weight > 1 || ITEM_RARITIES.RARE.weight > 7 || ITEM_RARITIES.COMMON.weight < 64) problems.push('items are rarer than before: kill odds, per-wave cap and rare and epic weights are kept low (LOOT-RARER-01)');
-  if(!String(drawOneSceneryItem).includes('CLEAR-PIE-01') || String(drawOneSceneryItem).includes('r = size*0.62')) problems.push('clearing progress is a full circle that fills clockwise in 1970s colours behind the emoji, not a ring over it (CLEAR-PIE-01)');
+  if(!String(drawOneSceneryItem).includes('CLEAR-PIE-01') || String(drawOneSceneryItem).includes('r = size*0.62')) problems.push('clearing progress is a single yellow gradient wedge that fills clockwise behind the emoji, with no dark disc and no stripes, not a ring over it (CLEAR-PIE-01)');
   if(FOOD_STAT_BY_KIND.MEAT !== 'str' || FOOD_STAT_BY_KIND.FRUIT !== 'int' || FOOD_STAT_BY_KIND.VEGETABLE !== 'dex' || !String(applyFoodItem).includes('grantFoodStat') || !String(onPointerEnd).includes('eatDroppedFood') || String(grantEventProp).includes('rollStimItem') && String(grantEventProp).split("item.type === 'PICNIC'")[1].split("WOODPILE")[0].includes('rollStimItem')) problems.push('food is eaten instantly on a stickman and raises stats: meat STR, fruit INT, vegetables DEX; a picnic basket is food only (FOOD-STATS-01)');
   if(String(creditCoin).includes('grantDiamondReward') || !String(creditCoin).includes("'💎'") || typeof grantDiamondReward !== 'undefined') problems.push('a diamond turns into gold only and the gem flies up into the gold counter (DIAMOND-GOLD-01, DIAMOND-FLIES-01)');
   if(typeof buyRation !== 'function' || typeof buyDrill !== 'function' || typeof merchantStock !== 'function' || !String(buildShopGrid).includes('GOLD-SINKS-01') || !String(serializeGameState).includes('marketBought')) problems.push('the Shop has more places to sink gold: a ration market, a training yard and a travelling merchant (GOLD-SINKS-01)');
@@ -3332,6 +3414,7 @@ function runDebugSelfTests(){
    so existing tower placements are never disturbed.
    ========================================================= */
 let activeRegion = null;      // {x0,y0,x1,y1} inclusive tile bounds of the currently unlocked square
+let paidExpansionWaveIndex = -1; // EXPAND-PER-WAVE-01 (1.7.75): the wave number at the last bought expansion; one bought expansion per wave
 let paidExpansions = 0;       // EXPANSION-PRICE-01 (1.6.157) — see CHANGELOG.md § [1.6.157]: the price of the next bought expansion grows only with expansions the player has bought, never with free ones from clearing waves
 let expansionLevel = 0;       // number of FULLY-completed rings so far (a ring mid-spiral-reveal doesn't count yet — see ringRevealQueue)
 let pathWaypointTiles = [];   // ordered [{x,y}] grid coords the path follows
@@ -3676,9 +3759,7 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
   const towerTileKeys = activeTowerTileKeys().filter(key => !occupied.has(key));
   const growthStyle = pickRoadGrowthStyle();
   const wildGrowth = ROAD_WILD_STYLES.has(growthStyle) || Math.random() < ROAD_WILD_CHANCE;
-  const totalGrowth = Math.max(1, Math.min(3, arcLength || 2));
-  const flip = Math.random() < 0.5;
-  const startGrowth = flip ? Math.ceil(totalGrowth/2) : Math.floor(totalGrowth/2), finishGrowth = totalGrowth - startGrowth;
+  const perEndGrowth = Math.max(1, Math.min(PATH_GROWTH_TILES_MAX, arcLength || 2)); // EXPAND-BOTH-ENDS-01 (1.7.62): both ends grow by the same 1 to 3 tiles
   const existingSpacingViolations=routeSpacingViolationCount(oldPath);
   let spacingAllowance = 0; // ROAD-ESCAPE-01: only raised when a strict growth is impossible
   function grow(point, length){
@@ -3711,7 +3792,14 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
   // planned share. Growth now falls back in stages instead of giving up: the planned split, then all the growth at the first end, then all at the other end, and only
   // if all of those fail does the spacing rule bend a little (two, then five touching tiles), so the road keeps growing as long as there is any room.
   let start = [], finish = [];
-  const plans = [[startGrowth, finishGrowth, 0, 8], [totalGrowth, 0, 0, 4], [0, totalGrowth, 0, 4], [startGrowth, finishGrowth, 2, 4], [totalGrowth, 0, 2, 3], [0, totalGrowth, 2, 3], [startGrowth, finishGrowth, 5, 4], [totalGrowth, 0, 5, 3], [0, totalGrowth, 5, 3], [startGrowth, finishGrowth, 12, 4], [totalGrowth, 0, 12, 4], [0, totalGrowth, 12, 4], [1, 0, 30, 6], [0, 1, 30, 6]];
+  // EXPAND-BOTH-ENDS-01 (1.7.62): owner rule — every expansion grows the spawn end and the finish end by the SAME number of tiles, 1 to 3 each. Equal growth is tried first at the
+  // planned size, then at smaller equal sizes, while the spacing rule bends a little more at each stage. Only when no equal growth fits at all does the road add one tile at a
+  // single end, so it never cuts itself off (ROAD-ESCAPE-01).
+  const plans = [];
+  for(const spacingAllowanceStage of [0, 2, 5, 12]){
+    for(let equalGrowth = perEndGrowth; equalGrowth >= 1; equalGrowth--) plans.push([equalGrowth, equalGrowth, spacingAllowanceStage, equalGrowth === perEndGrowth ? 8 : 4]);
+  }
+  plans.push([1, 0, 30, 6], [0, 1, 30, 6]);
   // TOWERS-STAY-PUT-01 (1.7.41): growth first avoids every tile a stickman stands on, so an expansion normally never touches a fighter; only if no growth is possible that way
   // are fighters treated as movable (and then moved to the nearest grass by relocateTowersOffRoute, clearing scenery for them if they must).
   for(const avoidTowers of [true, false]){
@@ -3751,7 +3839,7 @@ function generateConflictFreePath(region, maxAttempts){
 // PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md § [1.6.0]. How many new path tiles a single expansion
 // adds — direct request ("2-3 squares added to the path each expansion"). Every expansion now
 // extends the path a little, not just every other one.
-// EXPAND-SIZE-01 (1.7.36): owner decision — an expansion adds 1 to 3 route tiles in TOTAL (it used to add 2 to 3 at each end, so 4 to 6 and usually 5 or 6).
+// EXPAND-SIZE-01 (1.7.36) superseded by EXPAND-BOTH-ENDS-01 (1.7.62): an expansion adds 1 to 3 route tiles at EACH end, the same number at both (2 to 6 in total).
 const PATH_GROWTH_TILES_MIN = 1, PATH_GROWTH_TILES_MAX = 3;
 // CA097 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA097
 const HUT_MIN_EXPANSION_LEVEL = 3;
@@ -3767,6 +3855,7 @@ function initRegionAndPath(){
   activeRegion = { x0, y0, x1: x0+w-1, y1: y0+h-1 };
   expansionLevel = 0;
   paidExpansions = 0;
+  paidExpansionWaveIndex = -1;
   hutsSpawnedThisGame = false;
   latestExpansionTiles = [];
   dirtTileKeys.clear();
@@ -3983,8 +4072,7 @@ function finalizeRingExpansion(){
   trackGameEvent('map_expanded', { expansion_level: expansionLevel, route_tiles: pathWaypointTiles.length, spacing_relaxed: routeSpacingRelaxedExpansions });
   updateHUD();
 }
-// UNLIMITED-EXPANSION-01 (1.6.98) — see CHANGELOG.md § [1.6.98]. Expansion has no per-idle-period cap: the only
-// limits are gold, the idle gap between waves, and the fixed world bounds (regionFullyExpanded()).
+// UNLIMITED-EXPANSION-01 (1.6.98) is superseded by EXPAND-PER-WAVE-01 (1.7.75): one bought expansion per wave. The other limits are gold, the idle gap between waves, and the fixed world bounds (regionFullyExpanded()).
 function expandRegion(){
   if(regionFullyExpanded() || expansionBlockedReason()) return false;
   const cost = expansionCost();
@@ -3992,6 +4080,7 @@ function expandRegion(){
   if(!performExpansion('🗺️ Map Expanded!', '#ffd700')) return false;
   gold -= cost;
   paidExpansions++;
+  paidExpansionWaveIndex = waveIndex;
   updateHUD();
   return true;
 }
@@ -4137,11 +4226,11 @@ function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
 // 3 to 5 squares of the finish carpet (fewer only if a hostile event already took a slot or no tile is free): a treasure chest, a supply crate, a potted
 // berry bush or a wandering farm animal. Nothing else spawns as a random extra.
 // EVENT-VARIETY-01 (1.7.44): owner says there were too many presents. Chests are now the rarest event (8%), and when a farm animal or fountain event is not possible the fallback is a berry bush, not a chest.
-const EVENT_PROP_EMOJI = { PICNIC: '🧺', WOODPILE: '🪵', STONE_CAIRN: '🧱', BIRD_NEST: '🪺', MUSHROOMS: '🍄' };
+const EVENT_PROP_EMOJI = { PICNIC: '🧺', WOODPILE: '🪵', BIRD_NEST: '🪺', MUSHROOMS: '🍄' };
 const EVENT_PROP_TYPES = new Set(['CHEST', 'SUPPLY_CRATE', 'BUSH', ...Object.keys(EVENT_PROP_EMOJI)]);
-// EVENT-VARIETY-01 (1.7.44): ten kinds of random event, all positive and easy: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (food and sometimes
-// a stim), a wood pile (wood), a stone cairn (stone), a bird nest (a few coins) and a mushroom patch (food). Chests are the rarest.
-const RANDOM_EVENT_CHOICES = [['CHEST', 0.06], ['SUPPLY_CRATE', 0.09], ['BUSH', 0.13], ['LIVESTOCK', 0.22], ['CHANCE', 0.18], ['PICNIC', 0.08], ['WOODPILE', 0.07], ['STONE_CAIRN', 0.06], ['BIRD_NEST', 0.06], ['MUSHROOMS', 0.05]]; // CHANCE is a fountain or campfire when one is currently due
+// EVENT-VARIETY-01 (1.7.44, nine kinds since the stone cairn was removed in 1.7.60): random events are all positive and easy: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (food and sometimes
+// a stim), a wood pile (wood), a bird nest (a few coins) and a mushroom patch (food). Chests are the rarest.
+const RANDOM_EVENT_CHOICES = [['CHEST', 0.06], ['SUPPLY_CRATE', 0.09], ['BUSH', 0.16], ['LIVESTOCK', 0.22], ['CHANCE', 0.18], ['PICNIC', 0.08], ['WOODPILE', 0.07], ['BIRD_NEST', 0.06], ['MUSHROOMS', 0.08]]; // CHANCE is a fountain or campfire when one is currently due
 function pickRandomEventChoice(){
   let roll = Math.random();
   for(const [name, weight] of RANDOM_EVENT_CHOICES){ if(roll < weight) return name; roll -= weight; }
@@ -4723,7 +4812,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     // CA131 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA131
     tallStretch: type === 'TREE' && Math.random() < 0.25 ? 1.15 + Math.random()*0.4 : 1,
     // SCENERY-VARIETY-01 (1.7.44): owner says trees and stones were too alike. Trees come in three kinds, and trees and rocks are randomly mirrored and drawn a little wider or narrower.
-    variant: type === 'TREE' ? rollTreeVariant() : 0, flip: (type === 'TREE' || type === 'ROCK') && Math.random() < 0.5,
+    variant: type === 'TREE' ? rollTreeVariant(gx, gy) : 0, flip: (type === 'TREE' || type === 'ROCK') && Math.random() < 0.5,
     widthStretch: type === 'TREE' ? 0.9 + Math.random()*0.28 : type === 'ROCK' ? 0.82 + Math.random()*0.5 : 1,
     woodYield: type === 'TREE' ? baseYield : 0,
     stoneYield: type === 'ROCK' ? baseYield : 0,
@@ -5052,13 +5141,11 @@ function grantEventProp(item){
     for(const [n, kind] of ['MEAT', 'FRUIT', 'VEGETABLE'].entries()){ const angle = n/3*Math.PI*2; spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, pickFoodOfKind(kind), 'scenery'); }
   } else if(item.type === 'WOODPILE'){
     const amount = 30 + Math.floor(Math.random()*31); wood += amount; spawnFloatingText(x, y - 22, '+🪵' + amount, '#c8a46a'); updateHUD();
-  } else if(item.type === 'STONE_CAIRN'){
-    const amount = 25 + Math.floor(Math.random()*26); stone += amount; spawnFloatingText(x, y - 22, '+🪨' + amount, '#cfd8dc'); updateHUD();
   } else if(item.type === 'BIRD_NEST'){
     spawnChestCoinFountain(x, y - 6, 18 + Math.floor(Math.random()*26));
     if(Math.random() < 0.2) dropFood(1, berries);
   } else if(item.type === 'MUSHROOMS'){
-    dropFood(2, FOOD_ITEMS.filter(food => food.kind === 'VEGETABLE')); // a mushroom patch is vegetables, which raise DEX
+    dropFood(2, [FOOD_BY_ID.get('MUSHROOM')]); // MUSHROOM-PATCH-01 (1.7.63): a mushroom patch drops mushrooms (a vegetable, so DEX), never broccoli or garlic
   }
   spawnParticles(x, y, '#ffe082', 10);
   playSound('wave');
@@ -5177,7 +5264,7 @@ const FOOD_ITEM_ROWS = [
   ['CHERRIES', 'Cherries', '🍒', 'FRUIT'], ['PINEAPPLE', 'Pineapple', '🍍', 'FRUIT'], ['PEACH', 'Peach', '🍑', 'FRUIT'], ['KIWI', 'Kiwi', '🥝', 'FRUIT'],
   ['BLUEBERRY', 'Blueberries', '🫐', 'FRUIT'],
   ['CARROT', 'Carrot', '🥕', 'VEGETABLE'], ['HOT_PEPPER', 'Hot Pepper', '🌶️', 'VEGETABLE'], ['BROCCOLI', 'Broccoli', '🥦', 'VEGETABLE'],
-  ['CORN', 'Corn', '🌽', 'VEGETABLE'], ['EGGPLANT', 'Eggplant', '🍆', 'VEGETABLE'], ['POTATO', 'Potato', '🥔', 'VEGETABLE'], ['GARLIC', 'Garlic', '🧄', 'VEGETABLE'],
+  ['CORN', 'Corn', '🌽', 'VEGETABLE'], ['EGGPLANT', 'Eggplant', '🍆', 'VEGETABLE'], ['POTATO', 'Potato', '🥔', 'VEGETABLE'], ['GARLIC', 'Garlic', '🧄', 'VEGETABLE'], ['MUSHROOM', 'Mushroom', '🍄', 'VEGETABLE'],
   ['BACON', 'Bacon', '🥓', 'MEAT'], ['DRUMSTICK', 'Drumstick', '🍗', 'MEAT'], ['STEAK', 'Steak', '🥩', 'MEAT'], ['MEAT_BONE', 'Meat on the Bone', '🍖', 'MEAT']
 ];
 const FOOD_ITEMS = FOOD_ITEM_ROWS.map(([id, name, icon, kind]) => Object.freeze({ id, name, icon, kind, isFood: true }));
@@ -5315,7 +5402,9 @@ function drawItemUseEffects(ctx){
 // FOOD-STATS-01 (1.7.47): owner decision — food is eaten instantly when dropped on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon:
 // meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX. Most foods give +1; the richer ones give more. The older small effects (healing, experience) stay as extras.
 const FOOD_STAT_BY_KIND = { MEAT: 'str', FRUIT: 'int', VEGETABLE: 'dex' };
-const FOOD_STAT_GAIN_BY_ID = { BACON: 1, DRUMSTICK: 1, STEAK: 2, MEAT_BONE: 3, HOT_PEPPER: 2 };
+// FOOD-ROLL-01 (1.7.64): owner rule — every food gives 1 to 3 points of its stat (meat STR, fruit INT, vegetables DEX) and 1 to 10 experience, rolled when it is eaten. Any food, any kind.
+const FOOD_STAT_GAIN_MIN = 1, FOOD_STAT_GAIN_MAX = 3, FOOD_XP_MIN = 1, FOOD_XP_MAX = 10;
+function rollFoodRange(minimum, maximum){ return minimum + Math.floor(Math.random() * (maximum - minimum + 1)); }
 // STAT-GRANT-01 (1.7.50): found by an outside review of the uploaded 1.7.49. Food and rations added stat points directly, skipping the per-stat cap (500), the combined cap (1000) and the
 // progression milestones (naming, mastery) that spending a point enforces; the review reproduced STR 499 to 501 and a total of 998 to 1000 without mastery. All stat grants that are
 // not spent from the point pool now go through this one function: it clamps to both caps, recomputes, checks evolution and infusion, and refreshes the milestones, and reports what was really granted.
@@ -5334,7 +5423,7 @@ function grantStatPoints(tower, stat, amount){
 }
 function grantFoodStat(foodDef, tower){
   const stat = FOOD_STAT_BY_KIND[foodDef.kind]; if(!stat || !tower) return '';
-  const wanted = FOOD_STAT_GAIN_BY_ID[foodDef.id] || 1;
+  const wanted = rollFoodRange(FOOD_STAT_GAIN_MIN, FOOD_STAT_GAIN_MAX);
   const granted = grantStatPoints(tower, stat, wanted);
   return granted > 0 ? stat.toUpperCase() + ' +' + granted : stat.toUpperCase() + ' at its limit';
 }
@@ -5346,6 +5435,9 @@ function eatDroppedFood(groundItem, tower){
 }
 function applyFoodItem(foodDef, nearTower){
   const foodStatText = grantFoodStat(foodDef, nearTower);
+  const foodXp = nearTower ? rollFoodRange(FOOD_XP_MIN, FOOD_XP_MAX) : 0;
+  if(foodXp > 0) gainTowerExp(nearTower, foodXp);
+  const foodXpText = foodXp > 0 ? 'XP +' + foodXp : '';
   if(foodDef.kind === 'MEAT'){
     const requestedMaxGain = MEAT_MAXHP_BY_ID[foodDef.id] || 0;
     const roomLeftThisWave = Math.max(0, MEAT_MAXHP_CAP_PER_WAVE - waveMaxHpGainedFromMeat);
@@ -5356,22 +5448,21 @@ function applyFoodItem(foodDef, nearTower){
     const flatHeal = MEAT_HEAL_BY_ID[foodDef.id];
     const healed = Math.min(flatHeal + appliedMaxGain, maxLivesNow() - lives);
     if(healed > 0){ lives += healed; showLivesChange(healed); }
-    const meatParts = foodStatText ? [foodStatText, 'Lives +' + flatHeal] : ['Lives +' + flatHeal];
+    const meatParts = [foodStatText, foodXpText, 'Lives +' + flatHeal].filter(Boolean);
     if(appliedMaxGain > 0) meatParts.push('Max lives +' + appliedMaxGain);
     if(overflowMaxGain > 0) meatParts.push('Gold +' + (overflowMaxGain*MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT));
     showItemUseFeedback(foodDef, nearTower, 'HEAL', appliedMaxGain > 0 ? 2 : 1, meatParts);
     return;
   }
   if(foodDef.kind === 'FRUIT'){
-    const fruitParts = foodStatText ? [foodStatText] : [];
-    if(nearTower){ const xp = foodFruitXp(); gainTowerExp(nearTower, xp); fruitParts.push('XP +' + xp); }
+    const fruitParts = [foodStatText, foodXpText].filter(Boolean);
     const tinyHeal = Math.min(1, maxLivesNow() - lives);
     if(tinyHeal > 0){ lives += tinyHeal; showLivesChange(tinyHeal); fruitParts.push('Lives +' + tinyHeal); }
     showItemUseFeedback(foodDef, nearTower, 'GAIN', 0, fruitParts);
     return;
   }
   if(foodDef.kind === 'VEGETABLE'){
-    const vegetableParts = foodStatText ? [foodStatText] : [];
+    const vegetableParts = [foodStatText, foodXpText].filter(Boolean);
     const tinyHeal = Math.min(2, maxLivesNow() - lives);
     if(tinyHeal > 0){ lives += tinyHeal; showLivesChange(tinyHeal); vegetableParts.push('Lives +' + tinyHeal); }
     showItemUseFeedback(foodDef, nearTower, 'GAIN', 0, vegetableParts);
@@ -5717,7 +5808,30 @@ function sceneryVisualSize(item){
 }
 // Tree kinds: a leafy tree (58%), an evergreen (30%) and a palm (12%). Saved scenery keeps its kind because it is stored with the item.
 const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
-function rollTreeVariant(){ const roll = Math.random(); return roll < 0.58 ? 0 : roll < 0.88 ? 1 : 2; }
+// BIOMES-01 (1.7.66): owner rule — the other tree kinds and grass colours only appear after a very long road. Near the start every tile is meadow with leafy trees; from
+// BIOME_MIN_DISTANCE_TILES away from the starting tile, wavy patches of land (about 5 tiles across, edges warped so they are not squares) become Pinewood (cool green grass, mostly
+// evergreens) or Dunes (sandy ground, mostly palms), with meadow in between, like Minecraft biomes. The biome is a fixed function of the tile and the run seed, so a tile never changes.
+const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 5, BIOME_WARP_TILES = 2.2;
+const BIOME_GRASS = Object.freeze({ MEADOW: ['#8fae6e', '#4f7a3f'], PINEWOOD: ['#7fa68f', '#3f6f5a'], DUNES: ['#c9b97a', '#a89b58'] });
+function biomeCellHash(cellX, cellY){
+  let hash = (Math.imul(cellX + 7919, 374761393) ^ Math.imul(cellY + 104729, 668265263) ^ groundDetailRunSeed) >>> 0;
+  hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0;
+  return ((hash ^ (hash >>> 16)) >>> 0) / 4294967296;
+}
+function tileBiome(gx, gy){
+  if(Math.max(Math.abs(gx - Math.floor(COLS/2)), Math.abs(gy - Math.floor(ROWS/2))) < BIOME_MIN_DISTANCE_TILES) return 'MEADOW';
+  const seedPhase = (groundDetailRunSeed % 6283) / 1000;
+  const warpedX = gx + Math.round(BIOME_WARP_TILES * Math.sin(gy * 0.83 + seedPhase)), warpedY = gy + Math.round(BIOME_WARP_TILES * Math.sin(gx * 0.77 + seedPhase * 1.7));
+  const roll = biomeCellHash(Math.floor(warpedX / BIOME_PATCH_TILES), Math.floor(warpedY / BIOME_PATCH_TILES));
+  return roll < 0.4 ? 'MEADOW' : roll < 0.7 ? 'PINEWOOD' : 'DUNES';
+}
+function grassTileFill(gx, gy, isLightTile){ return BIOME_GRASS[tileBiome(gx, gy)][isLightTile ? 0 : 1]; }
+function rollTreeVariant(gx, gy){
+  const biome = tileBiome(gx, gy), roll = Math.random();
+  if(biome === 'PINEWOOD') return roll < 0.85 ? 1 : 0;
+  if(biome === 'DUNES') return roll < 0.85 ? 2 : 0;
+  return 0;
+}
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
     const glow = ctx.createRadialGradient(item.x, item.y, 0, item.x, item.y, size*0.72);
@@ -5770,18 +5884,17 @@ function drawOneSceneryItem(ctx, key, item, size){
     return;
   }
   if(item.isClearing){
-    // CLEAR-PIE-01 (1.7.46): owner request — the clearing progress is a full circle that fills clockwise like a clock wipe, in 1970s colours (mustard, burnt orange and brown
-    // stripes), drawn behind the emoji instead of a ring over it. It starts as a dim empty disc and the wedge sweeps round from the top until the circle is full.
+    // CLEAR-PIE-01 (1.7.46, restyled 1.7.67): the clearing progress is a clock-wipe wedge that sweeps clockwise from the top behind the emoji. Owner request (1.7.67): one yellow
+    // gradient wedge by itself, with no dark disc behind it, no stripes and no outline.
     const clearProgress = Math.min(1, Math.max(0, (presentationTime - item.clearStart)/item.clearMs)), pieRadius = size*0.64, startAngle = -Math.PI/2;
-    ctx.save();
-    ctx.fillStyle = 'rgba(58,32,10,0.42)'; ctx.beginPath(); ctx.arc(item.x, item.y, pieRadius, 0, Math.PI*2); ctx.fill();
-    const stripes = [[1, '#e3a82a'], [0.68, '#d2691e'], [0.36, '#7b3f14']];
-    for(const [fraction, color] of stripes){
-      ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(item.x, item.y);
-      ctx.arc(item.x, item.y, pieRadius*fraction, startAngle, startAngle + clearProgress*Math.PI*2); ctx.closePath(); ctx.fill();
+    if(clearProgress > 0){
+      ctx.save();
+      const pieGradient = ctx.createRadialGradient(item.x, item.y, 0, item.x, item.y, pieRadius);
+      pieGradient.addColorStop(0, '#fff6a8'); pieGradient.addColorStop(0.6, '#ffd93b'); pieGradient.addColorStop(1, '#f2a900');
+      ctx.fillStyle = pieGradient; ctx.beginPath(); ctx.moveTo(item.x, item.y);
+      ctx.arc(item.x, item.y, pieRadius, startAngle, startAngle + clearProgress*Math.PI*2); ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
-    ctx.strokeStyle = 'rgba(40,22,6,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(item.x, item.y, pieRadius, 0, Math.PI*2); ctx.stroke();
-    ctx.restore();
     ctx.font = Math.round(size) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
   }
   const stretch = item.tallStretch || 1, wide = item.widthStretch || 1, mirrored = !!item.flip;
@@ -5831,6 +5944,25 @@ function nearestLooseWalkableTileCenter(worldX, worldY){
     }
   }
   return null;
+}
+const LOOSE_WANDER_COMMIT_MIN_MS = 2200, LOOSE_WANDER_COMMIT_SPREAD_MS = 3000, LOOSE_WANDER_EXPLORE_SHARE = 0.6;
+const LOOSE_WANDER_TURN_MIN = 0.28, LOOSE_WANDER_TURN_SPREAD = 0.35, LOOSE_WANDER_STEER_RAD_PER_S = 2.4, LOOSE_WANDER_GOAL_REACHED_PX = 18;
+const LOOSE_WANDER_EXPLORE_SPEED = 0.55, LOOSE_WANDER_LOOP_SPEED = 0.45, LOOSE_WANDER_GOAL_SAMPLES = 8, LOOSE_WANDER_AVOID_FINISH_TILES = 2.5;
+// Picks the farthest of a few random walkable tiles that are not right next to the finish line, so loose enemies spread out over the grass.
+function pickLooseExploreGoal(fromX, fromY){
+  if(!activeRegion) return null;
+  const finishPoint = waypointsPx && waypointsPx.length ? waypointsPx[waypointsPx.length - 1] : null;
+  let best = null, bestDistance = 0;
+  for(let attempt = 0; attempt < LOOSE_WANDER_GOAL_SAMPLES; attempt++){
+    const tileX = activeRegion.x0 + Math.floor(Math.random() * (activeRegion.x1 - activeRegion.x0 + 1));
+    const tileY = activeRegion.y0 + Math.floor(Math.random() * (activeRegion.y1 - activeRegion.y0 + 1));
+    const goalX = tileX*TILE_SIZE + TILE_SIZE/2 + (Math.random()-0.5)*TILE_SIZE*0.6, goalY = tileY*TILE_SIZE + TILE_SIZE/2 + (Math.random()-0.5)*TILE_SIZE*0.6;
+    if(!isLooseWalkableAt(goalX, goalY)) continue;
+    if(finishPoint && Math.hypot(goalX - finishPoint.x, goalY - finishPoint.y) < LOOSE_WANDER_AVOID_FINISH_TILES*TILE_SIZE) continue;
+    const distance = Math.hypot(goalX - fromX, goalY - fromY);
+    if(distance > bestDistance){ bestDistance = distance; best = { x: goalX, y: goalY }; }
+  }
+  return best;
 }
 function isLooseWalkableAt(worldX, worldY){
   const tileX = Math.floor(worldX / TILE_SIZE), tileY = Math.floor(worldY / TILE_SIZE);
@@ -6297,9 +6429,9 @@ function paintGrassTufts(ctx, gx, gy, isLightTile){
 function paintBuildableTileBase(ctx, gx, gy){
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
   const light = isLightBuildableTile(gx, gy);
-  ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
+  ctx.fillStyle = grassTileFill(gx, gy, light);
   ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-  paintGrassTufts(ctx, gx, gy, light);
+  if(tileBiome(gx, gy) !== 'DUNES') paintGrassTufts(ctx, gx, gy, light);
   ctx.strokeStyle = 'rgba(0,0,0,0.18)';
   ctx.lineWidth = 1;
   ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
@@ -6627,9 +6759,9 @@ function drawMap(ctx){
       const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
       // buildable tiles rendered as a crisp chess-style checkerboard
       const light = isLightBuildableTile(gx, gy);
-      ctx.fillStyle = light ? '#8fae6e' : '#4f7a3f';
+      ctx.fillStyle = grassTileFill(gx, gy, light);
       ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
-      paintGrassTufts(ctx, gx, gy, light);
+      if(tileBiome(gx, gy) !== 'DUNES') paintGrassTufts(ctx, gx, gy, light);
       gridStrokes.push([tx+0.5, ty+0.5]);
     }
   }
@@ -6815,7 +6947,7 @@ function midiToFrequency(note){ return 440 * Math.pow(2, (note - 69) / 12); }
 // Five variants, never the same twice in a row: pitch ratios are whole semitones (0, +1, -1, +2, -2) and the noise colour moves with them.
 const SFX_VARIANT_PITCH = [1, 1.0595, 0.9439, 1.1225, 0.8909], SFX_VARIANT_NOISE = [1, 1.12, 0.89, 1.25, 0.8];
 // Sounds whose pitch is part of their meaning (melodic stingers, countdown, level ups, UI confirms) always play unchanged.
-const SFX_VARIANT_EXEMPT = new Set(['item_scroll','item_inject','wave_clear','levelup','evolution','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
+const SFX_VARIANT_EXEMPT = new Set(['heart_break','item_scroll','item_inject','wave_clear','levelup','evolution','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
 const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
@@ -6824,9 +6956,9 @@ const AUDIO_EVENT_GAPS = Object.freeze({
   cast_mage:0.075, cast_cleric:0.10, gore_death:0.065, foot_squelch:0.10,
   coin:0.045, bag:0.10, levelup:0.18, chatter_short:0.15,
   click:0.035, ui_open:0.08, ui_close:0.08, ui_buy:0.08, stat_spend:0.055, spawn_chatter:0.25,
-  threat:1.5, wave_clear:0.5, evolution:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
+  heart_break:0.3, threat:1.5, wave_clear:0.5, evolution:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
 });
-const AUDIO_PRIORITY_EVENTS = new Set(['click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','evolution','hero','legendary','levelup']);
+const AUDIO_PRIORITY_EVENTS = new Set(['heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','evolution','hero','legendary','levelup']);
 const AUDIO_FOCUS_EVENTS = new Set(['ui_buy','roundStart','wave_clear','threat','lose','evolution','hero','legendary','levelup']);
 class SoundEngine{
   constructor(){
@@ -7410,6 +7542,14 @@ class SoundEngine{
         break;
       }
       case 'chop':  this.tone(150,0.08,'square',80); break;
+      case 'heart_break':
+        // HEART-BREAK-01 (1.7.74): a broken heart reaches the lives counter: a dry little crack, then two soft falling notes (a sinking minor second), clear but not loud.
+        this.duck(-1.5, 0.3);
+        this.noise(0.035, 2600, 'bandpass', 0, false, 0, 0.09);
+        this.tone(466, 0.22, 'triangle', 440, 0, true, 0.02, true, true, 0.11);
+        this.tone(311, 0.34, 'sine', 262, 0, true, 0.15, true, true, 0.12);
+        this.tone(78, 0.22, 'sine', 55, 0, false, 0.02, true, true, 0.09);
+        break;
       case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
       case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
       case 'evolution': // unlocking a new tower type — one of the rarest, most exciting events in
@@ -7504,16 +7644,25 @@ class SoundEngine{
         this.tone(370, 0.075, 'triangle', 330, eventPan, false, 0, true, true, 0.14);
         this.tone(277, 0.10, 'triangle', 247, eventPan, false, 0.10, true, true, 0.12);
         break;
-      case 'countdown_tick':
-        this.tone(196, 0.16, 'square', 190, 0, false, 0, true, true, 0.09);
-        this.tone(98, 0.16, 'sawtooth', undefined, 0, false, 0, true, true, 0.07);
-        this.noise(0.05, 900, 'bandpass', 0, false, 0, 0.08);
+      case 'countdown_tick': {
+        // COUNTDOWN-MUSICAL-01 (1.7.69): each number of the 3-2-1 is a soft, rising pluck in D minor (D, F, A, the same key the combat score sits in), with a quiet shimmer an
+        // octave up, a gentle low pulse and a tiny clock tick. It gets a little louder with each number and all of it stays well under the music, then GO resolves it.
+        const countdownStep = Math.max(0, Math.min(2, Math.round(intensity || 0)));
+        const pluckHz = [587.33, 698.46, 880][countdownStep], pluckAmp = 0.05 + 0.012 * countdownStep;
+        this.tone(pluckHz, 0.34, 'triangle', undefined, 0, true, 0, true, true, pluckAmp);
+        this.tone(pluckHz * 2, 0.18, 'sine', undefined, 0, true, 0, true, true, pluckAmp * 0.35);
+        this.tone(110, 0.14, 'sine', 55, 0, false, 0, true, true, 0.08 + 0.02 * countdownStep);
+        this.noise(0.025, 3200 + countdownStep * 400, 'bandpass', 0, false, 0, 0.05);
         break;
+      }
       case 'countdown_go':
-        this.tone(392, 0.32, 'square', 380, 0, false, 0, true, true, 0.1);
-        this.tone(784, 0.30, 'square', 770, 0, false, 0, true, true, 0.05);
-        this.tone(196, 0.32, 'sawtooth', undefined, 0, false, 0, true, true, 0.08);
-        this.noise(0.08, 1400, 'bandpass', 0, false, 0, 0.1);
+        // COUNTDOWN-MUSICAL-01 (1.7.69): the resolution: the D minor figure opens into a bright D major chord (D, A, D, F sharp) over a low D, softly swelled.
+        this.tone(293.66, 0.7, 'triangle', undefined, 0, true, 0, true, true, 0.065);
+        this.tone(440, 0.7, 'triangle', undefined, 0, true, 0.02, true, true, 0.055);
+        this.tone(587.33, 0.6, 'sine', undefined, 0, true, 0.04, true, true, 0.05);
+        this.tone(739.99, 0.5, 'sine', undefined, 0, true, 0.06, true, true, 0.035);
+        this.tone(73.42, 0.5, 'sine', undefined, 0, false, 0, true, true, 0.09);
+        this.noise(0.25, 2400, 'bandpass', 0, false, 0, 0.05);
         break;
       case 'item_eat': {
         const panEat = this.panFor(worldX);
@@ -8023,10 +8172,13 @@ loadPrefs();
   customInput.addEventListener('input', applyFromControls);
 })();
 let waveIndex = 0;          // number of waves started
-let freeExpansionOwed = 0; // EXPAND-AFTER-CLEAR-01 (1.7.36): the free expansion for a cleared wave arrives only once every enemy is gone
+let freeExpansionOwed = 0; // the free expansion for a cleared wave arrives as soon as the wave is over (EXPAND-PER-WAVE-01, 1.7.75: it no longer waits for escaped enemies)
+// EXPAND-PER-WAVE-01 (1.7.75): owner decision, replacing EXPAND-AFTER-CLEAR-01 (every enemy defeated first) and UNLIMITED-EXPANSION-01: expanding needs only a wave that is not in progress,
+// never an empty field, so a loose enemy no longer blocks it. The player may buy ONE expansion per wave (PAID_EXPANSIONS_PER_WAVE), and the cleared wave still gives its own free one.
+const PAID_EXPANSIONS_PER_WAVE = 1;
 function expansionBlockedReason(){
   if(waveState !== 'IDLE') return 'Wave in progress';
-  if(countLooseEnemies() > 0) return 'Defeat every enemy first';
+  if(paidExpansionWaveIndex === waveIndex && PAID_EXPANSIONS_PER_WAVE <= 1) return 'one per wave';
   return '';
 }
 let waveState = 'IDLE';     // IDLE (between waves, Next Wave available) | SPAWNING (activeWavePlan dispatching outcome-gated batches, see advanceWaveDispatch()) | ACTIVE (fully spawned, waiting for anyAlive to go false — see the ACTIVE->IDLE transition in update() for wave-complete rewards). No separate CLEARING/RESULTS/COUNTDOWN states exist — the round-start "3-2-1-GO" overlay (drawWaveCountdown()) and the wave-summary popup are both TRANSIENT presentation layered on top of SPAWNING/the ACTIVE->IDLE instant, not additional waveState values of their own.
@@ -8926,6 +9078,38 @@ async function loadChangelogEntries(){
   _changelogCache = entries;
   return entries;
 }
+const CHANGES_NOTICE_RELEASES = 8, CHANGES_NOTICE_ITEMS_PER_RELEASE = 6;
+const CHANGELOG_URL = 'https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md';
+function appendChangelogLink(root){
+  const link = document.createElement('a');
+  link.href = CHANGELOG_URL; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View the complete changelog';
+  root.appendChild(link);
+}
+async function openChangesNotice(){
+  document.getElementById('updateVersionBig').textContent = 'v' + GAME_VERSION;
+  const list = document.getElementById('updateHighlights');
+  list.replaceChildren();
+  document.getElementById('updateFooterNote').textContent = 'Latest releases';
+  document.getElementById('update-modal').classList.remove('hidden');
+  try {
+    const entries = await loadChangelogEntries();
+    for(const entry of entries.slice(0, CHANGES_NOTICE_RELEASES)){
+      const heading = document.createElement('div');
+      heading.className = 'update-entry-head';
+      heading.textContent = 'v' + entry.v + (entry.title ? ' — ' + entry.title : '');
+      list.appendChild(heading);
+      const items = document.createElement('ul');
+      for(const text of entry.items.slice(0, CHANGES_NOTICE_ITEMS_PER_RELEASE)){ const li = document.createElement('li'); li.textContent = text; items.appendChild(li); }
+      list.appendChild(items);
+    }
+  } catch(err){
+    const note = document.createElement('div');
+    note.textContent = 'Release notes could not be loaded here; they load from the hosted site. ';
+    list.appendChild(note);
+  }
+  appendChangelogLink(list);
+}
+function closeChangesNotice(){ document.getElementById('update-modal').classList.add('hidden'); }
 function renderSettingsChangelog(){
   const root = document.getElementById('settingsChangelog');
   root.replaceChildren();
@@ -9272,7 +9456,7 @@ function serializeGameState(){
     gold, lives, livesBought, marketBought, drillsBought, merchantSold:{ wave: merchantBoughtWave, indexes: [...merchantBoughtIds] }, waveIndex:(stealthRun && waveIndex===10 && !stealthSantaDefeated) ? 9 : Math.max(0, waveIndex - (waveState !== 'IDLE' ? 1 : 0)), waveReplayed: waveState !== 'IDLE', freeExpansionOwed, hacksUsed, // WAVE-SAVE-01 (1.7.51): a save made in the middle of a wave resumes by starting that wave again (it used to skip it)
     wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, firstTenEnemyKillCount, firstMapScrollDropped, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
-    globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions,
+    globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions, paidExpansionWaveIndex,
     latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
     // CA250 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA250
     ringRevealedArr: ringCandidateRegion ? [...ringRevealed] : undefined,
@@ -9317,7 +9501,7 @@ function migrateLegacyAttunement(t){
 // holding towers from the old game, the move mode) and that an error half way through loading left the current game cleared. Loading now resets every run-scoped variable first, and if loading throws,
 // the game that was running is put back from a copy taken before anything was touched.
 function clearRunScopedStateForLoad(){
-  freeExpansionOwed = 0; hackGodMode = false; hackFreeBuild = false; hacksUsed = false; hackMenuOpenFor = null;
+  freeExpansionOwed = 0; paidExpansionWaveIndex = -1; hackGodMode = false; hackFreeBuild = false; hacksUsed = false; hackMenuOpenFor = null;
   if(typeof setMarkedTarget === 'function') setMarkedTarget(null); markedTargetEnemy = null;
   for(const bark of barkPool){ bark.active = false; bark.tower = null; bark.text = ''; }
   if(moveModeTower) exitMoveMode();
@@ -9392,6 +9576,7 @@ function restoreGameStateInner(state){
   restoreRunRewards(state);
   activeRegion = state.activeRegion; pathWaypointTiles = state.pathWaypointTiles;
   expansionLevel = state.expansionLevel || 0;
+  paidExpansionWaveIndex = Number.isInteger(state.paidExpansionWaveIndex) ? state.paidExpansionWaveIndex : -1;
   paidExpansions = state.paidExpansions !== undefined ? state.paidExpansions : expansionLevel; // an older save counts every earlier expansion as bought, as before
   latestExpansionTiles = Array.isArray(state.latestExpansionTiles) ? state.latestExpansionTiles : [];
   // CA252 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA252
@@ -9427,7 +9612,10 @@ function restoreGameStateInner(state){
   lockStartingBorderOutsideRegion(); // STARTING-MAP-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
   generateFlora();
 
-  for(const s of (state.scenery || [])) sceneryMap.set(s.key, s.item);
+  for(const s of (state.scenery || [])){
+    if(s.item && s.item.type === 'STONE_CAIRN') s.item.type = 'WOODPILE'; // EVENT-NO-CAIRN-01 (1.7.60): the cairn event was removed; an old save's cairn becomes a wood pile
+    sceneryMap.set(s.key, s.item);
+  }
   rebuildClearingScenery();
   harvestedTileKeys.clear();
   for(const harvestedKey of (state.harvestedTiles || [])) harvestedTileKeys.add(harvestedKey);
@@ -9870,6 +10058,7 @@ class Enemy{
     this.isStealthSanta=false;
     this.escaped = false;
     this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0;
+    this.wanderTurnRate = 0; this.wanderGoalActive = false; this.wanderGoalX = 0; this.wanderGoalY = 0;
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
     this.looseDrainMs = 0;
     // CA275 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA275
@@ -10307,6 +10496,33 @@ class Enemy{
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     }
   }
+  drawLivestockEmote(ctx){
+    // LIVESTOCK-EMOTE-01 (1.7.59): now and then a farm animal lets out a tiny heart or music note. Real-time, occasional and purely decorative.
+    if(this.isHostileNpc || this.type === 'WANDERING_TROLL') return;
+    if(!(this.livestockEmoteAt > 0)) this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
+    const age = presentationTime - this.livestockEmoteAt;
+    if(age < 0) return;
+    if(age > LIVESTOCK_EMOTE_LIFE_MS){
+      this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
+      return;
+    }
+    const life = age / LIVESTOCK_EMOTE_LIFE_MS;
+    ctx.save();
+    ctx.globalAlpha = life < 0.6 ? 1 : 1 - (life - 0.6) / 0.4;
+    ctx.font = 'bold ' + Math.max(10, Math.round(this.radius * 0.95)) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.fillStyle = this.type === 'CHICKEN' ? '#f5a623' : '#ff6b9d';
+    const glyph = this.type === 'CHICKEN' ? '♪' : '♥', glyphX = this.x + Math.sin(life * 5) * 3, glyphY = this.y - this.radius * 1.1 - life * 14;
+    const popScale = life < 0.15 ? 0.6 + 0.4 * smoothStep01(life / 0.15) * (1 + 0.3 * Math.sin(life / 0.15 * Math.PI)) : 1;
+    ctx.translate(glyphX, glyphY); ctx.scale(popScale, popScale);
+    ctx.strokeText(glyph, 0, 0); ctx.fillText(glyph, 0, 0);
+    ctx.restore();
+  }
+  attackPhase(){
+    const interval = this.isBreakaway ? Math.round(800 * ENEMY_ATTACK_INTERVAL_SCALE) : 800;
+    const timer = Math.max(0, (this.isBreakaway ? this.breakAttackTimer : this.escapedAttackTimer) - renderLeftoverMs());
+    return clampNum(1 - timer / interval, 0, 1);
+  }
   tryStartBreakaway(){
     const target = findNearestActiveTower(this.x, this.y, 320);
     if(!target){ this.breakawayDone = true; return; } // nothing worth breaking away for — stay on path
@@ -10355,7 +10571,9 @@ class Enemy{
     this.breakawayDone = true; // won't try again this life — resumes its original path from here
   }
   reachEnd(){
+    const livesBeforeEscape = lives;
     loseLife(1);
+    if(lives < livesBeforeEscape) launchHeartHudFlights(this.x, this.y - this.radius - 10, 1, true); // HEART-BREAK-01 (1.7.74): the life lost to an escape flies to the counter too
     playSound('threat', this.x, undefined, this.y);
     maybeShowFirstTimeAlert(FIRST_ESCAPE_SEEN_KEY, '🏃 An enemy escaped and is wandering — it will attack your towers if left alone!', '#ff8a65');
     waveTelemetry.escaped++;
@@ -10372,7 +10590,9 @@ class Enemy{
     const looseDrain = advanceLooseDrain(this.looseDrainMs, dt);
     this.looseDrainMs = looseDrain.remainingMs;
     for(let heartIndex=0; heartIndex<looseDrain.hearts && gameState === 'PLAYING'; heartIndex++){
+      const livesBeforeDrain = lives;
       loseLife(1); // the change shows by the health counter (showLivesChange()), never on the enemy
+      if(lives < livesBeforeDrain) launchHeartHudFlights(this.x, this.y - this.radius - 10, 1, true); // HEART-BREAK-01 (1.7.74): the broken heart flies from its head to the counter
       waveTelemetry.looseDrainLives++;
     }
     // LOOSE-CONFINE-01 (1.6.77) — see CHANGELOG.md § [1.6.77]
@@ -10437,15 +10657,36 @@ class Enemy{
         }
       }
     }
+    // LOOSE-WANDERLUST-01 (1.7.73): owner request — loose enemies explore the grass and loop around instead of jiggling in place next to the finish line. Every few seconds an
+    // escaped enemy either picks a far-off walkable tile and strolls toward it, or sets off on a wide, gentle circle; it keeps its heading between decisions, so it travels. A curious
+    // stickman nearby still pulls it (the old 60 percent lean) and a blocked step still turns it round (the confine code flips its velocity, which is read back as the heading).
     this.wanderRepickTimer -= dt;
-    if(this.wanderRepickTimer <= 0){
-      this.wanderRepickTimer = 900 + Math.random()*1400;
-      let ang = Math.random()*Math.PI*2;
-      if(this.curiousTarget && this.curiousTarget.active && Math.random() < 0.6) ang = Math.atan2(this.curiousTarget.y - this.y, this.curiousTarget.x - this.x) + (Math.random() - 0.5) * 0.9; // curious: ambles toward a nearby stickman
-      const bumbleSpeed = this.packedSpeed() * 0.4; // slower, aimless — reads as "loose," not still fleeing somewhere
-      this.wanderVx = Math.cos(ang)*bumbleSpeed;
-      this.wanderVy = Math.sin(ang)*bumbleSpeed;
+    if(this.wanderGoalActive){
+      if(Math.hypot(this.wanderGoalX - this.x, this.wanderGoalY - this.y) < LOOSE_WANDER_GOAL_REACHED_PX) this.wanderGoalActive = false, this.wanderRepickTimer = 0;
     }
+    if(this.wanderRepickTimer <= 0){
+      this.wanderRepickTimer = LOOSE_WANDER_COMMIT_MIN_MS + Math.random()*LOOSE_WANDER_COMMIT_SPREAD_MS;
+      this.wanderGoalActive = false; this.wanderTurnRate = 0;
+      if(this.curiousTarget && this.curiousTarget.active && Math.random() < 0.6){
+        this.wanderGoalActive = true; this.wanderGoalX = this.curiousTarget.x; this.wanderGoalY = this.curiousTarget.y; // curious: ambles toward a nearby stickman
+      } else if(Math.random() < LOOSE_WANDER_EXPLORE_SHARE){
+        const goal = pickLooseExploreGoal(this.x, this.y);
+        if(goal){ this.wanderGoalActive = true; this.wanderGoalX = goal.x; this.wanderGoalY = goal.y; }
+      }
+      if(!this.wanderGoalActive) this.wanderTurnRate = (Math.random() < 0.5 ? -1 : 1) * (LOOSE_WANDER_TURN_MIN + Math.random()*LOOSE_WANDER_TURN_SPREAD); // a wide loop, radius about 40 to 90 px
+    }
+    let heading = (this.wanderVx || this.wanderVy) ? Math.atan2(this.wanderVy, this.wanderVx) : Math.random()*Math.PI*2;
+    if(this.wanderGoalActive){
+      let headingError = Math.atan2(this.wanderGoalY - this.y, this.wanderGoalX - this.x) - heading;
+      headingError = Math.atan2(Math.sin(headingError), Math.cos(headingError));
+      const maxTurn = LOOSE_WANDER_STEER_RAD_PER_S * dt / 1000;
+      heading += Math.max(-maxTurn, Math.min(maxTurn, headingError));
+    } else {
+      heading += this.wanderTurnRate * dt / 1000;
+    }
+    const strollSpeed = this.packedSpeed() * (this.wanderGoalActive ? LOOSE_WANDER_EXPLORE_SPEED : LOOSE_WANDER_LOOP_SPEED); // still slower than a run, so it reads as loose rather than fleeing
+    this.wanderVx = Math.cos(heading) * strollSpeed;
+    this.wanderVy = Math.sin(heading) * strollSpeed;
     this.vx = this.wanderVx; this.vy = this.wanderVy;
     this.x += this.vx*dt/1000;
     this.y += this.vy*dt/1000;
@@ -10715,7 +10956,7 @@ class Enemy{
             // CA349 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA349
             spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.3, hexToRgba(cutColor, 0.65), undefined, sourceTower ? towerSwingDir(sourceTower) : undefined);
             if(Math.random() < 0.6){
-              spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.9, hexToRgba(bio.dark, 0.55), 3 + Math.floor(Math.random()*3), sourceTower ? -towerSwingDir(sourceTower) : undefined);
+              spawnCastOffArc(this.x, this.y, slashAngle + Math.PI + (Math.random()-0.5)*0.9, hexToRgba(bio.dark, 0.55), 2 + Math.floor(Math.random()*2), sourceTower ? -towerSwingDir(sourceTower) : undefined);
             }
           } else {
             spawnCastOffArc(this.x, this.y, slashAngle + Math.PI, hexToRgba(cutColor, 0.65), undefined, sourceTower ? towerSwingDir(sourceTower) : undefined);
@@ -11070,7 +11311,7 @@ class Enemy{
     }
     if(!enemyShadowsBatched) drawEmojiGroundShadow(ctx,this.emoji,this.x,this.y,this.radius*2,'serif',1); // ENEMY-SHADOW-BATCH-01
     const speed = Math.hypot(this.vx, this.vy);
-    let bumpDx = 0, bumpDy = 0;
+    let bumpDx = 0, bumpDy = 0, attackAnimating = false, attackPhaseNow = 0, attackLungeNow = 0, attackLeanSign = 1;
     if(this.touchingBarricade){
       const nextWp = waypointsPx[this.pathIndex+1];
       if(nextWp){
@@ -11081,13 +11322,23 @@ class Enemy{
         bumpDy = (ddy/dlen)*bumpAmt;
       }
     } else if(this.attackBumpTarget && this.attackBumpTarget.active){
-      // CA374 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA374
+      // CA374 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA374 (ENEMY-ATTACK-ANIM-01, 1.7.58: the lunge follows the attack timer)
       const t = this.attackBumpTarget;
       const ddx = t.x-this.x, ddy = t.y-this.y;
       const dlen = Math.hypot(ddx,ddy) || 1;
-      const bumpAmt = Math.abs(Math.sin(this.bumpTime/220)) * 4;
-      bumpDx = (ddx/dlen)*bumpAmt;
-      bumpDy = (ddy/dlen)*bumpAmt;
+      attackAnimating = !this.isLivestock && !PREFERS_REDUCED_MOTION && !isFastForwardSimplified();
+      if(attackAnimating){
+        attackPhaseNow = this.attackPhase();
+        attackLungeNow = attackLungeAmount(attackPhaseNow);
+        const lungePx = attackLungeNow * this.radius * 0.55;
+        bumpDx = (ddx/dlen)*lungePx;
+        bumpDy = (ddy/dlen)*lungePx;
+        attackLeanSign = ddx >= 0 ? 1 : -1;
+      } else {
+        const bumpAmt = Math.abs(Math.sin(this.bumpTime/220)) * 4;
+        bumpDx = (ddx/dlen)*bumpAmt;
+        bumpDy = (ddy/dlen)*bumpAmt;
+      }
     }
     // CA375 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA375
     const flinchElapsed = realTime - this.flinchStart;
@@ -11117,6 +11368,11 @@ class Enemy{
       const squash = 1/stretch;
       ctx.rotate(angle); ctx.scale(stretch, squash); ctx.rotate(-angle);
     }
+    if(attackAnimating){
+      const rearBack = Math.max(0, -attackLungeNow), strikeForward = Math.max(0, attackLungeNow);
+      ctx.rotate(attackLeanSign * attackLungeNow * 0.2);
+      ctx.scale(1 - 0.1 * rearBack + 0.12 * strikeForward, 1 + 0.12 * rearBack - 0.08 * strikeForward);
+    }
     const aggroAge=presentationTime-this.aggroStartedAt;
     if(this.aggroStartedAt>=0 && aggroAge>=0 && aggroAge<600 && !PREFERS_REDUCED_MOTION){
       const tension=Math.sin(Math.PI*aggroAge/600);
@@ -11134,6 +11390,15 @@ class Enemy{
       ctx.moveTo(this.radius*0.55,-this.radius*0.34);ctx.lineTo(this.radius*0.12,-this.radius*0.17);ctx.stroke();
     }
     ctx.restore();
+    if(this.isLivestock && !PREFERS_REDUCED_MOTION && !underHeavyVisualLoad) this.drawLivestockEmote(ctx);
+    if(attackAnimating && !underHeavyVisualLoad){
+      const popScale = attackAngerPopScale(attackPhaseNow);
+      if(popScale > 0.02){
+        const headX = this.x + bumpDx, headY = this.y + bumpDy;
+        if(graphicsQuality !== 'low') drawAngerSteam(ctx, headX, headY, this.radius, attackPhaseNow);
+        drawAngerMark(ctx, headX + this.radius*0.85, headY - this.radius*1.05, Math.max(4, this.radius*0.34), popScale, Math.sin(presentationTime/70) * 0.12);
+      }
+    }
     if(this.embeddedArrows && this.embeddedArrows.length){
       ctx.save();
       ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
@@ -11940,6 +12205,7 @@ class Tower{
     if(this.type==='NINJA') this.ninjaHand=1-this.ninjaHand;
     if(this.telemetry) this.telemetry.shotsFired++;
     p.active = true;
+    p.renderPrevX = undefined; p.renderPrevY = undefined;
     p.x = spawnX; p.y = spawnY;
     // PROJECTILE-AIM-01 (1.6.95) — see CHANGELOG.md § [1.6.95]. `angle` above is aimed from the tower's
     // CENTER at the target, but the muzzle spawns well above center (shoulderYWorld — largest for
@@ -12058,6 +12324,7 @@ class Tower{
     if(!p) return false; // pool exhausted — caller must not treat this as a fired shot
     if(this.telemetry) this.telemetry.shotsFired++;
     p.active = true;
+    p.renderPrevX = undefined; p.renderPrevY = undefined;
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
     p.vy = Math.sin(angle)*this.projectileSpeed;
@@ -12349,7 +12616,8 @@ class Tower{
     let castProgress = 0;
     if(this.type === 'MAGE' || this.type === 'SNAPCASTER' || this.type === 'PROTON' || this.type === 'DARK_MATTER' || this.type === 'QUASAR'){
       const sinceFired = gameTime - this.lastFireTime;
-      if(sinceFired < 350) castProgress = 1 - sinceFired/350;
+      if(sinceFired < MAGE_CAST_RECOIL_MS) castProgress = 1 - sinceFired/MAGE_CAST_RECOIL_MS;
+      lungeAmt = -mageRecoilKick(castProgress) * 3; // MAGE-RECOIL-01 (1.7.61): the body is pushed back as the staff kicks
     }
     // CA451 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA451
     let throwProgress = 0;
@@ -12360,7 +12628,7 @@ class Tower{
     // CA452 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA452
     let chargeProgress = 0;
     if((this.type === 'MAGE' || this.type === 'SNAPCASTER' || (this.type === 'SWORDSMAN' && this.spec === 'TWOHANDER')) && this.cooldown > 0){
-      chargeProgress = clampNum(1 - (this.cooldownTimer / this.cooldown), 0, 1);
+      chargeProgress = clampNum(1 - (Math.max(0, this.cooldownTimer - renderLeftoverMs()) / this.cooldown), 0, 1);
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
@@ -13202,15 +13470,20 @@ function resolveWeaponSubtype(sourceTower){
   if(sourceTower.type === 'SPEARMAN' || sourceTower.type === 'LANCER') return 'PIERCE';
   return 'BLADE'; // Swordsman, Axeman, Berserker
 }
+// BLOOD-LEAN-01 (1.7.71): owner said there was too much micro blood and asked for something more efficient that is still realistic and impressive. Every blood particle that settled
+// used to leave its own stain, so one blade hit left about a dozen specks, plus five to eight more per cast-off arc. Now about a third of settling droplets stain, each a little
+// bigger, a cast-off arc is two to four larger drops, and big pools are a little more common, so the same fight leaves fewer, bolder marks and uses far fewer decals.
+const BLOOD_SETTLE_STAIN_SHARE = 0.35, BLOOD_SETTLE_STAIN_SIZE = 1.6, BLOOD_BIG_POOL_CHANCE = 0.04, BLOOD_MID_POOL_CHANCE = 0.16;
+const BLOOD_ARC_MIN_DROPS = 2, BLOOD_ARC_EXTRA_DROPS = 3, BLOOD_ARC_DROP_SIZE = 1.3;
 function spawnDecal(x, y, color, smallBias, biasAngle, archBias, viscous, dmgRollT, sizeScale){
   const roll = Math.random();
   let sizeMult, blobCount;
   // CA493 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA493
-  if(!smallBias && roll < 0.02){
+  if(!smallBias && roll < BLOOD_BIG_POOL_CHANCE){
     // rare bigger pool — noticeably larger, but capped well short of dominating the screen
     sizeMult = 1.7 + Math.random()*0.9;
     blobCount = 4 + Math.floor(Math.random()*2);
-  } else if(!smallBias && roll < 0.10){
+  } else if(!smallBias && roll < BLOOD_BIG_POOL_CHANCE + BLOOD_MID_POOL_CHANCE){
     // modest step up from ordinary
     sizeMult = 1.15 + Math.random()*0.55;
     blobCount = 3 + Math.floor(Math.random()*2);
@@ -13270,7 +13543,7 @@ function towerSwingDir(tower){
 function spawnCastOffArc(x, y, baseAngle, color, count, arcDir){
   // CA503 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA503
   const scale = 0.65 + Math.random()*0.9;
-  count = count || (3 + Math.floor(Math.random()*6));
+  count = count || (BLOOD_ARC_MIN_DROPS + Math.floor(Math.random()*BLOOD_ARC_EXTRA_DROPS));
   arcDir = arcDir !== undefined ? arcDir : (Math.random() < 0.5 ? 1 : -1); // fallback random only when a caller genuinely has no tower/handedness context to pass
   const angularStep = (0.15 + Math.random()*0.32) * arcDir;
   let dist = (6 + Math.random()*7) * scale;
@@ -13283,7 +13556,7 @@ function spawnCastOffArc(x, y, baseAngle, color, count, arcDir){
     const travelAngle = angle + (Math.PI/2)*arcDir; // tangent to the arc at this point — the actual direction this specific drop was flung, not radially outward from the wound
     const elongation = 1 + i*0.35; // rounder near the source, progressively more elongated further along the arc
     const decal = { x: px, y: py, color, rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: presentationTime,
-      isDrop: true, angle: travelAngle, len: (2 + Math.random()*1.5)*elongation, width: 2.2 + Math.random()*1.3, footprintRadius: (2 + Math.random()*1.5)*elongation };
+      isDrop: true, angle: travelAngle, len: (2 + Math.random()*1.5)*elongation*BLOOD_ARC_DROP_SIZE, width: (2.2 + Math.random()*1.3)*BLOOD_ARC_DROP_SIZE, footprintRadius: (2 + Math.random()*1.5)*elongation*BLOOD_ARC_DROP_SIZE };
     pushDecal(decal);
   }
 }
@@ -13521,7 +13794,7 @@ function isDecalBakeEligible(d){
   const lifeT = decalLifeT(d);
   const age = presentationTime - d.spawnTime;
   // CA528 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA528
-  if(d.isRubble) return age>=0 && lifeT<0.90;
+  if(d.isRubble) return false; // RUBBLE-LIVE-01 (1.7.70): barricade timber and stone is drawn live like bones and skulls, never baked into the settled bitmap, so it stays sharp when zoomed in
   if(d.isEmojiDrop || d.isWorm) return false;
   if(d.isDrop) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
   if(d.blobs !== undefined) return age >= DECAL_BAKE_MIN_AGE_MS && lifeT <= 0.80;
@@ -13673,6 +13946,18 @@ function lastMinuteSummary(){
   if(!samples || !samples.length) return 'last minute: collecting';
   const m = samples[samples.length - 1];
   return 'last minute: ' + m.callbackFps.toFixed(0) + ' FPS avg, worst frame ' + m.maxFrameMs.toFixed(0) + 'ms, render avg ' + m.averageRenderMs.toFixed(1) + 'ms';
+}
+// SMOOTH-ANIM-01 (1.7.75): draws a projectile between its previous and current tick positions, like enemies. A jump of more than 80 px (a fresh launch or a reused slot) is drawn as is.
+function drawProjectileSmoothed(ctx, projectile){
+  const blend = gameState === 'PLAYING' ? Math.min(1, accumulator / FIXED_DT) : 1;
+  const realX = projectile.x, realY = projectile.y;
+  const stepX = realX - projectile.renderPrevX, stepY = realY - projectile.renderPrevY;
+  if(blend < 1 && Number.isFinite(stepX) && Number.isFinite(stepY) && stepX*stepX + stepY*stepY < 6400){
+    projectile.x = realX - stepX*(1 - blend); projectile.y = realY - stepY*(1 - blend);
+    try { projectile.draw(ctx); } finally { projectile.x = realX; projectile.y = realY; }
+    return;
+  }
+  projectile.draw(ctx);
 }
 function drawDecals(ctx){
   const bounds = decalViewBounds();
@@ -13882,6 +14167,7 @@ function spawnParticles(x,y,color,count,gravity,friction,pools,coneAngle,coneSpr
     p.life = p.maxLife = 300 + Math.random()*250;
     p.color = color; p.size = baseSize + Math.random()*baseSize;
     p.friction = friction || 0.93; p.pooled = false; p.canPool = !!pools;
+    p.stainsOnSettle = !!pools && Math.random() < BLOOD_SETTLE_STAIN_SHARE; // BLOOD-LEAN-01 (1.7.71): only some droplets that settle leave a stain
   }
 }
 // CA548 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA548
@@ -13939,8 +14225,8 @@ function updateParticles(dt){
     }
     p.vx *= p.friction; p.vy *= p.friction;
     if(p.canPool && !p.pooled && !p.isGib && p.vx*p.vx + p.vy*p.vy < 36){
-      p.pooled = true; // settled — leaves a tiny permanent stain instead of just fading out mid-air
-      spawnDecal(p.x, p.y, hexToRgba(p.color, 0.5), true);
+      p.pooled = true; // settled: a share of droplets leave a permanent stain instead of just fading out mid-air (BLOOD-LEAN-01)
+      if(p.stainsOnSettle) spawnDecal(p.x, p.y, hexToRgba(p.color, 0.5), true, undefined, undefined, undefined, undefined, BLOOD_SETTLE_STAIN_SIZE);
     }
   }
 }
@@ -14199,19 +14485,31 @@ function restoreLooseCoins(savedCoins){
 // HEART-FLIGHT-01 (1.7.36): hearts rise from a Healing Fountain and fly up to the lives counter so the heal is obvious.
 const heartHudFlights = Array.from({length:12},()=>({active:false}));
 let heartHudFlightCount = 0;
-function launchHeartHudFlights(x, y, count){
+function launchHeartHudFlights(x, y, count, broken){
   if(PREFERS_REDUCED_MOTION || (gameState!=='PLAYING' && gameState!=='PAUSED') || document.hidden) return;
   const hearts = Math.max(1, Math.min(6, count));
   for(let i = 0; i < hearts; i++){
     const flight = heartHudFlights.find(f => !f.active);
     if(!flight) return;
     flight.x = x*camera.zoom + camera.x + (i - (hearts-1)/2)*10; flight.y = y*camera.zoom + camera.y;
-    flight.startWidth = CANVAS_W; flight.startHeight = CANVAS_H; flight.age = -i*90; flight.active = true; heartHudFlightCount++;
+    flight.startWidth = CANVAS_W; flight.startHeight = CANVAS_H; flight.age = -i*90; flight.active = true; flight.broken = !!broken; heartHudFlightCount++;
   }
+}
+// HEART-BREAK-01 (1.7.74): owner request — when a loose enemy costs a life, a broken heart pops over its head, flies up to the lives counter, and on arrival the counter flashes
+// red and a small sound plays, so the loss is unmissable. The life is taken at once as before; this is the animation of it.
+function onBrokenHeartLanded(){
+  playSound('heart_break');
+  if(livesVal && livesVal.animate) livesVal.animate([{ transform: 'scale(1.5)', color: '#ff5a5a' }, { transform: 'scale(1)', color: '' }], { duration: 380, easing: 'ease-out' });
 }
 function updateHeartHudFlights(dt){
   if(!heartHudFlightCount) return;
-  for(const flight of heartHudFlights) if(flight.active){ flight.age += dt; if(flight.age >= 900){ flight.active = false; heartHudFlightCount--; } }
+  for(const flight of heartHudFlights) if(flight.active){
+    flight.age += dt;
+    if(flight.age >= 900){
+      flight.active = false; heartHudFlightCount--;
+      if(flight.broken) onBrokenHeartLanded();
+    }
+  }
 }
 function drawHeartHudFlights(ctx){
   if(!heartHudFlightCount) return;
@@ -14224,7 +14522,12 @@ function drawHeartHudFlights(ctx){
     const t = Math.min(1, f.age/900), p = t*t*(3 - 2*t), arc = Math.sin(t*Math.PI);
     const startX = f.x*CANVAS_W/f.startWidth, startY = f.y*CANVAS_H/f.startHeight;
     ctx.globalAlpha = t > 0.9 ? (1 - t)/0.1 : 1;
-    ctx.fillText('❤️', startX + (tx - startX)*p + arc*14, startY + (ty - startY)*p - arc*30);
+    if(f.broken){
+      const popSize = 16 + 12*Math.max(0, 1 - t*5); // pops big over the enemy's head, then shrinks as it flies
+      ctx.font = Math.round(popSize) + 'px sans-serif';
+      ctx.fillText('💔', startX + (tx - startX)*p + arc*14, startY + (ty - startY)*p - arc*30);
+      ctx.font = '16px sans-serif';
+    } else ctx.fillText('❤️', startX + (tx - startX)*p + arc*14, startY + (ty - startY)*p - arc*30);
   }
   ctx.restore();
 }
@@ -14810,7 +15113,7 @@ function drawStickmanGroundShadow(ctx,x,y,angle,level,type,extra,owner){
   let mask = stickmanShadowMask;
   if(owner){
     const entry = stickmanShadowEntry(owner);
-    const key = type + '|' + level + '|' + Math.round(angle*10) + '|' + Math.round((extra.swingProgress||0)*6) + '|' + Math.round(extra.lungeAmt||0) + '|' + (extra.spec||'') + '|' + (extra.hasTarget ? 1 : 0) + '|' + (extra.walkPhase === undefined ? '' : Math.round(extra.walkPhase*2)) + '|' + (extra.headItem||'') + '|' + Math.round(bx*20) + '|' + Math.round(by*20);
+    const key = type + '|' + level + '|' + Math.round(angle*10) + '|' + Math.round((extra.swingProgress||0)*6) + '|' + Math.round(extra.lungeAmt||0) + '|' + Math.round((extra.castProgress||0)*4) + '|' + (extra.spec||'') + '|' + (extra.hasTarget ? 1 : 0) + '|' + (extra.walkPhase === undefined ? '' : Math.round(extra.walkPhase*2)) + '|' + (extra.headItem||'') + '|' + Math.round(bx*20) + '|' + Math.round(by*20);
     if(entry.key !== key && presentationTime - entry.at >= STICKMAN_SHADOW_REFRESH_MS){
       const m = entry.ctx;
       m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
@@ -15055,7 +15358,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.arc(drawX,drawY,1.8,0,Math.PI*2); ctx.fill();
   } else if(type === 'MAGE' || type === 'SNAPCASTER' || type === 'PROTON' || type === 'DARK_MATTER' || type === 'QUASAR'){
     const cast = extra.castProgress || 0;
-    const wandBend = -0.3 - cast*0.4; // arm lifts briefly right after casting
+    const castKick = mageRecoilKick(cast);
+    const wandBend = -0.3 - castKick*0.9; // arm snaps back and up on the cast
     // CA584 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA584
     const restBlend = extra.restBlend || 0;
     function shortestBlend(from, to, t){
@@ -15063,7 +15367,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       return from + diff*t;
     }
     const armAngle = shortestBlend(angle, Math.PI/2 - 0.7, restBlend); // matches Swordsman's actual resting sword-hand arm angle
-    const staffAngle = shortestBlend(angle, -Math.PI/2 + 0.96, restBlend); // matches Swordsman's actual resting blade direction
+    const staffClimbSign = Math.cos(angle) >= 0 ? -1 : 1; // the tip rises on both sides when facing left or right
+    const staffAngle = shortestBlend(angle, -Math.PI/2 + 0.96, restBlend) + staffClimbSign * castKick * 0.55; // matches Swordsman's actual resting blade direction, plus the muzzle climb
     const offHand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, armAngle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
@@ -15088,13 +15393,28 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     if(type !== 'SNAPCASTER'){
     // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
     const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
-    const tipX = handX + Math.cos(staffAngle)*staffLen, tipY = handY + Math.sin(staffAngle)*staffLen;
-    const buttX = handX - Math.cos(staffAngle)*7, buttY = handY - Math.sin(staffAngle)*7;
+    const recoilSlide = castKick * 6, staffGripX = handX - Math.cos(angle)*recoilSlide, staffGripY = handY - Math.sin(angle)*recoilSlide;
+    const tipX = staffGripX + Math.cos(staffAngle)*staffLen, tipY = staffGripY + Math.sin(staffAngle)*staffLen;
+    const buttX = staffGripX - Math.cos(staffAngle)*7, buttY = staffGripY - Math.sin(staffAngle)*7;
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const charge = extra.chargeProgress || 0;
-    const pulse = 2.1 + charge*0.6 + cast*0.4;
+    const pulse = 2.1 + charge*0.6 + cast*2.2;
     drawMageStaffLight(ctx,tipX,tipY,pulse,!!extra.shadowPass,!lowGfx || graphicsQuality==='high' && !extra.preview);
+    if(cast > 0.04 && !extra.shadowPass){
+      ctx.save();
+      ctx.globalAlpha = cast * 0.85; ctx.strokeStyle = '#bfe8ff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(tipX, tipY, 3 + (1 - cast) * 14, 0, Math.PI*2); ctx.stroke();
+      const sparkLen = 3 + (1 - cast) * 9;
+      ctx.beginPath();
+      for(let spark = -1; spark <= 1; spark++){
+        const sparkAngle = angle + spark * 0.55, sparkStart = 4 + (1 - cast) * 8;
+        ctx.moveTo(tipX + Math.cos(sparkAngle)*sparkStart, tipY + Math.sin(sparkAngle)*sparkStart);
+        ctx.lineTo(tipX + Math.cos(sparkAngle)*(sparkStart + sparkLen), tipY + Math.sin(sparkAngle)*(sparkStart + sparkLen));
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
     }
   } else if(type === 'BOMBER'){
     // small pouch of spare shells on the hip — was the only class with zero distinguishing gear
@@ -16529,6 +16849,7 @@ function loseLife(n){
    MAIN LOOP (fixed timestep)
    ========================================================= */
 const FIXED_DT = 1000/60;
+function renderLeftoverMs(){ return gameState === 'PLAYING' ? Math.min(accumulator, FIXED_DT) : 0; } // SMOOTH-ANIM-01: the part of the next tick that has already elapsed
 let lastTime = 0, accumulator = 0;
 const NORMAL_MAX_FRAME_TIME_MS = 100;
 const FAST_FORWARD_MAX_FRAME_TIME_MS = 150;
@@ -16620,7 +16941,7 @@ function update(dt){
   tallyCommittedProjectileDamage();
   for(const t of towerPool) if(t.active) t.update(dt, enemyHashLocal);
   phaseTime.towerUpdate += performance.now() - __pt; __pt = performance.now();
-  for(const p of projectilePool) if(p.active) p.update(dt, enemyHashLocal);
+  for(const p of projectilePool) if(p.active){ p.renderPrevX = p.x; p.renderPrevY = p.y; p.update(dt, enemyHashLocal); }
   phaseTime.projectile += performance.now() - __pt; __pt = performance.now();
   for(const c of catPool) if(c.active) c.update(dt, enemyHashLocal);
   for(const s of skeletonPool) if(s.active) s.update(dt, enemyHashLocal);
@@ -16792,20 +17113,34 @@ function updateTargetFrame(){
 }
 // CA665 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA665
 // TARGET-MARK-01 (1.6.94): drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
+const RANGE_RING_DOT_PX = 4.5, RANGE_RING_DOT_SPACING_PX = 15, RANGE_RING_SPEED_PX_PER_S = 34;
 function drawSelectedTowerRange(ctx){
   const tower=selectedTower;
   if(!tower || !tower.active || tower.type==='BARRICADE') return;
   const radius=tower.targetingRange || tower.range;
   if(!(radius>0)) return;
+  const zoomFactor=Math.max(0.25,camera.zoom);
   ctx.save();
   ctx.shadowBlur=0;
-  ctx.lineWidth=1.5/Math.max(0.25,camera.zoom);
-  ctx.fillStyle='rgba(232,182,65,0.045)';
-  ctx.strokeStyle='rgba(232,182,65,0.72)';
-  ctx.setLineDash([6/Math.max(0.25,camera.zoom),4/Math.max(0.25,camera.zoom)]);
-  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.fill();
+  // RANGE-RING-DOTS-01 (1.7.72): owner request — the range is a bold white dotted ring that travels counter-clockwise. Dots are round-capped zero-length dashes spaced evenly
+  // (the spacing is rounded so the ring closes with no odd gap); the pattern slides backward along the clockwise path, which reads as counter-clockwise. A dark under-pass keeps
+  // the white readable on the light grass tiles. Real time, so game speed never changes it; size is constant on screen at any zoom.
+  const circumference=2*Math.PI*radius, dotCount=Math.max(12,Math.round(circumference/(RANGE_RING_DOT_SPACING_PX/zoomFactor))), dotGap=circumference/dotCount;
+  const travelOffset=PREFERS_REDUCED_MOTION ? 0 : (presentationTime/1000)*RANGE_RING_SPEED_PX_PER_S/zoomFactor;
+  ctx.lineCap='round';
+  ctx.setLineDash([0.001,dotGap-0.001]);
+  ctx.lineDashOffset=travelOffset;
+  ctx.strokeStyle='rgba(20,12,4,0.45)'; ctx.lineWidth=(RANGE_RING_DOT_PX+2.6)/zoomFactor;
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.95)'; ctx.lineWidth=RANGE_RING_DOT_PX/zoomFactor;
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.stroke();
   const splash=(tower.splashRadius || 0)+(towerElement(tower)==='QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
   if(splash>0 && tower.target && tower.target.active){
+    ctx.lineCap='butt'; ctx.lineDashOffset=0;
+    ctx.setLineDash([6/zoomFactor,4/zoomFactor]);
+    ctx.lineWidth=1.5/zoomFactor;
     ctx.strokeStyle='rgba(225,110,45,0.8)';
     ctx.beginPath();ctx.arc(tower.target.x,tower.target.y,splash,0,Math.PI*2);ctx.stroke();
   }
@@ -16965,7 +17300,7 @@ function render(ctx){
   renderPhaseTime.groundItems += performance.now() - __rpt; __rpt = performance.now();
   for(const c of catPool) if(c.active) c.draw(ctx);
   for(const s of skeletonPool) if(s.active) s.draw(ctx);
-  for(const p of projectilePool) if(p.active) p.draw(ctx);
+  for(const p of projectilePool) if(p.active) drawProjectileSmoothed(ctx, p);
   renderPhaseTime.minionsProjectiles += performance.now() - __rpt; __rpt = performance.now();
   drawLightningArcs(ctx);
   drawMarkedTargetIcon(ctx);
@@ -17016,6 +17351,14 @@ if(typeof ResizeObserver !== 'undefined'){
 }
 // DEBUG-OVERLAY-CACHE-01 (1.6.152) — see CHANGELOG.md § [1.6.152]. The overlay's text and box size are rebuilt a few times a second, not every frame:
 // the per-frame cost is one rectangle and a handful of text draws from the cached layout.
+// OVERLAY-HOST-HINT-01 (1.7.55): browsers never expose the CPU model, so the overlay reports what they do expose: OS and CPU architecture from User-Agent Client Hints, else the platform string.
+let hostHintText = (typeof navigator !== 'undefined' && navigator.platform) ? navigator.platform : '';
+if(navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
+  navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness', 'platform']).then(hints => {
+    const arch = hints.architecture ? hints.architecture + (hints.bitness ? '-' + hints.bitness : '') : '';
+    hostHintText = [hints.platform, arch].filter(Boolean).join(' ') || hostHintText;
+  }).catch(() => {});
+}
 const DEBUG_OVERLAY_REFRESH_MS = 250;
 let debugOverlayLayout = null, debugOverlayBuiltAt = -1e9;
 function drawDebugOverlay(ctx){
@@ -17034,6 +17377,21 @@ function drawDebugOverlay(ctx){
   for(let i = 0; i < layout.visibleLines.length; i++) ctx.fillText(layout.visibleLines[i], layout.boxLeft + 6, layout.belowHudY + 4 + i * layout.lineHeight);
   ctx.restore();
 }
+// OVERLAY-FLOW-01 (1.7.65): the summary rows are flowed like text: segments share a row, divided by a bar, until the row is full, so the panel is a dense block with no ragged empty space on the right.
+const OVERLAY_SEGMENT_DIVIDER = '  |  ';
+function flowOverlaySegments(ctx, segments, maxWidth, fontPx){
+  ctx.save();
+  ctx.font = 'bold ' + fontPx + 'px monospace';
+  const rows = [];
+  let row = '';
+  for(const segment of segments){
+    const joined = row ? row + OVERLAY_SEGMENT_DIVIDER + segment : segment;
+    if(row && ctx.measureText(joined).width > maxWidth){ rows.push(row); row = segment; } else row = joined;
+  }
+  if(row) rows.push(row);
+  ctx.restore();
+  return rows;
+}
 function buildDebugOverlayLayout(ctx){
   const compact=CANVAS_W<600;
   let onPath = 0, escaped = 0, dying = 0;
@@ -17051,20 +17409,17 @@ function buildDebugOverlayLayout(ctx){
     'CPU '+(navigator.hardwareConcurrency || '?')+' threads RAM ~'+(navigator.deviceMemory || '?')+'GiB',
     'GPU '+String(renderEnvironment.gpuRenderer).slice(0,30)
   ] : [
-    'v' + GAME_VERSION + '  ' + graphicsQuality + '  ' + Math.round(perfStats.smoothedFps || 0) + ' FPS',
-    'CPU ' + (navigator.hardwareConcurrency || '?') + ' logical threads; model unavailable',
-    'GPU (WebGL probe) ' + String(renderEnvironment.gpuRenderer).slice(0,72),
-    'RAM ~' + (navigator.deviceMemory || '?') + ' GiB; heap ' + (performance.memory ? (performance.memory.usedJSHeapSize/1048576).toFixed(0)+' MiB' : 'unavailable'),
+    'v' + GAME_VERSION + '  ' + graphicsQuality + '  ' + Math.round(perfStats.smoothedFps || 0) + ' FPS  |  zoom ' + camera.zoom.toFixed(2) + '  cam ' + Math.round(camera.x) + ',' + Math.round(camera.y),
+    'CPU ' + (navigator.hardwareConcurrency || '?') + ' threads' + (hostHintText ? ' ' + hostHintText : '') + '  |  RAM ' + (navigator.deviceMemory ? '~' + navigator.deviceMemory + ' GiB' : '?') + (performance.memory ? '  heap ' + (performance.memory.usedJSHeapSize/1048576).toFixed(0) + ' MiB' : ''),
+    'GPU ' + String(renderEnvironment.gpuRenderer).slice(0,72) + '  |  screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2) + ' canvas ' + CANVAS_W + 'x' + CANVAS_H,
     'frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms  upd ' + (perfStats.updateMs || 0).toFixed(1) + '  rend ' + (perfStats.renderMs || 0).toFixed(1) + '  hud ' + (perfStats.hudMs || 0).toFixed(2) + '  tick ' + (perfStats.msPerTick || 0).toFixed(2) + 'ms x' + (perfStats.ticksThisFrame || 0) + '  speed ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x asked, ' + (perfStats.achievedSpeed || 0).toFixed(1) + 'x done  music ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(2) + 'ms',
-    'wave ' + waveIndex + ' ' + waveState + (phase ? '  ' + phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : ''),
-    'enemies ' + onPath + ' path / ' + escaped + ' escaped / ' + dying + ' dying',
-    'towers ' + countActive(towerPool) + '  proj ' + countActive(projectilePool) + '  decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)',
+    'wave ' + waveIndex + ' ' + waveState + (phase ? '  ' + phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : '') + '  |  enemies ' + onPath + ' path / ' + escaped + ' escaped / ' + dying + ' dying',
+    'towers ' + countActive(towerPool) + '  proj ' + countActive(projectilePool) + '  decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)  |  scale ' + Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100) + '% auto ' + (autoRenderScaleEnabled ? 'on' : 'off') + '  gap ' + smoothedGapMs.toFixed(0) + 'ms  low15 ' + Math.round(lowFpsDurationMs/1000) + 's',
     (() => { const k = decalCategoryCounts(); return 'debris live blood ' + k.liveBlood + ' baked ' + k.bakedBlood + ' bones ' + k.bones + ' skulls ' + k.skulls + ' worms ' + k.worms + ' rubble ' + k.rubble; })(),
     lastMinuteSummary(),
-    'zoom ' + camera.zoom.toFixed(2) + '  cam ' + Math.round(camera.x) + ',' + Math.round(camera.y),
-    'scale ' + Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100) + '% auto ' + (autoRenderScaleEnabled ? 'on' : 'off') + '  gap ' + smoothedGapMs.toFixed(0) + 'ms  low15 ' + Math.round(lowFpsDurationMs/1000) + 's',
     'scale: ' + lastGovernorDecision
   ];
+  if(!compact) lines.splice(0, lines.length, ...flowOverlaySegments(ctx, lines, Math.min(CANVAS_W-24, 520), 11));
   // CA672 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA672
   const liveTowers = compact ? [] : overlayTowerRanking();
   if(!compact) for(const capture of downingCaptures){
@@ -18122,7 +18477,7 @@ function updatePresentationEffects(frameMs){
     softwareRenderingNoticeShown = true; // GPU-NOTICE-01 (1.7.36): the browser is drawing on the CPU; a quiet bell note says how to fix it, never a popup
     recordNotification('🖥️ Graphics acceleration is off', 'Your browser is drawing the game on the CPU (' + renderEnvironment.gpuRenderer + '). Turning on hardware acceleration in the browser settings (Settings, System, Use graphics acceleration when available, then restart) usually makes play much smoother. You can also pick Low graphics in Settings.');
   }
-  if(freeExpansionOwed > 0 && waveState === 'IDLE' && countLooseEnemies() === 0){ freeExpansionOwed--; if(!grantFreeExpansion()) freeExpansionOwed = 0; }
+  if(freeExpansionOwed > 0 && waveState === 'IDLE'){ freeExpansionOwed--; if(!grantFreeExpansion()) freeExpansionOwed = 0; }
   audioEngine.setMusicPhase(waveState !== 'IDLE' || countLooseEnemies() > 0 ? (bossIsOnField() ? 'boss' : 'wave') : 'field');
   updateDeathAnims();
   const clampedMs = Math.min(100, frameMs);
@@ -18178,7 +18533,7 @@ function loop(now){
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
     waveTimer += frameTime;
     const countdownBeat = Math.min(3, Math.floor(waveTimer / 1000)); // COUNTDOWN-BUZZER-01 (1.7.36): a buzzer on 3, 2, 1 and a higher one on GO
-    if(countdownBeat > countdownBeatPlayed){ countdownBeatPlayed = countdownBeat; playSound(countdownBeat < 3 ? 'countdown_tick' : 'countdown_go'); }
+    if(countdownBeat > countdownBeatPlayed){ countdownBeatPlayed = countdownBeat; playSound(countdownBeat < 3 ? 'countdown_tick' : 'countdown_go', undefined, countdownBeat); }
   }
   updatePresentationEffects(frameTime);
   const simulationSpeed = effectiveGameSpeed();
@@ -18209,7 +18564,12 @@ function loop(now){
   perfStats.updateMs = performance.now() - updateStart;
   flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
-  render(ctx);
+  // SMOOTH-ANIM-01 (1.7.75): the simulation advances in fixed 16.7 ms ticks, so on a display that is not locked to 60 Hz, or after any slow frame, a rendered frame holds 0, 1 or 2 ticks
+  // and every animation timed by gameTime (swings, casts, axe flights, breathing) moves in uneven jumps even at 60 FPS. Drawing now happens at gameTime plus the unspent part of the
+  // tick, so those animations advance a little every displayed frame; enemies were already blended this way and projectiles are now too (drawProjectileSmoothed).
+  const smoothedAheadMs = renderLeftoverMs();
+  gameTime += smoothedAheadMs;
+  try { render(ctx); } finally { gameTime -= smoothedAheadMs; }
   perfStats.renderMs = performance.now() - renderStart;
   perfStats.cameraMoveXLastFrame = camera.x - cameraAtFrameStartX;
   perfStats.cameraMoveYLastFrame = camera.y - cameraAtFrameStartY;
@@ -19022,9 +19382,7 @@ function updateHUDImmediate(){
   setHudText(waveVal, waveIndex < CAMPAIGN_WAVE_COUNT
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞');
-  const looseCount = countLooseEnemies();
-  setHudText(looseNotice, looseCount ? '🏃 ' + looseCount + ' loose · costing ❤️' : '');
-  looseNotice.hidden = !looseCount;
+  setHudText(looseNotice, ''); looseNotice.hidden = true; // LOOSE-NOTICE-REMOVED-01 (1.7.75): owner: the 'loose · costing' line is not the obvious cue they wanted; the broken heart flying to the counter is (HEART-BREAK-01)
   const waveProgress = document.getElementById('waveProgress');
   if(waveProgress){
     if(waveIndex < CAMPAIGN_WAVE_COUNT){
@@ -19110,7 +19468,7 @@ function buildTowerModal(){
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map. Available between waves once every enemy is defeated, including any that escaped. Each cleared wave also gives one free expansion, which arrives when the last enemy falls. If this row is greyed out, its label says why.</div>';
+    '<div class="build-row-blurb">Grows the map. Available between waves, even while an enemy that escaped is still loose: you can buy one expansion per wave. Each cleared wave also gives one free expansion as soon as the wave ends. If this row is greyed out, its label says why.</div>';
   {
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
@@ -19126,7 +19484,7 @@ function buildTowerModal(){
     e.stopPropagation();
     expandBlurb.classList.toggle('show');
   });
-  addBuildSection('Map growth');
+  addBuildSection('Structures');
   grid.appendChild(expandRow);
   addBuildSection('Stickmen Defenders');
 
@@ -19245,7 +19603,7 @@ function buildTowerModal(){
     if(isLockedGroup !== lastUnlockGroup){
       if(isLockedGroup){
         appendBarricadeSection();
-        addBuildSection('Unlock through play');
+        addBuildSection('Locked');
       }
       lastUnlockGroup = isLockedGroup;
     }
@@ -19906,6 +20264,20 @@ document.getElementById('startSettingsBtn').addEventListener('pointerdown', (e) 
   syncSettingsUI();
   document.getElementById('settings-modal').classList.remove('hidden');
   playSound('ui_open');
+});
+document.getElementById('startChangesBtn').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  unlockAudio();
+  playSound('ui_open');
+  openChangesNotice();
+});
+document.getElementById('updateModalOk').addEventListener('pointerdown', (e) => {
+  e.stopPropagation();
+  closeChangesNotice();
+  playSound('ui_close');
+});
+document.getElementById('update-modal').addEventListener('pointerdown', (e) => {
+  if(e.target.id === 'update-modal'){ closeChangesNotice(); playSound('ui_close'); }
 });
 document.getElementById('settingsFrameCapToggle').addEventListener('change', (e) => {
   frameCapEnabled = e.target.checked;
@@ -20773,7 +21145,7 @@ function updateInspectPanel(){
         const leadingStat = stats.find(k => (t[k] || 0) === bestValue);
         const leadingElement = ATTUNEMENTS[leadingStat];
         evoHint.textContent = bestValue > 0
-          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ELEMENT_INFUSE_THRESHOLD - bestValue) + ' points till ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase()
+          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ELEMENT_INFUSE_THRESHOLD - bestValue) + ' points until ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase() + ' Attunement'
           : '🎓 Spend points to start training — ' + (leadingPreferredStat ? leadingPreferredStat.toUpperCase() + ' is preferred' : 'any stat');
       }
       evoHint.classList.remove('hidden');

@@ -2,6 +2,194 @@
 
 How this file works: newest first. Every entry starts with a heading `## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
 
+## [1.7.75] — 2026-10-06 (UTC)
+
+### Expansion no longer needs an empty field; one bought expansion per wave plus the free one (EXPAND-PER-WAVE-01)
+- Owner: you should not have to defeat every enemy to expand the map; once per wave you should be able to do a player expand, and also get the expand from completing the wave. This reverses the earlier rule that expansion waits for every enemy, including escaped ones (EXPAND-AFTER-CLEAR-01), and the 1.6.98 rule that bought expansions had no limit.
+- The Expand button is blocked only while a wave is in progress, or once you have already bought one this wave ("Expand ... one per wave"; it unlocks again when the next wave starts). A loose enemy no longer blocks it. The free expansion for a cleared wave is granted as soon as the wave ends, without waiting for escaped enemies. The cap is `PAID_EXPANSIONS_PER_WAVE`; the wave of the last bought expansion is saved with the game.
+- The Build blurb, README and AGENTS.md ledger were updated, and the old README line saying an expansion adds one to three tiles in total now says both ends grow by the same one to three.
+
+### Removed the "loose · costing" line
+- Owner: the "1 loose · costing" text under the wave counter is not the "make it obvious" cue they wanted; the flying broken heart is. The line is removed (the element stays, always hidden).
+
+### Smoother attacks and animations at 60 FPS (SMOOTH-ANIM-01)
+- Owner: it reads 60 FPS but still lags on some attacks and animations.
+- Cause found in the code: the simulation advances in fixed 16.7 ms ticks and a displayed frame holds 0, 1 or 2 of them depending on when the browser delivers it (always on a display that is not 60 Hz, and after any slow frame). Enemies were already blended between ticks, but swing, cast and axe-flight animations are timed by `gameTime`, and projectiles were drawn at the last tick, so they moved in uneven jumps even though the frame counter said 60.
+- Fix: each frame is now drawn at `gameTime` plus the part of the next tick that has already elapsed (at most one tick), so every `gameTime` animation (swings, the mage recoil, axe arcs, breathing, the orb charge, the new enemy attack lunge) advances a little on every displayed frame; projectiles are drawn between their previous and current positions like enemies (a jump over 80 px, such as a fresh launch, is drawn as is). Game logic is untouched.
+- What this does not fix: the 1.7.53 overlay in the owner's screenshots showed 37 to 41 FPS and 21 to 29 ms gaps while the game's own work took under 1 ms. Frames that are really missing while the JavaScript is idle point at the graphics process, not the game code, and need a Chrome Performance trace to pin down; the steps and the candidates are in BACKLOG.md. Also note that those screenshots are of the deployed 1.7.53; the later animations and effects have not been through that overlay yet.
+- Not verified by playing; syntax checked only.
+
+## [1.7.74] — 2026-10-06 (UTC)
+
+### A broken heart flies to the lives counter whenever a loose enemy costs a life (HEART-BREAK-01)
+- Owner: on escaped runners, show an animation above their head, a flying broken heart that goes up to the player's health and makes a noise, so it is clear you are losing health.
+- Whenever a life is lost to an escaped enemy, a 💔 pops big above that enemy's head, shrinks and arcs up to the lives counter. It covers both the steady drain from a loose enemy (one life every 6 seconds, the "loose · costing" readout) and the life lost the moment an enemy crosses the finish. It reuses the heart flight from the Healing Fountain (HEART-FLIGHT-01), in a broken version. No heart appears when a Donut shield absorbed the loss.
+- When the heart lands the counter flashes red and swells for about 0.4 seconds and a new sound plays (`heart_break`): a dry crack, then two soft falling notes (a sinking minor second) over a low thud, with the music dipping slightly. It is clear without being loud, never pitch-shifted, and rate-limited to once per 0.3 seconds so several drains at once do not stack.
+- The life is taken immediately as before; this is the animation of it. Skipped for players who ask for reduced motion (the flight; the sound still plays only when a heart lands, so with reduced motion there is no heart and no sound). The lives number is now an inline-block so it can swell.
+- Not verified by playing or by ear; syntax checked only. Please check the level of the sound.
+
+## [1.7.73] — 2026-10-06 (UTC)
+
+### Loose enemies have wanderlust (LOOSE-WANDERLUST-01)
+- Owner: give the runners more wanderlust so they explore the grass and go around in a circle instead of staying jammed up near the finish line, and so they "do stuff". This applies to every enemy that has crossed the finish and is loose, runners included.
+- Cause: a loose enemy picked a brand new random direction every 0.9 to 2.3 seconds at 0.4 times its speed, which is a jitter in place, so it hardly ever left the finish.
+- Now it commits for 2.2 to 5.2 seconds at a time and keeps its heading between decisions. Each decision is either a stroll toward a far-off walkable tile (the farthest of eight random samples, never within 2.5 tiles of the finish), 60% of the time, or a wide, gentle circle (turning 0.28 to 0.63 radians per second, a loop 40 to 90 px across) the rest of the time, in either direction. Strolls run at 0.55 times its speed and circles at 0.45, still slower than a run, so it reads as loose rather than fleeing. The first decision happens as soon as it escapes.
+- Unchanged: the pull toward a nearby stickman (the 60% lean toward a curious target now steers toward it), the chance to attack one, the walkable-area confinement (a blocked step turns it round and the new heading follows), the life drain, and livestock wandering.
+- Measured in a stand-in simulation (30 enemies for 120 seconds in an 8 by 7 tile area, starting at the finish): the old wander spent 46% of the time within two tiles of the finish and visited about 14.5 tiles; the new one spends 7% there and visits about 28 tiles. The simulation is a model, not the game.
+- Not verified by playing; syntax checked only. Watch for loose enemies drifting out of your stickmen's reach (they drain a heart every 6 seconds either way); if so, raise the pull toward stickmen or shorten `LOOSE_WANDER_COMMIT_*`. Knobs: `LOOSE_WANDER_*`.
+
+## [1.7.72] — 2026-10-06 (UTC)
+
+### Range ring is a bold white dotted ring that travels counter-clockwise (RANGE-RING-DOTS-01)
+- Owner: make the range a bold white dotted ring that moves around in a counter-clockwise circle. (I read "a block" as "bold"; tell me if you meant something else.)
+- The thin gold dashed line is replaced by evenly spaced round white dots, 4.5 screen pixels across, with a soft dark under-pass so they stay readable on the light grass tiles. The spacing is rounded so the ring closes with no odd gap, and the dots travel counter-clockwise at about 34 screen pixels per second. The faint fill inside is now a very light white tint instead of gold.
+- It runs on real time, so game speed does not change it, keeps the same dot size and speed at any zoom, and stands still for players who ask for reduced motion. The orange splash ring on the current target is unchanged.
+- Not verified by playing; syntax checked only. Knobs: `RANGE_RING_DOT_PX`, `RANGE_RING_DOT_SPACING_PX`, `RANGE_RING_SPEED_PX_PER_S`.
+
+## [1.7.71] — 2026-10-06 (UTC)
+
+### Leaner, bolder blood (BLOOD-LEAN-01)
+- Owner: there is too much micro blood; make it more efficient while keeping it realistic and impressive.
+- Cause, found in the code: every blood particle that came to rest left its own stain decal, so one blade hit (12 particles) left about a dozen specks, and each cast-off arc added 3 to 8 more small drops (an axeman hit could add two arcs). That is where the screenshot's fine red dust and the 263 baked stains came from.
+- Now only about a third of the droplets that settle leave a stain (`BLOOD_SETTLE_STAIN_SHARE` 0.35), and each of those is 1.6 times larger. A cast-off arc is 2 to 4 drops instead of 3 to 8, each 1.3 times larger (`BLOOD_ARC_*`). Large pools are a little more common (big 2% to 4%, medium 8% to 16% of unbiased splats), so a fight reads as a few bold, directional marks with a scatter of satellites instead of a haze.
+- Effect on cost, by count: about 65% fewer settle stains per hit, about 45% fewer arc drops per arc, so far fewer decals to bake and re-stamp, and the 750 decal budget lasts much longer before the oldest marks are recycled. Streaks, cast-off direction and the live spray are unchanged.
+- Not verified by playing; syntax checked only. I have not seen the result, so please judge the look; if it is now too sparse, raise `BLOOD_SETTLE_STAIN_SHARE` toward 0.5; if still too busy, lower it toward 0.2.
+
+## [1.7.70] — 2026-10-06 (UTC)
+
+### Barricade wood and stone stay sharp when zoomed in (RUBBLE-LIVE-01)
+- Owner: the skull looks clean and crisp, but the wood and stone from a broken barricade look bad.
+- Cause, found in the code: skulls and bones are drawn live every frame as text at the current zoom, so they are sharp at any zoom. Barricade rubble was baked into the settled-decal bitmap as soon as it landed. That bitmap holds one pixel per world pixel (times the screen's pixel ratio), so at the 5.2 times zoom in the screenshot each stored pixel was stretched about five times and the pieces turned into soft smudges.
+- Fix: rubble is no longer baked. It is drawn live in the ground pass under the units, the same way bones are, with the same off-screen culling and the same final fade-out. The 90 second lifespan and the decal budget are unchanged. Old rubble already baked into a loaded game is re-drawn live at the next rebuild.
+- Not changed, and the reason the ground still looks soft up close: the ground tiles, blood stains and pebbles live in two cached bitmaps at one pixel per world pixel (map and settled decals). Making those sharp at 5 times zoom would need a zoom-aware cache, which at this zoom would be about 10,000 by 6,600 pixels, over the browser's canvas limits and about 280 MB, so it needs a tiled design; it is written to BACKLOG.md.
+- Not verified by playing; syntax checked only. Please check frame time with a few barricade fights, since rubble now costs a little per frame while visible.
+
+## [1.7.69] — 2026-10-06 (UTC)
+
+### A musical, subtle 3-2-1 (COUNTDOWN-MUSICAL-01)
+- Owner: the 3-2-1 should make a sound each time a number passes, subtle and not loud, but masterful music.
+- It already made a buzzer on each number (square and sawtooth tones). Those are replaced by a small musical figure in D minor, the key the combat score sits in: "3" is a soft D, "2" an F and "1" an A, each a gentle triangle pluck with a quiet octave shimmer, a soft low pulse and a tiny clock tick, a touch louder at each step (a rising line that leans into the start). GO resolves it into a bright D major chord (D, A, D, F sharp) over a low D with a soft swell.
+- Levels are low on purpose: each pluck peaks at about 0.05 to 0.07, well under the effects bus and the music. A little reverb on the plucks gives them air. Timing is unchanged (a sound at 3, 2, 1 and GO).
+- The sounds are unmuted by the existing master and effects volumes, and are exempt from the random pitch variants so the notes always land in tune.
+- Not verified by ear (I cannot listen): please check the level and the tuning against your music, and tell me louder, quieter or a different key.
+
+## [1.7.68] — 2026-10-06 (UTC)
+
+### Element hint wording (ELEMENT-HINT-WORDING-01)
+- Owner: instead of "247 points till Ice", every element should read "until [element] Attunement".
+- The hint under a stickman's training bar now reads, for example, "❄️ 247 points until Ice Attunement", "🔥 120 points until Fire Attunement" and "⚡ 80 points until Electric Attunement". The "Ready to attune!" line and the hints after attunement are unchanged.
+- Not verified by playing; syntax checked only.
+
+## [1.7.67] — 2026-10-06 (UTC)
+
+### Clearing progress is a single yellow gradient wedge (CLEAR-PIE-01 restyled)
+- Owner: the yellow clearing circle should be a gradient, without the darker circle inside and without the black circle; just the yellow by itself.
+- The wedge that sweeps clockwise from the top while a tree, rock or bush is cleared is now one yellow radial gradient (pale yellow in the middle, warm gold at the edge). The dark disc behind it, the brown and orange stripes and the dark outline are gone, so nothing is drawn until the sweep starts. It still sits behind the emoji and still fills in a full circle.
+- The design-contract text, the README and the AGENTS.md ledger line were updated to match.
+- Not verified by playing; syntax checked only.
+
+## [1.7.66] — 2026-10-06 (UTC)
+
+### Biomes appear only after a very long road (BIOMES-01)
+- Owner: the different tree types should only spawn after a very long path, with biome areas in the path and grass after a lot of expansions, like Minecraft.
+- Near the start everything is meadow with leafy trees only. Eight or more tiles from the starting tile (the far thirds of the map, reached only by a long road) the land breaks into wavy patches about five tiles across: Pinewood (cool blue-green grass, evergreens in 85% of trees) and Dunes (sandy ground without grass tufts, palms in 85% of trees), with meadow patches in between (40% meadow, 30% each of the others).
+- A tile's biome depends only on its position and the run seed, so it never changes once seen, loaded saves repaint the same way, and the patch edges are warped so they are not square blocks. Existing trees keep the kind they were saved with.
+- Roads and expansion are unaffected. The distance (`BIOME_MIN_DISTANCE_TILES`, 8), the patch size (`BIOME_PATCH_TILES`, 5) and the colours (`BIOME_GRASS`) are the tuning knobs.
+- Not verified by playing; syntax checked, and the patch layout was printed for three seeds. A save made before this version whose land lies in the far zone gets the new ground colours, and its older trees stay as they were.
+
+## [1.7.65] — 2026-10-06 (UTC)
+
+### Fixed a design-contract warning from 1.7.60, and the debug overlay now flows into a dense block (OVERLAY-FLOW-01)
+- Regression from 1.7.60 (my miss): removing the stone cairn left nine kinds of random event, but the design contract still demanded ten, so it printed "validateDesignContract() found 1 problem(s)" on load. The check now requires nine kinds and the chances still add up to one. Nothing in play was affected; only the load-time warning.
+- Owner: the debug overlay still had too much empty space. Its summary rows used to be one line per topic, so short rows left a ragged empty right side. They now flow like text: topics share a row, divided by a bar, until the row is full (up to 520 px wide), so the panel is a dense block with about half the rows. Nothing was removed; tower telemetry and downing captures stay one line each below.
+- Not verified by playing; syntax checked only.
+
+## [1.7.64] — 2026-10-06 (UTC)
+
+### Every food gives 1 to 3 stat points and 1 to 10 experience (FOOD-ROLL-01)
+- Owner: each meat gives 1 to 3 STR and 1 to 10 XP, each vegetable 1 to 3 DEX and 1 to 10 XP, each fruit 1 to 3 INT and 1 to 10 XP.
+- Both numbers are rolled when the food is eaten, so every food is the same kind of roll. Before, the stat gain was fixed per food (1 for most, 2 for Steak and Hot Pepper, 3 for Meat on the Bone) and only fruit gave experience (15 plus the wave, up to 50).
+- The healing extras are unchanged (meat lives and max lives, fruit +1 life, vegetables +2 lives). The feedback readout shows the stat gained, the experience and the lives. Stat caps still apply through the same grant function (STAT-GRANT-01).
+- Not changed: Drill experience in the Training Yard still scales with the wave, and Market rations stay at +2.
+- Not verified by playing; syntax checked only.
+
+## [1.7.63] — 2026-10-06 (UTC)
+
+### The mushroom patch drops mushrooms (MUSHROOM-PATCH-01)
+- Owner: the giant mushroom dropped broccoli and garlic, which makes no sense. The patch (the 🍄 random event) used to drop two random vegetables. It now drops two Mushrooms.
+- Mushroom is a new food in the catalog (🍄, a vegetable, so it raises DEX like the others). It also joins the general vegetable pool, so it can turn up from other vegetable drops.
+- Not verified by playing; syntax checked only.
+
+## [1.7.62] — 2026-10-06 (UTC)
+
+### Both ends of the road grow equally, 1 to 3 tiles each (EXPAND-BOTH-ENDS-01)
+- Owner: an expansion must grow both ends of the path by 1 to 3, equal on each side; this stands even though it replaces the earlier 1.7.36 decision of 1 to 3 tiles in total.
+- Before, the 1 to 3 total was split between the ends (1 tile meant one end only, 3 meant 2 and 1). Now one number from 1 to 3 is rolled per expansion and both the spawn end and the finish end grow by exactly that many (2, 4 or 6 tiles in total).
+- If the planned size does not fit, the road tries the smaller equal sizes (2, then 1) while the spacing rule bends a little more, before falling back to a single tile at one end as a last resort so the road never cuts itself off (ROAD-ESCAPE-01). The old one-sided fallbacks that moved all the growth to one end are gone.
+- AGENTS.md ledger rule 3 and the expansion line were rewritten to the new rule.
+- Not verified by playing; syntax checked only. Check the first few expansions: each should add the same number of road tiles at the flags and at the finish.
+
+## [1.7.61] — 2026-10-06 (UTC)
+
+### Mage cast has a real recoil (MAGE-RECOIL-01)
+- Owner: the mage's attack was barely noticeable; make the wand fly back, an equal and opposite reaction.
+- On every cast the staff now kicks back along the aim line (6 px), the tip flips upward (about 0.55 radians, up whichever way the mage faces), the arm snaps back, and the body is pushed back 3 px, with a small springy overshoot as it settles. The recoil window grew from 350 ms to 450 ms.
+- The staff orb swells about five times more than before on the cast and gives off a pale blue ring that expands from the tip plus three short sparks fanned toward the target. The ring and sparks are not drawn in the shadow pass.
+- Applies to the Mage, Snapcaster, Proton, Dark Matter and Quasar casters (the staff itself only exists on the ones that carry one). The ground shadow cache key now includes the cast stage so the shadow follows the kick. Drawing only: firing, damage and timing are unchanged.
+- Not verified by playing; syntax checked only. The strength knobs are `castKick * 6` (slide), `* 0.55` (tip flip), `* 3` (body) and `MAGE_CAST_RECOIL_MS`.
+
+## [1.7.60] — 2026-10-06 (UTC)
+
+### Removed the stone cairn random event (EVENT-NO-CAIRN-01)
+- Owner: the big brick wall (🧱) that gave stone was never asked for and is gone. It was the "stone cairn" random event added in 1.7.44. It no longer spawns and its stone payout is removed; stone still comes from clearing rocks.
+- Its 6% share of random events moved to the berry bush (13% to 16%) and the mushroom patch (5% to 8%), so the chances still add up to 100% and no extra presents appear. The README's list of events was updated.
+- A save made before this version that still holds a cairn loads it as a wood pile, so nothing turns into a stray gem.
+- Not verified by playing; syntax checked only.
+
+## [1.7.59] — 2026-10-06 (UTC)
+
+### Farm animals let out tiny hearts and notes (LIVESTOCK-EMOTE-01)
+- Owner: anything else that can be made cute. Chickens now and then float a small orange music note, pigs and cows a small pink heart: a springy pop, a gentle sway, a rise of about 14 px and a fade over 1.5 s, with a white outline so it reads on grass or dirt. Each animal waits 7 to 16 seconds between emotes, so it is occasional and never on every trigger.
+- Real-time and purely decorative: it does not follow game speed, never touches movement or collisions, and is skipped for reduced-motion players and under heavy visual load. The wandering troll never does it.
+- Not verified by playing; syntax checked only.
+
+## [1.7.58] — 2026-10-06 (UTC)
+
+### Enemy attack animation and cute anger mark (ENEMY-ATTACK-ANIM-01)
+- Owner: a grunt attacking a stickman could look better, with an Animal Crossing style angry emote coming off its face, kept cute.
+- Before, an attacking enemy only nudged 4 px toward its target in a constant wobble that had nothing to do with when it hit. Now the motion follows the attack timer: it rears back and stretches tall (wind-up), snaps forward and squashes as the hit lands, then eases back (recoil), leaning toward the target. Applies to enemies that break away from the path, loose escaped enemies and enemies hitting a barricade.
+- A red anger mark pops off the upper side of the head during the wind-up (springy pop, pulse on the strike, shrink on the recoil), with two small steam puffs rising from the head (not drawn on Low graphics). The mark and puffs are drawn vectors, no emoji, so they look the same everywhere.
+- Drawing only: attack timing, damage and targeting are untouched. Reduced-motion players and 5x/10x speed keep the old small bump with no emote, and nothing is drawn under heavy visual load.
+- Not verified by playing; syntax checked only. If the lunge is too big or the mark too large, the two numbers are `radius * 0.55` (lunge) and `radius * 0.34` (mark size) in `Enemy.draw`.
+
+## [1.7.57] — 2026-10-06 (UTC)
+
+### See changes opens the silver version dialog (CHANGES-SILVER-MODAL-01)
+- Owner: See changes should show the silver changes dialog from before, not the Settings tab. Restored the silver dialog from 1.6.161 (big silver version number, the latest eight releases with up to six points each, a link to the full changelog, OK or a click outside to close). It opens only when the button is pressed; the old automatic once-per-version popup and its opt-out stay removed.
+- The Settings Changes tab is unchanged.
+- Not verified by playing; syntax checked only. The notes load from CHANGELOG.md on the hosted site, so a copy opened without that file shows a short message and the link instead.
+
+## [1.7.56] — 2026-10-06 (UTC)
+
+### Build menu section names (BUILD-SECTION-NAMES-01)
+- Owner: the Expand category becomes "Structures" so future structures can join it, and "Unlock through play" becomes "Locked".
+- Only the two headings changed; order, contents and behaviour are the same. The design contract check for the first section was updated to the new name.
+- Not verified by playing; syntax checked only.
+
+## [1.7.55] — 2026-10-06 (UTC)
+
+### Debug overlay is denser and reports what the browser does expose (OVERLAY-HOST-HINT-01, OVERLAY-PACK-01)
+- Owner: the overlay was too big with empty space, and some settings were not detected.
+- Short lines are now packed together with a divider (version, zoom and camera; CPU and RAM; GPU and screen; wave and enemies; towers, decals and render scale), so the panel has about four fewer rows and far less empty width. Nothing was removed.
+- "CPU model unavailable" is gone: browsers never expose the CPU model, so the line now shows logical threads plus the OS and CPU architecture from User-Agent Client Hints (platform string where unsupported). RAM and heap show only what the browser reports. Screen size, pixel ratio and canvas size were added to the GPU row.
+- Not verified by playing; syntax checked only.
+
+## [1.7.54] — 2026-10-06 (UTC)
+
+### See changes button on the start screen (START-CHANGES-BTN-01)
+- Owner: a button in the bottom left of the attract screen that pops up the version notes. "🗒️ See changes" opens Settings on the Changes tab (the latest eight releases and a link to the full changelog). It reuses the existing tab, so no new notes UI exists to maintain.
+- Not verified by playing; syntax checked only.
+
 ## [1.7.53] — 2026-10-06 (UTC)
 
 ### Lag: debug overlay and lightning (OVERLAY-RANK-CACHE-01, LIGHTNING-BLUR-HIGH-01)
