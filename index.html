@@ -154,6 +154,18 @@
   #game-wrapper{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
     opacity:0;transition:opacity 0.5s ease;} /* starts invisible over the black page background; .loaded fades it in once boot has actually run one real frame — fixes a flash where the HUD/canvas used to pop in instantly, sometimes for a moment before JS had even hidden hud-top */
   #game-wrapper.loaded{opacity:1;}
+  #loading-screen{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,3vh,28px);background:#000;color:var(--gold);text-align:center;}
+  #loading-screen[hidden]{display:none;}
+  #loadingTrack{position:relative;width:min(560px,86vw);height:clamp(90px,24vh,180px);}
+  #loadingGrunt{position:absolute;bottom:0;left:calc(var(--loading-pct,0) * (100% - 1em));font-size:clamp(72px,20vh,150px);line-height:1;transition:left 0.12s linear;}
+  #loadingGrunt span{display:inline-block;transform-origin:50% 100%;animation:loadingGruntWalk 0.5s ease-in-out infinite;filter:drop-shadow(0 8px 6px rgba(0,0,0,0.6));}
+  @keyframes loadingGruntWalk{0%,100%{transform:translateY(0) rotate(-5deg);}50%{transform:translateY(-12%) rotate(5deg);}}
+  @media (prefers-reduced-motion:reduce){#loadingGrunt span{animation:none;}}
+  #loading-screen p{margin:0;font-size:clamp(28px,7vh,56px);font-weight:800;letter-spacing:0.03em;}
+  #loadingProgress{appearance:none;width:min(560px,86vw);height:clamp(18px,3.4vh,26px);border:3px solid var(--gold);border-radius:14px;background:transparent;padding:2px;box-sizing:border-box;overflow:hidden;}
+  #loadingProgress::-webkit-progress-bar{background:transparent;}
+  #loadingProgress::-webkit-progress-value{background:radial-gradient(circle at 50% 50%,var(--gold) 0 55%,transparent 60%) 0 0/1.6em 100% repeat-x;transition:width 0.12s linear;}
+  #loadingProgress::-moz-progress-bar{background:radial-gradient(circle at 50% 50%,var(--gold) 0 55%,transparent 60%) 0 0/1.6em 100% repeat-x;}
   #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;}
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
 
@@ -245,6 +257,8 @@
     padding:8px 12px;color:var(--paper);font-weight:bold;font-size:clamp(11px,1.8vw,14px);text-align:left;}
   #unlock-toast.show{display:block;pointer-events:auto;cursor:pointer;}
   #notification-bell{position:relative;display:flex;align-items:center;flex:none;pointer-events:auto;}
+  #notification-bell[hidden]{display:none;}
+  #canvas-frame > #notification-bell{position:absolute;left:8px;top:8px;z-index:6;}
   #notification-bell button{background:rgba(40,33,24,0.92);color:var(--paper);border:1px solid var(--gold);border-radius:8px;padding:6px 9px;min-height:38px;font:inherit;font-weight:bold;cursor:pointer;}
   #notification-badge{color:#ffe082;margin-left:3px;}
   #notification-panel{position:absolute;top:var(--notification-content-top,100px);left:var(--notification-content-left,8px);box-sizing:border-box;width:min(330px,calc(100% - var(--notification-content-left,8px) - 8px));max-height:max(0px,min(55vh,420px,calc(100% - var(--notification-content-top,100px) - 8px)));overflow:auto;z-index:12;pointer-events:auto;background:rgba(25,22,18,0.97);border:1px solid var(--gold);border-radius:8px;padding:10px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,0.5);}
@@ -516,9 +530,8 @@
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
     font-weight:bold;}
   /* One accessible gear icon beside High and Low, without an Options label. */
-  #startSettingsBtn{background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
-    border:1px solid rgba(241,196,15,0.35);border-radius:8px;width:42px;min-width:42px;min-height:40px;padding:6px;font-size:1.1em;line-height:1;
-    cursor:pointer;}
+  #startSettingsBtn{position:absolute;right:14px;bottom:14px;background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
+    border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
   #startSettingsBtn:hover{border-color:var(--gold);}
   /* START-CHANGES-BTN-01 (1.7.54): bottom-left of the attract screen, opens Settings on the Changes tab. */
   #startChangesBtn{position:absolute;left:14px;bottom:14px;background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
@@ -731,7 +744,22 @@
     font-size:clamp(22px,5vw,40px);color:var(--gold);
     text-shadow:2px 2px 0 #000, 0 0 18px rgba(241,196,15,0.35), 0 -1px 0 rgba(255,255,255,0.2);
     margin-bottom:6px;}
-  #versionTag{font-size:11px;color:var(--paper);opacity:0.55;margin-bottom:14px;}
+  #start-screen #titleWordmark{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.8vh,8px);margin:0 0 4px;text-shadow:none;}
+  #start-screen{justify-content:flex-start;padding-top:clamp(24px,10vh,110px);}
+  #titleBlock{display:flex;flex-direction:column;align-items:center;}
+  #startMenu{flex:1;display:flex;flex-direction:column;align-items:center;width:100%;}
+  #startMenu #quality-picker{margin-top:auto;padding-bottom:clamp(8px,3vh,28px);}
+  @media (max-width:640px){#startMenu #quality-picker{padding-bottom:68px;}}
+  #playBtn{position:absolute;inset:0;margin:auto;width:fit-content;height:fit-content;display:flex;align-items:center;justify-content:center;padding:clamp(10px,1.8vh,16px) clamp(34px,6vw,60px);cursor:pointer;
+    background:rgba(10,15,8,0.55);border:3px solid var(--gold);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,0.5);transition:transform 0.12s ease,box-shadow 0.12s ease,background 0.12s ease;}
+  #playBtn svg{display:block;width:clamp(120px,22vw,190px);height:auto;}
+  #playBtn:hover,#playBtn:focus-visible{background:rgba(40,28,6,0.7);transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,0.55),0 0 22px rgba(241,196,15,0.45);}
+  #playBtn:focus-visible{outline:3px solid var(--paper);outline-offset:4px;}
+  #playBtn:active{transform:translateY(1px);box-shadow:0 3px 10px rgba(0,0,0,0.5);}
+  @media (prefers-reduced-motion:reduce){#playBtn{transition:none;}}
+  @media (max-height:520px){#playBtn{position:static;margin:16px auto 0;}}
+  #titleWordmark svg{width:min(740px,92vw);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,0.55));}
+  #versionTag{font-size:clamp(15px,2.6vw,22px);font-weight:700;letter-spacing:0.12em;color:var(--paper);opacity:0.85;margin-top:2px;text-shadow:0 2px 0 #000;}
   #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
   #end-screen #endMessage{white-space:pre-line;text-align:center;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
@@ -894,6 +922,11 @@
     document.getElementById('consentDecline').addEventListener('click', window.declineStickTDAnalyticsConsent);
   })();
 </script>
+<section id="loading-screen" aria-live="polite">
+  <div id="loadingTrack"><div id="loadingGrunt" aria-hidden="true"><span>😡</span></div></div>
+  <p>Loading...</p>
+  <progress id="loadingProgress" max="100" value="0"></progress>
+</section>
 <div id="game-wrapper">
   <div id="canvas-frame">
     <canvas id="gameCanvas">StickTD is a free browser tower defense game. Place and evolve stickman towers, defend a growing spiral road across 100 waves, and collect loot. Enable JavaScript and a canvas-capable browser to play.</canvas>
@@ -1047,7 +1080,7 @@
       <div id="killstreak-banner" role="button" tabindex="0" aria-label="Open combat milestone details"></div>
     </div>
     <section id="notification-panel" class="hidden" aria-label="Notifications">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><strong>Notifications</strong><div style="display:flex;gap:5px"><button id="notification-read-all" type="button">Mark all read</button><button id="notification-close" type="button" aria-label="Close notifications">×</button></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px"><strong>Notifications</strong><div style="display:flex;gap:5px"><button id="notification-read-all" type="button">Mark All Read</button><button id="notification-close" type="button" aria-label="Close notifications">×</button></div></div>
       <ul id="notification-list"></ul>
     </section>
 
@@ -1298,15 +1331,47 @@
     </div>
 
     <div id="start-screen">
-      <h1>STICK TOWER DEFENSE</h1>
+      <header id="titleBlock">
+      <h1 id="titleWordmark" aria-label="Stick TD: Stick Tower Defense">
+        <svg viewBox="0 0 1074 190" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="titleGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#e49b0f"/></linearGradient>
+            <g id="titleSticks" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M102 38C94 12 28 8 22 44C16 80 98 72 94 112C90 146 24 142 14 118"/>
+              <path d="M142 24H242M192 24V144"/>
+              <circle cx="334" cy="40" r="23"/><path d="M334 63V108M300 84L334 74L368 84M334 108L306 146M334 108L362 146"/>
+              <path d="M522 44C508 14 444 12 440 80C444 148 508 146 522 116"/>
+              <path d="M574 18V144M638 20L580 84M604 70L640 144"/>
+              <path d="M786 24H886M836 24V144"/>
+              <path d="M936 24V144M936 24H972C1032 24 1058 62 1058 84C1058 106 1032 144 972 144H936"/>
+            </g>
+          </defs>
+          <use href="#titleSticks" stroke="#1a1208" stroke-width="34" transform="translate(0 6)"/>
+          <use href="#titleSticks" stroke="url(#titleGold)" stroke-width="18" transform="translate(0 6)"/>
+        </svg>
+      </h1>
       <div id="versionTag">v<span id="versionText"></span></div>
+      </header>
+      <nav id="startMenu" aria-label="Start menu">
+      <button id="playBtn" aria-label="Play">
+        <svg viewBox="0 0 472 172" aria-hidden="true" focusable="false">
+          <g id="playSticks" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M24 150V22H66C108 22 108 86 66 86H24"/>
+            <path d="M150 22V150H220"/>
+            <path d="M258 150L298 22L338 150M272 112H324"/>
+            <path d="M368 22L408 92L448 22M408 92V150"/>
+          </g>
+          <use href="#playSticks" stroke="#1a1208" stroke-width="34"/>
+          <use href="#playSticks" stroke="url(#titleGold)" stroke-width="18"/>
+        </svg>
+      </button>
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
         <button class="quality-btn" id="qualityHigh" data-quality="high">High</button>
         <button class="quality-btn selected" id="qualityLow" data-quality="low">Low</button>
-        <button id="startSettingsBtn" title="Options" aria-label="Options">⚙️</button>
       </div>
-      <button class="big-btn" id="playBtn">▶ PLAY</button>
+      </nav>
+      <button id="startSettingsBtn" title="Options">⚙️ Options</button>
       <button id="startChangesBtn" title="See what changed in this version">🗒️ See changes</button>
     </div>
 
@@ -1368,7 +1433,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.76'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.90'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1394,7 +1459,7 @@ function pxFont(size){
   return _pxFontCache[px] || (_pxFontCache[px] = px + 'px serif');
 }
 // EMOJI-SPRITE-01 (1.7.76) — see CHANGELOG.md § [1.7.76]
-const EMOJI_SPRITE_MIN_PX = 16, EMOJI_SPRITE_MAX_PX = 192, EMOJI_SPRITE_STEP = Math.pow(2, 1/6), EMOJI_SPRITE_LOG_STEP = Math.log(EMOJI_SPRITE_STEP), EMOJI_SPRITE_PAD = 1.5, EMOJI_SPRITE_CACHE_LIMIT = 192;
+const EMOJI_SPRITE_MIN_PX = 16, EMOJI_SPRITE_MAX_PX = 192, EMOJI_SPRITE_STEP = Math.pow(2, 1/6), EMOJI_SPRITE_LOG_STEP = Math.log(EMOJI_SPRITE_STEP), EMOJI_SPRITE_PAD = 1.5, EMOJI_SPRITE_CACHE_LIMIT = 384;
 const emojiSpriteRows = new Map();
 let emojiSpriteCount = 0;
 function emojiSpriteFor(emoji, bucketIndex){
@@ -1424,6 +1489,7 @@ function drawEmojiSprite(ctx, emoji, sizePx){
 // CA009 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA009
 // ENEMY-ATTACK-ANIM-01 (1.7.58): an enemy hitting a stickman or barricade winds up, lunges and recoils in step with its attack timer, and puffs an
 // Animal Crossing style anger mark and steam from its head. Pure drawing: it reads the attack timer and never changes when damage lands.
+const LIVESTOCK_PAIR_HEART_DIST_PX = 64, LIVESTOCK_PAIR_CHECK_MS = 250, LIVESTOCK_PAIR_HEART_COOLDOWN_MS = 12000, LIVESTOCK_PAIR_HEART_COOLDOWN_SPREAD_MS = 8000; // LIVESTOCK-PAIR-HEART-01 (1.7.90)
 const LIVESTOCK_EMOTE_MIN_GAP_MS = 7000, LIVESTOCK_EMOTE_GAP_SPREAD_MS = 9000, LIVESTOCK_EMOTE_LIFE_MS = 1500;
 // MAGE-RECOIL-01 (1.7.61): casting kicks the staff back (equal and opposite to the bolt), flips the tip up, pushes the body back, and flashes the orb with a ring and sparks.
 const MAGE_CAST_RECOIL_MS = 450;
@@ -3063,7 +3129,8 @@ function validateDesignContract(){
     const goreOption = document.getElementById('settingsGoreToggle');
     const firstBuildHint = document.getElementById('first-build-hint');
     const firstSpeedHint = document.getElementById('first-speed-hint');
-    if(!settingsButton || !qualityPicker || settingsButton.parentElement !== qualityPicker || settingsButton.textContent.trim() !== '⚙️' || !goreOption || document.getElementById('goreToggle') || Array.from(document.querySelectorAll('label,p,button')).some(element => element.textContent.includes('I am 18+'))) problems.push('attract options are a clear gear icon beside graphics quality and gore has no age-gate prompt (FIRST-START-OPTIONS-01)');
+    if(!settingsButton || !qualityPicker || settingsButton.parentElement.id !== 'start-screen' || qualityPicker.contains(settingsButton) || settingsButton.textContent.trim() !== '⚙️ Options' || !goreOption || document.getElementById('goreToggle') || Array.from(document.querySelectorAll('label,p,button')).some(element => element.textContent.includes('I am 18+'))) problems.push('attract options are a labelled gear button at the bottom right, apart from the graphics quality choice, and gore has no age-gate prompt (FIRST-START-OPTIONS-01)');
+    if(typeof placeNotificationBell !== 'function' || !String(fitHudTopToOneLine).includes('placeNotificationBell') || !String(positionNotificationControls).includes('floatingBell')) problems.push('the notification bell sits flush at the top left of the screen and joins the top bar only when the screen is too narrow to leave room for it (NOTIFICATION-BELL-LEFT-01)');
     if(document.getElementById('training-overlay') || !firstBuildHint || firstBuildHint.textContent.trim() !== '👆' || firstBuildHint.parentElement.id !== 'buildBtnWrap' || !String(firstBuildHint.className).includes('hidden')) problems.push('first-time guidance is only a hidden-until-play hand beside Build, with no tower-choice or victory modal (FIRST-BUILD-CUE-01)');
     const firstNextWaveHint = document.getElementById('first-next-wave-hint');
     if(!firstSpeedHint || firstSpeedHint.textContent.trim() !== '👆' || firstSpeedHint.parentElement.id !== 'speedBtnWrap' || !firstNextWaveHint || firstNextWaveHint.textContent.trim() !== '👆' || firstNextWaveHint.parentElement.id !== 'nextWaveBtnWrap' || !String(startNextWave).includes('markFirstWaveStarted') || !String(markFirstNextWaveCueAction).includes('markFirstNextWaveUsed') || !String(syncFirstPlayCues).includes('!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()') || !String(markFirstSpeedUpUsed).includes("classList.add('hidden')")) problems.push('first-use guidance must show Next Wave after the first fighter is built and before wave one, then Fast Forward after wave start, and stay dismissed after speed use (FIRST-PLAY-CUE-SEQUENCE-01)');
@@ -4527,6 +4594,8 @@ const barricadeAttackerScratch = new Map();
 const barricadeClaimedSlotsScratch = new Set();
 // CA114 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA114
 const MAX_QUEUE_DEPTH = 40;
+const DOT_TEXT_BLEED = 0, DOT_TEXT_BURN = 1, DOT_TEXT_POISON = 2, DOT_TEXT_INTERVAL_MS = 1000;
+const FOLLOW_BRAKE_ZONE_PX = 36, FOLLOW_STOP_GAP_PX = 2, FOLLOW_BRAKE_PER_S = 3; // QUEUE-HOLD-01 (1.7.87): an enemy closing on a slowed, arrow-pinned or frozen one brakes smoothly to its speed instead of stopping at contact
 const QUEUE_PACK_GAP_PER_RADIUS = 1.6, QUEUE_PACK_MIN_GAP = 16; // PILE-PACK-01 (1.6.126) — was about 88 px between queued standard enemies, now about 24 px
 // CA115 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA115
 const BARRICADE_CHIP_MS = 260; // how long a barricade shakes/flashes after losing a point
@@ -4543,7 +4612,7 @@ function findQueueCatchmentLeader(active, endExclusive, behind, maxTraveledGap, 
   let bestAhead = null, bestDist = Infinity;
   for(let j = low; j < endExclusive; j++){
     const ahead = active[j];
-    if(!ahead.pileBlocked) continue;
+    if(!ahead.pileBlocked && !isEnemyHeldInPlace(ahead)) continue;
     const d = Math.hypot(ahead.preSnapX-behind.preSnapX, ahead.preSnapY-behind.preSnapY);
     if(d < catchmentRadius && d < bestDist){ bestDist = d; bestAhead = ahead; }
   }
@@ -4554,10 +4623,10 @@ function updateBarricadesAndPileup(){
   const active = barricadeActiveScratch;
   active.length = 0;
   for(const e of enemyPool){
-    if(!e.active || e.isLivestock || e.isBreakaway || e.stunnedUntil > gameTime || e.escaped || e.isGuardian || e.isHutBuilding) continue;
+    if(!e.active || e.isLivestock || e.isBreakaway || e.escaped || e.isGuardian || e.isHutBuilding) continue;
     e.pileBlocked = false;
     e.touchingBarricade = false;
-    e.candidateBarricade = findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
+    e.candidateBarricade = e.stunnedUntil > gameTime ? undefined : findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
     active.push(e);
   }
   // CA116 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA116
@@ -4606,7 +4675,7 @@ function updateBarricadesAndPileup(){
   for(const e of active){
     // CA120 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA120
     e.queueSlotDist = undefined; e.preSnapX = e.x; e.preSnapY = e.y; e.preSnapTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
-    if(e.pileBlocked){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
+    if(e.pileBlocked || isEnemyHeldInPlace(e)){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
   }
   // CA121 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA121
   if(anyBlockedSeed){
@@ -4623,7 +4692,8 @@ function updateBarricadesAndPileup(){
       // CA123 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA123
       while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= spacing;
       claimedSlots.add(slotDist);
-      snapEnemyToTraveled(behind, slotDist);
+      behind.queueSlotDist = slotDist;
+      settleEnemyTowardSlot(behind, slotDist);
       perfStats.barricadeSnapCount++;
     }
   }
@@ -4635,14 +4705,12 @@ function updateBarricadesAndPileup(){
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
     const d = Math.hypot(ahead.preSnapX-behind.preSnapX, ahead.preSnapY-behind.preSnapY);
-    // CA126 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA126
-    const proximityBuffer = Math.min(14, (ahead.radius + behind.radius) * 0.3);
-    if(d <= ahead.radius + behind.radius + proximityBuffer){
-      // CA127 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA127
-      const aheadFrozen = isEnemyFrozen(ahead);
-      const aheadOwnSpeed = ahead.packedSpeed() * ahead.slowMultiplier;
-      const aheadEffectiveSpeed = aheadFrozen ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
-      behind.followSpeedCap = aheadEffectiveSpeed;
+    const contactPx = ahead.radius + behind.radius, gapPx = d - contactPx;
+    if(gapPx <= FOLLOW_BRAKE_ZONE_PX){
+      const aheadHeld = isEnemyFrozen(ahead);
+      const aheadOwnSpeed = ahead.packedSpeed() * enemyMoveMultiplier(ahead);
+      const aheadEffectiveSpeed = aheadHeld ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
+      behind.followSpeedCap = aheadEffectiveSpeed + Math.max(0, gapPx - FOLLOW_STOP_GAP_PX) * FOLLOW_BRAKE_PER_S;
     }
   }
   const nowQueued = active.some(e => e.pileBlocked);
@@ -4659,6 +4727,11 @@ function updateBarricadesAndPileup(){
   anyBarricadeQueued = nowQueued && (gameTime - barricadeQueueStartedAt < BARRICADE_QUEUE_TIMEOUT);
 }
 // CA129 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA129
+const QUEUE_SETTLE_PX_PER_TICK = 6;
+function settleEnemyTowardSlot(e, slotDist){
+  const offsetPx = slotDist - e.traveled;
+  snapEnemyToTraveled(e, Math.abs(offsetPx) <= QUEUE_SETTLE_PX_PER_TICK ? slotDist : e.traveled + Math.sign(offsetPx) * QUEUE_SETTLE_PX_PER_TICK);
+}
 function snapEnemyToTraveled(e, slotDist){
   const pos = getPositionAtTraveled(slotDist);
   e.x = pos.x; e.y = pos.y;
@@ -4760,8 +4833,12 @@ const END_RING_MIN_SIZE_FRAC = 0.85;
 const TREE_ROCK_SIZE_FRAC_AT_MIDDLE = 0.08, TREE_ROCK_SIZE_FRAC_SLOPE = 0.55, TREE_ROCK_SIZE_FRAC_SPREAD = 0.25;
 const TREE_ROCK_TREE_SHARE_ON_EXPANSION = 0.60, TREE_ROCK_MIN_KEEP_CHANCE = 0.10, HARVESTED_TILE_KEEP_FACTOR = 0.12;
 const harvestedTileKeys = new Set();
-function treeRockSizeFrac(proximity){
-  return clampNum(TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE * proximity + (Math.random() - 0.5) * TREE_ROCK_SIZE_FRAC_SPREAD, 0, 1);
+const ROCK_SIZE_FRAC_SPREAD = 0.6; // ROCK-VARIETY-01 (1.7.90): rocks vary more in size than trees
+function treeRockSizeFrac(proximity, type){
+  const spread = type === 'ROCK' ? ROCK_SIZE_FRAC_SPREAD : TREE_ROCK_SIZE_FRAC_SPREAD;
+  let sizeFrac = TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE * proximity + (Math.random() - 0.5) * spread;
+  if(type === 'ROCK' && sizeFrac < 0) sizeFrac = -sizeFrac * 0.8; // reflect instead of piling every small rock onto the minimum size
+  return clampNum(sizeFrac, 0, 1);
 }
 function treeRockKeepChance(proximity, tileKey){
   const gradient = TREE_ROCK_MIN_KEEP_CHANCE + (1 - TREE_ROCK_MIN_KEEP_CHANCE) * proximity * proximity;
@@ -4808,7 +4885,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
   if(type==='BUSH'){ for(const item of sceneryMap.values()) if(item.type==='BUSH') return; }
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[type];
   const isTreeOrRock = type === 'TREE' || type === 'ROCK';
-  if(isTreeOrRock && forcedSizeFrac === undefined) forcedSizeFrac = treeRockSizeFrac(endProximity);
+  if(isTreeOrRock && forcedSizeFrac === undefined) forcedSizeFrac = treeRockSizeFrac(endProximity, type);
   const isSuper = !chanceDefinition && !isTreeOrRock && FIXED_SCENERY_SCALE[type] === undefined && Math.random() < S.superChance;
   const baseScaleRoll = S.minScale + Math.random()*(S.maxScale-S.minScale);
   const endBiasedScale = baseScaleRoll + (S.maxScale - baseScaleRoll) * endProximity;
@@ -4838,10 +4915,10 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2,
     type, isSuper, isSmallScenery, scale, clearCost, clearMs, goldYield,
     // CA131 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA131
-    tallStretch: type === 'TREE' && Math.random() < 0.25 ? 1.15 + Math.random()*0.4 : 1,
+    tallStretch: type === 'TREE' && Math.random() < 0.25 ? 1.15 + Math.random()*0.4 : (type === 'ROCK' ? 0.8 + Math.random()*0.55 : 1),
     // SCENERY-VARIETY-01 (1.7.44): owner says trees and stones were too alike. Trees come in three kinds, and trees and rocks are randomly mirrored and drawn a little wider or narrower.
     variant: type === 'TREE' ? rollTreeVariant(gx, gy) : 0, flip: (type === 'TREE' || type === 'ROCK') && Math.random() < 0.5,
-    widthStretch: type === 'TREE' ? 0.9 + Math.random()*0.28 : type === 'ROCK' ? 0.82 + Math.random()*0.5 : 1,
+    widthStretch: type === 'TREE' ? 0.9 + Math.random()*0.28 : type === 'ROCK' ? 0.7 + Math.random()*0.85 : 1,
     woodYield: type === 'TREE' ? baseYield : 0,
     stoneYield: type === 'ROCK' ? baseYield : 0,
     isClearing: false, clearStart: 0
@@ -10027,6 +10104,7 @@ class Enemy{
     this.bleedUntil = 0;         // open-wound bleeding DOT — lasts as long as any arrow is stuck, independent of the passive low-HP drip
     this.bleedStartedAt = 0;     // reference point for the cessation taper — spurt intensity winds down as the wound approaches bleedUntil instead of cutting off abruptly at full strength
     this.bleedTickTimer = 0;
+    this.dotTextPending = [0, 0, 0]; this.dotTextShownAt = [-1e9, -1e9, -1e9]; // DOT-TEXT-01 (1.7.89): bleed, burn and poison damage is summed and shown once per real second
     this.bleedDamagePerTick = 0;
     this.bleedStackCount = 0;    // was missing from this reset — a reused pool slot could otherwise inherit a stale stack count from whatever this slot last held
     this.bleedStackDamages = []; // per-stack damage-per-tick values (max 4) — see applyBleed(), this is what actually enforces the 4-stack cap on total damage, not just the display count
@@ -10089,10 +10167,18 @@ class Enemy{
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
     this.looseDrainMs = 0;
     // CA275 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA275
+    this.heartStartAt = -1e9; this.heartCooldownUntil = 0; this.heartCheckTimer = 0;
     this.isHostileNpc = false; this.isLivestock = false; this.livestockWalking = false; // LIVESTOCK-RECYCLE-01 (1.6.106): pooled enemies are reused, so a slot that once held a pig must not stay flagged as livestock
     this.isGuardian = false; this.hutRef = null; this.hutAnchorX = 0; this.hutAnchorY = 0;
     this.isHutBuilding = false; this.guardiansAliveCount = 0; this.respawnAt = null; this.destroyed = false;
     this.active = true;
+  }
+  showDotDamageText(slot, amount, emoji, color){
+    this.dotTextPending[slot] += amount;
+    if(presentationTime - this.dotTextShownAt[slot] < DOT_TEXT_INTERVAL_MS) return;
+    this.dotTextShownAt[slot] = presentationTime;
+    spawnRoutineCombatText(this.x, this.y - this.radius - 6, this.dotTextPending[slot] + emoji, color);
+    this.dotTextPending[slot] = 0;
   }
   applySlow(factor, duration){
     const newMultiplier = 1 - factor;
@@ -10102,7 +10188,22 @@ class Enemy{
   applyStun(ms){
     this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms);
   }
+  checkLivestockPairHearts(dt){
+    this.heartCheckTimer -= dt;
+    if(this.heartCheckTimer > 0) return;
+    this.heartCheckTimer = LIVESTOCK_PAIR_CHECK_MS;
+    if(presentationTime < this.heartCooldownUntil) return;
+    for(const other of enemyPool){
+      if(other === this || !other.active || !other.isLivestock || other.isHostileNpc || other.type !== this.type || presentationTime < other.heartCooldownUntil) continue;
+      if(Math.hypot(other.x - this.x, other.y - this.y) > LIVESTOCK_PAIR_HEART_DIST_PX) continue;
+      const cooldownUntil = presentationTime + LIVESTOCK_PAIR_HEART_COOLDOWN_MS + Math.random() * LIVESTOCK_PAIR_HEART_COOLDOWN_SPREAD_MS;
+      this.heartStartAt = other.heartStartAt = presentationTime;
+      this.heartCooldownUntil = other.heartCooldownUntil = cooldownUntil;
+      return;
+    }
+  }
   updateLivestockWander(dt){
+    if(this.type !== 'CHICKEN' && !this.isHostileNpc) this.checkLivestockPairHearts(dt);
     // LIVESTOCK-CUTE-01 (1.6.105): idle a moment, then amble in a direction for a bit, then idle again. Driven in real time
     // once per rendered frame (updatePresentationEffects()), so animals move between waves and at every game speed.
     this.retargetTimer = (this.retargetTimer||0) - dt;
@@ -10240,7 +10341,7 @@ class Enemy{
         const burnDmg = Math.max(1, Math.round(this.maxHp * 0.04));
         this.recordContribution(this.lastBurnSource, burnDmg, false);
         this.hp -= burnDmg;
-        spawnRoutineCombatText(this.x, this.y - this.radius - 6, burnDmg+'🔥', '#ff8844');
+        this.showDotDamageText(DOT_TEXT_BURN, burnDmg, '🔥', '#ff8844');
         spawnParticles(this.x, this.y, '#ff6b35', 3);
         if(this.hp <= 0){ this.die(this.lastBurnSource, false); return; }
       }
@@ -10252,7 +10353,7 @@ class Enemy{
         const poisonDmg = Math.max(1, Math.round(this.poisonDamagePerTick));
         this.recordContribution(this.lastPoisonSource, poisonDmg, false);
         this.hp -= poisonDmg;
-        spawnRoutineCombatText(this.x, this.y - this.radius - 6, poisonDmg+'☠️', '#7cb518');
+        this.showDotDamageText(DOT_TEXT_POISON, poisonDmg, '☠️', '#7cb518');
         spawnParticles(this.x, this.y, '#7cb518', 3);
         if(this.hp <= 0){ this.die(this.lastPoisonSource, false); return; }
       }
@@ -10266,7 +10367,7 @@ class Enemy{
         const bleedDmg = Math.max(1, Math.round(this.bleedDamagePerTick));
         this.recordContribution(this.lastBleedSource, bleedDmg, false);
         this.hp -= bleedDmg;
-        spawnRoutineCombatText(this.x, this.y - this.radius - 6, bleedDmg+'🩸', '#e63946');
+        this.showDotDamageText(DOT_TEXT_BLEED, bleedDmg, '🩸', '#e63946');
         // CA283 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA283
         const totalDuration = Math.max(1, this.bleedUntil - this.bleedStartedAt);
         const remainingFrac = clampNum((this.bleedUntil - gameTime) / totalDuration, 0, 1);
@@ -10353,7 +10454,7 @@ class Enemy{
     if(this.pack){
       this.packSpeedBonus = 1; // packs keep their formation visuals but never gain movement speed
     }
-    let effectiveSpeed = this.packedSpeed() * this.slowMultiplier;
+    let effectiveSpeed = this.packedSpeed() * enemyMoveMultiplier(this);
     // CA290 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA290
     if(this.followSpeedCap !== undefined && this.followSpeedCap < effectiveSpeed) effectiveSpeed = this.followSpeedCap;
     const target = waypointsPx[this.pathIndex+1];
@@ -10363,7 +10464,7 @@ class Enemy{
       if(!fl){ this.reachEnd(); return; } // degenerate/unset path — fail safe to the old immediate behavior rather than getting stuck with nowhere to walk
       const alongDist = (this.x - fl.edgeX)*fl.ux + (this.y - fl.edgeY)*fl.uy;
       if(alongDist >= this.radius){ this.reachEnd(); return; }
-      const finalSpeed = this.packedSpeed() * this.slowMultiplier;
+      const finalSpeed = this.packedSpeed() * enemyMoveMultiplier(this);
       this.vx = fl.ux*finalSpeed; this.vy = fl.uy*finalSpeed;
       this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
       this.traveled += finalSpeed*dt/1000;
@@ -10526,12 +10627,18 @@ class Enemy{
   drawLivestockEmote(ctx){
     // LIVESTOCK-EMOTE-01 (1.7.59): now and then a farm animal lets out a tiny heart or music note. Real-time, occasional and purely decorative.
     if(this.isHostileNpc || this.type === 'WANDERING_TROLL') return;
-    if(!(this.livestockEmoteAt > 0)) this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
-    const age = presentationTime - this.livestockEmoteAt;
-    if(age < 0) return;
-    if(age > LIVESTOCK_EMOTE_LIFE_MS){
-      this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
-      return;
+    let age;
+    if(this.type === 'CHICKEN'){
+      if(!(this.livestockEmoteAt > 0)) this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
+      age = presentationTime - this.livestockEmoteAt;
+      if(age < 0) return;
+      if(age > LIVESTOCK_EMOTE_LIFE_MS){
+        this.livestockEmoteAt = presentationTime + LIVESTOCK_EMOTE_MIN_GAP_MS + Math.random() * LIVESTOCK_EMOTE_GAP_SPREAD_MS;
+        return;
+      }
+    } else {
+      age = presentationTime - this.heartStartAt; // hearts only come from two animals of one kind meeting (LIVESTOCK-PAIR-HEART-01)
+      if(age < 0 || age > LIVESTOCK_EMOTE_LIFE_MS) return;
     }
     const life = age / LIVESTOCK_EMOTE_LIFE_MS;
     ctx.save();
@@ -12872,7 +12979,7 @@ const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01 (1.6.129) — see CHANGELOG.m
   GATLING: 'BULLET', GUNALINDER: 'BULLET', MARKSMAN: 'BULLET', SNIPER: 'BULLET',
   CRAZY_CHEF: 'KNIFE', GLAIVE: 'BLADE'
 };
-const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4; // BLEED-WHILE-STUCK-01 (1.6.131) — see CHANGELOG.md § [1.6.131]
+const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4, ARROW_SLOW_PER_ARROW = 0.08, ARROW_SLOW_FLOOR = 0.6; // BLEED-WHILE-STUCK-01 (1.6.131) — see CHANGELOG.md § [1.6.131]
 // STICK-CHANCE-01 (1.7.36): arrows sticking in enemies had fallen to 2% with a 2%-per-point slope, so it almost never happened below
 // 50 STR and was always on above it. Restored to a visible baseline that rises gradually with every STR point: about 12% at 0 STR,
 // about 52% at 250 and about 92% at 500 (the stat effect cap).
@@ -15901,7 +16008,10 @@ function isCampRouteCrossing(a, b){
   // CA608 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA608
   return (aCamp && !bCamp && !b.escaped) || (bCamp && !aCamp && !a.escaped);
 }
-function isEnemyFrozen(e){ return e.pileBlocked || e.stunnedUntil > gameTime; }
+// QUEUE-HOLD-01 (1.7.87) — see CHANGELOG.md § [1.7.87]
+function isEnemyHeldInPlace(e){ return e.stunnedUntil > gameTime || e.frozenUntil > gameTime; }
+function isEnemyFrozen(e){ return e.pileBlocked || isEnemyHeldInPlace(e); }
+function enemyMoveMultiplier(e){ const stuckCount = e.embeddedArrows ? e.embeddedArrows.length : 0; return e.slowMultiplier * Math.max(ARROW_SLOW_FLOOR, 1 - ARROW_SLOW_PER_ARROW * stuckCount); }
 // CA609 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA609
 function checkStallWatchdog(dt){
   for(const e of enemyPool){
@@ -15918,7 +16028,7 @@ function checkStallWatchdog(dt){
     const progressed = Math.min(e.traveled - e.stallWatchTraveled, displaced); // real displacement, not just the path counter — collision push-back can keep `traveled` rising while the unit never actually moves
     e.stallWatchTimer = 0;
     e.stallWatchTraveled = e.traveled;
-    const expectedStepPx = (e.speed || 0) * (e.slowMultiplier === undefined ? 1 : e.slowMultiplier) * 0.5; // STALL-JUMP-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
+    const expectedStepPx = (e.speed || 0) * (e.slowMultiplier === undefined ? 1 : enemyMoveMultiplier(e)) * 0.5; // STALL-JUMP-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
     const stallThresholdPx = Math.min(e.radius*0.15, expectedStepPx*0.3);
     if(progressed < stallThresholdPx){ // scaled to the enemy's own size rather than a flat 3px — a Boss/Tank crawling 3px in half a second might be genuinely fine, while a tiny fast Swarm doing the same is clearly stuck
       e.stallStrikes++;
@@ -16880,6 +16990,26 @@ const MAX_SIMULATION_TICK_CAP = Math.ceil(FAST_FORWARD_MAX_FRAME_TIME_MS * MAX_S
 // once at boot, never re-evaluated per frame.
 const IS_MOBILE_DEVICE = (navigator.maxTouchPoints > 0) && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches); // MOBILE-CAP-FINE-POINTER-01 (1.6.127) — see CHANGELOG.md § [1.6.127]. A touch laptop or desktop with a mouse or trackpad is not a phone
 let frameCapNextAt = 0; // FRAME-CAP-01 (1.6.128)
+// VSYNC-PACE-01 (1.7.77) — see CHANGELOG.md § [1.7.77]
+const VSYNC_GAP_SAMPLES = 30, VSYNC_GAP_MIN_MS = 2, VSYNC_GAP_MAX_MS = 50;
+const vsyncGapRing = new Float32Array(VSYNC_GAP_SAMPLES), vsyncGapSorted = new Float32Array(VSYNC_GAP_SAMPLES);
+let vsyncGapCount = 0, vsyncLastCallbackAt = 0, vsyncIntervalMs = 0;
+function sampleVsyncGap(now){
+  const gapMs = now - vsyncLastCallbackAt;
+  vsyncLastCallbackAt = now;
+  if(gapMs < VSYNC_GAP_MIN_MS || gapMs > VSYNC_GAP_MAX_MS) return;
+  vsyncGapRing[vsyncGapCount % VSYNC_GAP_SAMPLES] = gapMs;
+  vsyncGapCount++;
+  if(vsyncGapCount < VSYNC_GAP_SAMPLES || vsyncGapCount % VSYNC_GAP_SAMPLES !== 0) return;
+  vsyncGapSorted.set(vsyncGapRing);
+  vsyncGapSorted.sort();
+  vsyncIntervalMs = vsyncGapSorted[VSYNC_GAP_SAMPLES >> 2];
+}
+function vsyncSnappedCapMs(capMs){
+  if(capMs <= 0 || vsyncIntervalMs <= 0) return capMs;
+  return Math.max(1, Math.round(capMs / vsyncIntervalMs)) * vsyncIntervalMs;
+}
+function frameCapEarlyToleranceMs(){ return vsyncIntervalMs > 0 ? vsyncIntervalMs * 0.5 : FRAME_CAP_EARLY_TOLERANCE_MS; }
 
 // CA648 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA648
 function checkAllFightersDown(){
@@ -17134,7 +17264,7 @@ function updateTargetFrame(){
 }
 // CA665 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA665
 // TARGET-MARK-01 (1.6.94): drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
-const RANGE_RING_DOT_PX = 4.5, RANGE_RING_DOT_SPACING_PX = 15, RANGE_RING_SPEED_PX_PER_S = 34;
+const RANGE_RING_DOT_PX = 6.5, RANGE_RING_DOT_SPACING_PX = 30, RANGE_RING_SPEED_PX_PER_S = 34;
 function drawSelectedTowerRange(ctx){
   const tower=selectedTower;
   if(!tower || !tower.active || tower.type==='BARRICADE') return;
@@ -17148,10 +17278,15 @@ function drawSelectedTowerRange(ctx){
   // RANGE-RING-DOTS-01 (1.7.72): owner request — the range is a bold white dotted ring that travels counter-clockwise. Dots are round-capped zero-length dashes spaced evenly
   // (the spacing is rounded so the ring closes with no odd gap); the pattern slides backward along the clockwise path, which reads as counter-clockwise. A dark under-pass keeps
   // the white readable on the light grass tiles. Real time, so game speed never changes it; size is constant on screen at any zoom.
-  const circumference=2*Math.PI*radius, dotCount=Math.max(12,Math.round(circumference/(RANGE_RING_DOT_SPACING_PX/zoomFactor))), dotGap=circumference/dotCount;
+  const circumference=2*Math.PI*radius, dotCount=Math.max(12,2*Math.round(circumference/(RANGE_RING_DOT_SPACING_PX/zoomFactor)/2)), pairGap=circumference/(dotCount/2); // an even count keeps black and white alternating all the way round
   const travelOffset=PREFERS_REDUCED_MOTION ? 0 : (presentationTime/1000)*RANGE_RING_SPEED_PX_PER_S/zoomFactor;
   ctx.lineCap='round';
-  ctx.setLineDash([0.001,dotGap-0.001]);
+  ctx.setLineDash([0.001,pairGap-0.001]);
+  ctx.lineDashOffset=travelOffset-pairGap/2;
+  ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=(RANGE_RING_DOT_PX+2.4)/zoomFactor;
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(8,6,4,0.95)'; ctx.lineWidth=RANGE_RING_DOT_PX/zoomFactor;
+  ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.stroke();
   ctx.lineDashOffset=travelOffset;
   ctx.strokeStyle='rgba(20,12,4,0.45)'; ctx.lineWidth=(RANGE_RING_DOT_PX+2.6)/zoomFactor;
   ctx.beginPath();ctx.arc(tower.x,tower.y,radius,0,Math.PI*2);ctx.stroke();
@@ -18079,8 +18214,7 @@ const ATTRACT_FORMATION = [
 // CA689 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA689
 const ATTRACT_ELEMENT_COLOR = { FIRE: '#ff6b35', ICE: '#7dd3fc', ELECTRIC: '#f1c40f' };
 // CA690 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA690
-const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','TANK','RUNNER','FIRE','ICE','SPLITTER','SPLITMINI',
-  'HEALER','SHIELDED','ZOMBIE','WRAITH','SKELETON','WOLF','REAPER','BOULDER','ROCKLET','MONARCH'];
+const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','RUNNER','SPLITTER','SPLITMINI','ZOMBIE','WOLF','MONARCH']; // living creatures only: the archers never shoot rocks, bones, statues or other objects (ATTRACT-LIVING-01)
 // CA691 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA691
 const ATTRACT_PHASES = [
   { name: 'CALM',      start: 0,     end: 3000,  spawnEvery: 1400, maxAlive: 3, enemySpeedMult: 0.75 },
@@ -18111,11 +18245,9 @@ function attractFormationCenter(){
   for(const f of ATTRACT_FORMATION){ cx += f.xf; cy += f.yf; }
   return { xf: cx/ATTRACT_FORMATION.length, yf: cy/ATTRACT_FORMATION.length };
 }
-// The attract screen is mostly the big angry red guy (the Grunt), with the occasional tank and a few others for variety.
+// The attract screen is mostly the big angry red guy (the Grunt), with a few other living creatures for variety.
 function attractPickEnemyType(){
-  const roll = Math.random();
-  if(roll < 0.72) return 'GRUNT';
-  if(roll < 0.86) return 'TANK';
+  if(Math.random() < 0.72) return 'GRUNT';
   return ATTRACT_ENEMY_POOL[Math.floor(Math.random()*ATTRACT_ENEMY_POOL.length)];
 }
 function attractSpawnEnemy(now){
@@ -18128,7 +18260,7 @@ function attractSpawnEnemy(now){
   return {
     type: attractPickEnemyType(),
     fromXf: spawn.xf, fromYf: spawn.yf, toXf: targetXf, toYf: targetYf,
-    t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false // halved from 0.00028-0.00038 — a saunter, not a rush, per direct request
+    t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false, diedAt: 0, arrows: [], arrowHits: 0, arrowsToKill: attractRollArrowsToKill(), hitAt: -1e9, hitAngle: 0 // halved from 0.00028-0.00038 — a saunter, not a rush, per direct request
   };
 }
 function initAttractLoop(now){
@@ -18136,17 +18268,123 @@ function initAttractLoop(now){
   attractLoopStartTime = now;
   attractLastFrameTime = now;
   attractNextSpawnAt = now;
+  clearAttractBlood();
   attractState = {
     towers: ATTRACT_FORMATION.map((f, i) => ({
-      ...f, nextAttackAt: 900 + i*350, phase: 'idle', phaseStart: 0, phaseDur: 0, targetIdx: -1
+      ...f, nextAttackAt: 900 + i*350, phase: 'idle', phaseStart: 0, phaseDur: 0, target: null, aimAngle: Math.PI/2
     })),
     enemies: [],
     projectiles: [],
+    speedMult: ATTRACT_PHASES[0].enemySpeedMult,
+    droplets: Array.from({ length: ATTRACT_DROPLET_CAP }, () => ({ active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, size: 2, color: '#c0392b' })),
     killCount: 0 // running "defeated" tally, purely cosmetic display — resets each loop, see the HUD-style counter drawn near the top corner
   };
 }
 function attractEnemyScreenPos(e, t){
   return { xf: e.fromXf + (e.toXf - e.fromXf)*t, yf: e.fromYf + (e.toYf - e.fromYf)*t };
+}
+// ATTRACT-ARCHERS-01 (1.7.87) — see CHANGELOG.md § [1.7.87]
+const ATTRACT_EMOJI_PX = 62, ATTRACT_DRIFT_ZOOM_MAX = 1.05, ATTRACT_ENGAGE_T = 0.3, ATTRACT_ARROW_FLIGHT_MS = 300, ATTRACT_ARROW_ARC_PX = 22, ATTRACT_SPEED_EASE_MS = 600, ATTRACT_AIM_EASE_MS = 90, ATTRACT_CORPSE_MS = 450;
+const ATTRACT_STICK_RADIUS_PX = 22, ATTRACT_ARROW_DRAW_SCALE = 2.2, ATTRACT_MAX_STUCK_DRAWN = 5, ATTRACT_FLINCH_PX = 6, ATTRACT_FLINCH_MS = 110, ATTRACT_ARROW_WOBBLE_MS = 160;
+const ATTRACT_BLOOD_FADE_START_MS = 15000, ATTRACT_BLOOD_FADE_MS = 3500, ATTRACT_DROPLET_CAP = 90, ATTRACT_DROPLET_GRAVITY = 520, ATTRACT_DROPLET_DRAG = 0.0022, ATTRACT_DROPLET_TERMINAL = 620, ATTRACT_DROPLET_GROUND_SQUASH = 0.55;
+let attractBloodCanvas = null, attractBloodCtx = null, attractBloodScale = 1;
+function ensureAttractBloodCanvas(){
+  const scale = Math.min(dprValue, 1.5), width = Math.round(CANVAS_W * scale), height = Math.round(CANVAS_H * scale);
+  if(!attractBloodCanvas) attractBloodCanvas = document.createElement('canvas');
+  if(attractBloodCanvas.width !== width || attractBloodCanvas.height !== height){ attractBloodCanvas.width = width; attractBloodCanvas.height = height; attractBloodCtx = attractBloodCanvas.getContext('2d'); }
+  attractBloodScale = scale;
+}
+function clearAttractBlood(){ if(!attractBloodCanvas) return; ensureAttractBloodCanvas(); attractBloodCtx.clearRect(0, 0, attractBloodCanvas.width, attractBloodCanvas.height); }
+function stampAttractBlood(x, y, angle, lengthPx, widthPx, color, alpha){
+  ensureAttractBloodCanvas();
+  const c = attractBloodCtx, scale = attractBloodScale;
+  c.save(); c.globalAlpha = alpha; c.translate(x * scale, y * scale); c.rotate(angle); c.fillStyle = color;
+  c.beginPath(); c.ellipse(0, 0, lengthPx * 0.5 * scale, widthPx * 0.5 * scale, 0, 0, Math.PI * 2); c.fill(); c.restore();
+}
+function attractBloodColor(type){ const profile = getBloodProfile(type); return Math.random() < 0.2 ? profile.dark : profile.bright; }
+function emitAttractBlood(st, enemy, ex, ey, impactAngle, isKill){
+  if(!goreMode) return;
+  const low = graphicsQuality === 'low', count = isKill ? (low ? 9 : 16) : (low ? 3 : 5);
+  for(let i = 0; i < count; i++){
+    const slot = st.droplets.find(d => !d.active);
+    if(!slot) break;
+    const heading = impactAngle + (Math.random() - 0.5) * (isKill ? Math.PI * 1.6 : 0.9), horizontal = (isKill ? 70 : 40) + Math.random() * (isKill ? 130 : 80);
+    slot.active = true; slot.x = ex + Math.cos(heading) * 8; slot.y = ey + 18; slot.z = 18 + Math.random() * 14;
+    slot.vx = Math.cos(heading) * horizontal; slot.vy = Math.sin(heading) * horizontal; slot.vz = 60 + Math.random() * (isKill ? 150 : 90);
+    slot.size = 1.6 + Math.random() * (isKill ? 1.8 : 1.0); slot.color = attractBloodColor(enemy.type);
+  }
+  if(isKill) for(let i = 0; i < 3; i++) stampAttractBlood(ex + (Math.random() - 0.5) * 26, ey + 20 + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 0.5, 14 + Math.random() * 10, 6 + Math.random() * 5, attractBloodColor(enemy.type), 0.8);
+}
+function updateAttractDroplets(st, dtSec){
+  for(const d of st.droplets){
+    if(!d.active) continue;
+    const dragRate = ATTRACT_DROPLET_DRAG * Math.hypot(d.vx, d.vy, d.vz);
+    d.vx -= d.vx * dragRate * dtSec; d.vy -= d.vy * dragRate * dtSec;
+    d.vz -= (ATTRACT_DROPLET_GRAVITY + d.vz * dragRate) * dtSec;
+    if(d.vz < -ATTRACT_DROPLET_TERMINAL) d.vz = -ATTRACT_DROPLET_TERMINAL;
+    d.x += d.vx * dtSec; d.y += d.vy * dtSec * ATTRACT_DROPLET_GROUND_SQUASH; d.z += d.vz * dtSec;
+    if(d.z > 0) continue;
+    const speed = Math.hypot(d.vx, d.vy, d.vz) || 1, sinImpact = clampNum(Math.abs(d.vz) / speed, 0.2, 1);
+    stampAttractBlood(d.x, d.y, Math.atan2(d.vy, d.vx), d.size / sinImpact, d.size, d.color, 0.55 + Math.random() * 0.35);
+    d.active = false;
+  }
+}
+function attractRollArrowsToKill(){ const roll = Math.random(); return roll < 0.3 ? 1 : (roll < 0.8 ? 2 : 3); }
+function attractArrowDrag(enemy){ return Math.max(ARROW_SLOW_FLOOR, 1 - ARROW_SLOW_PER_ARROW * enemy.arrows.length); }
+function attractEmojiBucketIndex(sizePx){
+  const devicePx = sizePx * dprValue * ATTRACT_DRIFT_ZOOM_MAX;
+  return devicePx > EMOJI_SPRITE_MAX_PX ? -1 : Math.max(0, Math.ceil(Math.log(devicePx / EMOJI_SPRITE_MIN_PX) / EMOJI_SPRITE_LOG_STEP - 1e-6));
+}
+function drawAttractEmoji(ctx, emoji, sizePx){
+  const bucketIndex = attractEmojiBucketIndex(sizePx);
+  if(bucketIndex < 0){ ctx.fillText(emoji, 0, 0); return; }
+  const sprite = emojiSpriteFor(emoji, bucketIndex), drawnSide = sprite.side * (sizePx / sprite.fontPx);
+  ctx.drawImage(sprite, -drawnSide / 2, -drawnSide / 2, drawnSide, drawnSide);
+}
+function attractTowerClaims(st, enemy){ for(const tower of st.towers) if(tower.target === enemy) return true; return false; }
+function attractPickTarget(st, tx, ty){
+  let bestFree = null, bestFreeDist = Infinity, bestAny = null, bestAnyDist = Infinity;
+  for(const enemy of st.enemies){
+    if(enemy.dead || enemy.t < ATTRACT_ENGAGE_T) continue;
+    const pos = attractEnemyScreenPos(enemy, enemy.t), dist = Math.hypot(pos.xf * CANVAS_W - tx, pos.yf * CANVAS_H - ty);
+    if(dist < bestAnyDist){ bestAnyDist = dist; bestAny = enemy; }
+    if(dist < bestFreeDist && !attractTowerClaims(st, enemy)){ bestFreeDist = dist; bestFree = enemy; }
+  }
+  return bestFree || bestAny;
+}
+function attractArrowHit(st, enemy, shot, now){
+  const pos = attractEnemyScreenPos(enemy, enemy.t), ex = pos.xf * CANVAS_W, ey = pos.yf * CANVAS_H;
+  const impactAngle = Math.atan2(ey - shot.fromY, ex - shot.fromX), perp = impactAngle + Math.PI / 2, lateral = (Math.random() - 0.5) * ATTRACT_STICK_RADIUS_PX * 0.5;
+  enemy.hitAt = now; enemy.hitAngle = impactAngle; enemy.arrowHits++;
+  enemy.arrows.push({ dx: -Math.cos(impactAngle) * ATTRACT_STICK_RADIUS_PX + Math.cos(perp) * lateral, dy: -Math.sin(impactAngle) * ATTRACT_STICK_RADIUS_PX + Math.sin(perp) * lateral, angle: impactAngle + (Math.random() - 0.5) * 0.3, stuckAt: now });
+  if(enemy.arrows.length > ATTRACT_MAX_STUCK_DRAWN) enemy.arrows.shift();
+  const isKill = enemy.arrowHits >= enemy.arrowsToKill;
+  if(isKill){
+    enemy.flashUntil = now + 150; enemy.dead = true; enemy.diedAt = now;
+    enemy.burstScale = 0.75 + Math.random()*0.9; // variance so bursts don't all look identical — some kills read as a bigger, more dramatic hit
+    enemy.procElement = (shot.element && Math.random() < 0.45) ? shot.element : null;
+    st.killCount++;
+  }
+  emitAttractBlood(st, enemy, ex, ey, impactAngle, isKill);
+}
+function drawAttractStuckArrow(ctx, arrow, now){
+  const age = now - arrow.stuckAt, wobble = age < ATTRACT_ARROW_WOBBLE_MS * 4 ? Math.exp(-age / ATTRACT_ARROW_WOBBLE_MS) * Math.sin(age / 24) * 0.28 : 0;
+  ctx.save(); ctx.translate(arrow.dx, arrow.dy); ctx.rotate(arrow.angle + wobble); ctx.scale(ATTRACT_ARROW_DRAW_SCALE, ATTRACT_ARROW_DRAW_SCALE);
+  ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
+  ctx.fillStyle = '#3a2410'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(-2, -2.5); ctx.lineTo(-2, 2.5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, -2); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, 2); ctx.stroke();
+  ctx.restore();
+}
+function drawAttractFlyingArrow(ctx, shot, target, now){
+  const pT = clampNum((now - shot.startTime) / shot.duration, 0, 1), tp = attractEnemyScreenPos(target, target.t), tx = tp.xf * CANVAS_W, ty = tp.yf * CANVAS_H;
+  const arc = Math.sin(pT * Math.PI) * ATTRACT_ARROW_ARC_PX, px = shot.fromX + (tx - shot.fromX) * pT, py = shot.fromY + (ty - shot.fromY) * pT - arc;
+  const heading = Math.atan2((ty - shot.fromY) - ATTRACT_ARROW_ARC_PX * Math.PI * Math.cos(pT * Math.PI), tx - shot.fromX), glow = ATTRACT_ELEMENT_COLOR[shot.element] || '#f1c40f';
+  ctx.save(); ctx.translate(px, py); ctx.rotate(heading); ctx.scale(ATTRACT_ARROW_DRAW_SCALE, ATTRACT_ARROW_DRAW_SCALE); ctx.lineCap = 'round';
+  ctx.strokeStyle = glow; ctx.globalAlpha *= 0.55; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-22, 0); ctx.lineTo(-8, 0); ctx.stroke(); ctx.globalAlpha /= 0.55;
+  ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-1, -2.5); ctx.lineTo(-1, 2.5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, -2); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, 2); ctx.stroke();
+  ctx.restore();
 }
 let attractSkyRolledAt = -1e9;
 let attractIsDaytime = null, attractSkyBodyT = 0.82, attractSkyBodyHeight = 0.35, attractMoonPhase = 4; // rolled once per visit in the attract renderer — day or night backdrop
@@ -18173,18 +18411,24 @@ function renderAttractMode(ctx, now){
   }
 
   // CA693 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA693
-  const aliveCount = st.enemies.filter(e => !e.dead).length;
+  let aliveCount = 0;
+  for(const enemy of st.enemies) if(!enemy.dead) aliveCount++;
   if(now >= attractNextSpawnAt && aliveCount < phase.maxAlive && phase.spawnEvery !== Infinity){
     st.enemies.push(attractSpawnEnemy(now));
     attractNextSpawnAt = now + phase.spawnEvery * (0.7 + Math.random()*0.6);
   }
-
-  for(const e of st.enemies){
-    if(e.dead) continue;
-    e.t += e.speed * phase.enemySpeedMult * dt;
-    if(e.t >= 1){ e.dead = true; } // reached the formation center — cleared without a kill-flash
+  st.speedMult += (phase.enemySpeedMult - st.speedMult) * (1 - Math.exp(-dt / ATTRACT_SPEED_EASE_MS));
+  let keptEnemies = 0;
+  for(const enemy of st.enemies){
+    if(!enemy.dead){
+      enemy.t += enemy.speed * st.speedMult * attractArrowDrag(enemy) * dt;
+      if(enemy.t >= 1){ enemy.dead = true; enemy.diedAt = now; } // reached the formation center — cleared without a kill-flash
+    }
+    if(!enemy.dead || now - enemy.diedAt < ATTRACT_CORPSE_MS) st.enemies[keptEnemies++] = enemy; // dead enemies stay long enough for their burst to play
   }
-  st.enemies = st.enemies.filter(e => !e.dead || now - e.spawnedAt < 400); // keep briefly for flash
+  st.enemies.length = keptEnemies;
+  updateAttractDroplets(st, dt / 1000);
+  const bloodFade = 1 - smoothStep01(clampNum((loopMs - ATTRACT_BLOOD_FADE_START_MS) / ATTRACT_BLOOD_FADE_MS, 0, 1)); // the blood leaves with the enemies when the scene clears
 
   ctx.save();
   ctx.globalAlpha=1; ctx.shadowBlur=0;
@@ -18273,62 +18517,40 @@ function renderAttractMode(ctx, now){
   ctx.restore();
   ctx.globalAlpha = fadeT;
 
+  if(attractBloodCanvas && bloodFade > 0){
+    ctx.save(); ctx.globalAlpha = fadeT * bloodFade;
+    ctx.drawImage(attractBloodCanvas, 0, 0, CANVAS_W, CANVAS_H);
+    ctx.restore();
+  }
   // CA703 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA703
-  const liveEnemies = st.enemies.filter(e => !e.dead);
-  // CA704 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA704
-  const alreadyTargeted = new Set();
-  for(const ot of st.towers) if(ot.phase !== 'idle' && ot.targetIdx >= 0) alreadyTargeted.add(ot.targetIdx);
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
-    if(t.phase === 'idle' && now >= t.nextAttackAt && liveEnemies.length){
-      let bestIdx = -1, bestD = Infinity;
-      let bestIdxAny = -1, bestDAny = Infinity; // fallback candidate, including already-targeted enemies
-      for(let i=0;i<st.enemies.length;i++){
-        if(st.enemies[i].dead) continue;
-        if(st.enemies[i].t < 0.45) continue; // not close enough to engage yet — towers only fire at enemies already well into their approach, so the ~720ms draw+projectile delay lands the kill visibly near the formation instead of off-screen early in the walk
-        const p = attractEnemyScreenPos(st.enemies[i], st.enemies[i].t);
-        const d = Math.hypot(p.xf*CANVAS_W - tx, p.yf*CANVAS_H - ty);
-        if(d < bestDAny){ bestDAny = d; bestIdxAny = i; }
-        if(!alreadyTargeted.has(i) && d < bestD){ bestD = d; bestIdx = i; }
-      }
-      const chosenIdx = bestIdx >= 0 ? bestIdx : bestIdxAny; // prefer an untargeted enemy; only overlap if none is available
-      if(chosenIdx >= 0){
-        t.targetIdx = chosenIdx; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480;
-        alreadyTargeted.add(chosenIdx); // claimed for the rest of this same targeting pass too, so a later tower in this same loop doesn't also pick it
-      }
+    if(t.phase === 'draw' && (!t.target || t.target.dead)){ t.phase = 'idle'; t.target = null; t.nextAttackAt = now + 120; } // the target fell to another arrow: loose nothing and pick again
+    if(t.phase === 'idle' && now >= t.nextAttackAt){
+      const chosen = attractPickTarget(st, tx, ty);
+      if(chosen){ t.target = chosen; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480; }
     }
     if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
-      const target = st.enemies[t.targetIdx];
-      if(target && !target.dead){
-        st.projectiles.push({ fromX: tx, fromY: ty, targetIdx: t.targetIdx, startTime: now, duration: 240, element: t.element });
-      }
-      t.phase = 'idle';
-      t.nextAttackAt = now + 700 + Math.random()*500;
+      if(t.target && !t.target.dead) st.projectiles.push({ fromX: tx, fromY: ty, target: t.target, startTime: now, duration: ATTRACT_ARROW_FLIGHT_MS, element: t.element });
+      t.phase = 'idle'; t.target = null;
+      t.nextAttackAt = now + 520 + Math.random()*420;
     }
   }
 
   for(let i = st.projectiles.length-1; i>=0; i--){
-    const p = st.projectiles[i];
-    if(now - p.startTime >= p.duration){
-      const target = st.enemies[p.targetIdx];
-      if(target && !target.dead){
-        target.flashUntil = now + 150;
-        target.dead = true;
-        target.burstScale = 0.75 + Math.random()*0.9; // variance so bursts don't all look identical — some kills read as a bigger, more dramatic hit
-        // CA705 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA705
-        target.procElement = (p.element && Math.random() < 0.45) ? p.element : null;
-        st.killCount++;
-      }
-      st.projectiles.splice(i,1);
-    }
+    const shot = st.projectiles[i];
+    if(now - shot.startTime < shot.duration) continue;
+    if(!shot.target.dead) attractArrowHit(st, shot.target, shot, now);
+    st.projectiles.splice(i,1);
   }
 
   // CA706 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA706
-  ctx.font = '62px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = ATTRACT_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   // CA707 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA707
   for(const e of st.enemies){
     const p = attractEnemyScreenPos(e, Math.min(e.t, 1));
-    const ex = p.xf*CANVAS_W, ey = p.yf*CANVAS_H;
+    const flinchAge = now - e.hitAt, flinch = flinchAge < ATTRACT_FLINCH_MS * 5 ? ATTRACT_FLINCH_PX * Math.exp(-flinchAge / ATTRACT_FLINCH_MS) : 0;
+    const ex = p.xf*CANVAS_W + Math.cos(e.hitAngle) * flinch, ey = p.yf*CANVAS_H + Math.sin(e.hitAngle) * flinch;
     if(now < e.flashUntil){
       // CA708 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA708
       const flashProgress = 1 - (e.flashUntil - now)/150;
@@ -18394,19 +18616,21 @@ function renderAttractMode(ctx, now){
       ctx.save();
       ctx.translate(ex, ey - bob);
       ctx.scale(perspectiveScale/squash, perspectiveScale*squash); // wider+shorter at the bob's peak, taller+narrower at the trough — a step's weight shift
-      ctx.fillText(CONFIG.ENEMIES[e.type].emoji, 0, 0);
+      drawAttractEmoji(ctx, CONFIG.ENEMIES[e.type].emoji, ATTRACT_EMOJI_PX);
+      for(const arrow of e.arrows) drawAttractStuckArrow(ctx, arrow, now);
       ctx.restore();
     }
   }
 
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
-    const target = (t.targetIdx >= 0 && st.enemies[t.targetIdx] && !st.enemies[t.targetIdx].dead) ? st.enemies[t.targetIdx] : null;
-    let angle = Math.PI/2; // face outward/downward from the formation when idle
+    const target = (t.target && !t.target.dead) ? t.target : null;
     if(target){
       const p = attractEnemyScreenPos(target, target.t);
-      angle = Math.atan2(p.yf*CANVAS_H - ty, p.xf*CANVAS_W - tx);
+      const desiredAngle = Math.atan2(p.yf*CANVAS_H - ty, p.xf*CANVAS_W - tx);
+      t.aimAngle += Math.atan2(Math.sin(desiredAngle - t.aimAngle), Math.cos(desiredAngle - t.aimAngle)) * (1 - Math.exp(-dt / ATTRACT_AIM_EASE_MS)); // eased, so the bow swings to a new target instead of snapping
     }
+    const angle = t.aimAngle;
     const extraAtk = { hasTarget: !!target };
     if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
     // CA714 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA714
@@ -18428,28 +18652,14 @@ function renderAttractMode(ctx, now){
     ctx.restore();
   }
 
-  for(const p of st.projectiles){
-    const target = st.enemies[p.targetIdx];
-    if(!target) continue;
-    const pT = clampNum((now - p.startTime) / p.duration, 0, 1);
-    const tp = attractEnemyScreenPos(target, target.t);
-    const px = p.fromX + (tp.xf*CANVAS_W - p.fromX)*pT;
-    const py = p.fromY + (tp.yf*CANVAS_H - p.fromY)*pT;
-    // CA716 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA716
-    const trailT = clampNum(pT - 0.12, 0, 1);
-    const tx0 = p.fromX + (tp.xf*CANVAS_W - p.fromX)*trailT;
-    const ty0 = p.fromY + (tp.yf*CANVAS_H - p.fromY)*trailT;
-    ctx.save();
-    const trailGrad = ctx.createLinearGradient(tx0, ty0, px, py);
-    trailGrad.addColorStop(0, 'rgba(241,196,15,0)');
-    trailGrad.addColorStop(1, 'rgba(241,196,15,0.85)');
-    ctx.strokeStyle = trailGrad; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.lineTo(px, py); ctx.stroke();
-    ctx.fillStyle = '#fff6d6';
-    ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 8;
-    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
+  for(const shot of st.projectiles) drawAttractFlyingArrow(ctx, shot, shot.target, now);
+  ctx.save();
+  for(const d of st.droplets){
+    if(!d.active) continue;
+    ctx.fillStyle = d.color; ctx.globalAlpha = fadeT * 0.9;
+    ctx.beginPath(); ctx.arc(d.x, d.y - d.z, d.size * 0.5, 0, Math.PI * 2); ctx.fill();
   }
+  ctx.restore();
   // CA717 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA717
 
   // CA718 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA718
@@ -18522,12 +18732,13 @@ function loop(now){
   // fixed-timestep accumulator below measures real elapsed time via `lastTime`, not callback
   // count — the next processed frame simply has a larger `frameTime` and the catch-up logic
   // (bounded by the speed-scaled cap calculated inside loop()) handles it.
-  const frameCapMs = frameCapIntervalMs();
+  sampleVsyncGap(now);
+  const frameCapMs = vsyncSnappedCapMs(frameCapIntervalMs());
   if(frameCapMs > 0 && isCameraMotionActive(now)){
     cameraMotionFullRateFrames++;
     frameCapNextAt = now + frameCapMs; // the limit resumes cleanly after the camera stops, without a burst
   } else if(frameCapMs > 0){
-    if(now < frameCapNextAt - FRAME_CAP_EARLY_TOLERANCE_MS) return;
+    if(now < frameCapNextAt - frameCapEarlyToleranceMs()) return;
     frameCapNextAt = (now - frameCapNextAt > frameCapMs) ? now + frameCapMs : frameCapNextAt + frameCapMs; // keeps the average rate exact without a burst after a slow frame
   }
   if(gameState === 'START'){ renderAttractMode(ctx, now); return; }
@@ -18796,6 +19007,19 @@ window.addEventListener('orientationchange', () => { cachedCanvasRect = null; })
 // CA731 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA731
 let hudFitSignature = '';
 let notificationLayoutSignature='';
+// NOTIFICATION-BELL-LEFT-01 (1.7.86) — see CHANGELOG.md § [1.7.86]
+const NOTIFICATION_BELL_MARGIN_PX = 8, NOTIFICATION_BELL_CLEARANCE_PX = 14;
+function placeNotificationBell(hud){
+  const frame = hud.parentElement, bell = document.getElementById('notification-bell');
+  if(!frame || !bell || getComputedStyle(hud).display === 'none') return;
+  const columnGapPx = parseFloat(getComputedStyle(hud).columnGap) || 0;
+  const hudChildren = Array.from(hud.children).filter(child => child !== bell);
+  const hudContentWidth = hudChildren.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) + Math.max(0, hudChildren.length - 1) * columnGapPx + 16;
+  const roomOnLeft = (frame.clientWidth - hudContentWidth) / 2;
+  const fitsBesideHud = roomOnLeft >= bell.getBoundingClientRect().width + NOTIFICATION_BELL_MARGIN_PX + NOTIFICATION_BELL_CLEARANCE_PX;
+  if(fitsBesideHud && bell.parentElement === hud) frame.appendChild(bell);
+  else if(!fitsBesideHud && bell.parentElement !== hud) hud.insertBefore(bell, hud.firstChild);
+}
 function positionNotificationControls(force=false){
   const frame=document.getElementById('canvas-frame'),hud=document.getElementById('hud-top'),bell=document.getElementById('notification-bell');
   if(!frame || !hud || !bell) return;
@@ -18805,10 +19029,12 @@ function positionNotificationControls(force=false){
   notificationLayoutSignature=sig;
   const frameRect=frame.getBoundingClientRect(),hudRect=hud.getBoundingClientRect();
   const hudBottom=hudRect.height>0?Math.max(0,hudRect.bottom-frameRect.top):0;
+  const floatingBell=bell.parentElement!==hud;
+  bell.hidden=floatingBell && getComputedStyle(hud).display==='none';
   const bellRect=bell.getBoundingClientRect();
   const contentLeft=Math.max(8,Math.min(bellRect.left-frameRect.left,Math.max(8,frameRect.width-80)));
   frame.style.setProperty('--notification-content-left',contentLeft+'px');
-  const top=Math.ceil(hudBottom+4);
+  const top=Math.ceil((floatingBell ? Math.max(0,bellRect.bottom-frameRect.top) : hudBottom)+4);
   frame.style.setProperty('--notification-controls-top',top+'px');
   const contentTop=top;
   frame.style.setProperty('--notification-content-top',contentTop+'px');
@@ -18827,6 +19053,7 @@ function fitHudTopToOneLine(force){
   if(!force && sig === hudFitSignature) return; // counter updates must not resize the full bar after every kill
   hudFitSignature = sig;
   hud.style.transform = 'scale(1)'; // reset before measuring, so scrollWidth reflects natural unscaled size
+  placeNotificationBell(hud);
   // Gold-gain popups are absolutely positioned outside normal flow; scrollWidth includes them
   // in some browsers and made the fit scale pulse when a kill displayed a reward.
   const naturalWidth = Array.from(hud.children).reduce((sum, child)=>sum+child.getBoundingClientRect().width,0)
@@ -20940,6 +21167,8 @@ function generateDebugLog(){
   s += 'Frame pacing: ' + framePacingVerdict() + '\n';
   s += 'Camera motion at full frame rate: ' + cameraMotionFullRateFrames + ' frames (the frame-rate limit never applies while the camera moves)\n';
   s += 'Frame rate cap: ' + (frameCapEnabled ? frameCapFps() + ' FPS (' + (frameCapFpsUser === null ? 'default for ' + graphicsQuality : 'player choice') + ')' : 'off') + '\n';
+  s += 'Display refresh measured: ' + (vsyncIntervalMs > 0 ? (1000 / vsyncIntervalMs).toFixed(1) + ' Hz, cap paced to ' + (1000 / vsyncSnappedCapMs(frameCapIntervalMs() || vsyncIntervalMs)).toFixed(1) + ' FPS' : 'not yet measured') + '\n';
+  s += 'Boot warm-up: ' + bootWarmupStats.jobs + ' jobs, ' + bootWarmupStats.workMs.toFixed(0) + ' ms of work, loading screen shown ' + bootWarmupStats.shownMs.toFixed(0) + ' ms\n';
   s += 'Language: ' + navigator.language + '   Online: ' + navigator.onLine + '\n';
   s += 'Hardware threads: ' + (navigator.hardwareConcurrency || 'n/a') + '   Device memory: ' +
     (navigator.deviceMemory ? navigator.deviceMemory + 'GB' : 'n/a') +
@@ -21762,11 +21991,100 @@ centerCameraOnActiveRegion();
 document.getElementById('versionText').textContent = GAME_VERSION;
 document.getElementById('aboutVersionText').textContent = GAME_VERSION;
 updateHUD();
-requestAnimationFrame(loop);
-// CA794 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA794
-requestAnimationFrame(() => requestAnimationFrame(() => {
-  document.getElementById('game-wrapper').classList.add('loaded');
-}));
+// BOOT-WARMUP-01 (1.7.78) — see CHANGELOG.md § [1.7.78]
+const BOOT_MIN_DISPLAY_MS = 2000, BOOT_WARMUP_SLICE_MS = 8, BOOT_WARMUP_ZOOMS = [0.8, 1, 1.5, FIT_MAX_ZOOM, 3], BOOT_ITEM_GLYPH_SCRATCH_PX = 64;
+const BOOT_STICKMAN_WARM_LEVELS = [1, 4], BOOT_SCRATCH_PX = 256, BOOT_REHEARSAL_RENDERS = 3;
+const BOOT_JOB_WEIGHT = Object.freeze({ enemySprite: 1, glowSprite: 0.3, itemGlyph: 0.3, stickman: 2, companion: 1, effect: 1, rehearsalRender: 12 });
+function createBootScratchContext(){
+  const scratch = document.createElement('canvas');
+  scratch.width = scratch.height = BOOT_SCRATCH_PX;
+  return scratch.getContext('2d');
+}
+function listBootCanvasEffectJobs(scratchCtx){
+  const size = BOOT_SCRATCH_PX, half = size / 2;
+  return [
+    () => { const gradient = scratchCtx.createLinearGradient(0, 0, size, size); gradient.addColorStop(0, '#fff'); gradient.addColorStop(1, '#246'); scratchCtx.fillStyle = gradient; scratchCtx.fillRect(0, 0, size, size); },
+    () => { const gradient = scratchCtx.createRadialGradient(half, half, 0, half, half, half); gradient.addColorStop(0, 'rgba(255,200,60,0.9)'); gradient.addColorStop(1, 'rgba(255,200,60,0)'); scratchCtx.fillStyle = gradient; scratchCtx.fillRect(0, 0, size, size); },
+    () => { scratchCtx.save(); scratchCtx.shadowColor = 'rgba(255,235,59,0.6)'; scratchCtx.shadowBlur = 8; scratchCtx.beginPath(); scratchCtx.arc(half, half, 40, 0, Math.PI * 2); scratchCtx.stroke(); scratchCtx.restore(); },
+    () => { scratchCtx.save(); scratchCtx.globalCompositeOperation = 'lighter'; scratchCtx.fillStyle = 'rgba(255,120,40,0.5)'; scratchCtx.fillRect(20, 20, 120, 120); scratchCtx.restore(); },
+    () => { scratchCtx.save(); scratchCtx.globalCompositeOperation = 'source-in'; scratchCtx.fillStyle = '#000'; scratchCtx.fillRect(0, 0, size, size); scratchCtx.restore(); },
+    () => { scratchCtx.save(); scratchCtx.beginPath(); scratchCtx.arc(half, half, 60, 0, Math.PI * 2); scratchCtx.clip(); scratchCtx.fillStyle = '#c33'; scratchCtx.fillRect(0, 0, size, size); scratchCtx.restore(); },
+    () => { scratchCtx.save(); scratchCtx.setLineDash([0.001, 9]); scratchCtx.lineCap = 'round'; scratchCtx.lineWidth = 4; scratchCtx.beginPath(); scratchCtx.arc(half, half, 70, 0, Math.PI * 2); scratchCtx.stroke(); scratchCtx.restore(); },
+    () => { scratchCtx.save(); scratchCtx.translate(half, half); scratchCtx.rotate(0.6); scratchCtx.beginPath(); scratchCtx.ellipse(0, 0, 30, 9, 0, 0, Math.PI * 2); scratchCtx.fillStyle = 'rgba(150,10,20,0.8)'; scratchCtx.fill(); scratchCtx.restore(); },
+    () => { for(const quality of ['low', 'high']){ scratchCtx.save(); scratchCtx.imageSmoothingQuality = quality; scratchCtx.translate(half, half); scratchCtx.rotate(0.3); scratchCtx.scale(0.7, 1.3); scratchCtx.drawImage(scratchCtx.canvas, -half, -half); scratchCtx.restore(); } }
+  ];
+}
+function listBootWarmupJobs(){
+  const jobs = [], queuedKeys = new Set();
+  const addJob = (weight, run) => jobs.push({ weight, run });
+  const queueGlyph = (emoji, sizePx) => {
+    for(const zoom of BOOT_WARMUP_ZOOMS){
+      const devicePx = sizePx * zoom * dprValue;
+      if(!(devicePx > 0) || devicePx > EMOJI_SPRITE_MAX_PX) continue;
+      const bucketIndex = Math.max(0, Math.ceil(Math.log(devicePx / EMOJI_SPRITE_MIN_PX) / EMOJI_SPRITE_LOG_STEP - 1e-6)), key = emoji + '|' + bucketIndex;
+      if(queuedKeys.has(key)) continue;
+      queuedKeys.add(key);
+      addJob(BOOT_JOB_WEIGHT.enemySprite, () => emojiSpriteFor(emoji, bucketIndex));
+    }
+  };
+  for(const type in CONFIG.ENEMIES) queueGlyph(CONFIG.ENEMIES[type].emoji, CONFIG.ENEMIES[type].radius * 2);
+  queueGlyph(FLORA_SEEDLING_GLYPH, TILE_SIZE * 0.42);
+  const attractBucketIndex = attractEmojiBucketIndex(ATTRACT_EMOJI_PX);
+  if(attractBucketIndex >= 0) for(const type of ATTRACT_ENEMY_POOL){ const emoji = CONFIG.ENEMIES[type].emoji; addJob(BOOT_JOB_WEIGHT.enemySprite, () => emojiSpriteFor(emoji, attractBucketIndex)); }
+  const glowRadii = new Set([FOOD_GLOW_STYLE.glowRadius, TREAT_GLOW_STYLE.glowRadius, 23]);
+  for(const rarity of Object.values(ITEM_RARITIES)) glowRadii.add(rarity.glowRadius);
+  for(let hueStep = 0; hueStep < 360 / GROUND_GLOW_HUE_STEP; hueStep++) for(const radius of glowRadii) addJob(BOOT_JOB_WEIGHT.glowSprite, () => groundItemGlowSprite(hueStep * GROUND_GLOW_HUE_STEP, radius));
+  const glyphScratch = document.createElement('canvas');
+  glyphScratch.width = glyphScratch.height = BOOT_ITEM_GLYPH_SCRATCH_PX;
+  const glyphScratchCtx = glyphScratch.getContext('2d');
+  glyphScratchCtx.font = GROUND_ITEM_EMOJI_PX + 'px serif'; glyphScratchCtx.textAlign = 'center'; glyphScratchCtx.textBaseline = 'middle';
+  const itemIcons = new Set();
+  for(const itemDef of ITEM_BY_ID.values()) if(itemDef.icon) itemIcons.add(itemDef.icon);
+  for(const icon of itemIcons) addJob(BOOT_JOB_WEIGHT.itemGlyph, () => { glyphScratchCtx.clearRect(0, 0, BOOT_ITEM_GLYPH_SCRATCH_PX, BOOT_ITEM_GLYPH_SCRATCH_PX); glyphScratchCtx.fillText(icon, BOOT_ITEM_GLYPH_SCRATCH_PX / 2, BOOT_ITEM_GLYPH_SCRATCH_PX / 2); });
+  const scratchCtx = createBootScratchContext();
+  for(const effectJob of listBootCanvasEffectJobs(scratchCtx)) addJob(BOOT_JOB_WEIGHT.effect, effectJob);
+  for(const type of Object.keys(JOB_COLORS)) for(const level of BOOT_STICKMAN_WARM_LEVELS) addJob(BOOT_JOB_WEIGHT.stickman, () => {
+    const colors = JOB_COLORS[type], appearance = Object.assign({}, buildPreviewAppearance, { skinMain: colors.main, skinShade: colors.shade });
+    scratchCtx.save(); scratchCtx.setTransform(1, 0, 0, 1, BOOT_SCRATCH_PX / 2, BOOT_SCRATCH_PX / 2); scratchCtx.clearRect(-BOOT_SCRATCH_PX / 2, -BOOT_SCRATCH_PX / 2, BOOT_SCRATCH_PX, BOOT_SCRATCH_PX);
+    drawStickman(scratchCtx, 0, 0, IDLE_WEAPON_ANGLE, level, type, appearance);
+    scratchCtx.restore();
+  });
+  addJob(BOOT_JOB_WEIGHT.companion, () => { scratchCtx.save(); scratchCtx.setTransform(1, 0, 0, 1, 0, 0); drawCat(scratchCtx, 32, 32, 0, 0.55, { crouch: true, attackProgress: 0 }); drawSkeleton(scratchCtx, 96, 32, 0, 0); scratchCtx.restore(); });
+  for(let pass = 0; pass < BOOT_REHEARSAL_RENDERS; pass++) addJob(BOOT_JOB_WEIGHT.rehearsalRender, () => render(ctx));
+  return jobs;
+}
+const bootWarmupStats = { jobs: 0, workMs: 0, shownMs: 0 };
+async function runBootWarmup(){
+  const loadingScreen = document.getElementById('loading-screen'), loadingProgress = document.getElementById('loadingProgress');
+  const jobs = listBootWarmupJobs(), startedAt = performance.now();
+  let totalWeight = 0;
+  for(const job of jobs) totalWeight += job.weight;
+  bootWarmupStats.jobs = jobs.length;
+  let completed = 0, completedWeight = 0, warmFraction = 0, timeFraction = 0;
+  while(warmFraction < 1 || timeFraction < 1){
+    const sliceEndsAt = performance.now() + BOOT_WARMUP_SLICE_MS;
+    const sliceStartedAt = performance.now();
+    while(completed < jobs.length && performance.now() < sliceEndsAt){ jobs[completed].run(); completedWeight += jobs[completed].weight; completed++; }
+    bootWarmupStats.workMs += performance.now() - sliceStartedAt;
+    warmFraction = jobs.length ? completedWeight / totalWeight : 1;
+    timeFraction = Math.min(1, (performance.now() - startedAt) / BOOT_MIN_DISPLAY_MS);
+    const shownFraction = Math.min(warmFraction, timeFraction);
+    loadingProgress.value = Math.round(shownFraction * 100);
+    loadingScreen.style.setProperty('--loading-pct', shownFraction.toFixed(3));
+    await new Promise(resolve => setTimeout(resolve, completed < jobs.length ? 0 : 16));
+  }
+  bootWarmupStats.shownMs = performance.now() - startedAt;
+  loadingScreen.hidden = true;
+}
+function startFirstFrame(){
+  requestAnimationFrame(loop);
+  // CA794 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA794
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.getElementById('game-wrapper').classList.add('loaded');
+  }));
+}
+for(const gestureType of ['pointerdown', 'keydown']) document.addEventListener(gestureType, unlockAudio, { once: true, capture: true });
+runBootWarmup().finally(startFirstFrame);
 </script>
 </body>
 </html>

@@ -1,66 +1,55 @@
+<div align="center">
+
 # StickTD — Stick Tower Defense
 
-A free browser tower defense game by SauerNinja.
+**Hold the road. Grow the army. Outlast every wave.**
 
-Living peaceful animals can reproduce as the map expands, letting you keep a small farm.
+[**▶ Play now**](https://sauerninja.github.io/StickTD/) &nbsp;·&nbsp; [Changelog](CHANGELOG.md) &nbsp;·&nbsp; [Source](index.html)
 
-The road keeps growing. Build your defense, train the stickmen who hold it, and make room for the next wave. Clear 100 waves to reach endless play.
+<img src="og-image.png" alt="Stick Tower Defense gameplay" width="100%">
 
-**[Play StickTD](https://sauerninja.github.io/StickTD/)** · [Full changelog](https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md)
+</div>
 
-![Stick Tower Defense gameplay](og-image.png)
+Build a squad of stickmen. Train them. Defend a road that gets longer every wave.
 
-## Build your strategy
+| Price | Where | Controls | Campaign | Saves |
+|:---:|:---:|:---:|:---:|:---:|
+| Free | Any modern browser, no install | Mouse or touch | 100 waves, then endless | A file you keep |
 
-Build a reliable frontline, invest in the stats that suit each tower, and grow your options over time.
+## Quick start
 
-1. **Develop distinctive towers.** Each class brings its own role, combat style, and stat strengths.
-2. **Unlock specialists through play.** Stat milestones and wave progress add new classes to the Build menu.
-3. **Shape elemental attacks.** Attunements and mixed effects add distinct combat traits to your towers.
-4. **Invest in growth.** Training and promotion give you more ways to develop each unit.
-5. **Expand your battlefield.** New route and build space open as your campaign advances.
-6. **Choose rewards for your run.** Milestone blessings, supplies and recovery help you shape a defense around the rewards you find.
+| 1. Press Play | 2. Build a defender | 3. Start the wave |
+|---|---|---|
+| A hand points the way on your first run. | Tap **Build**, pick a tower, tap a hedge tile. | Press **Start Wave**, then use the speed button. |
+
+## Features
+
+| | |
+|---|---|
+| **Over twenty classes**<br>Swordsmen, archers, mages, paladins and more, each with its own reach, rhythm and role. | **Heroes that grow**<br>Train strength, dexterity and intelligence. Stat milestones unlock specialists. |
+| **Elemental attacks**<br>Fire burns, ice freezes, lightning chains. Push two stats high and the elements blend. | **A road that keeps growing**<br>Every cleared wave opens new ground to build on, clear and defend. |
+| **Waves with a plan**<br>Small enemies lead, bigger and slower ones follow, and bosses close the line. | **Loot worth finding**<br>Most kills drop nothing. The drops that do come are rare, and chests pay in coin. |
+| **Blood optional, stakes real**<br>Arrows stick, enemies bleed, and a frozen enemy holds up everything behind it. | **Yours to keep**<br>Free, open source, no install. Saves to a file you control. |
 
 ## Contents
 
-- [Build your strategy](#build-your-strategy)
-- [How to play](#how-to-play)
-- [Towers & evolutions](#towers--evolutions)
-- [Tower appearance](#tower-appearance)
-- [Enemies](#enemies)
-- [Status effects](#status-effects)
-- [Blood & gore](#blood--gore)
-- [Training and Promotion](#training-and-promotion)
-- [Waves](#waves)
-- [Pathing & AI](#pathing--ai)
-- [Items & Heroes](#items--heroes)
-- [Resources](#resources)
-- [Huts](#huts)
-- [Lives](#lives)
-- [Settings](#settings)
-- [Save / Load](#save--load)
-- [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
-- [Code map](#code-map)
-- [Running locally](#running-locally)
-- [Contributing](#contributing)
-- [Version History](#version-history)
-- [License](#license)
+| Play | The world | The project |
+|---|---|---|
+| [How to play](#how-to-play)<br>[Stat icon legend](#stat-icon-legend)<br>[Towers & evolutions](#towers--evolutions)<br>[Tower appearance](#tower-appearance)<br>[Training and Promotion](#training-and-promotion)<br>[Items & Heroes](#items--heroes)<br>[Food & Medical Supplies](#food--medical-supplies)<br>[Resources](#resources)<br>[Settings](#settings)<br>[Save / Load](#save--load) | [Enemies](#enemies)<br>[Status effects](#status-effects)<br>[Blood & gore](#blood--gore)<br>[Waves](#waves)<br>[Pathing & AI](#pathing--ai)<br>[Scenery](#scenery)<br>[Huts](#huts)<br>[Chance structures](#chance-structures)<br>[Lives](#lives) | [Tech stack](#tech-stack)<br>[Project structure](#project-structure)<br>[Code map](#code-map)<br>[Running locally](#running-locally)<br>[Contributing](#contributing)<br>[Version history](#version-history)<br>[License](#license) |
 
 ## How to play
 
-- Press **Play** to begin the regular campaign at Wave 1. On every new playthrough, a gentle hand points to **Build**, then to **Start Wave** once a defender is placed, then to the speed button once the first wave has started. Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
-- Tap **Build**, choose a tower, then tap a hedge tile to place it. Each arrival gets a short class-flavored quip and a synthesized voice blip.
-- Select a tower to view its portrait, health, experience, and combat stats. Open its nameplate for upgrades, movement, selling, equipment, targeting, and stat allocation.
-- Train towers through combat and invest in their strengths. Stat milestones open specialist classes for your roster.
-- Earn a choice reward after wave 3 and every tenth wave. Tap 🎁 or its notification to choose. Each choice explains its effect, with current supplies and healing shown in the popup; pending rewards remain available while you continue playing and are included in saves.
-- The **speed control** (1x through 10x) only affects how fast enemies move and how fast towers attack; it never changes how long clearing a tree, rock or bush takes, or any other on-screen timer.
-- Press **Start Wave** to begin the opening round; between rounds, the same control reads **Next Wave**. Clear waves to expand the winding battlefield. The free expansion for each cleared wave and any paid expansions extend the road a few tiles at a time. They are available between waves, even while an enemy that escaped is still loose: each cleared wave gives one free expansion as soon as it ends, and you can buy one more expansion per wave. Grass borders the road on every side, and a strip of grass always separates one stretch of road from the next where it curves and turns.
-- The flags on the spawn tile ripple in a light, gusting breeze between waves and hang still once a wave begins.
-- Face an endless sequence of waves with nine rotating archetypes and enemies that grow in size, strength, and rewards.
-- Play with a mouse on desktop or touch controls on mobile. Pan, zoom, pause, and set the simulation speed from the HUD.
-- Select an actively attacking tower to see its target's health, armor, and movement speed.
-- Armor reduces each hit, but every hit always deals at least half of its damage, so rapid-fire towers keep some value against Tanks and Bosses.
+- **Start.** Press **Play**. A hand points to **Build**, then **Start Wave**, then the speed button on every new playthrough. The campaign opens with a two-tile road, two grass tiles to build on, and one Barricade on the finish tile to hold the first arrivals.
+- **Build.** Tap **Build**, choose a tower, tap a hedge tile. Each arrival gets a class-flavored quip and a synthesized voice blip.
+- **Manage.** Select a tower for its portrait, health, experience and combat stats. Its nameplate opens upgrades, movement, selling, equipment, targeting and stat allocation.
+- **Train.** Towers earn experience in combat. Invest it in their strengths and stat milestones open specialist classes.
+- **Speed.** 1x to 10x changes only combat: how fast enemies move and towers attack. Clearing a tree, rock or bush and every other timer keep real time.
+- **Waves and expansion.** **Start Wave** begins the first round, then reads **Next Wave**. Each cleared wave gives one free expansion the moment it ends, and you can buy one more per wave, even while an escaped enemy is loose. Expansions add a few road tiles. Grass borders the road on every side, with a strip of grass between stretches where it turns.
+- **Escalation.** Waves rotate through nine archetypes. Enemies grow in size, strength and reward as you go.
+- **Flags.** The spawn flags ripple between waves and hang still once a wave begins.
+- **Controls.** Mouse on desktop, touch on mobile. Pan, zoom, pause and set the speed from the HUD.
+- **Targets.** Select an attacking tower to see its target's health, armor and speed.
+- **Armor.** It reduces each hit, but every hit deals at least half its damage, so rapid-fire towers stay useful against Tanks and Bosses.
 
 ### Stat icon legend
 
@@ -169,6 +158,8 @@ Reaper is the heaviest-armored undead in the roster.
 ## Status effects
 
 An enemy shocked by lightning that dies within three seconds discharges a burst to the enemies packed around it.
+
+Each arrow stuck in an enemy slows it by 8%, down to 60% of its speed. Enemies stop behind a frozen or stunned one in a tight queue, as they do at a Barricade, and follow a slowed one at its pace.
 
 Burn, curse (poison-style DoT), bleeding (see [Blood & gore](#blood--gore)), slow, and stun are marked by periodic reminders and distinct visuals: drifting ice crystals, flickering flames, and orbiting lightning bolts. Crowd-control effects can spread through queued enemies, extending their impact along the route.
 
@@ -309,6 +300,10 @@ StickTD/
 
 ## Code map
 
+<details>
+<summary>Open the code map</summary>
+
+
 Direct links into `index.html` on GitHub, jumping straight to where each system actually lives.
 Use the section headers around each destination to navigate when line references shift.
 
@@ -400,6 +395,8 @@ Use the section headers around each destination to navigate when line references
 - [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9941)
 - [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5262)
 
+</details>
+
 ## Running locally
 
 Run the game with a static file server:
@@ -419,7 +416,7 @@ See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and cont
 
 ## Version history
 
-Current version: **1.7.76**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
+Current version: **1.7.90**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
 
 ## License

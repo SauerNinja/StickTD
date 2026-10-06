@@ -9,6 +9,7 @@ This is the single list of everything still open. Shipped work is removed and li
 ---
 
 ## 1.7.75 open items
+- Frame limit pacing (shipped 1.7.77, VSYNC-PACE-01): confirm in a debug log that 21 to 29 ms gaps no longer recur at a steady 60 FPS limit; if they do, the Chrome Performance trace below is still the next step.
 - Real frame loss that the game cannot see (owner, 1.7.53 build): the overlay showed 37 to 41 FPS and gaps of 21 to 29 ms while update, render and HUD together took under 1 ms and the worst JavaScript frame in a minute was 6 ms. Time spent outside the page's JavaScript (the graphics process, compositing, a recorder or another tab) is the suspect, not the game code. Needs one Chrome Performance trace of a lagging attack (record 10 s, with the GPU lane visible), or the exported debug log from that moment, to say which.
 - Candidates if the trace points at drawing: the image smoothing quality of the full-screen map and decal blits (`imageSmoothingQuality = 'high'`), per-frame emoji text at changing sizes (each new size costs a glyph raster), and the fixed 60 FPS limit on a display that is not 60 Hz.
 
