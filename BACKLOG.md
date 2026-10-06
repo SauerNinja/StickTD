@@ -8,9 +8,17 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
-## 1.7.43 open items
-- Decision needed: should a diamond pay gold only (dropping the permanent passive upgrade)? Both are paid now.
-- Decided (1.7.38): not harder, more enemies. Open: whether the per-enemy bounty should drop so gold and XP per wave stay where they were, and whether the 25% tighter batch gaps (TEMPO-01) should be relaxed.
+## 1.7.51 open items
+- Take on the owner's machine: panning against stationary frame cost (the camera bypasses the frame cap), and the transition cost of a render-scale change (it resizes and rebuilds both world caches); the new overlay figures and downing capture will show whether either matters.
+- Candidate lag work, only if a real log points at it: bake scenery and its shadows into the static layer (about 2 ms each on a 37-item board in software drawing), and separate viewport render scale from world cache scale.
+- Open decision: whether the 25% tighter batch gaps (TEMPO-01) should be relaxed.
+
+## 1.7.49 open items
+- Tune from play: ration, drill and merchant prices and growth (GOLD-SINKS-01); say if gold still piles up.
+- Tune from play: food stat gains (1 to 3), and how often foods drop now that items are rarer.
+- Tune from play: item drop odds (LOOT-RARER-01); say if items now feel too scarce or rare gear still too common.
+- Tune from play: ten event kinds and their chances, chest loot odds (a bag from 30% of presents), walk speed (about 170 px per second, at most 2.4 seconds), item landing distance (30 to 76 px).
+- Decided: not harder, more enemies; per-enemy bounty stays (owner, 1.7.49). Open: whether the 25% tighter batch gaps (TEMPO-01) should be relaxed.
 - Decision needed: what counts as a scene for time of day on the playing field (skipped for now by the owner).
 - Tune from play: the share of grass kept clear of trees and rocks (45%, ROOM-TO-BUILD-01); too little wood or stone early means lower it, too cramped means raise it.
 - Possible: show the formation name on the wave label; tune the formation mix from play.
@@ -28,7 +36,7 @@ This is the single list of everything still open. Shipped work is removed and li
 ## Owner decisions
 
 - *Play-test* — Gold bag payouts (1–100 direct, 3–9 coins worth 1–25 each) are about three times the previous total; confirm the economy still feels earned.
-- *Play-test* — Music pass shipped (minor combat scale with leading tone, bass pedal, march taps, 3+3+2 accent, calm-to-wave lowpass sweep, flag-wind ambience). Listen and report mix balance. Boss arrangement, evolving keys, fills, counter-melody, intensity layer and the wave-clear fanfare shipped. Still open: listening feedback.
+- *Play-test* — Music pass shipped (minor combat scale with leading tone, bass pedal, march taps, 3+3+2 accent, calm-to-wave lowpass sweep, flag-wind (the wind sound was removed by owner decision in 1.7.36) ambience). Listen and report mix balance. Boss arrangement, evolving keys, fills, counter-melody, intensity layer and the wave-clear fanfare shipped. Still open: listening feedback.
 - *Owner decision* — Path generation: roads now prefer turning (85%), measured shorter straight runs. Wilder shapes (switchbacks, S-curves, loops) still need your approval and trapped-tower safety checks before any code.
 - *Evidence* — Debug log from a real run on the device that lags (late waves, large map, high speed) to target the slow phase before any optimization.
 
@@ -226,7 +234,7 @@ Earlier captures showed short measured JavaScript phases alongside long frame ga
 - **Dota-style item economy (Owner decision / Design pass).** On-death item drops and Merchant are implemented. Current Merchant unlock is after wave 15; the older wave-5 idea differs. Decide that gate and any further economy scope before changing it.
 - **Dwarf Builder NPC.** Hammerman-proportioned, bright orange, wobble-walk animation, plus much stronger scenery scale variance after wave 3 with isometric depth-sorted overlap for oversized trees and boulders (scenery size gradient exists; check what remains).
 - **Floating nametags and a minimap.** A WC3/WoW-style nametag above every tower (name, level, HP bar) and a radar-style overview of the whole map; the bottom panel covers the nametag's function today.
-- **Progression ideas from the wave-architecture handoff.** Apprentice catch-up (+50% assist XP below 25% of the leader); milestone reward choices every 10 waves; "Danger Contract" opt-in difficulty; melee and beam committed-damage tracking (projectiles only today); an explicit overkill column in the post-wave report; mid-wave save of the wave plan and dispatch cursor (saves between waves only today); watch the two-rolls-per-bar training in real play and add a diminishing effective-investment formula if late combat balloons.
+- **Progression ideas from the wave-architecture handoff.** Apprentice catch-up (+50% assist XP below 25% of the leader); milestone reward choices (REJECTED by the owner in 1.7.36: never wanted, do not build) every 10 waves; "Danger Contract" opt-in difficulty; melee and beam committed-damage tracking (projectiles only today); an explicit overkill column in the post-wave report; mid-wave save of the wave plan and dispatch cursor (saves between waves only today); watch the two-rolls-per-bar training in real play and add a diminishing effective-investment formula if late combat balloons.
 - **Seeded combat randomness and coordinate-hashed scenery.** Replayable bug reports, and save files that stay small on very long roads.
 - **Forensic visual review (Evidence first).** Needs a run zoomed into a recent fight with gore enabled plus its debug log and save, to judge stain shape, transfer and weapon-specific patterns; keep evidence-led effects and do not claim validated forensic reconstruction. Substrate-dependent rupture on rough terrain needs tile-type lookup plumbing that does not exist (no `getTileAt` or tile-type grid).
 

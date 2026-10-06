@@ -49,7 +49,7 @@ Build a reliable frontline, invest in the stats that suit each tower, and grow y
 
 ## How to play
 
-- Press **Play** to begin the regular campaign at Wave 1. On a fresh profile, a gentle 👆 beside **Build** points to the first defender menu and disappears after your first tower is placed. Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
+- Press **Play** to begin the regular campaign at Wave 1. On every new playthrough, a gentle hand points to **Build**, then to **Start Wave** once a defender is placed, then to the speed button once the first wave has started. Every campaign opens with a two-tile road, two grass tiles for building, and a single Barricade standing on the finish tile to hold the first arrivals while you set up. Your first expansion opens the rest of the grass around the road.
 - Tap **Build**, choose a tower, then tap a hedge tile to place it. Each arrival gets a short class-flavored quip and a synthesized voice blip.
 - Select a tower to view its portrait, health, experience, and combat stats. Open its nameplate for upgrades, movement, selling, equipment, targeting, and stat allocation.
 - Train towers through combat and invest in their strengths. Stat milestones open specialist classes for your roster.
@@ -219,9 +219,11 @@ Enemies follow the road in single file, forming natural queues at Barricades. Sw
 
 Each expansion adds one to three route tiles in total, and the road is always surrounded by grass: the green area is only ever added to, and a stickman is never left outside it. The road grows in varied styles: mostly normal winding, with zigzags, long runs, and now and then a wild hook or coil. It is kept from cutting itself off, and the road avoids the tiles your stickmen stand on; if it ever must take one, that stickman is moved onto the nearest grass. Expansions are available between waves once every enemy, including any that escaped, is defeated.
 
+Each expansion also makes one random event near the spawn flags and one near the finish: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (a meat, a fruit and a vegetable), a wood pile, a stone cairn, a bird nest or a mushroom patch. Presents are the rarest and are a loot roll (coins, a gold bag, a stim or berries), so a gold bag comes from only about three presents in ten. Trees come in three kinds and trees and rocks are mirrored and sized differently, so no two corners of the map look alike.
+
 ## Items & Heroes
 
-Defeated enemies sometimes leave an item on the road. Equipment shines with a rarity-based glow, from Common through Uncommon and Rare to Epic; currency coins and bags glow gold. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found. Tennis Shoes grant +2 Dexterity and one extra tower move after each cleared wave; a rare Shovel can uncover food, bones or equipment when used nearby.
+Defeated enemies sometimes leave an item on the road. Equipment shines with a rarity-based glow, from Common through Uncommon and Rare to Epic; currency coins and bags glow gold. Drag an item onto any stickman to equip it; each item adds Strength, Dexterity, Intelligence or Armor. More than forty items are waiting to be found. Tennis Shoes grant +2 Dexterity and one free tower move at the start of every round for each pair carried; a rare Shovel can uncover food, bones or equipment when used nearby.
 
 - **Signature drops.** Many enemies carry an item of their own. Grunts may drop a Headband, Tanks a Granite Heart, Trolls a Bridge Toll, Zombies a Grave Charm and Wraiths a Spectral Veil, and Bosses always leave a special item along with a strong general one. Larger enemies are more likely to drop items than smaller ones.
 - **Your inventory.** Every stickman has six item slots. Select a stickman and open its nameplate to see the items it carries, with their stats. Drag an item out to give it to another stickman, or leave it on the ground for later. A stickman with spendable stat points can tick **Auto spend** beside them to have new points spent on his main stat automatically. Uncollected items wait on the battlefield for several minutes. Food, potions and other consumables wait in the slots until you tap them or press their number key.
@@ -232,18 +234,18 @@ Defeated enemies sometimes leave an item on the road. Equipment shines with a ra
 
 ## Food & Medical Supplies
 
-Fallen enemies also leave food behind: Fruit, Vegetables, and Meat. Food, Boss Treats and stims are carried like any other item: drag one onto a stickman to store it in an item slot, then click the slot or press its number key (1–6) to use it. Drag it to another stickman to pass it along, or onto the map within a stickman's reach to move it.
+Fallen enemies, picnic baskets, bushes and mushroom patches leave food: Fruit, Vegetables, and Meat. Food is eaten the moment you drop it on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon: **meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX**. Boss Treats and stims are still carried like any other item: drag one onto a stickman to store it in an item slot, then click the slot or press its key to use it.
 
-- **Fruit** 🍎 grants a stickman experience toward its next level, scaled to how far the campaign has progressed.
-- **Vegetables** 🥕 are rarer and grant a small, permanent stat point.
-- **Meat** 🍖 restores lives and, for the rarer cuts, permanently raises the maximum a small amount, capped per wave so the Shop's Extra Life purchase stays meaningful.
+- **Fruit** — +1 INT, plus a little experience scaled to how far the campaign has progressed.
+- **Vegetables** — +1 DEX (a Hot Pepper gives +2), plus a small heal.
+- **Meat** — +1 STR for Bacon and a Drumstick, +2 for Steak and +3 for Meat on the Bone, plus the lives and maximum lives it already gave.
 - **Livestock.** Chickens, pigs and cows sometimes wander onto the map as it expands, grazing slowly and safely unless singled out.
 - **Target marking.** Click any enemy — or one of the animals above — to place a target marker over its head. Every tower on the map will prioritize that target while it stays in range, letting you call the shot on a dangerous enemy or send your defenses after a wandering animal for its meat.
 - **Boss Treats.** Every Boss and Holiday Boss leaves behind a Treat — a single guaranteed reward bundling a life restore, experience, and sometimes bonus gold.
 - **Cooking and the Campfire.** 🔥 Now and then a Campfire — a fire on two crossed logs — appears near the road after the third wave. It is the only place to cook. Tap it to add wood (15 🪵 buys 2 fuel, up to 8); it burns one fuel at the end of every wave and goes cold at zero. A stickman standing near a lit fire can combine stored foods with the Combine button, spending fuel from the fire. Simple pairs cost 1 fuel: Bacon and Potato make a Breakfast Plate (attack speed), Steak and Carrot a Hearty Stew (restores health), Apple and Blueberries a Fruit Salad (range), Meat on the Bone and a Drumstick a Roast Feast (damage). Complex recipes take three or four foods and 2–3 fuel: Bacon, Potato and Corn make a Sunrise Skillet; Steak, Garlic and Hot Pepper a Fiery Ragout; Strawberries, Cherries and Blueberries a Berry Pie; Carrot, Potato, Corn and Hot Pepper a Harvest Curry that boosts damage, speed and range and heals. Meals are used like stims and last until the end of the round.
 - **Supply crates.** 📦 Crates found as scenery open for 10 gold and hold a stim: Adrenaline (attack speed), Combat Stim (damage), Spotter Scope (range), Field Medkit (heals 40%), or the rare Hyper-Serum (all three). Stim buffs last until the end of the round they are used in.
 - **Berry bushes.** 🪴 Potted bushes are smaller, clear for a flat 5 gold, and drop two or three berries.
-- **Gold bags and the wandering troll.** Clicking a gold bag immediately adds its exact value to your player gold. Unopened bags keep their value and pay out automatically after three minutes. Coins from a chest or Merchant are separate currency pickups: click a landed coin to collect its value, or leave it to disappear after 5–15 seconds. Chests and, rarely, fallen enemies drop Gold Bags that pay their listed amount directly when opened. Trolls on the road also carry gold bags. From wave 5 onward, a wandering troll may stroll the road and club any stickman it stumbles upon; target it and defeat it for 2–3 bags. About one bag in ten also drops a diamond that falls into the landscape like a coin; hovering never collects a diamond, you have to click or tap it, and it pays 1 to 100 gold plus a permanent passive upgrade.
+- **Gold bags and the wandering troll.** Clicking a gold bag immediately adds its exact value to your player gold. Unopened bags keep their value and pay out automatically after three minutes. Coins from a chest or Merchant are separate currency pickups: click a landed coin to collect its value, or leave it to disappear after 5–15 seconds. Chests and, rarely, fallen enemies drop Gold Bags that pay their listed amount directly when opened. Trolls on the road also carry gold bags. From wave 5 onward, a wandering troll may stroll the road and club any stickman it stumbles upon; target it and defeat it for 2–3 bags. About one bag in ten also drops a diamond that falls into the landscape like a coin; hovering never collects a diamond, you have to click or tap it, and it turns into 1 to 100 gold and the gem flies up into the gold counter. Coins fly up to the gold counter when you collect them and when they fade out on their own. Dropped items fly out in an arc and land on the grass beside the road, not on it.
 - **Stickman chatter.** Stickmen occasionally show a mood emoji and a short line at key moments — low health, a swarm, a leak, a boss kill, a close call. It only happens sometimes, for fun.
 - **Medical Supplies**, sold in the Shop, are held in reserve and used automatically: the Bandage and First Aid Kit restore lives on purchase, and the Defibrillator is carried until the moment it's needed — intercepting a defeat and reviving the base at 25% lives.
 
@@ -284,7 +286,7 @@ attaching to a bug report).
 
 ## Save / Load
 
-Settings → Game → **Save Game** downloads a `.txt` file with a random seed and your full game state. **Load Save** restores that campaign on this device or another.
+Settings → Game → **Save Game** downloads a `.txt` file with a random seed and your campaign: road, map, stickmen with their stats and items, gold, wave progress and loose items. A fight in progress is not stored: if you save in the middle of a wave, that wave starts again when you load. Loading is all or nothing; if a file is damaged your current game is left as it was. **Load Save** restores that campaign on this device or another.
 
 ## Tech stack
 
@@ -417,7 +419,7 @@ See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and cont
 
 ## Version history
 
-Current version: **1.7.43**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
+Current version: **1.7.51**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
 
 ## License
@@ -425,3 +427,11 @@ ideas not yet built.
 MIT — see [LICENSE](LICENSE).
 
 Made by [SauerNinja](https://github.com/SauerNinja).
+
+When you use **Move** on a stickman he now walks to the new tile with a walking animation instead of jumping there, and cannot attack until he arrives. **Tennis Shoes** are a normal item (+2 DEX) that also give one free move at the start of every round for each pair a stickman carries; nothing needs to be used.
+
+Items are meant to feel like finds: only a small share of defeated enemies drop one, supplies are more common than tonics and gear, and rare and epic gear is uncommon (about 7% and 1% of gear rolls).
+
+While you clear a tree, rock or bush, a retro clock-wipe circle fills clockwise behind it in 1970s colours until it is done.
+
+The Hero Shop (it needs a living Merchant) also has a **Market** of rations (+2 STR, INT or DEX, eaten at once), a **Training Yard** (experience for a stickman) and a **Travelling Merchant** with three new pieces of gear every wave; the prices rise with every purchase, so there is always somewhere to spend gold.

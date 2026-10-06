@@ -1337,7 +1337,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.43'; // see CHANGELOG.md § [1.7.43]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.51'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1926,10 +1926,10 @@ Object.assign(IRON_CHARM, { rarity: 'UNCOMMON' });
 Object.assign(SWIFT_FEATHER, { rarity: 'UNCOMMON' });
 Object.assign(BARRICADE_ITEM, { rarity: 'COMMON' });
 const ITEM_RARITIES = {
-  COMMON:   { label: 'Common',   weight: 60, glowRadius: 20, hueMsPerDegree: 60, statBudget: [1, 3], ringColor: '#cfd8dc' },
-  UNCOMMON: { label: 'Uncommon', weight: 28, glowRadius: 22, hueMsPerDegree: 45, statBudget: [3, 5], ringColor: '#66bb6a' },
-  RARE:     { label: 'Rare',     weight: 10, glowRadius: 26, hueMsPerDegree: 30, statBudget: [5, 8], ringColor: '#42a5f5' },
-  EPIC:     { label: 'Epic',     weight: 2,  glowRadius: 30, hueMsPerDegree: 18, statBudget: [8, 14], ringColor: '#ce93d8' }
+  COMMON:   { label: 'Common',   weight: 66, glowRadius: 20, hueMsPerDegree: 60, statBudget: [1, 3], ringColor: '#cfd8dc' },
+  UNCOMMON: { label: 'Uncommon', weight: 26, glowRadius: 22, hueMsPerDegree: 45, statBudget: [3, 5], ringColor: '#66bb6a' },
+  RARE:     { label: 'Rare',     weight: 7,  glowRadius: 26, hueMsPerDegree: 30, statBudget: [5, 8], ringColor: '#42a5f5' },
+  EPIC:     { label: 'Epic',     weight: 1,  glowRadius: 30, hueMsPerDegree: 18, statBudget: [8, 14], ringColor: '#ce93d8' }
 };
 const DROP_ITEM_ROWS = [
   ['RUSTY_NAIL', 'Rusty Nail', '🔩', 'COMMON', { str: 2 }],
@@ -2005,7 +2005,9 @@ const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK:
 // enemy's own signature item. Bosses ignore all of this and always drop signature + generic gear plus a Treat.
 const SIGNATURE_SHARE_OF_GEAR_DROPS = 0.35;
 // LOOT-ODDS-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
-const LOOT_KILL_ODDS = { supply: 1/100, tonic: 1/250, gear: 1/500 };
+// LOOT-RARER-01 (1.7.45): owner says items appear too often and too easily and rare items are not rare enough. Since 1.7.38 there are 1.5 times as many enemies, so the same per-kill odds gave 1.5 times as many
+// items per wave. Odds are now about 0.6 times what they were (a little under the pre-1.7.38 rate per wave), gear is rarer still, the per-wave cap is lower, and rare and epic items are rarer.
+const LOOT_KILL_ODDS = { supply: 1/170, tonic: 1/430, gear: 1/1000 };
 const BOSS_GUARANTEED_COMMON_ROLLS = { min: 1, max: 2 }, BOSS_GEAR_ROLLS = 3, BOSS_GEAR_ROLL_CHANCE = 0.15, BOSS_SIGNATURE_CHANCE = 0.6, BOSS_BAD_LUCK_LIMIT = 3;
 let bossesSinceGearDrop = 0;
 const LOOT_CATEGORY_WEIGHTS_BY_TIER = {
@@ -2016,8 +2018,8 @@ const LOOT_CATEGORY_WEIGHTS_BY_TIER = {
 };
 const LOOT_REGULAR_DROP_CAP_BASE = 2;      // max regular-enemy drops per wave at wave 0...
 const LOOT_REGULAR_DROP_CAP_PER_10_WAVES = 1; // ...plus this many per 10 waves, up to the max below
-const LOOT_REGULAR_DROP_CAP_MAX = 6;
-const BOSS_RARITY_WEIGHTS = { COMMON: 0, UNCOMMON: 35, RARE: 50, EPIC: 15 };
+const LOOT_REGULAR_DROP_CAP_MAX = 5;
+const BOSS_RARITY_WEIGHTS = { COMMON: 0, UNCOMMON: 42, RARE: 46, EPIC: 12 };
 // HUT-LOOT-01 (1.6.84) — see CHANGELOG.md § [1.6.84]. A destroyed hut/camp bursts into 3-5 gold/XP
 // pickups scattered nearby, on top of its existing bounty payout. Reuses the ground-item system
 // (rainbow-glow, drag-or-touch collection) rather than a new entity pool.
@@ -3079,6 +3081,38 @@ function validateDesignContract(){
   if(!String(maybeSpawnRandomEventsOnExpansion).includes('PROP-CAP-01')) problems.push('event props never crowd out the room to build (PROP-CAP-01)');
   if(DIAMOND_BAG_CHANCE !== 0.1 || DIAMOND_MIN_GOLD !== 1 || DIAMOND_MAX_GOLD !== 100 || !String(creditCoin).includes('DIAMOND-GOLD-01') || !String(tryCollectCoinAt).includes('hoverOnly') || String(Enemy.prototype.draw).includes('setLineDash')) problems.push('a gold bag drops a diamond one time in ten, a diamond is worth 1 to 100 gold and needs a click, and loose enemies glow red with no ring (DIAMOND-GOLD-01, DIAMOND-CLICK-01, LOOSE-GLOW-01)');
   if(MAP_FROM_BAG_CHANCE !== 0.01 || typeof GOLD_MAP_BAG_ITEM !== 'undefined' || typeof rollMapFromBag !== 'function' || !String(openGoldBag).includes('rollMapFromBag') || !String(creditGroundBagGold).includes('rollMapFromBag') || String(dropItemsFromEnemy).includes('GOLD_MAP_BAG')) problems.push('there is only one kind of bag, the normal gold bag, and a map falls out of about one bag in a hundred (ONE-KIND-OF-BAG-01)');
+  if(typeof rollTreeVariant !== 'function' || TREE_VARIANT_EMOJI.length < 3 || RANDOM_EVENT_CHOICES[0][0] !== 'CHEST' || RANDOM_EVENT_CHOICES[0][1] > 0.1 || !String(spawnScenery).includes('SCENERY-VARIETY-01')) problems.push('trees and rocks come in varied kinds, shapes and facings, and presents are the rarest event (SCENERY-VARIETY-01, EVENT-VARIETY-01)');
+  { const kinds = new Set(RANDOM_EVENT_CHOICES.map(c => c[0])); const total = RANDOM_EVENT_CHOICES.reduce((a, c) => a + c[1], 0); if(kinds.size < 10 || Math.abs(total - 1) > 0.001 || typeof grantEventProp !== 'function' ) problems.push('there are ten kinds of random event and their chances add up to one (EVENT-VARIETY-01)'); }
+  if(typeof Tower.prototype.walkTo !== 'function' || typeof Tower.prototype.advanceWalk !== 'function' || !String(attemptMoveTower).includes('walkTo') || !String(creditCoin).includes('withFlight') || !String(spawnGroundItem).includes('ITEM-ARC-01') || !String(Tower.prototype.update).includes('MOVE-WALKS-01')) problems.push('moved stickmen walk to their new tile, dropped items fly out in an arc, and faded coins fly to the counter (MOVE-WALKS-01, ITEM-ARC-01, COIN-FADE-FLIGHT-01)');
+  { // OWNER-LEDGER-01 (1.7.44): the owner's rules from play-testing, checked together so none of them can quietly regress (see the Owner rules ledger at the top of AGENTS.md)
+    const src = fn => String(fn);
+    const ledger = [
+      ['no wind sound', typeof SoundEngine.prototype.setWindLevel === 'undefined'],
+      ['no wave choice rewards', src(offerRunReward).includes('RUN-REWARD-REMOVED-01') || /^function offerRunReward\(wave\)\{\s*return;/.test('function ' + src(offerRunReward).replace(/^function\s*/, ''))],
+      ['wave clear keeps its twang', src(SoundEngine.prototype.playEvent).includes('523.25')],
+      ['countdown buzzer, eating, potion, scroll, injector and expand sounds', ['countdown_tick', 'countdown_go', 'item_eat', 'item_potion', 'item_scroll', 'item_inject', 'expand_build'].every(n => src(SoundEngine.prototype.playEvent).includes("'" + n + "'"))],
+      ['hack cheat menu grants wood, stone and gold', ['+🪵1,000', '+🪨10,000', '+💰100,000'].every(a => src(runHackAction).includes(a))],
+      ['intelligence tooltip', [...document.scripts].some(sc => sc.textContent.includes('drives Mage damage and every stickman'))],
+      ['elements at 250', ELEMENT_INFUSE_THRESHOLD === 250],
+      ['expansion blocked while enemies are loose', typeof expansionBlockedReason === 'function' && src(expandRegion).includes('expansionBlockedReason')],
+      ['no static gold-bag building and one kind of bag', typeof GOLD_MAP_BAG_ITEM === 'undefined' && !src(spawnScenery).includes("type = 'COIN_POUCH'")],
+      ['shoes give a free move per pair', [...document.scripts].some(sc => sc.textContent.includes('TENNIS-SHOES-MOVE-01'))],
+      ['chest loot is a roll, presents are rare', [...document.scripts].some(sc => sc.textContent.includes('CHEST-LOOT-01')) && RANDOM_EVENT_CHOICES[0][1] <= 0.08],
+      ['version is a real version', /^\d+\.\d+\.\d+$/.test(GAME_VERSION)]
+    ];
+    const broken = ledger.filter(entry => !entry[1]).map(entry => entry[0]);
+    if(broken.length) problems.push('owner rules ledger broken: ' + broken.join('; ') + ' (OWNER-LEDGER-01)');
+  }
+  if(!(LOOT_KILL_ODDS.supply < 1/150) || !(LOOT_KILL_ODDS.gear < 1/900) || ITEM_RARITIES.EPIC.weight > 1 || ITEM_RARITIES.RARE.weight > 7 || ITEM_RARITIES.COMMON.weight < 64) problems.push('items are rarer than before: kill odds, per-wave cap and rare and epic weights are kept low (LOOT-RARER-01)');
+  if(!String(drawOneSceneryItem).includes('CLEAR-PIE-01') || String(drawOneSceneryItem).includes('r = size*0.62')) problems.push('clearing progress is a full circle that fills clockwise in 1970s colours behind the emoji, not a ring over it (CLEAR-PIE-01)');
+  if(FOOD_STAT_BY_KIND.MEAT !== 'str' || FOOD_STAT_BY_KIND.FRUIT !== 'int' || FOOD_STAT_BY_KIND.VEGETABLE !== 'dex' || !String(applyFoodItem).includes('grantFoodStat') || !String(onPointerEnd).includes('eatDroppedFood') || String(grantEventProp).includes('rollStimItem') && String(grantEventProp).split("item.type === 'PICNIC'")[1].split("WOODPILE")[0].includes('rollStimItem')) problems.push('food is eaten instantly on a stickman and raises stats: meat STR, fruit INT, vegetables DEX; a picnic basket is food only (FOOD-STATS-01)');
+  if(String(creditCoin).includes('grantDiamondReward') || !String(creditCoin).includes("'💎'") || typeof grantDiamondReward !== 'undefined') problems.push('a diamond turns into gold only and the gem flies up into the gold counter (DIAMOND-GOLD-01, DIAMOND-FLIES-01)');
+  if(typeof buyRation !== 'function' || typeof buyDrill !== 'function' || typeof merchantStock !== 'function' || !String(buildShopGrid).includes('GOLD-SINKS-01') || !String(serializeGameState).includes('marketBought')) problems.push('the Shop has more places to sink gold: a ration market, a training yard and a travelling merchant (GOLD-SINKS-01)');
+  if(typeof stickmanShadowEntry !== 'function' || !String(drawStickmanGroundShadow).includes('SHADOW-CACHE-01') && !String(drawStickmanGroundShadow).includes('owner') || typeof drawBatchedEnemyShadows !== 'function' || !String(drawDepthSortedLayer).includes('enemyShadowsBatched')) problems.push('fighter shadows are cached per pose and a crowd of enemies shares one batched shadow fill (SHADOW-CACHE-01, ENEMY-SHADOW-BATCH-01)');
+  if(typeof grantStatPoints !== 'function' || String(grantFoodStat).includes('tower[stat] =') || !String(grantStatPoints).includes('refreshProgressionMilestones') || false) problems.push('food and rations honour the stat caps and milestones through one shared grant (STAT-GRANT-01)');
+  if(!String(serializeGameState).includes('itemCosts') || !String(serializeGameState).includes('merchantSold') || String(pickItemLandingPoint).includes('fallback') || !String(queryNearby).includes('COLLISION-FAIR-01') || !String(flushHUDIfDirty).includes('HUD-TIMING-01')) problems.push('merchant prices and sold state are saved, item landings are always valid, crowded collision queries rotate fairly and the HUD time is measured (MERCHANT-SAVE-01, ITEM-ARC-01, COLLISION-FAIR-01, HUD-TIMING-01)');
+  { const goodState = JSON.parse(JSON.stringify(serializeGameState())); const badState = JSON.parse(JSON.stringify(goodState)); badState.pathWaypointTiles[1] = null; if(!validateSaveShape(goodState) || validateSaveShape(badState)) problems.push('a save with a broken route tile is rejected before the current game is touched (SAVE-ROUTE-CHECK-01)'); }
+  if(typeof startDowningCapture !== 'function' || !String(reportTowerDowned).includes('startDowningCapture') || typeof clearRunScopedStateForLoad !== 'function' || !String(restoreGameState).includes('rollback') || typeof projectileTargetLost !== 'function' || !String(CatCompanion).includes('sourceTowerId')) problems.push('loading is all or nothing and resets run state, recycled enemies and towers are never mistaken for the originals, and a stickman downing is captured for the debug log (LOAD-ALL-OR-NOTHING-01, GENERATION-CHECK-01, DOWNING-CAPTURE-01)');
   if(CONFIG.TOWERS.SWORDSMAN.baseCost !== 50 || CONFIG.TOWERS.ARCHER.baseCost !== 60 || CONFIG.TOWERS.MAGE.baseCost !== 70 || SCALING_COST_GROWTH < 2.25 || Math.round(CONFIG.TOWERS.SWORDSMAN.baseCost * SCALING_COST_GROWTH) !== 113) problems.push('starter costs must remain Swordsman 50, Archer 60, Mage 70, with same-class copies becoming substantially more expensive (STARTER-PRICE-LADDER-01)');
   if(applyClassCooldownBalance('SWORDSMAN', 1700 * 1.2) !== 2448 || applyClassCooldownBalance('ARCHER', 1430 * 1.2) !== 1716 || applyClassCooldownBalance('MAGE', 7800 * 1.2) !== 9360) problems.push('Swordsman must attack 20% slower while Archer and Mage retain their existing base cooldowns (SWORDSMAN-RATE-01)');
   { const entries = [{ id: 1, read: false }, { id: 2, read: false }];
@@ -3633,7 +3667,7 @@ function relocateTowersOffRoute(){
       }
       if(best) break;
     }
-    if(best){ tower.setGridPosition(best.gx, best.gy); spawnFloatingText(tower.x, tower.y - 20, 'Moved onto the grass', '#ffe082'); logGameEvent(itemHolderLabel(tower) + ' moved onto the grass at tile ' + best.gx + ',' + best.gy + ' because the road grew'); }
+    if(best){ tower.walkTo(best.gx, best.gy); spawnFloatingText(tower.x, tower.y - 20, 'Moved onto the grass', '#ffe082'); logGameEvent(itemHolderLabel(tower) + ' moved onto the grass at tile ' + best.gx + ',' + best.gy + ' because the road grew'); }
   }
 }
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
@@ -4102,7 +4136,12 @@ function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
 // ONE-EVENT-PER-END-01 (1.7.36): every expansion makes exactly one positive random event within 3 to 5 route squares of the spawn flags and one within
 // 3 to 5 squares of the finish carpet (fewer only if a hostile event already took a slot or no tile is free): a treasure chest, a supply crate, a potted
 // berry bush or a wandering farm animal. Nothing else spawns as a random extra.
-const RANDOM_EVENT_CHOICES = [['CHEST', 0.24], ['SUPPLY_CRATE', 0.22], ['BUSH', 0.14], ['LIVESTOCK', 0.25], ['CHANCE', 0.15]]; // CHANCE is a fountain or campfire when one is currently due
+// EVENT-VARIETY-01 (1.7.44): owner says there were too many presents. Chests are now the rarest event (8%), and when a farm animal or fountain event is not possible the fallback is a berry bush, not a chest.
+const EVENT_PROP_EMOJI = { PICNIC: '🧺', WOODPILE: '🪵', STONE_CAIRN: '🧱', BIRD_NEST: '🪺', MUSHROOMS: '🍄' };
+const EVENT_PROP_TYPES = new Set(['CHEST', 'SUPPLY_CRATE', 'BUSH', ...Object.keys(EVENT_PROP_EMOJI)]);
+// EVENT-VARIETY-01 (1.7.44): ten kinds of random event, all positive and easy: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (food and sometimes
+// a stim), a wood pile (wood), a stone cairn (stone), a bird nest (a few coins) and a mushroom patch (food). Chests are the rarest.
+const RANDOM_EVENT_CHOICES = [['CHEST', 0.06], ['SUPPLY_CRATE', 0.09], ['BUSH', 0.13], ['LIVESTOCK', 0.22], ['CHANCE', 0.18], ['PICNIC', 0.08], ['WOODPILE', 0.07], ['STONE_CAIRN', 0.06], ['BIRD_NEST', 0.06], ['MUSHROOMS', 0.05]]; // CHANCE is a fountain or campfire when one is currently due
 function pickRandomEventChoice(){
   let roll = Math.random();
   for(const [name, weight] of RANDOM_EVENT_CHOICES){ if(roll < weight) return name; roll -= weight; }
@@ -4134,18 +4173,19 @@ function maybeSpawnRandomEventsOnExpansion(revealedBorderKeys){
         continue;
       }
       if(animal) animal.active = false;
-      choice = 'CHEST';
+      choice = 'BUSH';
     }
     if(choice === 'CHANCE'){
       const due = Object.keys(CONFIG.CHANCE_STRUCTURES).filter(type => chanceStructureSpawnChance(type) > 0);
-      choice = due.length ? due[Math.floor(Math.random()*due.length)] : 'CHEST';
+      choice = due.length ? due[Math.floor(Math.random()*due.length)] : 'BUSH';
       if(due.length) chanceStructureDrySpells[choice] = 0;
     }
     // PROP-CAP-01 (1.7.40): found by the regression review. With only one to three grass tiles per expansion, two event props per expansion (chests, crates, bushes)
     // filled most of the grass (about 20 props on 24 tiles after ten expansions), leaving only 25% of it free to build on. A new prop is now skipped while the board already
     // holds as many unharvested props as 30% of the grass (never fewer than two); harvesting them, or a bigger map, brings events back.
-    if(choice === 'CHEST' || choice === 'SUPPLY_CRATE' || choice === 'BUSH'){
-      let props = 0; for(const item of sceneryMap.values()) if(item.type === 'CHEST' || item.type === 'SUPPLY_CRATE' || item.type === 'BUSH') props++;
+    if(choice === 'CHEST'){ let chests = 0; for(const item of sceneryMap.values()) if(item.type === 'CHEST') chests++; if(chests >= 2) choice = 'SUPPLY_CRATE'; } // never more than two unopened presents on the board
+    if(EVENT_PROP_TYPES.has(choice)){
+      let props = 0; for(const item of sceneryMap.values()) if(EVENT_PROP_TYPES.has(item.type)) props++;
       const propLimit = Math.max(2, Math.floor(nearPathTileSet.size * 0.3));
       if(props >= propLimit) continue;
     }
@@ -4669,6 +4709,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
   let clearMs = isSuper ? S.superClearMs : Math.round(S.minClearMs + sizeFrac*(S.maxClearMs-S.minClearMs));
   let goldYield = 0;
   if(type === 'BUSH'){ clearCost = 0; clearMs = 900; } // see CHANGELOG.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, POTTED-BUSH-FREE-01
+  if(EVENT_PROP_EMOJI[type]){ clearCost = 0; clearMs = 500; }
   if(type === 'SUPPLY_CRATE'){ clearCost = 10; clearMs = 500; } // BUSH-BERRIES-01 (1.6.93): negligible gold cost, quick clear — not subject to the 10x tree/rock clear time
   if(type === 'CHEST'){ clearCost = 0; clearMs = 500; goldYield = 40 + Math.floor(Math.random()*90); }
   if(type === 'ITEM'){ clearCost = 0; clearMs = 500; }
@@ -4681,6 +4722,9 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     type, isSuper, isSmallScenery, scale, clearCost, clearMs, goldYield,
     // CA131 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA131
     tallStretch: type === 'TREE' && Math.random() < 0.25 ? 1.15 + Math.random()*0.4 : 1,
+    // SCENERY-VARIETY-01 (1.7.44): owner says trees and stones were too alike. Trees come in three kinds, and trees and rocks are randomly mirrored and drawn a little wider or narrower.
+    variant: type === 'TREE' ? rollTreeVariant() : 0, flip: (type === 'TREE' || type === 'ROCK') && Math.random() < 0.5,
+    widthStretch: type === 'TREE' ? 0.9 + Math.random()*0.28 : type === 'ROCK' ? 0.82 + Math.random()*0.5 : 1,
     woodYield: type === 'TREE' ? baseYield : 0,
     stoneYield: type === 'ROCK' ? baseYield : 0,
     isClearing: false, clearStart: 0
@@ -4998,6 +5042,27 @@ function startClearingScenery(item){
   updateHUD();
 }
 
+function grantEventProp(item){
+  const x = item.x, y = item.y;
+  const dropFood = (count, pool) => { for(let n = 0; n < count; n++){ const food = pool[Math.floor(Math.random()*pool.length)]; const angle = n/count*Math.PI*2; spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, food, 'scenery'); } };
+  const anyFood = [...FOOD_BY_ID.values()].filter(food => food && food.isFood);
+  const berries = BERRY_FOOD_IDS.map(id => FOOD_BY_ID.get(id)).filter(Boolean);
+  if(item.type === 'PICNIC'){
+    // a picnic basket is food only: one meat, one fruit and one vegetable, so it raises STR, INT and DEX
+    for(const [n, kind] of ['MEAT', 'FRUIT', 'VEGETABLE'].entries()){ const angle = n/3*Math.PI*2; spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, pickFoodOfKind(kind), 'scenery'); }
+  } else if(item.type === 'WOODPILE'){
+    const amount = 30 + Math.floor(Math.random()*31); wood += amount; spawnFloatingText(x, y - 22, '+🪵' + amount, '#c8a46a'); updateHUD();
+  } else if(item.type === 'STONE_CAIRN'){
+    const amount = 25 + Math.floor(Math.random()*26); stone += amount; spawnFloatingText(x, y - 22, '+🪨' + amount, '#cfd8dc'); updateHUD();
+  } else if(item.type === 'BIRD_NEST'){
+    spawnChestCoinFountain(x, y - 6, 18 + Math.floor(Math.random()*26));
+    if(Math.random() < 0.2) dropFood(1, berries);
+  } else if(item.type === 'MUSHROOMS'){
+    dropFood(2, FOOD_ITEMS.filter(food => food.kind === 'VEGETABLE')); // a mushroom patch is vegetables, which raise DEX
+  }
+  spawnParticles(x, y, '#ffe082', 10);
+  playSound('wave');
+}
 function updateScenery(dt){
   for(let i = 0; i < clearingScenery.length;){
     const [key, item] = clearingScenery[i];
@@ -5019,6 +5084,8 @@ function updateScenery(dt){
           const angle = berry / berryCount * Math.PI * 2;
           spawnGroundItem(item.x + Math.cos(angle)*12, item.y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery');
         }
+      } else if(EVENT_PROP_EMOJI[item.type]){
+        grantEventProp(item); // EVENT-VARIETY-01 (1.7.44)
       } else if(item.type === 'SUPPLY_CRATE'){
         const stim = rollStimItem();
         spawnGroundItem(item.x, item.y - 4, stim, 'scenery');
@@ -5026,15 +5093,19 @@ function updateScenery(dt){
         spawnParticles(item.x, item.y, '#b0895a', 8);
         playSound('wave');
       } else if(item.type === 'CHEST'){
-        spawnChestCoinFountain(item.x, item.y - 6, item.goldYield);
-        { // CHEST-BAGS-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
-          const chestBagCount = 1 + Math.floor(Math.random()*2);
-          for(let bagIndex = 0; bagIndex < chestBagCount; bagIndex++){
-            const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
-            dropGoldBag(item.x + (bagIndex - (chestBagCount-1)/2)*16, item.y, bagGold);
+        { // CHEST-LOOT-01 (1.7.44): owner says gold bags from presents spawned too easily and every chest was alike. A chest is now a loot roll: coins alone (45%), coins and one
+          // gold bag (25%), two gold bags (5%), a stim (12%) or a handful of berries (13%), so a bag comes out of only 30% of chests and no two chests feel the same.
+          const lootRoll = Math.random();
+          const dropBags = count => { for(let bagIndex = 0; bagIndex < count; bagIndex++){ const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4)); dropGoldBag(item.x + (bagIndex - (count-1)/2)*16, item.y, bagGold); } };
+          if(lootRoll < 0.45){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); }
+          else if(lootRoll < 0.70){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); dropBags(1); }
+          else if(lootRoll < 0.75){ dropBags(2); }
+          else if(lootRoll < 0.87){ const stim = rollStimItem(); spawnGroundItem(item.x, item.y - 4, stim, 'scenery'); spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS); }
+          else {
+            const berryCount = 2 + Math.floor(Math.random()*2);
+            for(let berry = 0; berry < berryCount; berry++){ const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)]; const angle = berry / berryCount * Math.PI * 2; spawnGroundItem(item.x + Math.cos(angle)*12, item.y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery'); }
           }
         }
-        spawnFloatingText(item.x, item.y - 20, '🪙 Click coins to collect', '#ffd700');
         spawnParticles(item.x, item.y, '#ffd700', 12);
         playSound('wave');
         if(Math.random() < 0.08){
@@ -5241,7 +5312,40 @@ function drawItemUseEffects(ctx){
     ctx.restore();
   }
 }
+// FOOD-STATS-01 (1.7.47): owner decision — food is eaten instantly when dropped on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon:
+// meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX. Most foods give +1; the richer ones give more. The older small effects (healing, experience) stay as extras.
+const FOOD_STAT_BY_KIND = { MEAT: 'str', FRUIT: 'int', VEGETABLE: 'dex' };
+const FOOD_STAT_GAIN_BY_ID = { BACON: 1, DRUMSTICK: 1, STEAK: 2, MEAT_BONE: 3, HOT_PEPPER: 2 };
+// STAT-GRANT-01 (1.7.50): found by an outside review of the uploaded 1.7.49. Food and rations added stat points directly, skipping the per-stat cap (500), the combined cap (1000) and the
+// progression milestones (naming, mastery) that spending a point enforces; the review reproduced STR 499 to 501 and a total of 998 to 1000 without mastery. All stat grants that are
+// not spent from the point pool now go through this one function: it clamps to both caps, recomputes, checks evolution and infusion, and refreshes the milestones, and reports what was really granted.
+function grantStatPoints(tower, stat, amount){
+  if(!tower || tower.type === 'BARRICADE' || !['str', 'dex', 'int'].includes(stat)) return 0;
+  const room = Math.min(STAT_EFFECT_CAP - (tower[stat] || 0), STAT_TOTAL_CAP - getTrainedStatTotal(tower));
+  const granted = Math.max(0, Math.min(amount, room));
+  if(granted <= 0) return 0;
+  tower[stat] = (tower[stat] || 0) + granted;
+  logGameEvent(itemHolderLabel(tower) + ' gained ' + granted + ' ' + stat.toUpperCase() + ' (now ' + tower[stat] + ')');
+  tower.recomputeStats();
+  if(typeof tower.checkEvolution === 'function') tower.checkEvolution();
+  refreshProgressionMilestones(tower);
+  if(tower === selectedTower) updateInspectPanel();
+  return granted;
+}
+function grantFoodStat(foodDef, tower){
+  const stat = FOOD_STAT_BY_KIND[foodDef.kind]; if(!stat || !tower) return '';
+  const wanted = FOOD_STAT_GAIN_BY_ID[foodDef.id] || 1;
+  const granted = grantStatPoints(tower, stat, wanted);
+  return granted > 0 ? stat.toUpperCase() + ' +' + granted : stat.toUpperCase() + ' at its limit';
+}
+function eatDroppedFood(groundItem, tower){
+  groundItems = groundItems.filter(gi => gi !== groundItem);
+  applyFoodItem(groundItem.itemDef, tower);
+  trackGameEvent('food_used', { item: groundItem.itemDef.id, tower_type: tower.type, instant: true });
+  updateHUD();
+}
 function applyFoodItem(foodDef, nearTower){
+  const foodStatText = grantFoodStat(foodDef, nearTower);
   if(foodDef.kind === 'MEAT'){
     const requestedMaxGain = MEAT_MAXHP_BY_ID[foodDef.id] || 0;
     const roomLeftThisWave = Math.max(0, MEAT_MAXHP_CAP_PER_WAVE - waveMaxHpGainedFromMeat);
@@ -5252,14 +5356,14 @@ function applyFoodItem(foodDef, nearTower){
     const flatHeal = MEAT_HEAL_BY_ID[foodDef.id];
     const healed = Math.min(flatHeal + appliedMaxGain, maxLivesNow() - lives);
     if(healed > 0){ lives += healed; showLivesChange(healed); }
-    const meatParts = ['Lives +' + flatHeal];
+    const meatParts = foodStatText ? [foodStatText, 'Lives +' + flatHeal] : ['Lives +' + flatHeal];
     if(appliedMaxGain > 0) meatParts.push('Max lives +' + appliedMaxGain);
     if(overflowMaxGain > 0) meatParts.push('Gold +' + (overflowMaxGain*MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT));
     showItemUseFeedback(foodDef, nearTower, 'HEAL', appliedMaxGain > 0 ? 2 : 1, meatParts);
     return;
   }
   if(foodDef.kind === 'FRUIT'){
-    const fruitParts = [];
+    const fruitParts = foodStatText ? [foodStatText] : [];
     if(nearTower){ const xp = foodFruitXp(); gainTowerExp(nearTower, xp); fruitParts.push('XP +' + xp); }
     const tinyHeal = Math.min(1, maxLivesNow() - lives);
     if(tinyHeal > 0){ lives += tinyHeal; showLivesChange(tinyHeal); fruitParts.push('Lives +' + tinyHeal); }
@@ -5267,14 +5371,7 @@ function applyFoodItem(foodDef, nearTower){
     return;
   }
   if(foodDef.kind === 'VEGETABLE'){
-    const vegetableParts = [];
-    if(nearTower){
-      const stat = ['str','dex','int','armor'][Math.floor(Math.random()*4)];
-      if(stat === 'armor') nearTower.baseShieldPct = Math.min(0.9, (nearTower.baseShieldPct||0) + 0.01);
-      else nearTower[stat] = (nearTower[stat]||0) + 1;
-      nearTower.recomputeStats();
-      vegetableParts.push((stat === 'armor' ? 'Armor +1%' : stat.toUpperCase() + ' +1'));
-    }
+    const vegetableParts = foodStatText ? [foodStatText] : [];
     const tinyHeal = Math.min(2, maxLivesNow() - lives);
     if(tinyHeal > 0){ lives += tinyHeal; showLivesChange(tinyHeal); vegetableParts.push('Lives +' + tinyHeal); }
     showItemUseFeedback(foodDef, nearTower, 'GAIN', 0, vegetableParts);
@@ -5618,6 +5715,9 @@ function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the
 function sceneryVisualSize(item){
   return TILE_SIZE*0.72*(item.type==='SUPPLY_CRATE' ? Math.min(0.68,item.scale) : item.scale);
 }
+// Tree kinds: a leafy tree (58%), an evergreen (30%) and a palm (12%). Saved scenery keeps its kind because it is stored with the item.
+const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
+function rollTreeVariant(){ const roll = Math.random(); return roll < 0.58 ? 0 : roll < 0.88 ? 1 : 2; }
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
     const glow = ctx.createRadialGradient(item.x, item.y, 0, item.x, item.y, size*0.72);
@@ -5636,8 +5736,8 @@ function drawOneSceneryItem(ctx, key, item, size){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
-  const emoji = chanceDefinition ? chanceDefinition.emoji : item.type === 'TREE' ? '🌳' : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
-  drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',1,item.tallStretch || 1);
+  const emoji = chanceDefinition ? chanceDefinition.emoji : EVENT_PROP_EMOJI[item.type] ? EVENT_PROP_EMOJI[item.type] : item.type === 'TREE' ? (TREE_VARIANT_EMOJI[item.variant || 0] || '🌳') : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
+  drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',item.widthStretch || 1,item.tallStretch || 1);
   if(chanceDefinition){
     // CHANCE-STRUCTURE-GLOW-01 (1.6.91) — see CHANGELOG.md § [1.6.91]. A soft radial glow behind the
     // structure while it can actually help, replacing the earlier stroked ring outline. Steady, never
@@ -5669,13 +5769,28 @@ function drawOneSceneryItem(ctx, key, item, size){
     }
     return;
   }
-  const stretch = item.tallStretch || 1;
-  if(stretch !== 1){
+  if(item.isClearing){
+    // CLEAR-PIE-01 (1.7.46): owner request — the clearing progress is a full circle that fills clockwise like a clock wipe, in 1970s colours (mustard, burnt orange and brown
+    // stripes), drawn behind the emoji instead of a ring over it. It starts as a dim empty disc and the wedge sweeps round from the top until the circle is full.
+    const clearProgress = Math.min(1, Math.max(0, (presentationTime - item.clearStart)/item.clearMs)), pieRadius = size*0.64, startAngle = -Math.PI/2;
+    ctx.save();
+    ctx.fillStyle = 'rgba(58,32,10,0.42)'; ctx.beginPath(); ctx.arc(item.x, item.y, pieRadius, 0, Math.PI*2); ctx.fill();
+    const stripes = [[1, '#e3a82a'], [0.68, '#d2691e'], [0.36, '#7b3f14']];
+    for(const [fraction, color] of stripes){
+      ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(item.x, item.y);
+      ctx.arc(item.x, item.y, pieRadius*fraction, startAngle, startAngle + clearProgress*Math.PI*2); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(40,22,6,0.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(item.x, item.y, pieRadius, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+    ctx.font = Math.round(size) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
+  }
+  const stretch = item.tallStretch || 1, wide = item.widthStretch || 1, mirrored = !!item.flip;
+  if(stretch !== 1 || wide !== 1 || mirrored){
     // CA144 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA144
     const baseY = item.y + size*0.5;
     ctx.save();
     ctx.translate(item.x, baseY);
-    ctx.scale(1, stretch);
+    ctx.scale((mirrored ? -1 : 1) * wide, stretch);
     ctx.translate(-item.x, -baseY);
     ctx.fillText(emoji, item.x, item.y + 2);
     ctx.restore();
@@ -5684,18 +5799,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   }
 
   if(item.isClearing){
-    const progress = Math.min(1, (presentationTime-item.clearStart)/item.clearMs);
-    const r = size*0.62;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(item.x, item.y, r, 0, Math.PI*2); ctx.stroke();
-    ctx.strokeStyle = '#f1c40f';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(item.x, item.y, r, -Math.PI/2, -Math.PI/2 + progress*Math.PI*2);
-    ctx.stroke();
-    ctx.restore();
+    // progress is the clock-wipe pie drawn behind the emoji above (CLEAR-PIE-01)
   } else if(key === hoveredSceneryKey && sceneryClearCost(item)>0){
     // cost label only shown while hovered/tapped, not cluttering the map at all times
     ctx.font = 'bold 10px Verdana';
@@ -5910,6 +6014,7 @@ function maybeReportLag(){
 function reportTowerDowned(tower, cause){
   recordUnitDeath('tower downed',tower.type,cause);
   sessionTelemetry.towersDowned++; waveTelemetry.towersDowned++;
+  startDowningCapture(tower, cause);
   trackGameEvent('tower_downed', { tower_type: tower.type, tower_level: tower.level, cause, towers_standing: countActiveTowers() - countTowersDownedNow() });
 }
 function reportSessionSummary(){
@@ -5945,6 +6050,19 @@ function drawTowerScroll(ctx, t, scrollY){
   ctx.fillStyle = '#ffffff';
   ctx.fillText('📜', t.x, scrollY);
   ctx.restore();
+}
+// ENEMY-SHADOW-BATCH-01 (1.7.50): each enemy shadow was a skewed bitmap blit, which cost about 0.06 ms of drawing per enemy in the 150-enemy benchmark. When 24 or more enemies are on screen
+// their shadows are drawn together as soft ellipses in one fill instead (the same ground shadow, flatter), which also never double-darkens where shadows overlap in a crowd.
+let enemyShadowsBatched = false;
+const ENEMY_SHADOW_BATCH_MIN = 24;
+function drawBatchedEnemyShadows(ctx, actorLeft, actorRight, actorTop, actorBottom){
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath();
+  for(const e of enemyPool){
+    if(!e.active || e.x < actorLeft || e.x > actorRight || e.y < actorTop || e.y > actorBottom) continue;
+    const cx = e.x + e.radius*0.3, cy = e.y + e.radius*0.55, rx = e.radius*0.95, ry = e.radius*0.38;
+    ctx.moveTo(cx + rx, cy); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+  }
+  ctx.fill(); ctx.restore();
 }
 function drawDepthSortedLayer(ctx){
   refreshHeavyVisualLoadState();
@@ -5992,6 +6110,8 @@ function drawDepthSortedLayer(ctx){
     }
   }
   perfStats.visibleEnemies = visibleEnemyCount; perfStats.totalActiveEnemies = totalActiveEnemyCount;
+  enemyShadowsBatched = visibleEnemyCount >= ENEMY_SHADOW_BATCH_MIN;
+  if(enemyShadowsBatched) drawBatchedEnemyShadows(ctx, actorViewLeft, actorViewRight, actorViewTop, actorViewBottom);
   perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
   // CA148 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA148
   let worldMark = performance.now();
@@ -6846,6 +6966,7 @@ class SoundEngine{
     this.musicNextTime = this.ctx.currentTime + 0.08;
     const tick = () => {
       if(!this.musicStarted) return;
+      const schedulerStart = performance.now(); // SCHEDULER-TIMING-01 (1.7.51): the music timer runs outside the game frame, so its cost was invisible; it is now measured
       const now = this.ctx.currentTime;
       const stepSeconds = this.musicStepSeconds();
       if(this.musicPaused || document.hidden || this.ctx.state !== 'running'){
@@ -6868,6 +6989,9 @@ class SoundEngine{
           this.musicNextTime += this.musicStepSeconds();
         }
       }
+      const schedulerMs = performance.now() - schedulerStart;
+      this.debugCounters.musicSchedulerAvgMs = (this.debugCounters.musicSchedulerAvgMs || 0)*0.95 + schedulerMs*0.05;
+      this.debugCounters.musicSchedulerWorstMs = Math.max(this.debugCounters.musicSchedulerWorstMs || 0, schedulerMs);
       this.musicTimer = setTimeout(tick, 40);
     };
     tick();
@@ -7613,6 +7737,60 @@ function unlockAudio(){ audioEngine.unlock(); }
    GAME STATE
    ========================================================= */
 let gold = 150, lives = 100;
+// GOLD-SINKS-01 (1.7.49): owner asked for more places to sink gold. Three new Shop sections: a Market of rations (+2 STR, INT or DEX for the selected stickman, eaten at once, the price
+// rising with every one bought), a Training Yard (experience for the selected stickman, the price rising too) and a Travelling Merchant whose three gear items change every wave.
+const RATION_BASE_COST = 150, RATION_COST_GROWTH = 1.18, RATION_STAT_GAIN = 2;
+const DRILL_BASE_COST = 60, DRILL_COST_GROWTH = 1.12, DRILL_XP_MULTIPLIER = 3;
+const MERCHANT_STOCK_SIZE = 3, MERCHANT_BASE_PRICE = { UNCOMMON: 300, RARE: 800, EPIC: 2000 };
+const RATIONS = [ { stat: 'str', name: 'Meat Ration', icon: '🥩' }, { stat: 'int', name: 'Fruit Ration', icon: '🍇' }, { stat: 'dex', name: 'Veggie Ration', icon: '🥔' } ];
+let marketBought = { str: 0, int: 0, dex: 0 }, drillsBought = 0, merchantBoughtWave = -1, merchantBoughtIds = new Set();
+function rationCost(stat){ return Math.round(RATION_BASE_COST * Math.pow(RATION_COST_GROWTH, marketBought[stat] || 0)); }
+function drillCost(){ return Math.round((DRILL_BASE_COST + 10*waveIndex) * Math.pow(DRILL_COST_GROWTH, drillsBought)); }
+function merchantStock(){
+  const rng = createSeededRandom(waveSeedFor(waveRunSeed, waveIndex) ^ 0xA5A5A5);
+  const stock = [];
+  for(let n = 0; n < MERCHANT_STOCK_SIZE; n++){
+    const roll = rng(), rarity = roll < 0.6 ? 'UNCOMMON' : roll < 0.95 ? 'RARE' : 'EPIC';
+    const pool = DROP_ITEMS.filter(item => item.rarity === rarity);
+    if(!pool.length) continue;
+    const def = pool[Math.floor(rng()*pool.length)];
+    stock.push({ def, cost: Math.round(MERCHANT_BASE_PRICE[rarity] * (1 + waveIndex*0.02)) });
+  }
+  return stock;
+}
+function buyRation(stat){
+  const tower = selectedTower;
+  if(!tower || !tower.active || tower.type === 'BARRICADE' || tower.type === 'HACKER') return false;
+  const cost = rationCost(stat);
+  if(gold < cost) return false;
+  if(Math.min(STAT_EFFECT_CAP - (tower[stat] || 0), STAT_TOTAL_CAP - getTrainedStatTotal(tower)) <= 0){ showToast(stat.toUpperCase() + ' is already at its limit for this stickman'); playSound('ui_deny'); return false; } // never charge for nothing
+  gold -= cost; marketBought[stat] = (marketBought[stat] || 0) + 1;
+  const granted = grantStatPoints(tower, stat, RATION_STAT_GAIN);
+  spawnFloatingText(tower.x, tower.y - 30, stat.toUpperCase() + ' +' + granted, '#ffb74d'); playSound('item_eat', tower.x, undefined, tower.y);
+  updateInspectPanel(); updateHUD();
+  return true;
+}
+function buyDrill(){
+  const tower = selectedTower;
+  if(!tower || !tower.active || tower.type === 'BARRICADE' || tower.type === 'HACKER') return false;
+  const cost = drillCost();
+  if(gold < cost) return false;
+  gold -= cost; drillsBought++;
+  const xp = foodFruitXp() * DRILL_XP_MULTIPLIER; gainTowerExp(tower, xp);
+  spawnFloatingText(tower.x, tower.y - 30, 'XP +' + xp, '#7dd3fc'); playSound('click');
+  updateInspectPanel(); updateHUD();
+  return true;
+}
+function buyMerchantItem(index){
+  const tower = selectedTower; if(!tower || !tower.active) return false;
+  if(merchantBoughtWave !== waveIndex){ merchantBoughtWave = waveIndex; merchantBoughtIds = new Set(); }
+  const offer = merchantStock()[index];
+  if(!offer || merchantBoughtIds.has(index) || gold < offer.cost) return false;
+  const priced = Object.create(offer.def, { cost: { value: offer.cost, enumerable: true, writable: true } }); // the item definitions are frozen, so the price is set as an own property
+  if(!tower.buyItem(priced)) return false;
+  merchantBoughtIds.add(index); playSound('click'); updateInspectPanel(); updateHUD();
+  return true;
+}
 let livesBought = 0; // count of lives purchased this run — drives the exponential buy-life cost curve
 function buyLifeCost(){ return Math.round(30 * Math.pow(1.6, livesBought)); }
 let wood = 0, stone = 0;
@@ -7951,6 +8129,17 @@ function gameEventReport(){
   for(const gameEvent of gameEventLog) text += '  ' + itemLogClock(gameEvent.atMs) + '  wave ' + gameEvent.wave + '  ' + gameEvent.text + '\n';
   return text;
 }
+let groundItemsRestoring = false;
+function pickItemLandingPoint(x, y){
+  for(let attempt = 0; attempt < 14; attempt++){
+    const angle = Math.random()*Math.PI*2, distance = 30 + Math.random()*46;
+    const lx = x + Math.cos(angle)*distance, ly = y + Math.sin(angle)*distance*0.85;
+    const gx = Math.floor(lx/TILE_SIZE), gy = Math.floor(ly/TILE_SIZE);
+    if(pathCells.has(gx+','+gy) || !isInActiveRegion(gx, gy)) continue;
+    return { x: lx, y: ly };
+  }
+  return { x, y }; // no grass spot found: the item stays where it dropped, never on an invalid tile
+}
 function spawnGroundItem(x, y, itemDef, source){
   if(groundItems.length >= MAX_GROUND_ITEMS){
     // CA225 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA225
@@ -7961,7 +8150,11 @@ function spawnGroundItem(x, y, itemDef, source){
     }
     if(oldestIdx !== -1){ creditGroundBagGold(groundItems[oldestIdx]); itemLogReleased(groundItems[oldestIdx].itemDef, 'removed: ground item limit'); groundItems.splice(oldestIdx, 1); }
   }
-  const item = { id: idCounter++, x, y, itemDef: makeItemInstance(itemDef, source), spawnTime: presentationTime };
+  // ITEM-ARC-01 (1.7.44): owner decision — dropped items fly out in an arc and land at a random spot around where they dropped, preferably on grass and off the road, so they do not
+  // cover the path. Items restored from a save, and the very first frame of a loaded game, appear in place.
+  const landing = groundItemsRestoring ? { x, y } : pickItemLandingPoint(x, y); // reduced-motion players still land on grass, only the flight is skipped
+  const item = { id: idCounter++, x: landing.x, y: landing.y, itemDef: makeItemInstance(itemDef, source), spawnTime: presentationTime };
+  if(!PREFERS_REDUCED_MOTION && (landing.x !== x || landing.y !== y)){ item.flyFromX = x; item.flyFromY = y; item.flyStart = presentationTime; item.flyDur = 520; }
   if(item.itemDef.isGoldBag) item.goldBagLifespanMs = GOLD_BAG_LIFESPAN_MS;
   groundItems.push(item);
   maybeShowItemGuide();
@@ -9057,6 +9250,7 @@ function serializeGameState(){
     isMastered: t.isMastered, namingUnlocked: t.namingUnlocked, masteryXpRemainder: t.masteryXpRemainder || 0, elementState: t.elementState,
     spec: t.spec || null,
     itemIds: t.equippedItems.map(i => i.id),
+    itemCosts: t.equippedItems.map(i => i.cost || 0), // MERCHANT-SAVE-01 (1.7.50): the price actually paid, so the half refund survives a reload
     legacyLuckyCoinSlots: t.equippedItems.map((item, index) => item.legacyLuckyCoin ? index : -1).filter(index => index >= 0),
     attunement: t.attunement || null,
     hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
@@ -9075,7 +9269,8 @@ function serializeGameState(){
     looseInventory: groundItems.filter(gi=>!gi.itemDef.isGoldBag && !gi.itemDef.isMapScroll && itemDefinitionForSavedId(gi.itemDef.id)).map(gi=>({x:gi.x,y:gi.y,itemId:gi.itemDef.id,age:Math.max(0,presentationTime-gi.spawnTime),legacyLuckyCoin:!!gi.itemDef.legacyLuckyCoin})),
     livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].isTroll).slice(0,LIVESTOCK_MAX_ON_BOARD).map(e=>({type:e.type,x:e.x,y:e.y,radius:e.radius,healthFraction:e.hp/e.maxHp})),
     looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,fromGoldBag:!!c.fromGoldBag,age:c.age,lifespan:c.lifespan})),
-    gold, lives, livesBought, waveIndex:stealthRun && waveIndex===10 && !stealthSantaDefeated?9:waveIndex, wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
+    gold, lives, livesBought, marketBought, drillsBought, merchantSold:{ wave: merchantBoughtWave, indexes: [...merchantBoughtIds] }, waveIndex:(stealthRun && waveIndex===10 && !stealthSantaDefeated) ? 9 : Math.max(0, waveIndex - (waveState !== 'IDLE' ? 1 : 0)), waveReplayed: waveState !== 'IDLE', freeExpansionOwed, hacksUsed, // WAVE-SAVE-01 (1.7.51): a save made in the middle of a wave resumes by starting that wave again (it used to skip it)
+    wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, firstTenEnemyKillCount, firstMapScrollDropped, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
     globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions,
     latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
@@ -9118,7 +9313,31 @@ function migrateLegacyAttunement(t){
   if(topStats.length !== 1) return null; // exact tie among qualifying stats — leave unattuned rather than arbitrarily picking one
   return ATTUNEMENTS[topStats[0][0]];
 }
+// LOAD-ALL-OR-NOTHING-01 (1.7.51): an outside review found that loading did not replace every piece of run state (a pending free expansion, hack toggles, the marked enemy, speech bubbles
+// holding towers from the old game, the move mode) and that an error half way through loading left the current game cleared. Loading now resets every run-scoped variable first, and if loading throws,
+// the game that was running is put back from a copy taken before anything was touched.
+function clearRunScopedStateForLoad(){
+  freeExpansionOwed = 0; hackGodMode = false; hackFreeBuild = false; hacksUsed = false; hackMenuOpenFor = null;
+  if(typeof setMarkedTarget === 'function') setMarkedTarget(null); markedTargetEnemy = null;
+  for(const bark of barkPool){ bark.active = false; bark.tower = null; bark.text = ''; }
+  if(moveModeTower) exitMoveMode();
+  pendingSlotPress = null; hoveredSceneryKey = null; pendingRunRewards = [];
+  lootWaveTracked = -1; lootRegularDropsThisWave = 0;
+  merchantBoughtWave = -1; merchantBoughtIds = new Set();
+}
 function restoreGameState(state){
+  groundItemsRestoring = true;
+  let rollback = null;
+  try{ rollback = JSON.parse(JSON.stringify(serializeGameState())); }catch(e){ rollback = null; }
+  try{
+    clearRunScopedStateForLoad();
+    return restoreGameStateInner(state);
+  } catch(error){
+    if(rollback){ try{ clearRunScopedStateForLoad(); restoreGameStateInner(rollback); }catch(secondError){} }
+    throw error;
+  } finally { groundItemsRestoring = false; }
+}
+function restoreGameStateInner(state){
   for(const e of enemyPool) e.active = false;
   enemyPresenceDirty = true;
   for(const t of towerPool) t.active = false;
@@ -9145,7 +9364,9 @@ function restoreGameState(state){
 
   stealthRun=typeof state.stealthRun==='boolean'?state.stealthRun:window.analyticsConsentChoice==='denied';
   stealthSantaSpawned=false;stealthSantaDefeated=false;stealthEncounterEnding=false;
-  gold = state.gold; lives = state.lives; livesBought = state.livesBought || 0; waveIndex = state.waveIndex;
+  gold = state.gold; lives = state.lives; livesBought = state.livesBought || 0; marketBought = Object.assign({ str: 0, int: 0, dex: 0 }, state.marketBought || {}); drillsBought = state.drillsBought || 0;
+  freeExpansionOwed = Number.isInteger(state.freeExpansionOwed) && state.freeExpansionOwed > 0 ? Math.min(state.freeExpansionOwed, 10) : 0; hacksUsed = !!state.hacksUsed;
+  merchantBoughtWave = (state.merchantSold && Number.isFinite(state.merchantSold.wave)) ? state.merchantSold.wave : -1; merchantBoughtIds = new Set(((state.merchantSold && state.merchantSold.indexes) || []).filter(Number.isInteger)); waveIndex = state.waveIndex;
   firstMapScrollDropped = state.firstMapScrollDropped !== undefined ? !!state.firstMapScrollDropped : ((state.wavesCompleted || 0) > 0 || (state.waveIndex || 0) > 0);
   firstTenEnemyKillCount = Number.isFinite(state.firstTenEnemyKillCount) ? state.firstTenEnemyKillCount : (firstMapScrollDropped ? FIRST_MAP_DROP_KILL : 0);
   hasDefibrillator = !!state.hasDefibrillator;
@@ -9248,6 +9469,8 @@ function restoreGameState(state){
       const def = itemDefinitionForSavedId(id);
       if(!def) return null;
       const restored = makeItemInstance(def, 'restored from save');
+      const paid = Array.isArray(td.itemCosts) ? td.itemCosts[index] : undefined;
+      if(Number.isFinite(paid) && paid > 0 && paid !== restored.cost) Object.defineProperty(restored, 'cost', { value: paid, enumerable: true, writable: true }); // MERCHANT-SAVE-01
       return applyLegacyLuckyCoinMigration(restored, id, legacyLuckyCoinSlots.has(index)); // retain the retired coin's +1 STR through later saves
     }).filter(Boolean);
     for(const restored of t.equippedItems) itemLogHeldBy(restored, t);
@@ -9317,6 +9540,10 @@ function validateSaveShape(state){
   if(state.harvestedTiles !== undefined && !Array.isArray(state.harvestedTiles)) return false;
   if(state.itemTypesUsed !== undefined && !Array.isArray(state.itemTypesUsed)) return false;
   if(state.goldBags !== undefined && !Array.isArray(state.goldBags)) return false;
+  // SAVE-ROUTE-CHECK-01 (1.7.50): an outside review found a null route tile passed this check and then threw in the middle of loading, after the current game had already been cleared.
+  // Every route tile is now checked here, before anything is touched, as a whole number inside the map, and consecutive tiles must touch.
+  if(!Array.isArray(state.pathWaypointTiles) || state.pathWaypointTiles.length < 2 || state.pathWaypointTiles.some(tile => !tile || !Number.isInteger(tile.x) || !Number.isInteger(tile.y) || tile.x < 0 || tile.y < 0 || tile.x >= COLS || tile.y >= ROWS)) return false;
+  for(let k = 1; k < state.pathWaypointTiles.length; k++){ const a = state.pathWaypointTiles[k-1], b = state.pathWaypointTiles[k]; if(Math.abs(a.x-b.x) + Math.abs(a.y-b.y) !== 1) return false; }
   if(state.expansionItems !== undefined && (!Array.isArray(state.expansionItems) || state.expansionItems.some(item => !item || !Number.isFinite(item.x) || !Number.isFinite(item.y) || ![FIRST_MAP_SCROLL_ITEM.id, LEGACY_MAP_BAG_ID].includes(item.itemId)))) return false;
   return true;
 }
@@ -9329,7 +9556,7 @@ function loadSaveFileText(text){
     restoreGameState(state);
     const versionNote = (state.gameVersion && state.gameVersion !== GAME_VERSION)
       ? ' — from v' + state.gameVersion + ', this is v' + GAME_VERSION : '';
-    showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')' + versionNote);
+    showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')' + versionNote + (state.waveReplayed ? ' - the unfinished wave starts again' : ''));
     trackGameEvent('save_loaded', { save_version: state.gameVersion || 'unknown', waves_completed: wavesCompleted });
   } catch(err){
     showToast('⚠️ Could not read that save file');
@@ -10841,7 +11068,7 @@ class Enemy{
       ctx.fillStyle = '#ffffff';
       ctx.fillText('💀', this.x, markerY);
     }
-    drawEmojiGroundShadow(ctx,this.emoji,this.x,this.y,this.radius*2,'serif',1);
+    if(!enemyShadowsBatched) drawEmojiGroundShadow(ctx,this.emoji,this.x,this.y,this.radius*2,'serif',1); // ENEMY-SHADOW-BATCH-01
     const speed = Math.hypot(this.vx, this.vy);
     let bumpDx = 0, bumpDy = 0;
     if(this.touchingBarricade){
@@ -10948,7 +11175,23 @@ class Enemy{
 class Tower{
   constructor(){ this.active = false; }
   // CA379 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA379
+  // MOVE-WALKS-01 (1.7.44): owner decision — when a stickman is moved to another tile he walks there with the walking animation instead of teleporting. The tile is reserved
+  // at once (so nothing else can be placed on it), the body travels there at a steady pace, and he cannot act until he arrives.
+  walkTo(gridX, gridY){
+    this.gridX = gridX; this.gridY = gridY;
+    this.walkTargetX = gridX*TILE_SIZE + TILE_SIZE/2; this.walkTargetY = gridY*TILE_SIZE + TILE_SIZE/2;
+    this.isWalking = true; this.walkPhase = this.walkPhase || 0; this.target = null;
+    this.walkSpeed = Math.max(WALK_SPEED_PX_PER_MS, Math.hypot(this.walkTargetX - this.x, this.walkTargetY - this.y)/2400); // a long walk never takes more than about 2.4 seconds
+    invalidateSpawnFlags();
+  }
+  advanceWalk(dt){
+    const dx = this.walkTargetX - this.x, dy = this.walkTargetY - this.y, dist = Math.hypot(dx, dy), step = (this.walkSpeed || WALK_SPEED_PX_PER_MS) * dt;
+    this.walkPhase = (this.walkPhase || 0) + dt*0.022;
+    if(dist <= step || dist < 0.5){ this.x = this.walkTargetX; this.y = this.walkTargetY; this.isWalking = false; this.walkPhase = undefined; invalidateSpawnFlags(); return; }
+    this.x += dx/dist*step; this.y += dy/dist*step;
+  }
   setGridPosition(gridX, gridY){
+    this.isWalking = false; this.walkPhase = undefined;
     this.gridX = gridX; this.gridY = gridY;
     this.x = gridX*TILE_SIZE + TILE_SIZE/2;
     this.y = gridY*TILE_SIZE + TILE_SIZE/2;
@@ -11448,6 +11691,7 @@ class Tower{
 
   update(dt, enemyHash){
     this.updateHealthStatus(dt);
+    if(this.isWalking){ this.advanceWalk(dt); return; } // MOVE-WALKS-01: no targeting or attacking while walking
     if(this.type === 'HACKER') return; // HACKER-01: never targets, attacks, trains or promotes
     if(this.disabledUntil > gameTime || this.disabledWavesLeft > 0) return; // overrun by a breakaway enemy — can't act until it recovers
     const iceMult = this.iceSlowUntil > gameTime ? 0.5 : 1;
@@ -11737,9 +11981,9 @@ class Tower{
     p.elementColor = (ELEMENT_VISUALS[p.elementKey] || {}).color || null;
     p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : this.type === 'CAT_SNAPPER' ? '#2a2a2a' : this.type === 'NECROMANCER' ? '#5a2d82' : this.type === 'BLOW_GUNNER' ? '#c8e8f0' : this.type === 'PROTON' ? '#a855f7' : this.type === 'DARK_MATTER' ? '#1a1a2e' : this.type === 'QUASAR' ? '#fdf6d8' : '#f1c40f';
     // CA434 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA434
-    p.trackedTarget = null; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
+    p.trackedTarget = null; p.trackedId = undefined; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
     if(!p.splashRadius && this.target){
-      p.trackedTarget = this.target;
+      p.trackedTarget = this.target; p.trackedId = this.target ? this.target.id : undefined;
       const willHit = Math.random() >= (this.missChance + windMissPenalty(this));
       if(!willHit){
         // CA436 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA436
@@ -11830,7 +12074,7 @@ class Tower{
     p.effectType = null; // reset — see fireProjectile()'s identical reset for why this must be unconditional on every fire path
     p.color = '#9aa0a6';
     // CA439 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA439
-    p.trackedTarget = t;
+    p.trackedTarget = t; p.trackedId = t ? t.id : undefined;
     const willHit = Math.random() >= this.missChance;
     p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
     if(!willHit){
@@ -12126,7 +12370,7 @@ class Tower{
     const hasTargetPose = !!this.target || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
-    const extra = { skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const extra = { walkPhase: this.isWalking ? (this.walkPhase || 0) : undefined, skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     // ELEMENT-TINT-01 (1.6.86): a locked attunement or mixed element tints skin toward that element,
     // blended on top of this tower's own native colors rather than replacing them outright.
     const activeElement = towerElement(this);
@@ -12168,7 +12412,7 @@ class Tower{
       ctx.shadowBlur = 0;
     }
 
-    if(graphicsQuality === 'high') drawStickmanGroundShadow(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
+    if(graphicsQuality === 'high') drawStickmanGroundShadow(ctx, this.x, this.y, drawAngle, this.level, this.type, extra, this);
 
     const isDisabled = this.disabledUntil > gameTime || this.disabledWavesLeft > 0;
     if(isDisabled){
@@ -12349,9 +12593,14 @@ function projectileStickKind(sourceTower){
   return Object.prototype.hasOwnProperty.call(PROJECTILE_AMMO_BY_TOWER, sourceTower.type) ? PROJECTILE_AMMO_BY_TOWER[sourceTower.type] : null;
 }
 function bleedSourceAllowed(sourceTower){ return !!projectileStickKind(sourceTower); }
+// GENERATION-CHECK-01 (1.7.51): enemies, towers and projectiles live in recycled pools, so a held reference can end up pointing at a different, newer occupant of the same slot. An outside
+// review reproduced a projectile reserving damage on, and homing onto, an enemy that was not the one it was fired at, and a cat attacking with a recycled tower's identity. Every enemy and
+// tower already gets a fresh id when it is created, so each holder now remembers the id it was given and treats a different id as "the target is gone".
+function projectileTargetLost(p){ return !!(p.trackedTarget && (!p.trackedTarget.active || p.trackedTarget.id !== p.trackedId)); }
 class Projectile{
   constructor(){ this.active = false; }
   update(dt, enemyHash){
+    if(this.trackedTarget && this.trackedTarget.active && this.trackedTarget.id !== this.trackedId) this.trackedTarget = { active: false, id: -1, x: this.x, y: this.y, radius: 0 }; // the slot was recycled: behave as if the target died
     const prevX = this.x, prevY = this.y;
     this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     if(this.isAxe) this.spinAngle = (this.spinAngle||0) + dt*0.018;
@@ -12659,7 +12908,8 @@ function tallyCommittedProjectileDamage(){
   committedProjectileTargets.clear();
   for(const p of projectilePool){
     if(p.active && p.trackedTarget && !p.isGuaranteedMiss && p.trackedTarget.active){
-      if(!committedProjectileTargets.has(p.trackedTarget)){ p.trackedTarget.incomingDamage = 0; committedProjectileTargets.add(p.trackedTarget); }
+      if(p.trackedTarget.id !== p.trackedId) continue; // GENERATION-CHECK-01: never reserve damage on a recycled enemy
+    if(!committedProjectileTargets.has(p.trackedTarget)){ p.trackedTarget.incomingDamage = 0; committedProjectileTargets.add(p.trackedTarget); }
       p.trackedTarget.incomingDamage += p.damage || 0;
     }
   }
@@ -13980,7 +14230,7 @@ function drawHeartHudFlights(ctx){
 }
 const goldHudFlights=Array.from({length:32},()=>({active:false}));
 let goldHudFlightCount=0, lastGoldHudFlightAt=-1e9;
-function launchGoldHudFlight(x,y){
+function launchGoldHudFlight(x,y,icon){
   if(PREFERS_REDUCED_MOTION || (gameState!=='PLAYING' && gameState!=='PAUSED') || document.hidden) return;
   let flight=goldHudFlights.find(f=>!f.active);
   if(!flight){
@@ -13989,7 +14239,7 @@ function launchGoldHudFlight(x,y){
   }
   flight.x=x*camera.zoom+camera.x;flight.y=y*camera.zoom+camera.y;
   flight.startWidth=CANVAS_W;flight.startHeight=CANVAS_H;
-  flight.age=0;flight.count=1;flight.active=true;goldHudFlightCount++;lastGoldHudFlightAt=presentationTime;
+  flight.age=0;flight.count=1;flight.icon=icon||null;flight.active=true;goldHudFlightCount++;lastGoldHudFlightAt=presentationTime;
 }
 function updateGoldHudFlights(dt){
   if(!goldHudFlightCount) return;
@@ -14007,7 +14257,9 @@ function drawGoldHudFlights(ctx){
     const startX=f.x*CANVAS_W/f.startWidth,startY=f.y*CANVAS_H/f.startHeight;
     const x=startX+(tx-startX)*p+arc*18,y=startY+(ty-startY)*p-arc*38;
     ctx.globalAlpha=t>0.88 ? (1-t)/0.12 : 1;
-    ctx.fillStyle='#fff';ctx.fillText('🪙',x,y);
+    ctx.fillStyle='#fff';
+    if(f.icon){ ctx.font='20px sans-serif'; ctx.fillText(f.icon,x,y); ctx.font='14px sans-serif'; } // DIAMOND-FLIES-01 (1.7.48): a diamond flies to the gold counter as the gem itself
+    else ctx.fillText('🪙',x,y);
     if(f.count>1){ctx.font='bold 10px sans-serif';ctx.fillStyle='#ffe082';ctx.fillText('×'+f.count,x+10,y+8);ctx.font='14px sans-serif';}
   }
   ctx.restore();
@@ -14015,12 +14267,13 @@ function drawGoldHudFlights(ctx){
 // GOLD-FLIGHT-CLICK-01 (1.7.36): coins fly up to the gold counter only when the player clicks a coin or opens a bag.
 function creditCoin(c, textColor, withFlight){
   if(c.isDiamond){
-    // DIAMOND-GOLD-01 (1.7.42): owner decision — a diamond is worth 1 to 100 gold when clicked, on top of the permanent passive upgrade it already gave.
+    // DIAMOND-GOLD-01 (1.7.48): owner decision — a clicked diamond turns into 1 to 100 gold, and nothing else (the permanent passive upgrade is gone), and the gem itself flies up into the gold counter.
     const diamondGold = DIAMOND_MIN_GOLD + Math.floor(Math.random()*(DIAMOND_MAX_GOLD - DIAMOND_MIN_GOLD + 1));
     gold += diamondGold;
-    if(withFlight) launchGoldHudFlight(c.x, c.y);
+    if(withFlight) launchGoldHudFlight(c.x, c.y, '💎');
     spawnFloatingText(c.x, c.y - 34, '+💎' + diamondGold, '#8ee8ff');
-    grantDiamondReward(c.x, c.y);
+    spawnParticles(c.x, c.y, '#8ee8ff', 10);
+    playSound('wave');
     updateHUD();
     return;
   }
@@ -14028,14 +14281,6 @@ function creditCoin(c, textColor, withFlight){
   if(withFlight) launchGoldHudFlight(c.x,c.y);
   if(textColor) spawnFloatingText(c.x, c.y - 10, '+💰' + c.value, textColor);
   updateHUD();
-}
-function grantDiamondReward(x, y){ // DIAMOND-COIN-01 (1.6.157): the rare diamond from a bag gives what the old diamond scenery gave, a permanent passive upgrade
-  const upgrade = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
-  globalPassiveCounts[upgrade.id] = (globalPassiveCounts[upgrade.id]||0) + 1;
-  for(const t of towerPool) if(t.active) t.recomputeStats();
-  spawnFloatingText(x, y - 20, '✨ ' + upgrade.name, '#a78bfa', ITEM_POPUP_LIFE_MS);
-  spawnParticles(x, y, '#a78bfa', 12);
-  playSound('wave');
 }
 function findPointClearOfScenery(x, y){
   for(let radius = 24; radius <= 144; radius += 24){
@@ -14140,7 +14385,6 @@ function openGoldBag(groundItem, x, y){
   gold += bagGold;
   launchGoldHudFlight(x,y);
   spawnFloatingText(x, y - 16, '+💰' + bagGold, '#ffd700');
-  spawnFloatingText(x, y - 32, '🪙 more coins to grab!', '#ffe082'); // BAG-PAYOUT-TEXT-01 (1.7.36): the bag pays immediately, then its coins are a second reward
   spawnGoldBagCoinBurst(x, y);
   rollMapFromBag(x, y); // ONE-KIND-OF-BAG-01: the luck roll
   groundItems = groundItems.filter(gi => gi !== groundItem);
@@ -14190,7 +14434,7 @@ function updateCoinPickups(dt){
     if(!c.active) continue;
     c.age += dt;
     if(c.age >= c.lifespan){
-      if(!c.isDiamond) creditCoin(c, null);
+      if(!c.isDiamond) creditCoin(c, null, true); // COIN-FADE-FLIGHT-01 (1.7.44): owner decision — a coin that fades out on its own also flies up to the gold counter
       // CA562 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA562
       c.active = false;
       expiredCoin = true;
@@ -14381,8 +14625,8 @@ function drawCat(ctx, x, y, rotation, scale, options){
 class CatCompanion{
   constructor(){ this.active = false; }
   spawn(sourceTower, targetEnemy, x, y){
-    this.sourceTower = sourceTower;
-    this.targetEnemy = targetEnemy;
+    this.sourceTower = sourceTower; this.sourceTowerId = sourceTower.id;
+    this.targetEnemy = targetEnemy; this.targetId = targetEnemy ? targetEnemy.id : undefined;
     this.x = x; this.y = y;
     this.age = 0;
     this.lifetime = sourceTower.catLifetime || 3500;
@@ -14394,11 +14638,12 @@ class CatCompanion{
   }
   update(dt, enemyHash){
     this.age += dt;
-    if(this.age >= this.lifetime){ this.active = false; return; }
-    if(!this.targetEnemy || !this.targetEnemy.active){
+    if(this.age >= this.lifetime || !this.sourceTower.active || this.sourceTower.id !== this.sourceTowerId){ this.active = false; return; } // GENERATION-CHECK-01: the owner is gone or its slot was reused
+    if(!this.targetEnemy || !this.targetEnemy.active || this.targetEnemy.id !== this.targetId){
       // CA568 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA568
       this.targetEnemy = randomActiveEnemy(queryNearby(enemyHash, this.x, this.y, 160));
       if(!this.targetEnemy){ this.active = false; return; }
+      this.targetId = this.targetEnemy.id;
     }
     const orbitAngle = gameTime*0.004 + this.phase;
     const desiredX = this.targetEnemy.x + Math.cos(orbitAngle)*13;
@@ -14427,7 +14672,7 @@ const catPool = Array.from({length: MAX_ACTIVE_CATS}, () => new CatCompanion());
 class SkeletonMinion{
   constructor(){ this.active = false; }
   spawn(sourceTower, x, y, damage, cooldown, range){
-    this.sourceTower = sourceTower;
+    this.sourceTower = sourceTower; this.sourceTowerId = sourceTower.id;
     this.x = x; this.y = y;
     this.damage = damage; this.attackCooldown = cooldown; this.range = range;
     this.attackTimer = Math.random()*cooldown; // staggered so a freshly-raised band doesn't all swing in lockstep on the very first tick
@@ -14436,6 +14681,7 @@ class SkeletonMinion{
     this.active = true;
   }
   update(dt, enemyHash){
+    if(!this.sourceTower.active || this.sourceTower.id !== this.sourceTowerId){ this.active = false; return; } // GENERATION-CHECK-01
     this.attackProgress = Math.max(0, this.attackProgress - dt/220);
     this.attackTimer -= dt;
     if(this.attackTimer > 0) return;
@@ -14540,18 +14786,49 @@ function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
 const stickmanShadowMask = document.createElement('canvas');
 stickmanShadowMask.width=256; stickmanShadowMask.height=256;
 const stickmanShadowCtx = stickmanShadowMask.getContext('2d');
-function drawStickmanGroundShadow(ctx,x,y,angle,level,type,extra){
+// SHADOW-CACHE-01 (1.7.50): found by benchmarking old versions against the current one on the same scene. The fighter shadow redrew the whole stickman into a 256 by 256 canvas, filled it
+// black and blitted it every frame for every fighter, which cost about 1.7 ms of drawing per fighter in the benchmark (8 fighters 13 ms; 1.6.159, with no such shadow, spent 4 ms on them).
+// Each fighter now keeps its own silhouette canvas, redrawn only when its pose actually changes (angle in 6 degree steps, swing, lunge, walk phase) and at most every 60 ms,
+// so an idle fighter costs one cheap blit per frame. A small least-recently-used set bounds the memory.
+const stickmanShadowCache = new Map(), STICKMAN_SHADOW_CACHE_MAX = 48, STICKMAN_SHADOW_REFRESH_MS = 60;
+function stickmanShadowEntry(owner){
+  let entry = stickmanShadowCache.get(owner.id);
+  if(!entry){
+    if(stickmanShadowCache.size >= STICKMAN_SHADOW_CACHE_MAX){ let oldestId = null, oldestUse = Infinity; for(const [id, candidate] of stickmanShadowCache) if(candidate.used < oldestUse){ oldestUse = candidate.used; oldestId = id; } stickmanShadowCache.delete(oldestId); }
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
+    entry = { canvas, ctx: canvas.getContext('2d'), key: '', at: -1e9, used: 0 };
+    stickmanShadowCache.set(owner.id, entry);
+  }
+  entry.used = presentationTime;
+  return entry;
+}
+function drawStickmanGroundShadow(ctx,x,y,angle,level,type,extra,owner){
   const bx=extra.buildScaleX || (JOB_BUILD[type] && JOB_BUILD[type].scaleX) || 1;
   const by=extra.buildScaleY || (JOB_BUILD[type] && JOB_BUILD[type].scaleY) || 1;
   const ls=extra.isLegendary ? 1.1 : 1;
   const ms=Math.min(1,96/(80*Math.max(bx,by)*STICKMAN_SCALE*ls));
-  const m=stickmanShadowCtx;
-  m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
-  m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
-  m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
+  let mask = stickmanShadowMask;
+  if(owner){
+    const entry = stickmanShadowEntry(owner);
+    const key = type + '|' + level + '|' + Math.round(angle*10) + '|' + Math.round((extra.swingProgress||0)*6) + '|' + Math.round(extra.lungeAmt||0) + '|' + (extra.spec||'') + '|' + (extra.hasTarget ? 1 : 0) + '|' + (extra.walkPhase === undefined ? '' : Math.round(extra.walkPhase*2)) + '|' + (extra.headItem||'') + '|' + Math.round(bx*20) + '|' + Math.round(by*20);
+    if(entry.key !== key && presentationTime - entry.at >= STICKMAN_SHADOW_REFRESH_MS){
+      const m = entry.ctx;
+      m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
+      m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
+      m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
+      entry.key = key; entry.at = presentationTime;
+    }
+    mask = entry.canvas;
+  } else {
+    const m=stickmanShadowCtx;
+    m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
+    m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
+    m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
+  }
   const footY=20*by*STICKMAN_SCALE*ls;
   ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+footY); ctx.transform(1,0,-0.55,0.34,0,0);
-  ctx.drawImage(stickmanShadowMask,-128/ms,-128/ms-footY,256/ms,256/ms); ctx.restore();
+  // only the part of the 256 canvas the silhouette can occupy is blitted (measured across all 29 fighter types: x -46..46, y -69..32 from the centre), a quarter of the area
+  ctx.drawImage(mask, 64, 48, 128, 120, (-64)/ms, (-80)/ms-footY, 128/ms, 120/ms); ctx.restore();
 }
 function drawMageStaffLight(ctx,x,y,radius,shadowPass,glow){
   radius*=1.2;
@@ -14565,6 +14842,7 @@ function drawMageStaffLight(ctx,x,y,radius,shadowPass,glow){
   ctx.fillStyle=shadowPass ? '#000' : '#fff';
   ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
 }
+const WALK_SPEED_PX_PER_MS = 0.17;
 function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinMain = (extra && extra.skinMain) || '#f5f0e6';
   const skinShade = (extra && extra.skinShade) || '#cfc8b8';
@@ -14577,6 +14855,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   ctx.translate((graphicsQuality==='high' ? x : Math.round(x))+0.5, (graphicsQuality==='high' ? y : Math.round(y))+0.5);
   const lunge = (extra && extra.lungeAmt) || 0;
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
+  if(extra && extra.walkPhase !== undefined) ctx.translate(0, -Math.abs(Math.sin(extra.walkPhase))*1.6);
   if(extra && !extra.hasTarget){
     // CA572 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA572
     const breathPhase = (x*0.7 + y*0.3) % 1000;
@@ -14626,8 +14905,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   // legs: shaded tone for a subtle two-tone look
   ctx.strokeStyle = skinShade;
   ctx.beginPath();
-  ctx.moveTo(0,4); ctx.lineTo(-8,20);
-  ctx.moveTo(0,4); ctx.lineTo(8,20);
+  const legSwing = (extra && extra.walkPhase !== undefined) ? Math.sin(extra.walkPhase)*7 : 0; // walking: the feet swap places each step
+  ctx.moveTo(0,4); ctx.lineTo(-8 + legSwing, 20 - Math.max(0, legSwing)*0.25);
+  ctx.moveTo(0,4); ctx.lineTo(8 + legSwing, 20 - Math.max(0, -legSwing)*0.25);
   ctx.stroke();
 
   const isDual = type === 'SWORDSMAN' && extra && extra.spec === 'DUAL' && extra.angle2 != null;
@@ -15475,6 +15755,7 @@ function buildEnemyHash(){
 }
 // CA623 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA623
 const queryNearbyScratch = [];
+let spatialQueryRotation = 0;
 function queryNearby(hash, x, y, range, maxResults){
   spatialQueryCallsThisFrame++;
   if(hash === EMPTY_ENEMY_HASH) return EMPTY_QUERY_RESULT; // no active enemies at all — skip the entire cell scan below rather than doing real work to look for nothing
@@ -15499,7 +15780,10 @@ function queryNearby(hash, x, y, range, maxResults){
       const arr = hash[spatialCellKey(cellX, cellY)];
       if(arr){
         const count = maxResults === undefined ? arr.length : Math.min(arr.length, maxResults-queryNearbyScratch.length);
-        for(let i=0;i<count;i++) queryNearbyScratch.push(arr[i]);
+        // COLLISION-FAIR-01 (1.7.50): when a crowd is bigger than the result cap, always taking the first entries meant the same enemies were returned for everyone and the rest never got a
+        // collision pair (the review reproduced 32 of 80 stacked enemies still coincident after 20 passes). The read now starts at a rotating position, so over a few ticks every enemy is covered, with the same bounded work.
+        if(count < arr.length){ const startAt = (spatialQueryRotation++ * 17) % arr.length; for(let i=0;i<count;i++) queryNearbyScratch.push(arr[(startAt + i) % arr.length]); }
+        else for(let i=0;i<count;i++) queryNearbyScratch.push(arr[i]);
         if(maxResults !== undefined && queryNearbyScratch.length >= maxResults){
           if(queryNearbyScratch.length > queryNearbyMaxResultLenSeen) queryNearbyMaxResultLenSeen = queryNearbyScratch.length;
           return queryNearbyScratch;
@@ -16385,8 +16669,11 @@ function update(dt){
       if(wavesCompleted % 2 === 0 && moveCharges < MAX_MOVE_CHARGES){
         moveCharges++;
       }
-      if(moveCharges < MAX_MOVE_CHARGES && towerPool.some(t => t.active && t.equippedItems.some(item => item.id === 'TENNIS_SHOES'))){
-        moveCharges++;
+      // TENNIS-SHOES-MOVE-01 (1.7.44): owner decision — shoes are a normal item with a passive bonus, not a used item: every pair a stickman carries gives one free move
+      // at the start of every round (counted once per pair, up to the cap), with no action from the player.
+      let shoePairs = 0; for(const t of towerPool) if(t.active) for(const item of t.equippedItems) if(item.id === 'TENNIS_SHOES') shoePairs++;
+      if(shoePairs > 0 && moveCharges < MAX_MOVE_CHARGES){
+        moveCharges = Math.min(MAX_MOVE_CHARGES, moveCharges + shoePairs);
         spawnFloatingText((CANVAS_W/2-camera.x)/camera.zoom, (38-camera.y)/camera.zoom, '👟 Extra move ready', '#ffe082');
       }
       // CA658 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA658
@@ -16592,6 +16879,10 @@ function render(ctx){
     const bob = groundItemBobPx(gi);
     if(!fxVisible(gi.x, gi.y + bob, groundItemBounds)) continue;
     ctx.save();
+    if(Number.isFinite(gi.flyStart) && presentationTime - gi.flyStart < gi.flyDur){
+      const ft = Math.max(0, (presentationTime - gi.flyStart)/gi.flyDur), fp = 1 - Math.pow(1 - ft, 2);
+      ctx.translate((gi.flyFromX - gi.x)*(1 - fp), (gi.flyFromY - gi.y)*(1 - fp) - Math.sin(ft*Math.PI)*34);
+    }
     if(Number.isFinite(gi.rejectStartedAt) && presentationTime-gi.rejectStartedAt<240 && !PREFERS_REDUCED_MOTION){
       const t=Math.max(0,(presentationTime-gi.rejectStartedAt)/240),p=1-Math.pow(1-t,2);
       ctx.translate((gi.rejectFromX-gi.x)*(1-p),(gi.rejectFromY-gi.y)*(1-p)-Math.sin(t*Math.PI)*10);
@@ -16739,7 +17030,7 @@ function buildDebugOverlayLayout(ctx){
     'CPU ' + (navigator.hardwareConcurrency || '?') + ' logical threads; model unavailable',
     'GPU (WebGL probe) ' + String(renderEnvironment.gpuRenderer).slice(0,72),
     'RAM ~' + (navigator.deviceMemory || '?') + ' GiB; heap ' + (performance.memory ? (performance.memory.usedJSHeapSize/1048576).toFixed(0)+' MiB' : 'unavailable'),
-    'frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms  upd ' + (perfStats.updateMs || 0).toFixed(1) + '  rend ' + (perfStats.renderMs || 0).toFixed(1),
+    'frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms  upd ' + (perfStats.updateMs || 0).toFixed(1) + '  rend ' + (perfStats.renderMs || 0).toFixed(1) + '  hud ' + (perfStats.hudMs || 0).toFixed(2) + '  tick ' + (perfStats.msPerTick || 0).toFixed(2) + 'ms x' + (perfStats.ticksThisFrame || 0) + '  speed ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x asked, ' + (perfStats.achievedSpeed || 0).toFixed(1) + 'x done  music ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(2) + 'ms',
     'wave ' + waveIndex + ' ' + waveState + (phase ? '  ' + phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : ''),
     'enemies ' + onPath + ' path / ' + escaped + ' escaped / ' + dying + ' dying',
     'towers ' + countActive(towerPool) + '  proj ' + countActive(projectilePool) + '  decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)',
@@ -16751,6 +17042,10 @@ function buildDebugOverlayLayout(ctx){
   ];
   // CA672 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA672
   const liveTowers = compact ? [] : towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
+  if(!compact) for(const capture of downingCaptures){
+    lines.push('--- downing capture: ' + capture.tower + ' downed in wave ' + capture.wave + (capture.cause ? ' by ' + capture.cause : '') + (capture.done ? '' : ' (still recording)') + ' ---');
+    lines.push('  3 s before: ' + summariseDiagFrames(capture.before)); lines.push('  3 s after:  ' + summariseDiagFrames(capture.after));
+  }
   if(!compact && liveTowers.length){
     lines.push('--- tower telemetry (top ' + Math.min(10, liveTowers.length) + ' by dmg) ---');
     for(let i=0; i<Math.min(10, liveTowers.length); i++){
@@ -16918,7 +17213,26 @@ function drawBossCompass(ctx){
 }
 
 // CA676 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA676
-const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0,
+const speedWindow = { simMs: 0, wallMs: 0 };
+// DOWNING-CAPTURE-01 (1.7.51): the death spike is only visible in the frames just before and after a stickman goes down, and the normal history holds about two seconds. A ring of the last 600
+// frames (about ten seconds) is kept, and each time a stickman is downed the 3 seconds before and the 3 seconds after are captured and summarised in the debug log (the last 3 captures).
+const diagRing = [], DIAG_RING_MAX = 600, downingCaptures = [], DOWNING_CAPTURE_MS = 3000;
+function recordDiagFrame(){
+  const frame = { t: presentationTime, frame: perfStats.frameMs, upd: perfStats.updateMs, rend: perfStats.renderMs, hud: perfStats.hudMs || 0, ticks: perfStats.ticksThisFrame, enemies: perfStats.totalActiveEnemies || 0, decals: perfStats.totalDecals || 0 };
+  diagRing.push(frame); if(diagRing.length > DIAG_RING_MAX) diagRing.shift();
+  for(const capture of downingCaptures) if(!capture.done){ capture.after.push(frame); if(presentationTime - capture.at >= DOWNING_CAPTURE_MS) capture.done = true; }
+}
+function startDowningCapture(tower, cause){
+  downingCaptures.push({ at: presentationTime, wave: waveIndex, tower: tower.type, cause: String(cause || ''), before: diagRing.filter(f => presentationTime - f.t <= DOWNING_CAPTURE_MS), after: [], done: false });
+  if(downingCaptures.length > 3) downingCaptures.shift();
+}
+function summariseDiagFrames(frames){
+  if(!frames.length) return 'no frames';
+  const worst = frames.reduce((a, b) => b.frame > a.frame ? b : a), over33 = frames.filter(f => f.frame > 33).length;
+  const avg = key => (frames.reduce((a, f) => a + (f[key] || 0), 0)/frames.length).toFixed(1);
+  return frames.length + ' frames, avg ' + avg('frame') + ' ms (upd ' + avg('upd') + ', rend ' + avg('rend') + ', hud ' + avg('hud') + '), worst ' + worst.frame.toFixed(0) + ' ms (upd ' + worst.upd.toFixed(0) + ', rend ' + worst.rend.toFixed(0) + ', ticks ' + worst.ticks + '), over 33 ms: ' + over33 + ', enemies ' + frames[0].enemies + ' to ' + frames[frames.length-1].enemies + ', decals ' + frames[frames.length-1].decals;
+}
+const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0, achievedSpeed: 0, requestedSpeed: 1, msPerTick: 0,
   visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0, lastDepthSortedMs: 0,
   visibleParticles: 0, totalParticles: 0, visibleFloatingTexts: 0, totalFloatingTexts: 0,
   // CA677 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA677
@@ -17879,8 +18193,14 @@ function loop(now){
   perfStats.cameraMovingLastFrame = perfStats.cameraMovePixelsLastFrame >= 0.25 || perfStats.cameraZoomDeltaLastFrame >= 0.0005;
   perfStats.frameMs = performance.now() - frameStart;
   perfStats.ticksThisFrame = ticksThisFrame;
+  // SPEED-ACHIEVED-01 (1.7.51): requested speed against the speed actually simulated over the last second (simulated game time divided by wall time), and the cost of one tick,
+  // so a slow fast-forward can be told apart from an expensive tick.
+  speedWindow.simMs += ticksThisFrame*FIXED_DT; speedWindow.wallMs += rawWallGapMs;
+  if(speedWindow.wallMs >= 1000){ perfStats.achievedSpeed = speedWindow.simMs/speedWindow.wallMs; speedWindow.simMs = 0; speedWindow.wallMs = 0; }
+  perfStats.requestedSpeed = simulationSpeed; perfStats.msPerTick = ticksThisFrame ? perfStats.updateMs/ticksThisFrame : 0;
   if(ticksThisFrame > perfStats.maxTicksSeen) perfStats.maxTicksSeen = ticksThisFrame;
   recordExtendedDiagnostics(rawWallGapMs);
+  recordDiagFrame();
   recordPerfSample(perfStats.frameMsHistory, perfStats.frameMs);
   // CA722 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA722
   const instFps = rawWallGapMs > 0 ? 1000/rawWallGapMs : 60;
@@ -18296,7 +18616,7 @@ function attemptMoveTower(gx, gy){
   if(gx === moveModeTower.gridX && gy === moveModeTower.gridY){ exitMoveMode(); return; }
   if(!isTileBuildable(gx, gy, moveModeTower, moveModeTower.type)) return; // invalid tile — stay in move mode, let them try again
   logGameEvent(itemHolderLabel(moveModeTower) + ' moved to tile ' + gx + ',' + gy + ' (' + (moveCharges - 1) + ' free moves left)');
-  moveModeTower.setGridPosition(gx, gy);
+  moveModeTower.walkTo(gx, gy);
   moveCharges--;
   playSound('click');
   const movedTower = moveModeTower;
@@ -18432,7 +18752,8 @@ function onPointerEnd(e){
         else if(!isDragging) openGoldBag(draggingGroundItem, draggingGroundItem.x, draggingGroundItem.y);
       } else if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01 (1.6.132) — a consumable dropped on a stickman is stored in its slots, never used on the spot
         const def = draggingGroundItem.itemDef;
-        if(target && target.receiveItem(def)){
+        if(def.isFood && target){ eatDroppedFood(draggingGroundItem, target); // FOOD-STATS-01: food is eaten on the spot
+        } else if(target && target.receiveItem(def)){
           groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
           spawnFloatingText(target.x, target.y - 40, def.icon, '#ffffff', ITEM_POPUP_LIFE_MS); // ITEM-DROP-EMOJI-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
           trackGameEvent(def.isDiggingTool ? 'item_equipped' : def.isHutLoot ? 'hut_loot_collected' : def.isStim ? 'stim_collected' : def.isFood ? 'food_collected' : 'treat_collected', def.isDiggingTool ? { item: def.id, rarity: def.rarity, tower_type: target.type, items_carried: target.equippedItems.length } : { item: def.id, tower_type: target.type });
@@ -18573,7 +18894,10 @@ function updateHUD(){ hudDirty = true; }
 function flushHUDIfDirty(){
   if(!hudDirty) return;
   hudDirty = false;
+  // HUD-TIMING-01 (1.7.50): the HUD flush ran outside both the update and the render timers, so its cost was invisible in the debug overlay; it is now measured and shown (smoothed).
+  const hudStart = performance.now();
   updateHUDImmediate();
+  perfStats.hudMs = (perfStats.hudMs || 0)*0.9 + (performance.now() - hudStart)*0.1;
 }
 const hudPopAnimations = new WeakMap();
 function restartHudPop(pop){
@@ -19192,6 +19516,27 @@ function buildShopGrid(){
     });
     grid.appendChild(card);
   }
+
+  // GOLD-SINKS-01 (1.7.49)
+  const addDivider = text => { const divider = document.createElement('div'); divider.className = 'shop-section-divider'; divider.style.gridColumn = '1/-1'; divider.textContent = text; grid.appendChild(divider); };
+  const addCard = (icon, name, line, cost, enabled, onBuy, owned) => {
+    const card = document.createElement('div');
+    card.className = 'shop-item-card' + (enabled ? '' : ' disabled') + (owned ? ' owned' : '');
+    card.innerHTML = '<div class="icon">' + icon + '</div><div class="name">' + name + '</div><div class="stat-line">' + line + '</div><div class="cost">💰' + cost + '</div>';
+    if(enabled) card.addEventListener('pointerdown', (e) => { e.stopPropagation(); if(!requireShopAccess()) return; if(onBuy()) buildShopGrid(); });
+    grid.appendChild(card);
+  };
+  const stickmanReady = towerSelected && selectedTower.type !== 'BARRICADE' && selectedTower.type !== 'HACKER';
+  addDivider('🧺 Market — rations eaten at once by the selected stickman; each one bought makes the next cost more');
+  for(const ration of RATIONS) addCard(ration.icon, ration.name, '+' + RATION_STAT_GAIN + ' ' + ration.stat.toUpperCase() + ' · bought x' + (marketBought[ration.stat] || 0), rationCost(ration.stat), stickmanReady && gold >= rationCost(ration.stat), () => buyRation(ration.stat));
+  addDivider('🏋️ Training Yard — experience for the selected stickman');
+  addCard('🎯', 'Drill', '+' + (foodFruitXp()*DRILL_XP_MULTIPLIER) + ' XP · drilled x' + drillsBought, drillCost(), stickmanReady && gold >= drillCost(), () => buyDrill());
+  addDivider('🧳 Travelling Merchant — new gear every wave, bought for the selected stickman');
+  if(merchantBoughtWave !== waveIndex){ merchantBoughtWave = waveIndex; merchantBoughtIds = new Set(); }
+  merchantStock().forEach((offer, index) => {
+    const sold = merchantBoughtIds.has(index), full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
+    addCard(offer.def.icon, offer.def.name + (sold ? ' (sold)' : ''), (ITEM_RARITIES[offer.def.rarity] ? ITEM_RARITIES[offer.def.rarity].label + ' · ' : '') + itemStatLine(offer.def), offer.cost, towerSelected && !sold && !full && gold >= offer.cost, () => buyMerchantItem(index), sold);
+  });
 }
 
 let specModalTower = null;
@@ -19830,6 +20175,16 @@ function generateDebugLog(){
     'browser itself is delaying rAF, e.g. touch/compositor contention during a pan or pinch gesture, ' +
     'not the game\'s own code)\n';
   s += 'Worst wall-clock gap this session: ' + perfStats.worstWallGapMs.toFixed(2) + 'ms, at wave ' + perfStats.worstWallGapAtWave + '\n';
+  s += 'Speed: asked ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x, actually simulated ' + (perfStats.achievedSpeed || 0).toFixed(2) + 'x over the last second; one tick costs ' + (perfStats.msPerTick || 0).toFixed(3) + ' ms (x' + perfStats.ticksThisFrame + ' this frame)\n';
+  s += 'HUD flush (smoothed): ' + (perfStats.hudMs || 0).toFixed(3) + ' ms. Music scheduler: avg ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(3) + ' ms, worst ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerWorstMs) || 0).toFixed(2) + ' ms (it runs outside the game frame, every 40 ms)\n';
+  if(downingCaptures.length){
+    s += '\nDOWNING CAPTURES (the 3 seconds before and after a stickman went down)\n----------------------\n';
+    for(const capture of downingCaptures){
+      s += capture.tower + ' downed in wave ' + capture.wave + (capture.cause ? ' by ' + capture.cause : '') + (capture.done ? '' : ' (still recording)') + '\n';
+      s += '  3 s before: ' + summariseDiagFrames(capture.before) + '\n  3 s after:  ' + summariseDiagFrames(capture.after) + '\n';
+    }
+    s += '\n';
+  }
   s += 'Ticks this frame: ' + perfStats.ticksThisFrame + '  (max ever seen: ' + perfStats.maxTicksSeen + ' / current speed-scaled cap ' + perfStats.lastSimulationTickCap + ', base ' + MAX_SIMULATION_TICKS_PER_FRAME + ' at 1x)\n';
   s += 'Adaptive detail: ' + (underHeavyVisualLoad ? 'active' : 'inactive') + ', ' + perfStats.adaptiveVisualFrames +
     ' rendered frame(s) active; world-drawing pressure ' + perfStats.depthSortPressureFrames + ' frame(s) above ' +
