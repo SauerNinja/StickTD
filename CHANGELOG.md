@@ -2,6 +2,18 @@
 
 How this file works: newest first. Every entry starts with a heading `## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
 
+## [1.7.76] — 2026-10-06 (UTC)
+
+### Enemy, death-animation and flora emoji are drawn from cached sprites (EMOJI-SPRITE-01)
+- Owner: lag fixes and a clean experience; the 1.7.75 entry left the 37 to 41 FPS with under 1 ms of game work unexplained (graphics side).
+- Cause found in the code: every enemy glyph was drawn with `fillText` under a transform that changes on every frame (stride tilt, speed stretch, attack lean and squash, aggro pulse), death animations under a shrinking scale, and High-graphics flora under a swaying rotation. A colour emoji drawn at a new angle or size each frame cannot be served from the browser's glyph cache, so each one is rasterised again in the graphics process, which the JavaScript timers never see. The cost grows with the number of enemies on screen and peaks during attacks, when the extra lean and squash apply. The earlier microbenchmark behind "Emoji sprite caching (measured, do not build)" used upright, unscaled text in software drawing and does not cover this case.
+- Fix: `drawEmojiSprite(ctx, emoji, sizePx)` renders each glyph once to a small offscreen canvas at the on-screen pixel size (zoom times device pixel ratio, in steps of about 12%, from 16 to 192 px) and then draws it with `drawImage`, which accepts any rotation and scale at no extra raster cost. A glyph that would need more than 192 px falls back to `fillText`. At most 192 sprites are kept; the cache empties when full. The sprite is centred exactly where the text was, and a pixel comparison of the two paths matched within one pixel. Sprites are drawn with low smoothing quality (the canvas default of high builds mipmaps for every small blit); the three callers each sit inside their own save and restore. Used by `Enemy.draw`, `drawDeathAnims` and `drawAnimatedFlora`. Game logic, hit areas and masks are untouched.
+- Unchanged on purpose: upright, unscaled emoji (scenery, ground items, status icons) still use `fillText`, where the glyph cache works.
+
+### Design contract check brought up to date
+- The `selected tactical reach and pooled pin/death lifecycle` check still looked for the 1.7.71 gold ring colour and so warned at every boot since 1.7.72 replaced it with the white dotted ring (RANGE-RING-DOTS-01). It now looks for `RANGE_RING_DOT_PX`.
+- Not verified by playing; the game boots without errors in headless Chromium and the self-test `wave 1 is ten sequential single Tiny batches` still reports false as it did on 1.7.75. Please compare the overlay FPS and render lines against the 1.7.53 screenshots on a busy wave.
+
 ## [1.7.75] — 2026-10-06 (UTC)
 
 ### Expansion no longer needs an empty field; one bought expansion per wave plus the free one (EXPAND-PER-WAVE-01)

@@ -419,7 +419,7 @@ See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and cont
 
 ## Version history
 
-Current version: **1.7.75**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
+Current version: **1.7.76**. See [CHANGELOG.md](CHANGELOG.md) for the full version history (every release has a numbered, dated entry), and [BACKLOG.md](BACKLOG.md) for
 ideas not yet built.
 
 ## License

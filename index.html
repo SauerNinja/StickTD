@@ -1368,7 +1368,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.75'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.76'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1392,6 +1392,34 @@ const _pxFontCache = {};
 function pxFont(size){
   const px = Math.round(size);
   return _pxFontCache[px] || (_pxFontCache[px] = px + 'px serif');
+}
+// EMOJI-SPRITE-01 (1.7.76) — see CHANGELOG.md § [1.7.76]
+const EMOJI_SPRITE_MIN_PX = 16, EMOJI_SPRITE_MAX_PX = 192, EMOJI_SPRITE_STEP = Math.pow(2, 1/6), EMOJI_SPRITE_LOG_STEP = Math.log(EMOJI_SPRITE_STEP), EMOJI_SPRITE_PAD = 1.5, EMOJI_SPRITE_CACHE_LIMIT = 192;
+const emojiSpriteRows = new Map();
+let emojiSpriteCount = 0;
+function emojiSpriteFor(emoji, bucketIndex){
+  let row = emojiSpriteRows.get(emoji);
+  if(!row){ row = []; emojiSpriteRows.set(emoji, row); }
+  let sprite = row[bucketIndex];
+  if(sprite) return sprite;
+  if(emojiSpriteCount >= EMOJI_SPRITE_CACHE_LIMIT){ emojiSpriteRows.clear(); emojiSpriteCount = 0; row = []; emojiSpriteRows.set(emoji, row); }
+  const fontPx = Math.round(EMOJI_SPRITE_MIN_PX * Math.pow(EMOJI_SPRITE_STEP, bucketIndex)), side = Math.ceil(fontPx * EMOJI_SPRITE_PAD);
+  sprite = document.createElement('canvas'); sprite.width = side; sprite.height = side;
+  const spriteCtx = sprite.getContext('2d');
+  spriteCtx.font = pxFont(fontPx); spriteCtx.textAlign = 'center'; spriteCtx.textBaseline = 'middle'; spriteCtx.fillStyle = '#000000';
+  spriteCtx.fillText(emoji, side / 2, side / 2);
+  sprite.fontPx = fontPx; sprite.side = side;
+  row[bucketIndex] = sprite; emojiSpriteCount++;
+  return sprite;
+}
+function drawEmojiSprite(ctx, emoji, sizePx){
+  const devicePx = sizePx * camera.zoom * dprValue;
+  if(!(devicePx > 0)) return;
+  if(devicePx > EMOJI_SPRITE_MAX_PX){ ctx.font = pxFont(sizePx); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000000'; ctx.fillText(emoji, 0, 0); return; }
+  const bucketIndex = Math.max(0, Math.ceil(Math.log(devicePx / EMOJI_SPRITE_MIN_PX) / EMOJI_SPRITE_LOG_STEP - 1e-6));
+  ctx.imageSmoothingQuality = 'low';
+  const sprite = emojiSpriteFor(emoji, bucketIndex), drawnSide = sprite.side * (Math.round(sizePx) / sprite.fontPx);
+  ctx.drawImage(sprite, -drawnSide / 2, -drawnSide / 2, drawnSide, drawnSide);
 }
 // CA009 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA009
 // ENEMY-ATTACK-ANIM-01 (1.7.58): an enemy hitting a stickman or barricade winds up, lunges and recoils in step with its attack timer, and puffs an
@@ -3092,7 +3120,7 @@ function validateDesignContract(){
   }
   if(!isWithinEmojiSquare(10, -10, 0, 0, 20) || isWithinEmojiSquare(10.5, 0, 0, 0, 20) || isWithinEmojiSquare(0, -10.5, 0, 0, 20)) problems.push('the click area of an emoji is exactly its drawn square (EMOJI-HITBOX-01)');
   if(String(Tower.prototype.findTarget).includes('minimumTargetDistance') || String(Tower.prototype.update).includes('minimumTargetDistance')) problems.push('fighters must attack close targets without a minimum-range exclusion');
-  if(!String(drawSelectedTowerRange).includes('tower.targetingRange') || !String(drawSelectedTowerRange).includes('232,182,65') || !String(Enemy.prototype.spawn).includes('this.deathResolved = false') || !String(Enemy.prototype.die).includes('setMarkedTarget(null)')) problems.push('selected tactical reach and pooled pin/death lifecycle must remain protected');
+  if(!String(drawSelectedTowerRange).includes('tower.targetingRange') || !String(drawSelectedTowerRange).includes('RANGE_RING_DOT_PX') || !String(Enemy.prototype.spawn).includes('this.deathResolved = false') || !String(Enemy.prototype.die).includes('setMarkedTarget(null)')) problems.push('selected tactical reach and pooled pin/death lifecycle must remain protected');
   { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || declared.length > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
     if(oversized.length) problems.push('analytics events over the Google Analytics limits (40-character names, 25 parameters): ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
   }
@@ -4986,8 +5014,7 @@ function drawAnimatedFlora(ctx, bounds){
     ctx.translate(x, y);
     ctx.rotate(item.rotDeg * Math.PI/180 + sway);
     ctx.scale(scale, scale);
-    ctx.font = Math.round(TILE_SIZE*0.42*item.sizeFrac) + 'px serif';
-    ctx.fillText(isSeedling ? FLORA_SEEDLING_GLYPH : item.glyph, 0, 0);
+    drawEmojiSprite(ctx, isSeedling ? FLORA_SEEDLING_GLYPH : item.glyph, TILE_SIZE*0.42*item.sizeFrac);
     ctx.restore();
   }
 }
@@ -11380,10 +11407,7 @@ class Enemy{
       ctx.rotate(Math.sin(aggroAge/35)*tension*0.025);
     }
     // CA376 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA376
-    ctx.fillStyle = '#000000';
-    ctx.font = pxFont(this.radius*2);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(this.emoji, 0, 0);
+    drawEmojiSprite(ctx, this.emoji, this.radius*2);
     if(this.aggroStartedAt>=0 && aggroAge>=0 && aggroAge<600){
       ctx.strokeStyle='#b92320';ctx.lineWidth=Math.max(1.5,this.radius*0.11);ctx.lineCap='round';
       ctx.beginPath();ctx.moveTo(-this.radius*0.55,-this.radius*0.34);ctx.lineTo(-this.radius*0.12,-this.radius*0.17);
@@ -13352,10 +13376,7 @@ function drawDeathAnims(ctx){
     ctx.globalAlpha = alpha;
     ctx.translate(d.x, d.y);
     ctx.scale(scale, scale*(1-t*0.3)); // slightly flatter as it settles, not just uniform shrink
-    ctx.font = Math.round(d.radius*2) + 'px serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000000';
-    ctx.fillText(d.emoji, 0, 0);
+    drawEmojiSprite(ctx, d.emoji, d.radius*2);
     ctx.restore();
   }
 }
