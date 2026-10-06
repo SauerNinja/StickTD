@@ -1337,7 +1337,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.51'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.53'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -8807,7 +8807,7 @@ function updateLightningArcs(){
 function drawLightningArcs(ctx){
   if(!activeLightningArcs.length) return;
   ctx.save();
-  ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2; ctx.globalAlpha = 0.85; ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = graphicsQuality === 'low' ? 0 : 6;
+  ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2; ctx.globalAlpha = 0.85; ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = graphicsQuality === 'high' ? 6 : 0; // LIGHTNING-BLUR-HIGH-01 (1.7.53)
   for(const arc of activeLightningArcs){
     const midX = (arc.x1+arc.x2)/2 + (Math.random()-0.5)*10, midY = (arc.y1+arc.y2)/2 + (Math.random()-0.5)*10;
     ctx.beginPath(); ctx.moveTo(arc.x1, arc.y1); ctx.lineTo(midX, midY); ctx.lineTo(arc.x2, arc.y2); ctx.stroke();
@@ -16822,6 +16822,36 @@ function drawSelectedTowerArrow(ctx){
   ctx.fillText('👇', selectedTower.x, arrowY);
   ctx.restore();
 }
+// OVERLAY-RANK-CACHE-01 (1.7.53): the overlay's tower ranking filtered and sorted the whole pool every frame; it is now rebuilt at most every 250 ms.
+const OVERLAY_RANK_REFRESH_MS = 250;
+let overlayRankBuiltAt = -Infinity, overlayRankCache = [];
+function overlayTowerRanking(){
+  const now = performance.now();
+  if(now - overlayRankBuiltAt >= OVERLAY_RANK_REFRESH_MS){
+    overlayRankBuiltAt = now;
+    overlayRankCache = towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
+  }
+  return overlayRankCache;
+}
+// GROUND-GLOW-SPRITE-01 (1.7.52): ground-item glows were a new radial gradient, three colour strings and an arc fill per item per frame.
+// Now one small canvas per (hue step, radius) is drawn once and blitted; the pulse is the blit's alpha, which is exactly how the gradient scaled.
+const GROUND_GLOW_HUE_STEP = 6;
+const groundItemGlowSprites = new Map();
+function groundItemGlowSprite(hue, radius){
+  const hueStep = Math.round(hue / GROUND_GLOW_HUE_STEP) % (360 / GROUND_GLOW_HUE_STEP);
+  const key = hueStep * 100 + radius;
+  let sprite = groundItemGlowSprites.get(key);
+  if(sprite) return sprite;
+  sprite = document.createElement('canvas'); sprite.width = sprite.height = Math.ceil(radius * 2);
+  const spriteCtx = sprite.getContext('2d'), centre = sprite.width / 2, hueDegrees = hueStep * GROUND_GLOW_HUE_STEP;
+  const gradient = spriteCtx.createRadialGradient(centre, centre, 0, centre, centre, radius);
+  gradient.addColorStop(0, `hsla(${hueDegrees}, 100%, 58%, 0.85)`);
+  gradient.addColorStop(0.55, `hsla(${hueDegrees}, 100%, 58%, 0.35)`);
+  gradient.addColorStop(1, `hsla(${hueDegrees}, 100%, 58%, 0)`);
+  spriteCtx.fillStyle = gradient; spriteCtx.fillRect(0, 0, sprite.width, sprite.height);
+  groundItemGlowSprites.set(key, sprite);
+  return sprite;
+}
 function render(ctx){
   updateTargetFrame();
   updateCameraFollow();
@@ -16898,17 +16928,12 @@ function render(ctx){
     // CA669 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA669
     const glowPulse = isGoldCurrencyItem ? 0.30 + (Math.sin(presentationTime/430 + gi.id)*0.5 + 0.5)*0.60 : 0.55 + Math.sin(presentationTime/280 + gi.id)*0.25;
     const glowRadius = isGoldCurrencyItem ? Math.max(23, itemRarity.glowRadius) : itemRarity.glowRadius;
-    const grad = ctx.createRadialGradient(gi.x, gi.y + bob, 0, gi.x, gi.y + bob, glowRadius);
-    // CA670 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA670
-    const glowHsla = (a) => `hsla(${hue.toFixed(0)}, 100%, 58%, ${a})`;
-    grad.addColorStop(0, glowHsla(glowPulse * 0.85));
-    grad.addColorStop(0.55, glowHsla(glowPulse * 0.35));
-    grad.addColorStop(1, glowHsla(0));
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(gi.x, gi.y + bob, glowRadius, 0, Math.PI*2);
-    ctx.fill();
-    if(graphicsQuality !== 'low'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // ground items are few and short-lived, so this was low real impact, but matching the Low-graphics gate used everywhere else keeps the setting meaning the same thing consistently
+    const glowSprite = groundItemGlowSprite(hue, glowRadius);
+    const entryAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = entryAlpha * Math.min(1, glowPulse);
+    ctx.drawImage(glowSprite, gi.x - glowRadius, gi.y + bob - glowRadius);
+    ctx.globalAlpha = entryAlpha;
+    if(graphicsQuality === 'high'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // GROUND-GLOW-SPRITE-01 (1.7.52): the glow is a cached sprite; the text halo stays on High only
     ctx.font = GROUND_ITEM_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
@@ -17041,7 +17066,7 @@ function buildDebugOverlayLayout(ctx){
     'scale: ' + lastGovernorDecision
   ];
   // CA672 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA672
-  const liveTowers = compact ? [] : towerPool.filter(t => t.active && t.telemetry).sort((a,b) => (b.lifetimeDamage||0) - (a.lifetimeDamage||0));
+  const liveTowers = compact ? [] : overlayTowerRanking();
   if(!compact) for(const capture of downingCaptures){
     lines.push('--- downing capture: ' + capture.tower + ' downed in wave ' + capture.wave + (capture.cause ? ' by ' + capture.cause : '') + (capture.done ? '' : ' (still recording)') + ' ---');
     lines.push('  3 s before: ' + summariseDiagFrames(capture.before)); lines.push('  3 s after:  ' + summariseDiagFrames(capture.after));

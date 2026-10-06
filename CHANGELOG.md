@@ -2,6 +2,21 @@
 
 How this file works: newest first. Every entry starts with a heading `## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
 
+## [1.7.53] — 2026-10-06 (UTC)
+
+### Lag: debug overlay and lightning (OVERLAY-RANK-CACHE-01, LIGHTNING-BLUR-HIGH-01)
+- The overlay's tower ranking filtered and sorted the whole tower pool every frame while the overlay was open; it is rebuilt at most every 250 ms now, so measuring no longer adds cost.
+- Lightning arcs drew each stroke with a shadow blur on Medium and High; the blur is High only now.
+- Checked and left alone: the other shadow-blur sites are single draws (spawn marker, scroll, ring stroke) or already High only (ambient logs); none run per entity.
+- Not verified by playing; syntax checked only.
+
+## [1.7.52] — 2026-10-06 (UTC)
+
+### Lag: ground-item glow is a cached sprite (GROUND-GLOW-SPRITE-01)
+- Every ground item built a radial gradient, three colour strings and an arc fill each frame. The glow is now one small canvas per hue step (6 degrees) and radius, drawn once and blitted; the pulse is the blit's alpha, the same scaling the gradient had. Colours, radii and pulse are unchanged to within one hue step.
+- The text halo (shadow blur) behind the item emoji now runs on High graphics only; Medium and Low draw the emoji without it.
+- Not verified by playing or measured on a device; syntax checked only.
+
 ## [1.7.51] — 2026-10-06 (UTC)
 
 ### Finishing the items 1.7.50 left half done (owner: finish all half fixes)
