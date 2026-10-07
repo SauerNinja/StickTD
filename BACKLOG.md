@@ -1,3 +1,21 @@
+## 1.7.117 audit
+- Listen on desktop and phone for reverb depth (send 0.2), pan width (max 0.6) and brightness (air +2.5 dB at 3.5 kHz); every value is a named MUSIC_* constant.
+- Check CPU on a low-end phone with the stereo convolver; if frames slip, set MUSIC_REVERB_SEND to 0 first.
+
+## 1.7.116 audit
+- Listen to wave and boss themes: gallop bass 0.045, pedal 0.016, stabs 0.05/0.042, snare roll 0.3-0.7; lower if busy or if the voice budget drops notes on phones.
+- Idle walking bass is 0.038 from section 1.
+
+## 1.7.115 audit
+- Listen on desktop and phone: idle layer balance (arpeggio 0.019 to 0.026, stabs 0.032, bell 0.034) and start-screen stab level; lower if busy.
+- Combat and boss themes were not changed this round; the chromatic ostinato idea (FF7) is the next candidate.
+
+## 1.7.114 audit
+- Check by eye on a phone: archer re-nock timing, the circus building and animals, troll sound level.
+- Tuning: circus chance (14%), performer weights, baby size and growth, clown damage.
+- Circus buildings are not saved (same as huts); a loaded save keeps the animals only.
+- Round-end breeding applies to monkeys and elephants only; chickens, pigs and cows still breed on map expansion.
+
 # Backlog — master list of open work
 
 This is the single list of everything still open. Shipped work is removed and lives in `CHANGELOG.md`; the previous long version of this file (1,251 lines of round-by-round history, closed reviews and struck-through items) remains in the repository's git history. Keep it this way: add an item to the right section, and when it ships, move it to the changelog and delete it here.
@@ -8,7 +26,30 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## 1.7.104 open items
+- Decide whether the wave and boss themes should get a larger voice budget (they lose about 170 optional notes per cycle and the opening sting is partly dropped); check the cost on the phone first.
+- Listen to the start-screen music (and `attract-music-preview.wav`) and say what to change: more drive, a bigger chorus, a different hook or more variety.
+
+## 1.7.113 audit — what is left, in order of value
+- Phone checks (nothing below is confirmed on a real device): steady 30 FPS while panning, no black flashes after a resize or an app switch, the start-screen music beginning on the first tap, the card-suit range ring and fog, the hat and shoes on a stickman, and the caravan crossing a map expansion.
+- Tune from play: Legendary drop rate (0.25 of gear weight, 2 on a boss roll), Legendary sell value (1500), mill and quarry output and prices, caravan chance and spacing, gore explosion chance, potion and Revive prices.
+- Emoji repeats between a class and an item or consumable (a class can still be told apart by context): Mage and Glass Marble 🔮, Snap Caster, Lightning Bolt and Defibrillator ⚡, Blow Gunner and Phoenix Ember ♨️, Spore Flask, Hyper-Serum and Nano-Tonic 🧪, Field Medkit and Bandage 🩹. A contract check could extend the unique-emoji rule to items.
+- Text in the new tone: the strategy tips shown in the inspector are practical but not yet rewritten in the help-text voice.
+- Zoom sharpness above about 1.5 times zoom needs tiled caches; measure first (see the entry below).
+- Music: the first scheduler step creates its audio nodes on first play and is not pre-run during loading; the attract and wave themes can be re-tuned after listening to the preview renders.
+- Caravan Rare Shop: further stock is to be specified; add it as sections in `buildShopGrid()`.
+
+## 1.7.101 open items
+- Tune from play: potion prices (80 to 300), Revive price (350) and its half-health return, and the 50% sell rate.
+
+## 1.7.100 open items
+- Tune from play: mill and quarry prices, yields (12/24/45 wood, 10/20/38 stone per minute) and hit points; caravan chance (40%), spacing (2 rounds), speed (46 px/s); gore explosion chance (6%) and sniper mist reach.
+- Caravan Rare Shop: further stock is to be specified; add it as new sections in `buildShopGrid()`.
+- Play-test: the caravan crossing a map expansion, the start-screen music by ear (and its loudness against the field theme), save and reload with a mill.
+- Decision: first possible caravan round is after round 5 completes (round 6 end); say if round 5's own end should count.
+
 ## Lag candidates from the 1.7.93 profile (evidence first: confirm on a real device before building)
+- Shipped 1.7.99 (TEXT-SPRITE-01, DECAL-BAKE-PRESSURE-01, SCENERY-SPRITE-01): text-sprite cache, earlier decal baking under load, scenery through the emoji sprite cache. Open: confirm the gain with the recipe below on a real device; baking scenery into the static layer was judged unsafe (depth sorting, hover, clearing).
 - Stress scene of 120 bleeding enemies: unbaked blood decals cost about 450 path calls a frame (they bake after 4 s), particles are one path each with their own alpha, and about 100 floating texts are re-rastered every frame. A text-sprite cache and earlier decal baking under heavy load are the likely fixes.
 - Recipe: Chrome profiler over 300 frames, plus a count of canvas calls by caller (patch `CanvasRenderingContext2D.prototype`).
 

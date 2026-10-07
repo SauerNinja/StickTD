@@ -6,6 +6,177 @@ Reading and adding (this file is about 1.8 MB, never open it whole):
 - Read: `grep -n '^## \[' CHANGELOG.md | head -20` lists the newest versions; `sed -n '9,40p' CHANGELOG.md` shows the top entries; `grep -n 'ARROW-LOOK-01' CHANGELOG.md` finds the entry for a code marker (`// ID (x.y.z) — see CHANGELOG.md § [x.y.z]`).
 - Add: write one entry of at most about eight lines under `## [x.y.z] — date (UTC)`: the owner's ask in one line, the cause found, the fix with its marker id, and how it was checked or what was not. Insert it above the previous top heading with a script (find the first `## [`), and extend the same entry while a version is unreleased. Do not restate files or repeat earlier entries.
 
+## [1.7.117] — 2026-10-07 (UTC)
+
+### Music mixing and space measured offline and rebuilt (MUSIC-SPACE-01)
+- Asked: anything else that improves the music, as comprehensively as possible.
+- Cause found by rendering every theme offline and analysing it: all four themes were pure mono (channel correlation 1.00), 47–54% of their energy sat in 120–400 Hz, almost none above 1.5 kHz, 3–17% of notes were dropped by the voice budget, and the final section was no louder than the first.
+- Fix: tonal voices pan by pitch and alternate sides (leads stay near the centre) into a new stereo music reverb; a 280 Hz low-mid cut with make-up gain, a 3.5 kHz air shelf and a 4200 Hz idle lowpass (was 3200); the light-load voice budget rises 20 to 24 (phones keep 14 and 10); each eight-bar section now sits 12% louder than the last (0.88, 1, 1.12).
+- Measured after: idle drops 35 to 5 of 1242 requests, channel correlation 0.98, sections build about 2.5 dB each (idle -33.5, -30.4, -28.8 dB; boss -27.2, -26.0, -24.7 dB). All four themes schedule a full cycle without errors; contract returns []. Not auditioned by ear.
+
+## [1.7.116] — 2026-10-07 (UTC)
+
+### Wave and boss music driven by seven more reference scores; idle walking bass (COMBAT-DRIVE-01)
+- Asked: seven more MIDI files as inspiration for the music.
+- Studied: gallop bass and snare rolls (Ys, Soldier Blade), pedal ostinato (Monster Hunter), walking bass (Wonder Boy), sixteenth hats (Zone 1).
+- Fix: `scheduleCombatDrive` adds a sixteenth gallop bass with octave jumps, a high fifth/tonic pedal, power-chord stabs, a crescendo snare roll into every eighth bar and a boss flat-fifth stab; idle gains a walking bass from section 1.
+- Checked: all four phases scheduled through a full cycle without errors; `validateDesignContract()` returns []. Not auditioned by ear.
+
+## [1.7.115] — 2026-10-07 (UTC)
+
+### Idle and start-screen music rebuilt from seven reference scores (IDLE-LAYERS-01)
+- Asked: music that still fell flat; master-level, with the idle theme the most important; seven MIDI files supplied as inspiration.
+- Studied (structure only, no melody copied): rolling sixteenth-note broken chords over a chord (Price of Freedom, Rockman), 3+3+2 stabs against 4/4 (Terra), held pedal tones with moving upper colour (Terra, Monster Hunter), chords that arrive half a beat early (Race 2 Win), timpani pulses and swells (FF7 intro), a chromatic run into each phrase end (FF7, Calling to the Night).
+- Idle theme (`scheduleIdleLayers`): from bar 8 a sixteenth-note arpeggio over each chord and 3+3+2 chord stabs; a held tonic every four bars; an add-nine bell on beat 3 of every second bar; the next chord's bass lands half a beat early at the end of odd bars; a low timpani hit in the last section; a rising run answers every fourth bar; a riser into each eight-bar section.
+- Start screen: 3+3+2 plucked stabs from bar 8, early bass entries, a sixteenth-note bass pump in the chorus and a rising bell answer at each four-bar end.
+- Checked: syntax, design contract, all three phases scheduled through a full 24-bar cycle with no errors. Not checked: by ear on a phone; level balance needs a listen.
+
+## [1.7.114] — 2026-10-07 (UTC)
+
+### Archer nock and release, guaranteed troll, first-time notices, Circus, club symbol (ARCHER-NOCK-01, TROLL-CADENCE-01, FIRST-TIME-NOTICE-01, CIRCUS-01, SUIT-CLUB-01)
+- Asked: arrows seamlessly loaded, drawn and released from the bow; a Circus building that sends out an animal each round; a troll guaranteed every fifth round with its own sound and a first-time notice; notices remembered across runs; no white inside the club symbol; a Santa stealth warning only if true.
+- Archer: `archerNockedArrowTip` gives the arrowhead position of the nocked arrow, used by the renderer and by `fireProjectile`, so the shot leaves exactly from the drawn arrowhead (measured: spawn and tip differ by less than 1e-12 px). The arrow now stays nocked while a target is held, and a new one slides in over the last 35% of the cooldown.
+- Troll: one is guaranteed at the end of every fifth completed round (`maybeSpawnGuaranteedTroll`), on top of the 18% random chance; new `troll_arrive` sound (low growl and two stomps) and a floating 🧌 label. Clowns share the hunter code through `LIVESTOCK_TYPES[type].hunter`.
+- Circus: 🎪 is a peaceful building (6x wave health, no guardians) that appears from wave 3 at 14% per round, one at a time. Each round end it sends out a monkey 🐒 (40%), elephant 🐘 (30%) or clown 🤡 (30%, at most 3 on the board); clowns hunt stickmen with a `clown_honk` cue. With two grown monkeys or elephants a baby of a random pair type appears each round at 40% size and grows over three rounds; growth is saved. Destroying the circus ends the animals and drops the usual loot chest.
+- Notices: troll, circus, clown and first baby show a notice once (`showFirstTimeNotice`, stored under the existing tips key). Options has "📘 Show First-Time Tips Again"; Clear All Cookies & Data also resets them. They use browser storage, not a cookie.
+- Club: the triangle and stem of the club ran against the circles, so overlapping areas cancelled under the non-zero fill and showed the white outline; both now wind the same way.
+- Santa stealth: not added. Stealth only declines analytics; saves are downloaded and uploaded files and are unaffected, so the warning would be false.
+- Hut: nothing was removed in the commit history; it appears once per game from expansion 3 and wave 5, with extra buildings from wave 20.
+- Checked: syntax, design contract, spawn point against tip, circus rounds (breeding, growth, save), guaranteed troll. Not checked: by eye on a phone.
+
+## [1.7.113] — 2026-10-07 (UTC)
+
+### Fancy Hat, Running Shoes, equipment above the 500 cap, wearable items and glow colours (ITEM-LEGENDARY-01, EQUIPMENT-OVER-CAP-01, WEARABLE-ITEMS-01, ITEM-GLOW-01)
+- Asked: a Fancy Hat (+50 INT, +20 DEX, +20 STR, +1% range) as a rare Legendary drop worn on the head; the 👟 shoes changed to +20 STR, +50 DEX, +20 INT and one extra move at the start of each round, worn on the feet; equipment allowed above the 500 learned cap; rainbow glow only for the rarest items, with vegetables green, fruit blue and meat orange; then a final audit.
+- Items: a new Legendary rarity (weight 0.25 of gear drops, 2 of 102 on a boss roll, stat budget 80 to 100) holds the Fancy Hat and the Running Shoes. The old Tennis Shoes (common, +2 DEX) became the Running Shoes (id `RUNNING_SHOES`; saves with the old id load as the new item); the extra move works through the item's `extraMove` flag, one per pair as before. The Swift Boots now use 👢 so 👟 belongs to one item. A Legendary item sells for 1500 gold and shows a toast when dropped.
+- Over the cap: the 500 cap now limits only learned, hero and passive points; equipment adds on top (`statEffectPoints`: 500 learned plus 50 INT acts as 550). Range keeps the class cap, so the hat's 1% is a multiplier on top of it (a Mage at 500 range 480 shows 484.8 with the hat, exactly 1.01).
+- Worn items: a stickman with the Fancy Hat shows 🎩 on the head and one with the Running Shoes shows 👟 on both feet (mirrored to face the aim), from the pack, with no equip step.
+- Glow: rainbow is Legendary only. Vegetables glow green, fruit blue, meat orange; gear is white, yellow, purple and pink by rarity; treats teal; the colours apply to ground items and to the inventory and quick slots (a rainbow border for Legendary; static with reduced motion).
+- Audit: no two classes share an emoji (Gatling is now 🌪️ and Sniper 🦅 so they no longer repeat the Field Helmet and Spotter Scope items); remaining class-versus-item repeats are listed in BACKLOG. A load with the Fancy Hat and legacy shoes saves and loads, the design contract is clean, and the full set of earlier checks still passes.
+- Not checked: the Legendary drop rate by feel, and the hat and shoes on a real phone.
+
+## [1.7.112] — 2026-10-07 (UTC)
+
+### Card-suit range ring with fog, even rock sizes, log piles, quarry and lumber yard, higher arrows (RANGE-RING-SUITS-01, ROCK-SIZES-01, AMBIENT-LOG-STACK-01, ARROW-HEIGHT-01)
+- Asked: more space between the range dots and make them the four card suits in black, white order; dim the outside of the range like fog of war instead of lightening the inside; rocks that are semi-scaled small, medium and large; a stack of logs picked up one at a time instead of the big log; a mountain with a factory for the quarry; a factory in front of trees and fallen logs for the lumber yard; arrows leaving the bow a little too low.
+- Range ring: the dots are replaced by a slow counter-clockwise procession of club, heart, spade and diamond (black, white, black, white), drawn as paths at constant on-screen size, spaced 46 px apart (about 2.5 times the old white-to-black gap); the count is a multiple of four so the order closes all the way round. The inside is no longer lightened; everything outside the range is dimmed (fog of war), and the ring and fog now draw above the units so trees and enemies outside the range dim too.
+- Rocks: a rock is one of three even sizes (scale 0.8, 1.15, 1.5) and is never stretched (the random width and height stretch is removed for rocks); measured over 400 rocks: only those three sizes, stretch 1 on both axes.
+- Logs: the ambient log is now a pile of three logs and each tap collects one (5 wood, 15 for the pile, the same total); the pile shrinks as logs are taken and saves keep the count. The big single log seen in the screenshot was the Log Mill drawing, now replaced as below.
+- Structures: the Stone Quarry is a mountain with a factory at its foot; the Log Mill is a lumber yard (two trees behind, two fallen logs, a factory in front); the class icon of the quarry is the mountain. The sprites are built during loading.
+- Arrows: an Archer's arrows leave 2 px higher (pivot -15 instead of -13). Measured before the change: the arrow already left about 2 px above the bow hand, so the new height is about 4 px above it; tell me if that is too high.
+- Checked: syntax, design contract, rock sizes, log pile pick-up (3 taps, 15 wood, pile removed), screenshot of the ring, fog, quarry, lumber yard and pile. Not checked: by eye on a phone.
+
+## [1.7.111] — 2026-10-07 (UTC)
+
+### Unique class emojis and plainer, more useful help text (CLASS-EMOJI-01, UNLOCK-HELP-01)
+- Asked: Gatling must not be the squirt gun emoji and no two classes may share an emoji; the help texts were cringe and not useful and should describe what each class does, in a colorful but professional, subtle tone, with useful context for unlocking.
+- Cause: the gun emoji was on four classes (Gatling, Dual Squirt Gun, Gunalinder, Marksman) and the target emoji on three (Lancer, Blowdart, Sniper). Locked classes showed a cryptic riddle that did not say how to unlock, and a few texts were out of date (the Pope text still asked for 750 total stats).
+- Fix: Gatling is a helmet, Lancer a horse rider, Gunalinder a cowboy, Marksman an ice cube and Sniper a telescope; the Dual Squirt Gun keeps the squirt gun and the Blowdart keeps the dartboard. The strategy tips now use each class's own icon. All 34 class texts were rewritten to say what the class does and, where it is unlocked by training, exactly what to train (for example "Unlocked by training an Archer's Strength to 500"), checked against the unlock rules in the code. A locked class now shows that same text in its help card instead of a riddle. A design-contract check fails if two classes share an emoji.
+- Checked: syntax, design contract (no shared emoji across all classes), the help card for a locked and an unlocked class. Not rewritten: the strategy tips shown in the inspector, which are practical already.
+
+## [1.7.110] — 2026-10-07 (UTC)
+
+### Phone locked to a steady 30 FPS, and the loading screen does the preparation (MOBILE-LOCK-30-01, VSYNC-PROBE-01, WARMUP-NEW-SPRITES-01)
+- Reported: on a phone the frame rate swung between 60 and 30; it should always be 30, with the phone-or-computer decision and all preparation done while loading.
+- Cause: moving the camera (drag, glide, zoom, wave-start pan) deliberately lifted the frame limit to full rate (CAMERA-SMOOTH-01), so every touch pushed the display to 60 and back to 30; and the screen's refresh interval was only measured once the game was running (1 sample when the game appeared, none measured), so the first second paced unevenly.
+- Fix: the phone is detected once at boot (touch, coarse pointer, no fine pointer) and on a phone the limit is 30 whatever the graphics setting, with no camera exception; a computer keeps its behaviour (60 on High, 30 on Low, full-rate camera motion); a frame rate set in Settings still wins. The refresh interval is now measured during loading (119 samples and 16.6 ms at the moment the game appears, was 1 and none). The loading screen also builds the sprites that used to be made on first use in a wave: the Log Mill and Stone Quarry, the caravan, every scenery emoji at its drawn sizes, and the damage numbers 1 to 60 (text sprite cache raised from 256 to 640 entries).
+- Measured: phone emulation idle 30 and panning 30; computer idle 30 and panning 60 (unchanged). Loading work grew from 196 to 353 ms of main-thread time on a desktop (1273 to 1767 jobs) inside the 2 s minimum, so the loading screen time did not change there; a phone will take longer.
+- Not checked: a real phone, and the music's first step (which creates its audio nodes on first play) is not pre-run.
+
+## [1.7.109] — 2026-10-07 (UTC)
+
+### More protection against black flashes (REPAINT-01, CONTEXT-RESTORE-01)
+- Asked: anything else that can be done about the black flicker on a phone. Audit: no context-loss handling, no repaint after coming back from the background, no draw at all while paused, and the page behind the game is near-black. The CSS has no blur or backdrop effects, and the Low-graphics layers are small (10 MB each), so memory is not the cause.
+- Fix: `requestRepaint()` asks for one immediate frame that skips the 30 FPS limiter and also draws while the game is paused; it is called after every resize and orientation change, when the page becomes visible again, on `pageshow`, and when a lost canvas surface is restored. The canvas now keeps its surface restorable (`contextlost` is not cancelled), and `contextrestored` redraws the screen, the map layer and the blood layer. The game frame has the dirt colour as its background, so a compositor gap shows dirt instead of the near-black page.
+- Measured: a canvas blacked out to 100% is repainted to 0% within 250 ms in the paused state, the playing state and on returning to the page (the paused state never repainted before).
+- Not checked: a real surface loss (it cannot be forced in a desktop browser), and a real phone. Off-screen layers (map, blood) are rebuilt on restore but their own context loss is not separately detected.
+
+## [1.7.108] — 2026-10-07 (UTC)
+
+### Black flicker on phones and help text as a popup (RESIZE-KEEP-01)
+- Reported: on a phone the game flickers black; the "?" in the Build menu squeezes its help text into the row.
+- Cause (flicker): resizing the canvas clears it to opaque black, and on a phone the 30 FPS limiter skips every other frame, so a resize that lands on a skipped frame shows black for a frame. Phone browsers resize constantly (address bar, the chat sheet or keyboard moving). Reproduced: 100% of the canvas black right after each resize event, now 0%.
+- Fix: before a resize the picture is copied, then drawn back stretched to the new size, so the canvas is never presented blank (the snapshot canvas is shrunk to nothing afterwards).
+- Help text: "?" opens a centered card with the icon, name and text and a "Got it" button; tapping outside also closes it; it is tied to the Build menu closing. The text no longer opens inside the row, and the lock hint on locked rows moved into the same card.
+- Checked: syntax, design contract, resize measurement, a touch-emulated tap on "?" (Log Mill, Expand), close by button and by backdrop, no console errors. Not checked: a real phone.
+
+## [1.7.107] — 2026-10-07 (UTC)
+
+### Start-screen music starts on a phone tap (AUDIO-GESTURE-01)
+- Reported: the music only began after the round started, with none on the start screen.
+- Cause: on a phone a touch counts as permission to play sound only when the finger lifts (touchend, pointerup or click), not on touch-down. The unlock listened once, on pointerdown and keydown, so the first touch used it up without being able to start the audio; the next unlock call, at the first wave start, then succeeded.
+- Fix: unlocking now listens to pointerdown, pointerup, touchend, click and keydown and keeps retrying until the audio context is running. The music scheduler already waits for the context, so the start-screen song begins at once when it runs.
+- Checked: touch-emulated tap on the cookie choice (context running, start-screen phase playing, no console errors), desktop load and click, design contract (a new check covers the retry events). A first version of that contract check read its constant before it was defined and stopped the game starting; it was caught by the load test and fixed before delivery. Not checked: a real phone.
+
+## [1.7.106] — 2026-10-07 (UTC)
+
+### Close-range arrows and no music prompt on the loading screen (CLOSE-SHOT-01)
+- Asked: remove the "click or tap anywhere to start the music" line (or start the music by itself); the arrow animation looks wonky when archers shoot enemies near them.
+- Cause (arrow): the shot spawns at the end of the bow, about 28 px from the archer's shoulder. An enemy closer than that was passed, so the arrow spawned beside or beyond it and its flight direction was recomputed from there: measured over targets 8 to 32 px away, the flight swung 130 to 180 degrees off the aim (backwards), with flights of 1 to 40 ms.
+- Fix: when the target is nearer than the muzzle reach, the spawn point stops a 9 px run-up before the target's edge on the line from the shoulder, so the arrow always travels forward along the aim; the arrow's trail also grows with the distance flown instead of showing at full length behind a shooter. Applies to every ranged shot that uses this spawn (not Ninja).
+- Music: the hint is removed. A browser cannot play sound before a click, so the music starts by itself only where the browser already allows it (the autoplay attempt stays) and otherwise on the first click, which in practice is the cookie choice.
+- Checked: syntax, the design contract, and a measurement of 28 close and far shots (no backward flights left). Not checked: by eye in play.
+
+## [1.7.105] — 2026-10-07 (UTC)
+
+### In-game music: no more dropped notes, and the wave and boss themes build (MUSIC-BUDGET-01, MUSIC-LAYERS-01)
+- Asked: make the music better as much as possible. Measured first (offline render of 24 bars per theme): the wave theme dropped 167 optional and 10 required notes per cycle and the boss theme 178 and 12, because of a fixed 10-voice limit; the loudness was flat (-29.9, -29.5, -29.6 dB across the three sections) and the mids and highs sat 19 to 22 dB under the bass.
+- Fix: the voice limit follows the smoothed frame work time (`musicVoiceLimit`: 20 under 4 ms, 14 under 8 ms, otherwise the old 10), so a light scene plays the whole arrangement and a heavy wave falls back by itself. The wave and boss themes gain a chord pad from the second section, a layered snare on the backbeat, a two-bar noise riser into each section change, and from the third section a detuned-saw double and a bell shimmer on the lead (`scheduleCombatLayers`).
+- Measured result (wave): dropped notes 177 to 44 (required 10 to 2); section loudness -29.6, -28.6, -28.2 dB (a rise instead of flat); mids +4 dB and highs +3 dB closer to the bass; peak 0.43, no clipping. Boss: dropped 190 to 86 (required 12 to 1); loudness -28.1, -28.0, -27.6 dB. Field theme: dropped notes 44 to 0. Scheduler cost for the wave theme about 0.8 ms per step, unchanged.
+- Not changed: the start-screen song (1.7.104) and the field arrangement, apart from the larger budget. `wave-music-preview.wav` and `boss-music-preview.wav` are offline renders of one cycle for listening.
+- Checked: syntax, design contract, offline renders, scheduler cost. Not checked: by ear, and the scheduler cost on a phone.
+
+## [1.7.104] — 2026-10-07 (UTC)
+
+### Start-screen music rebuilt as a song (MUSIC-ATTRACT-02)
+- Asked: make the music as good as possible. Measured first: the 1.7.100 start-screen track was flat (every bar at about -29 dB), bass-heavy (the mids and highs 15 to 20 dB below the bass) and lost about 19 optional notes per bar to the 10-voice limit; five melody notes on strong beats clashed by a semitone with the chord.
+- New 24-bar structure at 128 BPM: a 4-bar intro (pad swells in, kick enters at bar 2, riser), two 4-bar verses (bell melody, then saw lead with claps and open hats), a 4-bar build (F-G pre-chorus, accelerating snare roll, 2-bar noise riser, kick drops out on the last half bar) and an 8-bar chorus (battle melody on a detuned saw lead with a harmony a third above and an octave pluck, octave-bounce bass, 16th shaker, crashes at bars 16 and 20, tom fill into the loop). The battle melody is kept; notes that hit a chord tone by a semitone on a strong beat are nudged onto it.
+- Own voices (`popTone`: lead, harmony, pad, pluck, bass with sub, FM bell; `popSnare`, `popClap`, `popRiser`) and a start-screen voice budget of 20 (optional notes 17); the in-game phases keep 10.
+- Measured result: section loudness rises from -33.5 dB (intro) to -25.4 dB (chorus) against a flat -29.5 before, whole-cycle -27.8 dB against the wave theme at -30 dB; mids and highs are 8 to 12 dB closer to the bass; dropped optional notes fall from 454 to 29 per cycle; no clipping (peak 0.39); `attract-music-preview.wav` is an offline render of one cycle.
+- Not changed: the field, wave and boss themes. The same measurement shows the wave theme drops about 170 optional notes per cycle and 10 required ones at the phase-start sting, because of the 10-voice limit chosen for phone performance; raising it is a trade-off against frame rate and is left for a decision.
+- Checked: syntax, design contract, offline render and spectrum of two full cycles (key change included), harmony check, scheduler cost (about 5.5 ms average per step, 20 ms at the 95th percentile on this machine, against 7 ms before). Not checked: by ear, and the scheduler cost on a phone.
+
+## [1.7.103] — 2026-10-07 (UTC)
+
+### Wider range dots and a plainer structure menu (RANGE-RING-DOTS-01)
+- Asked: more distance between the white and black range dots; no "need ..." text on the new structure rows.
+- Fix: `RANGE_RING_DOT_SPACING_PX` goes from 30 to 52, so the white and black dots sit about 1.7x further apart (the ring still closes evenly and still alternates); no build row shows "(need ...)" text any more (the cost is already on the right); a row you cannot afford is dimmed instead, and the menu refreshes its rows each time it is built.
+- Checked: syntax, design contract and a ring-spacing measurement. Not checked: by eye on the phone.
+
+## [1.7.102] — 2026-10-07 (UTC)
+
+### Black flash after loading and slow music start (BOOT-FADE-01, AUDIO-PREWARM-01)
+- Reported: the start-screen music only began after the game had loaded, and the screen flashed black.
+- Cause: the loading screen was hidden before the game wrapper had faded in, so for about 29 frames (about 470 ms) the dark page showed through a half-transparent game; and the audio graph was built inside the first click, which browsers only allow after a gesture.
+- Fix: the game appears at full opacity beneath the loading screen, which then fades out over it (no gap: 0 of 393 sampled frames, was 29); the audio context, noise buffer and brass wave are built during loading, so a click only resumes it (click to first note 7 ms, was 36 ms); a browser that already allows audio starts the music during loading; the loading screen says "Click or tap anywhere to start the music" until audio is unlocked.
+- Checked: boot frame sampling, click-to-note timing, console with no errors or warnings across load, banner and play, the design contract, and the earlier feature tests. Not checked: real-device GPU timing, music by ear.
+
+## [1.7.101] — 2026-10-07 (UTC)
+
+### Merchant selling and stock (MERCHANT-SELL-01, MERCHANT-POTIONS-01)
+- Asked: selling returns 50% of the original price or of the price the merchant would ask; the merchant sells every potion and medical item, including a revive.
+- Cause: selling an item refunded half of its paid price only, so found items returned nothing; the Shop sold only the medical items (Bandage, First Aid Kit, Defibrillator) and no potions or stickman revive.
+- Fix: `itemSellValue` is half of the price paid, or half of the merchant price (potion table, rarity price) for a found item; the Sell button in the Shop shows the amount and the refund path uses it. A new Shop section stocks every stim and tonic (bought into the selected stickman's pack at the listed price) and Revive (350 gold, brings a downed stickman back at half health).
+- Checked: syntax, design contract, headless buy, sell (120 bought, 60 returned), found-item value (Hyper-Serum 150), revive and the rejected second revive. Not checked: prices by feel; tune from play.
+
+## [1.7.100] — 2026-10-07 (UTC)
+
+### Structures, caravan, start-screen music and gore explosion (STRUCTURE-PRODUCERS-01, STRUCTURE-FIRE-01, CARAVAN-01, CARAVAN-SOUND-01, MUSIC-ATTRACT-01, GORE-EXPLOSION-01)
+- Asked: Log Mill and Stone Quarry structures; a merchant horse and cart after round 5 with a rare shop that buys wood (2 gold) and stone (4 gold); pop battle music on the start screen; a rare gore explosion on one-hit kills; an audit of history for missing blood. The Shop is unlocked while the caravan is on the road.
+- Structures: new `isStructureType` / `isFighterTower` replace the Barricade-only checks wherever a unit meant "not a fighter" (stats, XP, barks, roster, game-over count); enemy targeting still reaches the mills. Production, upgrades, save field `producerTimerMs`, build rows, preview, inspector and a flame effect that grows below 60% health. Hut finding: nothing removed; spawning is gated to once per game from wave 5 (1.7.7) with a free event slot and a new tile near a road end.
+- Caravan: spawns at wave clear (after round 5, 40% chance, at least 2 rounds apart, wood or stone held), walks the road in real time, waits while the Shop is open, leaves past the finish and is removed; synthesized sleigh-bell and hoof sounds; tap or the Shop button opens the sell cards. Telemetry `caravan_arrived`, `caravan_sale`.
+- Music: a new `attract` phase (128 BPM, I-V-vi-IV, four-on-the-floor, battle melody in major) starts on the first click at the start screen and returns to the field theme on PLAY.
+- Gore: a one-hit kill by a stickman bursts 6% of the time into ballistic droplets (pooled, quadratic drag, 7.65 m/s terminal clamp); each stains as a drop decal of length diameter / sin(impact angle). History audit: 458 identifiers ever removed, none a missing blood feature (drip sites and the Bleed constant were reworked).
+- Checked: syntax, headless runs for each feature (cost, yield, upgrade, targeting, fire, caravan walk/sell/exit, scheduler over three cycles, droplet clamp, stain geometry, pool recycling). a save round trip with a quarry, and a real-time 10x wave in which enemies overran both mills (downed for three rounds, no errors). Not checked: caravan across a map expansion, sound by ear.
+
+## [1.7.99] — 2026-10-07 (UTC)
+
+### Lag candidates from the 1.7.93 profile (TEXT-SPRITE-01, DECAL-BAKE-PRESSURE-01, SCENERY-SPRITE-01)
+- Goal: work the ready lag items without changing how anything looks. Cause (from the 1.7.93 stress profile): floating numbers were re-rastered with `fillText` every frame, unbaked blood decals cost about 450 path calls a frame until the 4 s bake age, and scenery emoji were drawn with `fillText` at their own sizes.
+- Fix: floating combat text is rastered once per text, colour and zoom step (`textSpriteFor`, 256-entry cache, cleared when full) and blitted with its fade alpha; the settled-decal bake age drops from 4 s to 1.2 s while 90 or more blood decals are unbaked (back to 4 s below 40, already-baked decals keep the short age so nothing rebuilds); scenery emoji go through the existing emoji sprite cache (`drawSceneryEmoji`).
+- Not done: scenery stays in the depth-sorted pass (baking it into the static layer would break stickmen walking behind trees and the hover, clearing and growth effects), and zoom sharpness and the audio pass wait for evidence (see BACKLOG).
+- Checked: script syntax, a headless load with no console errors, and pixel checks that the text sprite and scenery sprite draw at 1x, 3x and 5.2x zoom. Frame cost before and after was not measured, so confirm in a debug log on a real device.
+
 ## [1.7.98] — 2026-10-06 (UTC)
 
 ### The score drives forward (MUSIC-DRIVE-01, MUSIC-STING-01, MUSIC-LURCH-01, MUSIC-PRIORITY-01)
