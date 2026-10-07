@@ -1380,7 +1380,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.97'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.98'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -3189,6 +3189,7 @@ function validateDesignContract(){
   if(HEAVY_VISUAL_LOAD_HOLD_MS < 300 || HEAVY_VISUAL_LOAD_HOLD_MS > 2000 || typeof heavyVisualLoadHoldUntil !== 'number') problems.push('adaptive detail holds for a real-time interval, not a frame count (ADAPTIVE-HOLD-REALTIME-01)');
   if(typeof settledDecalHasContent !== 'boolean' || !String(render).includes('settledDecalHasContent')) problems.push('the empty settled decal layer is not drawn every frame (EMPTY-LAYER-SKIP-01)');
   { const redFresh = agedBloodRgb({ rgb: { r: 140, g: 20, b: 20, a: 1 }, lifespan: DECAL_LIFESPAN }, 0), greenFresh = agedBloodRgb({ rgb: { r: 60, g: 160, b: 50, a: 1 }, lifespan: DECAL_LIFESPAN }, 0); if(redFresh.r !== 255 || redFresh.g !== 40 || greenFresh.r > 80 || greenFresh.g < 160) problems.push('red blooded enemies show bright fresh blood and other colours keep their own (FRESH-BLOOD-01)'); }
+  if(MUSIC_VOICE_LIMIT < 9 || ['scheduleMusicArpeggio', 'scheduleCombatHats', 'scheduleMusicSting', 'musicOpenHat', 'musicSkippedSteps', 'scheduleDrumFill', 'scheduleCycleTurnaround', 'scheduleSectionAccent', 'musicCrash', 'syncMusicEcho'].some(name => typeof SoundEngine.prototype[name] !== 'function')) problems.push('the score drives forward: arpeggiated chords, a drum kit with fills and section crashes, a turnaround that climbs into each new key, delayed vibrato and an echo on the leads (MUSIC-DRIVE-01)');
   if(typeof SoundEngine.prototype.scheduleFieldStep !== 'function' || FIELD_ROOT_PROGRESSIONS.length < 3 || SFX_VARIANT_PITCH.length < 4) problems.push('the idle theme rotates four arrangements and sound effects rotate variants so nothing loops identically (FIELD-VARIATION-01, SFX-VARIANT-01)');
   { const waveTypes = new Set(); let repeats = 0, previousFormation = null; for(let n = 1; n <= 60; n++){ const f = waveFormationFor(n); waveTypes.add(f); if(f === previousFormation && f !== 'STEADY') repeats++; previousFormation = f; } if(waveFormationFor(1) !== 'STEADY' || waveTypes.size < 5 || repeats > 0) problems.push('waves are dealt in varied formations, never the same non-steady formation twice in a row, with wave 1 always steady (WAVE-FORMATION-01)'); }
   if(typeof refreshAttackState !== 'function' || typeof decalCategoryCounts !== 'function' || !String(generateDebugLog).includes('decalCategoryCounts')) problems.push('the debug log counts debris by category and the fighter portrait shows its attack state without changing the plate size (DECAL-CATEGORIES-01, ATTACK-STATE-01)');
@@ -3208,7 +3209,7 @@ function validateDesignContract(){
   if(typeof rollTreeVariant !== 'function' || TREE_VARIANT_EMOJI.length < 3 || RANDOM_EVENT_CHOICES[0][0] !== 'CHEST' || RANDOM_EVENT_CHOICES[0][1] > 0.1 || !String(spawnScenery).includes('SCENERY-VARIETY-01')) problems.push('trees and rocks come in varied kinds, shapes and facings, and presents are the rarest event (SCENERY-VARIETY-01, EVENT-VARIETY-01)');
   { const kinds = new Set(RANDOM_EVENT_CHOICES.map(c => c[0])); const total = RANDOM_EVENT_CHOICES.reduce((a, c) => a + c[1], 0); if(kinds.size < 9 || Math.abs(total - 1) > 0.001 || typeof grantEventProp !== 'function' ) problems.push('there are nine kinds of random event and their chances add up to one (EVENT-VARIETY-01)'); }
   if(typeof Tower.prototype.walkTo !== 'function' || typeof Tower.prototype.advanceWalk !== 'function' || !String(attemptMoveTower).includes('walkTo') || !String(creditCoin).includes('withFlight') || !String(spawnGroundItem).includes('ITEM-ARC-01') || !String(Tower.prototype.update).includes('MOVE-WALKS-01')) problems.push('moved stickmen walk to their new tile, dropped items fly out in an arc, and faded coins fly to the counter (MOVE-WALKS-01, ITEM-ARC-01, COIN-FADE-FLIGHT-01)');
-  { // OWNER-LEDGER-01 (1.7.44): the owner's rules from play-testing, checked together so none of them can quietly regress (see the Owner rules ledger at the top of AGENTS.md)
+  { // OWNER-LEDGER-01 (1.7.44) — see CHANGELOG.md § [1.7.44]
     const src = fn => String(fn);
     const ledger = [
       ['no wind sound', typeof SoundEngine.prototype.setWindLevel === 'undefined'],
@@ -3225,7 +3226,7 @@ function validateDesignContract(){
       ['version is a real version', /^\d+\.\d+\.\d+$/.test(GAME_VERSION)]
     ];
     const broken = ledger.filter(entry => !entry[1]).map(entry => entry[0]);
-    if(broken.length) problems.push('owner rules ledger broken: ' + broken.join('; ') + ' (OWNER-LEDGER-01)');
+    if(broken.length) problems.push('project rules ledger broken: ' + broken.join('; ') + ' (OWNER-LEDGER-01)');
   }
   if(!(LOOT_KILL_ODDS.supply < 1/150) || !(LOOT_KILL_ODDS.gear < 1/900) || ITEM_RARITIES.EPIC.weight > 1 || ITEM_RARITIES.RARE.weight > 7 || ITEM_RARITIES.COMMON.weight < 64) problems.push('items are rarer than before: kill odds, per-wave cap and rare and epic weights are kept low (LOOT-RARER-01)');
   if(!String(drawOneSceneryItem).includes('CLEAR-PIE-01') || String(drawOneSceneryItem).includes('r = size*0.62')) problems.push('clearing progress is a single yellow gradient wedge that fills clockwise behind the emoji, with no dark disc and no stripes, not a ring over it (CLEAR-PIE-01)');
@@ -6821,7 +6822,7 @@ function fieldVariedBar(notes, rng){
   if(mode < 0.3) return out;
   if(mode < 0.55){ out.unshift(out.pop()); return out; } // syncopated: the whole bar moves one step later
   if(mode < 0.75){ let lifted = 0; for(let i = 7; i >= 0 && lifted < 3; i--) if(out[i] !== null){ out[i] += 12; lifted++; } return out; } // the last three notes climb an octave
-  if(mode < 0.9){ for(let i = 1; i < 8; i += 2) if(out[i] === null && out[i-1] !== null && rng() < 0.6) out[i] = out[i-1] + 2; return out; } // passing notes
+  if(mode < 0.9){ for(let i = 1; i < 8; i += 2) if(out[i] === null && out[i-1] !== null && rng() < 0.6) out[i] = out[i-1] + [2, 1, 3].find(gap => MUSIC_KEY_PITCH_CLASSES.has((((out[i-1] + gap) % 12) + 12) % 12)); return out; } // passing notes stay inside the key
   let kept = 0; for(let i = 0; i < 8; i++) if(out[i] !== null && kept++ % 2 === 1) out[i] = null; // thinned: every other note rests
   return out;
 }
@@ -6831,14 +6832,26 @@ const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
 const MUSIC_COMBAT_INTERVALS = [0,2,3,5,7,8,11,12,14,17];
 const MUSIC_STEPS_PER_BAR = 8;
 const MUSIC_BARS = 24;
+const MUSIC_OPTIONAL_VOICE_HEADROOM = 4; // MUSIC-PRIORITY-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+const MUSIC_VOICE_LIMIT = 10; // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+const MUSIC_MINOR_CHORD_ROOTS = new Set([38, 43]);
+const MUSIC_ARPEGGIO_SHAPE = [0, 1, 2, 3, 2, 1];
+const MUSIC_TURNAROUND_RUN = [-17, -14, -12, -9, -7, -5, -3, -1];
+const MUSIC_TOM_PITCHES = [236, 198, 166, 140];
+const MUSIC_VIBRATO_CENTS = 16;
+const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
+const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
+const MUSIC_TEMPO_CREEP = 0.06;
+const MUSIC_STING_PAIRS = [[0, 3], [3, 7], [7, 10], [12, 15]];
+const MUSIC_ECHO_SEND = 0.2, MUSIC_ECHO_FEEDBACK = 0.34, MUSIC_ECHO_DAMPING_HZ = 2600;
 const MUSIC_CYCLE_STEPS = MUSIC_STEPS_PER_BAR * MUSIC_BARS;
 const MUSIC_MINOR_INTERVALS = [0,2,3,5,7,9,10,12,14,17];
 const MUSIC_MAJOR_INTERVALS = [0,2,4,5,7,9,11,12,14,17];
 const MUSIC_BASS_ROOTS = [38, 34, 36, 45, 38, 34, 36, 45, 34, 36, 45, 38]; // MUSIC-FIELD-THEME-01 (1.7.36): i, bVI, bVII, V — a brooding war-march progression in D minor
-const MUSIC_FIELD_MELODY = [ // fixed-key horn motif as semitones above the tonic, repeated and answered; 12 bars played twice per 24-bar cycle
-  [0,null,null,0, 3,null,1,0], [-2,null,null,-2, 0,null,3,null], [0,null,null,0, 3,null,5,7], [5,null,3,null, 1,null,0,null],
-  [7,null,null,7, 8,null,7,5], [3,null,null,3, 5,null,3,1], [0,null,null,0, 3,null,5,7], [10,null,8,null, 7,null,null,null],
-  [5,null,null,5, 8,null,7,5], [3,null,null,3, 5,null,3,null], [1,null,null,1, 3,null,5,null], [3,null,1,null, 0,null,null,null]
+const MUSIC_FIELD_MELODY = [ // FIELD-THEME-02 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,7,null], [0,null,null,7, 5,null,3,5], [10,null,8,null, 7,null,null,null],
+  [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,8,null], [7,null,null,5, 3,null,2,3], [2,null,-1,null, 0,null,null,null],
+  [7,null,null,12, 10,null,8,null], [7,null,10,null, 12,null,14,null], [12,null,10,null, 8,null,7,5], [5,null,2,null, -1,null,0,null]
 ];
 const MUSIC_COMBAT_MELODY = [
   [0,null,4,1,null,2,0,null],
@@ -6866,6 +6879,15 @@ const MUSIC_COMBAT_MELODY = [
   [7,4,null,1,2,1,null,0],
   [4,null,2,1,0,null,null,null]
 ];
+function musicDiatonicAbove(pitch, keyTonic){
+  for(const gap of MUSIC_HARMONY_GAPS) if(MUSIC_KEY_PITCH_CLASSES.has((((pitch + gap - keyTonic) % 12) + 12) % 12)) return pitch + gap;
+  return pitch + 7;
+}
+function musicChordTones(baseRoot){ return [0, MUSIC_MINOR_CHORD_ROOTS.has(baseRoot) ? 3 : 4, 7, 12]; }
+function musicKeyShift(cycleIndex){
+  const shift = (MUSIC_CYCLE_SHIFTS[cycleIndex % MUSIC_CYCLE_SHIFTS.length] + MUSIC_SEASON_SHIFTS[Math.min(9, Math.floor(wavesCompleted / 10))]) % 12;
+  return shift > 6 ? shift - 12 : shift;
+}
 function midiToFrequency(note){ return 440 * Math.pow(2, (note - 69) / 12); }
 // Five variants, never the same twice in a row: pitch ratios are whole semitones (0, +1, -1, +2, -2) and the noise colour moves with them.
 const SFX_VARIANT_PITCH = [1, 1.0595, 0.9439, 1.1225, 0.8909], SFX_VARIANT_NOISE = [1, 1.12, 0.89, 1.25, 0.8];
@@ -6969,6 +6991,20 @@ class SoundEngine{
     this.musicFilter.Q.value = 0.5;
     this.musicBus.connect(this.musicFilter);
     this.musicFilter.connect(this.master);
+    this.musicEchoSend = this.ctx.createGain();
+    this.musicEchoSend.gain.value = MUSIC_ECHO_SEND;
+    this.musicEcho = this.ctx.createDelay(1);
+    this.musicEchoDamping = this.ctx.createBiquadFilter();
+    this.musicEchoDamping.type = 'lowpass';
+    this.musicEchoDamping.frequency.value = MUSIC_ECHO_DAMPING_HZ;
+    this.musicEchoFeedback = this.ctx.createGain();
+    this.musicEchoFeedback.gain.value = MUSIC_ECHO_FEEDBACK;
+    this.musicEchoSend.connect(this.musicEcho);
+    this.musicEcho.connect(this.musicEchoDamping);
+    this.musicEchoDamping.connect(this.musicEchoFeedback);
+    this.musicEchoFeedback.connect(this.musicEcho);
+    this.musicEchoDamping.connect(this.musicBus);
+    this.musicEchoStepSeconds = 0;
     this.combatBus = this.ctx.createGain();
     this.feedbackBus = this.ctx.createGain();
     this.combatBus.gain.value = 1;
@@ -7024,6 +7060,7 @@ class SoundEngine{
       const schedulerStart = performance.now(); // SCHEDULER-TIMING-01 (1.7.51): the music timer runs outside the game frame, so its cost was invisible; it is now measured
       const now = this.ctx.currentTime;
       const stepSeconds = this.musicStepSeconds();
+      this.syncMusicEcho(stepSeconds, now);
       if(this.musicPaused || document.hidden || this.ctx.state !== 'running'){
         this.musicNextTime = now + stepSeconds;
       } else {
@@ -7039,8 +7076,9 @@ class SoundEngine{
         const horizon = now + 0.14;
         while(this.musicNextTime <= horizon){
           this.scheduleMusicStep(this.musicStep, this.musicNextTime);
-          if(this.musicStep + 1 >= MUSIC_CYCLE_STEPS) this.musicCycle = (this.musicCycle || 0) + 1;
-          this.musicStep = (this.musicStep + 1) % MUSIC_CYCLE_STEPS;
+          const stepsAdvanced = 1 + this.musicSkippedSteps(this.musicStep);
+          if(this.musicStep + stepsAdvanced >= MUSIC_CYCLE_STEPS) this.musicCycle = (this.musicCycle || 0) + 1;
+          this.musicStep = (this.musicStep + stepsAdvanced) % MUSIC_CYCLE_STEPS;
           this.musicNextTime += this.musicStepSeconds();
         }
       }
@@ -7077,9 +7115,22 @@ class SoundEngine{
     frequency.setTargetAtTime(open ? 14000 : 3200, at, open ? 0.3 : 0.5);
   }
   musicStepSeconds(){
-    return 60 / (this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2;
+    return 60 / (this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2 / (1 + MUSIC_TEMPO_CREEP * (this.musicTempoCreep || 0));
   }
-  reserveMusicVoice(startTime, duration, count=1){
+  // MUSIC-LURCH-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  musicSkippedSteps(step){
+    const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
+    const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
+    const shortBar = combat && bar % 8 === 5 && (this.musicPhase === 'boss' || bar >= 8);
+    return shortBar && step % MUSIC_STEPS_PER_BAR === 5 ? 2 : 0;
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  syncMusicEcho(stepSeconds, now){
+    if(!this.musicEcho || this.musicEchoStepSeconds === stepSeconds) return;
+    this.musicEchoStepSeconds = stepSeconds;
+    this.musicEcho.delayTime.setTargetAtTime(stepSeconds * 1.5, now, 0.05);
+  }
+  reserveMusicVoice(startTime, duration, count=1, optional=false){
     const now = this.ctx.currentTime;
     let write = 0;
     for(let i=0;i<this.musicVoiceExpiry.length;i++){
@@ -7088,7 +7139,7 @@ class SoundEngine{
     this.musicVoiceExpiry.length = write;
     let overlapping=0;
     for(const expiry of this.musicVoiceExpiry) if(expiry>startTime) overlapping++;
-    if(overlapping + count > 6) return false;
+    if(overlapping + count > (optional ? MUSIC_VOICE_LIMIT - MUSIC_OPTIONAL_VOICE_HEADROOM : MUSIC_VOICE_LIMIT)) return false;
     for(let i=0;i<count;i++) this.musicVoiceExpiry.push(startTime + duration + 0.015);
     return true;
   }
@@ -7099,26 +7150,73 @@ class SoundEngine{
     const data = this.noiseBuffer.getChannelData(0);
     for(let i=0; i<len; i++) data[i] = Math.random()*2-1;
   }
-  musicPercussion(time, accent){
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  musicPercussion(time, accent, level=1){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
-    const duration = accent ? 0.065 : 0.035;
+    const duration = accent ? 0.13 : 0.04;
+    if(!this.reserveMusicVoice(time, duration, accent ? 2 : 1, !accent)) return;
+    this.ensureNoiseBuffer();
+    const source = this.ctx.createBufferSource();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+    source.buffer = this.noiseBuffer;
+    filter.type = accent ? 'bandpass' : 'highpass'; filter.frequency.value = accent ? 1900 : 7200; filter.Q.value = accent ? 0.9 : 0.6;
+    gain.gain.setValueAtTime((accent ? 0.075 : 0.022) * level, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    source.connect(filter); filter.connect(gain); gain.connect(this.musicBus);
+    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    source.start(time, Math.random() * 1.5, duration);
+    if(!accent) return;
+    const body = this.ctx.createOscillator();
+    const bodyGain = this.ctx.createGain();
+    body.type = 'sine';
+    body.frequency.setValueAtTime(210, time);
+    body.frequency.exponentialRampToValueAtTime(120, time + 0.09);
+    bodyGain.gain.setValueAtTime(0.05 * level, time);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
+    body.connect(bodyGain); bodyGain.connect(this.musicBus);
+    body.onended = () => { body.disconnect(); bodyGain.disconnect(); };
+    body.start(time);
+    body.stop(time + 0.11);
+  }
+  musicCrash(time, level){
+    if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
+    const duration = 0.5;
     if(!this.reserveMusicVoice(time, duration)) return;
     this.ensureNoiseBuffer();
     const source = this.ctx.createBufferSource();
     const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
     source.buffer = this.noiseBuffer;
-    filter.type = 'bandpass'; filter.frequency.value = accent ? 1550 : 3600; filter.Q.value = 0.7;
-    gain.gain.setValueAtTime(accent ? 0.045 : 0.018, time);
+    filter.type = 'highpass'; filter.frequency.value = 5200; filter.Q.value = 0.5;
+    gain.gain.setValueAtTime(0.05 * level, time);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
     source.connect(filter); filter.connect(gain); gain.connect(this.musicBus);
     source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
-    source.start(time, 0, duration);
+    source.start(time, Math.random() * 1.4, duration);
   }
-  musicTone(freq, startTime, duration, type, peak){
+  musicOpenHat(time, level){
+    if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
+    const duration = 0.11;
+    if(!this.reserveMusicVoice(time, duration, 1, true)) return;
+    this.ensureNoiseBuffer();
+    const source = this.ctx.createBufferSource();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+    source.buffer = this.noiseBuffer;
+    filter.type = 'highpass'; filter.frequency.value = 6500; filter.Q.value = 0.5;
+    gain.gain.setValueAtTime(0.03 * level, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    source.connect(filter); filter.connect(gain); gain.connect(this.musicBus);
+    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    source.start(time, Math.random() * 1.4, duration);
+  }
+  musicTone(freq, startTime, duration, type, peak, optional=false){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0 || !freq) return;
     const fmVoice = type === 'fm' || type === 'fmkeys' || type === 'fmbass';
-    if(!this.reserveMusicVoice(startTime, duration, fmVoice ? 2 : 1)) return;
+    const leadVoice = type === 'reed' || type === 'brass' || type === 'fm' || type === 'fmkeys';
+    if(!this.reserveMusicVoice(startTime, duration, fmVoice ? 2 : 1, optional)) return;
+    const vibratoVoice = duration >= 0.22 && (type === 'reed' || type === 'brass' || type === 'fmkeys') && this.reserveMusicVoice(startTime, duration, 1, true);
     const osc = this.ctx.createOscillator();
     const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
@@ -7162,8 +7260,19 @@ class SoundEngine{
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(this.musicBus);
+    if(leadVoice && this.musicEchoSend) gain.connect(this.musicEchoSend);
+    let vibrato = null, vibratoDepth = null;
+    if(vibratoVoice){
+      vibrato = this.ctx.createOscillator();
+      vibratoDepth = this.ctx.createGain();
+      vibrato.frequency.setValueAtTime(5.4 + Math.random() * 0.6, startTime);
+      vibratoDepth.gain.setValueAtTime(0, startTime);
+      vibratoDepth.gain.linearRampToValueAtTime(MUSIC_VIBRATO_CENTS, startTime + duration * 0.6);
+      vibrato.connect(vibratoDepth); vibratoDepth.connect(osc.detune);
+      vibrato.start(startTime); vibrato.stop(endTime + 0.015);
+    }
     osc.start(startTime);
-    osc.onended = () => { osc.disconnect(); filter.disconnect(); gain.disconnect(); if(modulator){ modulator.disconnect(); modulationGain.disconnect(); } };
+    osc.onended = () => { osc.disconnect(); filter.disconnect(); gain.disconnect(); if(modulator){ modulator.disconnect(); modulationGain.disconnect(); } if(vibrato){ vibrato.disconnect(); vibratoDepth.disconnect(); } };
     osc.stop(endTime + 0.015);
   }
   scheduleMusicStep(step, time){
@@ -7172,13 +7281,18 @@ class SoundEngine{
     if(beatStep === 0) this.musicPhase = this.requestedMusicPhase;
     const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
     const boss = this.musicPhase === 'boss';
+    if(beatStep === 0) this.musicTempoCreep = (this.musicTempoCreep || 0) + ((combat ? this.musicIntensity || 0 : 0) - (this.musicTempoCreep || 0)) * 0.4;
     if(beatStep === 0 && combat !== this.musicFilterOpen) this.sweepMusicFilter(time, combat);
     const phraseBar = bar % 4;
     const section = Math.floor(bar / 8);
     const cycleIndex = this.musicCycle || 0;
-    let shift = (MUSIC_CYCLE_SHIFTS[cycleIndex % MUSIC_CYCLE_SHIFTS.length] + MUSIC_SEASON_SHIFTS[Math.min(9, Math.floor(wavesCompleted / 10))]) % 12;
-    if(shift > 6) shift -= 12;
+    const shift = musicKeyShift(cycleIndex);
     this.musicShift = shift;
+    const stepSeconds = this.musicStepSeconds();
+    if(beatStep === 0 && this.musicPhase !== this.musicStingPhase){
+      this.musicStingPhase = this.musicPhase;
+      if(combat) this.scheduleMusicSting(time, shift, stepSeconds, boss);
+    }
     const baseChord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
     const chord = baseChord + shift;
     const minor = baseChord === 38;
@@ -7204,7 +7318,12 @@ class SoundEngine{
       if(bar % 8 === 7 && beatStep === 7) this.musicTone(195, time, 0.07, 'snap', 0.09);
       if(!breath && (phraseBar === 1 || phraseBar === 2) && beatStep === 5) this.musicTone(midiToFrequency(chord + 12 + MUSIC_COMBAT_INTERVALS[2 + bar % 3]), time + 0.004, 0.12, 'fmkeys', 0.04);
       if(!breath && intensity > 0.5 && beatStep % 2 === 0) this.musicTone(midiToFrequency(chord + 24 + [0, 7, 12, 7][(beatStep / 2) % 4]), time, 0.09, 'pluck', 0.032 * intensity);
+      if(!breath) this.scheduleCombatHats(time, beatStep, stepSeconds, 0.5 + 0.5 * intensity);
+      if(!breath && (section > 0 || intensity > 0.35)) this.scheduleMusicArpeggio(time, baseChord, chord, beatStep, stepSeconds, 0.55 + 0.55 * intensity);
     }
+    this.scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat);
+    this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
+    this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
     const cadence=false;
     const degree = !combat ? null : MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
@@ -7216,7 +7335,61 @@ class SoundEngine{
       const duration=combat ? (beatStep===0 ? 0.25 : beatStep%2 ? 0.11 : 0.15) : cadence ? this.musicStepSeconds()*1.65 : voice==='reed' ? 0.28 : voice==='fmkeys' ? 0.24 : beatStep%2 ? 0.13 : 0.20;
       const accent=beatStep===0 ? 1 : beatStep%2 ? 0.78 : 0.90;
       const phraseGain=phraseBar===3 ? 0.82 : section===1 ? 0.94 : 1;
-      this.musicTone(midiToFrequency(chord + (combat ? 12 : 24) + intervals[degree] + octave), time + (Math.random() - 0.5) * 0.008, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain*(0.92 + Math.random()*0.16));
+      const leadPitch = chord + (combat ? 12 : 24) + intervals[degree] + octave;
+      this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain*(0.92 + Math.random()*0.16));
+      if(combat && (boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
+      if(combat && (boss || section > 0)) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
+    }
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleCombatHats(time, beatStep, stepSeconds, level){
+    if(beatStep % 2 === 0){ this.musicOpenHat(time, level); return; }
+    this.musicPercussion(time, false, level * 0.6);
+    this.musicPercussion(time + stepSeconds / 2, false, level * 0.8);
+  }
+  // MUSIC-STING-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleMusicSting(time, shift, stepSeconds, boss){
+    const tonic = 38 + shift + 24;
+    const level = boss ? 1.25 : 1;
+    MUSIC_STING_PAIRS.forEach(([lowerOffset, upperOffset], hit) => {
+      const hitTime = time + hit * stepSeconds * 2;
+      const hold = hit === MUSIC_STING_PAIRS.length - 1 ? stepSeconds * 6 : stepSeconds * 1.8;
+      this.musicTone(midiToFrequency(tonic + lowerOffset), hitTime, hold, 'brass', 0.075 * level);
+      this.musicTone(midiToFrequency(tonic + upperOffset), hitTime, hold, 'brass', 0.06 * level);
+    });
+    this.musicTone(midiToFrequency(tonic - 24), time, stepSeconds * 4, 'fmbass', 0.1 * level);
+    this.musicCrash(time + stepSeconds * 6, level);
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleMusicArpeggio(time, baseRoot, shiftedRoot, beatStep, stepSeconds, level){
+    const tones = musicChordTones(baseRoot);
+    for(let half = 0; half < 2; half++){
+      const shapeIndex = (beatStep * 2 + half) % MUSIC_ARPEGGIO_SHAPE.length;
+      const pitch = shiftedRoot + 12 + tones[MUSIC_ARPEGGIO_SHAPE[shapeIndex]];
+      this.musicTone(midiToFrequency(pitch), time + half * stepSeconds / 2, stepSeconds * 0.42, 'pluck', 0.03 * level * (half ? 0.8 : 1), true);
+    }
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat){
+    if(beatStep !== 0 || bar % 8 !== 0 || (bar === 0 && cycleIndex === 0)) return;
+    this.musicCrash(time, combat ? 1 : 0.6);
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleDrumFill(time, bar, beatStep, stepSeconds, level){
+    if(bar % 8 !== 7 || beatStep < 4) return;
+    for(let half = 0; half < 2; half++){
+      const hitIndex = (beatStep - 4) * 2 + half;
+      this.musicTone(MUSIC_TOM_PITCHES[Math.min(MUSIC_TOM_PITCHES.length - 1, Math.floor(hitIndex / 2))], time + half * stepSeconds / 2, 0.11, 'kick', 0.1 * level);
+    }
+  }
+  // MUSIC-DRIVE-01 (1.7.98) — see CHANGELOG.md § [1.7.98]
+  scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat){
+    if(bar !== MUSIC_BARS - 1 || beatStep < 4) return;
+    const incomingTonic = 38 + musicKeyShift(cycleIndex + 1) + 24;
+    for(let half = 0; half < 2; half++){
+      const runIndex = (beatStep - 4) * 2 + half;
+      const lift = 0.55 + 0.45 * runIndex / (MUSIC_TURNAROUND_RUN.length - 1);
+      this.musicTone(midiToFrequency(incomingTonic + MUSIC_TURNAROUND_RUN[runIndex]), time + half * stepSeconds / 2, stepSeconds * 0.45, combat ? 'brass' : 'reed', (combat ? 0.1 : 0.075) * lift);
     }
   }
   // FIELD-VARIATION-01 (1.7.36): the idle theme never plays the same 24 bars twice. Four arrangements rotate cycle by cycle (theme, answer,
@@ -7227,7 +7400,9 @@ class SoundEngine{
     const barRng = mulberry32(cycleIndex*7919 + bar*104729);
     const barPick = barRng(), barPick2 = barRng(), barPick3 = barRng();
     const progression = FIELD_ROOT_PROGRESSIONS[cycleIndex % FIELD_ROOT_PROGRESSIONS.length];
-    const root = progression[Math.floor(bar / 2) % progression.length] + shift;
+    const baseRoot = progression[Math.floor(bar / 2) % progression.length];
+    const root = baseRoot + shift;
+    const section = Math.floor(bar / 8);
     const buildUp = arrangement === 2 && bar < 8;
     const stepSeconds = this.musicStepSeconds();
     // bass
@@ -7238,6 +7413,7 @@ class SoundEngine{
       this.musicTone(midiToFrequency(root + 12), time, stepSeconds*7.5, 'triangle', 0.028);
       this.musicTone(midiToFrequency(root + 19), time, stepSeconds*7.5, 'triangle', 0.018);
     }
+    if(beatStep === 0 && bar % 2 === 0) this.musicTone(midiToFrequency(root + 12 + musicChordTones(baseRoot)[1]), time, stepSeconds*7.5, 'triangle', 0.016, true);
     // drums
     if(!buildUp){
       const drumStyle = arrangement === 0 ? 0 : arrangement === 1 ? 2 : arrangement === 2 ? 1 : (barPick2 < 0.5 ? 1 : 2);
@@ -7253,6 +7429,9 @@ class SoundEngine{
     }
     if(phraseBar === 3 && beatStep >= 6) this.musicPercussion(time, beatStep === 7);
     if(bar % 8 === 7 && beatStep === 7) this.musicTone(195, time, 0.07, 'snap', 0.08);
+    if(!buildUp && !breath && arrangement > 0 && beatStep === 4) this.musicPercussion(time, true, 0.55);
+    if(!buildUp && !breath && section > 0 && arrangement >= 2 && beatStep % 2 === 0) this.musicPercussion(time + stepSeconds / 2, false, 0.7);
+    if(!buildUp && !breath) this.scheduleMusicArpeggio(time, baseRoot, root, beatStep, stepSeconds, section > 0 || cycleIndex > 0 ? 0.5 : 0.34);
     // melody
     if(breath || barPick3 < 0.08) return;
     let notes = (arrangement === 2 ? FIELD_MELODY_B : MUSIC_FIELD_MELODY)[bar % 12];
@@ -7263,6 +7442,7 @@ class SoundEngine{
     const pitch = 38 + shift + 24 + offset;
     const strong = beatStep === 0 ? 1 : 0.86;
     this.musicTone(midiToFrequency(pitch), time + (Math.random() - 0.5) * 0.008, beatStep % 4 === 0 ? 0.3 : 0.17, voice, 0.085 * strong * (0.92 + Math.random()*0.16));
+    if((arrangement === 0 || arrangement === 3) && section > 0 && beatStep % 2 === 0) this.musicTone(midiToFrequency(musicDiatonicAbove(pitch, 38 + shift)), time + 0.004, beatStep % 4 === 0 ? 0.3 : 0.17, 'reed', 0.03, true);
     if(arrangement === 1 && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(pitch + 7), time + 0.004, 0.2, 'pluck', 0.028);
     if(arrangement === 2 && beatStep % 2 === 0) this.musicTone(midiToFrequency(pitch - 12), time + stepSeconds, 0.2, 'fmkeys', 0.03);
     if(arrangement === 3 && beatStep === 5 && (phraseBar === 1 || phraseBar === 2)) this.musicTone(midiToFrequency(root + 24 + [0, 3, 7][bar % 3]), time + 0.004, 0.14, 'pluck', 0.03);
