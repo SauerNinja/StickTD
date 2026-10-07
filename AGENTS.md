@@ -1,9 +1,22 @@
 # Agent Instructions — Stick Tower Defense
 
-For any AI agent (Claude Code or otherwise) making changes to this repository. Part 1 covers what
-to do and how; Part 2 (below the standing rules and sections 0-8) holds the detailed subsystem
-rationale, historical lessons and best-practice notes. Read Part 1 every session; open the Part 2
-section for a subsystem only when it is actually relevant.
+## Start here
+
+One `index.html` (about 22,000 lines, no libraries, no build step, everything drawn and synthesized in the browser) plus README, CHANGELOG, AGENTS, BACKLOG, sitemap, manifest, robots and LICENSE. The owner plays on desktop and phone and states rules from play-testing; the ledger below is the contract. Part 2 further down is reference: open a section only when its subsystem is involved.
+
+Never open whole: `index.html`, `CHANGELOG.md` (1.8 MB) and this file. Find things with grep, then read a slice:
+- `grep -n 'functionName\|CONSTANT' index.html`, then `sed -n 'a,bp' index.html`.
+- Code markers read `// ID (x.y.z) — see CHANGELOG.md § [x.y.z]`; `grep -n 'ID' index.html CHANGELOG.md AGENTS.md` returns the code, the entry and the rule together.
+- This file's Code map section (at the end) lists where each system lives. Line numbers drift, so search by name.
+
+Making a change:
+1. Check the ledger for a rule that covers the request. If the request conflicts with a rule, change the rule and its check in the same release.
+2. Fix the cause with the smallest change, reusing existing helpers. Keep anything drawn every frame free of allocation.
+3. Add a design-contract check (`designContractProblems`) for whatever the owner will want to stay true.
+4. Verify in headless Chromium: `node --check` on the extracted script; boot with no console errors and `designContractProblems.length === 0`; exercise the change by calling game functions (`acquireActive(towerPool).create(type, gx, gy)`, `acquireActive(enemyPool).spawn(type, 1)`, then `update(FIXED_DT); gameTime += FIXED_DT`); screenshot anything visual. State what was not verified. To hunt lag, profile a stress scene (about 120 enemies with arrows and bleeding) with Chrome's profiler over 300 frames and count canvas calls per frame by caller; fix what the numbers show, not what looks suspicious. Before removing dead code, list names nothing references outside comments (repeat after each removal), then read `git log -S name` and the CHANGELOG to see why the last use went. Keep anything that serves old saves.
+5. Bump `GAME_VERSION`, add the changelog entry (the CHANGELOG header says how), and deliver the full file set flat with `present_files`. Never a zip.
+
+Owner voice: short answers, no filler, no preamble; say what changed and what to check. Visual work is judged by eye and must match the existing procedural style: strokes and flat colours, no external fonts or images.
 
 ## Owner rules ledger (read this first; every rule here is owner-stated and has a check)
 
@@ -34,8 +47,17 @@ Each line is a rule the owner stated in play-testing. The id after it is the des
 23. When something that used to work breaks, compare against GitHub history, name the version where it changed, restore it, and add a check so it cannot return.
 24. Biomes (BIOMES-01, owner decision 1.7.66): the leafy tree is the only tree kind and meadow the only grass near the start; evergreens, palms and the Pinewood and Dunes ground colours appear only in wavy patches 8 or more tiles from the starting tile, like Minecraft biomes; a tile's biome never changes (it depends only on the tile and the run seed).
 
+25. Start screen: STICK TD stick-letter wordmark at the top over a larger version number, stick-lettered PLAY at the exact centre, Graphics at the bottom, "⚙️ Options" bottom right, "See changes" bottom left; during play the bell sits flush top left and joins the bar only when there is no room beside it. The loading screen shows the walking Grunt for at least 2 s and longer only for real work (TITLE-LAYOUT-01, FIRST-START-OPTIONS-01, NOTIFICATION-BELL-LEFT-01, BOOT-WARMUP-01).
+26. Farm hearts appear only when two animals of one kind meet; rocks vary widely in size and shape (LIVESTOCK-PAIR-HEART-01, ROCK-VARIETY-01).
+27. Bleed, burn and poison numbers show at most once per real second, as a sum (DOT-TEXT-01).
+28. Stuck arrows slow an enemy 8% each to a 60% floor; frozen, stunned and barricaded enemies hold the queue behind them and slowed ones are followed at their pace (ARROW-DRAG-01, QUEUE-HOLD-01).
+29. The attract screen shows only living creatures, arrows that stick and blood that clears with the scene; in-game arrows use the same look (ATTRACT-LIVING-01, ATTRACT-ARCHERS-01, ARROW-LOOK-01).
+30. An element on a fighter is drawn on its weapon, where the weapon is (WEAPON-ENCHANT-SYNC-01). The selected range ring is widely spaced black and white dots (RANGE-RING-DOTS-02).
+31. Classes are unlocks, never upgrades or evolutions: player-facing text says unlock, and a stat milestone adds a class to the Build menu without changing the tower that earned it (NO-EVOLVE-IN-PLACE-01, CLASS-UNLOCK-WORDING-01).
+32. Melee attacks wind up, strike and settle onto the aim without snapping, with a smear behind the blade and a thrust for spears; the swordsman's blade is tapered with a straight guard (MELEE-SWING-01).
+
 ### Mandatory pre-delivery checklist (run before every present_files)
-1. `GAME_VERSION` bumped; top `CHANGELOG.md` heading is `## [x.y.z] — date (UTC)` for the same version; README "Current version" matches; all three agree.
+1. `GAME_VERSION` bumped; top `CHANGELOG.md` heading is `## [x.y.z] — date (UTC)` for the same version; the two agree.
 2. Every change is described under that version with `###` subheadings: what was asked, what was found, what changed, how it was verified, what was not verified. Never put new work under an old version or without a version.
 3. `sitemap.xml` `lastmod` is set to the release date; `manifest.json`, `robots.txt` and `LICENSE` are delivered with the rest so the complete uploadable set is always present (images stay in the repository).
 4. The page loads with the design contract clean (no problems, no console errors) and the regression suite passes.
@@ -158,7 +180,7 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 
 ## 1. Scope and non-negotiable constraints
 
-- **Check progression intent before changing unlock behavior.** Read the README's player-facing progression overview and the progression invariants in this file, then trace the current unlock source through registration, Build-menu display, purchase, save, and load. The README explains the player experience; this file and the current implementation define the technical contract.
+- **Check progression intent before changing unlock behavior.** Read the progression invariants in this file and the in-game Help, then trace the current unlock source through registration, Build-menu display, purchase, save, and load. The README explains the player experience; this file and the current implementation define the technical contract.
 - **`index.html` holds the whole game; the one explicit exception is `CHANGELOG.md`.** No separate
   runtime JS/CSS files, no build step, no new runtime dependencies for anything gameplay-related —
   keep it that way regardless of how large the file gets. The single exception, changed by direct
@@ -176,7 +198,7 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   before assuming a local copy is current — this repo can be updated outside any given session.
 - **Current snapshot priority**: when the owner supplies a complete current project snapshot, use its `index.html`, `CHANGELOG.md`, and companion files as the active baseline ahead of older ZIP archives or remembered workspace versions. Record and verify its `GAME_VERSION`; keep any differences from earlier work explicit.
 - **Index comment references**: keep code comments brief and avoid embedding long rationale in `index.html`. Any pointer to a detailed changelog explanation must name the exact version heading and archive/entry ID, using the form `CHANGELOG.md § [x.y.z] Section, CA###`. Verify the cited version and ID exist before shipping; put the full explanation in the changelog.
-- **README voice**: write `README.md` as enduring, positive, player-facing product copy, with a clear game-package tone, like the back of a boxed console game: a one-line tagline, a short pitch, and a brief feature list of only the most critical elements in general language, never a list of recent or specific changes. The introduction above the Contents list follows this rule on every release. The top of the README is a centred header with the play link, one facts strip, a quick start, a short feature grid and a multi-column grouped contents table, with every line one plain sentence and no filler adjectives; long reference material sits below it, and the code map stays collapsed. Describe what players experience and can do; keep copy general where exact detail does not help a player's decision. Avoid release chronology, before/after narration, phrases such as "now we no longer" or "used to," implementation history, and defensive lists of absent features. Correct or add copy only when a stable, verified player-facing fact needs it. Put past changes in `CHANGELOG.md` and contributor rules or technical detail in `AGENTS.md`.
+- **README voice**: `README.md` is a plain, humble description of the game in the voice of the back of a boxed console game: the name, a link to play, one image, two short sentences about what the game is, and a small grid of general features. It does not talk about itself, its maker, its price, where it runs, how it saves, its version or its development state, and it never contains rules, numbers, instructions, strategy or changes. Write it as if the game were finished, using only things that will not change, in short plain sentences with no slogans, puns, hype or filler adjectives. A line fails if it sounds like marketing trying to be liked.
 - **Version lives in exactly one place**: `GAME_VERSION` in `index.html`, referenced everywhere
   else (start screen, Settings > About, save files). Never hardcode it a second time.
 - Existing owner-directed gameplay, balance, UX, audio, and integration decisions are constraints,
@@ -322,7 +344,7 @@ The owner has stated these repeatedly. They are written generally on purpose: th
 ## 3. Task execution and navigation
 
 - **Search directly when the target is known** — a function name, config key, or distinctive
-  string. Use the README's Code Map or this file's reference doc only when useful for orientation,
+  string. Use this file's Code map section or its reference doc only when useful for orientation,
   not as a mandatory first step. Code Map line numbers drift; treat a link as a starting point to
   search from, not a guaranteed address.
 - **Inspect targeted dependencies, not just the changed function**: relevant callers, what reads
@@ -482,7 +504,7 @@ repeat analysis already given earlier in the same session.
 
 ## 8. Reference index
 
-- **`README.md`'s Code Map** — line-number index into `index.html` by system. Line numbers drift as
+- **This file's Code map section** — line-number index into `index.html` by system. Line numbers drift as
   the file grows; treat a link as a starting point to search from, not a guaranteed address. Update
   an entry in the same change that adds a genuinely new named system.
 - **`CHANGELOG.md`** — full dated version history, newest first.
@@ -540,7 +562,7 @@ hand — this part is not meant to be read in full every session.
   `EVOLUTIONS`, not a separately maintained list. Treat `TOWER_UNLOCK_SOURCE_BY_TARGET` as the
   source for player-facing unlock descriptions. Keep locked-row copy direct, useful, and free of
   cryptic riddles; state the relevant wave, source class, or stat requirement when it helps the
-  player understand their next goal. The README gives a broad roster and progression overview;
+  player understand their next goal. The in-game Help gives a broad roster and progression overview;
   these invariants and the verified source tables define exact behavior.
 - `EVOLVED_TOWER_TYPES` lists everything reachable only via unlock, never built directly from the
   start (includes Hammerman itself). A base-type tower loaded from a save that predates the
@@ -899,7 +921,7 @@ First-tier reference: 5 uploaded game-audio books. The running plan for remainin
 
 ## Progression and balance invariants (1.4.x)
 
-These invariants and the owner's current instructions define progression behavior; keep the README focused on the player experience.
+These invariants and the owner's current instructions define progression behavior; keep the in-game Help focused on the player experience and the README on a plain description of the game.
 
 - Trained stats are capped at `STAT_EFFECT_CAP` (500) each and `STAT_TOTAL_CAP` (1,000) combined.
   Enforce in `allocateStat()`, promotion and save loading — never only in the UI.
@@ -1164,3 +1186,139 @@ FM keys and bass each allocate two oscillators; keep the six-voice music limit a
 ### Notification layout
 
 Notification panel/stack left position is measured from the bell box relative to canvas-frame; width must account for that inset. Do not restore a fixed eight-pixel left edge or onboarding-finger vertical spacer. Refresh on panel open, preserve cached layout updates and build/history mutual exclusion.
+
+## Code map and project notes
+
+StickTD is one `index.html` with no libraries and no build step. These notes were the README's developer section; they live here so the README can stay a plain description of the game.
+
+### Tech stack
+
+- **HTML5 Canvas 2D** draws stickmen, weapons, enemies, particles, and decals procedurally.
+- **Vanilla JavaScript** powers the game and its interface.
+- **Web Audio API** synthesizes the original soundtrack and sound effects in the browser. The field arrangement gains a steady pulse during combat; music, sound effects and overall volume have separate controls.
+- The game lives in `index.html`, with `CHANGELOG.md` alongside it for in-game release notes.
+
+### Project structure
+
+```
+StickTD/
+├── index.html      # game markup, styles, and logic
+├── AGENTS.md        # workflow rules for AI agents/contributors making changes
+├── CHANGELOG.md      # full version history, newest first — the single source of truth; the in-game "what's new" dialog fetches this file directly
+├── BACKLOG.md        # ideas and planned features not yet built
+├── LICENSE            # MIT
+└── README.md          # short description of the game
+```
+
+### Code map
+
+
+
+Direct links into `index.html` on GitHub, jumping straight to where each system actually lives.
+Use the section headers around each destination to navigate when line references shift.
+
+**Wave, XP and performance systems** — search for these names:
+- `buildWavePlan()` / `validateWavePlan()` / `SIZE_TIER_BANDS` — seeded wave construction, size
+  tiers, boot-time validation of waves 1–120.
+- `advanceWaveDispatch()` / `currentBatchReleased()` — phase-strict, batch-overlapping dispatch.
+- `Enemy.applySizeTier()` / `Enemy.packedSpeed()` / `Enemy.recordContribution()` — size stats,
+  tier speed ceiling, damage ledger.
+- `awardKillExperience()` / `creditKill()` / `distributeSharedXp()` / `gainTowerExp()` — XP.
+- `Tower.upgrade()` / `promotionCostFor()` / `promotionCapacity()` / `Tower.targetScore()` — promotion and targeting.
+- `STAT_EFFECT_CAP` / `STAT_TOTAL_CAP` / `refreshProgressionMilestones()` / `progressionMilestoneNote()` — stat caps, naming at 500, mastery at 1,000, XP-to-gold.
+- `MIXED_ELEMENT_RULES` / `refreshElementState()` / `applyAttunementStatus()` / `ELEMENT_VISUALS` — element mixes, on-hit status and the elemental projectile/swing visuals.
+- `dpsBreakdownText()` / `maybeShowUpdateNotice()` — the tap-to-explain DPS panel and the what's-new dialog.
+- `drawDebugOverlay()` / `panCameraToTower()` / `Tower.drawBloodLustAura()` — debug mode, killstreak pan and aura.
+- `sweepSettledDecals()` / `isDecalBakeEligible()` / `blitWorldLayer()` — gore baking and
+  viewport-cropped world layers.
+- `buildEnemyHash()` / `spatialCellKey()` / `queryNearby()` — integer-keyed spatial hash.
+- `applyPanInertia()` / `requestPausedRender()` — camera glide and paused-render coalescing.
+
+**Items, clicks and world rules** — search for these names:
+- `useStoredConsumable()` / `showItemUseFeedback()` / `ITEM_USE_CLASSES` — storing and using consumables, and the one-moment feedback on each use.
+- `refreshQuickUse()` / `updateQuickSlots()` / `updateBuffPips()` — the quick-use row above the panel and the nameplate buff pips.
+- `makeItemInstance()` / `itemLogReport()` / `logGameEvent()` / `renderItemCodex()` — the item log, game event log and Items tab.
+- `FIRST_MAP_DROP_KILL` / `GOLD_MAP_BAG_ITEM` / `serializeGameState()` — early free-expansion rewards and their save/load data.
+- `dropGoldBag()` / `tryOpenGoldBagAt()` / `isWithinEmojiSquare()` / `sceneryAtPoint()` — gold bags and the emoji-border click areas.
+- `tryClaimRandomEventSlot()` / `runWaveClearRandomEvents()` — up to two endpoint events per expansion.
+- `treeRockSizeFrac()` / `fillEndRing()` / `harvestedTileKeys` — scenery sizes by distance from the road ends and cleared-tile memory.
+- `enemyPresenceDirty` / `PROJECTILE_AMMO_BY_TOWER` / `projectileStickKind()` / `bleedSourceAllowed()` / `frameCapIntervalMs()` — cached enemy presence, ammo shapes, embedded projectile bleed and the frame-rate limit.
+
+**Major sections**
+- [Config (tunables, tower/enemy stat tables)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1244)
+- [Map / path generation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2902)
+- [Scenery (trees/rocks)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3565)
+- [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2352)
+- [`spawnLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10827)
+- [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1630)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9480)
+- [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1734)
+- [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5703)
+- [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6121)
+- [Camera (zoom + pan)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7598)
+- [Entity classes (Enemy, Tower, Projectile)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7772)
+- [Stickman rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12201)
+- [Spatial hash](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13049)
+- [Waves](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13345)
+- [Main loop (fixed timestep)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14017)
+- [Canvas / input setup](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15529)
+- [UI wiring](https://github.com/SauerNinja/StickTD/blob/main/index.html#L16058)
+- [Start / end screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L18073)
+- [Boot](https://github.com/SauerNinja/StickTD/blob/main/index.html#L18161)
+
+**Core gameplay systems**
+- [`CONFIG.TOWERS` (per-tower stats/tiers)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1859)
+- [`CONFIG.ENEMIES` (per-enemy stats)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2132)
+- [`SPLIT_CHILD_TYPE` — which fragment type a splitting enemy leaves behind (Splitter→Splitmini, Boulder→Rocklet)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1481)
+- [`updateBarricadesAndPileup()` — barricade contact, enemy queueing](https://github.com/SauerNinja/StickTD/blob/main/index.html#L3388)
+- [`computeFinishLine()` — shared geometry for the finish-line carpet and full-body crossing check; `reachEnd()`/`updateEscaped()` — escaped enemies remain active targets](https://github.com/SauerNinja/StickTD/blob/main/index.html#L4396)
+- [`class Enemy`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6584)
+- [`class Tower`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L7887)
+- [`class Projectile`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9182) — includes `pointSegmentDist2()`, the swept-collision check that stops fast projectiles (Mage especially) tunneling through moving targets
+- [`class CatCompanion`/`drawCat()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10703) — Cat Snapper's pooled temporary companion (follows its target's current x/y, never the path itself) and the shared procedural cat renderer both the companion and Cat Snapper's own idle pose use
+- [`class SkeletonMinion`/`raiseSkeletonsForTower()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10818) — Necromancer's pooled round-scoped minions (raised in `startNextWave()`, destroyed on wave-complete), and `drawSkeleton()` just below it
+- [`findTarget()` — per-tower targeting, including Mage's wide hysteresis margin to avoid mid-charge target snapping](https://github.com/SauerNinja/StickTD/blob/main/index.html#L8316)
+- [`drawStickman()` — procedural tower/weapon rendering](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10906)
+- [`checkStallWatchdog()` — anti-bunching failsafe](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11554)
+- [`resolveSweptEnemyCollisions()` / `resolveEnemyCollisions()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11600)
+- [`buildWavePlan()` — seeded wave construction, including the rotating wave archetypes after wave 100](https://github.com/SauerNinja/StickTD/blob/main/index.html#L11926)
+- [`validateGameDefinitions()` — boot-time cross-reference check across every data-driven config table](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2203)
+- [`update(dt)` — the actual per-frame simulation tick](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12445)
+- [`render(ctx)` — the actual per-frame draw call](https://github.com/SauerNinja/StickTD/blob/main/index.html#L12670)
+- [`updateHUD()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L14385)
+- [`fitHudTopToOneLine()` — scales the top bar to fit narrow screens](https://github.com/SauerNinja/StickTD/blob/main/index.html#L13906)
+- [`updateInspectPanel()`](https://github.com/SauerNinja/StickTD/blob/main/index.html#L15693)
+
+**Blood & gore system** (see [Blood & gore](#blood--gore) above for the player-facing description)
+- [`getBloodProfile()` / `rollBloodProfile()` — per-species base palette + per-instance color jitter](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9657)
+- [`bloodTintForFire()` — sooty/darkened tint for wounds taken while burning](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9638)
+- [`resolveGoreArchetype()` / `resolveWeaponSubtype()` — which forensic taxonomy branch a hit uses](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9722)
+- [`spawnDecal()` — the main ground-pool particle system, archetype-specific shape/size table lives here](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9736)
+- [`spawnCastOffArc()` / `spawnBloodCastoff()` — directional cast-off streaks (Blade's swing arc, Mage's radiating cone)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9801)
+- [`towerSwingDir()` — per-tower swing handedness for consistent cast-off arcs](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9797)
+- [`spawnSwingArcGuide()` — the "air line": a brief visible trace of the blade's actual swept path, geometrically identical to the angle driving the real cast-off blood](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10398)
+- [`spawnSatelliteDrops()` — secondary scattered droplets, distance-scaled elongation](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9901)
+- [`spawnShockring()` — Blunt's partial-arc impact ring, biased away from the attacker](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10374)
+- [`spawnPunctureMark()` — Archer's dark, understated entry-wound mark](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9883)
+- [`spawnExpiratedMist()` — air-diluted pale mist + bubble specks, an occasional death-time flourish independent of weapon type](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10456)
+- [`spawnBoneDebris()` / `spawnSkullDrop()` / `spawnWormFromSkull()` — skeletal remains and worms that emerge from skulls](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9838)
+- [`updateWalkingBlood()` — footprints (swipe) and pool disturbance (wipe), both distinct BPA mechanisms](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9941)
+- [`playImpactSound()` — per-archetype impact audio, scaled by the same hit-power roll driving the visuals](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5262)
+
+
+### Running locally
+
+Run the game with a static file server:
+
+1. Clone or download the repo — keep `index.html` and `CHANGELOG.md` together, same folder.
+2. Serve the folder with any static file server, e.g.:
+
+```
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000/`. Serving the folder over HTTP(S) also enables the in-game update panel to load `CHANGELOG.md` alongside the game.
+
+### Contributing
+
+See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and contributor guidance. Review the current game and source files before changing project behavior; record shipped changes in [CHANGELOG.md](CHANGELOG.md).

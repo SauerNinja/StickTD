@@ -8,6 +8,21 @@ This is the single list of everything still open. Shipped work is removed and li
 
 ---
 
+## Lag candidates from the 1.7.93 profile (evidence first: confirm on a real device before building)
+- Stress scene of 120 bleeding enemies: unbaked blood decals cost about 450 path calls a frame (they bake after 4 s), particles are one path each with their own alpha, and about 100 floating texts are re-rastered every frame. A text-sprite cache and earlier decal baking under heavy load are the likely fixes.
+- Recipe: Chrome profiler over 300 frames, plus a count of canvas calls by caller (patch `CanvasRenderingContext2D.prototype`).
+
+## Stalls at 5x and 10x (evidence from the 1.7.90 log, 17 minutes)
+- All ten worst stalls (350 to 884 ms between frames) happened at 5x or 10x, eight of them while a wave was spawning, with the game's own frame work under 3 ms and a heap of about 20 MB. 46 frames and 5.3 s of wall time were lost to the clamp. The log cannot say whether the page was blocked or the browser withheld the frame.
+- Next step: play a few waves at 10x, download the debug log and read the new "Main-thread long tasks" section against the callback-gap snapshots. Tasks at the same moments point at the page (audio bursts, analytics, garbage collection); none point at the graphics card or the browser. Also try Low graphics at 10x once: the main canvas uses high-quality image smoothing on High.
+
+## 1.7.92 play-test checks (built, need a real playthrough)
+- Notched phone, portrait and landscape: the top bar, bell, tower panel and bottom buttons should clear the notch and home indicator (SAFE-AREA-01, checked only with an emulated inset).
+- Weapon enchant: every class with a weapon has an exact weapon line except Hacker, Cat Snapper, Ninja and Archer's idle bow, which use a fallback or a short mark. Check those elemental classes in play and add `markWeapon` calls where the glow is off.
+- Arrow slow and queues: an enemy with arrows should crawl; enemies behind a frozen, stunned or arrow-pinned one should wait or follow without overlapping; spawning pauses while a queue is backed up.
+- Loading: read the debug log's `Boot warm-up` line on a real device; if work is far under 2 s the floor is what you see.
+- Attract screen, in-game arrow look, pig hearts, rock sizes, once-a-second damage numbers, bell placement, ring dots.
+
 ## 1.7.75 open items
 - Frame limit pacing (shipped 1.7.77, VSYNC-PACE-01): confirm in a debug log that 21 to 29 ms gaps no longer recur at a steady 60 FPS limit; if they do, the Chrome Performance trace below is still the next step.
 - Real frame loss that the game cannot see (owner, 1.7.53 build): the overlay showed 37 to 41 FPS and gaps of 21 to 29 ms while update, render and HUD together took under 1 ms and the worst JavaScript frame in a minute was 6 ms. Time spent outside the page's JavaScript (the graphics process, compositing, a recorder or another tab) is the suspect, not the game code. Needs one Chrome Performance trace of a lagging attack (record 10 s, with the GPU lane visible), or the exported debug log from that moment, to say which.
@@ -225,7 +240,7 @@ Earlier captures showed short measured JavaScript phases alongside long frame ga
 - **Headless balance simulator.** Weak, typical, farm and late-carry profiles; only if the owner wants simulation, since the standing rule is evidence from the owner.
 - **Input-action abstraction.** Map physical input to semantic actions (`BUILD_OPEN`, `PAUSE_TOGGLE`, `NEXT_WAVE`) before adding any second input scheme; not urgent.
 - **Offline play.** Not the removed `applicationCache` API; if wanted, a service worker plus the existing manifest.
-- **Dead-code candidates (left alone on purpose).** Thirteen top-level names that nothing references: `DROP_BAKE_START_LIFE_T` (documented as kept), `FLAG_GUST_SWELL_SHARE`, `LIVESTOCK_WANDER_RETARGET_MS`, `QUASAR_MIN_PER_STAT`, `bridgeTiles`, `clearBarks`, `openSwordSpecModal`, `closeSwordSpecModal`, `craftableItemIdSet`, `nextElementMixNote`, `pickGenericFoodItem`, `warriorStrDamageMult`. Some may be plumbing for planned features; removing them saves bytes, not frame time. Decide with the owner.
+- **Legacy kept on purpose (1.7.95).** The run-reward system (`restoreRunRewards`, `claimRunReward`, the 🎁 button, `runBoonCounts`) stays so saves made while rewards existed still load their blessings; remove it only with a save migration.
 - **Cryptic names.** More renames like the 1.6.152 ones (`origQX` and `lowerP` are done) when their code is next touched.
 
 ## 5. Gameplay and content — scoped, not started

@@ -143,6 +143,7 @@
 </script>
 <style>
   :root{
+    --safe-top:env(safe-area-inset-top,0px); --safe-right:env(safe-area-inset-right,0px); --safe-bottom:env(safe-area-inset-bottom,0px); --safe-left:env(safe-area-inset-left,0px); /* SAFE-AREA-01 (1.7.96): the viewport covers the notch and home indicator, so edge controls add these */
     --dirt:#8b5a2b; --hedge-dark:#1e3b1a; --hedge:#2d5a27; --hedge-light:#3a7533;
     --wood:#4a2f1d; --wood-light:#6b4530; --gold:#f1c40f; --danger:#e63946; --paper:#f5f0e6;
   }
@@ -182,7 +183,7 @@
   @keyframes pauseTextPulse{0%,100%{opacity:0.85;transform:scale(1);}50%{opacity:1;transform:scale(1.04);}}
   @keyframes pauseSubtextBlink{0%,100%{opacity:0.5;}50%{opacity:1;}}
   #hud-top{position:absolute;top:0;left:0;right:0;display:none;align-items:center;flex-wrap:nowrap;
-    column-gap:3px;justify-content:center;padding:6px 8px;
+    column-gap:3px;justify-content:center;padding:calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
     max-width:900px;margin:0 auto;transform-origin:top center;
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
   /* Every direct child now keeps its natural content size and never wraps its own text — the sole
@@ -258,7 +259,7 @@
   #unlock-toast.show{display:block;pointer-events:auto;cursor:pointer;}
   #notification-bell{position:relative;display:flex;align-items:center;flex:none;pointer-events:auto;}
   #notification-bell[hidden]{display:none;}
-  #canvas-frame > #notification-bell{position:absolute;left:8px;top:8px;z-index:6;}
+  #canvas-frame > #notification-bell{position:absolute;left:calc(8px + var(--safe-left));top:calc(8px + var(--safe-top));z-index:6;}
   #notification-bell button{background:rgba(40,33,24,0.92);color:var(--paper);border:1px solid var(--gold);border-radius:8px;padding:6px 9px;min-height:38px;font:inherit;font-weight:bold;cursor:pointer;}
   #notification-badge{color:#ffe082;margin-left:3px;}
   #notification-panel{position:absolute;top:var(--notification-content-top,100px);left:var(--notification-content-left,8px);box-sizing:border-box;width:min(330px,calc(100% - var(--notification-content-left,8px) - 8px));max-height:max(0px,min(55vh,420px,calc(100% - var(--notification-content-top,100px) - 8px)));overflow:auto;z-index:12;pointer-events:auto;background:rgba(25,22,18,0.97);border:1px solid var(--gold);border-radius:8px;padding:10px;color:var(--paper);box-shadow:0 6px 22px rgba(0,0,0,0.5);}
@@ -268,8 +269,6 @@
   #notification-list li.unread .notification-message{font-weight:bold;}
   .notification-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
   .notification-message{display:block;width:100%;flex:1;min-width:0;text-align:left;background:transparent;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;}
-  .notification-explanation{font-size:0.92em;line-height:1.4;color:#ffe9a8;white-space:pre-line;}
-  .notification-explanation[hidden]{display:none;}
   .notification-dismiss{flex:none;background:transparent;border:1px solid rgba(255,255,255,0.35);border-radius:4px;color:var(--paper);padding:1px 6px;cursor:pointer;font:inherit;line-height:1.3;}
   #notification-close,#notification-read-all{background:#4a3525;border:1px solid #a9874d;border-radius:5px;color:var(--paper);padding:4px 7px;cursor:pointer;}
 
@@ -282,7 +281,6 @@
   #waveSummaryTitle{font-weight:bold;color:var(--gold);margin-bottom:4px;}
   #waveSummaryGold{color:#ffe066;font-weight:bold;margin-bottom:4px;}
   #waveSummaryXpList{display:flex;flex-direction:column;gap:2px;}
-  .wave-summary-xp-row{display:flex;justify-content:space-between;gap:10px;color:#bdeaff;}
   #new-enemy-toast{position:relative;display:none;max-width:100%;max-height:min(34vh,270px);overflow:auto;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid #e63946;border-radius:8px;
     padding:10px 12px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:left;cursor:pointer;}
   #new-enemy-toast.show{display:block;pointer-events:auto;}
@@ -291,17 +289,10 @@
     background:rgba(230,57,70,0.3);border:1px solid #e63946;border-radius:50%;color:var(--paper);
     font-size:0.7em;line-height:20px;cursor:pointer;}
   #newEnemyTitle{font-weight:bold;color:#ff8a80;margin-bottom:4px;}
-  .new-enemy-row{margin-top:4px;padding-top:4px;border-top:1px solid rgba(230,57,70,0.3);}
-  .new-enemy-row:first-child{margin-top:0;padding-top:0;border-top:none;}
-  .new-enemy-emoji{display:inline-block;font-size:2.6em;line-height:1;
-    animation:newEnemyWaddle 0.6s ease-in-out infinite;transform-origin:50% 90%;will-change:transform;}
   @keyframes newEnemyWaddle{
     0%,100%{transform:rotate(-8deg) translateY(0);}
     50%{transform:rotate(8deg) translateY(-3px);}
   }
-  .new-enemy-head{font-weight:bold;color:#ffe066;}
-  .new-enemy-stats{font-size:0.85em;color:#bdeaff;margin:2px 0;}
-  .new-enemy-desc{font-size:0.85em;color:var(--paper);font-style:italic;}
   @keyframes killstreakPop{
     0%{opacity:0;transform:translateY(-5px);}
     12%,80%{opacity:1;transform:translateY(0);}
@@ -415,8 +406,6 @@
   #help-modal-inner h3{color:var(--gold);font-size:clamp(13px,2.1vw,16px);margin:16px 0 6px;
     border-bottom:1px solid rgba(241,196,15,0.35);padding-bottom:4px;}
   #help-modal-inner h3:first-of-type{margin-top:10px;}
-  #help-modal-inner .evo-row{display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap;}
-  #help-modal-inner .evo-arrow{opacity:0.6;}
   #help-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
     border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
@@ -431,21 +420,6 @@
     border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
 
-  #spec-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:21;
-    display:flex;align-items:center;justify-content:center;padding:16px;}
-  #spec-modal.hidden{display:none;}
-  #spec-modal-inner{background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
-    max-width:520px;width:100%;padding:16px;text-align:center;color:var(--paper);}
-  #spec-modal-inner h2{margin:0 0 6px;color:var(--gold);font-size:clamp(16px,2.6vw,22px);}
-  .spec-sub{font-size:clamp(11px,1.8vw,13px);opacity:0.9;margin:0 0 14px;line-height:1.4;}
-  #spec-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .spec-card{background:linear-gradient(165deg, #7a5238 0%, var(--wood-light) 40%, var(--wood) 100%);border:2px solid var(--wood);border-radius:8px;
-    padding:14px 10px;cursor:pointer;transition:border-color 0.15s;}
-  .spec-card:active{border-color:var(--gold);}
-  .spec-card .icon{font-size:30px;}
-  .spec-card .name{font-weight:bold;font-size:14px;margin-top:4px;color:var(--gold);}
-  .spec-card .blurb{font-size:11px;opacity:0.9;margin-top:6px;line-height:1.35;}
-  @media (max-width:480px){ #spec-modal-grid{grid-template-columns:1fr;} }
 
   /* Shop — tabbed, one tab per tower type plus a global Passives tab */
   #shop-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:22;
@@ -460,7 +434,7 @@
      game one consistent typographic hierarchy (serif for headlines, the existing Trebuchet sans
      for body/UI) instead of every h2 sharing the same face as its own buttons and labels. */
   #tower-modal-header h2, #settings-modal-header h2, #help-modal-inner h2,
-  #barricade-help-modal-inner h2, #spec-modal-inner h2, #shop-modal-header h2{
+  #barricade-help-modal-inner h2, #shop-modal-header h2{
     font-family:Georgia,'Times New Roman',serif;letter-spacing:0.5px;}
   #shopModalClose{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     width:36px;height:36px;min-width:36px;min-height:36px;cursor:pointer;font-size:16px;}
@@ -481,7 +455,6 @@
     border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:12px;}
   .shop-equipped-row button{background:var(--danger);color:var(--paper);border:none;border-radius:5px;
     padding:4px 8px;font-size:11px;cursor:pointer;margin-left:auto;}
-  .shop-empty-note{opacity:0.8;font-size:12.5px;padding:8px;text-align:center;grid-column:1/-1;}
 
   #zoom-controls{position:absolute;right:10px;top:70px;
     display:none;flex-direction:column;gap:8px;z-index:6;}
@@ -491,7 +464,7 @@
     font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
   #zoom-controls button:active{background:rgba(107,69,48,0.95);}
 
-  #inspect-panel{position:absolute;bottom:8px;left:8px;right:auto;max-width:min(320px,calc(100% - 16px));
+  #inspect-panel{position:absolute;bottom:calc(8px + var(--safe-bottom));left:calc(8px + var(--safe-left));right:auto;max-width:min(320px,calc(100% - 16px - var(--safe-left) - var(--safe-right)));
     background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);
     border:2px solid var(--gold);border-radius:8px;padding:8px;color:var(--paper);z-index:6;
     display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:clamp(11px,1.8vw,14px);}
@@ -530,11 +503,11 @@
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
     font-weight:bold;}
   /* One accessible gear icon beside High and Low, without an Options label. */
-  #startSettingsBtn{position:absolute;right:14px;bottom:14px;background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
+  #startSettingsBtn{position:absolute;right:calc(14px + var(--safe-right));bottom:calc(14px + var(--safe-bottom));background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
     border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
   #startSettingsBtn:hover{border-color:var(--gold);}
   /* START-CHANGES-BTN-01 (1.7.54): bottom-left of the attract screen, opens Settings on the Changes tab. */
-  #startChangesBtn{position:absolute;left:14px;bottom:14px;background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
+  #startChangesBtn{position:absolute;left:calc(14px + var(--safe-left));bottom:calc(14px + var(--safe-bottom));background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
     border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
   #startChangesBtn:hover{border-color:var(--gold);}
   /* CHANGES-SILVER-MODAL-01 (1.7.57): the silver version dialog from 1.6.161, restored and opened on demand by the See changes button. */
@@ -631,8 +604,6 @@
   #inspEvoHint{flex:1 1 100%;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85em;color:#bdeaff;background:rgba(125,211,252,0.12);
     border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:3px 8px;}
   #inspEvoHint.hidden{display:none;}
-  #startCredit{margin-top:14px;font-size:0.8em;opacity:0.75;}
-  #startCredit a{color:inherit;}
   .gold-stat{position:relative;}
   .lives-stat{position:relative;margin-right:16px;}
   #livesChangePop{position:absolute;left:100%;top:-2px;margin-left:4px;font-weight:bold;font-size:0.85em;
@@ -745,11 +716,11 @@
     text-shadow:2px 2px 0 #000, 0 0 18px rgba(241,196,15,0.35), 0 -1px 0 rgba(255,255,255,0.2);
     margin-bottom:6px;}
   #start-screen #titleWordmark{display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.8vh,8px);margin:0 0 4px;text-shadow:none;}
-  #start-screen{justify-content:flex-start;padding-top:clamp(24px,10vh,110px);}
+  #start-screen{justify-content:flex-start;padding-top:calc(clamp(24px,10vh,110px) + var(--safe-top));}
   #titleBlock{display:flex;flex-direction:column;align-items:center;}
   #startMenu{flex:1;display:flex;flex-direction:column;align-items:center;width:100%;}
-  #startMenu #quality-picker{margin-top:auto;padding-bottom:clamp(8px,3vh,28px);}
-  @media (max-width:640px){#startMenu #quality-picker{padding-bottom:68px;}}
+  #startMenu #quality-picker{margin-top:auto;padding-bottom:calc(clamp(8px,3vh,28px) + var(--safe-bottom));}
+  @media (max-width:640px){#startMenu #quality-picker{padding-bottom:calc(68px + var(--safe-bottom));}}
   #playBtn{position:absolute;inset:0;margin:auto;width:fit-content;height:fit-content;display:flex;align-items:center;justify-content:center;padding:clamp(10px,1.8vh,16px) clamp(34px,6vw,60px);cursor:pointer;
     background:rgba(10,15,8,0.55);border:3px solid var(--gold);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,0.5);transition:transform 0.12s ease,box-shadow 0.12s ease,background 0.12s ease;}
   #playBtn svg{display:block;width:clamp(120px,22vw,190px);height:auto;}
@@ -764,11 +735,6 @@
   #end-screen #endMessage{white-space:pre-line;text-align:center;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;}
-  #rating-picker{display:none;}
-  .rating-badge{font-weight:bold;font-size:13px;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.3);}
-  .rating-badge.rating-teen{color:#f1c40f;}
-  .rating-badge.rating-mature{color:#e63946;}
-  #goreLabel{font-size:11.5px;opacity:0.9;display:flex;align-items:center;gap:6px;cursor:pointer;}
   .quality-label{font-size:clamp(11px,1.8vw,14px);opacity:0.85;}
   .quality-btn{background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);
     color:var(--paper);border:2px solid var(--wood);
@@ -831,10 +797,10 @@
      screen readers and search engines alike without affecting the game's visual layout at all. -->
 <div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
   <h1>StickTD — Stick Tower Defense</h1>
-  <p>A free browser-based stick figure tower defense game. Place and evolve stickman towers —
+  <p>A free browser-based stick figure tower defense game. Place and train stickman towers —
   Swordsman, Archer, Mage, Axeman, Spearman, Hammerman, Bomber, Gatling, and more — across 100
   waves of enemies plus an endless expedition mode beyond that. Features a growing spiral map,
-  procedural blood and combat effects, a stat-training and evolution system, and a final boss
+  procedural blood and combat effects, a stat-training and class-unlock system, and a final boss
   fight against Santa. No download or install required — runs entirely in your browser. Created
   by SauerNinja. Open source on <a href="https://github.com/SauerNinja/StickTD">GitHub</a>.</p>
 </div>
@@ -929,7 +895,7 @@
 </section>
 <div id="game-wrapper">
   <div id="canvas-frame">
-    <canvas id="gameCanvas">StickTD is a free browser tower defense game. Place and evolve stickman towers, defend a growing spiral road across 100 waves, and collect loot. Enable JavaScript and a canvas-capable browser to play.</canvas>
+    <canvas id="gameCanvas">StickTD is a free browser tower defense game. Place and train stickman towers, defend a growing spiral road across 100 waves, and collect loot. Enable JavaScript and a canvas-capable browser to play.</canvas>
 
     <header id="hud-top">
       <div id="notification-bell"><button id="runRewardBtn" type="button" hidden aria-label="Choose a milestone reward">🎁</button><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
@@ -1235,25 +1201,6 @@
       </div>
     </div>
 
-    <div id="spec-modal" class="hidden">
-      <div id="spec-modal-inner">
-        <h2>Choose a path</h2>
-        <p class="spec-sub">Your Swordsman has reached level 5. Pick a specialization — this can't be changed later.</p>
-        <div id="spec-modal-grid">
-          <div class="spec-card" id="specTwoHander">
-            <div class="icon">🗡️</div>
-            <div class="name">Zweihander</div>
-            <div class="blurb">One massive two-handed blade with a huge sweeping arc and heavy damage. Visibly charges up between swings — the longer it's been since the last hit, the more the blade trembles and glows, right up to the release.</div>
-          </div>
-          <div class="spec-card" id="specDual">
-            <div class="icon">⚔️</div>
-            <div class="name">Dual Wield</div>
-            <div class="blurb">Two swords, two independent swings — can strike two different enemies at once with their own full animations.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div id="item-guide-modal" class="hidden">
       <div id="item-guide-modal-inner">
         <h2>🎁 Item Guide</h2>
@@ -1281,7 +1228,7 @@
         <p>Train up to 500 points in one stat and 1,000 combined. Equipment and passive bonuses are separate from those trained-point limits.</p>
 
         <h3>⚔️ Archetypes</h3>
-        <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and its evolutions) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
+        <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and the classes it unlocks) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
 
         <h3>🔓 Unlocking new towers</h3>
         <p>A tower never transforms into a new class — it stays exactly what it is forever and just
@@ -1317,7 +1264,7 @@
     <div id="barricade-help-modal" class="hidden">
       <div id="barricade-help-modal-inner">
         <h2>🚧 How Barricades Work</h2>
-        <p>Barricades don't attack, don't earn EXP, don't level up, and can't evolve — they're a
+        <p>Barricades don't attack, don't earn EXP, don't level up, and can't unlock anything — they're a
         tough obstacle, not a fighter. Bought directly from Build (costs wood + stone, not gold,
         or free using a banked free-barricade charge) — tap Barricade in the Build menu, then tap
         a valid path tile to place it. Once placed, it physically blocks enemies from passing. It
@@ -1433,7 +1380,18 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.90'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.97'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+// LONG-TASK-LOG-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
+const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
+if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
+  new PerformanceObserver(list => {
+    for(const entry of list.getEntries()){
+      const attribution = entry.attribution && entry.attribution[0];
+      mainThreadLongTasks.push({ atIso: new Date(performance.timeOrigin + entry.startTime).toISOString(), ms: entry.duration, source: attribution ? (attribution.containerType + ' ' + (attribution.containerName || attribution.containerSrc || '')).trim() : 'unattributed' });
+    }
+    if(mainThreadLongTasks.length > MAIN_THREAD_LONG_TASK_LIMIT) mainThreadLongTasks.splice(0, mainThreadLongTasks.length - MAIN_THREAD_LONG_TASK_LIMIT);
+  }).observe({ type: 'longtask', buffered: true });
+}
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
 let CANVAS_W = WORLD_MAX_W, CANVAS_H = WORLD_MAX_H; // viewport/display resolution — recalculated to match the actual window shape by updateCanvasDimensions()
@@ -1731,16 +1689,16 @@ const TOWER_STRATEGY = {
   GLAIVE:    { icon: '⚙️', text: 'Anti-structure specialist — 5x damage against Hut/Castle/Grave buildings specifically, unremarkable against ordinary enemies. Huge reload; save him for the buildings, not the horde.' },
   GUNALINDER:{ icon: '🔄', text: 'Burst-fire revolver: several fast shots, then a longer reload. Real DPS is high but lumpy — check its 🥈 DPS stat, not just the per-shot number, to judge it fairly.' },
   SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
-  MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Evolves further into Sniper." },
-  SNAPCASTER:{ icon: '⚡', text: 'Mage evolved through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
+  MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Deep INT investment unlocks the Sniper." },
+  SNAPCASTER:{ icon: '⚡', text: 'Mage class unlocked through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
   CLERIC:    { icon: '✨', text: 'A support tower that heals allies and directly smites undead. Its dependable immediate holy hit deals 5x damage and ignores armor, making it especially dangerous to small undead while bosses can endure it.' },
-  POPE:      { icon: '⛪', text: "Cleric's AOE evolution — hits every enemy in range at once instead of one target. Reached only through very deep INT investment (750 total). Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
-  NECROMANCER:{ icon: '💀', text: "Mage evolved through STR instead of INT: a dark bolt attack, plus a small band of skeleton minions raised near it at the start of every round (gone again the instant the round ends). The skeletons aren't a one-time boost — budget for them fresh each round, and place this where its own raised band can actually reach the path." },
-  BLOW_GUNNER:{ icon: '♨️', text: "Archer's Fire+Ice hybrid — reached by pushing STR and INT both to 500, not just the one that locked the attunement first. Every hit carries both Blowdart's poison DoT and a Mage-style chilling slow at once, a genuinely different identity from either single-element sibling rather than a stronger version of one." },
+  POPE:      { icon: '⛪', text: "Unlocked for the Build menu when a Cleric reaches 500 INT, the per-stat cap. Hits every enemy in range at once instead of one target. Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
+  NECROMANCER:{ icon: '💀', text: "Mage class unlocked through STR instead of INT: a dark bolt attack, plus a small band of skeleton minions raised near it at the start of every round (gone again the instant the round ends). The skeletons aren't a one-time boost — budget for them fresh each round, and place this where its own raised band can actually reach the path." },
+  BLOW_GUNNER:{ icon: '♨️', text: "Archer class unlocked by pushing STR and INT both to 500, not just the one that locked the attunement first. Every hit carries both Blowdart's poison DoT and a Mage-style chilling slow at once, a genuinely different identity from either single-element sibling rather than a stronger version of one." },
   CAT_SNAPPER:{ icon: '🐈‍⬛', text: "Unlocked by an Archer reaching 500 DEX — a raw stat threshold, not tied to which element that Archer ends up attuning to. Throws temporary shadow-cat companions instead of dealing damage directly; the real question when placing this is whether its cats can actually reach the path, not just this tower's own range." },
-  PROTON:{ icon: '☄️', text: "Fire+Electric hybrid, reachable from any base class — Swordsman, Archer, or Mage, whichever pushes both STR and DEX to 500 first. Every hit burns and briefly disrupts its target's speed at once, a purple energy identity distinct from Steam's own scald-and-chill." },
-  DARK_MATTER:{ icon: '🕳️', text: "Electric+Ice hybrid, reachable from any base class — whichever pushes both DEX and INT to 500 first. Leans harder into the slow than the burn, unlike Proton — a control-focused identity rather than a damage-focused one." },
-  QUASAR:{ icon: '🌟', text: "The hardest unlock in the game — needs a fully trained tower — 1000 total stats with at least 300 in each of STR, DEX and INT. Hits everything in a small splash radius around its target, not just the one enemy, on top of the same burn+slow every hybrid carries." },
+  PROTON:{ icon: '☄️', text: "Fire and Electric combined. Any stickman earns it by training both STR and DEX to 250: every hit burns its target and chains lightning to nearby enemies." },
+  DARK_MATTER:{ icon: '🕳️', text: "Fire and Ice combined. Any stickman earns it by training both STR and INT to 250: every hit burns its target and can freeze it in place." },
+  QUASAR:{ icon: '🌟', text: "Electric and Ice combined. Any stickman earns it by training both DEX and INT to 250: every hit chains lightning to nearby enemies, can freeze its target and splashes everything in a small radius around it." },
   BERSERKER:{ icon: '👹', text: "An Axeman pushed to STR 500 instead of a second element — trades the throw-toggle for a much wider, harder cleave. Bring it in close where its swing can actually catch a crowd; it's a brute-force AoE tool, not a precision one." },
   LANCER:{ icon: '🎯', text: "A Spearman pushed to DEX 500 carries a knight lance and strikes harder against larger, heavier enemies. Damage scales with target size: half damage at tiny scale, normal damage at standard scale, and up to 1.75x against the heaviest foes." },
 };
@@ -1808,18 +1766,6 @@ function cappedStatPoints(points){ return Math.min(points, STAT_EFFECT_CAP); }
 function getTrainedStatTotal(tower){ return (tower.str || 0) + (tower.dex || 0) + (tower.int || 0); }
 function statTailValue(points, perPointAtTailStart){
   return perPointAtTailStart * STAT_TAIL_SOFTNESS * Math.log(1 + points / STAT_TAIL_SOFTNESS);
-}
-// CA019 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA019
-function warriorStrDamageMult(strEff){
-  let total = 0, remaining = strEff, tier = 0;
-  while(remaining > 0 && tier < 5){
-    const inTier = Math.min(5, remaining);
-    total += inTier * 0.08 * (1 - tier*0.12);
-    remaining -= inTier;
-    tier++;
-  }
-  if(remaining > 0) total += statTailValue(remaining, 0.08 * 0.4);
-  return 1 + total;
 }
 // CA020 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA020
 const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.38, ARCHER: 0.34, WARRIOR: 0.36 };
@@ -1940,8 +1886,6 @@ const SPECIALIZATION_THRESHOLD_OVERRIDE = { BLOWDART: 250 };
 function specializationThresholdFor(targetType){
   return SPECIALIZATION_THRESHOLD_OVERRIDE[targetType] !== undefined ? SPECIALIZATION_THRESHOLD_OVERRIDE[targetType] : SPECIALIZATION_THRESHOLD;
 }
-const QUASAR_MIN_PER_STAT = 300;   // Quasar: 1000 total with >= 300 in each stat (e.g. 400/300/300)
-const POPE_TOTAL_REQUIREMENT = 750; // Pope: 500 INT plus 750 combined trained stats on a Cleric
 const ATTUNEMENTS = { str: 'FIRE', dex: 'ELECTRIC', int: 'ICE' };
 const ATTUNEMENT_STAT_BY_ELEMENT = { FIRE: 'str', ELECTRIC: 'dex', ICE: 'int' };
 const ATTUNEMENT_ICON = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️' };
@@ -2005,7 +1949,7 @@ const EVOLUTIONS = {
   // CA044 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA044
   MARKSMAN: { int: {target:'SNIPER', threshold:60} },
   // CA045 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA045
-  CLERIC: { int: {target:'POPE', threshold:STAT_EFFECT_CAP} } // 500 INT (the per-stat cap) plus POPE_TOTAL_REQUIREMENT combined — 750 INT is unreachable under the caps
+  CLERIC: { int: {target:'POPE', threshold:STAT_EFFECT_CAP} } // 500 INT (the per-stat cap); the old extra 750-combined requirement was unreachable under the caps and is gone
 };
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
 const EVOLVED_TOWER_TYPES = ['NINJA','HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','BERSERKER','LANCER','CRAZY_CHEF','MERCHANT','GLAIVE']; // reachable via evolution OR a pure wave gate (Merchant/Glaive have no evolution path at all, same as this list already accommodates for the wave-gate side of Axeman/Spearman/Hammerman) — never built directly before being unlocked one way or the other
@@ -2251,7 +2195,6 @@ const CRAFTING_RECIPES = [
   { result: 'AURORA_PRISM',    ingredients: ['STAR_COMPASS', 'LIGHTNING_BOLT', 'CHAMPION_MEDAL'] }
 ];
 // Consumes-first order the ingredients list into a lookup for fast "does this tower have the pieces" checks.
-const craftableItemIdSet = new Set(CRAFTING_RECIPES.map(recipe => recipe.result));
 function findCraftableRecipeFor(equippedItems, cook){
   const heldIds = equippedItems.map(item => item.id);
   for(const recipe of CRAFTING_RECIPES){
@@ -2482,7 +2425,7 @@ const CONFIG = {
     },
     SWORDSMAN: {
       name: 'Swordsman', icon: '⚔️', baseCost: 50, unlocksAfterWave: 0,
-      blurb: 'Melee sweep — hits everything in a cone in front of it. Picks a specialization at level 5.',
+      blurb: 'Melee sweep — hits everything in a cone in front of it.',
       tiers: [
         { range: 90,  damage: 18, cooldown: 1700 }, // tier-1 cooldown raised 1350→1550 per direct feedback ("all stickmen probably have too fast hit speed starting off") — later tiers (earned through promotion) are untouched
         { range: 100, damage: 28, cooldown: 770, upgradeCost: 80 },
@@ -2577,7 +2520,7 @@ const CONFIG = {
     },
     SNAPCASTER: {
       name: 'Snap Caster', icon: '⚡', baseCost: 475, unlocksAfterWave: 8,
-      blurb: "A DEX-focused Mage evolution — dual-wields a second wand, casting a rapid two-bolt burst each cycle instead of a single blast. Still meaningfully slower than an Archer overall, and each individual bolt hits for less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
+      blurb: "A DEX-focused Mage class — dual-wields a second wand, casting a rapid two-bolt burst each cycle instead of a single blast. Still meaningfully slower than an Archer overall, and each individual bolt hits for less than a full Mage blast, but a proper chain-lightning chance (boosted well past base Mage's) makes it the pick for shredding clustered swarms instead of one big target.",
       tiers: [
         { range: 150, damage: 58,  cooldown: 1650, burstCount: 2, burstDelay: 190, projectileSpeed: 1500, slowFactor: 0.25, slowDuration: 900 },
         { range: 165, damage: 88, cooldown: 1450, burstCount: 2, burstDelay: 170, projectileSpeed: 1600, slowFactor: 0.3,  slowDuration: 1000, upgradeCost: 100 },
@@ -2684,7 +2627,7 @@ const CONFIG = {
     },
     SQUIRTGUN: {
       name: 'Dual Squirt Gun', icon: '🔫', baseCost: 650, unlocksAfterWave: 0,
-      blurb: 'A Blowdart pushed to the DEX extreme — twin water pistols spraying corrosive green acid, firing even faster with a longer-lingering burn than the dart it evolved from.',
+      blurb: 'A Blowdart pushed to the DEX extreme — twin water pistols spraying corrosive green acid, firing even faster with a longer-lingering burn than the Blowdart that unlocks it.',
       tiers: [
         { range: 125, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
         { range: 140, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 95 },
@@ -2694,7 +2637,7 @@ const CONFIG = {
     // CA064 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA064
     BLOW_GUNNER: {
       name: 'Blow Gunner', icon: '♨️', baseCost: 700, unlocksAfterWave: 0,
-      blurb: "Archer's Fire+Ice hybrid, reached by pushing STR and INT both to 500 rather than just one. Every dart carries a scalding steam-vapor sting — Blowdart's poison DoT and a brief chilling slow, together on the same hit.",
+      blurb: "Archer class unlocked by pushing STR and INT both to 500 rather than just one. Every dart carries a scalding steam-vapor sting — Blowdart's poison DoT and a brief chilling slow, together on the same hit.",
       tiers: [
         { range: 125, damage: 9,  cooldown: 300, projectileSpeed: 460, poisonDamage: 4, poisonDuration: 3200, slowFactor: 0.2,  slowDuration: 900 },
         { range: 140, damage: 13, cooldown: 250, projectileSpeed: 490, poisonDamage: 6, poisonDuration: 3400, slowFactor: 0.25, slowDuration: 1000, upgradeCost: 105 },
@@ -2704,7 +2647,7 @@ const CONFIG = {
     // CA065 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA065
     PROTON: {
       name: 'Proton', icon: '☄️', baseCost: 0, unlocksAfterWave: 0,
-      blurb: "Fire+Electric hybrid, reachable from any base class that pushes both STR and DEX to 500 — Swordsman, Archer, or Mage, whichever gets there first. A bolt of crackling purple energy that burns on contact and leaves the target's own nerves briefly disrupted, slowing it.",
+      blurb: "Fire and Electric combined: a mixed element earned by any stickman who trains STR and DEX to 250, never a tower you build. A bolt of crackling purple energy that burns on contact and leaves the target's own nerves briefly disrupted, slowing it.",
       tiers: [
         { range: 190, damage: 26, cooldown: 1500, projectileSpeed: 1000, poisonDamage: 10, poisonDuration: 3000, slowFactor: 0.3,  slowDuration: 1200 },
         { range: 210, damage: 40, cooldown: 1300, projectileSpeed: 1100, poisonDamage: 15, poisonDuration: 3200, slowFactor: 0.38, slowDuration: 1400, upgradeCost: 140 },
@@ -2714,7 +2657,7 @@ const CONFIG = {
     // CA066 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA066
     DARK_MATTER: {
       name: 'Dark Matter', icon: '🕳️', baseCost: 0, unlocksAfterWave: 0,
-      blurb: "Electric+Ice hybrid, reachable from any base class that pushes both DEX and INT to 500 — Swordsman, Archer, or Mage, whichever gets there first. A void-black bolt that saps the target's own energy, hitting harder with its slow than its burn.",
+      blurb: "Fire and Ice combined: a mixed element earned by any stickman who trains STR and INT to 250, never a tower you build. A void-black bolt that saps the target's own energy, hitting harder with its slow than its burn.",
       tiers: [
         { range: 195, damage: 22, cooldown: 1450, projectileSpeed: 950,  poisonDamage: 8,  poisonDuration: 3100, slowFactor: 0.4,  slowDuration: 1500 },
         { range: 215, damage: 34, cooldown: 1250, projectileSpeed: 1050, poisonDamage: 12, poisonDuration: 3300, slowFactor: 0.48, slowDuration: 1700, upgradeCost: 145 },
@@ -2724,7 +2667,7 @@ const CONFIG = {
     // CA067 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA067
     QUASAR: {
       name: 'Quasar', icon: '🌟', baseCost: 0, unlocksAfterWave: 0,
-      blurb: "The rarest unlock in the game — reachable from any base class, but only once STR, DEX, AND INT have each reached 500 (not just two). A blinding white burst that scorches and slows everything in a small radius, not just its direct target.",
+      blurb: "Electric and Ice combined: a mixed element earned by any stickman who trains DEX and INT to 250, never a tower you build. A blinding white burst that hits everything in a small radius, not just its direct target.",
       tiers: [
         { range: 190, damage: 20, cooldown: 1700, projectileSpeed: 900,  splashRadius: 55, poisonDamage: 8,  poisonDuration: 2800, slowFactor: 0.3,  slowDuration: 1300 },
         { range: 210, damage: 31, cooldown: 1500, projectileSpeed: 1000, splashRadius: 65, poisonDamage: 12, poisonDuration: 3000, slowFactor: 0.36, slowDuration: 1500, upgradeCost: 180 },
@@ -2751,7 +2694,7 @@ const CONFIG = {
     },
     MARKSMAN: {
       name: 'Marksman', icon: '🔫', baseCost: 425, unlocksAfterWave: 6,
-      blurb: "Ice Archer's specialization — one carefully aimed rifle shot at a time. Longer range and harder-hitting than base Archer, without Gatling's fire rate or Blowdart's poison. Evolves further into Sniper at deep INT investment.",
+      blurb: "Ice Archer's specialization — one carefully aimed rifle shot at a time. Longer range and harder-hitting than base Archer, without Gatling's fire rate or Blowdart's poison. Deep INT investment unlocks the Sniper.",
       tiers: [
         { range: 160, damage: 60,  cooldown: 1000, projectileSpeed: 520 },
         { range: 180, damage: 85,  cooldown: 900,  projectileSpeed: 560, upgradeCost: 140 },
@@ -3131,6 +3074,10 @@ function validateDesignContract(){
     const firstSpeedHint = document.getElementById('first-speed-hint');
     if(!settingsButton || !qualityPicker || settingsButton.parentElement.id !== 'start-screen' || qualityPicker.contains(settingsButton) || settingsButton.textContent.trim() !== '⚙️ Options' || !goreOption || document.getElementById('goreToggle') || Array.from(document.querySelectorAll('label,p,button')).some(element => element.textContent.includes('I am 18+'))) problems.push('attract options are a labelled gear button at the bottom right, apart from the graphics quality choice, and gore has no age-gate prompt (FIRST-START-OPTIONS-01)');
     if(typeof placeNotificationBell !== 'function' || !String(fitHudTopToOneLine).includes('placeNotificationBell') || !String(positionNotificationControls).includes('floatingBell')) problems.push('the notification bell sits flush at the top left of the screen and joins the top bar only when the screen is too narrow to leave room for it (NOTIFICATION-BELL-LEFT-01)');
+    if(typeof drawWeaponEnchant !== 'function' || !String(drawStickman).includes('drawWeaponEnchant') || typeof enemyMoveMultiplier !== 'function' || typeof isEnemyHeldInPlace !== 'function' || typeof Enemy.prototype.showDotDamageText !== 'function' || typeof Enemy.prototype.checkLivestockPairHearts !== 'function') problems.push('element glow is drawn on the weapon, stuck arrows slow enemies and held enemies hold the queue, damage-over-time numbers are summed per second, and farm hearts need a pair (WEAPON-ENCHANT-SYNC-01, ARROW-DRAG-01, QUEUE-HOLD-01, DOT-TEXT-01, LIVESTOCK-PAIR-HEART-01)');
+    if(Object.values(TOWER_STRATEGY).some(entry => /\bevol|\bupgrad/i.test(entry.text)) || Object.values(CONFIG.TOWERS).some(def => /\bevol|\bupgrad/i.test(def.blurb || ''))) problems.push('classes are unlocks, never upgrades or evolutions, so player-facing class text must not say evolve or upgrade (NO-EVOLVE-IN-PLACE-01, CLASS-UNLOCK-WORDING-01)');
+    if(typeof fetchChangelogText !== 'function' || !String(loadChangelogEntries).includes('first.partial') || !String(renderSettingsChangelog).includes('Loading release notes')) problems.push('the Changes tab fetches only the top of the changelog, shows a loading line and always ends with a message or the notes plus a link, never a blank box (CHANGES-TAB-01)');
+    if(typeof meleeLungePx !== 'function' || typeof drawMeleeSmear !== 'function' || typeof Tower.prototype.visualSwingOffset !== 'function' || !String(drawStickman).includes('drawMeleeSmear')) problems.push('melee attacks wind up, strike and settle back onto the aim without snapping, with a smear behind the blade and a thrust for spears (MELEE-SWING-01)');
     if(document.getElementById('training-overlay') || !firstBuildHint || firstBuildHint.textContent.trim() !== '👆' || firstBuildHint.parentElement.id !== 'buildBtnWrap' || !String(firstBuildHint.className).includes('hidden')) problems.push('first-time guidance is only a hidden-until-play hand beside Build, with no tower-choice or victory modal (FIRST-BUILD-CUE-01)');
     const firstNextWaveHint = document.getElementById('first-next-wave-hint');
     if(!firstSpeedHint || firstSpeedHint.textContent.trim() !== '👆' || firstSpeedHint.parentElement.id !== 'speedBtnWrap' || !firstNextWaveHint || firstNextWaveHint.textContent.trim() !== '👆' || firstNextWaveHint.parentElement.id !== 'nextWaveBtnWrap' || !String(startNextWave).includes('markFirstWaveStarted') || !String(markFirstNextWaveCueAction).includes('markFirstNextWaveUsed') || !String(syncFirstPlayCues).includes('!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()') || !String(markFirstSpeedUpUsed).includes("classList.add('hidden')")) problems.push('first-use guidance must show Next Wave after the first fighter is built and before wave one, then Fast Forward after wave start, and stay dismissed after speed use (FIRST-PLAY-CUE-SEQUENCE-01)');
@@ -3223,7 +3170,7 @@ function validateDesignContract(){
   if(promotionRankLabel(1) !== 'Rank 1' || promotionRankLabel(7) !== 'Rank 7') problems.push('the promotion count must be labeled Rank, separate from Training XP (PROMOTION-RANK-LABEL-01)');
   if(nextWaveActionLabel(0) !== 'Start Wave' || nextWaveActionLabel(1) !== 'Next Wave') problems.push('the first wave action must say Start Wave without a wave number, then return to Next Wave (FIRST-WAVE-ACTION-01)');
   { const freeFighters = Object.entries(CONFIG.TOWERS).filter(([type, def]) => !['BARRICADE','PROTON','DARK_MATTER','QUASAR'].includes(type) && !(def.baseCost > 0)).map(([type]) => type); if(freeFighters.length) problems.push('every buildable fighter must have a gold price above zero (Barricade is paid in wood and stone; Proton, Dark Matter and Quasar are elements, not towers): ' + freeFighters.join(', ') + ' (NO-FREE-FIGHTERS-01)'); }
-  if(ELEMENT_INFUSE_THRESHOLD !== 250 || MIXED_PAIR_THRESHOLD !== 250 || !ELEMENT_COMPONENTS.PROTON || ELEMENT_COMPONENTS.PROTON.join() !== 'FIRE,ELECTRIC' || ELEMENT_COMPONENTS.DARK_MATTER.join() !== 'FIRE,ICE' || ELEMENT_COMPONENTS.QUASAR.join() !== 'ELECTRIC,ICE' || ['PROTON','DARK_MATTER','QUASAR'].some(type => STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type)) || mixedElementFor({str:250,dex:250,int:250}) !== 'PROTON' || mixedElementFor({str:260,dex:300,int:280}) !== 'QUASAR' || mixedElementFor({str:300,dex:0,int:250}) !== 'DARK_MATTER' || mixedElementFor({str:300,dex:249,int:0}) !== null || !String(Tower.prototype.draw).includes('ELEMENT-ENCHANT-01')) problems.push('elements are earned, never built: 250 STR/DEX/INT infuses Fire/Electric/Ice, a second element at 250 mixes into Proton (Fire+Electric), Dark Matter (Fire+Ice) or Quasar (Electric+Ice), and an elemental stickman always shows an enchantment on the weapon (ELEMENT-INFUSION-01)');
+  if(ELEMENT_INFUSE_THRESHOLD !== 250 || MIXED_PAIR_THRESHOLD !== 250 || !ELEMENT_COMPONENTS.PROTON || ELEMENT_COMPONENTS.PROTON.join() !== 'FIRE,ELECTRIC' || ELEMENT_COMPONENTS.DARK_MATTER.join() !== 'FIRE,ICE' || ELEMENT_COMPONENTS.QUASAR.join() !== 'ELECTRIC,ICE' || ['PROTON','DARK_MATTER','QUASAR'].some(type => STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type)) || mixedElementFor({str:250,dex:250,int:250}) !== 'PROTON' || mixedElementFor({str:260,dex:300,int:280}) !== 'QUASAR' || mixedElementFor({str:300,dex:0,int:250}) !== 'DARK_MATTER' || mixedElementFor({str:300,dex:249,int:0}) !== null || !String(drawStickman).includes('drawWeaponEnchant')) problems.push('elements are earned, never built: 250 STR/DEX/INT infuses Fire/Electric/Ice, a second element at 250 mixes into Proton (Fire+Electric), Dark Matter (Fire+Ice) or Quasar (Electric+Ice), and an elemental stickman always shows an enchantment on the weapon (ELEMENT-INFUSION-01)');
   if(!CONFIG.TOWERS.HACKER || !(CONFIG.TOWERS.HACKER.baseCost > 0) || CONFIG.TOWERS.HACKER.tiers[0].damage !== 0 || !MAX_ONE_PER_BOARD_TYPES.includes('HACKER') || !HACK_TOWER_TYPES.includes('HACKER') || STARTER_TOWER_TYPES.includes('HACKER') || EVOLVED_TOWER_TYPES.includes('HACKER') || HACKER_MAX_HP > 25 || typeof Tower.prototype.goStealth !== 'function' || !String(findNearestActiveTower).includes('stealthUntil')) problems.push('the Hacker is a hacks-only stickman: priced above zero, never attacks, tiny health, one per board even when downed, stealth hides him from enemy targeting, and he never appears in normal progression (HACKER-01)');
   if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
   if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
@@ -3635,69 +3582,11 @@ function buildSpiralPathTiles(region){
 function countDistinctTiles(tiles){
   return new Set(tiles.map(t => t.x+','+t.y)).size;
 }
-// CA094 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA094
-function ringBoundaryTiles(region){
-  const {x0,y0,x1,y1} = region;
-  if(x0===x1 && y0===y1) return [{x:x0,y:y0}];
-  const tiles = [];
-  for(let x=x0; x<=x1; x++) tiles.push({x, y:y0});
-  for(let y=y0+1; y<=y1; y++) tiles.push({x:x1, y});
-  if(y1>y0) for(let x=x1-1; x>=x0; x--) tiles.push({x, y:y1});
-  if(x1>x0) for(let y=y1-1; y>=y0+1; y--) tiles.push({x:x0, y});
-  return tiles;
-}
-function bridgeTiles(from, to){
-  const tiles = [];
-  let cur = {...from};
-  let guard = 0;
-  while((cur.x !== to.x || cur.y !== to.y) && guard < 200){
-    guard++;
-    const dx = to.x-cur.x, dy = to.y-cur.y;
-    if(Math.abs(dx) >= Math.abs(dy) && dx !== 0) cur = {x:cur.x+Math.sign(dx), y:cur.y};
-    else if(dy !== 0) cur = {x:cur.x, y:cur.y+Math.sign(dy)};
-    else break;
-    tiles.push(cur);
-  }
-  return tiles;
-}
-function isContinuousSimplePath(tiles){
-  const seen = new Set();
-  for(let i=0; i<tiles.length; i++){
-    const tile = tiles[i], key = tile.x+','+tile.y;
-    if(seen.has(key)) return false;
-    seen.add(key);
-    if(i && Math.abs(tile.x-tiles[i-1].x)+Math.abs(tile.y-tiles[i-1].y) !== 1) return false;
-  }
-  return true;
-}
-function findExpansionBridge(from, to, blocked, region){
-  const key = p => p.x+','+p.y;
-  const startKey = key(from), targetKey = key(to), queue = [from], previous = new Map([[startKey, null]]);
-  for(let head=0; head<queue.length && head<regionAreaLimit(region); head++){
-    const current = queue[head], currentKey = key(current);
-    if(currentKey === targetKey) break;
-    const neighbors = [{x:current.x+1,y:current.y},{x:current.x-1,y:current.y},{x:current.x,y:current.y+1},{x:current.x,y:current.y-1}];
-    if(Math.random()<0.5) neighbors.reverse();
-    for(const next of neighbors){
-      if(next.x<region.x0 || next.x>region.x1 || next.y<region.y0 || next.y>region.y1) continue;
-      const nextKey = key(next);
-      if(previous.has(nextKey) || (blocked.has(nextKey) && nextKey !== targetKey)) continue;
-      previous.set(nextKey, currentKey); queue.push(next);
-    }
-  }
-  if(!previous.has(targetKey)) return null;
-  const route = []; let cursor = targetKey;
-  while(cursor){
-    const [x,y] = cursor.split(',').map(Number); route.push({x,y}); cursor = previous.get(cursor);
-  }
-  return route.reverse();
-}
-function regionAreaLimit(region){ return (region.x1-region.x0+1)*(region.y1-region.y0+1); }
 // CA095 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA095. PATH-SPIRAL-01 (1.6.0) — see CHANGELOG.md §
 // [1.6.0]: extends the path by only a short arc of the new ring (arcLength tiles, ending at the
 // point closest to the current spawn) instead of committing the ring's ENTIRE boundary as path in
 // one shot. The arc is taken walking BACKWARD from that closest point in the ring's own fixed
-// traversal order (ringBoundaryTiles' order) — the same order the old full-ring version rotated
+// traversal order (the ring's fixed boundary order) — the same order the old full-ring version rotated
 // around — so a short arc winds the same direction a full ring would have, just truncated.
 // ROUTE-SPACING-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
 const ROUTE_SPACING_MIN_STEP_GAP = 3;
@@ -3716,15 +3605,6 @@ function routeSpacingViolationCount(tiles){
     }
   }
   return violations;
-}
-function routeSpacingBuffer(oldPath, connectsAtStart){
-  const buffer = new Set();
-  for(let i=0; i<oldPath.length; i++){
-    const isFarFromConnection = connectsAtStart ? i >= ROUTE_SPACING_MIN_STEP_GAP : i <= oldPath.length - 1 - ROUTE_SPACING_MIN_STEP_GAP;
-    if(!isFarFromConnection) continue;
-    for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++) buffer.add((oldPath[i].x+dx)+','+(oldPath[i].y+dy));
-  }
-  return buffer;
 }
 function pathTipExit(point, occupied){
   let best = null;
@@ -4281,10 +4161,8 @@ const LIVESTOCK_TYPES = {
   COW:     { emoji: '🐄', meatId: 'STEAK',     speed: 10, radius: 15 },
   WANDERING_TROLL: { emoji: '🧌', meatId: 'STEAK', speed: 16, radius: 19, isTroll: true }
 };
-const LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION = 0.35;
 const LIVESTOCK_MAX_ON_BOARD = 8;
 const LIVESTOCK_BREED_CHANCE=0.25,LIVESTOCK_BIRTHS_PER_EXPANSION=2;
-const LIVESTOCK_WANDER_RETARGET_MS = 2500;
 const LIVESTOCK_WALK_MS_MIN = 900, LIVESTOCK_WALK_MS_MAX = 2200;
 const LIVESTOCK_IDLE_MS_MIN = 700, LIVESTOCK_IDLE_MS_MAX = 2400;
 const LIVESTOCK_WALK_SPEED_MULT = 2.4; // the base speeds are for a slow amble; walking bursts are shorter so they need a bit more
@@ -4380,25 +4258,6 @@ function maybeSpawnRandomEventsOnExpansion(revealedBorderKeys){
     spawnScenery(gx, gy, choice);
     spawnParticles(gx*TILE_SIZE + TILE_SIZE/2, gy*TILE_SIZE + TILE_SIZE/2, '#ffe082', 10);
   }
-}
-function maybeSpawnLivestockOnExpansion(revealedBorderKeys){
-  if(randomEventSlotsUsed >= 2 || countLivestockOnBoard() >= LIVESTOCK_MAX_ON_BOARD) return;
-  if(Math.random() >= LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION) return;
-  const eligibleEndKeys = new Set(randomEventEndTileKeys());
-  const candidates = revealedBorderKeys.filter(key => !pathCells.has(key) && eligibleEndKeys.has(key));
-  if(!candidates.length) return;
-  const livestockSpot = pickNpcSpawnPointOutsideStickmanReach(candidates);
-  if(!livestockSpot) return;
-  const typeKeys = Object.keys(LIVESTOCK_TYPES).filter(k => !LIVESTOCK_TYPES[k].isTroll);
-  const type = typeKeys[Math.floor(Math.random()*typeKeys.length)];
-  const animal = acquireActive(enemyPool);
-  if(!animal || !tryClaimRandomEventSlot()) return;
-  logGameEvent('random event: livestock (' + type + ')');
-  animal.spawn(type, 1, false, false);
-  animal.isLivestock = true;
-  animal.x = livestockSpot.x; animal.y = livestockSpot.y;
-  animal.retargetTimer = Math.random()*LIVESTOCK_IDLE_MS_MAX;
-  animal.livestockWalking = false;
 }
 function findLivestockBirthSpot(parent){
   for(let attempt=0;attempt<12;attempt++){
@@ -5357,11 +5216,6 @@ function updateScenery(dt){
 // Vegetables grant a small permanent stat point (rare), Meat restores lives (kept deliberately small —
 // no maximum-life growth from food, to protect the Shop's extra-life pricing and the loose-enemy
 // pressure). Boss kills always drop exactly one Treat, a stronger bundled reward.
-const FOOD_KINDS = {
-  FRUIT:     { weight: 60, color: '#ffd54f' },
-  VEGETABLE: { weight: 10, color: '#8bc34a' },
-  MEAT:      { weight: 30, color: '#ff8a65' }
-};
 const FOOD_ITEM_ROWS = [
   ['APPLE', 'Apple', '🍎', 'FRUIT'], ['BANANA', 'Banana', '🍌', 'FRUIT'], ['GRAPES', 'Grapes', '🍇', 'FRUIT'],
   ['TANGERINE', 'Tangerine', '🍊', 'FRUIT'], ['STRAWBERRY', 'Strawberry', '🍓', 'FRUIT'], ['WATERMELON', 'Watermelon', '🍉', 'FRUIT'],
@@ -5392,13 +5246,6 @@ const MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT = 10;
 let bonusMaxLivesFromMeat = 0;
 let waveMaxHpGainedFromMeat = 0;
 function foodFruitXp(){ return Math.round(15 + Math.min(35, waveIndex)); }
-function pickGenericFoodItem(){
-  const totalWeight = Object.values(FOOD_KINDS).reduce((sum, kind) => sum + kind.weight, 0);
-  let roll = Math.random() * totalWeight, chosenKind = 'FRUIT';
-  for(const [kindName, kind] of Object.entries(FOOD_KINDS)){ roll -= kind.weight; if(roll < 0){ chosenKind = kindName; break; } }
-  const candidates = FOOD_ITEMS.filter(item => item.kind === chosenKind);
-  return candidates[Math.floor(Math.random() * candidates.length)];
-}
 // Applies a food item's effect to the nearest tower within pickup range, or as a life restore if none is
 // close enough (Meat and the token/small heals on Fruit and Vegetable always work this way).
 // ITEM-USE-FEEDBACK-01 (1.6.136) — see CHANGELOG.md § [1.6.136]. One deliberate moment per consumable use: the item's icon rises above the stickman, an exact readout
@@ -6667,7 +6514,6 @@ const FLAG_PENNANT_LENGTH = 46;
 const FLAG_HOIST_HALF_HEIGHT = 7;
 const FLAG_WAVE_AMPLITUDE = 2.6;
 const FLAG_TIP_FLUTTER_AMPLITUDE = 0.9;
-const FLAG_GUST_SWELL_SHARE = 0.5;
 const FLAG_WAVE_SPEED = 1.5;
 const FLAG_WAVE_FOLD_CYCLES = 1.25;
 const FLAG_GRAVITY_DROOP = 4;
@@ -6955,7 +6801,6 @@ function acquireActive(pool){
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
 const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX burst over boss music peaked at 0.37 of full scale with the old 0.5 gain, so +3.5 dB still leaves about 4 dB of headroom before the compressor
 const MUSIC_TEMPO_BPM = 104;
-const MUSIC_STEP_SECONDS = 60 / MUSIC_TEMPO_BPM / 2;
 const MUSIC_COMBAT_TEMPO_BPM = 144;
 const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 0, 5, 7, 3]; // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
 const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
@@ -6994,32 +6839,6 @@ const MUSIC_FIELD_MELODY = [ // fixed-key horn motif as semitones above the toni
   [0,null,null,0, 3,null,1,0], [-2,null,null,-2, 0,null,3,null], [0,null,null,0, 3,null,5,7], [5,null,3,null, 1,null,0,null],
   [7,null,null,7, 8,null,7,5], [3,null,null,3, 5,null,3,1], [0,null,null,0, 3,null,5,7], [10,null,8,null, 7,null,null,null],
   [5,null,null,5, 8,null,7,5], [3,null,null,3, 5,null,3,null], [1,null,null,1, 3,null,5,null], [3,null,1,null, 0,null,null,null]
-];
-const MUSIC_MELODY = [
-  [0,null,4,1,null,2,0,null],
-  [4,1,null,2,null,3,1,null],
-  [4,null,1,2,null,0,1,null],
-  [2,null,1,null,0,null,null,null],
-  [0,null,4,null,1,null,0,null],
-  [2,null,1,null,0,null,1,null],
-  [4,null,1,null,2,null,4,null],
-  [2,null,1,null,4,null,0,null],
-  [0,null,4,null,1,null,0,null],
-  [4,null,1,null,2,null,0,null],
-  [4,null,1,null,2,null,5,null],
-  [2,null,1,null,0,null,1,null],
-  [0,null,4,null,1,null,2,null],
-  [4,null,1,null,3,null,2,null],
-  [5,null,4,null,1,null,2,null],
-  [2,null,1,null,0,null,null,null],
-  [7,null,4,null,8,null,7,null],
-  [4,null,1,null,2,null,0,null],
-  [0,null,4,null,1,null,2,null],
-  [4,null,2,null,1,null,0,null],
-  [0,null,4,null,1,null,5,null],
-  [4,null,1,null,2,null,4,null],
-  [2,null,4,null,1,null,2,null],
-  [4,null,2,null,1,null,0,null]
 ];
 const MUSIC_COMBAT_MELODY = [
   [0,null,4,1,null,2,0,null],
@@ -8176,7 +7995,7 @@ function isCameraMotionActive(now){
   return isDragging && activePointers.size > 0;
 }
 let frameCapEnabled = true, frameCapFpsUser = null; // FRAME-CAP-01 (1.6.128) — see CHANGELOG.md § [1.6.128]
-const FRAME_CAP_MIN_FPS = 30, FRAME_CAP_MAX_FPS = 250, FRAME_CAP_STEP_FPS = 10, FRAME_CAP_EARLY_TOLERANCE_MS = 2;
+const FRAME_CAP_MIN_FPS = 30, FRAME_CAP_MAX_FPS = 250, FRAME_CAP_EARLY_TOLERANCE_MS = 2;
 function defaultFrameCapFps(){ return graphicsQuality === 'high' ? 60 : 30; }
 function frameCapFps(){ return frameCapFpsUser !== null ? frameCapFpsUser : defaultFrameCapFps(); }
 function frameCapIntervalMs(){ return frameCapEnabled ? 1000 / frameCapFps() : 0; }
@@ -8565,13 +8384,6 @@ function activeItemReachCircles(){
   return circles;
 }
 // ITEM-BOUNDS-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
-function clampItemToPlayable(point, fallback){
-  if(isLooseWalkableAt(point.x, point.y)) return point;
-  const center = nearestLooseWalkableTileCenter(point.x, point.y);
-  if(!center) return { x: fallback.x, y: fallback.y };
-  const half = TILE_SIZE/2 - 3; // stays on the edge of the playable area instead of snapping to a tile centre
-  return { x: clampNum(point.x, center.x - half, center.x + half), y: clampNum(point.y, center.y - half, center.y + half) };
-}
 function clampToItemReach(point, circles, fallback){
   if(!circles.length) return { x: fallback.x, y: fallback.y };
   let best = null, bestGap = Infinity;
@@ -9098,18 +8910,6 @@ function applyAttunementStatus(tower, enemy){
   const parts = ELEMENT_COMPONENTS[element] || [element];
   for(let i = 0; i < parts.length; i++) applyElementComponent(tower, enemy, parts[i], labelY - i*12);
 }
-function nextElementMixNote(tower){
-  if(tower.elementState) return ELEMENT_LABELS[tower.elementState];
-  let best = null;
-  for(const rule of MIXED_ELEMENT_RULES){
-    const pairs = { PROTON:['str','dex'], DARK_MATTER:['str','int'], QUASAR:['dex','int'] }[rule.element];
-    if(!pairs) continue;
-    const missing = pairs.reduce((sum, stat) => sum + Math.max(0, MIXED_PAIR_THRESHOLD - (tower[stat] || 0)), 0);
-    if(best === null || missing < best.missing) best = { element: rule.element, missing, pairs };
-  }
-  if(!best || best.missing <= 0) return '';
-  return ELEMENT_LABELS[best.element] + ' in ' + best.missing + ' more ' + best.pairs.map(p => p.toUpperCase()).join('/');
-}
 function statTierNote(tower){
   // CA232 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA232
   return '';
@@ -9157,16 +8957,23 @@ function dpsBreakdownText(t){
   return lines.join('\n');
 }
 let _changelogCache = null;
-async function loadChangelogEntries(){
-  if(_changelogCache) return _changelogCache;
-  const res = await fetch('CHANGELOG.md',{cache:'no-cache'});
-  if(!res.ok) throw new Error('CHANGELOG.md fetch failed: ' + res.status);
-  const text = await res.text();
+// CHANGES-TAB-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: only the top of the changelog is fetched, with a timeout, so the tab never sits blank
+const CHANGELOG_FIRST_CHUNK_BYTES = 98304, CHANGELOG_FETCH_TIMEOUT_MS = 10000, CHANGELOG_MIN_ENTRIES = 8;
+async function fetchChangelogText(firstChunkOnly){
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), CHANGELOG_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch('CHANGELOG.md', { cache: 'no-cache', signal: controller.signal, headers: firstChunkOnly ? { Range: 'bytes=0-' + (CHANGELOG_FIRST_CHUNK_BYTES - 1) } : {} });
+    if(!res.ok) throw new Error('CHANGELOG.md fetch failed: ' + res.status);
+    return { text: await res.text(), partial: res.status === 206 };
+  } finally { clearTimeout(timer); }
+}
+function parseChangelogEntries(text, dropLastEntry){
   const entries = [];
   // CA236 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA236
   const headingRe = /^## \[([^\]]+)\] [—–-] (\S+)(?: \(UTC\))?(?: [—–-] (.+))?$/gm;
   const matches = [...text.matchAll(headingRe)];
-  for(let i = 0; i < matches.length; i++){
+  const lastIndex = dropLastEntry ? matches.length - 1 : matches.length;
+  for(let i = 0; i < lastIndex; i++){
     const m = matches[i];
     const start = m.index + m[0].length;
     const end = i + 1 < matches.length ? matches[i+1].index : text.length;
@@ -9179,6 +8986,13 @@ async function loadChangelogEntries(){
     }
     entries.push({ v: m[1], date: m[2], title: m[3] || '', items });
   }
+  return entries;
+}
+async function loadChangelogEntries(){
+  if(_changelogCache) return _changelogCache;
+  const first = await fetchChangelogText(true);
+  let entries = parseChangelogEntries(first.text, first.partial);
+  if(first.partial && entries.length < CHANGELOG_MIN_ENTRIES) entries = parseChangelogEntries((await fetchChangelogText(false)).text, false);
   _changelogCache = entries;
   return entries;
 }
@@ -9195,8 +9009,12 @@ async function openChangesNotice(){
   list.replaceChildren();
   document.getElementById('updateFooterNote').textContent = 'Latest releases';
   document.getElementById('update-modal').classList.remove('hidden');
+  const loadingNote = document.createElement('div');
+  loadingNote.textContent = 'Loading release notes…';
+  list.appendChild(loadingNote);
   try {
     const entries = await loadChangelogEntries();
+    loadingNote.remove();
     for(const entry of entries.slice(0, CHANGES_NOTICE_RELEASES)){
       const heading = document.createElement('div');
       heading.className = 'update-entry-head';
@@ -9208,7 +9026,8 @@ async function openChangesNotice(){
     }
   } catch(err){
     const note = document.createElement('div');
-    note.textContent = 'Release notes could not be loaded here; they load from the hosted site. ';
+    note.textContent = 'Release notes could not be loaded right now. ';
+    loadingNote.remove();
     list.appendChild(note);
   }
   appendChangelogLink(list);
@@ -9217,9 +9036,12 @@ function closeChangesNotice(){ document.getElementById('update-modal').classList
 function renderSettingsChangelog(){
   const root = document.getElementById('settingsChangelog');
   root.replaceChildren();
+  const status = document.createElement('p');
+  status.textContent = 'Loading release notes…';
+  root.appendChild(status);
   loadChangelogEntries().then(entries => {
-    const shown = entries.slice(0, 8);
-    for(const entry of shown){
+    status.remove();
+    for(const entry of entries.slice(0, 8)){
       const section = document.createElement('section');
       section.className = 'settings-changelog-entry';
       const title = document.createElement('h3');
@@ -9229,11 +9051,11 @@ function renderSettingsChangelog(){
       for(const text of entry.items.slice(0, 8)){ const item = document.createElement('li'); item.textContent = text; list.appendChild(item); }
       section.appendChild(list); root.appendChild(section);
     }
-    const link = document.createElement('a');
-    link.href = 'https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md';
-    link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View the complete changelog';
-    root.appendChild(link);
-  }).catch(() => { root.textContent = 'Release notes are available in CHANGELOG.md in the StickTD repository.'; });
+    appendChangelogLink(root);
+  }).catch(() => {
+    status.textContent = 'Release notes could not be loaded right now.';
+    appendChangelogLink(root);
+  });
 }
 
 // CA238 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA238
@@ -9480,7 +9302,6 @@ function updateBarks(frameMs){
     if(slot.timer <= 0 || !slot.tower.active) slot.active = false;
   }
 }
-function clearBarks(){ for(const slot of barkPool){ slot.active = false; slot.tower = null; } }
 function drawBarks(ctx){
   for(const slot of barkPool){
     if(!slot.active) continue;
@@ -11531,9 +11352,22 @@ class Enemy{
       }
     }
     if(this.embeddedArrows && this.embeddedArrows.length){
+      const stuckBaseX = this.x+bumpDx, stuckBaseY = this.y+bumpDy+walkBob;
+      let hasSpecialStuck = false, hasPlainStuck = false; // STUCK-BATCH-01 (1.7.93): plain arrows share one path per enemy instead of a save/transform/restore each
+      for(const a of this.embeddedArrows){ if(isPlainStuckArrow(a)){ hasPlainStuck = true; if(a.cos === undefined){ a.cos = Math.cos(a.angle); a.sin = Math.sin(a.angle); } } else hasSpecialStuck = true; }
+      if(hasPlainStuck){
+        ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath();
+        for(const a of this.embeddedArrows){ if(!isPlainStuckArrow(a)) continue; const ox = stuckBaseX + a.dx, oy = stuckBaseY + a.dy; ctx.moveTo(ox - 8*a.cos, oy - 8*a.sin); ctx.lineTo(ox + 2*a.cos, oy + 2*a.sin); }
+        ctx.stroke();
+        ctx.fillStyle = '#3a2410'; ctx.beginPath();
+        for(const a of this.embeddedArrows){ if(!isPlainStuckArrow(a)) continue; const ox = stuckBaseX + a.dx, oy = stuckBaseY + a.dy, c = a.cos, sn = a.sin; ctx.moveTo(ox + 2*c, oy + 2*sn); ctx.lineTo(ox - 2*c + 2.5*sn, oy - 2*sn - 2.5*c); ctx.lineTo(ox - 2*c - 2.5*sn, oy - 2*sn + 2.5*c); ctx.closePath(); }
+        ctx.fill();
+      }
+      if(hasSpecialStuck){
       ctx.save();
-      ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
+      ctx.translate(stuckBaseX, stuckBaseY);
       for(const a of this.embeddedArrows){
+        if(isPlainStuckArrow(a)) continue;
         ctx.save();
         ctx.translate(a.dx, a.dy);
         ctx.rotate(a.angle);
@@ -11548,13 +11382,11 @@ class Enemy{
         } else if(a.kind === 'KNIFE' || a.kind === 'BLADE'){
           ctx.fillStyle = '#cfd6d9'; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(2, -2); ctx.lineTo(5, 0); ctx.lineTo(2, 2); ctx.closePath(); ctx.fill();
           ctx.strokeStyle = '#69482d'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-8, 0); ctx.stroke();
-        } else {
-          ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
-          ctx.fillStyle = '#3a2410'; ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(-2, -2.5); ctx.lineTo(-2, 2.5); ctx.closePath(); ctx.fill();
         }
         ctx.restore();
       }
       ctx.restore();
+      }
     }
     ctx.globalAlpha = 1.0; // guard against any alpha left set by a preceding draw call bleeding into the next enemy/decal pass
 
@@ -11567,6 +11399,7 @@ class Enemy{
   }
 }
 
+function isPlainStuckArrow(a){ const kind = a.kind; return kind !== 'AXE' && kind !== 'DART' && kind !== 'BULLET' && kind !== 'PELLET' && kind !== 'KNIFE' && kind !== 'BLADE'; }
 // CA378 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA378
 class Tower{
   constructor(){ this.active = false; }
@@ -12362,6 +12195,9 @@ class Tower{
     p.splashRadius = (this.splashRadius || 0) + (towerElement(this) === 'QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
     p.isAxe = false;
     p.ammo = PROJECTILE_AMMO_BY_TOWER[this.type] || 'ARROW';
+    const arcFlightDistancePx = Math.hypot(this.target.x - spawnX, this.target.y - spawnY); // ARROW-LOOK-01 (1.7.91)
+    p.arcSpawnTime = gameTime; p.arcFlightMs = (arcFlightDistancePx / this.projectileSpeed) * 1000;
+    p.arcPx = p.ammo === 'ARROW' ? Math.min(ARROW_ARC_MAX_PX, arcFlightDistancePx * ARROW_ARC_PER_PX) : 0;
     // CA432 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA432
     p.isMoneyBag = this.type === 'MERCHANT';
     if(p.isMoneyBag){
@@ -12579,6 +12415,11 @@ class Tower{
       default: return -distance;
     }
   }
+  visualSwingOffset(t){ // same as swingOffset through the strike; the recovery settles on the aim so the blade never snaps back (MELEE-SWING-01)
+    const w = this.swingArc;
+    if(t < 0.6) return this.swingOffset(t);
+    return w * (1 - easeInOutQuad((t - 0.6) / 0.4));
+  }
   swingOffset(t){
     const w = this.swingArc;
     if(t < 0.2){
@@ -12741,7 +12582,7 @@ class Tower{
     let lungeAmt = 0, swingProgress = 0;
     if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN' || this.type === 'BERSERKER' || this.type === 'LANCER')){
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
-      lungeAmt = Math.sin(st*Math.PI) * 4; // small forward step, peaks mid-swing, settles back
+      lungeAmt = meleeLungePx(st) * (this.type === 'SPEARMAN' || this.type === 'LANCER' ? 0.5 : 1); // lean back in the wind-up, step into the strike, settle (MELEE-SWING-01)
       swingProgress = st;
     }
     let castProgress = 0;
@@ -12769,7 +12610,10 @@ class Tower{
     const hasTargetPose = !!this.target || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
-    const extra = { walkPhase: this.isWalking ? (this.walkPhase || 0) : undefined, skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
+    const isSpearType = this.type === 'SPEARMAN' || this.type === 'LANCER';
+    const swingTrail = (this.isSwinging && !isSpearType && swingProgress > 0.2 && swingProgress < 0.82 && this.baseAngle !== undefined && graphicsQuality !== 'low')
+      ? { from: this.baseAngle + this.visualSwingOffset(Math.max(0, swingProgress - MELEE_SMEAR_SPAN_T)), to: this.baseAngle + this.visualSwingOffset(swingProgress), strength: swingProgress < 0.6 ? 1 : 1 - (swingProgress - 0.6) / 0.22 } : null;
+    const extra = { trailFrom: swingTrail ? swingTrail.from : undefined, trailTo: swingTrail ? swingTrail.to : undefined, trailStrength: swingTrail ? swingTrail.strength : 0, thrustPx: isSpearType && this.isSwinging ? spearThrustPx(swingProgress) : 0, walkPhase: this.isWalking ? (this.walkPhase || 0) : undefined, skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     // ELEMENT-TINT-01 (1.6.86): a locked attunement or mixed element tints skin toward that element,
     // blended on top of this tower's own native colors rather than replacing them outright.
     const activeElement = towerElement(this);
@@ -12783,7 +12627,9 @@ class Tower{
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
     const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
-    const desiredDrawAngle = usesSwingAngle ? this.renderSwordAngle : this.angle;
+    const swingingVisualAngle = (usesSwingAngle && this.isSwinging && this.baseAngle !== undefined)
+      ? (this.type === 'SPEARMAN' || this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
+    const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : (usesSwingAngle ? this.renderSwordAngle : this.angle);
     const poseElapsed = Math.min(100,Math.max(0,presentationTime-(this.poseDrawTime || presentationTime)));
     this.poseDrawTime=presentationTime;
     if(!Number.isFinite(this.poseDrawAngle) || this.isSwinging || this.isSwinging2 || PREFERS_REDUCED_MOTION) this.poseDrawAngle=desiredDrawAngle;
@@ -12825,6 +12671,7 @@ class Tower{
     if(hackerStealth){
       ctx.save(); ctx.globalAlpha = 0.3;
     }
+    extra.enchantElement = (activeElement && !isDisabled) ? activeElement : null; // drawn inside drawStickman, on the weapon itself (WEAPON-ENCHANT-SYNC-01)
     drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
     if(hackerStealth){
       ctx.restore();
@@ -12832,33 +12679,6 @@ class Tower{
       for(let puff = 0; puff < 4; puff++){
         const puffAngle = puff*1.7 + this.id, puffR = 9 + (puff%2)*5;
         ctx.beginPath(); ctx.arc(this.x + Math.cos(puffAngle)*puffR, this.y - 6 + Math.sin(puffAngle)*puffR*0.6, 7 + (puff%3), 0, Math.PI*2); ctx.fill();
-      }
-      ctx.restore();
-    }
-    // ELEMENT-ENCHANT-01 (1.7.36): a stickman carrying an element always shows it on the weapon — a steady glowing
-    // charge along the weapon in each component colour plus the element emoji at the tip. Mixed elements show both.
-    if(activeElement && !isDisabled){
-      const enchantParts = ELEMENT_COMPONENTS[activeElement] || [activeElement];
-      const enchantFrom = 8 * STICKMAN_SCALE, enchantTo = 26 * STICKMAN_SCALE;
-      const dirX = Math.cos(drawAngle), dirY = Math.sin(drawAngle), perpX = -dirY, perpY = dirX;
-      ctx.save();
-      ctx.lineCap = 'round';
-      for(let p = 0; p < enchantParts.length; p++){
-        const shift = enchantParts.length > 1 ? (p === 0 ? -1.6 : 1.6) : 0;
-        const visuals = ELEMENT_VISUALS[enchantParts[p]];
-        const x1 = this.x + dirX*enchantFrom + perpX*shift, y1 = this.y + dirY*enchantFrom + perpY*shift;
-        const x2 = this.x + dirX*enchantTo + perpX*shift, y2 = this.y + dirY*enchantTo + perpY*shift;
-        if(graphicsQuality !== 'low'){
-          ctx.globalAlpha = 0.35; ctx.strokeStyle = visuals.color; ctx.lineWidth = 6;
-          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-        }
-        ctx.globalAlpha = 0.9; ctx.strokeStyle = visuals.color; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      }
-      ctx.globalAlpha = 1; ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for(let p = 0; p < enchantParts.length; p++){
-        const along = enchantTo + 5 + p*10;
-        ctx.fillText(ELEMENT_ATTACK_EMOJI[enchantParts[p]], this.x + dirX*along, this.y + dirY*along - 4);
       }
       ctx.restore();
     }
@@ -12974,6 +12794,7 @@ function segmentHitsEnemyMask(e, x0, y0, x1, y1){
   }
   return false;
 }
+const ARROW_ARC_MAX_PX = 20, ARROW_ARC_PER_PX = 0.07, ARROW_DRAW_SCALE = 1.5;
 const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01 (1.6.129) — see CHANGELOG.md § [1.6.129]. Only the Archer shoots arrows; unlisted towers keep the arrow shape
   NINJA:'STAR', BLOWDART: 'DART', BLOW_GUNNER: 'DART', SQUIRTGUN: 'PELLET',
   GATLING: 'BULLET', GUNALINDER: 'BULLET', MARKSMAN: 'BULLET', SNIPER: 'BULLET',
@@ -13246,10 +13067,23 @@ class Projectile{
       ctx.restore();
       return;
     }
+    if(this.ammo === 'ARROW'){ this.drawArrow(ctx); return; }
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     drawAmmoShape(ctx, this.ammo, this.color || '#f1c40f');
+    ctx.restore();
+  }
+  drawArrow(ctx){
+    const flightProgress = this.arcFlightMs > 0 ? Math.min(1, Math.max(0, (gameTime - this.arcSpawnTime) / this.arcFlightMs)) : 0, arcPx = this.arcPx || 0;
+    const lift = Math.sin(flightProgress * Math.PI) * arcPx;
+    const liftPerSecond = this.arcFlightMs > 0 ? arcPx * Math.PI * Math.cos(flightProgress * Math.PI) / (this.arcFlightMs / 1000) : 0;
+    const heading = Math.atan2((this.vy || 0) - liftPerSecond, this.vx || 1), headColor = this.elementColor || '#cfd6d9';
+    ctx.save(); ctx.translate(this.x, this.y - lift); ctx.rotate(heading); ctx.scale(ARROW_DRAW_SCALE, ARROW_DRAW_SCALE); ctx.lineCap = 'round';
+    if(graphicsQuality !== 'low'){ ctx.strokeStyle = this.elementColor || 'rgba(255,246,214,0.6)'; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-8, 0); ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
+    ctx.fillStyle = headColor; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-1, -2.5); ctx.lineTo(-1, 2.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, -2); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, 2); ctx.stroke();
     ctx.restore();
   }
 }
@@ -13912,8 +13746,6 @@ function decalLifespanVariance(){
   // CA525 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA525
   return 1.15 + Math.random()*1.85; // 1.15x to 3.0x
 }
-// CA526 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA526
-const DROP_BAKE_START_LIFE_T = 0.033; // no longer used by isDecalBakeEligible() (see DECAL_BAKE_MIN_AGE_MS) — kept defined rather than removed
 // CA527 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA527
 const DECAL_BAKE_MIN_AGE_MS = 4000;
 const DECAL_AGING_RESTAMP_MS = 20000;
@@ -14495,14 +14327,6 @@ function spawnXpText(x, y, amount, isLastHit){
   t.life = t.maxLife = XP_TEXT_LIFE_MS;
   t.isXp = true;
 }
-// CA559 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA559
-function spawnBleedIcon(x,y){
-  const t = floatingTexts[textIndex];
-  textIndex = (textIndex+1) % TEXT_COUNT;
-  t.active = true; t.x = x; t.y = y; t.text = '🩸'; t.color = '#e63946';
-  t.life = t.maxLife = 2000;
-  t.isIcon = true;
-}
 // CA560 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA560
 function spawnTowerQuip(x,y,text){
   const t = floatingTexts[textIndex];
@@ -14991,6 +14815,64 @@ function weaponLenFromScale(minLen, maxLen, weaponScale){
   const t = Math.max(0, Math.min(1, (weaponScale - 1) / 0.6));
   return minLen + t * (maxLen - minLen);
 }
+// MELEE-SWING-01 (1.7.97) — see CHANGELOG.md § [1.7.97]
+const MELEE_SMEAR_SPAN_T = 0.16, MELEE_SMEAR_SHOULDER_Y = -13;
+function easeInOutQuad(u){ return u < 0.5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2) / 2; }
+function meleeLungePx(swingT){
+  if(swingT < 0.2) return -1.8 * easeInOutQuad(swingT / 0.2);
+  if(swingT < 0.6){ const u = (swingT - 0.2) / 0.4; return -1.8 + 7.3 * (1 - Math.pow(1 - u, 3)); }
+  return 5.5 * (1 - easeInOutQuad((swingT - 0.6) / 0.4));
+}
+function spearThrustPx(swingT){
+  if(swingT < 0.25) return -4 * easeInOutQuad(swingT / 0.25);
+  if(swingT < 0.55){ const u = (swingT - 0.25) / 0.3; return -4 + 13 * (1 - Math.pow(1 - u, 3)); }
+  return 9 * (1 - easeInOutQuad((swingT - 0.55) / 0.45));
+}
+function drawMeleeSmear(ctx, extra){
+  if(weaponMarkCount === 0) return;
+  const mark = weaponMarkSlots[0], radius = Math.hypot(mark.handX, mark.handY - MELEE_SMEAR_SHOULDER_Y) + mark.length * 0.92;
+  const from = extra.trailFrom, to = extra.trailTo, counterClockwise = to < from;
+  ctx.save(); ctx.lineCap = 'round'; ctx.strokeStyle = extra.trailColor || '#ffffff';
+  for(let band = 0; band < 3; band++){
+    const reach = 1 - band * 0.33;
+    ctx.globalAlpha = (0.14 + band * 0.12) * extra.trailStrength; ctx.lineWidth = 4.2 - band * 1.2;
+    ctx.beginPath(); ctx.arc(0, MELEE_SMEAR_SHOULDER_Y, radius - band * 1.1, to - (to - from) * reach, to, counterClockwise); ctx.stroke();
+  }
+  ctx.restore();
+}
+// WEAPON-ENCHANT-SYNC-01 (1.7.92) — see CHANGELOG.md § [1.7.92]
+const weaponMarkSlots = [{ handX: 0, handY: 0, angle: 0, length: 0 }, { handX: 0, handY: 0, angle: 0, length: 0 }];
+const WEAPON_ENCHANT_FALLBACK_LEN = 14;
+let weaponMarkCount = 0, weaponHandLast = null;
+function markWeapon(handX, handY, angle, length){
+  if(weaponMarkCount >= weaponMarkSlots.length) return;
+  const slot = weaponMarkSlots[weaponMarkCount++];
+  slot.handX = handX; slot.handY = handY; slot.angle = angle; slot.length = length;
+}
+function drawWeaponEnchant(ctx, element, fallbackAngle){
+  if(weaponMarkCount === 0 && weaponHandLast) markWeapon(weaponHandLast.handX, weaponHandLast.handY, fallbackAngle, WEAPON_ENCHANT_FALLBACK_LEN);
+  const parts = ELEMENT_COMPONENTS[element] || [element];
+  ctx.save(); ctx.lineCap = 'round';
+  for(let m = 0; m < weaponMarkCount; m++){
+    const mark = weaponMarkSlots[m], dirX = Math.cos(mark.angle), dirY = Math.sin(mark.angle), perpX = -dirY, perpY = dirX;
+    for(let p = 0; p < parts.length; p++){
+      const shift = parts.length > 1 ? (p === 0 ? -1.4 : 1.4) : 0, visuals = ELEMENT_VISUALS[parts[p]];
+      const x1 = mark.handX + dirX*mark.length*0.2 + perpX*shift, y1 = mark.handY + dirY*mark.length*0.2 + perpY*shift;
+      const x2 = mark.handX + dirX*mark.length + perpX*shift, y2 = mark.handY + dirY*mark.length + perpY*shift;
+      if(graphicsQuality !== 'low'){ ctx.globalAlpha = 0.35; ctx.strokeStyle = visuals.color; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = visuals.color; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+  }
+  const lead = weaponMarkSlots[0];
+  if(weaponMarkCount > 0){
+    ctx.globalAlpha = 1; ctx.font = '9px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for(let p = 0; p < parts.length; p++){
+      const along = lead.length + 4 + p*8;
+      ctx.fillText(ELEMENT_ATTACK_EMOJI[parts[p]], lead.handX + Math.cos(lead.angle)*along, lead.handY + Math.sin(lead.angle)*along - 2);
+    }
+  }
+  ctx.restore();
+}
 function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   if(bend === undefined) bend = -0.3;
   const upperLen = armLen*0.52, foreLen = armLen*0.48;
@@ -15004,7 +14886,8 @@ function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   ctx.beginPath();
   ctx.moveTo(shoulderX,shoulderY); ctx.lineTo(elbowX,elbowY); ctx.lineTo(handX,handY);
   ctx.stroke();
-  return { handX, handY };
+  weaponHandLast = { handX, handY };
+  return weaponHandLast;
 }
 
 // CA566 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA566
@@ -15164,37 +15047,37 @@ function drawSkeleton(ctx, x, y, phase, attackProgress){
 
 function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, bladeLen, thickness){
   thickness = thickness || 1;
-  const bladeWidth = (big ? 5 : 3.5) * thickness;
-  const tipX = handX + Math.cos(angle)*bladeLen;
-  const tipY = handY + Math.sin(angle)*bladeLen;
-
-  // blade (level 3+ gets a translucent wide stroke underneath instead of shadowBlur — much cheaper; skipped entirely on Low graphics)
+  const dirX = Math.cos(angle), dirY = Math.sin(angle), perpX = -dirY, perpY = dirX;
+  const baseHalf = (big ? 2.7 : 2) * thickness, tipHalf = baseHalf * 0.45, shoulderAt = bladeLen * 0.82;
+  const at = (along, across) => [handX + dirX*along + perpX*across, handY + dirY*along + perpY*across];
+  const guardAt = 3, guardHalf = (big ? 6.2 : 4.6) * thickness;
+  // grip behind the hand
+  ctx.lineCap = 'round'; ctx.strokeStyle = '#6b4930'; ctx.lineWidth = 2.3 * thickness;
+  ctx.beginPath(); ctx.moveTo(...at(-3.5, 0)); ctx.lineTo(...at(guardAt - 0.5, 0)); ctx.stroke();
+  // soft glow for high-tier blades (a wide translucent stroke, never shadowBlur)
   if(level >= 3 && !lowGfx){
-    ctx.strokeStyle = 'rgba(125,211,252,0.5)'; ctx.lineWidth = bladeWidth+3.5;
-    ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
+    ctx.strokeStyle = 'rgba(125,211,252,0.3)'; ctx.lineWidth = baseHalf * 2 + 2.2;
+    ctx.beginPath(); ctx.moveTo(...at(guardAt, 0)); ctx.lineTo(...at(bladeLen, 0)); ctx.stroke();
   }
-  ctx.strokeStyle = level >= 3 ? '#dfe6e9' : '#e8ecef';
-  ctx.lineWidth = bladeWidth;
-  ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
-
-  // small X-shaped crossguard mark partway up the blade near the hilt
-  const guardT = 0.32;
-  const gx = handX + (tipX-handX)*guardT, gy = handY + (tipY-handY)*guardT;
-  const guardSize = (big ? 5 : 3.5) * thickness;
-  ctx.save();
-  ctx.translate(gx, gy);
-  ctx.rotate(angle);
-  ctx.strokeStyle = big ? '#e8b64a' : '#9aa0a6';
-  ctx.lineWidth = (big ? 3 : 2.2) * thickness;
+  // tapered blade ending in a point
+  ctx.fillStyle = level >= 3 ? '#dfe9ee' : '#e6eaee';
   ctx.beginPath();
-  ctx.moveTo(-guardSize,-guardSize); ctx.lineTo(guardSize,guardSize);
-  ctx.moveTo(-guardSize,guardSize); ctx.lineTo(guardSize,-guardSize);
-  ctx.stroke();
-  ctx.restore();
-
-  // hilt pommel
-  ctx.fillStyle = '#7a5230';
-  ctx.beginPath(); ctx.arc(handX,handY, (big?2.8:2.2)*thickness, 0,Math.PI*2); ctx.fill();
+  ctx.moveTo(...at(guardAt, baseHalf)); ctx.lineTo(...at(shoulderAt, tipHalf)); ctx.lineTo(...at(bladeLen, 0));
+  ctx.lineTo(...at(shoulderAt, -tipHalf)); ctx.lineTo(...at(guardAt, -baseHalf));
+  ctx.closePath(); ctx.fill();
+  if(!lowGfx){
+    // bright edge on one side and a darker fuller down the middle give the steel some depth
+    ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath(); ctx.moveTo(...at(guardAt + 1, baseHalf * 0.8)); ctx.lineTo(...at(shoulderAt, tipHalf * 0.8)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(80,92,104,0.55)';
+    ctx.beginPath(); ctx.moveTo(...at(guardAt + 2, 0)); ctx.lineTo(...at(bladeLen * 0.78, 0)); ctx.stroke();
+  }
+  // straight crossguard
+  ctx.strokeStyle = big ? '#e8b64a' : '#a9afb5'; ctx.lineWidth = (big ? 2.6 : 2.1) * thickness;
+  ctx.beginPath(); ctx.moveTo(...at(guardAt, -guardHalf)); ctx.lineTo(...at(guardAt, guardHalf)); ctx.stroke();
+  // pommel
+  ctx.fillStyle = big ? '#e8b64a' : '#7a5230';
+  ctx.beginPath(); ctx.arc(...at(-4.2, 0), (big ? 2.1 : 1.7) * thickness, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
@@ -15284,6 +15167,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
 
   ctx.save();
   ctx.translate((graphicsQuality==='high' ? x : Math.round(x))+0.5, (graphicsQuality==='high' ? y : Math.round(y))+0.5);
+  weaponMarkCount = 0; weaponHandLast = null;
   const lunge = (extra && extra.lungeAmt) || 0;
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
   if(extra && extra.walkPhase !== undefined) ctx.translate(0, -Math.abs(Math.sin(extra.walkPhase))*1.6);
@@ -15373,8 +15257,10 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     if(isDual){
       const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, skinMain, -0.5 + swingT*0.55);
       drawSwordBlade(ctx, hand1.handX, hand1.handY, angle, level, false, lowGfx, swordLen, extra.weaponThickness);
+      markWeapon(hand1.handX, hand1.handY, angle, swordLen);
       const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, extra.angle2, armLen, skinMain, 0.5 - swingT*0.55);
       drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, swordLen, extra.weaponThickness);
+      markWeapon(hand2.handX, hand2.handY, extra.angle2, swordLen);
     } else if(!extra.hasTarget){
       // CA578 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA578
       // IDLE-GRIP-01 (1.6.73) — see CHANGELOG.md § [1.6.73]
@@ -15382,6 +15268,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       const restAngle = -Math.PI/2 + 0.96 + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, IDLE_GRIP_ARM_ANGLE, armLen, skinMain, 0.15);
       drawSwordBlade(ctx, hand.handX, hand.handY, restAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
+      markWeapon(hand.handX, hand.handY, restAngle, swordLen);
       if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, restAngle);
     } else {
       // CA579 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA579
@@ -15389,6 +15276,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       const swingAngle = angle + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, swingAngle, armLen, skinMain, dynamicBend);
       drawSwordBlade(ctx, hand.handX, hand.handY, swingAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
+      markWeapon(hand.handX, hand.handY, swingAngle, swordLen);
       if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, swingAngle);
     }
   } else if(type==='NINJA'){
@@ -15429,6 +15317,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const bowArmLen = armLen + 5 + drawAmt*2; // tiny forward push as it braces against the pull
     const hand = drawArmAndHand(ctx, frontShoulderX, frontShoulderY, angle, bowArmLen, skinMain, bowArmBend);
     const handX = hand.handX, handY = hand.handY;
+    markWeapon(handX, handY, angle, 14);
     const bowTopX = handX + Math.cos(angle - Math.PI/2)*10;
     const bowTopY = handY + Math.sin(angle - Math.PI/2)*10;
     const bowBotX = handX + Math.cos(angle + Math.PI/2)*10;
@@ -15524,6 +15413,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const recoilSlide = castKick * 6, staffGripX = handX - Math.cos(angle)*recoilSlide, staffGripY = handY - Math.sin(angle)*recoilSlide;
     const tipX = staffGripX + Math.cos(staffAngle)*staffLen, tipY = staffGripY + Math.sin(staffAngle)*staffLen;
     const buttX = staffGripX - Math.cos(staffAngle)*7, buttY = staffGripY - Math.sin(staffAngle)*7;
+    markWeapon(staffGripX, staffGripY, staffAngle, staffLen);
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const charge = extra.chargeProgress || 0;
@@ -15558,6 +15448,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const tubeLen = weaponLenFromScale(12, 19, extra.weaponScale);
     const tubeX = handX + Math.cos(bomberAngle)*tubeLen, tubeY = handY + Math.sin(bomberAngle)*tubeLen;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tubeX,tubeY); ctx.stroke();
+    markWeapon(handX, handY, bomberAngle, tubeLen);
     ctx.lineCap = 'round';
   } else if(type === 'GATLING'){
     // ammo belt across the chest — the other class with zero distinguishing gear
@@ -15581,6 +15472,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       const bx = handX+perpX*3*side, by = handY+perpY*3*side;
       const barrelLen = weaponLenFromScale(14, 22, extra.weaponScale);
       const tx = bx+Math.cos(gatlingAngle)*barrelLen, ty = by+Math.sin(gatlingAngle)*barrelLen;
+      markWeapon(bx, by, gatlingAngle, barrelLen);
       ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(tx,ty); ctx.stroke();
     }
   } else if(type === 'AXEMAN' || type === 'BERSERKER'){
@@ -15592,6 +15484,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const axeAngle = extra.hasTarget ? angle : Math.PI/2 + 0.15;
     const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, axeAngle, armLen, skinMain, -0.4);
     drawAxeHead(ctx, hand1.handX, hand1.handY, axeAngle, level, axeLen, extra.weaponThickness);
+    markWeapon(hand1.handX, hand1.handY, axeAngle, axeLen);
     const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, axeAngle, armLen, skinMain, 0.4);
     drawAxeHead(ctx, hand2.handX, hand2.handY, axeAngle, level, axeLen, extra.weaponThickness);
   } else if(type === 'SPEARMAN' || type === 'LANCER'){
@@ -15603,11 +15496,12 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       // CA588 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA588
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : spearAngle, armLen, skinMain, spearBend);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : spearAngle, armLen + (extra.thrustPx || 0), skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
     const shaftLen = weaponLenFromScale(type === 'LANCER' ? 20 : 15, type === 'LANCER' ? 30 : 24, extra.weaponScale);
     const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
+    markWeapon(handX, handY, spearAngle, shaftLen);
     const backX = handX - Math.cos(spearAngle)*8, backY = handY - Math.sin(spearAngle)*8;
     ctx.strokeStyle = type === 'LANCER' ? '#6b4930' : '#8a5a2b';
     ctx.lineWidth = (type === 'LANCER' ? 3.5 : 2.5)*extra.weaponThickness;
@@ -15635,6 +15529,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
     const haftLen = weaponLenFromScale(14, 22, extra.weaponScale);
     const tipX = handX + Math.cos(hammerAngle)*haftLen, tipY = handY + Math.sin(hammerAngle)*haftLen;
+    markWeapon(handX, handY, hammerAngle, haftLen);
     ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 3*extra.weaponThickness;
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const perpX = -Math.sin(hammerAngle), perpY = Math.cos(hammerAngle);
@@ -15683,6 +15578,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     {
       // CLERIC-BIBLE-01 (1.6.110) — see CHANGELOG.md § [1.6.110]
       const bookX = hand.handX, bookY = hand.handY;
+      markWeapon(bookX, bookY, castAngle, 10);
       ctx.save();
       ctx.translate(bookX, bookY - 2);
       ctx.fillStyle = '#5b3a1e';
@@ -15721,6 +15617,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.strokeStyle = '#ffe9a8';
       ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(handX, handY-8); ctx.lineTo(handX, handY+5); ctx.stroke();
+      markWeapon(handX, handY+5, -Math.PI/2, 13);
       ctx.beginPath(); ctx.moveTo(handX-5, handY-2); ctx.lineTo(handX+5, handY-2); ctx.stroke();
     }
     // grand halo — visibly larger than Cleric's, matching the bigger everything else
@@ -15761,6 +15658,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const handX = hand.handX, handY = hand.handY;
     const pipeAngle = mouthAngle;
     const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
+    markWeapon(handX, handY, pipeAngle, 14*extra.weaponScale);
     // BLOWDART-ARM-01 (1.6.7) — see CHANGELOG.md § [1.6.7]. Direct report ("where's his other
     // arm?") — only the mouth-hand was ever drawn. A real blowgun grip uses both hands, the same
     // way SQUIRTGUN/GUNALINDER right below already draw a main hand plus a supporting off-hand; the
@@ -15804,6 +15702,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.rotate(gunAngle);
       ctx.fillText('🔫', 0, 0);
       ctx.restore();
+      markWeapon(hand.handX, hand.handY, gunAngle, weaponLenFromScale(11, 17, extra.weaponScale));
       if(!lowGfx){
         const gunLen = weaponLenFromScale(11, 17, extra.weaponScale);
       const tipX = hand.handX + Math.cos(gunAngle)*gunLen, tipY = hand.handY + Math.sin(gunAngle)*gunLen;
@@ -15823,6 +15722,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.rotate(gunAngle);
     ctx.fillText('🔫', 0, 0);
     ctx.restore();
+    markWeapon(mainHand.handX, mainHand.handY, gunAngle, weaponLenFromScale(12, 18, extra.weaponScale));
     if(!lowGfx){
       const gunLen = weaponLenFromScale(12, 18, extra.weaponScale);
       const tipX = mainHand.handX + Math.cos(gunAngle)*gunLen, tipY = mainHand.handY + Math.sin(gunAngle)*gunLen;
@@ -15837,6 +15737,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#4a5a68'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
     const barrelLen = weaponLenFromScale(15, 21, extra.weaponScale); // between Gunalinder's short revolver and Sniper's notably long barrel
     const tipX = gripHand.handX + Math.cos(gunAngle)*barrelLen, tipY = gripHand.handY + Math.sin(gunAngle)*barrelLen;
+    markWeapon(gripHand.handX, gripHand.handY, gunAngle, barrelLen);
     ctx.beginPath(); ctx.moveTo(gripHand.handX, gripHand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
     if(!lowGfx){
       ctx.fillStyle = 'rgba(180,200,220,0.5)';
@@ -15850,6 +15751,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#5a6b52'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
     const barrelLen = weaponLenFromScale(22, 30, extra.weaponScale); // notably longer than every other weapon in the game
     const tipX = gripHand.handX + Math.cos(gunAngle)*barrelLen, tipY = gripHand.handY + Math.sin(gunAngle)*barrelLen;
+    markWeapon(gripHand.handX, gripHand.handY, gunAngle, barrelLen);
     ctx.beginPath(); ctx.moveTo(gripHand.handX, gripHand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
     ctx.font = (11 * extra.weaponScale) + 'px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -15879,6 +15781,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2 * (0.8 + extra.weaponThickness*0.2);
     const boneLen = weaponLenFromScale(10, 15, extra.weaponScale);
     const tipX = hand.handX + Math.cos(castAngle)*boneLen, tipY = hand.handY + Math.sin(castAngle)*boneLen;
+    markWeapon(hand.handX, hand.handY, castAngle, boneLen);
     ctx.beginPath(); ctx.moveTo(hand.handX, hand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
     ctx.font = (13 * extra.weaponScale) + 'px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -15893,6 +15796,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const mouthX = 0, mouthY = -21;
     const hand = drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3);
     const tipX = hand.handX + Math.cos(mouthAngle)*14*extra.weaponScale, tipY = hand.handY + Math.sin(mouthAngle)*14*extra.weaponScale;
+    markWeapon(hand.handX, hand.handY, mouthAngle, 14*extra.weaponScale);
     ctx.strokeStyle = '#8fa8b3'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(hand.handX,hand.handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
@@ -15923,6 +15827,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.fillStyle = '#c7ccd1';
     ctx.beginPath(); ctx.ellipse(0,-24, 8/build.scaleX, 8/build.scaleY, 0, Math.PI, 0); ctx.fill();
   }
+  if(extra && extra.trailStrength > 0 && !extra.shadowPass && !lowGfx) drawMeleeSmear(ctx, extra);
+  if(extra && extra.enchantElement && !extra.shadowPass) drawWeaponEnchant(ctx, extra.enchantElement, angle);
 
   ctx.restore();
 }
@@ -15933,7 +15839,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
 // CA603 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA603
 const SPATIAL_CELL_OFFSET = 256, SPATIAL_CELL_STRIDE = 1024;
 function spatialCellKey(cx, cy){ return (cx + SPATIAL_CELL_OFFSET) * SPATIAL_CELL_STRIDE + (cy + SPATIAL_CELL_OFFSET); }
-function cellKey(x,y){ return spatialCellKey(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)); }
 // CA604 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA604
 function barricadeAttackReady(barricade){
   if(barricade.barricadeContactSince === undefined || barricade.barricadeContactSince === null) barricade.barricadeContactSince = gameTime;
@@ -16450,7 +16355,6 @@ function introductionSlotCount(tierCount){ return Math.min(6, Math.max(2, Math.r
 // size order, the units, XP and gold budgets are untouched, wave 1 and the boss phase never change, and total spawn time stays close to the steady pacing.
 const WAVE_TEMPO_GAP_FACTOR = 0.75;
 const WAVE_FORMATIONS = ['STEADY', 'SURGE', 'TRICKLE', 'PULSE', 'BUILD', 'IRREGULAR'];
-const WAVE_FORMATION_LABELS = { STEADY: 'steady stream', SURGE: 'surge', TRICKLE: 'trickle', PULSE: 'pulses', BUILD: 'building pressure', IRREGULAR: 'irregular rhythm' };
 function waveFormationFor(waveNumber){
   if(waveNumber <= 1) return 'STEADY';
   let previous = 'STEADY';
@@ -20170,16 +20074,6 @@ function buildShopGrid(){
   });
 }
 
-let specModalTower = null;
-function openSwordSpecModal(tower){
-  specModalTower = tower;
-  document.getElementById('spec-modal').classList.remove('hidden');
-}
-function closeSwordSpecModal(){
-  specModalTower = null;
-  document.getElementById('spec-modal').classList.add('hidden');
-}
-
 document.getElementById('buildBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
@@ -20868,6 +20762,14 @@ function generateDebugLog(){
   }
   appendHistoricalPerfEvents('SESSION SLOW-FRAME SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', frame workload >=16.7ms)', perfStats.slowFrameEvents, 'frame');
   appendHistoricalPerfEvents('SESSION LONG-CALLBACK-GAP SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', callback gap >=33.3ms)', perfStats.longCallbackGapEvents, 'gap');
+  s += '\nMAIN-THREAD LONG TASKS (50 ms or more, reported by the browser)\n';
+  s += '--------------------------------------------------------------\n';
+  if(typeof PerformanceObserver !== 'function' || !PerformanceObserver.supportedEntryTypes || !PerformanceObserver.supportedEntryTypes.includes('longtask')) s += 'This browser does not report long tasks.\n';
+  else {
+    const longestTasks = mainThreadLongTasks.slice().sort((a, b) => b.ms - a.ms).slice(0, 10);
+    s += mainThreadLongTasks.length + ' retained (max ' + MAIN_THREAD_LONG_TASK_LIMIT + '), ' + mainThreadLongTasks.reduce((sum, task) => sum + task.ms, 0).toFixed(0) + ' ms in total. Compare these times with the callback-gap snapshots above: a long task at the same moment means something on the page blocked drawing; none means the browser or graphics card delayed the frame.\n';
+    for(const task of longestTasks) s += '  ' + task.atIso + '  ' + task.ms.toFixed(0) + ' ms  ' + task.source + '\n';
+  }
   s += '\nSIMULATION CATCH-UP AND TIME LOSS\n';
   s += '---------------------------------\n';
   s += 'Frame-time clamp: ' + perfStats.wallTimeClampHits + ' frame(s), ' + perfStats.wallTimeClampedMs.toFixed(2) +
@@ -21409,7 +21311,7 @@ function updateInspectPanel(){
         const targetDef = CONFIG.TOWERS[target];
         nearest = { remaining, text: remaining > 0
           ? (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ' + remaining + ' more ' + attunedStat.toUpperCase())
-          : (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ready to evolve!') };
+          : (ATTUNEMENT_ICON[t.attunement] + ' ' + targetDef.icon + ' ' + targetDef.name + ' — ready to unlock!') };
       }
       for(const rule of MIXED_ELEMENT_RULES){
         const pairs = { PROTON:['str','dex'], DARK_MATTER:['str','int'], QUASAR:['dex','int'] }[rule.element];
@@ -21448,8 +21350,8 @@ function updateInspectPanel(){
       const remaining = Math.max(0, need - cur);
       const targetDef = CONFIG.TOWERS[evo[statKey].target];
       evoHint.textContent = remaining > 0
-        ? (targetDef.icon + ' ' + targetDef.name + ' Upgrade — ' + remaining + ' more ' + statKey.toUpperCase())
-        : (targetDef.icon + ' ' + targetDef.name + ' Upgrade — ready to evolve!');
+        ? (targetDef.icon + ' ' + targetDef.name + ' unlock — ' + remaining + ' more ' + statKey.toUpperCase())
+        : (targetDef.icon + ' ' + targetDef.name + ' unlock — ready!');
       evoHint.classList.remove('hidden');
     } else {
       evoHint.classList.add('hidden');
@@ -21839,18 +21741,8 @@ document.querySelectorAll('.quality-btn').forEach(btn => {
   });
 });
 
-const FIRST_TOWER_BUILT_KEY = 'stickTD_firstTowerBuilt';
-const FIRST_WAVE_STARTED_KEY = 'stickTD_firstWaveStarted';
-const FIRST_NEXT_WAVE_USED_KEY = 'stickTD_firstNextWaveUsed';
-const FIRST_SPEED_UP_USED_KEY = 'stickTD_firstSpeedUpUsed';
 let firstFighterBuiltInSession = false;
 let firstWaveStartedInSession = false, firstNextWaveUsedInSession = false, firstSpeedUpUsedInSession = false;
-function readFirstPlayFlag(key, fallback){
-  try{ return localStorage.getItem(key) === '1'; }catch(e){ return !!fallback; }
-}
-function writeFirstPlayFlag(key){
-  try{ localStorage.setItem(key, '1'); }catch(e){}
-}
 // INTRO-EVERY-GAME-01 (1.7.42): owner decision — the build, next wave and speed-up arrows play on every new playthrough, so nothing about them is remembered between visits any more.
 function firstWaveWasStarted(){ return firstWaveStartedInSession; }
 function firstNextWaveWasUsed(){ return firstNextWaveUsedInSession; }
@@ -21993,7 +21885,7 @@ document.getElementById('aboutVersionText').textContent = GAME_VERSION;
 updateHUD();
 // BOOT-WARMUP-01 (1.7.78) — see CHANGELOG.md § [1.7.78]
 const BOOT_MIN_DISPLAY_MS = 2000, BOOT_WARMUP_SLICE_MS = 8, BOOT_WARMUP_ZOOMS = [0.8, 1, 1.5, FIT_MAX_ZOOM, 3], BOOT_ITEM_GLYPH_SCRATCH_PX = 64;
-const BOOT_STICKMAN_WARM_LEVELS = [1, 4], BOOT_SCRATCH_PX = 256, BOOT_REHEARSAL_RENDERS = 3;
+const BOOT_STICKMAN_WARM_LEVELS = [1, 4], BOOT_SCRATCH_PX = 256, BOOT_REHEARSAL_RENDERS = 3, BOOT_SCENERY_SCRATCH_PX = 128, BOOT_SCENERY_SCALE_STEP = 0.02;
 const BOOT_JOB_WEIGHT = Object.freeze({ enemySprite: 1, glowSprite: 0.3, itemGlyph: 0.3, stickman: 2, companion: 1, effect: 1, rehearsalRender: 12 });
 function createBootScratchContext(){
   const scratch = document.createElement('canvas');
@@ -22041,6 +21933,14 @@ function listBootWarmupJobs(){
   const itemIcons = new Set();
   for(const itemDef of ITEM_BY_ID.values()) if(itemDef.icon) itemIcons.add(itemDef.icon);
   for(const icon of itemIcons) addJob(BOOT_JOB_WEIGHT.itemGlyph, () => { glyphScratchCtx.clearRect(0, 0, BOOT_ITEM_GLYPH_SCRATCH_PX, BOOT_ITEM_GLYPH_SCRATCH_PX); glyphScratchCtx.fillText(icon, BOOT_ITEM_GLYPH_SCRATCH_PX / 2, BOOT_ITEM_GLYPH_SCRATCH_PX / 2); });
+  // SCENERY-WARM-01 (1.7.97): the log's 21 ms first draw of scenery was the browser rasterizing each emoji at each size for the first time; the map draws them at whole-pixel sizes between the smallest and largest scale
+  const sceneryScratch = document.createElement('canvas');
+  sceneryScratch.width = sceneryScratch.height = BOOT_SCENERY_SCRATCH_PX;
+  const sceneryScratchCtx = sceneryScratch.getContext('2d');
+  sceneryScratchCtx.textAlign = 'center'; sceneryScratchCtx.textBaseline = 'middle';
+  const sceneryGlyphs = [...TREE_VARIANT_EMOJI, '🪨', '🪴', '📦', '🎁', '🥢', '💰', '💎', ...Object.values(EVENT_PROP_EMOJI)], scenerySizes = new Set();
+  for(let scale = CONFIG.SCENERY.minScale; scale <= CONFIG.SCENERY.maxScale + 1e-6; scale += BOOT_SCENERY_SCALE_STEP) scenerySizes.add(Math.round(TILE_SIZE * 0.72 * scale));
+  for(const glyph of sceneryGlyphs) for(const sizePx of scenerySizes) addJob(BOOT_JOB_WEIGHT.itemGlyph, () => { sceneryScratchCtx.font = sizePx + 'px serif'; sceneryScratchCtx.fillText(glyph, BOOT_SCENERY_SCRATCH_PX / 2, BOOT_SCENERY_SCRATCH_PX / 2); });
   const scratchCtx = createBootScratchContext();
   for(const effectJob of listBootCanvasEffectJobs(scratchCtx)) addJob(BOOT_JOB_WEIGHT.effect, effectJob);
   for(const type of Object.keys(JOB_COLORS)) for(const level of BOOT_STICKMAN_WARM_LEVELS) addJob(BOOT_JOB_WEIGHT.stickman, () => {

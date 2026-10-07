@@ -2,139 +2,165 @@
 
 How this file works: newest first. Every entry starts with a heading `## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
 
+Reading and adding (this file is about 1.8 MB, never open it whole):
+- Read: `grep -n '^## \[' CHANGELOG.md | head -20` lists the newest versions; `sed -n '9,40p' CHANGELOG.md` shows the top entries; `grep -n 'ARROW-LOOK-01' CHANGELOG.md` finds the entry for a code marker (`// ID (x.y.z) — see CHANGELOG.md § [x.y.z]`).
+- Add: write one entry of at most about eight lines under `## [x.y.z] — date (UTC)`: the owner's ask in one line, the cause found, the fix with its marker id, and how it was checked or what was not. Insert it above the previous top heading with a script (find the first `## [`), and extend the same entry while a version is unreleased. Do not restate files or repeat earlier entries.
+
+## [1.7.97] — 2026-10-06 (UTC)
+
+### Changes tab never sits blank (CHANGES-TAB-01)
+- Owner: Changes shows nothing. It was waiting on a download of the whole 1.8 MB changelog with no loading line, no timeout and no fallback. It now asks for the first 96 KB only (falling back to the whole file if the server ignores that), shows "Loading release notes…", gives up after 10 seconds with a plain message, and always ends with the link. Checked against a server that sends partial files and one that stalls.
+
+### Melee attacks (MELEE-SWING-01)
+- Owner: the attack animation looks low tier. The swing already swept, but the recovery stopped halfway and the blade snapped back to the aim in one frame, nothing trailed the blade, and the sword was a plain line with an X for a guard. Now the body leans back, steps into the strike and settles; the blade finishes the swing on the aim; a short smear follows the blade through the strike on High graphics; the sword has a tapered blade, fuller, straight guard, grip and pommel; spears thrust forward instead of swinging. Hits and damage are unchanged.
+
+### Scenery draws warm (SCENERY-WARM-01) and a long-task log (LONG-TASK-LOG-01)
+- The 1.7.90 log's one slow frame (24 ms) was 21 ms of first-time scenery drawing: each emoji is rasterized the first time it appears at each size. Loading now draws every scenery emoji at every size the map uses (a cold first draw cost 0.4 to 1.1 ms against nearly nothing after).
+- The same log showed ten stalls of 350 to 880 ms, all at 5x or 10x speed, with the game's own work under 3 ms. The debug log now lists main-thread tasks of 50 ms or more, so the next log can show whether the page was blocked or the browser delayed the frame.
+
+### Documents
+- README is a plain description with no maker, price, platform, save, version or development wording. The Game Guide and Developer notes files are gone; the code map moved into AGENTS.md.
+
+## [1.7.96] — 2026-10-06 (UTC)
+
+### Notch and home-indicator safe areas (SAFE-AREA-01)
+- The page asks for the full screen (`viewport-fit=cover`) but nothing used the safe-area insets, so on a notched phone the top bar, the bell, the tower panel and the bottom start-screen buttons could sit under the notch, status bar or home indicator. A set of `--safe-*` variables now pads the top bar, bell, tower panel, start-screen title and the Options, See changes and Graphics controls. With no insets (desktop) nothing moves.
+- Checked with an emulated 47 px top and 34 px bottom inset on a 390 px screen: the bar and title drop below the inset and the bottom buttons rise above it. Not checked on a real phone, in landscape.
+
+### Stale text corrected (the Quasar item in 1.7.95's notes)
+- The strategy text for Proton, Dark Matter and Quasar still described the old stat unlocks (and swapped Dark Matter and Quasar's elements); they now state the current rule: Fire and Electric, Fire and Ice, Electric and Ice, each earned by training the two matching stats to 250, with Quasar's small splash kept. These entries belong to types the design check lists as deliberately unreachable, so players never see them; the fix keeps the data honest. The Pope text said 750 total INT; the code evolves it at 500 INT.
+
+### Classes are unlocks, never upgrades or evolutions (CLASS-UNLOCK-WORDING-01)
+- Owner: the Pope is not an upgrade; no tower is an upgrade, they are all unlocks, and the wording should be corrected everywhere. Swept every string in the game, the Help text, the page description and the README and Game Guide.
+- Now say unlock: the Pope ("unlocked for the Build menu when a Cleric reaches 500 INT"), Snapcaster, Necromancer, the dual-wand Mage, the twin-pistol Squirtgun, Marksman and Sniper, the Blow Gunner ("Archer class unlocked by pushing STR and INT to 500"), the inspect-panel hints ("Marksman unlock — 40 more STR", "ready to unlock!", the other form said "Upgrade" and "ready to evolve!"), Help ("the classes it unlocks", Barricades "can't unlock anything"), the page description ("class-unlock system", "place and train stickman towers"), the README feature cells and the Game Guide heading ("Towers & unlocks"). The Proton, Dark Matter and Quasar blurbs now state the mixed-element rule (never built). The Swordsman blurb no longer promises a level-5 specialization pick, a popup removed in 1.4.54.
+- Removed the dead sword-specialization popup markup and its 15 CSS lines (nothing opens it since 1.4.54; `chooseSpec` stays because saves still restore a chosen specialization). Kept: tier upgrades bought with gold, which are not classes. Internal names such as `EVOLUTIONS` and the fanfare id stay, since players never see them.
+- A design check (`\bevol`, `\bupgrad` in class descriptions and blurbs) keeps the wording from coming back.
+
+### Save round trip checked
+- Serialized a game, cleared it and restored it: towers and gold came back with no errors. A save carrying old run blessings still restores them, which confirms keeping that code was right.
+
+## [1.7.95] — 2026-10-06 (UTC)
+
+### Dead code removed, each item confirmed against history (DEAD-CODE-01)
+- Owner: scan for dead code and confirm in the changelog, diffs and commits that it is really dead.
+- Method: found every function, constant, class method and CSS id or class whose name nothing references outside comments, repeating after each removal because removals orphan other names. For each, `git log -S` gave the commit where its last use went, and the diff or changelog gave the reason.
+- Removed 18 functions: `warriorStrDamageMult` (stat rebuild 1.4.43), `openSwordSpecModal` and `closeSwordSpecModal` (spec popup removed 1.4.54 and 1.6.2), `nextElementMixNote` (1.4.54), `pickGenericFoodItem` (food drops 1.6.109), `spawnBleedIcon` (floating blood icon removed, stated in the 1.6.158 notes), `bridgeTiles`, `findExpansionBridge`, `isContinuousSimplePath`, `routeSpacingBuffer`, `regionAreaLimit`, `ringBoundaryTiles`, `cellKey` (ring expansion 1.6.32, 1.7.7, 1.7.35), `clampItemToPlayable` (1.7.35), `maybeSpawnLivestockOnExpansion` (replaced by `breedLivestockOnExpansion` and the expansion-tuning commit), `readFirstPlayFlag` and `writeFirstPlayFlag` (intro on every game, 1.7.43), and `clearBarks` (never called; the reset runs inline).
+- Removed 17 constants (`QUASAR_MIN_PER_STAT`, `POPE_TOTAL_REQUIREMENT`, `LIVESTOCK_WANDER_RETARGET_MS`, `FLAG_GUST_SWELL_SHARE`, `MUSIC_STEP_SECONDS`, `MUSIC_MELODY`, `WAVE_FORMATION_LABELS`, `DROP_BAKE_START_LIFE_T`, the four `FIRST_*_KEY` names, `craftableItemIdSet`, `FRAME_CAP_STEP_FPS`, `LIVESTOCK_SPAWN_CHANCE_PER_EXPANSION`, `FOOD_KINDS`, `specModalTower`) and 19 CSS rules for 13 names no markup or script uses. About 215 lines in all.
+- Kept on purpose: the run-reward system. `offerRunReward` returns at once (the design check wants that) but `restoreRunRewards`, `claimRunReward`, the 🎁 button and `runBoonCounts` still serve saves made while rewards existed. Found, not changed: the Quasar text in `TOWER_STRATEGY` still describes the old stat unlock.
+- Checked: syntax, design contract clean, and the earlier test runs give the same results; a 28 s wave at 10x ran with no errors.
+
+## [1.7.94] — 2026-10-06 (UTC)
+
+### Weapon enchant: exact lines for the remaining classes (WEAPON-ENCHANT-SYNC-01)
+- Owner follow-up: check every class. Rendered all 26 classes with an element in idle and aiming poses. The hand-and-aim fallback hung the glow straight down for classes whose weapon points elsewhere.
+- Added the real weapon line for Hammerman, Squirtgun, Gunalinder, Marksman, Sniper, Necromancer, Blowdart, Blow Gunner, Cleric and Pope. The gun marks sit outside the Low-graphics branch so Low shows the glow too. Hacker, Cat Snapper, Ninja, Archer and Paladin still use the fallback or a short mark (Paladin draws no weapon). Checked in both sheets; play-test the fallback classes.
+
+### README is marketing only; guide and developer notes split out
+- Owner: the README read like an update log and a strategy guide; it should be generic marketing copy, as if written by someone who barely plays the game. It is now a title, tagline, play link, short pitch, facts strip, six-cell feature grid, a press blurb and links, with no rules or numbers (supersedes the 1.7.91 layout).
+- The rules, tables and developer material moved unchanged into `GUIDE.md` and `DEVELOPING.md`, the first new files, added at the owner's request; AGENTS.md references and delivery list follow.
+
+## [1.7.93] — 2026-10-06 (UTC)
+
+### Stuck arrows drawn in one batch (STUCK-BATCH-01)
+- Owner: more lag fixes. Profiled a stress scene (120 enemies, four towers, three stuck arrows and bleeding each) in headless Chromium: render is about 10.5 ms a frame there, mostly canvas calls (4,600 a frame).
+- Each stuck arrow was drawn with its own save, translate, rotate and restore, about 360 save/restore pairs a frame in that scene. Plain arrows now share one stroke and one fill per enemy, with the rotation done by hand and cached on the arrow; axes, darts, bullets, pellets and knives keep their own drawing. Canvas calls fell to 3,300 a frame (-28%). Shapes, colours and positions are unchanged (checked in a render).
+- Left alone, found in the same profile: blood decals not yet baked (about 450 path calls), particles (one path each) and floating numbers (about 100 text draws). They are noted in BACKLOG.md.
+
+## [1.7.92] — 2026-10-06 (UTC)
+
+### Weapon enchant sits on the weapon (WEAPON-ENCHANT-SYNC-01)
+- Owner: the elemental enhancement was not in the same place as the weapon.
+- Cause: the glow was drawn in `Tower.draw` from the tower's centre along the aim angle at a fixed length, so it ignored where each class holds its weapon, the swing, the lunge and the figure's scale.
+- Fix: `drawStickman` records the real weapon line as it draws (`markWeapon`: hand, angle, length) for sword, archer, staff, Bomber, Gatling, axe and spear classes, with the hand and aim angle as the fallback for the rest, and draws the glow and element emoji there (`drawWeaponEnchant`), inside the same transform. The old overlay is removed.
+- Checked in headless renders of an enchanted Swordsman and Mage. Other classes use the fallback; check them in play.
+
+### Docs: changelog reading guide, AGENTS start page
+- AGENTS.md opens with a one-page start guide (commands, checks, delivery); the changelog header explains how to read it in slices and add an entry. Entries 1.7.77 to 1.7.91 were tightened to the format below.
+
+## [1.7.91] — 2026-10-06 (UTC)
+
+### Arrow look (ARROW-LOOK-01)
+- Owner: the start-screen arrows look better than the in-game ones. In-game arrows now use the same look: shaft, steel head (element colour for elemental shots), fletching, faint streak on High, and a drawn-only arc that lands on the target. Flight, hits and damage are unchanged; only arrows change.
+
+### README made general
+- The top is now a pitch, facts strip, quick start, general feature grid and five-line How to play. All specific rules and tables moved, unchanged, into collapsible Full rules, Game reference and For developers sections.
+
 ## [1.7.90] — 2026-10-06 (UTC)
 
-### Farm-animal hearts only when two of a kind meet (LIVESTOCK-PAIR-HEART-01)
-- Owner: the hearts above the pigs happen too often; they should only appear when two pigs get near each other.
-- Pigs and other farm animals (apart from chickens, whose music note is unchanged) now show a heart only when two of the same kind come within 64 px of each other; both show it together, and each then waits 12 to 20 seconds before it can happen again. Hearts no longer appear on a timer. Tested with two pigs near each other (both showed a heart once), a third pig far away (none), and no repeat within the cooldown.
-
-### More variety in rock sizes and shapes (ROCK-VARIETY-01)
-- Owner: more variety in the size of rocks would look good.
-- New rocks draw their size from a wider spread than trees (0.6 against 0.25 of the size range) and reflect instead of piling up at the smallest size, so a patch now mixes pebbles, mid stones and larger ones. Each rock also gets a random height (0.8 to 1.35 times, from flat slab to tall spire) and a wider width range (0.7 to 1.55 times). The big-at-the-road-ends, small-in-the-middle gradient is unchanged; only the spread within it grew. Existing rocks in a loaded save keep their sizes.
-- Not verified by playing; compare a freshly expanded map with the 1.7.89 build.
+### Pair hearts and rock variety (LIVESTOCK-PAIR-HEART-01, ROCK-VARIETY-01)
+- Farm animals other than chickens show a heart only when two of one kind come within 64 px, then wait 12 to 20 s.
+- Rocks draw size from a wider spread (0.6, reflected at zero), random height 0.8 to 1.35 and width 0.7 to 1.55. The road-end gradient is unchanged; saved rocks keep their size.
 
 ## [1.7.89] — 2026-10-06 (UTC)
 
-### Bleed, burn and poison damage numbers show once per second (DOT-TEXT-01)
-- Owner: bleeding popped a number on every tick, which read as lag even at a steady frame rate; show the total lost once per second instead.
-- Each enemy now adds up bleed, burn and poison damage separately and shows one number per kind at most once per real second, carrying everything lost since the last number (`showDotDamageText`). The damage itself still lands on every tick exactly as before; only the popup is combined. The interval uses real time, so at 5x and 10x speed the number is simply larger rather than more frequent. The first tick of a new effect still shows at once.
-- Not verified by playing; check an enemy with several stuck arrows against the 1.7.88 build.
+### Damage-over-time numbers once a second (DOT-TEXT-01)
+- Bleed, burn and poison numbers are summed per enemy and shown at most once per real second (`showDotDamageText`); damage still lands every tick. Tested: 6 numbers over 6 s of bleeding.
 
 ## [1.7.88] — 2026-10-06 (UTC)
 
-### Selected range ring is alternating black and white dots, spaced further apart (RANGE-RING-DOTS-02)
-- Owner: the ring should be black and white dots, and the dots were too close together.
-- The ring now alternates a white dot and a black dot all the way round (the dot count is kept even so the colours alternate with no seam), each 6.5 px across on screen and 30 px apart centre to centre, up from 4.5 px and 15 px. The black dots carry a pale halo so they read on dark ground and the white dots keep their dark under-pass for light grass. It still travels counter-clockwise at the same real-time speed and stays the same size on screen at any zoom.
-- Checked in a headless render of a selected tower at the opening zoom.
+### Range ring (RANGE-RING-DOTS-02)
+- The selected-tower ring alternates black and white dots, 6.5 px across and 30 px apart (was 4.5 and 15), still travelling counter-clockwise.
 
 ## [1.7.87] — 2026-10-06 (UTC)
 
-### Stuck arrows slow enemies; enemies queue behind slowed, pinned and frozen ones (ARROW-DRAG-01, QUEUE-HOLD-01)
-- Owner: an enemy with an arrow in it should be slowed; when an enemy is slowed or frozen and has enemies behind it, those enemies should wait the way they do at a barricade, and the process should be flawless.
-- Each stuck arrow (or other stuck projectile) now slows its enemy by 8% per arrow, to a floor of 60% speed (`enemyMoveMultiplier`, `ARROW_SLOW_PER_ARROW`, `ARROW_SLOW_FLOOR`), stacking with tower slows. Movement, the lane follow cap and the stall watchdog all use it.
-- Bugs found in the existing queue code and fixed: (1) an ice-frozen enemy was not treated as frozen by `isEnemyFrozen`, so the enemies behind it kept walking at full speed through it and the stall watchdog could nudge the frozen enemy itself forward; (2) stunned enemies were left out of the lane list altogether, so nothing queued behind them; (3) a follower only slowed once it was already touching the enemy ahead, which read as a sudden stop.
-- Fix: frozen and stunned enemies now seed the same packed queue as a barricade (`isEnemyHeldInPlace`), so enemies behind them stand still in tight slots and release when the hold ends. Followers brake smoothly from 36 px out (`FOLLOW_BRAKE_ZONE_PX`) to the leader's speed, so a slowed or arrow-pinned enemy is followed instead of rammed. Enemies join a queue slot by gliding up to 6 px per tick instead of teleporting.
-- Verified in headless Chromium on a long straight route: a frozen leader packs the three enemies behind it into queue slots, and they follow it at a 2 px gap after it thaws; three stuck arrows cut movement to 76% of normal. Not verified by playing; a wave with ice and archers is the check.
+### Arrow slow and queue hold (ARROW-DRAG-01, QUEUE-HOLD-01)
+- Each stuck arrow slows an enemy 8%, to a 60% floor (`enemyMoveMultiplier`).
+- Fixed: ice-frozen enemies were not treated as frozen, stunned ones were left out of the lane list, and followers only slowed on contact. Frozen and stunned enemies now seed the barricade-style queue, followers brake from 36 px out, and queued enemies glide into slots instead of teleporting. Tested on a straight route.
 
-### README rebuilt as a game-box page
-- Owner: the README read plain and machine-written, did not follow the box-copy vision, and its contents list was one long column.
-- New top: a centred title, tagline and play links; a one-row facts strip (price, where, controls, campaign, saves); a three-step quick start; an eight-cell feature grid in two columns; and a contents table in three columns (Play, The world, The project) that now also lists Stat icon legend, Food & Medical Supplies, Scenery, Chance structures and Resources. The pitch is three short sentences and every feature line is one plain sentence.
-- How to play is tightened into labelled one-line rules with the same facts, including the start rules (two-tile road, two grass tiles, one Barricade on the finish tile). The bullet promising a choice reward after wave 3 is removed because the game no longer offers reward choices. Status effects gains the arrow slow and queue behaviour. The code map sits in a collapsible section.
-
-### Attract screen: living targets only, arrows that stick, blood that clears with the scene (ATTRACT-ARCHERS-01, ATTRACT-LIVING-01)
-- Owner: smooth the attract animations; the archers must not shoot bones or rocks as if they were alive; show some blood that clears with the scene; archers should often stick enemies with arrows.
-- The attract pool is now living creatures only (Grunt, Swarm, Runner, Splitter, Zombie, Wolf, Monarch); the statue, bones, skull, boulder, rock, syringe, shield, fire, ice and ghost enemies are gone from it. The Grunt is still about three quarters of the crowd.
-- Archers loose real arrows on a short arc; each hit sticks an arrow in the enemy (drawn with a settling wobble, a small flinch, and the 8% slow per arrow from the game). Most enemies take two or three arrows before falling, so arrows stick on nearly every enemy.
-- Blood (only when gore is on): each hit sprays a few droplets and each kill a burst, with gravity, quadratic drag and a terminal speed; droplets land as ellipses stamped into an offscreen layer, elongated by impact angle, and a few pools drop at the feet. The layer fades out with the enemies in the aftermath and is cleared when the scene restarts.
-- Smoothness fixes in the same code: archers and arrows referred to enemies by array position, which shifted whenever an enemy was removed, so shots could curve to the wrong target; they now hold the enemy itself. Kill bursts were removed the instant they began for any enemy older than 0.4 s and so almost never played; they now play fully. Enemy speed eases between phases instead of jumping, bows swing to a new target instead of snapping, and enemy emoji use the cached sprites from 1.7.76 instead of being re-rastered every frame (warmed during loading).
-- Checked with headless captures of the scene; the design contract reports no problems.
+### Attract screen (ATTRACT-ARCHERS-01, ATTRACT-LIVING-01)
+- Only living creatures appear. Archers loose arcing arrows that stick (8% slow each) and most enemies take two or three; hits and kills spray blood that stamps into an offscreen layer and clears with the scene (gore on only).
+- Fixed: shots tracked enemies by array index, kill bursts were removed the frame they began, speed jumped between phases and emoji were re-rastered every frame (now cached sprites, warmed at load).
 
 ## [1.7.86] — 2026-10-06 (UTC)
 
-### Notification bell flush at the top left; "Mark All Read" (NOTIFICATION-BELL-LEFT-01)
-- Owner: the bell and notifications belong flush with the left of the screen, not inside the centred Build and Next Wave bar, except on a screen small enough that it would overlap Build; the inbox button should read Mark All Read.
-- The bell lives in the canvas frame at the top left. Each time the bar is fitted, `placeNotificationBell` measures the bar without the bell and moves the bell into the bar only when the room to the left of the centred bar is smaller than the bell plus its margins (at 1280 and 900 pixels wide it stays at the left; at 760 and 390 it joins the bar as before). The inbox panel, toasts and the details dialog anchor to the bell wherever it is: directly below it when it floats, below the bar when it is inside it. The bell stays hidden while the bar is hidden.
-- The panel's "Mark all read" button is now "Mark All Read".
-- A design check (NOTIFICATION-BELL-LEFT-01) covers the placement logic. Checked in headless Chromium at 1280, 900, 760 and 390 pixels wide, with the inbox open at 1280.
+### Notification bell (NOTIFICATION-BELL-LEFT-01)
+- The bell sits flush top left, outside the centred bar, and joins the bar only when there is no room beside it (`placeNotificationBell`). The panel anchors under it; the button reads "Mark All Read".
 
 ## [1.7.85] — 2026-10-06 (UTC)
 
-### Start screen: PLAY centred, labelled Options button at the bottom right
-- Owner: centre PLAY, move the gear to the bottom right and have it say Options.
-- PLAY now sits at the exact centre of the screen (the title stays at the top, the Graphics choice at the bottom); on very short screens it follows the title instead so they cannot overlap.
-- The gear is now a labelled "⚙️ Options" button in the bottom-right corner, mirroring "See changes" at the bottom left, and is no longer part of the Graphics row. Its handler and id are unchanged. The FIRST-START-OPTIONS-01 design check now expects this placement. Checked at 1280 by 720 and 390 by 760.
+### Start screen controls
+- PLAY is centred on the screen; Options is a labelled "⚙️ Options" button bottom right, out of the Graphics row. The FIRST-START-OPTIONS-01 check follows.
 
 ## [1.7.84] — 2026-10-06 (UTC)
 
-### Boot warm-up grows to cover the first gameplay frames, with progress weighted by work (BOOT-WARMUP-01)
-- Owner: find as much real work as possible for the loading screen; it should last as long as the work takes (never less than 2 seconds), not a fixed time.
-- New warm-up work, all drawn off screen: every stickman class at levels 1 and 4 (26 classes, so each class's drawing code and its lazily created gradients run before the first tower is built), the cat and skeleton companions, nine canvas effects the game uses (linear and radial gradients, shadow blur, additive and source-in compositing, clipping, dotted strokes, rotated ellipses for blood stamps, and image blits at both smoothing qualities) so the browser compiles those drawing paths once, and three rehearsal renders of the real world, which cost about 7 ms cold against 0.3 to 1.7 ms warm in a test.
-- Progress is now weighted by the work each job represents (a rehearsal render counts more than a glow sprite), the bar follows the weighted work, and the screen stays until the work is done or 2 seconds have passed, whichever is later. 607 jobs in total.
-- The debug log has a new `Boot warm-up` line with the job count, milliseconds of real work and how long the loading screen was shown, so the floor and the work can be told apart on a real device.
-- Measured in headless Chromium: about 70 ms of work, so on a fast machine the 2 second floor is what you see; slower devices run longer by exactly the work they need. Nothing is padded to look busy. Not verified by playing.
+### Boot warm-up (BOOT-WARMUP-01)
+- Added stickman classes at levels 1 and 4, companions, nine canvas effects and three rehearsal renders (607 jobs). Progress is weighted by work, the screen stays until work and 2 s are both done, and the debug log has a `Boot warm-up` line (job count, work ms, shown ms).
 
 ## [1.7.83] — 2026-10-06 (UTC)
 
-### Start screen: TD stands alone, larger version, lowered PLAY and Graphics, drawn PLAY button (PLAY-STICKS-01)
-- Owner: TD already means Tower Defense, so the "Tower Defense" line is removed (the heading keeps the full name for screen readers); the version is bigger; Graphics sits at the very bottom, PLAY lower and above it; the glossy yellow PLAY button looked generic.
-- The version now reads at 15 to 22 px in the paper colour directly under the wordmark.
-- PLAY is lettered with the same round-capped gold strokes as the title (dark outline under the gold gradient) inside a dark pill with a gold border, replacing the gradient button and the triangle glyph. It lifts with a gold glow on hover and keyboard focus, presses down on click, and has a visible focus ring; reduced-motion players get no transition. The handler on `#playBtn` is unchanged.
-- The menu column fills the screen: the title block stays at the top, PLAY sits lower than centre, and the Graphics row is pinned to the bottom, with clearance above "See changes" on narrow screens. Checked at 1280 by 720 and 390 by 760.
+### Start screen look
+- "Tower Defense" is dropped (TD says it), the version is larger, PLAY is lettered in the title's strokes in a dark pill, and Graphics sits at the bottom.
 
 ## [1.7.82] — 2026-10-06 (UTC)
 
-### The loading screen warms every lazily built cache we could verify (BOOT-WARMUP-01)
-- Owner: preload as much as possible during loading.
-- Added to the boot warm-up, each a first-use cost found in the code: the dropped-item glow sprites (`groundItemGlowSprite`: all 60 hue steps at every glow radius in use, 360 small canvases, so no colour of the cycling glow is built mid-fight); five zoom steps for the enemy sprites (0.8, 1, 1.5, the 2.1 start view and 3) instead of three, 131 sprites in all; and every item icon drawn once at the ground-item size so the browser's glyph cache holds it before the first loot drop.
-- The audio engine is now created on the player's first click, tap or key press on the start screen (the earliest moment browsers allow it) instead of when Play is pressed, so the audio graph, music palette and noise buffer are built while the player is still on the menu.
-- Measured in headless Chromium: 542 warm-up jobs, about 55 ms of work in total on a software renderer, spread across 8 ms slices; the loading screen's 2 second minimum is unchanged. Not warmed on purpose: stickman and companion ground shadows (they depend on the live tower), blood decals and scenery (they depend on the run), and scenery or status emoji whose draw sizes vary.
-- Not verified by playing; compare first-fight and first-loot hitches against the 1.7.81 debug log.
+### More warm-up
+- Item glow sprites (360), five zoom steps of enemy sprites, item icon glyphs, and the audio engine now starts on the first click or key press on the menu.
 
 ## [1.7.81] — 2026-10-06 (UTC)
 
-### Start screen: STICK TD wordmark, title raised, menu regrouped (TITLE-LAYOUT-01)
-- Owner: add TD after the title, move it higher, and organize the screen further.
-- The wordmark now reads STICK TD: a drawn T and D follow the stickman-I lettering after a clear word gap, with "Tower Defense" beneath. The heading's accessible name is "Stick TD: Stick Tower Defense".
-- The title block sits in the upper part of the screen (`header#titleBlock`) and the controls sit below it in one group (`nav#startMenu`): PLAY first as the primary action, with the Graphics choice and Options beneath it. Spacing scales with the screen height, so short phones keep both groups visible and scroll as before if they cannot.
-- Ids, buttons and handlers are unchanged; only their order and wrapping elements moved. Checked at 1280 by 720 and 390 by 760.
+### Start screen layout (TITLE-LAYOUT-01)
+- STICK TD wordmark with a word gap, title block at the top, menu column below (`header#titleBlock`, `nav#startMenu`).
 
 ## [1.7.80] — 2026-10-06 (UTC)
 
-### Start-screen title is a drawn stick wordmark (TITLE-WORDMARK-01)
-- Owner: the gold Georgia title with a glow looked generic and machine-made; make it masterful.
-- The title is now an inline SVG wordmark: STICK is drawn from round-capped strokes, the way the game's own stickmen are, with a ring-headed stickman standing in for the I. Each stroke is a dark outline under a gold gradient fill, and the whole mark carries one soft drop shadow. "Tower Defense" sits beneath in a heavy sans in the cream paper colour with wide spacing. No external fonts or images: the letters are paths in `index.html`.
-- The heading keeps its accessible name (`aria-label="Stick Tower Defense"`); the end screen heading is unchanged. The mark scales with the viewport (80% of the width up to 520 px) and was checked at 1280 by 720 and 390 by 760.
+### Title wordmark (TITLE-WORDMARK-01)
+- The title is an inline SVG drawn from round-capped strokes with a stickman for the I, gold over a dark outline. No fonts or images.
 
 ## [1.7.79] — 2026-10-06 (UTC)
 
-### Loading screen: walking Grunt and a two-second minimum (BOOT-WARMUP-01)
-- Owner: style the loading screen after a reference (character above "Loading...", pip progress bar) with the angry Grunt walking to the right instead of the turtle and green, and show it for at least 2 seconds so going straight to the attract screen is not jarring.
-- The loading screen now shows from the first paint on a black background: the Grunt 😡 bobs and sways as he walks along a track and reaches the right end as the gold pip bar fills; "Loading..." sits between them. The bar is a native `progress` element drawn with round pips. Reduced-motion players get a still Grunt.
-- The screen stays up until both the sprite warm-up and 2 seconds have passed (`BOOT_MIN_DISPLAY_MS`), and the bar shows whichever is further behind, so it never reaches 100% early. The 150 ms reveal delay from 1.7.78 is removed.
-- Verified in headless Chromium: no errors, loader hidden after the minimum, game faded in. Layout checked in one screenshot at 1280 by 720.
+### Loading screen look
+- Black screen, the angry Grunt walking right along the bar, "Loading...", gold round-pip `progress` bar. Shown from first paint for at least 2 s (`BOOT_MIN_DISPLAY_MS`).
 
 ## [1.7.78] — 2026-10-06 (UTC)
 
-### Boot warm-up before the start screen (BOOT-WARMUP-01)
-- Owner: a loading screen before the attract screen that preloads the game and makes it less laggy.
-- Cause found in the code: collision masks were already built at boot, but the enemy emoji sprites added in 1.7.76 were built on first draw, so each new enemy type (and each new zoom step) cost a glyph raster in the middle of a fight.
-- Fix: before the first frame, boot builds the cached sprites for every enemy glyph at the opening zoom steps (1x, 1.5x and the 2.1x start view, at the screen's pixel ratio) plus the flora seedling, in slices of 8 ms so the page never freezes (81 sprites on a 1280 by 720 test screen). The sprite cache limit rose from 192 to 384 so the warmed set is never evicted by the first minutes of play.
-- A native `progress` bar loading screen appears only if warming takes longer than 150 ms, so a fast device sees no flash; the game then starts its first frame and fades in as before.
-- Audio is not preloaded: browsers only allow an audio context after the first click or tap.
-- Verified in headless Chromium: boots with no errors, the loader hides, the game fades in, design contract reports no problems. Real-device effect on first-fight hitches is not measured; please compare against the 1.7.76 debug log.
+### Boot warm-up (BOOT-WARMUP-01)
+- Collision masks were already built at boot; enemy emoji sprites were built on first draw. They are now warmed in 8 ms slices behind a loading screen; sprite cache limit 384.
 
 ## [1.7.77] — 2026-10-06 (UTC)
 
-### Frame limit is paced to whole display refreshes (VSYNC-PACE-01)
-- Owner: lag fixes and a clean experience; the 1.7.53 overlay showed 37 to 41 FPS with 21 to 29 ms gaps while the game's own work took under 1 ms.
-- Cause found in the code: the frame limit compared each animation-frame timestamp with a free-running timer (`frameCapNextAt`, advanced by exactly 1000 / limit) and a fixed 2 ms tolerance. Frames only arrive on display refreshes, so any display whose refresh does not divide the limit evenly was paced unevenly: at 60 FPS on 144 Hz the gaps alternated between 2 and 3 refreshes (13.9 and 20.8 ms), and on a display slightly faster than 60 Hz the timer slowly outran the callbacks until one frame was skipped (a 33 ms gap) every few seconds. Both read as stutter at a healthy average FPS.
-- Fix: the loop measures the display refresh interval (lower quartile of the last 30 animation-frame gaps between 2 and 50 ms, so slow frames do not skew it) and snaps the limit to the nearest whole number of refreshes. The early-frame tolerance is now half a refresh, so one frame per interval always passes and the one a refresh earlier never does. At 60 Hz the limits are unchanged (60 and 30 FPS); at 120 Hz 60 FPS is every second refresh; at 144 Hz a 60 FPS limit paces at 72 FPS evenly instead of alternating. Before 30 samples exist the old fixed tolerance applies.
-- Camera panning and zooming still bypass the limit (CAMERA-SMOOTH-01); the limit toggle and slider are unchanged.
-- The debug log has a new line, `Display refresh measured`, showing the measured Hz and the paced FPS.
-- Not verified by playing; syntax checked and the pacing logic simulated for 60, 75, 120 and 144 Hz displays. Please compare the 21 to 29 ms gap counts in the debug log against the 1.7.53 captures.
-
-### README introduction rewritten as game-box copy
-- Owner: the introduction read like a changelog. It is now a tagline, a short pitch and a general feature list; the 'Build your strategy' list (which mentioned choice rewards the game does not have) is replaced by it. AGENTS.md § README voice states the rule.
+### Frame limit paced to the display (VSYNC-PACE-01)
+- The frame limit used a free-running timer, so displays that do not divide it evenly alternated 2 and 3 refreshes or skipped a frame every few seconds. The loop now measures the refresh interval and snaps the limit to whole refreshes (half-refresh tolerance); the debug log shows `Display refresh measured`.
+- README introduction rewritten as game-box copy; AGENTS.md § README voice states the rule.
 
 ## [1.7.76] — 2026-10-06 (UTC)
 
