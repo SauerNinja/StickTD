@@ -1,3 +1,9 @@
+## 1.7.133 audit
+- Play-test: auto-pan stutter after 1.7.125. If the overlay's pan gap still shows 60 to 100 ms, find what stalls the browser (screen recording is one candidate).
+- Play-test: blood load in a long fight (droplet pool 700, trail spacing 20 to 45 px, 14 stains a body); lower the counts in `forensicSpatterProfile` or `BLOOD_TRAIL_BASE_SPACING_PX` if frames slip.
+- Open idea: a drying rim on pools and blood smears dragged by dying enemies.
+- Tuning: starting moves (1) and the cap (3) per stickman.
+
 ## 1.7.117 audit
 - Listen on desktop and phone for reverb depth (send 0.2), pan width (max 0.6) and brightness (air +2.5 dB at 3.5 kHz); every value is a named MUSIC_* constant.
 - Check CPU on a low-end phone with the stereo convolver; if frames slip, set MUSIC_REVERB_SEND to 0 first.

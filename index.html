@@ -201,8 +201,8 @@
   }
   .hud-stat{display:flex;align-items:center;gap:5px;font-size:clamp(12px,2vw,18px);
     text-shadow:1px 1px 2px #000;pointer-events:auto;}
-  #hud-stats-stack{display:flex;flex-direction:column;gap:2px;}
-  .hud-stat-row{display:flex;align-items:center;gap:8px;}
+  #hud-stats-stack{display:flex;flex-direction:column;align-items:stretch;gap:2px;} /* HUD-FLUSH-01 (1.7.132): the rows stretch to the width of the widest one, so the lives and gold sit at the two edges and the wave phase label fills the rest of its row up to the pause button */
+  .hud-stat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .hud-stat-row .hud-stat{font-size:clamp(11px,1.6vw,15px);}
   /* The two numbers a player actually watches constantly to make decisions get a color-coded
      accent — gold for the currency it represents, a warm rose for lives (evoking health/danger,
@@ -211,12 +211,9 @@
      weight — no size or spacing change, so this can't affect the tight-fit top bar's width. */
   #goldVal{color:var(--gold);font-weight:bold;}
   #livesVal{color:#ff9e96;font-weight:bold;display:inline-block;} /* inline-block so the HEART-BREAK-01 arrival flash can scale it */
-  #livesMeter{width:40px;height:9px;vertical-align:middle;}
-  #waveProgress{width:40px;height:7px;vertical-align:middle;}
-  #livesMeter::-webkit-meter-bar{background:rgba(0,0,0,0.35);border-radius:4px;border:none;}
-  #livesMeter::-webkit-meter-optimum-value{background:#e63946;border-radius:4px;}
-  #waveProgress::-webkit-progress-bar{background:rgba(0,0,0,0.35);border-radius:4px;}
-  #waveProgress::-webkit-progress-value{background:var(--gold);border-radius:4px;}
+  #wavePhase{flex:1 1 auto;min-width:9ch;text-align:center;font-size:clamp(10px,1.4vw,13px);font-weight:bold;letter-spacing:0.06em;line-height:1.5;padding:0 6px;border-radius:4px;background:rgba(0,0,0,0.3);color:var(--gold);}
+  #wavePhase[data-phase="FIGHTING"]{color:#ff9e96;}
+  #wavePhase[data-phase="STANDBY"]{color:#b9d7ff;}
   #shop-buylife-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
     padding:8px 10px;border-bottom:1px solid var(--wood-light);background:rgba(230,57,70,0.08);}
   #shopBuyLifeLabel{font-weight:bold;color:var(--paper);}
@@ -324,8 +321,11 @@
     cursor:pointer;color:var(--paper);position:relative;}
   .build-row:active{background:var(--wood-light);}
   .build-row.selected{background:var(--wood-light);box-shadow:inset 0 0 0 2px var(--gold);}
-  .build-row.locked{cursor:default;opacity:0.55;filter:grayscale(1);}
-  .build-row.unaffordable{opacity:0.55;filter:grayscale(1);}
+  .build-row.locked{cursor:default;opacity:0.8;}
+  .build-row.locked .icon{filter:brightness(0) drop-shadow(0 0 1px rgba(255,224,130,0.7)) drop-shadow(0 0 1px rgba(255,224,130,0.45));opacity:0.75;}
+  .build-row.locked .name{color:#b9a58c;font-style:italic;}
+  .build-row.unaffordable .icon,.build-row.unaffordable .name{opacity:0.7;}
+  .build-row.unaffordable .cost{color:#ff4d4d;font-weight:bold;text-shadow:0 0 4px rgba(230,57,70,0.55);}
   .build-row .icon{font-size:22px;width:28px;text-align:center;flex-shrink:0;}
   .build-row .name{flex:1;font-size:clamp(12px,2vw,14px);font-weight:bold;}
   .build-row .cost{color:var(--gold);font-size:12px;flex-shrink:0;}
@@ -935,15 +935,13 @@
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
       <div id="hud-stats-stack">
         <div class="hud-stat-row">
-          <div class="hud-stat lives-stat">❤️ <span id="livesVal">100</span>
-            <meter id="livesMeter" min="0" max="100" low="20" high="60" optimum="100" value="100" aria-label="Lives remaining"></meter><span id="livesChangePop"></span>
+          <div class="hud-stat lives-stat">❤️ <span id="livesVal">100</span><span id="livesChangePop"></span>
           </div>
           <div class="hud-stat gold-stat">💰 <span id="goldVal">150</span><span id="goldGainPop"></span></div>
         </div>
         <div class="hud-stat-row">
-          <div class="hud-stat" title="Free tower relocations — earn 1 more every 2 waves">🔀 <span id="moveVal">1</span></div>
           <div class="hud-stat">Wave <span id="waveVal">0/100</span>
-            <progress id="waveProgress" min="0" max="100" value="0" aria-label="Wave progress"></progress>
+            <span id="wavePhase" data-phase="STANDBY" aria-label="Wave phase">STANDBY</span>
           </div>
         </div>
       </div>
@@ -1419,7 +1417,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.117'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.133'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -1679,7 +1677,7 @@ const JOB_COLORS = {
   SQUIRTGUN: { main:'hsl(105,70%,68%)', shade:'hsl(105,60%,42%)' }, // vivid acid green
   GUNALINDER:{ main:'hsl(15,25%,68%)',  shade:'hsl(15,30%,42%)'  }, // dark gunmetal brown
   SNIPER:    { main:'hsl(100,15%,62%)', shade:'hsl(100,20%,38%)' }, // desaturated tactical gray-green
-  MARKSMAN:  { main:'hsl(205,20%,66%)', shade:'hsl(205,25%,42%)' },  // cool tactical steel-blue, distinct from Gunalinder's warm brown and Sniper's green
+  MARKSMAN:  { main:'hsl(205,20%,66%)', shade:'hsl(205,25%,42%)' },  // cool tactical steel-blue, distinct from Cowboy's warm brown and Sniper's green
   // CA010 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA010
   CAT_SNAPPER: { main:'hsl(0,0%,22%)', shade:'hsl(0,0%,8%)' },
   NECROMANCER: { main:'hsl(280,25%,55%)', shade:'hsl(280,30%,30%)' }, // muted dark purple — distinct from Mage's own brighter violet, reads as "corrupted" rather than "arcane"
@@ -1708,7 +1706,7 @@ const JOB_BUILD = {
   SQUIRTGUN: { scaleX:0.86, scaleY:1.00 },  // even lighter, built for speed
   GUNALINDER:{ scaleX:1.08, scaleY:0.95 },  // stocky gunslinger stance
   SNIPER:    { scaleX:0.84, scaleY:1.10 },  // lean, low profile
-  MARKSMAN:  { scaleX:0.88, scaleY:1.07 },  // lean, between Gunalinder's stocky stance and Sniper's full leanness
+  MARKSMAN:  { scaleX:0.88, scaleY:1.07 },  // lean, between Cowboy's stocky stance and Sniper's full leanness
   CAT_SNAPPER: { scaleX:0.92, scaleY:0.94 }, // a touch narrower and shorter than average — a slight hunch, not a distinct body type
   NECROMANCER: { scaleX:0.87, scaleY:1.06 }, // gaunt and a bit tall, like Mage but leaner still
   BLOW_GUNNER: { scaleX:0.9, scaleY:0.97 }, // close to base Archer's own build — a hybrid of two siblings, not a distinct body type
@@ -2850,7 +2848,7 @@ const CONFIG = {
       ]
     },
     GUNALINDER: {
-      name: 'Gunalinder', icon: '🤠', baseCost: 550, unlocksAfterWave: 0,
+      name: 'Cowboy', icon: '🤠', baseCost: 550, unlocksAfterWave: 0,
       blurb: "Fires all six chambers of a revolver in a rapid burst, then reloads for a long while: precision in place of splash. Unlocked by training a Bomber's Intelligence to 40.",
       tiers: [
         { range: 150, damage: 9,  cooldown: 1700, burstCount: 6, burstDelay: 90, projectileSpeed: 380 },
@@ -2860,7 +2858,7 @@ const CONFIG = {
     },
     SNIPER: {
       name: 'Sniper', icon: '🦅', baseCost: 800, unlocksAfterWave: 0,
-      blurb: "One devastating shot at the longest range of any tower, with a very slow reload. Only one can stand on the board. Unlocked by training a Gunalinder's or a Marksman's Intelligence to 60.",
+      blurb: "One devastating shot at the longest range of any tower, with a very slow reload. Only one can stand on the board. Unlocked by training a Cowboy's or a Marksman's Intelligence to 60.",
       tiers: [
         { range: 200, damage: 120, cooldown: 2800, projectileSpeed: 600 },
         { range: 220, damage: 170, cooldown: 2600, projectileSpeed: 640, upgradeCost: 260 },
@@ -3410,9 +3408,14 @@ function validateDesignContract(){
       ['hack cheat menu grants wood, stone and gold', ['+🪵1,000', '+🪨10,000', '+💰100,000'].every(a => src(runHackAction).includes(a))],
       ['intelligence tooltip', [...document.scripts].some(sc => sc.textContent.includes('drives Mage damage and every stickman'))],
       ['elements at 250', ELEMENT_INFUSE_THRESHOLD === 250],
-      ['expansion blocked while enemies are loose', typeof expansionBlockedReason === 'function' && src(expandRegion).includes('expansionBlockedReason')],
+      ['expansion allowed mid-wave, one bought per wave', typeof expansionBlockedReason === 'function' && src(expandRegion).includes('expansionBlockedReason') && !src(expansionBlockedReason).includes('waveState') && src(expansionBlockedReason).includes('one per wave') && [...document.scripts].some(sc => sc.textContent.includes('EXPAND-MID-WAVE-01'))],
+      ['moves belong to each stickman, gained on promotion, boss kill and shoes', typeof grantTowerMove === 'function' && typeof moveCharges === 'undefined' && src(Tower.prototype.upgrade).includes('grantTowerMove') && src(Enemy.prototype.die).includes('grantTowerMove') && !document.getElementById('moveVal')],
+      ['archer arrows leave the bow grip, in game and on the attract screen', [...document.scripts].some(sc => sc.textContent.includes('ARROW-GRIP-01') && sc.textContent.includes('archerNockedArrowTip(angle,1,0)') && sc.textContent.includes('archerNockedArrowTip(t.aimAngle, 1, 0)'))],
+      ['camera pans run on a clock that caps long frames', CAMERA_CLOCK_MAX_STEP_MS === 24 && src(updateCameraFollow).includes('cameraPanClock') && String(render).includes('PAN-SUBPIXEL-01')],
+      ['every hit and kill throws droplets; wounds leave a trail; bodies make voids and stains', typeof spawnForensicSpatter === 'function' && typeof updateBloodTrails === 'function' && typeof forensicBlockerAlongPath === 'function' && typeof drawBloodStains === 'function' && src(Enemy.prototype.die).includes('spawnForensicSpatter')],
+      ['wave phase label replaces the wave bar, no lives bar', !!document.getElementById('wavePhase') && !document.getElementById('waveProgress') && !document.getElementById('livesMeter')],
       ['no static gold-bag building and one kind of bag', typeof GOLD_MAP_BAG_ITEM === 'undefined' && !src(spawnScenery).includes("type = 'COIN_POUCH'")],
-      ['shoes give a free move per pair', [...document.scripts].some(sc => sc.textContent.includes('TENNIS-SHOES-MOVE-01'))],
+      ['shoes give a free move per pair', [...document.scripts].some(sc => sc.textContent.includes('TENNIS-SHOES-MOVE-01')) && DROP_ITEMS.find(item => item.id === 'RUNNING_SHOES').extraMove === true],
       ['chest loot is a roll, presents are rare', [...document.scripts].some(sc => sc.textContent.includes('CHEST-LOOT-01')) && RANDOM_EVENT_CHOICES[0][1] <= 0.08],
       ['version is a real version', /^\d+\.\d+\.\d+$/.test(GAME_VERSION)]
     ];
@@ -3897,7 +3900,7 @@ function orderRoadDirections(chain, occupied, region, style, wild){
   scored.sort((a, b) => b.score - a.score);
   return scored.map(entry => entry.dir);
 }
-// Towers that sit where the road now runs are moved to the nearest free buildable tile (expansions only happen between waves, with no enemies out).
+// Towers that sit where the road now runs are moved to the nearest free buildable tile (an expansion can happen mid-wave; the road only grows, so live enemies keep their place).
 function activeTowerTileKeys(){ const keys = []; for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') keys.push(tower.gridX+','+tower.gridY); return keys; }
 function relocateTowersOffRoute(){
   for(const tower of towerPool){
@@ -6567,9 +6570,9 @@ function drawDepthSortedLayer(ctx){
         const e=it.e,blend=gameState==='PLAYING' ? Math.min(1,accumulator/FIXED_DT) : 1;
         ctx.save();
         if(!e.isLivestock && Number.isFinite(e.renderPrevX) && Number.isFinite(e.renderPrevY))ctx.translate((e.renderPrevX-e.x)*(1-blend),(e.renderPrevY-e.y)*(1-blend));
-        e.draw(ctx);ctx.restore();renderPhaseTime.worldEnemies += performance.now() - worldMark;break;
+        e.draw(ctx);drawBloodStains(ctx, e);ctx.restore();renderPhaseTime.worldEnemies += performance.now() - worldMark;break;
       }
-      case 't': it.t.draw(ctx, it.t === selectedTower); renderPhaseTime.worldTowers += performance.now() - worldMark; break;
+      case 't': it.t.draw(ctx, it.t === selectedTower); drawBloodStains(ctx, it.t); renderPhaseTime.worldTowers += performance.now() - worldMark; break;
       case 'r': drawTowerScroll(ctx, it.t, it.scrollY); break;
       case 'f': {
         // FLAG-BROADSIDE-01 (1.6.45) — see CHANGELOG.md § [1.6.45]. awayX/awayY is now a fixed
@@ -8835,6 +8838,9 @@ const MAX_SIMULATION_TICKS_PER_FRAME = 8; // base catch-up budget at 1x; scale i
 const MAX_SIMULATION_SPEED_MULTIPLIER = 10; // must match the highest supported SPEED_LEVELS entry
 let gameTime = 0;  // advances by FIXED_DT per physics tick — used for swing-animation timing so it speeds up with gameSpeed
 let realTime = 0;  // advances by actual elapsed wall-clock ms, NOT scaled by gameSpeed — decal (blood) aging uses this instead of gameTime, so running at 3x/10x speed doesn't make blood fade faster in real time
+// PAN-CLOCK-01 (1.7.124): the clock every automatic camera pan and the drag coast run on. It follows real time but never advances more than CAMERA_CLOCK_MAX_STEP_MS in one frame, so a long frame (a recorded clip shows 60-100 ms gaps mid-pan) shows the camera continuing from where it was instead of jumping 40-80 px ahead.
+const CAMERA_CLOCK_MAX_STEP_MS = 24;
+let cameraPanClock = 0;
 let presentationTime = 0; // advances every rendered PLAYING frame, including between waves — drives transient presentation (death animations) that must finish even while realTime is frozen
 let realTimeFrozen = false; // true while waveState is IDLE (between waves) — blood shouldn't age at all during the rest period between rounds
 // CA214 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA214
@@ -8988,11 +8994,9 @@ loadPrefs();
 })();
 let waveIndex = 0;          // number of waves started
 let freeExpansionOwed = 0; // the free expansion for a cleared wave arrives as soon as the wave is over (EXPAND-PER-WAVE-01, 1.7.75: it no longer waits for escaped enemies)
-// EXPAND-PER-WAVE-01 (1.7.75): owner decision, replacing EXPAND-AFTER-CLEAR-01 (every enemy defeated first) and UNLIMITED-EXPANSION-01: expanding needs only a wave that is not in progress,
-// never an empty field, so a loose enemy no longer blocks it. The player may buy ONE expansion per wave (PAID_EXPANSIONS_PER_WAVE), and the cleared wave still gives its own free one.
+// EXPAND-PER-WAVE-01 (1.7.75): owner decision, replacing EXPAND-AFTER-CLEAR-01 (every enemy defeated first) and UNLIMITED-EXPANSION-01. EXPAND-MID-WAVE-01 (1.7.126): owner decision, expanding is also allowed while a wave is in progress (the route extension already shifts every live enemy's path index); it never needs an empty field, so a loose enemy no longer blocks it. The player may buy ONE expansion per wave (PAID_EXPANSIONS_PER_WAVE), and the cleared wave still gives its own free one.
 const PAID_EXPANSIONS_PER_WAVE = 1;
 function expansionBlockedReason(){
-  if(waveState !== 'IDLE') return 'Wave in progress';
   if(paidExpansionWaveIndex === waveIndex && PAID_EXPANSIONS_PER_WAVE <= 1) return 'one per wave';
   return '';
 }
@@ -9357,7 +9361,7 @@ function defaultNotificationExplanation(message){
   if(/new enemy/i.test(message)) return 'A new enemy type has joined the campaign. Its health, movement speed, bounty, and special behavior are shown here.';
   if(/boss|santa approaching/i.test(message)) return 'A boss phase is entering the road. Prepare your defenders before it reaches the base.';
   if(/unlock|evolution/i.test(message)) return 'This defender is now available in Build under Stickmen Defenders.';
-  if(/map|expand/i.test(message)) return 'Map growth opens more buildable ground and extends the route. Expansion is available between waves.';
+  if(/map|expand/i.test(message)) return 'Map growth opens more buildable ground and extends the route. You can buy one expansion per wave, during or between waves.';
   if(/gold|coin|💰/i.test(message)) return 'Gold is player currency. Click a landed coin to collect it immediately; fading gold coins pay automatically when they expire. Gold Bags pay their listed amount when opened.';
   if(/item|found|drop|loot/i.test(message)) return 'This item or reward has appeared in the game. Open the item details or click the pickup to see how to collect it.';
   return 'This notification records a game update. Open the related menu or inspect the board to see its current effect.';
@@ -9499,8 +9503,14 @@ document.getElementById('notification-list').addEventListener('click', e => {
   if(!entry) return;
   openNotificationEntry(entry.id);
 });
-let moveCharges = 1;      // free tower relocations; +1 every 2 waves completed, capped
+// MOVE-PER-STICKMAN-01 (1.7.127): free relocations belong to each stickman (`tower.moveCharges`), not to the whole team. Each starts with one and gains one per promotion, per boss kill it lands and per pair of Running Shoes at the start of every round, up to MAX_MOVE_CHARGES.
 const MAX_MOVE_CHARGES = 3;
+function grantTowerMove(tower, reason){
+  if(!tower || !tower.active || tower.moveCharges >= MAX_MOVE_CHARGES) return false;
+  tower.moveCharges++;
+  spawnFloatingText(tower.x, tower.y - 84, '🔀 +1 move (' + reason + ')', '#ffe082');
+  return true;
+}
 let moveModeTower = null; // set while the player is choosing where to relocate a tower
 
 function isTowerUnlocked(type){
@@ -10255,7 +10265,7 @@ function serializeGameState(){
     itemCosts: t.equippedItems.map(i => i.cost || 0), // MERCHANT-SAVE-01 (1.7.50): the price actually paid, so the half refund survives a reload
     legacyLuckyCoinSlots: t.equippedItems.map((item, index) => item.legacyLuckyCoin ? index : -1).filter(index => index >= 0),
     attunement: t.attunement || null,
-    hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode,
+    hp: t.hp, maxHp: t.maxHp, targetMode: t.targetMode, moveCharges: t.moveCharges,
     totalSpent: t.totalSpent,
     killCount: t.killCount, killStreak: t.killStreak, nextStreakTier: t.nextStreakTier,
     isLegendary: t.isLegendary, legendaryName: t.legendaryName, disabledWavesLeft: t.disabledWavesLeft,
@@ -10273,7 +10283,7 @@ function serializeGameState(){
     livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].hunter).slice(0,LIVESTOCK_MAX_ON_BOARD+CIRCUS_EXTRA_LIVESTOCK_CAP).map(e=>({type:e.type,x:e.x,y:e.y,growthRounds:e.growthRounds,healthFraction:e.hp/e.maxHp})),
     looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,fromGoldBag:!!c.fromGoldBag,age:c.age,lifespan:c.lifespan})),
     gold, lives, livesBought, marketBought, drillsBought, merchantSold:{ wave: merchantBoughtWave, indexes: [...merchantBoughtIds] }, waveIndex:(stealthRun && waveIndex===10 && !stealthSantaDefeated) ? 9 : Math.max(0, waveIndex - (waveState !== 'IDLE' ? 1 : 0)), waveReplayed: waveState !== 'IDLE', freeExpansionOwed, hacksUsed, // WAVE-SAVE-01 (1.7.51): a save made in the middle of a wave resumes by starting that wave again (it used to skip it)
-    wavesCompleted, stealthRun, wood, stone, moveCharges, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
+    wavesCompleted, stealthRun, wood, stone, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
     groundDetailRunSeed, firstTenEnemyKillCount, firstMapScrollDropped, starterGroundDetails: { region: [...starterRegionTileKeys], pebbles: [...starterPebbleTileKeys], tufts: [...starterTuftTileKeys] },
     globalPassiveCounts, runBoonCounts:{...runBoonCounts}, pendingRunRewards:pendingRunRewards.map(reward=>({wave:reward.wave,ids:reward.ids.slice()})), lastRunRewardWave, activeRegion, pathWaypointTiles, expansionLevel, paidExpansions, paidExpansionWaveIndex,
     latestExpansionTiles: latestExpansionTiles.map(t => ({x:t.x,y:t.y})),
@@ -10388,7 +10398,7 @@ function restoreGameStateInner(state){
   for(const key of (savedStarterDetails.pebbles || [])) starterPebbleTileKeys.add(key);
   for(const key of (savedStarterDetails.tufts || [])) starterTuftTileKeys.add(key);
   wavesCompleted = state.wavesCompleted; wood = state.wood; stone = state.stone;
-  moveCharges = state.moveCharges; freeBarricadesLeft = state.freeBarricadesLeft || 0;
+  freeBarricadesLeft = state.freeBarricadesLeft || 0;
   globalPassiveCounts = state.globalPassiveCounts || {};
   notificationPopupPausedGame=false;
   if(notificationDetailPopup.open)notificationDetailPopup.close();
@@ -10471,6 +10481,7 @@ function restoreGameStateInner(state){
     if(td.spec) t.chooseSpec(td.spec); // calls the real spec-choice logic (damage/cooldown/swing-arc multipliers), not a bare label assignment — chooseSpec() itself guards against re-applying if t.spec is somehow already set
     if(td.totalSpent !== undefined) t.totalSpent = td.totalSpent; // else: an old save predating this field — t.create() above already set totalSpent to this tower's base cost, a safe (if not perfectly accurate for a heavily-upgraded legacy tower) fallback rather than a crash
     if(td.targetMode) t.targetMode = td.targetMode;
+    t.moveCharges = Number.isFinite(td.moveCharges) ? clampNum(td.moveCharges, 0, MAX_MOVE_CHARGES) : 1;
     if(isProducerType(t.type)) t.producerTimerMs = Number.isFinite(td.producerTimerMs) ? td.producerTimerMs : 0;
     const legacyLuckyCoinSlots = new Set(td.legacyLuckyCoinSlots || []);
     t.equippedItems = (td.itemIds||[]).map((id, index) => {
@@ -10583,9 +10594,9 @@ const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
   waveStartCameraPan = null; // mutually exclusive with the wave-start pan below — whichever the player's attention is on wins, they never fight over camera.x/y/zoom in the same frame
-  cameraFollow = { tower, selectTime: presentationTime, phase: 'waiting', panStartX: 0, panStartY: 0 };
+  cameraFollow = { tower, selectTime: cameraPanClock, phase: 'waiting', panStartX: 0, panStartY: 0 };
 }
-// REAL-TIME-PRESENTATION-01 (1.6.103): every camera pan below runs on presentationTime (real elapsed time), never gameTime, so 1x/2x/3x/5x/10x cannot change how fast the camera moves.
+// REAL-TIME-PRESENTATION-01 (1.6.103): every camera pan below runs on cameraPanClock (real elapsed time), never gameTime, so 1x/2x/3x/5x/10x cannot change how fast the camera moves.
 // CA260 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA260
 let waveStartCameraPan = null;
 function startWaveStartCameraPan(){
@@ -10594,7 +10605,7 @@ function startWaveStartCameraPan(){
   const spawn = waypointsPx[0];
   const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
   waveStartCameraPan = {
-    panStartTime: presentationTime, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
+    panStartTime: cameraPanClock, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
     targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - spawn.y*targetZoom
   };
 }
@@ -10603,7 +10614,7 @@ function updateWaveStartCameraPan(){
   if(cameraFollow){ waveStartCameraPan = null; return; } // player selected a tower mid-pan — hand off to that instead of fighting it
   const PAN_MS = 1200;
   const f = waveStartCameraPan;
-  const t = Math.min(1, (presentationTime - f.panStartTime) / PAN_MS);
+  const t = Math.min(1, (cameraPanClock - f.panStartTime) / PAN_MS);
   const eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; // smooth ease-in-out cubic, same curve as the tower-follow pan
   camera.zoom = f.panStartZoom + (f.targetZoom - f.panStartZoom)*eased;
   camera.x = f.panStartX + (f.targetX - f.panStartX)*eased;
@@ -10627,9 +10638,9 @@ function updateCameraFollow(){
   const RECOMMENDED_ZOOM = 1.3; // guaranteed minimum close-up distance — zooms in to at least this, never zooms out past wherever the user already is
   const WAIT_MS = 150, PAN_MS = 1400;
   if(f.phase === 'waiting'){
-    if(presentationTime - f.selectTime >= WAIT_MS){
+    if(cameraPanClock - f.selectTime >= WAIT_MS){
       f.phase = 'panning';
-      f.panStartTime = presentationTime;
+      f.panStartTime = cameraPanClock;
       f.panStartX = camera.x; f.panStartY = camera.y;
       f.panStartZoom = camera.zoom;
       f.targetZoom = Math.max(camera.zoom, RECOMMENDED_ZOOM); // guarantees at least this zoom level, but never zooms OUT from wherever the user already is
@@ -10640,7 +10651,7 @@ function updateCameraFollow(){
     return;
   }
   if(f.phase === 'panning'){
-    const t = Math.min(1, (presentationTime - f.panStartTime) / PAN_MS);
+    const t = Math.min(1, (cameraPanClock - f.panStartTime) / PAN_MS);
     // CA263 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA263
     const eased = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
     camera.zoom = f.panStartZoom + (f.targetZoom - f.panStartZoom)*eased;
@@ -10823,6 +10834,7 @@ class Enemy{
     this.bleedTickTimer = 0;
     this.dotTextPending = [0, 0, 0]; this.dotTextShownAt = [-1e9, -1e9, -1e9]; // DOT-TEXT-01 (1.7.89): bleed, burn and poison damage is summed and shown once per real second
     this.bleedDamagePerTick = 0;
+    this.bloodStains = undefined; this.bleedSprayHeading = undefined; this.trailX = undefined; this.trailY = undefined; this.trailAccumPx = 0; this.trailStillMs = 0; this.trailDropCount = 0;
     this.bleedStackCount = 0;    // was missing from this reset — a reused pool slot could otherwise inherit a stale stack count from whatever this slot last held
     this.bleedStackDamages = []; // per-stack damage-per-tick values (max 4) — see applyBleed(), this is what actually enforces the 4-stack cap on total damage, not just the display count
     this.lastBleedSource = null;
@@ -11099,6 +11111,8 @@ class Enemy{
           const bio = this.bloodProfile;
           const bleedStacks = Math.max(1, this.bleedStackCount); // BLEED-MULTIPLIES-01 (1.6.155) — see CHANGELOG.md § [1.6.155]: the blood effect scales with the number of stuck arrows, like the damage does
           spawnParticles(this.x, this.y, bio.bright, Math.max(1, Math.round(3*beatIntensity*bleedStacks)), 160, 0.9, true);
+          if(this.bleedSprayHeading === undefined) this.bleedSprayHeading = Math.random()*Math.PI*2;
+          spawnArterialBeat(this.x, this.y, bio, this.bleedSprayHeading, Math.min(1.5, beatIntensity*bleedStacks), graphicsQuality === 'low' || underHeavyVisualLoad);
           const satelliteDropCount = Math.floor(beatIntensity*bleedStacks + Math.random());
           if(satelliteDropCount > 0) spawnSatelliteDrops(this.x + (Math.random()-0.5)*8, this.y + (Math.random()-0.5)*8, hexToRgba(bio.dark, 0.65), satelliteDropCount);
           if(Math.random() < Math.min(1, 0.3*cessation*bleedStacks)) spawnDecal(this.x, this.y, hexToRgba(bloodTintForFire(this, bio.dark), 0.55), true, undefined, undefined, bio.viscous, undefined, bloodPoolSizeScale(this.radius));
@@ -11710,6 +11724,7 @@ class Enemy{
       const hitPower = (0.15 + bloodScaleT * 1.85) * (0.7 + flinchSeverity*0.5) * (0.9 + hitRoll*0.15) * hpFrac / concurrentAttackers;
       // CA326 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA326
       const weapon = resolveWeaponSubtype(sourceTower);
+      spawnForensicSpatter(this.x, this.y, bio, sourceTower, hitPower, false, 1, graphicsQuality === 'low' || underHeavyVisualLoad, this);
       if(bio.isDust){
         spawnParticles(this.x, this.y, bio.bright, 8, 200); // rock chips, no liquid streams or pooling
         if(Math.random() < 0.1) spawnRockChips(this.x, this.y, this.radius, 1); // 1-in-10 chance per hit — a visible chip, not just dust
@@ -11883,6 +11898,7 @@ class Enemy{
     if(sourceTower && sourceTower.active && sourceTower.telemetry) sourceTower.telemetry.killsSecured++;
     awardKillExperience(this, sourceTower, forStreak);
     applyKillShake(this);
+    if((this.type === 'BOSS' || this.type === 'SANTA') && sourceTower) grantTowerMove(sourceTower, 'boss kill');
     if((this.type === 'BOSS' || this.type === 'SANTA') && sourceTower) requestStickmanBark(sourceTower, BARK_TIER_IMPORTANT, '😎', BARK_LINES.BOSS_KILL, 0, BARK_CHANCE.BOSS_KILL);
     if(this.type === 'TROLL' && !this.escaped){ for(let b=0; b<2; b++) dropGoldBag(this.x + (b*2-1)*10, this.y); }
     else if(Math.random() < 0.15 && !this.escaped){
@@ -11938,6 +11954,7 @@ class Enemy{
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
       if(explodesInGore) spawnGoreExplosion(this.x, this.y, bio, sourceTower, goreScale, low);
+      else spawnForensicSpatter(this.x, this.y, bio, sourceTower, 1, true, goreScale, low);
       if(bio.isDust){
         // rock/debris burst — chunky dust, no liquid streams, no pooling decal
         spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 14 : 36)*goreScale), 220);
@@ -12383,6 +12400,8 @@ class Tower{
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0; this.autoSpend = false;
     this.elementState = null; // null | 'PROTON' | 'QUASAR' | 'DARK_MATTER' — a MIXED element earned from the stat combination, see refreshElementState()
     this.attunement = null; // null | 'FIRE' | 'ELECTRIC' | 'ICE' — permanently locked once set, see checkAttunementAndSpecialization()
+    this.moveCharges = 1;
+    this.bloodStains = undefined;
     this.xp = 0; this.expLevel = 1; // Dota-style EXP level, separate from promotion rank `level` above —
     // grants 1 stat point per completed 100-XP training bar. Fed by last hits (full size-tier XP) and assists (shared fractional pool).
     this.waveXp = 0; // XP earned so far THIS wave only — reset each time a new wave starts, used for the wave-end summary popup
@@ -12430,7 +12449,7 @@ class Tower{
     this.buildScaleY = clampNum(base.scaleY * (1 + heightJitter), 0.70, 1.40);
   }
   applyTierStats(){
-    this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Gunalinder) must not inherit a stale value from whatever this tower was before evolving
+    this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Cowboy) must not inherit a stale value from whatever this tower was before evolving
     // CA386 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA386
     this.splashRadius = 0; this.slowFactor = 0; this.slowDuration = 0;
     Object.assign(this, this.def.tiers[Math.min(this.level, this.def.tiers.length) - 1]); // promotions past the authored tier table keep the top tier's baseline; growth comes from promotion stat rolls
@@ -12462,7 +12481,7 @@ class Tower{
     this.baseDrawTime = this.drawTime || 0;
     this.baseHealAmount = this.healAmount || 0;
     this.basePoisonDamage = this.poisonDamage || 0;
-    this.burstShotsLeft = 0; // burst-fire state (Gunalinder's revolver) — fresh cycle after any tier change
+    this.burstShotsLeft = 0; // burst-fire state (Cowboy's revolver) — fresh cycle after any tier change
     this.recomputeStats();
   }
   // CA388 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA388
@@ -12772,6 +12791,7 @@ class Tower{
     this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
     // CA415 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA415
     this.checkEvolution();
+    grantTowerMove(this, 'promotion');
     playSound('click');
     trackGameEvent('tower_upgraded', { tower_type: this.type, level: this.level, cost });
     return true;
@@ -13088,8 +13108,8 @@ class Tower{
     const shoulderYWorld = pivotBaseY * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     let spawnX = this.x + Math.cos(angle)*muzzleOffset;
     let spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
-    if(this.type==='ARCHER'){
-      const arrowTip=archerNockedArrowTip(angle,1), bodyScaleX=(this.buildScaleX||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale, bodyScaleYWorld=(this.buildScaleY||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale;
+    if(this.type==='ARCHER'){ // ARROW-GRIP-01 (1.7.124): the arrow is released from the bow hand itself (the grip at the middle of the bow), not from a point out ahead of it, so it no longer appears to leave the quiver side and drift to the target
+      const arrowTip=archerNockedArrowTip(angle,1,0), bodyScaleX=(this.buildScaleX||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale, bodyScaleYWorld=(this.buildScaleY||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale;
       spawnX=this.x+arrowTip.x*bodyScaleX; spawnY=this.y+arrowTip.y*bodyScaleYWorld;
     }
     if(this.type==='NINJA'){
@@ -14715,9 +14735,11 @@ function decalLifespanVariance(){
 }
 // CA527 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA527
 const DECAL_BAKE_MIN_AGE_MS = 4000;
+// FRESH-BLOOD-02 (1.7.122): fresh blood keeps its bright wet red for the first 12% of a stain's life (about two to four minutes) and only reaches its dried colour at 60% (about eight to twenty minutes), so a fight leaves a readable, forensic record of what happened when.
+const BLOOD_WET_END_T = 0.12, BLOOD_DRY_END_T = 0.60;
 const DECAL_BAKE_PRESSURE_MIN_AGE_MS = 1200, DECAL_BAKE_PRESSURE_ON = 90, DECAL_BAKE_PRESSURE_OFF = 40; // DECAL-BAKE-PRESSURE-01 (1.7.99) — see CHANGELOG.md § [1.7.99]
 let decalBakePressure = false;
-const DECAL_AGING_RESTAMP_MS = 20000;
+const DECAL_AGING_RESTAMP_MS = 30000;
 function decalBakeMinAgeMs(d){ return d.baked || decalBakePressure ? DECAL_BAKE_PRESSURE_MIN_AGE_MS : DECAL_BAKE_MIN_AGE_MS; }
 function decalLifeT(d){ return (presentationTime - d.spawnTime) / (d.lifespan || DECAL_LIFESPAN); }
 function isDecalBakeEligible(d){
@@ -14740,12 +14762,12 @@ function agedBloodRgb(d, lifeT){
     const wetLift = 1 + 0.18*(1 - Math.min(1, Math.max(0, lifeT)*(d.lifespan || DECAL_LIFESPAN)/DECAL_BAKE_MIN_AGE_MS));
     return { r: Math.min(255, Math.round(rgb.r*wetLift)), g: Math.min(255, Math.round(rgb.g*wetLift)), b: Math.min(255, Math.round(rgb.b*wetLift)) };
   }
-  if(lifeT < 0.033){
-    const t = lifeT / 0.033;
-    return { r: Math.round(255 + (150-255)*t), g: Math.round(40 + (55-40)*t), b: Math.round(40 + (30-40)*t) };
+  if(lifeT < BLOOD_WET_END_T){
+    const t = lifeT / BLOOD_WET_END_T;
+    return { r: Math.round(255 + (175-255)*t), g: Math.round(40 + (32-40)*t), b: Math.round(40 + (30-40)*t) };
   }
-  const t = Math.min(1, (lifeT - 0.033) / (0.40 - 0.033));
-  return { r: Math.round(150 + (rgb.r-150)*t), g: Math.round(55 + (rgb.g-55)*t), b: Math.round(30 + (rgb.b-30)*t) };
+  const t = Math.min(1, (lifeT - BLOOD_WET_END_T) / (BLOOD_DRY_END_T - BLOOD_WET_END_T));
+  return { r: Math.round(175 + (rgb.r-175)*t), g: Math.round(32 + (rgb.g-32)*t), b: Math.round(30 + (rgb.b-30)*t) };
 }
 function agedBloodColor(d, lifeT){
   const c = agedBloodRgb(d, lifeT);
@@ -14832,7 +14854,7 @@ function sweepSettledDecals(expiredBakedCount){
     } else if(!eligible && d.baked){
       settledDecalRebuildPending = true;
     }
-    if(d.baked && d.isDrop && decalLifeT(d) < 0.40) agingDropBaked = true;
+    if(d.baked && d.isDrop && decalLifeT(d) < BLOOD_DRY_END_T) agingDropBaked = true;
   }
   decalBakePressure = liveBloodCount >= (decalBakePressure ? DECAL_BAKE_PRESSURE_OFF : DECAL_BAKE_PRESSURE_ON);
   const sinceRebuild = presentationTime - lastSettledDecalRebuild;
@@ -14961,7 +14983,7 @@ function drawOneDecal(ctx, d){
     let color, alpha, r, g, b;
     if(!d.isEmojiDrop && !d.isWorm){
       // CA536 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA536
-      if(lifeT >= 0.40 && lifeT <= 0.85 && d.settledColor !== undefined){
+      if(lifeT >= BLOOD_DRY_END_T && lifeT <= 0.85 && d.settledColor !== undefined){
         color = d.settledColor;
         alpha = d.settledAlpha;
       } else {
@@ -14973,7 +14995,7 @@ function drawOneDecal(ctx, d){
       const fadeOut = 1 - fadeT*fadeT;
       alpha = rgb.a * fadeOut;
       color = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-      if(lifeT >= 0.40 && lifeT <= 0.85){ d.settledColor = color; d.settledAlpha = alpha; }
+      if(lifeT >= BLOOD_DRY_END_T && lifeT <= 0.85){ d.settledColor = color; d.settledAlpha = alpha; }
       }
     }
     if(d.isPeel){
@@ -15190,7 +15212,7 @@ function spawnBloodStream(x, y, angle, count, sizeMult, brightColor, darkColor){
 // gravity and slowed by quadratic air drag, F = -k|v|v, with its downward speed held at blood's terminal velocity of 7.65 m/s. On landing the impact angle is alpha = asin(W/L), so a stain's
 // length is L = W / sin(alpha): a steep drop leaves a round mark, a shallow one an elongated ellipse pointing along the flight. The stain is a normal drop decal, so it is baked into the persistent
 // background layer, and the droplet goes back to its pool slot.
-const GORE_EXPLOSION_CHANCE = 0.06, FORENSIC_DROPLET_COUNT = 220, FORENSIC_PX_PER_METER = 28, FORENSIC_GRAVITY_PX = 9.81*FORENSIC_PX_PER_METER;
+const GORE_EXPLOSION_CHANCE = 0.06, FORENSIC_DROPLET_COUNT = 700, FORENSIC_PX_PER_METER = 28, FORENSIC_GRAVITY_PX = 9.81*FORENSIC_PX_PER_METER;
 const FORENSIC_TERMINAL_PX = 7.65*FORENSIC_PX_PER_METER, FORENSIC_DRAG_K = FORENSIC_GRAVITY_PX/(FORENSIC_TERMINAL_PX*FORENSIC_TERMINAL_PX), FORENSIC_MAX_STAIN_ASPECT = 8, FORENSIC_STEP_S = 1/120;
 const FORENSIC_SNIPER_TYPES = ['SNIPER','GUNALINDER','MARKSMAN'];
 const forensicDroplets = Array.from({ length: FORENSIC_DROPLET_COUNT }, () => ({ active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, diameter: 1, color: '#a01818', rgb: null, ageS: 0 }));
@@ -15202,6 +15224,7 @@ function launchForensicDroplet(x, y, z, speedMs, headingRad, elevationRad, diame
   droplet.active = true; droplet.x = x; droplet.y = y; droplet.z = z;
   droplet.vx = Math.cos(headingRad)*horizontal; droplet.vy = Math.sin(headingRad)*horizontal; droplet.vz = Math.sin(elevationRad)*speedPx;
   droplet.diameter = diameterPx; droplet.color = color; droplet.rgb = parseColorToRgba(color); droplet.ageS = 0;
+  droplet.originX = x; droplet.originY = y; droplet.originZ = z;
 }
 function spawnGoreExplosion(x, y, bio, sourceTower, goreScale, lowDetail){
   const isSniper = !!sourceTower && FORENSIC_SNIPER_TYPES.includes(sourceTower.type);
@@ -15217,7 +15240,137 @@ function spawnGoreExplosion(x, y, bio, sourceTower, goreScale, lowDetail){
   spawnBloodStream(x, y, flightAngle, 3, 1.4, bio.bright, bio.dark);
   playSound('gore_death', x, undefined, y);
 }
+// FORENSIC-SPATTER-01 (1.7.126): the droplet physics above only ran for the rare gore explosion (6% of one-hit kills), so a normal fight showed no flying droplets. Every blood-drawing hit now throws a small droplet spray and every kill a larger one, shaped by how the wound was made: a sniper round gives a fast, fine, forward mist; a blunt weapon a medium radial spatter; a blade a cast-off fan along the swing; a spear a narrow forward-and-back jet; other ranged hits a light spray. The same droplets land as elongated stains (alpha = asin(W/L)).
+function forensicSpatterProfile(sourceTower){
+  const sourceType = sourceTower ? sourceTower.type : '';
+  if(FORENSIC_SNIPER_TYPES.includes(sourceType)) return { mechanism: 'MIST', count: 16, speedMin: 14, speedSpan: 12, spread: 0.5, elevationBase: -0.2, elevationSpan: 0.5, diameterMin: 0.5, diameterSpan: 0.7, backShare: 0.25 };
+  const weapon = resolveWeaponSubtype(sourceTower), archetype = resolveGoreArchetype(sourceTower);
+  if(archetype === 'MAGE') return { mechanism: 'IMPACT', count: 14, speedMin: 7, speedSpan: 10, spread: 1.15, elevationBase: 0.1, elevationSpan: 0.8, diameterMin: 0.9, diameterSpan: 1.2, backShare: 0.08 }; // a spell hits like a blast: a wide, fast forward cone, matching the older high-impact particle cone
+  if(archetype === 'ARCHER') return { mechanism: 'ARROW', count: 7, speedMin: 3, speedSpan: 5, spread: 0.7, elevationBase: 0.1, elevationSpan: 0.7, diameterMin: 0.7, diameterSpan: 1, backShare: 0.3 };
+  if(weapon === 'BLUNT') return { mechanism: 'RADIAL', count: 12, speedMin: 2.5, speedSpan: 4, spread: Math.PI, elevationBase: 0.15, elevationSpan: 1, diameterMin: 1.3, diameterSpan: 1.4, backShare: 0 };
+  if(weapon === 'PIERCE') return { mechanism: 'JET', count: 8, speedMin: 5, speedSpan: 6, spread: 0.3, elevationBase: 0, elevationSpan: 0.5, diameterMin: 0.9, diameterSpan: 1.1, backShare: 0.35 };
+  return { mechanism: 'CASTOFF', count: 9, speedMin: 5, speedSpan: 6, spread: 0.65, elevationBase: 0.05, elevationSpan: 0.6, diameterMin: 0.9, diameterSpan: 1.3, backShare: 0.1 };
+}
+function spawnForensicSpatter(x, y, bio, sourceTower, hitPower, isKill, goreScale, lowDetail, victim){
+  if(!bio || bio.isDust) return;
+  const profile = forensicSpatterProfile(sourceTower);
+  const sprayAngle = sourceTower ? Math.atan2(y - sourceTower.y, x - sourceTower.x) : Math.random()*Math.PI*2;
+  const killMult = isKill ? 2.2*Math.min(1.5, goreScale) : 1;
+  const dropletCount = Math.max(1, Math.round(profile.count*Math.min(1.4, 0.35 + hitPower*0.7)*killMult*(lowDetail ? 0.4 : 1)));
+  const bodyHeightPx = 1.1*FORENSIC_PX_PER_METER;
+  if(victim && !isKill){
+    const woundRgb = parseColorToRgba(bio.bright), woundCount = 1 + Math.round(hitPower*2);
+    for(let mark = 0; mark < woundCount; mark++) stainEntity(victim, Math.cos(sprayAngle + Math.PI)*victim.radius*0.7 + (Math.random() - 0.5)*victim.radius*0.6, (Math.random() - 0.5)*victim.radius*1.1, 1 + Math.random()*1.4 + hitPower, woundRgb, sprayAngle);
+  }
+  for(let drop = 0; drop < dropletCount; drop++){
+    const color = Math.random() < 0.6 ? bio.bright : bio.dark;
+    const backSpatter = Math.random() < profile.backShare;
+    const heading = (backSpatter ? sprayAngle + Math.PI : sprayAngle) + (Math.random() - 0.5)*2*profile.spread;
+    const exitSpray = profile.mechanism === 'ARROW' && !backSpatter && hitPower > 0.7; // an arrow that passes through throws a faster forward exit spray; the entry wound only gives a thin back-spatter
+    launchForensicDroplet(x, y, bodyHeightPx*(0.35 + Math.random()*0.8), (profile.speedMin + Math.random()*profile.speedSpan)*(exitSpray ? 1.6 : backSpatter && profile.mechanism === 'ARROW' ? 0.6 : 1), heading, profile.elevationBase + Math.random()*profile.elevationSpan, profile.diameterMin + bloodSizeRoll()*0.25 + Math.random()*profile.diameterSpan*0.5, color);
+  }
+}
+function spawnArterialBeat(x, y, bio, headingRad, beatIntensity, lowDetail){
+  if(!bio || bio.isDust) return;
+  const dropletCount = Math.max(1, Math.round((2 + beatIntensity*3)*(lowDetail ? 0.5 : 1)));
+  for(let drop = 0; drop < dropletCount; drop++) launchForensicDroplet(x, y, 0.9*FORENSIC_PX_PER_METER, 1.8 + Math.random()*1.8 + beatIntensity, headingRad + (Math.random() - 0.5)*0.35, 0.45 + Math.random()*0.5, 1 + Math.random()*0.8, Math.random() < 0.7 ? bio.bright : bio.dark);
+}
+// BLOOD-TRAIL-01 (1.7.128): a wounded animal leaves a trail you can follow. An enemy with an arrow (or any wound) still bleeding, or badly hurt, sheds droplets from the wound as it walks. Each droplet leaves at the enemy's own ground velocity from wound height, so it lands as an elongated stain pointing along the direction of travel (impact angle alpha = asin(W/L)); the gap between drops follows the walking distance, shrinks with more stuck arrows and lower health, and widens as the wound clots. An enemy standing still drips straight down in round drops that build into a pool under it.
+const BLOOD_TRAIL_BASE_SPACING_PX = 20, BLOOD_TRAIL_STILL_DRIP_MS = 420;
+function updateBloodTrails(dt){
+  if(!goreMode) return;
+  const lowDetail = graphicsQuality === 'low' || underHeavyVisualLoad;
+  for(const enemy of enemyPool){
+    if(!enemy.active || enemy.escaped || enemy.isHutBuilding) continue;
+    const bio = enemy.bloodProfile;
+    if(!bio || bio.isDust) continue;
+    const bleeding = enemy.bleedUntil > gameTime && enemy.bleedStackCount > 0, hurtFraction = 1 - clampNum(enemy.hp / enemy.maxHp, 0, 1);
+    if(!bleeding && hurtFraction < 0.6){ enemy.trailX = undefined; continue; }
+    if(enemy.trailX === undefined){ enemy.trailX = enemy.x; enemy.trailY = enemy.y; enemy.trailAccumPx = 0; enemy.trailStillMs = 0; continue; }
+    const stepX = enemy.x - enemy.trailX, stepY = enemy.y - enemy.trailY, stepPx = Math.hypot(stepX, stepY);
+    enemy.trailX = enemy.x; enemy.trailY = enemy.y;
+    const stacks = bleeding ? Math.max(1, enemy.bleedStackCount) : 0.8;
+    const clot = bleeding ? 0.55 + 0.45*clampNum((enemy.bleedUntil - gameTime)/Math.max(1, enemy.bleedUntil - enemy.bleedStartedAt), 0, 1) : 0.5;
+    const flow = clampNum(stacks*clot*(0.8 + hurtFraction), 0.4, 3.5);
+    const dropColor = Math.random() < 0.7 ? bio.bright : bio.dark;
+    if(stepPx > 0.12){
+      enemy.trailStillMs = 0; enemy.trailAccumPx += stepPx;
+      const spacing = BLOOD_TRAIL_BASE_SPACING_PX/flow*(lowDetail ? 1.8 : 1);
+      if(enemy.trailAccumPx >= spacing){
+        enemy.trailAccumPx -= spacing; enemy.trailDropCount++;
+        const speedPx = Math.hypot(enemy.vx || 0, enemy.vy || 0), heading = speedPx > 1 ? Math.atan2(enemy.vy, enemy.vx) : Math.atan2(stepY, stepX);
+        const woundHeightPx = (0.45 + Math.random()*0.5)*FORENSIC_PX_PER_METER, dropDiameter = 1.3 + Math.min(1.6, flow*0.5) + Math.random()*0.8;
+        launchForensicDroplet(enemy.x, enemy.y, woundHeightPx, speedPx/FORENSIC_PX_PER_METER, heading + (Math.random() - 0.5)*0.12, 0, dropDiameter, dropColor);
+        if(enemy.trailDropCount % 4 === 0 && !lowDetail) for(let satellite = 0; satellite < 2; satellite++) launchForensicDroplet(enemy.x, enemy.y, woundHeightPx, speedPx/FORENSIC_PX_PER_METER*(0.8 + Math.random()*0.4), heading + (Math.random() - 0.5)*0.9, 0.05 + Math.random()*0.2, 0.7 + Math.random()*0.5, dropColor);
+      }
+    } else {
+      enemy.trailStillMs += dt;
+      if(enemy.trailStillMs >= BLOOD_TRAIL_STILL_DRIP_MS/flow){
+        enemy.trailStillMs = 0;
+        launchForensicDroplet(enemy.x + (Math.random() - 0.5)*5, enemy.y + (Math.random() - 0.5)*3, (0.15 + Math.random()*0.45)*FORENSIC_PX_PER_METER, 0, Math.random()*Math.PI*2, 0, 2 + Math.min(2, flow*0.6) + Math.random()*0.8, dropColor);
+      }
+    }
+  }
+}
+// BLOOD-VOID-01 (1.7.130): a body that stands between a wound and the ground catches the droplets that would have landed behind it, which leaves a clean patch (a void pattern) in the spatter and blood on the body itself. When a droplet lands, the straight line from where it left to where it came down is tested against every stickman, barricade and enemy; if one is in the way and tall enough there, the droplet stains that body and leaves no mark on the ground. An emoji or stickman that blocked a spray stays stained for a few minutes, drying from red to brown and then fading.
+const BLOOD_STAIN_MAX = 14, BLOOD_STAIN_LIFE_MS = 240000, BLOOD_STAIN_DRY_RGB = { r: 92, g: 38, b: 28 };
+const VOID_BODY_HEIGHT_PX = 1.1*FORENSIC_PX_PER_METER;
+function stainEntity(entity, offsetX, offsetY, size, rgb, angle){
+  if(!entity.bloodStains) entity.bloodStains = [];
+  const stain = { offsetX, offsetY, size, rgb, angle, bornAt: presentationTime };
+  if(entity.bloodStains.length < BLOOD_STAIN_MAX) entity.bloodStains.push(stain);
+  else { entity.bloodStainNext = ((entity.bloodStainNext || 0) + 1) % BLOOD_STAIN_MAX; entity.bloodStains[entity.bloodStainNext] = stain; }
+}
+function drawBloodStains(ctx, entity){
+  const stains = entity.bloodStains;
+  if(!stains || !stains.length) return;
+  const drawCap = (graphicsQuality === 'low' || underHeavyVisualLoad) ? 6 : BLOOD_STAIN_MAX;
+  let live = 0;
+  ctx.save();
+  for(let index = stains.length - 1; index >= 0 && live < drawCap; index--){
+    const stain = stains[index], ageT = (presentationTime - stain.bornAt)/BLOOD_STAIN_LIFE_MS;
+    if(ageT >= 1) continue;
+    live++;
+    const dryT = Math.min(1, ageT*4), rgb = stain.rgb || BLOOD_STAIN_DRY_RGB;
+    const red = Math.round(rgb.r + (BLOOD_STAIN_DRY_RGB.r - rgb.r)*dryT), green = Math.round(rgb.g + (BLOOD_STAIN_DRY_RGB.g - rgb.g)*dryT), blue = Math.round(rgb.b + (BLOOD_STAIN_DRY_RGB.b - rgb.b)*dryT);
+    ctx.globalAlpha = 0.88*(ageT < 0.7 ? 1 : 1 - (ageT - 0.7)/0.3);
+    ctx.fillStyle = 'rgb(' + red + ',' + green + ',' + blue + ')';
+    ctx.beginPath(); ctx.ellipse(entity.x + stain.offsetX, entity.y + stain.offsetY, stain.size*1.25, stain.size*0.8, stain.angle, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function forensicBlockerAlongPath(droplet){
+  const fromX = droplet.originX, fromY = droplet.originY, pathX = droplet.x - fromX, pathY = droplet.y - fromY, pathLength = Math.hypot(pathX, pathY);
+  if(pathLength < 3) return null;
+  const directionX = pathX/pathLength, directionY = pathY/pathLength;
+  let nearest = null, nearestAlong = Infinity;
+  const consider = (entity, radius, heightPx, isEnemy) => {
+    const toX = entity.x - fromX, toY = entity.y - fromY;
+    if(toX*toX + toY*toY < radius*radius*0.8) return;
+    const along = toX*directionX + toY*directionY;
+    if(along <= 0 || along >= pathLength + radius) return;
+    const sideways = Math.abs(toX*directionY - toY*directionX);
+    if(sideways >= radius) return;
+    const entryAlong = along - Math.sqrt(radius*radius - sideways*sideways);
+    if(entryAlong <= 0 || entryAlong >= pathLength || entryAlong >= nearestAlong) return;
+    const heightAtBody = droplet.originZ*(1 - entryAlong/pathLength);
+    if(heightAtBody > heightPx) return;
+    nearest = { entity, along: entryAlong, height: heightAtBody, radius, isEnemy }; nearestAlong = entryAlong;
+  };
+  for(const tower of towerPool) if(tower.active) consider(tower, tower.type === 'BARRICADE' ? 14 : 10, tower.type === 'BARRICADE' ? 20 : VOID_BODY_HEIGHT_PX, false);
+  for(const enemy of enemyPool) if(enemy.active && !enemy.escaped) consider(enemy, enemy.radius*0.8, enemy.radius*2, true);
+  if(!nearest) return null;
+  nearest.hitX = fromX + directionX*nearest.along; nearest.hitY = fromY + directionY*nearest.along;
+  return nearest;
+}
 function landForensicDroplet(droplet, speedPx){
+  const blocker = forensicBlockerAlongPath(droplet);
+  if(blocker){
+    const body = blocker.entity, heightRatio = Math.min(1, blocker.height/VOID_BODY_HEIGHT_PX);
+    stainEntity(body, clampNum(blocker.hitX - body.x, -blocker.radius, blocker.radius), blocker.isEnemy ? clampNum(blocker.radius*0.5 - heightRatio*blocker.radius*1.4, -blocker.radius, blocker.radius*0.6) : -blocker.height - 2, Math.max(0.9, droplet.diameter*0.7), droplet.rgb, Math.atan2(droplet.vy, droplet.vx));
+    droplet.active = false;
+    return;
+  }
   const sinImpact = clampNum(Math.abs(droplet.vz)/Math.max(1, speedPx), 1/FORENSIC_MAX_STAIN_ASPECT, 1);
   const impactAngle = Math.asin(sinImpact), stainLength = droplet.diameter/Math.sin(impactAngle);
   pushDecal({ x: droplet.x, y: droplet.y, color: droplet.color, rgb: droplet.rgb, lifespan: DECAL_LIFESPAN*decalLifespanVariance(), spawnTime: presentationTime,
@@ -15915,10 +16068,10 @@ function drawWeaponEnchant(ctx, element, fallbackAngle){
 }
 // ARCHER-NOCK-01 (1.7.114): one formula gives the arrowhead position of the nocked arrow in the archer's local drawing space, used by the renderer and by fireProjectile so the shot leaves exactly where the drawn arrow was.
 const ARCHER_BASE_ARM_LEN = 13, ARCHER_BOW_ARM_EXTRA = 5, ARCHER_FRONT_SHOULDER_OFFSET = 1.8, ARCHER_ARROWHEAD_REACH = 4, ARCHER_DRAW_PUSH = 2;
-function archerNockedArrowTip(angle, drawAmount){
+function archerNockedArrowTip(angle, drawAmount, headReach = ARCHER_ARROWHEAD_REACH){
   const bowArmLength = ARCHER_BASE_ARM_LEN + ARCHER_BOW_ARM_EXTRA + drawAmount*ARCHER_DRAW_PUSH, bend = -0.08 - drawAmount*0.10;
   const frontShoulderX = -Math.sin(angle)*ARCHER_FRONT_SHOULDER_OFFSET, frontShoulderY = -13 + Math.cos(angle)*ARCHER_FRONT_SHOULDER_OFFSET;
-  const upperLength = bowArmLength*0.52, foreLength = bowArmLength*0.48 + ARCHER_ARROWHEAD_REACH;
+  const upperLength = bowArmLength*0.52, foreLength = bowArmLength*0.48 + headReach;
   return { x: frontShoulderX + Math.cos(angle + bend)*upperLength + Math.cos(angle)*foreLength, y: frontShoulderY + Math.sin(angle + bend)*upperLength + Math.sin(angle)*foreLength };
 }
 function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
@@ -16791,7 +16944,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const gripHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.85, skinMain, -0.1);
     const supportHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.95, skinMain, 0.08); // support hand closer in than Sniper's — a shorter weapon
     ctx.strokeStyle = '#4a5a68'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
-    const barrelLen = weaponLenFromScale(15, 21, extra.weaponScale); // between Gunalinder's short revolver and Sniper's notably long barrel
+    const barrelLen = weaponLenFromScale(15, 21, extra.weaponScale); // between Cowboy's short revolver and Sniper's notably long barrel
     const tipX = gripHand.handX + Math.cos(gunAngle)*barrelLen, tipY = gripHand.handY + Math.sin(gunAngle)*barrelLen;
     markWeapon(gripHand.handX, gripHand.handY, gunAngle, barrelLen);
     ctx.beginPath(); ctx.moveTo(gripHand.handX, gripHand.handY); ctx.lineTo(tipX, tipY); ctx.stroke();
@@ -18071,6 +18224,7 @@ function update(dt){
   updateForensicDroplets(dt);
   updateBarricadeChunks(dt);
   updateWalkingBlood(dt);
+  updateBloodTrails(dt);
   phaseTime.particles += performance.now() - __pt; __pt = performance.now();
 
 
@@ -18110,16 +18264,9 @@ function update(dt){
       runWaveClearRandomEvents();
       maybeSpawnCaravan();
       maybeShowWaveTutorialTip();
-      if(wavesCompleted % 2 === 0 && moveCharges < MAX_MOVE_CHARGES){
-        moveCharges++;
-      }
       // TENNIS-SHOES-MOVE-01 (1.7.44), now the Running Shoes (1.7.113): shoes are a normal item with a passive bonus, not a used item: every pair a stickman carries gives one free move
       // at the start of every round (counted once per pair, up to the cap), with no action from the player.
-      let shoePairs = 0; for(const t of towerPool) if(t.active) for(const item of t.equippedItems) if(item.extraMove) shoePairs++;
-      if(shoePairs > 0 && moveCharges < MAX_MOVE_CHARGES){
-        moveCharges = Math.min(MAX_MOVE_CHARGES, moveCharges + shoePairs);
-        spawnFloatingText((CANVAS_W/2-camera.x)/camera.zoom, (38-camera.y)/camera.zoom, '👟 Extra move ready', '#ffe082');
-      }
+      for(const t of towerPool) if(t.active) for(const item of t.equippedItems) if(item.extraMove) grantTowerMove(t, '👟');
       // CA658 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA658
       if(wavesCompleted % 5 === 0 && freeBarricadesLeft < MAX_FREE_BARRICADES){
         freeBarricadesLeft++;
@@ -18237,8 +18384,8 @@ function updateTargetFrame(){
 // CA665 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA665
 // TARGET-MARK-01 (1.6.94): drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
 // RANGE-RING-SUITS-01 (1.7.112) — see CHANGELOG.md § [1.7.112]: the range edge is a slow counter-clockwise procession of the four card suits in black, white order (club, heart, spade,
-// diamond), spaced wide, and everything outside the range is dimmed like fog of war. Real time, constant on-screen size at any zoom.
-const RANGE_RING_DOT_PX = 13, RANGE_RING_DOT_SPACING_PX = 46, RANGE_RING_SPEED_PX_PER_S = 30, RANGE_FOG_ALPHA = 0.42;
+// diamond), spaced wide (92 px apart on screen), and everything outside the range is dimmed like fog of war. Real time, constant on-screen size at any zoom.
+const RANGE_RING_DOT_PX = 13, RANGE_RING_DOT_SPACING_PX = 92, RANGE_RING_SPEED_PX_PER_S = 30, RANGE_FOG_ALPHA = 0.42;
 const RANGE_RING_SUITS = ['CLUB', 'HEART', 'SPADE', 'DIAMOND'];
 function traceSuitPath(ctx, suit){
   ctx.beginPath();
@@ -18348,7 +18495,10 @@ function render(ctx){
   }
   // PAN-SNAP-01 (1.7.36): the camera is drawn at whole device pixels. A fractional offset makes the cached map and every tile edge re-sample (blurred, shimmering
   // seams) on every panning frame; the camera itself stays smooth and fractional, only the drawing position is snapped.
-  ctx.translate(Math.round((camera.x + shakeX) * dprValue) / dprValue, Math.round((camera.y + shakeY) * dprValue) / dprValue);
+  // PAN-SUBPIXEL-01 (1.7.124): rounding the camera to whole pixels cannot move smoothly below one pixel per frame, so the slow start and end of every automatic pan (and a drag or coast that is barely moving) showed 2 px jumps with frozen frames between them in a recorded clip. While the camera moves slower than PAN_SUBPIXEL_MAX_STEP_PX per frame it is drawn at its exact fractional position; faster motion and a still camera stay snapped.
+  const cameraDrawX = camera.x + shakeX, cameraDrawY = camera.y + shakeY;
+  if(perfStats.cameraSubpixelMotion) ctx.translate(cameraDrawX, cameraDrawY);
+  else ctx.translate(Math.round(cameraDrawX * dprValue) / dprValue, Math.round(cameraDrawY * dprValue) / dprValue);
   ctx.scale(camera.zoom, camera.zoom);
 
   // CA666 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA666
@@ -18523,20 +18673,14 @@ function drawDebugOverlay(ctx){
   for(let i = 0; i < layout.visibleLines.length; i++) ctx.fillText(layout.visibleLines[i], layout.boxLeft + 6, layout.belowHudY + 4 + i * layout.lineHeight);
   ctx.restore();
 }
-// OVERLAY-FLOW-01 (1.7.65): the summary rows are flowed like text: segments share a row, divided by a bar, until the row is full, so the panel is a dense block with no ragged empty space on the right.
-const OVERLAY_SEGMENT_DIVIDER = '  |  ';
-function flowOverlaySegments(ctx, segments, maxWidth, fontPx){
-  ctx.save();
-  ctx.font = 'bold ' + fontPx + 'px monospace';
-  const rows = [];
-  let row = '';
-  for(const segment of segments){
-    const joined = row ? row + OVERLAY_SEGMENT_DIVIDER + segment : segment;
-    if(row && ctx.measureText(joined).width > maxWidth){ rows.push(row); row = segment; } else row = joined;
-  }
-  if(row) rows.push(row);
-  ctx.restore();
-  return rows;
+// OVERLAY-GRID-01 (1.7.119): the summary is a grid of short cells whose columns are as wide as their longest cell, so every row lines up and no cell is ever cut; single long items (GPU, last minute, scale) take a full row and wrap at word breaks instead of being truncated.
+const OVERLAY_COLUMN_GAP = 2;
+function overlayGridRow(...cells){ return cells.map(String); }
+function overlayFullRow(text){ return String(text); }
+function alignOverlayRows(entries){
+  const columnWidths = [];
+  for(const entry of entries) if(Array.isArray(entry)) entry.forEach((cell, column) => { columnWidths[column] = Math.max(columnWidths[column] || 0, cell.length); });
+  return entries.map(entry => Array.isArray(entry) ? entry.map((cell, column) => column === entry.length - 1 ? cell : cell.padEnd(columnWidths[column] + OVERLAY_COLUMN_GAP)).join('').trimEnd() : entry);
 }
 function buildDebugOverlayLayout(ctx){
   const compact=CANVAS_W<600;
@@ -18555,17 +18699,21 @@ function buildDebugOverlayLayout(ctx){
     'CPU '+(navigator.hardwareConcurrency || '?')+' threads RAM ~'+(navigator.deviceMemory || '?')+'GiB',
     'GPU '+String(renderEnvironment.gpuRenderer).slice(0,30)
   ] : [
-    'v' + GAME_VERSION + '  ' + graphicsQuality + '  ' + Math.round(perfStats.smoothedFps || 0) + ' FPS  |  zoom ' + camera.zoom.toFixed(2) + '  cam ' + Math.round(camera.x) + ',' + Math.round(camera.y),
-    'CPU ' + (navigator.hardwareConcurrency || '?') + ' threads' + (hostHintText ? ' ' + hostHintText : '') + '  |  RAM ' + (navigator.deviceMemory ? '~' + navigator.deviceMemory + ' GiB' : '?') + (performance.memory ? '  heap ' + (performance.memory.usedJSHeapSize/1048576).toFixed(0) + ' MiB' : ''),
-    'GPU ' + String(renderEnvironment.gpuRenderer).slice(0,72) + '  |  screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2) + ' canvas ' + CANVAS_W + 'x' + CANVAS_H,
-    'frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms  upd ' + (perfStats.updateMs || 0).toFixed(1) + '  rend ' + (perfStats.renderMs || 0).toFixed(1) + '  hud ' + (perfStats.hudMs || 0).toFixed(2) + '  tick ' + (perfStats.msPerTick || 0).toFixed(2) + 'ms x' + (perfStats.ticksThisFrame || 0) + '  speed ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x asked, ' + (perfStats.achievedSpeed || 0).toFixed(1) + 'x done  music ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(2) + 'ms',
-    'wave ' + waveIndex + ' ' + waveState + (phase ? '  ' + phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : '') + '  |  enemies ' + onPath + ' path / ' + escaped + ' escaped / ' + dying + ' dying',
-    'towers ' + countActive(towerPool) + '  proj ' + countActive(projectilePool) + '  decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)  |  scale ' + Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100) + '% auto ' + (autoRenderScaleEnabled ? 'on' : 'off') + '  gap ' + smoothedGapMs.toFixed(0) + 'ms  low15 ' + Math.round(lowFpsDurationMs/1000) + 's',
-    (() => { const k = decalCategoryCounts(); return 'debris live blood ' + k.liveBlood + ' baked ' + k.bakedBlood + ' bones ' + k.bones + ' skulls ' + k.skulls + ' worms ' + k.worms + ' rubble ' + k.rubble; })(),
-    lastMinuteSummary(),
-    'scale: ' + lastGovernorDecision
+    overlayGridRow('v' + GAME_VERSION + ' ' + graphicsQuality + ' ' + Math.round(perfStats.smoothedFps || 0) + ' FPS', 'zoom ' + camera.zoom.toFixed(2), 'cam ' + Math.round(camera.x) + ',' + Math.round(camera.y)),
+    overlayGridRow('CPU ' + (navigator.hardwareConcurrency || '?') + ' threads', 'RAM ' + (navigator.deviceMemory ? '~' + navigator.deviceMemory + ' GiB' : '?'), performance.memory ? 'heap ' + (performance.memory.usedJSHeapSize/1048576).toFixed(0) + ' MiB' : ''),
+    overlayGridRow(hostHintText || '', 'screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2), 'canvas ' + CANVAS_W + 'x' + CANVAS_H),
+    overlayFullRow('GPU ' + String(renderEnvironment.gpuRenderer)),
+    overlayGridRow('frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms', 'upd ' + (perfStats.updateMs || 0).toFixed(1) + ' rend ' + (perfStats.renderMs || 0).toFixed(1), 'hud ' + (perfStats.hudMs || 0).toFixed(2) + ' tick ' + (perfStats.msPerTick || 0).toFixed(2)),
+    overlayGridRow('speed ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x asked ' + (perfStats.achievedSpeed || 0).toFixed(1) + 'x', 'ticks x' + (perfStats.ticksThisFrame || 0), 'music ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(2) + 'ms'),
+    overlayGridRow('wave ' + waveIndex + ' ' + waveState, phase ? phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : '', 'enemies ' + onPath + ' esc ' + escaped + ' die ' + dying),
+    overlayGridRow('towers ' + countActive(towerPool) + ' proj ' + countActive(projectilePool), 'decals ' + decals.length + ' (' + perfStats.visibleDecals + ' live)', 'gap ' + smoothedGapMs.toFixed(0) + 'ms low15 ' + Math.round(lowFpsDurationMs/1000) + 's'),
+    (() => { const k = decalCategoryCounts(); return overlayGridRow('debris blood ' + k.liveBlood + ' baked ' + k.bakedBlood, 'bones ' + k.bones + ' skulls ' + k.skulls, 'worms ' + k.worms + ' rubble ' + k.rubble); })(),
+    overlayGridRow(...panDiagnosticCells()),
+    overlayGridRow(...displayPacingCells()),
+    overlayFullRow(lastMinuteSummary()),
+    overlayFullRow('scale ' + Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100) + '% auto ' + (autoRenderScaleEnabled ? 'on' : 'off') + '  ' + lastGovernorDecision)
   ];
-  if(!compact) lines.splice(0, lines.length, ...flowOverlaySegments(ctx, lines, Math.min(CANVAS_W-24, 520), 11));
+  if(!compact) lines.splice(0, lines.length, ...alignOverlayRows(lines));
   // CA672 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA672
   const liveTowers = compact ? [] : overlayTowerRanking();
   if(!compact) for(const capture of downingCaptures){
@@ -18608,42 +18756,40 @@ function buildDebugOverlayLayout(ctx){
   // available canvas width at the default 11px, the whole overlay's font scales down (bounded by
   // MIN_DEBUG_FONT_PX) and every line is re-measured at that size — one line each, always.
   const MIN_DEBUG_FONT_PX = 7;
-  const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : Math.min(CANVAS_W-24, 520); // DEBUG-WRAP-01 (1.7.36): long lines wrap instead of widening the panel
-  let longestLineWidth = 0;
-  const measuredLineWidths = [];
-  for(let i=0;i<lines.length;i++){
-    const width = ctx.measureText(lines[i]).width;
-    longestLineWidth = Math.max(longestLineWidth, width);
-    measuredLineWidths.push(width);
-  }
-  const fontPx = baseFontPx;
-  if(longestLineWidth > availableWidth && longestLineWidth > 0){
-    const wrappedLines = [];
-    for(const line of lines){
+  const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : CANVAS_W-24;
+  const maxPanelHeight = CANVAS_H - belowHudY - 12;
+  const sourceLines = lines.slice();
+  const wrapLinesToWidth = (fontPx, widthLimit) => {
+    ctx.font = 'bold ' + fontPx + 'px monospace';
+    const wrapped = [];
+    for(const line of sourceLines){
       let rest = line, first = true;
       while(rest.length){
         let fit = rest.length;
-        while(fit > 1 && ctx.measureText((first ? '' : '  ') + rest.slice(0, fit)).width > availableWidth) fit--;
+        while(fit > 1 && ctx.measureText((first ? '' : '  ') + rest.slice(0, fit)).width > widthLimit) fit--;
         let cut = fit;
         if(fit < rest.length){ const space = rest.lastIndexOf(' ', fit); if(space > fit * 0.4) cut = space; }
-        wrappedLines.push((first ? '' : '  ') + rest.slice(0, cut).trimEnd());
+        wrapped.push((first ? '' : '  ') + rest.slice(0, cut).trimEnd());
         rest = rest.slice(cut).trimStart();
         first = false;
       }
     }
-    lines.splice(0, lines.length, ...wrappedLines);
-    measuredLineWidths.length = 0;
-    for(const wrapped of lines) measuredLineWidths.push(ctx.measureText(wrapped).width);
+    return wrapped;
+  };
+  // DEBUG-OVERLAY-NOCUT-01 (1.7.119): nothing is ever cut off. Rows wrap at word breaks to the panel width, and when the whole panel is taller than the room under the HUD the font shrinks (down to 7 px) until every row fits; rows are dropped only below that size.
+  let fontPx = baseFontPx, wrappedLines = wrapLinesToWidth(fontPx, availableWidth);
+  while(fontPx > MIN_DEBUG_FONT_PX && wrappedLines.length * (fontPx + (compact ? 2 : 3)) + 8 > maxPanelHeight){
+    fontPx--;
+    wrappedLines = wrapLinesToWidth(fontPx, availableWidth);
   }
   const lineHeight = fontPx + (compact ? 2 : 3);
-  // Stay below the HUD/FPS counter. On short viewports, show the highest-priority lines that fit
-  // rather than growing past the bottom of the screen.
-  const maxVisibleLines = Math.max(0, Math.floor((CANVAS_H - belowHudY - 12) / lineHeight));
+  const maxVisibleLines = Math.max(0, Math.floor((maxPanelHeight - 8) / lineHeight));
   if(maxVisibleLines === 0){ ctx.restore(); return null; }
-  const visibleLines = lines.slice(0, maxVisibleLines);
+  const visibleLines = wrappedLines.slice(0, maxVisibleLines);
+  ctx.font = 'bold ' + fontPx + 'px monospace';
   let maxLineWidth = 0;
   for(let i=0;i<visibleLines.length;i++){
-    maxLineWidth = Math.max(maxLineWidth, fontPx === baseFontPx ? measuredLineWidths[i] : ctx.measureText(visibleLines[i]).width);
+    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(visibleLines[i]).width);
   }
   const boxWidth = Math.min(CANVAS_W - 12, Math.round(maxLineWidth) + 12);
   const boxHeight = visibleLines.length * lineHeight + 8;
@@ -19275,6 +19421,7 @@ function attractEnemyScreenPos(e, t){
 }
 // ATTRACT-ARCHERS-01 (1.7.87) — see CHANGELOG.md § [1.7.87]
 const ATTRACT_EMOJI_PX = 62, ATTRACT_DRIFT_ZOOM_MAX = 1.05, ATTRACT_ENGAGE_T = 0.3, ATTRACT_ARROW_FLIGHT_MS = 300, ATTRACT_ARROW_ARC_PX = 22, ATTRACT_SPEED_EASE_MS = 600, ATTRACT_AIM_EASE_MS = 90, ATTRACT_CORPSE_MS = 450;
+const ATTRACT_STICKMAN_DRAW_SCALE = 1.8;
 const ATTRACT_STICK_RADIUS_PX = 22, ATTRACT_ARROW_DRAW_SCALE = 2.2, ATTRACT_MAX_STUCK_DRAWN = 5, ATTRACT_FLINCH_PX = 6, ATTRACT_FLINCH_MS = 110, ATTRACT_ARROW_WOBBLE_MS = 160;
 const ATTRACT_BLOOD_FADE_START_MS = 15000, ATTRACT_BLOOD_FADE_MS = 3500, ATTRACT_DROPLET_CAP = 90, ATTRACT_DROPLET_GRAVITY = 520, ATTRACT_DROPLET_DRAG = 0.0022, ATTRACT_DROPLET_TERMINAL = 620, ATTRACT_DROPLET_GROUND_SQUASH = 0.55;
 let attractBloodCanvas = null, attractBloodCtx = null, attractBloodScale = 1;
@@ -19521,7 +19668,10 @@ function renderAttractMode(ctx, now){
       if(chosen){ t.target = chosen; t.phase = 'draw'; t.phaseStart = now; t.phaseDur = 480; }
     }
     if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
-      if(t.target && !t.target.dead) st.projectiles.push({ fromX: tx, fromY: ty, target: t.target, startTime: now, duration: ATTRACT_ARROW_FLIGHT_MS, element: t.element });
+      if(t.target && !t.target.dead){
+        const bowGrip = archerNockedArrowTip(t.aimAngle, 1, 0), archerBuild = JOB_BUILD.ARCHER || { scaleX: 1, scaleY: 1 }; // ARROW-GRIP-01 (1.7.131): the attract archers loose from the bow hand too, not from the stickman's feet
+        st.projectiles.push({ fromX: tx + bowGrip.x*STICKMAN_SCALE*archerBuild.scaleX*ATTRACT_STICKMAN_DRAW_SCALE, fromY: ty + bowGrip.y*STICKMAN_SCALE*archerBuild.scaleY*ATTRACT_STICKMAN_DRAW_SCALE, target: t.target, startTime: now, duration: ATTRACT_ARROW_FLIGHT_MS, element: t.element });
+      }
       t.phase = 'idle'; t.target = null;
       t.nextAttackAt = now + 520 + Math.random()*420;
     }
@@ -19636,7 +19786,7 @@ function renderAttractMode(ctx, now){
     // CA715 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA715
     ctx.save();
     ctx.translate(tx, ty);
-    ctx.scale(1.8, 1.8);
+    ctx.scale(ATTRACT_STICKMAN_DRAW_SCALE, ATTRACT_STICKMAN_DRAW_SCALE);
     ctx.translate(-tx, -ty);
     drawStickman(ctx, tx, ty, angle, 1, 'ARCHER', extraAtk);
     ctx.restore();
@@ -19815,6 +19965,35 @@ function updatePresentationEffects(frameMs){
 }
 // Only combat during an actual wave fast-forwards. Between waves everything runs at 1x.
 function effectiveGameSpeed(){ return waveState === 'IDLE' ? 1 : gameSpeed; }
+// PAN-DIAG-01 (1.7.121, widened 1.7.123): whenever the camera moves, whether from a drag, inertia, the pan to a selected stickman or the wave-start pan, the real gap between frames and the distance the camera moved each frame are kept for the last 120 moving frames and stay after the motion ends. A steady stutter with a healthy FPS shows up here as a large worst gap or a high step jitter, which says whether the cause is frame pacing or uneven camera steps. The display rate and frame cap sit beside it because a cap that is not a clean divisor of the refresh rate paces frames unevenly.
+const PAN_SUBPIXEL_MAX_STEP_PX = 8;
+const PAN_DIAG_FRAMES = 120, PAN_DIAG_IDLE_FRAMES_TO_RESET = 6;
+const panDiagnostic = { gaps: [], steps: [], idleFrames: PAN_DIAG_IDLE_FRAMES_TO_RESET };
+function recordPanDiagnostic(frameGapMs, cameraStepPx, cameraMoving){
+  if(!cameraMoving){ panDiagnostic.idleFrames++; return; }
+  if(panDiagnostic.idleFrames >= PAN_DIAG_IDLE_FRAMES_TO_RESET){ panDiagnostic.gaps.length = 0; panDiagnostic.steps.length = 0; }
+  panDiagnostic.idleFrames = 0;
+  panDiagnostic.gaps.push(frameGapMs); panDiagnostic.steps.push(cameraStepPx);
+  if(panDiagnostic.gaps.length > PAN_DIAG_FRAMES){ panDiagnostic.gaps.shift(); panDiagnostic.steps.shift(); }
+}
+function panDiagnosticCells(){
+  const frameCount = panDiagnostic.gaps.length;
+  if(frameCount < 8) return ['pan: move the camera', '', ''];
+  const meanStep = panDiagnostic.steps.reduce((sum, step) => sum + step, 0) / frameCount;
+  const stepSpread = Math.sqrt(panDiagnostic.steps.reduce((sum, step) => sum + (step - meanStep) * (step - meanStep), 0) / frameCount);
+  return [
+    'pan gap ' + perfPercentile(panDiagnostic.gaps, 0.5).toFixed(1) + '/' + perfPercentile(panDiagnostic.gaps, 0.95).toFixed(1) + '/' + perfPercentile(panDiagnostic.gaps, 1).toFixed(1) + 'ms',
+    'step ' + meanStep.toFixed(1) + 'px',
+    'jitter ' + (meanStep > 0.05 ? Math.round(stepSpread / meanStep * 100) : 0) + '%'
+  ];
+}
+function displayPacingCells(){
+  return [
+    'display ' + (vsyncIntervalMs > 0 ? (1000 / vsyncIntervalMs).toFixed(0) + ' Hz' : '?'),
+    'cap ' + (frameCapIntervalMs() > 0 ? frameCapIntervalMs().toFixed(1) + 'ms' : 'off'),
+    'uncapped frames ' + cameraMotionFullRateFrames
+  ];
+}
 function loop(now){
   requestAnimationFrame(loop);
   // MOBILE-FPS-CAP-01 (1.6.48) — see CHANGELOG.md § [1.6.48]. Skip the entire frame (simulation,
@@ -19856,8 +20035,10 @@ function loop(now){
   realTimeFrozen = waveState === 'IDLE';
   if(!realTimeFrozen) realTime += frameTime;
   presentationTime += frameTime;
+  const cameraFrameMs = Math.min(frameTime, CAMERA_CLOCK_MAX_STEP_MS);
+  cameraPanClock += cameraFrameMs;
   const cameraAtFrameStartX = camera.x, cameraAtFrameStartY = camera.y, cameraAtFrameStartZoom = camera.zoom;
-  applyPanInertia(frameTime);
+  applyPanInertia(cameraFrameMs);
   // CA720 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA720
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
     waveTimer += frameTime;
@@ -19905,6 +20086,8 @@ function loop(now){
   perfStats.cameraMovePixelsLastFrame = Math.hypot(perfStats.cameraMoveXLastFrame, perfStats.cameraMoveYLastFrame);
   perfStats.cameraZoomDeltaLastFrame = Math.abs(camera.zoom - cameraAtFrameStartZoom);
   perfStats.cameraMovingLastFrame = perfStats.cameraMovePixelsLastFrame >= 0.25 || perfStats.cameraZoomDeltaLastFrame >= 0.0005;
+  perfStats.cameraSubpixelMotion = (perfStats.cameraMovePixelsLastFrame > 0 || perfStats.cameraZoomDeltaLastFrame > 0) && perfStats.cameraMovePixelsLastFrame < PAN_SUBPIXEL_MAX_STEP_PX;
+  recordPanDiagnostic(rawWallGapMs, perfStats.cameraMovePixelsLastFrame, perfStats.cameraMovingLastFrame);
   perfStats.frameMs = performance.now() - frameStart;
   perfStats.ticksThisFrame = ticksThisFrame;
   // SPEED-ACHIEVED-01 (1.7.51): requested speed against the speed actually simulated over the last second (simulated game time divided by wall time), and the cost of one tick,
@@ -20361,9 +20544,9 @@ function handleTap(clientX, clientY, pointerType){
 function attemptMoveTower(gx, gy){
   if(gx === moveModeTower.gridX && gy === moveModeTower.gridY){ exitMoveMode(); return; }
   if(!isTileBuildable(gx, gy, moveModeTower, moveModeTower.type)) return; // invalid tile — stay in move mode, let them try again
-  logGameEvent(itemHolderLabel(moveModeTower) + ' moved to tile ' + gx + ',' + gy + ' (' + (moveCharges - 1) + ' free moves left)');
+  logGameEvent(itemHolderLabel(moveModeTower) + ' moved to tile ' + gx + ',' + gy + ' (' + (moveModeTower.moveCharges - 1) + ' free moves left)');
   moveModeTower.walkTo(gx, gy);
-  moveCharges--;
+  moveModeTower.moveCharges--;
   playSound('click');
   const movedTower = moveModeTower;
   exitMoveMode();
@@ -20373,7 +20556,7 @@ function attemptMoveTower(gx, gy){
   updateHUD();
 }
 function enterMoveMode(tower){
-  if(moveCharges <= 0 || isProducerType(tower.type)) return;
+  if(tower.moveCharges <= 0 || isProducerType(tower.type)) return;
   moveModeTower = tower;
   selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false;
@@ -20563,12 +20746,10 @@ const livesVal = document.getElementById('livesVal');
 const goldVal = document.getElementById('goldVal');
 const waveVal = document.getElementById('waveVal');
 // CA750 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA750
-const livesMeter = document.getElementById('livesMeter');
 const shopLivesVal = document.getElementById('shopLivesVal');
 const shopBuyLifeCost = document.getElementById('shopBuyLifeCost');
 const woodVal = document.getElementById('woodVal');
 const stoneVal = document.getElementById('stoneVal');
-const moveVal = document.getElementById('moveVal');
 const looseNotice = document.getElementById('looseNotice');
 const nextWaveBtn = document.getElementById('nextWaveBtn');
 const inspectPanel = document.getElementById('inspect-panel');
@@ -20711,15 +20892,6 @@ function updateHUDImmediate(){
   if(gold > lastShownGold) showGoldGain(gold - lastShownGold);
   lastShownGold = gold;
   setHudText(goldVal, gold);
-  if(livesMeter){
-    const maxLives = maxLivesNow();
-    if(livesMeter.max !== maxLives) livesMeter.max = maxLives;
-    const low = Math.round(maxLives*0.2), high = Math.round(maxLives*0.6);
-    if(livesMeter.low !== low) livesMeter.low = low;
-    if(livesMeter.high !== high) livesMeter.high = high;
-    if(livesMeter.optimum !== maxLives) livesMeter.optimum = maxLives;
-    if(livesMeter.value !== lives) livesMeter.value = lives;
-  }
   const lifeCost = buyLifeCost();
   if(shopLivesVal){
     setHudText(shopLivesVal, lives);
@@ -20728,7 +20900,6 @@ function updateHUDImmediate(){
   }
   setHudText(woodVal, wood);
   setHudText(stoneVal, stone);
-  setHudText(moveVal, moveCharges);
   // CA755 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA755
   const shopBtnEl = document.getElementById('shopBtn');
   if(shopBtnEl){
@@ -20744,16 +20915,10 @@ function updateHUDImmediate(){
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞');
   setHudText(looseNotice, ''); looseNotice.hidden = true; // LOOSE-NOTICE-REMOVED-01 (1.7.75): owner: the 'loose · costing' line is not the obvious cue they wanted; the broken heart flying to the counter is (HEART-BREAK-01)
-  const waveProgress = document.getElementById('waveProgress');
-  if(waveProgress){
-    if(waveIndex < CAMPAIGN_WAVE_COUNT){
-      waveProgress.max = CAMPAIGN_WAVE_COUNT;
-      waveProgress.value = waveIndex;
-      waveProgress.removeAttribute('data-indeterminate');
-    } else {
-      waveProgress.removeAttribute('value');
-      waveProgress.setAttribute('data-indeterminate', '1');
-    }
+  const wavePhaseEl = document.getElementById('wavePhase');
+  if(wavePhaseEl){
+    const phaseLabel = waveState === 'IDLE' ? 'STANDBY' : waveState === 'SPAWNING' ? 'INCOMING' : 'FIGHTING'; // WAVE-PHASE-TEXT-01 (1.7.129): the bar beside the wave number said nothing the number did not; it now names the phase
+    if(wavePhaseEl.dataset.phase !== phaseLabel){ wavePhaseEl.dataset.phase = phaseLabel; wavePhaseEl.textContent = phaseLabel; }
   }
   const waveActionText = nextWaveActionLabel(waveIndex) + ' ';
   if(nextWaveBtn.firstChild && nextWaveBtn.firstChild.textContent !== waveActionText) nextWaveBtn.firstChild.textContent = waveActionText;
@@ -20825,7 +20990,7 @@ function buildTowerModal(){
 
   const fullyExpanded = regionFullyExpanded();
   const cost = expansionCost();
-  const canExpand = !fullyExpanded && waveState === 'IDLE' && gold >= cost;
+  const canExpand = !fullyExpanded && !expansionBlockedReason() && gold >= cost;
   const expandRow = document.createElement('div');
   expandRow.className = 'build-row expand-row' + (canExpand ? '' : ' disabled');
   const expandLabel = fullyExpanded ? 'Max Size' : expansionBlockedReason() ? 'Expand — ' + expansionBlockedReason() : gold < cost ? 'Expand (💰' + cost + ') — need more gold' : 'Expand (💰' + cost + ')';
@@ -20833,7 +20998,7 @@ function buildTowerModal(){
     '<div class="icon">🗺️</div>' +
     '<div class="name">' + expandLabel + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
-    '<div class="build-row-blurb">Grows the map. Available between waves, even while an enemy that escaped is still loose: you can buy one expansion per wave. Each cleared wave also gives one free expansion as soon as the wave ends. If this row is greyed out, its label says why.</div>';
+    '<div class="build-row-blurb">Grows the map, during a wave or between waves: you can buy one expansion per wave. Each cleared wave also gives one free expansion as soon as the wave ends. If this row is greyed out, its label says why.</div>';
   {
     expandRow.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
@@ -21082,7 +21247,7 @@ function runHackAction(action){
     case '+🪨1,000': stone += 1000; break;
     case '+🪨10,000': stone += 10000; break;
     case 'Expand the map now':
-      if(waveState === 'IDLE' && !regionFullyExpanded()){ gold += expansionCost(); expandRegion(); }
+      if(!regionFullyExpanded()){ gold += expansionCost(); expandRegion(); }
       break;
     case 'Heal and revive all':
       for(const t of towerPool){ if(!t.active || t.type === 'BARRICADE') continue; t.hp = t.maxHp; t.disabledUntil = 0; t.disabledWavesLeft = 0; }
@@ -21845,7 +22010,7 @@ function getReadmeText(){
 'Tap Build, pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, ' +
 'sell, move, buy it gear from the Shop, or change its targeting priority. The map starts tiny ' +
 '(2x2 tiles) and extends both ends of its winding path — some expansions are free milestones, ' +
-'others you buy with gold, but only one expansion can happen per round; extra ones queue for the next.\n\n' +
+'others you buy with gold. You can buy one expansion per wave, during or between waves.\n\n' +
 'TOWERS\n' +
 '------\n' +
 'Swordsman - melee cone sweep, the starting warrior.\n' +
@@ -21858,8 +22023,15 @@ function getReadmeText(){
 'Mage - slows enemies it hits.\n' +
 'Bomber - splash damage against groups.\n' +
 'Gatling - very fast, low damage per shot, shreds swarms.\n' +
+'More classes unlock as stickmen train: Marksman, Sniper, Blowdart, Gatling, Cowboy, Glaive, Ninja, Paladin, Berserker, Necromancer, Pope, Cat Snapper, Merchant and more, plus Log Mill and Stone Quarry for wood and stone.\n' +
 'Barricade - does not attack. Extremely tough, can be placed directly on the enemy path, and ' +
 'holds back enemies while they chip its 10 HP, at most one point per 10 seconds across all attackers.\n\n' +
+'MOVES\n' +
+'-----\n' +
+'Every stickman has its own free moves. You start with one; a stickman gains one on every promotion, every boss it kills, and each round for every pair of Running Shoes it carries.\n\n' +
+'BLOOD\n' +
+'-----\n' +
+'Every hit throws flying droplets shaped by the weapon: a sniper makes a fine mist, a hammer a radial spatter, a blade a cast-off fan, an arrow a back-spatter and, through the body, an exit spray, a spell a blast cone. A wounded or bleeding enemy leaves a trail you can follow, with drops that stretch in the direction it walked. A stickman or enemy standing in a spray blocks it, leaving a clean void behind and wearing the stains itself.\n\n' +
 'ENEMIES\n' +
 '-------\n' +
 'Every wave marches in strict size order: all Tiny enemies first, then Small, then Standard, and only on ' +
@@ -22263,7 +22435,7 @@ function generateDebugLog(){
   s += 'Wave: ' + waveIndex + ' (completed: ' + wavesCompleted + ')   Speed: ' + gameSpeed + 'x\n';
   s += 'Gold: ' + gold + '   Wood: ' + wood + '   Stone: ' + stone + '\n';
   s += 'Lives: ' + lives + ' (bought: ' + livesBought + ')\n';
-  s += 'Move charges: ' + moveCharges + '/' + MAX_MOVE_CHARGES + '   Free barricades: ' + freeBarricadesLeft + '/' + MAX_FREE_BARRICADES + '\n';
+  s += 'Free barricades: ' + freeBarricadesLeft + '/' + MAX_FREE_BARRICADES + '\n';
   s += 'Camera: x=' + camera.x.toFixed(1) + ' y=' + camera.y.toFixed(1) + ' zoom=' + camera.zoom.toFixed(3) + '\n\n';
 
   s += 'SETTINGS\n';
@@ -22550,8 +22722,8 @@ function updateInspectPanel(){
     inspStoreBtn.classList.toggle('hidden', false);
     const moveBtn = inspMoveBtn;
     const moveCost = inspMoveCost;
-    moveBtn.disabled = moveCharges <= 0;
-    moveCost.textContent = '(' + moveCharges + ')';
+    moveBtn.disabled = t.moveCharges <= 0;
+    moveCost.textContent = '(' + t.moveCharges + ')';
     inspAxeModeBtn.classList.add('hidden');
     statsInfoBtn.classList.add('hidden');
     barricadeInfoBtn.classList.remove('hidden');
@@ -22702,8 +22874,8 @@ function updateInspectPanel(){
   inspTargetMode.textContent = t.targetMode;
   const moveBtn = inspMoveBtn;
   const moveCost = inspMoveCost;
-  moveBtn.disabled = moveCharges <= 0;
-  moveCost.textContent = '(' + moveCharges + ')';
+  moveBtn.disabled = t.moveCharges <= 0;
+  moveCost.textContent = '(' + t.moveCharges + ')';
 
   const axeBtn = inspAxeModeBtn;
   if(t.type === 'AXEMAN'){
@@ -22846,7 +23018,7 @@ document.getElementById('inspNameplate').addEventListener('pointerdown', (e) => 
 });
 document.getElementById('inspMoveBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  if(!selectedTower || moveCharges <= 0) return;
+  if(!selectedTower || selectedTower.moveCharges <= 0) return;
   enterMoveMode(selectedTower);
 });
 document.getElementById('cancelMoveBtn').addEventListener('pointerdown', (e) => {

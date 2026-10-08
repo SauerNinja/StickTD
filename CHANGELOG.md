@@ -6,6 +6,135 @@ Reading and adding (this file is about 1.8 MB, never open it whole):
 - Read: `grep -n '^## \[' CHANGELOG.md | head -20` lists the newest versions; `sed -n '9,40p' CHANGELOG.md` shows the top entries; `grep -n 'ARROW-LOOK-01' CHANGELOG.md` finds the entry for a code marker (`// ID (x.y.z) — see CHANGELOG.md § [x.y.z]`).
 - Add: write one entry of at most about eight lines under `## [x.y.z] — date (UTC)`: the owner's ask in one line, the cause found, the fix with its marker id, and how it was checked or what was not. Insert it above the previous top heading with a script (find the first `## [`), and extend the same entry while a version is unreleased. Do not restate files or repeat earlier entries.
 
+## [1.7.133] — 2026-10-08 (UTC)
+
+### Housekeeping for 1.7.118 to 1.7.132: rules, checks and texts
+- Asked: finish what was left half done.
+- Added AGENTS rules 33 to 37 and a design-contract check for each new rule (moves per stickman, expansion mid-wave, arrow grip, camera clock, blood droplets, trail and voids, wave phase label); the expansion and shoes checks were updated to the new behaviour. The in-game README text no longer says one expansion queues per round, lists the other classes, and gains Moves and Blood sections. README gains the same two paragraphs. BACKLOG lists what needs a play-test. `sitemap.xml` lastmod is 2026-10-08.
+- Checked: syntax and design contract in headless Chromium (no problems).
+
+## [1.7.132] — 2026-10-08 (UTC)
+
+### Top bar: no health bar, wave phase label fills its row (HUD-FLUSH-01)
+- Asked: make the standby/incoming label a bit bigger so it sits flush between the wave number and the pause button, drop the health bar for more room for gold, and size it all dynamically.
+- The lives bar and its update code are gone; the lives number stays. The lives and gold stat row and the wave row now stretch to the width of the widest row: lives and gold sit at the two edges, and the phase label grows to fill the rest of its row at a larger size (10 to 13 px by screen width) on a dark pill. It keeps a minimum width of 9 characters so STANDBY, INCOMING and FIGHTING do not change the bar's width.
+- Checked: syntax, design contract and the measured positions of the top-bar items in headless Chromium at desktop and phone width (the phase label's right edge lines up with the gold's, and it sits 12 px from the pause button). Not checked: how it looks, since the screenshot was covered by the start screen.
+
+## [1.7.131] — 2026-10-08 (UTC)
+
+### Attract-screen archers loose from the bow hand; mage hits throw a blast cone of droplets (ARROW-GRIP-01)
+- Asked: on the attract screen the arrows left from the bottom of the bow. And: is the older melee ring and the mage high-impact blood still there, and what else?
+- Cause: the attract archers launched each arrow from the stickman's feet (`tx, ty`). Now the arrow starts at the bow hand, computed from the same grip point as the in-game archers (`archerNockedArrowTip(angle, 1, 0)`) and the draw scale (`ATTRACT_STICKMAN_DRAW_SCALE`, 1.8).
+- Checked and still present: the blunt-weapon shock ring (`spawnShockring` on a crushing blow and on kills), the mage 132 degree particle cone with its critical-hit multiplier, the cast-off streaks with their own void test, puncture marks, satellite drops, bloody footprints and wet-foot pickup.
+- Added: the mage droplet profile is now a wide, fast forward cone (about 14 drops) instead of a light spray, to match the older high-impact cone.
+- Checked: syntax. Not checked: the attract archers on screen (headless run only); the clips sent were not re-measured.
+
+## [1.7.130] — 2026-10-08 (UTC)
+
+### Void patterns and blood-stained bodies (BLOOD-VOID-01)
+- Asked: voids, with stickmen and emoji stained by the blood when they cause one; check the history for forensic features that were lost.
+- Regression check: the local repository holds one commit and the GitHub API is not open to this session, so the check used this changelog. Of the marker ids in every blood, gore, decal, drip and stain entry, none of the blood ones is missing from the code except BLEED-STRENGTH-01 (1.6.157), which 1.7.x replaced on purpose with `BLEED_PER_ARROW_MAX_HP_SHARE`. The 1.7.x audit that byte-compared all blood functions with 1.6.159 also found no loss. The serum ring on decals was removed on the owner's request. No forensic feature has been lost.
+- Void: when a droplet lands, `forensicBlockerAlongPath` tests the line from where it left to where it came down against every stickman, barricade and enemy. A body in the way and tall enough at that point catches the droplet: no mark on the ground behind it, a stain on the body instead. A blocked droplet is about 3% of an all-round spray and more in a directional one (sniper, blade, arrow), because the void is the angle the body covers.
+- Stains: `stainEntity` and `drawBloodStains` keep up to 14 stains per body, drawn over the emoji or stickman, red at first, drying to brown within about a minute of game time and fading out after four minutes. A struck enemy also gets stains on the wound side. Low quality draws 6.
+- Checked: syntax, design contract (no problems), blocked-droplet counts with and without a stickman in the spray, and a render call in headless Chromium. Not checked: how the stains look on each emoji and stickman, or the cost with many bodies in a long fight.
+
+## [1.7.129] — 2026-10-08 (UTC)
+
+### The wave bar is now a phase label (WAVE-PHASE-TEXT-01)
+- Asked: turn the white wave bar into text naming the wave phase, with standby between waves.
+- The progress bar beside the wave number is replaced by a fixed-width label: STANDBY between waves, INCOMING while the wave dispatches its enemies, FIGHTING once they are all out. It updates with the existing HUD refresh at each state change.
+- Checked: syntax and design contract. Not checked: the label's fit in the top bar on a phone-width screen.
+
+## [1.7.128] — 2026-10-08 (UTC)
+
+### A wounded enemy leaves a blood trail you can follow; arrows get entry and exit spray (BLOOD-TRAIL-01)
+- Asked: realistic arrow blood; an enemy with an arrow in it should bleed along its path like a tracked deer; make the forensics as deep as possible.
+- Checked on GitHub: main is still 1.7.117, so nothing there is newer than this working copy; the 1.7.118 to 1.7.128 changes are all still to upload. Existing before this: bloody footprints and wet-foot pickup (`updateWalkingBlood`), puncture marks, satellite drops, expirated mist and drip trails.
+- Trail: `updateBloodTrails` runs for any enemy that is still bleeding or below 40% health. It sheds a droplet every 20 to 45 px of walking from wound height at the enemy's own ground velocity, so each lands as an elongated stain pointing along its travel (alpha = asin(W/L)). Spacing shrinks with more stuck arrows and lower health and widens as the wound clots; every 4th drop also throws two small satellites. A bleeding enemy that stands still drips straight down in round drops that build into a pool. Low quality uses wider spacing and no satellites.
+- Arrows: an arrow hit now has its own profile. A thin, slow back-spatter toward the archer is the entry wound; a hit above 70% power adds a faster forward exit spray.
+- Checked: syntax, design contract (no problems) and a bleeding enemy walking 360 px in headless Chromium (drops land in line along its path). Not checked: how it looks in a real fight or the cost with many bleeding enemies at once.
+
+## [1.7.127] — 2026-10-08 (UTC)
+
+### Free moves belong to each stickman (MOVE-PER-STICKMAN-01)
+- Asked: moves should not be shared between stickmen, no move counter next to the wave, and +1 move on every promotion, every boss kill and from the boots.
+- Before: one team-wide `moveCharges`, +1 every 2 waves, shown in the top bar, plus one per pair of Running Shoes each round.
+- Now: each stickman has its own `moveCharges` (starts at 1, capped at 3 as before). `grantTowerMove` gives +1 on a promotion, on a boss kill by that stickman (Boss or Santa) and, for each pair of Running Shoes it carries, at the start of every round. The Move button shows that stickman's count. The top-bar counter, the every-2-waves gain and the debug line are gone. Each stickman's count is saved; an old save gives everyone 1.
+- Checked: syntax, design contract (no problems), per-stickman grant, promotion gain, button count and save in headless Chromium. Not checked: a real boss kill or a boots round start.
+
+## [1.7.126] — 2026-10-08 (UTC)
+
+### Flying blood droplets on every hit and kill, arterial beats, and map expansion during a wave (FORENSIC-SPATTER-01, EXPAND-MID-WAVE-01)
+- Asked: the tiny blood droplets only showed on the attract screen; make the game fuller. And: expanding the map while a wave is in progress is fine, allow it.
+- Cause (droplets): the droplet physics (gravity, quadratic drag, 7.65 m/s terminal velocity, stains at alpha = asin(W/L)) only ran for the gore explosion, which is 6% of one-hit kills.
+- Fix: `spawnForensicSpatter` runs on every blood-drawing hit and every kill. The spray follows the weapon: sniper round gives a fast fine forward mist (about 15 drops), blunt gives a medium radial spatter (about 11), blade gives a cast-off fan (about 8), spear a narrow forward jet with some back spatter, archers and mages a light spray. Kills throw about 2.2 times as many, scaled by the enemy's size. Low quality and heavy-load frames use 40%. Each bleed beat adds an arterial arc (`spawnArterialBeat`) that follows the bleed pulse in a fixed direction per wound. The droplet pool grew from 220 to 700. Landed droplets are normal decals, so the existing decal caps still apply.
+- Fix (expansion): the 'Wave in progress' block is gone; one bought expansion per wave still applies. The route extension already shifts every live enemy's path index, so enemies keep their place. The Build menu row, help text, hack action and AGENTS.md rule were updated to match.
+- Checked: syntax, design contract (no problems), droplet counts per weapon and a mid-wave expansion in headless Chromium. Not checked: how it looks or performs in a long fight.
+
+## [1.7.125] — 2026-10-08 (UTC)
+
+### Automatic pans and the drag coast no longer jump after a long frame (PAN-CLOCK-01)
+- Asked: check the second pan clip (overlay shows v1.7.124, 60 Hz, 16.7 ms cap) and do what is best about the stutter.
+- Found: the clean auto pans (peak about 9 px per frame, no repeated frames) confirm PAN-SUBPIXEL-01. The overlay's pan timing line shows 58-100 ms frame gaps during pans (p95 up to 100 ms), and the camera shifts in the clip jump 45-76 px on the frames after them. The pans ran on real time, so one long frame moved the camera several frames' worth at once. Game cost was 0.4 ms a frame, so the stalls are outside the game's own work; their source is not identified (screen recording on a 2560x1440 display is a candidate).
+- Fix: `cameraPanClock` advances with real time but at most 24 ms per frame (`CAMERA_CLOCK_MAX_STEP_MS`). The tower-follow pan, the wave-start pan and the drag coast use it, so a long frame shows the camera continuing instead of jumping. A pan with stalls takes slightly longer than 1.4 s.
+- Checked: syntax, design contract (no problems) and a pan run to completion in headless Chromium. Not checked on a real display.
+
+## [1.7.124] — 2026-10-08 (UTC)
+
+### Arrows leave the bow grip; slow camera motion drawn at exact position (ARROW-GRIP-01, PAN-SUBPIXEL-01)
+- Asked: arrows seemed to fly from the quiver and float to the enemy; spawn them at the middle of the bow where the hand holds it. Also fix the pan stutter shown in the attached clip.
+- Cause (arrows): the spawn point was the nocked arrowhead position, 4 px ahead of the hand at full draw. Fix: ARROW-GRIP-01 spawns at the hand (`archerNockedArrowTip(angle, 1, 0)`).
+- Cause (pan): the clip shows frozen frames and 2 px jumps while an automatic pan eases in and out, because the camera was always rounded to whole pixels (PAN-SNAP-01). Fix: PAN-SUBPIXEL-01 draws the camera at its exact fractional position while it moves under 8 px per frame; faster motion and a still camera stay snapped.
+- Checked: syntax only; not watched on a real display.
+
+## [1.7.123] — 2026-10-08 (UTC)
+
+### Pan timing readout covers automatic pans and shows display rate against the frame cap (PAN-DIAG-01)
+- Asked: the pan stutter mostly happens on the automatic pans, such as selecting a stickman.
+- Measured on the live 1.7.117 build with scripted automatic pans (wave-start pan and stickman follow, cold and warm): script time per frame stayed 0.1 to 0.4 ms, the camera moved up to about 63 px in one frame at the peak of the ease, and no canvas was created mid-pan, so sprite caches and script cost do not explain it. The browser pane there ran at 20 to 30 FPS, so frame pacing itself could not be judged.
+- Change: the readout now records every frame in which the camera moves, from any cause, and the overlay gains a row with the display refresh rate, the frame cap interval and the count of frames drawn uncapped during camera motion. No pan behaviour changed.
+- Checked: script syntax. Not run in a browser.
+
+## [1.7.122] — 2026-10-08 (UTC)
+
+### Gunalinder is now the Cowboy; fresh blood stays red much longer (FRESH-BLOOD-02)
+- Asked: call the Gunalinder a cowboy; fresh blood fades too quickly on High and probably Low, and the game is meant to be forensically interesting about blood.
+- Cause found: red blood went from bright red to a brown-orange in the first 3.3% of a stain's life (27 to 71 seconds) and reached its dried colour at 40%. Stains themselves last 14 to 36 minutes and the 750 (High) and 250 (Low) caps recycle oldest first, so only the colour was fading fast; both qualities use the same curve.
+- Fix: bright red now eases to a wet red over the first 12% (about two to four minutes) and dries to the enemy's own shade by 60% (about eight to twenty minutes); the baked-layer re-stamp interval is 30 s (was 20 s) so the longer ageing window costs the same. The class display name and its unlock text are Cowboy; the internal key and sound names are unchanged, as are saves.
+- Checked: script syntax; the fresh-blood contract check still sees 255, 40 at impact. Not run in a browser.
+
+## [1.7.121] — 2026-10-08 (UTC)
+
+### Pan timing readout in the debug overlay (PAN-DIAG-01)
+- Asked: iron out lag on pan; FPS does not dip but there is a distinct stutter on every pan.
+- Found by reading the code and measuring: the game's own frame cost is about 0.2 ms, the frame cap already lifts while the camera moves, and the map is a single cached 2048 by 1280 blit, so nothing on the game side explains a steady stutter. The browser pane here ran animation at about 20 FPS, so frame pacing on the owner's machine could not be measured.
+- Added: while a drag pans the camera, the overlay shows the frame gap (median / 95th percentile / worst), the average camera step per frame and the step jitter over the last 120 frames, kept after release. A large worst gap means frame pacing; a high jitter with a small gap means uneven camera steps.
+- Checked: script syntax. Not run in a browser. No pan behaviour was changed.
+
+## [1.7.120] — 2026-10-08 (UTC)
+
+### Debug overlay never cuts anything off (OVERLAY-GRID-01, DEBUG-OVERLAY-NOCUT-01)
+- Asked: make sure nothing ever gets cut off; the GPU line ended mid-name.
+- Cause found: 1.7.119 sliced the GPU row to 72 characters and every grid cell to 23, and the panel dropped rows when the viewport was short.
+- Fix: columns now size to their longest cell; full rows wrap at word breaks to the canvas width; when the panel is taller than the room under the HUD the font shrinks from 11 px down to 7 px before any row is dropped.
+- Checked: script syntax and column alignment with sample rows. Not run in a browser.
+
+## [1.7.119] — 2026-10-08 (UTC)
+
+### Debug overlay laid out as an aligned grid; no not-allowed cursor on unaffordable rows (OVERLAY-GRID-01)
+- Asked: condense the debug log so the lines are organised; "music" sat alone on a line and some lines ran far longer than others; the not-allowed cursor on unaffordable Build rows is too extreme.
+- Cause found: `flowOverlaySegments` (OVERLAY-FLOW-01) packed free-length segments into rows by pixel width, so rows ended ragged and a short segment could wrap alone.
+- Fix: the overlay is now three equal-width cells per row, with GPU, last minute and scale on full rows; the flow helper is removed. `.build-row.unaffordable` no longer sets a cursor.
+- Checked: script syntax and diff. Not run in a browser; the compact phone overlay is unchanged.
+
+## [1.7.118] — 2026-10-08 (UTC)
+
+### Build menu locked vs. unaffordable, wider range-ring symbols, fuller README (BUILD-ROW-STATE-01, RANGE-RING-SUITS-01)
+- Asked: locked towers should look different from towers you cannot afford (silhouette icon; red cost); the symbols on a stickman's range circle should be twice as far apart; the README was missing a lot of information.
+- Cause found: `.build-row.locked` and `.build-row.unaffordable` shared the same grey-and-dim filter; `RANGE_RING_DOT_SPACING_PX` was 46; the README was held to box-copy only by AGENTS.md § README voice.
+- Fix: locked rows show a black silhouette icon with a faint gold edge and a dim italic name; unaffordable rows keep full colour and show the cost in bold red; `RANGE_RING_DOT_SPACING_PX` is 92. README now covers how to play, classes, elements, enemies, resources, items, settings, saving and licence; AGENTS.md § README voice records the owner decision.
+- Checked: diff reviewed. Not run in a browser; the ring count rounds to a multiple of four and never drops below eight, so small ranges still close the suit order.
+
 ## [1.7.117] — 2026-10-07 (UTC)
 
 ### Music mixing and space measured offline and rebuilt (MUSIC-SPACE-01)
