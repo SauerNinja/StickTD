@@ -99,7 +99,7 @@ Transferable equipment grants larger bonuses by rarity: 10–20 points per suppo
 
 A run is saved to a file you download and load again later. Nothing is stored on a server.
 
-Release 1.7.165 gives each starting path orientation and grass side an independent 50% chance and places two harvestable wasteland stumps within the opening view.
+Release 1.7.167 gives each starting path orientation and grass side an independent 50% chance and places two harvestable wasteland stumps within the opening view.
 
 ## Made with
 
@@ -116,6 +116,12 @@ Hover over combat stats to read their meanings, including defense, damage, criti
 
 ### 1.7.163
 Potted plants collect instantly and yield 2–3 berries. Swordsman blood arcs remain visible outside the victim on landed hits, including killing blows, independently of airborne-droplet settings.
+
+### 1.7.167
+Enemies move40% more slowly on the opening title screen. Gameplay movement and speed controls keep their existing behavior.
+
+### 1.7.166
+Each attacking class now has its own weapon-specific blood profile and restrained ground-impact pattern. Blades, thrusts, crushing blows, projectiles, claws and fictional spell effects keep distinct shapes and directions, including with optional droplets disabled. Prior breeding, sizing, fixed-puddle and 60–90-second fading fixes remain.
 
 ### 1.7.165
 Blood marks fade away over 60–90 seconds, with restrained elliptical spatter and smaller, less glossy pools. Optional droplets keep their separate budget. Babies require two mature parents; hearts identify a pair due next round, and both parents rest for three rounds after birth. Baskets are larger and presents smaller, including in existing saves.

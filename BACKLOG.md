@@ -1,3 +1,11 @@
+## 1.7.167 — title-screen movement
+- Opening attract enemies slowed40%; gameplay movement and speed settings unchanged. Syntax and focused phase/arrow-drag movement checks passed; browser visual pacing remains unverified.
+
+## 1.7.166 — weapon forensic identity delivered
+- Explicit profiles cover all33 tower entries, plus thrown axe, skeleton and environment. Core contact patterns differ by weapon action; actual projectile/blast/companion direction is threaded through affected impact/death paths. Noncombat towers explicitly emit no outgoing blood.
+- Owner vision and every class's intended pattern are recorded comprehensively in CHANGELOG1.7.166 and protected in AGENTS/designContractProblems. Distinction comes from geometry, direction, scale and action, not colour swaps or escalating counts.
+- Focused profile/geometry/emission and syntax checks passed. Browser visual comparison and sustained performance remain unverified. Existing supplemental family gore remains; anatomy, material-specific surface response and medical validation are not implemented or claimed. Do not broaden testing without request.
+
 ## 1.7.165 — latest audit outcome
 - Implemented paired mature breeding, next-round hearts/births, saved pairing/cooldowns, three completed rest rounds and reserved baby capacity. Corrected basket/present sizing in existing and new saves.
 - Implemented 60–90-second blood fading, restrained elliptical drop bodies/forward tips, smaller pool lobes/gloss and shorter cache-aging windows. Preserve stationary puddles and independently capped optional spray. Supersedes historical eight-second spray and six-minute surface-stain notes below.
