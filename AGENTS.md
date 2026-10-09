@@ -13,10 +13,29 @@ Making a change:
 1. Check the ledger for a rule that covers the request. If the request conflicts with a rule, change the rule and its check in the same release.
 2. Fix the cause with the smallest change, reusing existing helpers. Keep anything drawn every frame free of allocation.
 3. Add a design-contract check (`designContractProblems`) for whatever should stay true.
-4. Verify in headless Chromium: `node --check` on the extracted script; boot with no console errors and `designContractProblems.length === 0`; exercise the change by calling game functions (`acquireActive(towerPool).create(type, gx, gy)`, `acquireActive(enemyPool).spawn(type, 1)`, then `update(FIXED_DT); gameTime += FIXED_DT`); screenshot anything visual. State what was not verified. To hunt lag, profile a stress scene (about 120 enemies with arrows and bleeding) with Chrome's profiler over 300 frames and count canvas calls per frame by caller; fix what the numbers show, not what looks suspicious. Before removing dead code, list names nothing references outside comments (repeat after each removal), then read `git log -S name` and the CHANGELOG to see why the last use went. Keep anything that serves old saves.
-5. Bump `GAME_VERSION`, add the changelog entry (the CHANGELOG header says how), and deliver the full file set flat with `present_files`. Never a zip.
+4. Owner testing scope (2026-10-08): test ONLY modified files' changed behavior and directly affected dependencies. For JavaScript edits run syntax checks; use focused function/browser checks as relevant. Do not run broad regression, stress or additional-check suites without a request or a concrete failure that requires them. State what was not verified. Before removing dead code, check external references and relevant history; keep old-save compatibility.
+5. Bump `GAME_VERSION`, add the changelog entry (the CHANGELOG header says how), and deliver only the full changed upload files with matching versions. No separate test/audit reports unless requested. Never a zip.
 
 Voice: short answers, no filler, no preamble; say what changed and what to check. Visual work is judged by eye and must match the existing procedural style: strokes and flat colours, no external fonts or images.
+
+## Owner scope and context expectations — 2026-10-08
+Only implement explicitly requested, precise fixes with verified context. Do not make arbitrary or sweeping changes, even when wording appears broad. Ask for missing information when it affects the fix. Treat the requested commit as the baseline; review relevant history/diffs for regression risks. Do not commit, push or publish without authorization. Starting road may be horizontal or vertical (START-AXIS-01); blood splatter scales with enemy weight (BLOOD-WEIGHT-01).
+
+Current owner decisions (1.7.136): existing Tiny Grunt batches have 1 HP and +15 percentage points evasion against every defender class, including Swordsmen; do not replace or insert waves. Barricade queues must never pull units forward. Pinning an enemy shows its stats card; both that card and targeting must fit the available space. Blood voids/stains include scenery and other enemies, and blood quantity follows weight. HUD and flying damage hearts beat.
+
+Current owner decisions (1.7.137): class miss rates stay distinct, but direct holy and companion attacks share miss/evasion rules with ranged and melee; Mage cooldown stays unchanged. Transferable equipment grants 10–100 points per supported stat by rarity, not per-item totals; food/consumables and special gear effects stay unchanged. LAST targeting is available. Promotion scrolls render above the world. Clearing trees/rocks are dimmed with a flipping hourglass while retaining the progress wedge. Nests are small, 2% of event rolls and beside a tree. Farm births are babies; chicken eggs remain on grass for three completed rounds, then chicks for three; other babies grow over seven rounds. Old three-round adults remain adults on load. Surface blood uses ground-blood aging, stickman marks bind to live limb/head geometry, and an independent saved option disables splatter droplets.
+
+Current owner decisions (1.7.138): unaffordable expansion shows its red gold-bag cost using the build-row style, without extra shortage text. All slash cast-off arcs scale with victim weight. Egg maturation accepts bonus grass as well as revealed border grass, never road or unrevealed land.
+
+Current owner decisions (1.7.139): no queued-enemy or barricade-hit red discs; use emoji headbutt motion. Shovel activation never consumes the tool, including failed digs. Picnic baskets cap at 0.5 scale and nests at 0.22, including old saves. Clearing hourglasses draw above world actors/scenery; the progress wedge stays.
+
+Current owner decisions (1.7.140): close barricade queues must clear both bodies and their attack motion, including corners; keep natural approach. Normal contact adds fine weight-scaled droplets, with a modest spray increase. Surface blood lasts six minutes and scenery marks bind to visible glyph pixels. Sword guards/pommels stay proportional to blade length. Browser sharpness/performance claims require measurement.
+
+Current owner decisions (1.7.141): remove cosmetic non-interactable flora. Ordinary expansion preserves existing props instead of randomly deleting them for room; place new ordinary props only while room remains, with route conversion/current-end guards as exceptions. Future road choices use the saved run seed and adapt to obstacles. The heart hpStat is Constitution: meat directly increases it/max health with saved foodConstitution. Food and edible treats heal stickmen, not player lives, with no numeric healing feedback. Visual size variation stays inside existing tier bounds and preserves wave ordering.
+
+### 1.7.165 — current rules supersede older conflicting lifetime/breeding/size entries
+Blood marks on ground, bodies and scenery last 60–90 presentation seconds and fade over the final35%; optional landed droplets use the same lifetime but retain their independent bounded budget (BLOOD-LIFETIME-01). Caps may recycle marks earlier. Keep ground geometry fixed, weight scaling, blockers, sword signatures and non-blood debris lifetimes. Elliptical body aspect follows impact angle; short tips point along travel, never backward. End baking before fade; identical live/cached rendering. Forensic-inspired shapes are not medically validated simulation.
+Every baby requires two living mature same-species parents. Reciprocal saved pairs reserve one baby slot and are due next completed round; only those pairs show hearts (LIVESTOCK-PARENTS-01). Birth at N rests both parents through three completed rounds, allowing pairing after N+3 and birth N+4. No single-parent expansion births, immature partners or repeated per-circus deliveries. Preserve cooldowns/pairs on save/load; invalid/dead/reused mate cancels. Grow existing animals before delivery. PICNIC0.34 and CHEST0.48 apply to old and new props with shared visual/hit/stain sizing (PROP-SIZE-02).
 
 ## Project rules ledger (read this first; every rule here is a stated project rule and has a check)
 
@@ -24,9 +43,9 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 
 1. Versioning and changelog: every upload bumps `GAME_VERSION`, and EVERY changelog entry sits under its own version heading; the changelog is append-only (CHANGELOG-FORMAT). Original text follows: every upload bumps `GAME_VERSION`, adds a dated numbered top changelog entry with ### subheadings, updates README (RELEASE-VERSION-01). Never reuse a version number.
 2. More enemies, never harder enemies; counts x1.5 (x1.2 after wave 50) (MORE-ENEMIES-01). Group size and counts grow with road length (ROUTE-SCALES-WAVE-01, GROUP-SIZE-ROUTE-01). Waves come in six formations (WAVE-FORMATION-01).
-3. An expansion grows BOTH ends of the road by the same number of tiles, 1 to 3 at each end (EXPAND-BOTH-ENDS-01, decision 1.7.62, superseding EXPAND-SIZE-01's 1 to 3 in total); only if no equal growth fits at all does the road add one tile at a single end so it never cuts itself off; the road is always surrounded by grass and grass only grows (GRASS-NEVER-SHRINKS-01); stickmen are never stranded and the road avoids them (TOWERS-STAY-PUT-01, ROAD-FREEDOM-01); the road never cuts itself off (ROAD-ESCAPE-01) and varies, mostly normal sometimes wild (ROAD-VARIETY-01); at least 45% of grass stays clear and props never exceed 30% (ROOM-TO-BUILD-01, PROP-CAP-01).
-4. Expansion (free or paid) is allowed at any time, including while a wave is in progress (EXPAND-MID-WAVE-01, owner decision 1.7.126), and never needs an empty field; the player may buy one expansion per wave and each cleared wave gives one free expansion as soon as it ends (EXPAND-PER-WAVE-01, decision 1.7.75, replacing EXPAND-AFTER-CLEAR-01 and UNLIMITED-EXPANSION-01); the reveal animation is slow, clean and real-time (EXPAND-REALTIME-01).
-5. One random event near the flags and one near the finish per expansion, nine kinds (the stone cairn was removed in 1.7.60), presents rarest, chest loot is a roll (ONE-EVENT-PER-END-01, EVENT-VARIETY-01, CHEST-LOOT-01). Trees and rocks vary (SCENERY-VARIETY-01). No static gold-bag building.
+3. An expansion grows BOTH ends of the road by the same number of tiles, 1 to 3 at each end (EXPAND-BOTH-ENDS-01, decision 1.7.62, superseding EXPAND-SIZE-01's 1 to 3 in total); only if no equal growth fits at all does the road add one tile at a single end so it never cuts itself off; the road is always surrounded by grass and grass only grows (GRASS-NEVER-SHRINKS-01); stickmen are never stranded and the road avoids them (TOWERS-STAY-PUT-01, ROAD-FREEDOM-01); the road never cuts itself off (ROAD-ESCAPE-01) and varies, mostly normal sometimes wild (ROAD-VARIETY-01); ordinary new props reserve 45% clear grass without deleting existing pieces (1.7.141); end guards remain an exception and props retain the 30% placement cap (ROOM-TO-BUILD-01, PROP-CAP-01).
+4. Expansion (free or paid) is allowed at any time, including while a wave is in progress (EXPAND-MID-WAVE-01, owner decision 1.7.126), and never needs an empty field; the player may buy one expansion per wave and a wave ending with no escaped enemies still alive gives one free expansion as soon as it ends; otherwise that bonus is permanently forfeited (CLEAN-WAVE-EXPAND-01, 1.7.135) (EXPAND-PER-WAVE-01, decision 1.7.75, replacing EXPAND-AFTER-CLEAR-01 and UNLIMITED-EXPANSION-01); the reveal animation is slow, clean and real-time (EXPAND-REALTIME-01).
+5. One random event near the flags and one near the finish per expansion, nine kinds (the stone cairn was removed in 1.7.60), presents rare and nests rarer (2%, 1.7.137), chest loot is a roll (ONE-EVENT-PER-END-01, EVENT-VARIETY-01, CHEST-LOOT-01). Trees and rocks vary (SCENERY-VARIETY-01). No static gold-bag building.
 6. One kind of bag; a map falls out of about 1 in 100; a diamond about 1 in 10, click only, turns into 1 to 100 gold only (no upgrade) and the gem flies to the gold counter (ONE-KIND-OF-BAG-01, DIAMOND-GOLD-01, DIAMOND-FLIES-01, DIAMOND-CLICK-01). Coins last 15 to 20 seconds, collect on hover or slide, fly to the counter on click and on natural fade (COIN-LIFETIME-01, HOVER-COIN-01, COIN-FADE-FLIGHT-01). No gold flight on defeat or automatic bounty.
 7. No wave or milestone choice rewards (RUN-REWARD-REMOVED-01). No wind sound or wind effect on accuracy anywhere.
 8. Elements are earned at 250 stat points, never towers; Ice freezes 2 to 5 seconds, blocks the queue, is rarest and strongest; Blow Gunner is a tower that gains elements (ELEMENT-INFUSION-01, ICE-BLOCK-01). Nothing buildable costs 0 gold (NO-FREE-FIGHTERS-01). Intelligence drives Mage damage and every stickman's accuracy.
@@ -37,8 +56,8 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 13. The build, next wave and speed-up arrows play on every new playthrough, with no Settings option (INTRO-EVERY-GAME-01). Hacks are opt-in and the Hacker is a full cheat menu with gold, wood and stone (HACKER-01).
 14. Attract screen: mostly the Grunt, entering from the left or right horizon (ATTRACT-HORIZON-01); each new scene changes the time of day (SCENE-TIME-OF-DAY-01); time of day on the playing field is not decided yet.
 15. Items are finds, not a flood: kill odds supply 1 in 170, tonic 1 in 430, gear 1 in 1000, cap 5 per wave, rarity common 66, uncommon 26, rare 7, epic 1; when enemy counts go up, scale the per-kill odds down so items per wave do not rise (LOOT-RARER-01).
-16. Clearing progress on trees, rocks and bushes is a single yellow gradient wedge that fills clockwise like a clock wipe, behind the emoji, with no dark disc, stripes or outline and never a ring over it (CLEAR-PIE-01, restyled 1.7.67).
-17. Food is eaten the moment it is dropped on a stickman and is mainly a stat item: meat STR, fruit INT, vegetables DEX (Pokemon-style); every food gives 1 to 3 points of its stat and 1 to 10 experience, rolled at the moment it is eaten (FOOD-ROLL-01, decision 1.7.64); the picnic basket gives food only; stims, treats and tools are still stored (FOOD-STATS-01).
+16. Clearing progress on trees, rocks and bushes is a single yellow gradient wedge that fills clockwise like a clock wipe, behind the emoji, with no dark disc, stripes or outline and never a ring over it (CLEAR-PIE-01, restyled 1.7.67). Working trees/rocks also dim and show a flipping hourglass (CLEAR-HOURGLASS-01, 1.7.137).
+17. Food is eaten the moment it is dropped on a stickman and is mainly a stat item: meat Constitution (heart), fruit INT, vegetables DEX (Pokemon-style); every food gives 1 to 3 points of its stat and 1 to 10 experience, rolled at the moment it is eaten (FOOD-ROLL-01, decision 1.7.64); the picnic basket gives food only; stims, treats and tools are still stored (FOOD-STATS-01).
 18. Gold must have places to go: the Hero Shop sells rations, drills and a rotating merchant on rising prices; do not lower the per-enemy bounty to fix a gold surplus, add sinks instead (GOLD-SINKS-01).
 19. Performance: do not let drawing cost creep back. Fighter shadows are cached per pose and a crowd of 24 or more enemies shares one batched shadow fill (SHADOW-CACHE-01, ENEMY-SHADOW-BATCH-01); when changing anything drawn every frame, benchmark the same scene against the previous release and against 1.6.159 with drawing forced to complete (see CHANGELOG 1.7.50 for the method), and never judge a shadow or effect cost without high graphics on.
 20. Every stat grant outside the point pool goes through grantStatPoints so caps and milestones always apply (STAT-GRANT-01); anything bought or saved must keep its paid price across a reload (MERCHANT-SAVE-01).
@@ -56,7 +75,7 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 31. Classes are unlocks, never upgrades or evolutions: player-facing text says unlock, and a stat milestone adds a class to the Build menu without changing the tower that earned it (NO-EVOLVE-IN-PLACE-01, CLASS-UNLOCK-WORDING-01).
 32. Melee attacks wind up, strike and settle onto the aim without snapping, with a smear behind the blade and a thrust for spears; the swordsman's blade is tapered with a straight guard (MELEE-SWING-01).
 33. Moves belong to each stickman (`tower.moveCharges`, MOVE-PER-STICKMAN-01, decision 1.7.127): one at the start, +1 on a promotion, a boss kill and each pair of Running Shoes every round, cap 3; no team counter in the top bar.
-34. Blood is ballistic: every blood-drawing hit and kill throws droplets by weapon (FORENSIC-SPATTER-01); wounded and bleeding enemies leave a directional trail (BLOOD-TRAIL-01); a body between a wound and the ground makes a void and wears the stain (BLOOD-VOID-01, decision 1.7.130). Footprints, cast-off, puncture marks, satellite drops and the shock ring stay.
+34. Blood is ballistic: with the saved droplet option enabled, every blood-drawing hit and kill throws droplets by weapon (FORENSIC-SPATTER-01, BLOOD-DROPLETS-OPTION-01); wounded and bleeding enemies leave a directional trail (BLOOD-TRAIL-01); a body between a wound and the ground makes a void and wears the stain (BLOOD-VOID-01, decision 1.7.130). Scenery, escaped enemies, wandering animals, cats and skeletons can catch and display stains; stickman interception includes head height (BLOOD-SURFACES-01, 1.7.135). Footprints, cast-off, puncture marks, satellite drops and the shock ring stay.
 35. Camera pans run on `cameraPanClock`, which never advances more than 24 ms a frame (PAN-CLOCK-01), and are drawn at the exact position while slower than 8 px a frame (PAN-SUBPIXEL-01).
 36. Archers loose from the bow hand, in the game and on the attract screen (ARROW-GRIP-01).
 37. The top bar has no wave bar and no lives bar: the wave row ends in a phase label (STANDBY, INCOMING, FIGHTING) that fills the row up to the pause button (WAVE-PHASE-TEXT-01, HUD-FLUSH-01).
@@ -102,7 +121,7 @@ Every file delivery that changes `index.html` must, in the same delivery: (1) bu
 
 1. **No choice rewards.** Wave or milestone reward choices were never requested and are not wanted; nothing offers one (RUN-REWARD-REMOVED-01).
 2. **No wind.** No wind sounds and no wind effect on accuracy anywhere in the game. The flag pennant may still flutter visually.
-3. **Expansion per wave.** The free expansion for a cleared wave arrives as soon as the wave ends, and the player may buy one expansion per wave (`PAID_EXPANSIONS_PER_WAVE`); neither waits for escaped enemies (EXPAND-PER-WAVE-01, 1.7.75). A disabled Expand row says why in its label (one per wave).
+3. **Expansion per wave.** The wave-end free expansion is earned only if no escaped enemies are still alive at that moment; otherwise it is permanently forfeited, never delayed (CLEAN-WAVE-EXPAND-01, 1.7.135). Paid expansion remains one purchase per wave and does not wait for escaped enemies. A disabled Expand row says why in its label (one per wave).
 4. **Coins collect on hover or slide.** A mouse passing over a coin, or a finger sliding over it, collects it; bags still open on click or drop.
 5. **Bags and chests.** Bags are only gold bags; a gold bag has a rare chance to contain a map. There is no separate "rare map bag", and there is never a static gold-bag building. A treasure chest may drop bags of gold.
 6. **Intelligence** drives Mage damage and every stickman's accuracy; it is not merely a support stat.
@@ -264,10 +283,9 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 - **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
   falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
   never on the fall-off hits behind it.
-- **Wind and Luck are retired, not deleted.** Ambient miss-chance wind and DEX's bonus-gold Luck
-  were pulled for reading as confusing, not for being broken — the plumbing stays inert (see the
-  Lag-creep protocol's note on `windCeilingForWave`) so either can be re-enabled on purpose later,
-  never by accident.
+- **Wind is retired; Luck is removed (1.7.162).** Ambient miss-chance wind and DEX's bonus-gold Luck
+  were pulled for reading as confusing. Wind plumbing stays inert (see `windCeilingForWave`);
+  Luck has no stat display or bounty multiplier. Do not restore it without an owner request.
 - **Blood volume tracks crit, not randomness.** Spray size sits on a skewed scale — small most of
   the time, a large splatter only when a crit actually lands. Crit stays the rare, coveted stat;
   blood volume is how a player feels that rarity, not an independent coin flip.
@@ -773,7 +791,7 @@ The 1x/2x/3x/5x/10x speed multiplies `gameTime` (simulation time) only. Camera p
 
 ## Items and drops
 
-Items are equipment that adds Strength, Dexterity, Intelligence or Armor through `recomputeStats()`. The shop sells only `UNIVERSAL_ITEMS`; every other item is drop-only (`DROP_ITEMS`, `cost: 0`) and is looked up by id in `ITEM_BY_ID`, including when a save is loaded. A new item is one row in `DROP_ITEM_ROWS`, with its stat total inside its rarity's `statBudget`; a new signature drop is one entry in `ENEMY_SIGNATURE_DROPS`. Drops are rolled once per enemy death by `dropItemsFromEnemy()` (general chance by size tier, signature chance `SIGNATURE_DROP_CHANCE`, bosses always). Ground items are dragged onto a stickman; the ring glow grows with rarity. The first item ever seen opens the one-time Item Guide (`maybeShowItemGuide()`, key `stickTD_itemGuideSeen`), which pauses the game while open. Player-facing text about items follows the game-manual voice: general, professional, no change commentary.
+Items are equipment that adds Strength, Dexterity, Intelligence or Armor through `recomputeStats()`. The shop sells only `UNIVERSAL_ITEMS`; every other item is drop-only (`DROP_ITEMS`, `cost: 0`) and is looked up by id in `ITEM_BY_ID`, including when a save is loaded. A new item is one row in `DROP_ITEM_ROWS`, with each nonzero stat inside its rarity's `statBudget` band (10–20 Common, 25–40 Uncommon, 45–60 Rare, 65–80 Epic, 85–100 Legendary; EQUIPMENT-RARITY-STATS-01, 1.7.137); a new signature drop is one entry in `ENEMY_SIGNATURE_DROPS`. Drops are rolled once per enemy death by `dropItemsFromEnemy()` (general chance by size tier, signature chance `SIGNATURE_DROP_CHANCE`, bosses always). Ground items are dragged onto a stickman; the ring glow grows with rarity. The first item ever seen opens the one-time Item Guide (`maybeShowItemGuide()`, key `stickTD_itemGuideSeen`), which pauses the game while open. Player-facing text about items follows the game-manual voice: general, professional, no change commentary.
 
 **Loot table (LOOT-TABLE-01, 1.6.99) — theme is medieval-modern fusion.** Any new loot (items, tonics, enemy signature drops) should blend both eras: knights, wells and crossbows alongside energy drinks, nano-tonics, chips and coffee (e.g. Nano-Tonic, Espresso Elixir, Bounty Chip). Do not add purely medieval or purely modern loot. Regular enemies drop through one roll in `dropItemsFromEnemy()`: `LOOT_DROP_CHANCE_BY_TIER` decides whether anything drops, `LOOT_CATEGORY_WEIGHTS_BY_TIER` picks supply (common), tonic (uncommon) or gear (rare), and exactly one item drops. Do not add independent per-kill drop rolls or raise these chances without reading the per-wave cap (`LOOT_REGULAR_DROP_CAP_*`) and the design-contract check. Bosses are the exception and always drop signature and generic gear plus a Treat.
 
@@ -1324,3 +1342,71 @@ Then open `http://localhost:8000/`. Serving the folder over HTTP(S) also enables
 ### Contributing
 
 See [AGENTS.md](AGENTS.md) for project conventions, verification steps, and contributor guidance. Review the current game and source files before changing project behavior; record shipped changes in [CHANGELOG.md](CHANGELOG.md).
+
+### 1.7.142 follow-up — 2026-10-08
+Hut share increased slightly within existing eligible building-event rules. Default decal pools now high 900 / low 300, superseding earlier 750 / 250 defaults; custom overrides remain. Above 1.25× zoom draw retained settled shapes live instead of the raster cache. Ordinary scenery choices/end guards now use the saved run seed; events remain random and placement adapts to occupied tiles. Streams, arterial pulses and trails include victim weight/source. Focused checks pass; full browser visuals and zoom performance remain unverified.
+
+### 1.7.143 follow-up — 2026-10-08
+Picnic baskets cap at scale .30 including old saves. Emoji shadow contact uses painted glyph bounds and correct bottom-anchored stretch/mirroring. Existing sweets/desserts grant 1–4 capped spendable points plus existing XP/healing; chest loot adds an independent 25% dessert chance. Chest event frequency remains 6% with original limits. Fully expired emoji body stains clear before mask work. Full-history performance filter and targeted cache/blood hunk review find retained optimizations, with forensic interception and zoomed vector blood requiring browser measurement. No comprehensive lag-free claim: browser visuals, long-session FPS and actual device costs remain unverified.
+
+### 1.7.144 follow-up — 2026-10-08
+Owner sets tier decal defaults/presets High 2100 / Low 700, superseding earlier capacities; saved custom overrides remain. New runs include exactly two sparse seeded wasteland stumps, 40–60 wood each, free 12-second clearing with normal progress/save storage; older saves are not repopulated. Main blood pools now test each blob against nearest blockers using exact victim identity and victim-scaled origin height, leaving clean gaps and staining blockers. No artificial erasure of existing blood. Blob-level voids and increased-cap zoom cost require actual browser visual/performance verification.
+
+### 1.7.145 follow-up — 2026-10-08
+Containers (cardboard SUPPLY_CRATE, CHEST, PICNIC, legacy coin pouch/item) open free immediately via existing payout, including normalized old saves. Timed resources retain work: all fade to 32% and show turning/alternating hourglass on top, with progress behind. Mushrooms yield 3–5 at normal smaller sizes and up to ten at scale1.6 maximum; free20–50s harvest. Decorative flora has zero coverage plus spawn/live/baked draw guards; no wheat/sprout decoration. Browser visuals/save roundtrip remain unverified. Earlier crate10-gold price, 500ms container/mushroom delay and tree-only hourglass are superseded.
+
+### 1.7.146 follow-up — 2026-10-08
+Starting layout uses two independent coin flips: axis50/50 and side50/50, four25% layouts. Starting stumps now occupy visible outer wasteland in the opening viewport, not eight tiles offscreen; keep two, small/sparse,40–60wood/free12s. Viewport-aware placement supersedes the old distance rule only on new runs; retain existing save positions. Source-executed desktop/mobile layout checks pass; browser visuals remain unverified. Implement authorized requests on first ask, verify the actual path through generation/render/interaction, and clearly distinguish local delivered versions from published builds.
+
+### 1.7.148 — instant stumps
+Owner: gather stumps immediately on click for zero gold; keep 40–60 wood. New and loaded stumps use the existing immediate clearing payout/removal path. Supersedes all earlier 12-second stump harvesting rules.
+
+### 1.7.149 follow-up
+Pin centered/raised; attack anger accents occasional; rear rock blood blocked without painting visible front; baskets cap .20; Swordsman weight-scaled curved cast-off, including first hit. Supersedes pending implementation notes for swordsman/basket; visual verification is still pending.
+
+### 1.7.150
+Stickman attackers reserve body-separated circular positions; overflow waits. Debug log labels omit Download. Debug log identifies intermittent scenery draw stalls; browser crowd/obstacle verification and scenery profiling remain open.
+
+### 1.7.151
+Branches replace stumps, including loaded saves: instant/free,5–10wood;0–3 attempts per expansion outside grass. Ordinary scenery reveals per tile with brief pop/fade. Endpoint guards and eligible random events also place during tile reveal; finalization retains fallback event placement. Browser verification pending.
+
+### 1.7.152 pin correction
+Anchor the pointed end of 📌 at horizontal forehead center, three pixels above the original resting position. Restore original .54/.36 glyph-tip offsets; supersedes glyph-center positioning from1.7.149. Browser emoji alignment pending.
+
+### 1.7.153 pin placement
+Owner adjustment: pin three pixels left and four more up from1.7.152; retain point anchoring and animation.
+
+### 1.7.154 sword grip
+Sword butt stays near palm instead of elbow: grip back extension≤0.8,pommel≤1.2 local pixels; retain blade tip/reach/hand pose across sword variants. Browser verification pending.
+
+### 1.7.155 hourglass
+Use one centered ⌛ sprite with an eased full turn over600ms per1.8s cycle; no alternating glyph/half-turn reset. Reduced motion static. Supersedes earlier alternating-hourglass rules.
+
+### 1.7.156 harvest indicator
+Progress radius=size/2; hourglass uses identical item.x/item.y center. Supersedes raised-hourglass and oversized wedge geometry.
+
+### 1.7.157 chat overlay
+Stickman speech bubbles render last in world space, above scrolls and harvesting indicators. Harvest circle radius stays size/2 with hourglass at the same item center.
+
+### 1.7.158 audit
+Scenery saves preserve session-relative harvest/reveal/blood ages via presentationClockMs and restoreSceneryClock. Legacy saves restart timed work without another charge and complete reveal. Branch shadows use their own silhouette; healing-prop progress uses presentationTime. Browser visual/performance verification remains required.
+
+Audit validation: 516 DOM/native-canvas assertions passed, 15 expansions, 300 crowded frames, High/Low zoom renders and inventory/save tests. Route-scaling contract uses fixed synthetic baselines; tree species uses tile RNG; reveal transforms stop after450ms; cooked meals hide healing quantities. Browser/GPU profiling and completion-time fallback events remain open.
+
+### 1.7.159
+Grunt max HP equals weight-based Constitution(round84×weight); Tiny remains1HP per earlier explicit rule. Mushroom sizes bypass endpoint bias:85% small/12% medium/3% huge. Migrate idle legacy mushrooms once; preserve in-progress size and save new rolls.
+
+### 1.7.160
+Finalization props use existing450ms entrance if newly created/replaced and not already timed. Established scenery never restarts its entrance. Owner testing/handoff scope above supersedes older broad-check requirements.
+
+### 1.7.161
+Pig radius14 rather than12;1–3bacon on harvest. Pin point anchors one CSS pixel below painted emoji top using actual render transform and cached pixel extrema; replaces fixed forehead offsets/pullback. Preserve other livestock yields/growth.
+
+### 1.7.162
+Combat stat values explain their meanings on hover (STAT-TOOLTIPS-01). Remove Luck/clover UI and bounty multiplier; preserve random loot and escaped cleanup fraction.
+
+### 1.7.163
+Potted plants collect instantly/free, including saves; keep2–3berries (POTTED-INSTANT-01). Swordsman direct HP-damaging hits emit one weight-scaled207-degree ground arc outside the victim radius, at least3tangent marks; no generic spray RNG, first-blood or airborne-droplet gating (SWORD-BLOOD-ARC-01). Keep gore-off/dust/hut/full-shield exclusions, secondary-damage exclusion, blockers and decal caps. Supersedes1.7.149's short circular radius and circular-arc droplet gating. History review validated all111 commits through50a2e5bf by index patch replay/blob equality.
+
+### 1.7.164
+Ground decal geometry is fixed after impact: wet-foot pickup copies colour, never shifts/shrinks source blobs (BLOOD-GROUND-FIXED-01), superseding any old drag-pool behavior. Keep bloody footsteps and birth-time blocker voids. Ballistic/particle-settle optional spray uses separate High240/Low80 short-lived eight-second marks, never the2100/700 ground budget (BLOOD-SPRAY-BUDGET-01). Clear optional marks on droplets-off; never remove existing core ground marks. Preserve Swordsman arc rules. Baking uses drawOneDecal; cached RGB stays defined, pools restamp oxidation. Clear isSwingArc on every non-swing emitter; zero cap is valid, lowered cap is enforced and gore-off clears the baked layer immediately. Browser/GPU appearance/performance remains unverified.

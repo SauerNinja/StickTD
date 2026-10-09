@@ -1,10 +1,274 @@
 # Changelog
 
-How this file works: newest first. Every entry starts with a heading `## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
+How this file works: newest first. Every entry starts with a version heading.
+
+## [1.7.165] — 2026-10-09 (UTC)
+### Blood geometry, fading and mature animal pairs
+- Ground blood, optional landed droplets and body/scenery stains get individual 60–90-second presentation-time lifetimes, with a smooth final fade. Airborne drops still land promptly. Optional spray retains its separate bounded budget and toggle; heavy combat may recycle old marks earlier at the existing caps. Bones, skulls and rubble retain their own lifetimes.
+- Replace exaggerated rear triangles with elliptical bodies and short forward tips. Ballistic impact aspect uses current three-dimensional velocity, including the final gravity/drag step. Reduce oversized pool lobes and glossy highlights; retain weight scaling, blocker voids and fixed ground coordinates. Sword cast-off keeps its visible curved signature, gently spreading rather than a perfect ring, and remains independent of optional droplets.
+- Cache baking ends before fading begins, and oxidation refresh follows the shorter lifespan. Live and baked paths retain identical geometry. Surface stains use each mark's own lifetime, including saved stains; old marks without one use 75 seconds.
+- Births require two living, mature same-species parents in a reciprocal pair. A nearby eligible pair reserves one baby slot and shows hearts only when due at the next completed round. One baby per pair; no expansion-time single-parent births and no duplicate births from multiple circuses. A missing, dead or reused parent cancels the pair.
+- Both parents rest for three completed rounds after birth. A birth at round N allows a new pair after N+3 and a next birth no earlier than N+4. Grow existing animals before delivery so newborns start at age zero. Save/load retains pairs, due rounds and each parent's cooldown; legacy juvenile growth remains compatible.
+- Basket scale increases from 0.20 to 0.34; present scale decreases from 0.75 to 0.48, including existing saved props and matching hit/stain bounds. Interpreted the owner's “basic” as basket using the supplied screenshots.
+### Context and focused validation
+- Refreshed GitHub head remains 50a2e5bf (1.7.133); reused the verified 111-commit/full-index-diff replay whose resulting blob matches 72739afe. Audited affected blood emitters, landing/interception, stationary pools, caching, expiry, toggles and budgets; animal spawning, maturation, pairing, round completion and persistence; and prop size consumers. Preserve all cumulative local fixes.
+- Shape reference: NIST Cast-Off Pattern (https://www.nist.gov/glossary-term/19826) and Scientific Reports doi:10.1038/srep11461 (https://www.nature.com/articles/srep11461). Ellipse aspect and direction follow forensic principles; fantasy combat and stylized surfaces are not a medically validated simulation.
+- JavaScript syntax and focused modified-behavior checks passed: mature pairs, birth timing, rest, saves, capacity reservations, lost/reused parents; fixed puddles, lifetime bounds, fading, impact geometry, live/baked pixels, independent spray budgets/toggles, sword arcs and saved prop sizes. No broad suite. Full browser appearance, gameplay and GPU performance remain unverified.
+
+## [1.7.164] — 2026-10-09 (UTC)
+### Fixed ground puddles and independent optional spray
+- Remove wet-foot pickup's blob translation/shrink: settled puddles never move or deform when walked over. Keep colour pickup and bloody footprints. The source was introduced in84904120 (1.0.202); blockers now only affect new impacts, never settled geometry.
+- Optional ballistic landing marks and old particle-settle splashes use a separate short-lived pool (High240/Low80, eight seconds), outside the2100/700 ground-decal budgets. No unbounded marks. Disable droplets to clear this optional pool/airborne spray while retaining established puddles, blade streaks and footprints. Ground cap0 suppresses new marks safely. Other class ground fans retain their previous droplet-toggle behavior; Swordsman circular signature stays independent per1.7.163.
+- Baking calls the same ground renderer as live/zoomed drawing, preserving pool shape, wet shine, colour and rim/core aging. Include baked pools in periodic oxidation refresh. Repair cached rim/core RGB values that were undefined after the settled-colour shortcut.
+- Wet-foot pickup and local blood saturation ignore bones, skulls, worms and rubble; debris cannot create bloody feet or suppress blood marks, and blood clutter cannot suppress debris insertion.
+- Reset isSwingArc in reused non-swing particle slots; blood streams and ordinary particles no longer inherit old sword-arc rendering. Gore-off clears both ground and optional spray, active blood particles and the baked layer, with a paused redraw.
+- Guard zero/fractional decal capacities and enforce lowered limits by discarding oldest timestamps; mark baked-cache removal for rebuild. Preserve weight scaling, first/killing-hit Swordsman signature, existing forensic interception, trails, body stains, bone/skull layering and clocks.
+- Audit used the previously validated111-commit/full index diff replay (authoritative blob72739afe); refreshed GitHub head still50a2e5bf/1.7.133. Inspected current blood emitters, pooling, landing/blockers, wet footprints, live/baked rendering, aging, budgets and option handlers. Changes remain local cumulative releases.
+- Syntax and focused changed-behavior checks passed; browser/GPU appearance and performance remain unverified. No broad regression suites or separate audit/test reports.
+
+## [1.7.163] — 2026-10-09 (UTC)
+### Instant potted plants and visible sword blood arcs
+- Potted plants (BUSH) collect instantly for zero gold via the existing payout/removal path, including loaded plants. Retain 2–3 berries.
+- Every landed direct Swordsman hit that damages a blood-bearing enemy emits one compact circular cast-off sequence, including first/killing hits, independently of generic spray RNG and airborne-droplet settings. Fully absorbed shield hits, secondary companion/chain damage, dust enemies, huts and gore-off remain excluded. Remove duplicate Swordsman arc paths.
+- Circular marks now sit outside the victim radius and retain at least three tangent stains so small enemies still show a curve. Preserve 207-degree sweep, fixed handedness, weight-scaled mark sizes/count, body/scenery interception, aging, baking and existing decal caps. Other classes keep their existing fan geometry.
+- History: checked all111 GitHub commits/diffs through50a2e5bf (1.7.133), replayed every index patch and matched the authoritative blob72739afe. Cast-off introduced5890720f (1.0.132); first-blood suppression84904120 (1.0.202); consistent handedness5552cef3 (1.0.205); Low/crowded hit suppression59aac723 (1.6.32, authored1.6.14); fewer arc drops291cb7d3 (1.7.75, authored1.7.71). Local1.7.137 added droplet gating,1.7.140 interception,1.7.149 a short-radius circular layout. These accumulated suppressors explain reduced visibility; no evidence that GitHub deleted the arc function. All local cumulative fixes retained.
+- Syntax and focused harvest/arc/damage-path checks passed. Browser appearance/performance remains unverified; missing screenshot files were not inspected.
+
+## [1.7.162] — 2026-10-09 (UTC)
+### Explain combat stats and remove Luck
+- Every combat stat now explains its meaning on hover: Constitution, defense, attack damage, critical chance/multiplier, attack interval and range. The health bar explains current/maximum health; existing class-specific STR/DEX/INT explanations remain.
+- Remove the clover Luck stat, inspector bindings and bonus-bounty path. Ordinary bounties and escaped-enemy cleanup rewards retain their existing values; random loot outcomes are unchanged. Old saves require no conversion because Luck was already neutral and not saved.
+- JavaScript syntax and focused inspector/reward checks passed. Browser hover appearance remains unverified. Includes all prior cumulative changes.
+
+## [1.7.161] — 2026-10-09 (UTC)
+### Pig size, bacon and painted-edge pin
+- Pig base radius grows12→14(about17%); retain growth stages, HP and movement rates. Loaded pigs derive their size from the updated base.
+- Each harvested pig drops1–3 bacon with small horizontal separation. Other livestock meat yields remain one.
+- The pin point follows the painted emoji's top edge, one CSS pixel below it, using cached opaque pixel bounds and the actual render transform. Center horizontally; replace fixed forehead offsets and pullback motion. Account for growth, mirroring, stride/attack transforms and zoom. Suppress stale pool/offscreen anchors; pixel analysis occurs only on first use per sprite.
+- Focused modified-behavior checks and syntax passed; browser emoji/font alignment remains unverified. Includes earlier cumulative fixes.
+
+## [1.7.160] — 2026-10-09 (UTC)
+### Wrap up finalization pop-in and handoff scope
+- Newly added/replaced scenery from expansion finalization gets the existing450ms fade-and-settle entrance. Preserve existing scenery and entrance timestamps already assigned during tile reveal; no event/yield/placement changes. Huts and livestock still use their actor rendering; fallback timing remains at completion.
+- Project instructions now require checks only for modified behavior and directly affected dependencies, and handoffs only of changed full upload files. No separate test reports or routine broad stress suites unless requested.
+- Syntax and focused entrance checks passed; browser visuals remain unverified. Includes all prior cumulative changes.
+
+## [1.7.159] — 2026-10-08 (UTC)
+### Weight-based Grunt Constitution and mostly small mushrooms
+- Grunt maximum HP equals Constitution: round(84 × weight), with standard weight1 giving84HP. Both direct and tier spawns use it; wave HP multipliers no longer inflate Grunts. Retain the earlier explicit Tiny Grunt1HP/evasion rule. Damage reduces current HP normally.
+- Mushrooms bypass endpoint size inflation:85% small(scale0.60–0.69, three mushrooms),12% medium(0.80–1.15),3% huge(1.35–1.60). Retain free size-scaled20–50s harvest and3–10yield cap.
+- Loaded mushrooms from earlier versions reroll once using a stable tile seed; retain in-progress harvest size. New sizes persist through saves. Includes all previous fixes.
+- Validation: syntax and DOM/native-canvas regression harness passed with no captured errors/contract warnings;10,000 seeded mushroom rolls, all four Grunt tiers across size extremes and HP scales1/50, legacy migration,15 expansions and300 crowded frames. Browser visuals remain unverified.
+
+## [1.7.158] — 2026-10-08 (UTC)
+### Audit corrections
+- Branches cast their own flattened silhouette instead of the fallback diamond-emoji shadow; Low keeps shadows off.
+- Saves record the presentation clock. Restored harvest progress, reveal animation and scenery blood ages rebase to the receiving session; loaded items are copied before modification. Legacy saves without a clock restart paid-in-progress work without charging again, finish the reveal and retain stains with a fresh lifetime when their age cannot be recovered.
+- Healing-prop harvest progress uses presentation time, matching the harvest timer rather than simulation speed.
+- Seed tree species with the same tile RNG as their size/placement; this closes an unseeded ordinary-scenery choice. Stop applying reveal-animation transforms once the 450ms entrance is finished.
+- Fix the route-population contract test to compare fixed two-tile and 60-tile routes and restore live state in finally; long actual roads no longer produce a false warning.
+- Cooked meals no longer show numeric healing percentages; their healing and round buffs remain unchanged. Regular foods and treats already omit healing quantities.
+- Add design-contract guards for chat above scrolls and scenery clock restoration. Preserves all cumulative 1.7.157 changes; no balance or attack-rate edits.
+- Validation: JavaScript syntax; DOM/native-canvas initialization and 516 assertions, including 15 expansions, 300 crowded simulation/render frames, food/scope/shovel and save restoration, High/Low renders at four zoom levels. No initialization errors or contract warnings. Native-canvas testing is not browser/GPU verification; Chromium installation failed.
+
+## [1.7.157] — 2026-10-08 (UTC)
+### Chat and harvesting layers
+Stickman speech bubbles now draw last in the world layer, above promotion scrolls, harvesting hourglasses and combat effects. Retains 1.7.156 harvest radius of half the emoji size and centered hourglass. HUD remains screen-space.
+
+## [1.7.156] — 2026-10-08 (UTC)
+
+### Harvest indicator fits the object
+- Progress circle radius now equals half the rendered emoji size, down from0.64×size. Center the spinning hourglass at the same item.x/item.y position as the circle; remove its upward offset. Keep smooth turn, fading, progress timing and yields.
+- Includes cumulative prior changes. Syntax and shared center/radius checks passed; browser visual verification pending.
+
+## [1.7.155] — 2026-10-08 (UTC)
+
+### Smooth centered harvesting hourglass
+- Replace the half-turn reset and alternating ⌛/⏳ sprites, which caused a pose jump and differing glyph bounds, with one fixed ⌛ sprite. Every1.8 seconds it completes a600ms full turn with eased start/stop, returning to the identical orientation at the cycle boundary. Anchor and size remain fixed; reduced motion stays static.
+- Preserve harvesting duration, rewards and progress indicator. Includes prior cumulative changes. JavaScript syntax and animation-boundary math checked; browser visuals remain unverified.
+
+## [1.7.154] — 2026-10-08 (UTC)
+
+### Sword grip sits at the hand
+- Move the rear grip endpoint toward the palm: maximum backward extension3.5→0.8 local pixels; pommel4.2→1.2. This removes the butt projecting toward the elbow in resting/swing/dual/two-handed poses, all sharing drawSwordBlade. Blade tip, reach, guard, hand pose and blood weapon tracking remain unchanged.
+- Includes prior cumulative changes. Syntax and shared sword geometry checks passed; browser visual verification pending.
+
+## [1.7.153] — 2026-10-08 (UTC)
+
+### Pin position adjustment
+- Move the selection pin three world pixels left and four more world pixels up relative to 1.7.152. Preserve glyph-to-point offsets, size and animation. Cumulative prior fixes remain included.
+- JavaScript syntax and exact source delta checked; browser visual alignment remains unverified.
+
+## [1.7.152] — 2026-10-08 (UTC)
+
+### Restore pin-tip anchoring
+- Correct the 1.7.149 regression that centered the pin glyph and displaced its point to the enemy's left. Restore the original horizontal/vertical glyph-to-tip offset; move the resting tip three pixels higher on the centered forehead. Preserve pin size, ten-second pullback and tremble.
+- Includes all earlier cumulative changes. Syntax and coordinate checks passed; platform-specific emoji tip alignment still needs browser visual verification.
+
+## [1.7.151] — 2026-10-08 (UTC)
+
+### Tile-timed scenery and small wood branches
+- Ordinary scenery now rolls on each revealed grass tile and appears with a short fade, gentle tilt and settling pop. Remove the final batch scatter to avoid duplicate population. Reduced motion skips the pop. Endpoint guard scenery also appears tile by tile. Random events attempt placement on each revealed eligible tile using the existing shared event budget; finalization retains fallback placement for events without an eligible revealed spot.
+- Replace starting stumps with small drawn branches. Loaded stumps convert on normalization. Branches gather instantly for zero gold and yield 5–10 wood.
+- Each completed expansion rolls 0–3 new branches in unoccupied wasteland near either end, excluding road/grass/towers; fewer spawn if no valid spots fit. Branches have the same brief appearance animation.
+- Syntax and focused reward checks passed. Browser animation/placement and full gameplay remain unverified.
+
+## [1.7.150] — 2026-10-08 (UTC)
+
+### Organized stickman surround and concise debug label
+- Breakaway, escaped and hut guardian attackers reserve stable circular positions around stickmen, separated by both body radii plus eight pixels. Approach at existing walking speed; overflow positions wait outside instead of dealing damage from outer rings. Barricade approach and attack cadence/damage remain unchanged. Reservations invalidate on target or pooled-enemy identity change.
+- Both log buttons now read “Debug log”; exporting behavior stays unchanged.
+- Debug log 1.7.148: recent callback FPS 59–60 and measured simulation 2.00x; intermittent 67–126ms stalls are dominated by worldScenery (up to119.2ms), while sorting is near zero. Separate scenery profiling remains open; no lag fix claimed here.
+- Syntax and deterministic slot spacing/waiting checks passed; crowded gameplay, collision obstacles and browser visuals remain unverified.
+
+## [1.7.149] — 2026-10-08 (UTC)
+
+### Occasional anger, centered pin and directional rock blood
+- Center selection pin over the emoji and raise its resting position. Angry attack marks/steam now appear in roughly one quarter of animation windows; headbutt/damage timing is unchanged.
+- Preserve incoming source coordinates in blood interception. Rear-side rock impacts still intercept blood and leave ground voids, but no longer paint the camera-facing surface. This is a conservative front/back visibility rule for flat emoji artwork, not a three-dimensional surface simulation.
+- Resolve pending corrections: picnic basket scale cap .30 → .20 (new/loaded draw paths); Swordsman cast-off uses a weight-scaled 207-degree curved droplet sequence, including its first blood hit. Other classes retain existing fans.
+- Includes all prior cumulative fixes and instant stumps. Browser visual/performance verification remains outstanding.
+
+## [1.7.148] — 2026-10-08 (UTC)
+
+### Instant stump gathering
+- Stumps gather on click for zero gold, preserving their 40–60 wood reward, placement and appearance. Reuse the immediate clearing payout/removal path; no timed harvest or hourglass for stumps.
+- New stumps start with zero harvest duration. Loaded stumps normalize to zero cost/duration on load or interaction, replacing the earlier 12-second rule. Other resource harvests remain unchanged.
+- Syntax and actual clearing-loop checks cover saved stump fields, immediate reward/removal and no duplicate collection. Full browser visuals/performance remain unverified.
+
+## [1.7.147] — 2026-10-08 (UTC)
+
+### Cumulative release handoff and version consistency
+- Deliver the complete cumulative 1.7.146 implementation under a distinct 1.7.147 release folder; index GAME_VERSION, README and this heading agree. Includes all recorded changes from 1.7.134–1.7.146, rather than the earlier 1.7.134 handoff.
+- Expansion affordability retains the existing red numeric cost style beside 💰, with no “need more gold” label. Both menu creation and live refresh use the same unaffordable class; normal blocked/max-size reasons remain.
+- No additional balance or rendering changes in this release. The latest request for revised swordsman circular blood and further basket sizing remains open; the inherited basket cap is 0.30. Browser visuals/performance remain unverified. No repository commit, push or publication.
+
+## [1.7.146] — 2026-10-08 (UTC)
+
+### Exact opening layout odds and visible starting stumps
+- Asked: independent 50% vertical/horizontal and 50% grass-side choices, and starting stumps visible without repeated requests.
+- Found: orientation already used a coin flip, but side inherited the comb generator's clamped jag (biased toward the first row). Stumps were correctly generated but at least eight tiles away, beyond the opening close-up.
+- START-AXIS-SIDE-02 uses exactly two independent coin flips to build the two-tile start directly: each of the four horizontal/vertical side layouts has 25% probability. Existing expansion rules and saved paths remain authoritative.
+- STUMP-OPENING-VIEW-02 keeps two small seeded resource stumps outside grass, sparsely separated, within the initial camera bounds. Candidates prefer the outer visible wasteland and reserve screen-edge/HUD margin. Placement depends on the opening viewport so mobile can see them. Preserve 40–60 wood, free 12-second clearing and resource appearance. New runs use this placement; saved scenery is not moved/repopulated. Supersedes the eight-tile distance rule from 1.7.144.
+- Checked: syntax/clean diff, all four exact two-roll layouts, 800 seeded stump runs across 320×480, 390×844, 1024×768 and 1920×1080 viewports, with two stumps inside opening camera bounds and original harvest rewards. Prior harvesting, blood surfaces, queue and dessert tests pass. Actual browser visibility remains unverified; screenshot path was unavailable. Files are local handoffs until uploaded, not changes to the live game.
+
+## [1.7.145] — 2026-10-08 (UTC)
+
+### Free click-open containers and visible timed harvesting
+- Asked: no cardboard-box gold charge; baskets/boxes/treasure chests open on the click like gold bags; timed harvests show a faded silhouette and turning ⌛/⏳ over the object; remove wheat/sprout decorations; large mushrooms take longer and yield more.
+- Found: SUPPLY_CRATE still had a hard-coded 10-gold cost and containers retained a 500ms clearing delay; faded/hourglass feedback only covered trees/rocks/stumps; mushroom patches always yielded two after 500ms. Earlier decorative-flora coverage was already zero, but direct spawn/draw paths lacked a disabling guard.
+- CLICK-OPEN-FREE-01: SUPPLY_CRATE, CHEST, PICNIC, legacy COIN_POUCH and ITEM have zero cost/time and use the existing clearing payout synchronously on tap. Preserve original loot branches, chest desserts, tracking and removal. Normalize spawned/loaded container fields; cost lookup also overrides old saved costs. Trees/rocks keep their existing costs/times; resource harvests remain distinct from container opening.
+- HARVEST-SILHOUETTE-01: every timed sprite fades to 32% opacity while the yellow progress wedge remains behind it; the overlay alternates ⌛/⏳ with a turn, centered over the object's upper portion and above world actors. Reduced motion keeps a static icon. Campfire draw also fades; no delayed container animation.
+- MUSHROOM-HARVEST-01: size .6–1.0 yields 3–5 mushrooms; size 1.0–1.6 rises to ten. Free harvest duration scales 20–50 presentation-time seconds. Clamp spawned, loaded and drawn mushrooms to the existing 1.6 maximum; yield is monotonic by size. Existing mushroom food effects stay unchanged.
+- Decorative flora stays disabled at spawn and both high/live and low/baked draw paths; remove wheat/sprout glyphs from its catalog and seedling appearance. Useful collectible/resource props remain.
+- Checked: syntax/clean diff and source-executed zero-gold immediate container payout tests, monotonic mushroom yield/time/max-size, fading/hourglass states, disabled flora paths and earlier stump/pool/queue/surface/dessert checks. Full browser visual/interaction/save roundtrip remains unverified; screenshots were unavailable. These rules supersede historical crate pricing/quick mushroom clearing; no other gameplay changes.
+
+## [1.7.144] — 2026-10-08 (UTC)
+
+### Larger blood budgets, sparse wasteland stumps and pool voids
+- Asked: High 2,100 / Low 700 blood decal caps, two sparse small harvestable wasteland stumps yielding 40–60 wood, effective/prominent blood voids, and suggestions for further blood details.
+- Update tier defaults and matching Settings presets/initial selection to 2,100 / 700. Preserve explicit custom/legacy saved overrides. These are bounded shared decal budgets, as before; no pool architecture change.
+- WASTELAND-STUMPS-01: exactly two seeded ordinary resource stumps per new run, at least eight tiles from the starting flag and each other, outside active grass. Compact native stump sprites are cached once and support shadows, blood masking, tap clearing, dimming/hourglass and existing scenery save/load. Each grants 40–60 wood after free 12-second presentation-time clearing. No respawns or extra event slots; older saves stay authoritative.
+- POOL-VOID-01: main pool blobs previously bypassed interception. Blood-drawing enemy pool callers now pass exact victim identity; each blob uses the existing nearest-body test from victim-scaled wound height. Intercepted blobs stain the blocker and never enter the ground cache; fully intercepted pools are omitted. Existing droplets/cast-off remain and dust stays unchanged. Existing older ground blood is not erased by moving bodies. This is blob-level interception, not pixel-perfect clipping of every large blob edge.
+- Checked: syntax/clean diff, 200 seeded stump layouts, bounds/yield/time/spacing, old-save-independent storage, cached native silhouette clipping, actual pool-to-barricade stain/empty-ground interception and victim exclusion, plus queue/surface/food/dessert regressions. Browser visibility, clearing/save roundtrip and performance at the larger capacities remain unverified; screenshot file was unavailable. Further effects are suggestions only.
+
+## [1.7.143] — 2026-10-08 (UTC)
+
+### Compact picnic, grounded emoji shadows and chest desserts
+- Asked: inspect lag/history, move detached emoji shadows onto their feet, shrink picnic baskets further, add sweets/desserts with spendable points and XP to chest loot, and check chest availability.
+- Found: cakes, cupcakes, ice cream and candy already exist as boss treats; chest loot omitted them and treats granted no direct spendable points. Chests remain at 6% event weight with two unopened maximum and the shared prop/event caps. Preserve that rarity policy.
+- DESSERT-POINTS-01 adds 1–4 direct spendable points to the existing treat catalog, in addition to its existing XP/heal/tactical rewards, capped by remaining total training capacity after XP rewards. Chests independently have a 25% dessert bonus chance, preserving every original loot outcome. Existing inventory IDs resolve to the updated definitions.
+- PICNIC-COMPACT-02: basket scale falls 0.50→0.30 and rendering clamps old-save baskets too. EMOJI-SHADOW-CONTACT-01: shadow feet use the painted glyph's bottom pixel, measured once per cached glyph; stretched/mirrored scenery shadows match the sprite's bottom-anchor transform. Stickman shadow rendering stays intact.
+- EXPIRED-SURFACE-BLOOD-01 clears fully expired emoji stains before allocating/rasterizing/drawing a mask, preventing empty 500ms cache refreshes indefinitely after stain expiry.
+- History audit: filtered all 112 available commit diffs for performance-related changes (109 matching commits, 8,399 matching changed lines), then inspected relevant cache/batching/blood additions in 00fb7e3, 5442d27 and 50a2e5b against current code. This is a broad scan plus targeted hunk review, not a manual review of every line. Existing batching/sprite caches remain. Recent forensic interception and draft zoomed vector blood are workload risks, not measured lag regressions. No renderer rewrite or visual-quality reduction.
+- Checked: syntax, clean diff, extracted actual functions for direct dessert XP/point rewards/caps, old-save basket clamps, transformed shadow contact and 10,000 expired-stain calls with no mask allocation, plus prior food/seed/queue/surface regression checks. Browser FPS, visual alignment and long-session performance remain unverified; no current pronounced lag was reported and the screenshot path is unavailable.
+
+## [1.7.142] — 2026-10-08 (UTC)
+
+### Hut frequency, sharp zoomed blood and seeded scenery
+- Asked: slightly more aggressive huts, sharper cached blood, larger graphics-tier blood pools, ordinary generation planned from the run seed, and consistent victim-weight blood scaling.
+- Hut share of eligible building events rises 50%→60% before wave 30 and 34%→40% thereafter; overall building chance, wave-20 minimum and event/building caps remain unchanged.
+- Settled decals redraw from original vector shapes above 1.25× zoom, replacing the raster-cache blit at that zoom. Normal zoom retains caching. Default decal capacity rises high 750→900 and low 250→300; explicit overrides remain authoritative.
+- Ordinary tree/rock appearance, candidate order and end guards use the saved run seed and spatial coordinates. Existing scenery stays authoritative; placement still adapts to the road/player occupation. Random events retain independent rolls.
+- Remaining legacy streams, arterial pulses and moving/stationary bleeding trails now use victim radius weight for quantity and dimensions, retaining weapon/wound profiles and source identity for droplet interception.
+- Focused source-executed checks pass for seeds, scaling, zoom redraw, capacities and hut weighting. Browser visual/performance verification remains outstanding, especially the bounded extra redraw cost when zoomed.
+
+## [1.7.141] — 2026-10-08 (UTC)
+
+### Purposeful props, preserved scenery and food health
+- Asked: remove non-interactable decorative emojis, preserve established scenery, seed future generation from the run start, heal stickmen with food without lives/heal readouts, and increase enemy size variation.
+- PURPOSEFUL-PROPS-01 disables cosmetic flora generation. SCENERY-PRESERVE-01 stops ordinary overwrites/random deletion of established scenery and reserves room before new ordinary props; road conversion and current-end guard replacement remain allowed. This supersedes 1.7.37's old-scene deletion policy, not harvesting or resource/event props.
+- ROAD-SEEDED-PLAN-01 derives future growth styles/wild rolls/direction ties from the saved run seed and road length; the route still adapts to placement and exit checks rather than locking a whole map in advance. Existing road/scenery positions remain authoritative on load.
+- FOOD-STICKMAN-HEALTH-01: all regular food and edible treats heal the receiving stickman, never player lives; feedback retains stats/XP but omits numeric healing. Meat grants 1–3 saved Constitution points to the existing heart value, raising max health through recomputeStats; the heart retains the 500-point stat cap. Preserve legacy saved player-life bonuses without granting new ones.
+- ENEMY-SIZE-VARIETY-01 uses continuous, more extreme visual size rolls inside existing tier bounds; phase order, HP rolls, counts and rewards stay intact. Checked syntax and focused food/preservation/seed/size tests plus prior regressions; browser visuals/performance remain unverified.
+
+## [1.7.140] — 2026-10-08 (UTC)
+
+### Queue clearance, readable contact blood and sword proportions
+- Asked: orderly close barricade queues, modestly more weight-balanced droplets/contact feedback, longer/sharper blood, visible scenery marks, smaller sword hilts and a chat-request review.
+- QUEUE-BODY-GAP-01: queue gaps include both radii, a small clearance and the front attacker's lunge; corner slots check actual physical distance. Preserve normal approach and backward-only settling.
+- BLOOD-READABILITY-01: raise normal spray count 18%, add one to four fine contact drops by victim weight, retain weighted size/speed and weapon profiles. Surface stain life rises from four to six minutes; live detail lasts 12s before normal baking, 4s under pressure. Ground lifetime/pool caps stay bounded; zoomed cache sharpness remains a browser verification item.
+- SURFACE-BLOOD-VISIBLE-01: bind intercepted scenery marks to the nearest opaque sprite pixel once per stain/shape, retaining clipping and ground blood colors. SWORD-PROPORTION-01: smaller guard/pommel sizes are bounded by blade length.
+- Checked: syntax, focused queue geometry/contact blood/surface-mask/sword checks and earlier regression checks. BACKLOG records requested behavior versus remaining visual/performance checks. Browser boot, visual polish and performance remain unverified; screenshot paths were unavailable.
+
+## [1.7.139] — 2026-10-08 (UTC)
+
+### Emoji headbutts, reusable shovel and visible clearing
+- Asked: remove red attack circles, improve emoji headbutts, keep shovels after use, shrink picnic baskets/nests and make tree/rock clearing visible.
+- ENEMY-HEADBUTT-01: remove the queued-enemy red disc and barricade damage disc; use the wind-up/lunge/recoil pose against both barricades and stickmen with stronger body lean. Damage, queue positions and attack rates stay intact.
+- SHOVEL-REUSABLE-01: digging keeps the shovel and its item-log ownership in the slot, including failed digs; click/hotkey/transfer behavior remains. PROP-SIZE-01 clamps new and saved picnic baskets to 0.5 scale and nests to 0.22.
+- CLEAR-OVERLAY-01: working trees/rocks dim further; the larger flipping hourglass draws above world scenery and actors, placed above the stretched prop. Keep the yellow progress wedge and reduced-motion handling.
+- Checked: syntax, focused reusable-tool/size/overlay/headbutt checks and earlier regression checks. Browser boot, visual review and performance remain unverified; supplied screenshot paths were unavailable.
+
+## [1.7.138] — 2026-10-08 (UTC)
+
+### Expansion cost cue and remaining weight/growth gaps
+- Asked: replace expansion's “need more gold” text with the existing red cost cue and fix the two confirmed review gaps.
+- EXPAND-COST-CUE-01: expansion uses the same cost element/unaffordable style as build rows, refreshed when gold changes; full-size and per-wave limits retain their labels and purchase guards.
+- BLOOD-ARC-WEIGHT-01: slash cast-off arc count follows victim weight; drop dimensions and spread use square-root weight, including the footprint bound. EGG-ALL-GRASS-01: eggs recognize revealed route-border and bonus grass; road and unrevealed tiles do not count.
+- Checked: extracted JavaScript syntax, focused growth/arc/menu tests, existing regression checks and clean diff. Full browser boot, visual review, mobile behavior and performance remain unverified.
+
+## [x.y.z] — date (UTC)` and everything written about a change lives under the heading of the version that shipped it; nothing is written outside a version heading. The file is append-only: a new release adds one new entry at the top and earlier entries are never edited, merged, reordered or moved, so the git diff of a release is exactly one block of added lines. A correction to an old entry is a new line in the new release's entry that names the version it corrects.
 
 Reading and adding (this file is about 1.8 MB, never open it whole):
 - Read: `grep -n '^## \[' CHANGELOG.md | head -20` lists the newest versions; `sed -n '9,40p' CHANGELOG.md` shows the top entries; `grep -n 'ARROW-LOOK-01' CHANGELOG.md` finds the entry for a code marker (`// ID (x.y.z) — see CHANGELOG.md § [x.y.z]`).
 - Add: write one entry of at most about eight lines under `## [x.y.z] — date (UTC)`: the owner's ask in one line, the cause found, the fix with its marker id, and how it was checked or what was not. Insert it above the previous top heading with a script (find the first `## [`), and extend the same entry while a version is unreleased. Do not restate files or repeat earlier entries.
+
+## [1.7.137] — 2026-10-08 (UTC)
+
+### Blood geometry, targeting, clearing cues, animal growth and equipment
+- Asked: weight-scaled Mage streak variation without preferential blood volume, shared miss behavior, visible promotion scrolls, LAST targeting, body-attached/color-correct stains, clearer harvesting, optional droplets, smaller rarer tree-side nests, staged animal growth, stronger transferable equipment and an event-history audit.
+- MAGE-BLOOD-RANGE-01 / BODY-BLOOD-ATTACH-01: Mage streak length/width vary independently with victim size; reduce its extra spray bias, use shared blocker stains and ground-blood aging. Record actual stickman limb geometry, bind/clip small stains to limbs/head, and mask enemy/scenery stains to their sprite. Footprints alternate small soles after traveled distance with short bounded drags and correct baking (BLOOD-FOOTPRINT-01).
+- ALL-CLASS-MISS-01 / TARGET-LAST-01 / SCROLL-OVERLAY-01: direct holy/curse and companion attacks now use the shared miss/evasion rule; retain class baselines and Mage cooldown. LAST scores least route progress. Promotion scrolls draw after world actors/effects. CLEAR-HOURGLASS-01 keeps the progress wedge and adds dimming plus a presentation-time flipping hourglass to working trees/rocks.
+- BLOOD-DROPLETS-OPTION-01 / NEST-NEAR-TREE-01: separately save/load the droplet preference; disabling clears active blood sprays and stops ballistic/satellite/arc emission while retaining pools/wounds/gore. Nests use 0.35 scale, a 2% event share and neighboring-tree placement; no tree means bush fallback.
+- ANIMAL-GROWTH-01 / EQUIPMENT-RARITY-STATS-01: farm births now start young; eggs stay on grass for three completed rounds, chicks for three, other babies grow over seven. Save growth stages and preserve old adults. Equipment nonzero stat bands are Common 10–20, Uncommon 25–40, Rare 45–60, Epic 65–80, Legendary 85–100; preserve stat roles, consumables and special effects.
+- History: scanned all 112 available commits' index/changelog diffs for event changes and reviewed event-changing hunks/call paths. Nine event categories and circus/troll/camp/caravan systems remain; 1.7.36 consolidated rolls, 1.7.40 imposed the prop cap, 1.7.60 intentionally removed cairns. No blanket restoration. Checks: syntax, earlier regression suite, growth/miss/rarity/targeting/baking tests and native-canvas limb/mask/color checks. Browser boot/design-contract, full visual balance and performance remain unverified: Chromium download failed.
+
+## [1.7.136] — 2026-10-08 (UTC)
+
+### Blood voids, enemy cards, natural queues and heartbeat
+- Asked: visible surface stains/voids, fuller weight-balanced blood, pinned enemy stats with a larger responsive card, tiny evasive grunts, natural barricade queues and beating hearts.
+- BLOOD-ALL-VOIDS-01: cast-off streaks, blade arcs and satellite drops also intercept bodies/scenery; exclude the actual source rather than nearby enemies. Kill spray count rises about 18%; spray diameter/speed use square-root weight while volume remains weight-scaled.
+- PINNED-ENEMY-CARD-01: the shared card prioritizes the pinned enemy, shows combat/reward/status stats, wraps its name and uses two stat columns; its position/width respond to available inspector space.
+- QUEUE-NO-PULL-01: remove forward slot pulling, allow normal approach, cap movement at the queue slot and keep the stall watchdog from accelerating queued units. TINY-GRUNT-EVASION-01: existing Tiny Grunt batches have 1 HP and +15 percentage points miss chance, including melee; wave composition stays intact.
+- HEART-BEAT-01: HUD and flying broken hearts pulse twice per beat on presentation time; HUD respects reduced motion. Checked syntax, deterministic route/blood/surface/queue/tiny/heartbeat tests and mock-DOM card states. Browser rendering, visual balance, full design-contract boot and performance remain unverified because Chromium is unavailable.
+
+## [1.7.135] — 2026-10-08 (UTC)
+
+### Pattern preference, blood surfaces and clean-wave expansion
+- Asked: favor winding road patterns, let blood hit scenery and passing bodies, and permanently forfeit the wave-end expansion if escaped enemies remain.
+- ROAD-PATTERN-PREFERENCE-01: pattern preference now outranks openness/noise; Hook and Zigzag can begin turning without a previous turn. Pattern odds, spacing, exit checks and dual-end growth stay unchanged.
+- BLOOD-SURFACES-01: existing landing interception/stains now include scenery, escaped enemies, cats and skeletons; scenery uses its drawn size/base, stickman height includes the head, and recycled companions clear old stains. The nearest blocker still catches the drop; caps and drying/fade remain.
+- CLEAN-WAVE-EXPAND-01: queue the free expansion only if no escaped enemies are alive at wave end; no delayed catch-up. Paid expansion and map pickups keep their existing rules. This supersedes only the unconditional wave bonus in 1.7.75.
+- Checked: syntax/diff; 1,000 starts; 480 expansions with continuous unique routes, retained old tiles and open exits; pattern ranking; scenery/animal/head/minion interception, nearest blocker, stain caps/fade and clean/escaped bonus cases. Browser boot, visual alignment and browser performance remain unverified: Chromium is unavailable.
+
+## [1.7.134] — 2026-10-08 (UTC)
+
+### Starting road axis and weight-scaled splatter
+- Asked: allow a vertical starting road with grass left/right, and reduce oversized blood from small enemies.
+- START-AXIS-01: transpose the existing starting route on a 50% roll; retain two road tiles, two grass tiles and the expansion code.
+- BLOOD-WEIGHT-01: death volume follows the existing radius/weight scale instead of HP; ballistic spray height, speed and drop size, wound stains, large cast-off streaks and shock rings use that scale. Kill spray receives the victim body size. Weapon patterns, blood colours, voids, trails, music and audio remain intact.
+- Checked: JavaScript syntax, clean diff, 1,000 randomized starts covering all four road/grass layouts, and deterministic droplet height/speed/diameter scaling at weights 0.5, 1 and 2. Browser boot, expansion play-test and visual review remain unverified: Chromium was unavailable and its download failed.
 
 ## [1.7.133] — 2026-10-08 (UTC)
 
