@@ -1,3 +1,38 @@
+## 1.7.174 — implemented; acceptance remaining
+- [x] Buildable timed campfire cooking, shared wood pause/resume, saved jobs, recipe menu.
+- [x] Bees/honey, exact wedding-cake ingredients and three quarter-value slices.
+- [x] Branch-only wasteland, larger/tougher trolls with arrival pans, later DEX cadence, exact bag payouts and lower large-enemy rewards.
+- [x] Mage streaks, irregular sword cast-off, distinct Archer contact, end-round debris/surface cleanup, larger baskets.
+- [x] Manual camera-input simulation budget and retained SEO/analytics/music/round-follow changes.
+- [x] Focused source/function checks recorded in CHANGELOG 1.7.174.
+- [ ] Browser acceptance: recipe dialog on phone/desktop; actual blood readability at several enemy weights; intro/idle listening; 10× pan/zoom frame pacing; sustained combat/economy balance.
+- [ ] Upload all eight changed files together. Confirm 1.7.174; analytics property/report configuration remains an account-side task described in ANALYTICS.md.
+
+## 1.7.173 — impact visibility and basket
+- Strengthened sword/Mage/Archer ground signatures, reduced lasting skeletal clutter and matched basket size to the potted plant. Visual acceptance pending; screenshot paths unavailable.
+
+## 1.7.172 — round camera
+- Countdown pan and first-enemy follow implemented, with manual drag/zoom cancellation and pooled-enemy identity protection. Browser smoothness still needs visual acceptance.
+
+## 1.7.171 — music arrangement
+- Implemented warm title/idle openings, gradual rhythm entry, removal of decorative music bells and pitched bass landings after sweeps. Prior cumulative fixes remain included.
+- Pending listening acceptance: title opening, first bass entry and chorus; idle return after wave end; phone speaker/headphone balance and the transition into combat. Source tests cannot establish musical quality or actual output clipping.
+
+## 1.7.170 — concrete copy and handoff
+- Updated player-facing descriptions and feature organization; retained all pending SEO, analytics and gameplay fixes from 1.7.169.
+- Account setup and browser/Google receipt checks below remain pending.
+
+## 1.7.169 — cumulative reconciliation and organized reporting
+- Implemented the previously documented but missing explicit weapon profiles and 0.60 title-screen movement multiplier; retained the complete 1.7.168 SEO/analytics changes.
+- Added nonpersistent run IDs, bounded failed/loading analytics behavior, opt-in DebugView flag, actual item currency deductions and categorized save-import failures.
+- ANALYTICS.md is the single owner-facing setup/reporting guide. Google account configuration, receipt, browser visual comparison and sustained performance still require acceptance. Browser installation was attempted but its download failed; no browser validation is claimed.
+- Focused source-executed analytics/profile checks passed; no broad gameplay audit or claim that every historical backlog request is implemented.
+
+## 1.7.168 — SEO/analytics follow-up
+- Focused syntax and analytics checks passed. Actual browser/GA receipt remains to verify; the local browser executable was unavailable. No Google account or Search Console settings were changed by this file delivery.
+- Historical baseline mismatch (reconciled by 1.7.169): fcc1d8f has index 1.7.165 but documents 1.7.166 weapon profiles and 1.7.167 attract pacing. This release retains the actual gameplay baseline.
+- Acceptance: decline sends no tag request; accept yields one page_view; repeated acceptance does not duplicate it; revoke stops subsequent events. Check a fresh run, loaded save, five newly completed waves, pause/background/resume, back/forward cache and game-over/navigation summary deduplication in GA Realtime/DebugView and the local debug log. Queued/loaded does not prove ingestion.
+
 ## 1.7.167 — title-screen movement
 - Opening attract enemies slowed40%; gameplay movement and speed settings unchanged. Syntax and focused phase/arrow-drag movement checks passed; browser visual pacing remains unverified.
 
@@ -258,18 +293,16 @@ Primary unresolved quality goals:
 - Top-100 quality, addictive first minute, zero regressions and mastered audio are goals, not test results. Do not substitute more speculative content for validating completed fixes.
 - Keep the seven cumulative upload files, detailed UTC changelog, time-neutral README and untouched favicon/OG/references. No private tests/ZIPs in upload delivery. Owner uploads manually.
 
-## 1. Owner setup — one-time clicks outside the game (Google Analytics, Search Console, GitHub)
+## 1. Owner setup — analytics and search
 
-None of this is done by the game or by an agent; tick items off as they are finished. Counts in Analytics include only visitors who accept analytics consent; visitors who decline or do not choose are not tracked, so totals are a floor.
+Canonical setup/report definitions: [ANALYTICS.md](ANALYTICS.md). The event allowlist stays in index.html; avoid duplicate setup lists here.
 
-- [ ] **Key events.** Analytics, Admin (gear, bottom left), Events, switch on "Mark as key event" for `game_started`, `engaged_player`, `save_downloaded`. `engaged_player` appears in the list only after it has been sent once. Do not mark `wave_milestone` (it repeats every fifth wave).
-- [ ] **Custom dimensions** (Admin, Custom definitions, Create custom dimension, scope Event, parameter name exactly as written; without these a report cannot show which tower or item): `game_version`, `quality`, `platform` (values include `github-pages`, `itch.io`, `gamejolt`, `local-file`, `embedded`, `other`), `device`, `first_visit`, `tower_type`, `enemy_type`, `item`, `rarity`, `payment_type`, `structure`, `scenery_type`, `livestock`, `cause`, `setting`, `setting_value`.
-- [ ] **Custom metrics** (same place, scope Event): `wave`, `waves_completed`, `wave_reached`, `duration_s` (unit Seconds), `lives_lost`, `cost`, `level`, `refund`, `fps_median`.
-- [ ] **Data retention** to 14 months (Admin, Data settings, Data retention), and an internal-traffic filter so your own plays are excluded.
-- [ ] **Search Console.** Add a URL-prefix property for the game address and use the HTML-tag verification method. Google Analytics loads only after player consent, so the crawler may not see that tag for verification. Add Search Console’s `google-site-verification` meta line to `<head>`, upload the updated file, then click Verify. Submit `sitemap.xml`, then use URL Inspection and Request indexing.
-- [ ] **GitHub.** Add repository topics such as `tower-defense`, `html5-game`, `canvas`, `javascript`, `browser-game`, and confirm the website field points to the game.
-- Optional follow-ups once data exists: a Looker Studio funnel of `wave_started` to `wave_completed` per wave, an alert on `lag_detected`, and per-tower-type survival from `tower_downed`.
-- To report where the game was played, register `platform` as an event-scoped custom dimension, then use an Exploration with `game_started` (or `wave_started`) as the event and `platform` as the breakdown. This is runtime analytics attribution; the page’s SEO metadata remains the same on every host. Useful reports once data arrives (Explore): a funnel `game_started` to wave 1 cleared to `engaged_player` to `wave_milestone`; `tower_built` by `tower_type` beside `tower_sold` and `tower_downed`; `game_over` by `cause`; `item_dropped` by `enemy_type` and `rarity`; `lag_detected` by `device` and `quality`.
+- [ ] Upload the cumulative 1.7.174 files and confirm the displayed version.
+- [ ] Verify consent, one page_view, fresh/save runs, pause/background timing and measured five-wave engagement in GA DebugView.
+- [ ] Register prioritized custom definitions and configure the six named reports in ANALYTICS.md.
+- [ ] Test internal/developer traffic filters, retention and Enhanced Measurement configuration.
+- [ ] Verify the canonical URL-prefix property in Search Console with its actual token, submit the sitemap and inspect the homepage.
+- [ ] Confirm social preview, repository website/topics and itch.io copy. No account or hosted configuration was changed by these upload files.
 
 ## 2. Waiting on an owner decision
 

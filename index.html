@@ -2,54 +2,82 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="application-version" content="1.7.174">
 <title>StickTD — Free Stick Tower Defense Game</title>
-<meta name="description" content="Play StickTD, a free browser tower defense game. Build stickman towers, grow a winding battlefield, and face 100 waves before endless play.">
+<meta name="description" content="StickTD is a free browser tower defense game in development. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
 <meta name="author" content="SauerNinja">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://sauerninja.github.io/StickTD/">
 <!-- Open Graph / social share preview -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="StickTD — Stick Tower Defense">
-<meta property="og:description" content="A free browser tower defense game. Build stickman towers, grow a winding battlefield, and face 100 waves before endless play.">
+<meta property="og:description" content="StickTD is a free browser tower defense game in development. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play.">
 <meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="StickTD, the stick tower defense battle: stick-figure archer, mage and swordsman on a castle tower defending a winding road from angry red enemies. Free in your browser, no download or sign-up, 100 waves of enemies: build towers, train heroes, grow the map">
+<meta property="og:image:alt" content="StickTD artwork with stickman defenders overlooking a winding battlefield.">
 <meta property="og:url" content="https://sauerninja.github.io/StickTD/">
 <meta property="og:site_name" content="StickTD">
 <meta property="og:locale" content="en_US">
+<meta name="twitter:image:alt" content="StickTD artwork with stickman defenders overlooking a winding battlefield.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StickTD — Stick Tower Defense">
-<meta name="twitter:description" content="A free browser tower defense game. Build stickman towers, grow a winding battlefield, and face 100 waves before endless play.">
+<meta name="twitter:description" content="StickTD is a free browser tower defense game in development. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play.">
 <meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "VideoGame",
+  "@type": [
+    "VideoGame",
+    "WebApplication"
+  ],
   "name": "StickTD",
   "alternateName": "Stick Tower Defense",
-  "description": "A free browser tower defense game. Build stickman towers, grow a winding battlefield, and face 100 waves before endless play.",
+  "description": "StickTD is a free browser tower defense game in development. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play.",
   "url": "https://sauerninja.github.io/StickTD/",
   "image": "https://sauerninja.github.io/StickTD/og-image.png?v=4",
-  "genre": ["Tower Defense", "Strategy"],
+  "genre": [
+    "Tower Defense",
+    "Strategy"
+  ],
   "gamePlatform": "Web Browser",
-  "applicationCategory": "Game",
+  "applicationCategory": "GameApplication",
   "applicationSubCategory": "Tower Defense",
   "operatingSystem": "Any",
   "inLanguage": "en",
   "isAccessibleForFree": true,
   "license": "https://opensource.org/licenses/MIT",
-  "sameAs": ["https://github.com/SauerNinja/StickTD"],
-  "author": { "@type": "Person", "name": "SauerNinja", "url": "https://github.com/SauerNinja" },
-  "creator": { "@type": "Person", "name": "SauerNinja", "url": "https://github.com/SauerNinja" },
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "sameAs": [
+    "https://sauerninja.itch.io/sticktd",
+    "https://github.com/SauerNinja/StickTD"
+  ],
+  "author": {
+    "@type": "Person",
+    "name": "SauerNinja",
+    "url": "https://github.com/SauerNinja"
+  },
+  "creator": {
+    "@type": "Person",
+    "name": "SauerNinja",
+    "url": "https://github.com/SauerNinja"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "url": "https://sauerninja.github.io/StickTD/"
+  },
+  "@id": "https://sauerninja.github.io/StickTD/#game",
+  "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
+  "softwareVersion": "1.7.174",
+  "playMode": "SinglePlayer"
 }
 </script>
-<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAGcklEQVR4nK1XbXBU5RV+znvv7uZjNxACCR/FYBEIWaM4ixDUSUiLM7TUWnDu2jraaesUh9aUOtphHAM3t1Bsi/VHSR1jKbHT0tJdqIxtLdTBTRymUkzGiO6WhEBIkETyaTab3WT33vf0B9mSmmRj0jz/7j33nPOc57zved8LTAEGxNhnjwe2T31CU8VIhZTODBABfNjtXrqcMp5Kg7iPCS4CtQ9K6dsUPHeYAOYbcXhWCTAgCJAnbr9r7RI4/jZPseX2myYSLJEpFDhVFVcS0deOpvHD1Q1fsQgGz4SESGXc7vHYsqV6KEuouR9Gh+Kh4Yi8OByV52MR60osFl9my9j6UIy2EwwZKC1Vppt8UgI+TVMIkF+Nig3zFPud7SMxq99K2AVIKERCAkqnOaIMmgnpJOUJTYOysa7OmjUCC7q6CADsAivtRDIqJQvcbLQAYIHFoJRCZXyuOFg4Z8xamBbUlFamAQkIhYgZ/7vSCMQ2IkhwLJyWPjzdxElMqEBSzuvSOvOJlRjKtdlJIbISzGAwTGa4hGLmqDYaAb9pNDRE+UbbZmcREsA+TVMeu9DQGWH5bI5qE8sd6cocVeVMoSJXtcmC9Ex7rxnv6oTczQBV+v2zuw0BgKELgiH/4V67M4dsz9mIFsSllA4hxBDkO9fk8I6Hgo3v64AwADlhDGYiohmRAwDooypVFRYufLto3fHgHffKU3es/fqn7clkyaKYmZhZjHk/IVLOAQAwANl822bHk6HQxwnJHQ4hqCdhNhCAeo/HNrby0UqZmRUiYiKS9z96f2YqBaYkwIBY1XJy5M/uu1a7oDyWkIzFZP8FAxh0OpObgwCgXC/Pqq6uziAiq6qmamHzldaX/dUnLteff2/rqBLjhlVKAgxQbWmpYIDmw17tFMqcsGkm8hTbA2+4PY+X1dWZAV1XAoGAojOLlYvXnOqKRJ5p/PcHD2zb8nD9ivxlT8TjCReIoqnaMCnqPR4bAJxa7am4vKaE3ykq5rPu9Vbjnfdy/e0bBo/krywYW8zB6prwmXPvRgZjIxyXzJfb2/3H/nrs86PVT0hgUlY+TVO8fr/1F7fnm2vszt+2JmKvx1QM5lnqI81260crIta+gfylQx8+sq0XI/HWuGn2ZqRnfuOe4mJyZqWbbddadpStLz00mlwQ0YS7ZEICrOuCDEP+fbXnweX2jBNhaZ4/GO5Y/x1XXsVi1fHcSdvw/Ns+iRfPz845Hiy5+xitKVqxIG/purarVxNSmj2qquaFwwNvRHq7trrdbvZ6vZOeE+MIjO5p/l2BZ2GRzdFhgS/9M95XUt7U1PFW0d0HFwnHk02JiPtrocbQK7cWrNzeeqEZAP7wx6Mf9UaGL7f3BbcscC67VREi7ekdO97FFNNx3Flg3HBgM9bT32/L/e4l03yzvKmpgwEKkDAhCKZQJAOCWi80BwKslpXB6gn/RjBR6MCuA4MAzqdKmpJAkvG329qGgbZDAOArLLRTKBQ/HY8TgwEVIEAGUKpu3AgLII6bv3pqJJEIMjNVVlYqAKRhGBP2/TMjUFqq6oAI6LoKAGe2bDvQ+uh2PuLZUMAAMfQp58hUSBmgrK7ONAC58ca0o8yS+9bN2/QF65YHv1RCANfqN/19Pp+i69MnNOVwYJ9PIa/XOr3H0ApyF/tUErgeCbed6/mg6PGMpUMwDJ7JMZzEVIwJwSCXb97syHNlPR9LxPua+zp/n58zP3+Vc/lOMgxZq+szugt+JiR7/7ax73vDrx7lf+19vhIALrzwy2uXXnxp4Lj+dC4z00ykT2JSR2amWkDW7Nw5N885t7Ktt7u7pb+7igB0RvoqFmVnZy1ScvYQEVe63f/Xz8nEBHw+BQDOGD/ZH3v1KNdV7v0+ALAeUDVNU97/2YuNVw++Ej9RUbGKmYlnqMKETrquC2ia9O3adcuSuTk/bOnqvPhW8PyvWddFLWrh9/utrujAM660dNuSNNd+ImL/bKrgG63+7N6f1kQOH+HT+o+3ATdVSdob9v/8ZPfLNfz67t0bxr6fDsYp4NM0xev1Wid1/Z4VuYu+dfF659kvGnteY10XlDxU/H4QgOvR8LMMYJlrXpWua3YtGExeUGZOQNM0AEAGqfnDVuKjnujQDwCwPxT6b2Cv32/9SdOUL+/b915L98cvsZTZGVGXgwxDMs/8/jkO2qZNc1LZk5cMTdPSZ5rjPzfT+NisolGsAAAAAElFTkSuQmCC">
-<link rel="shortcut icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAGcklEQVR4nK1XbXBU5RV+znvv7uZjNxACCR/FYBEIWaM4ixDUSUiLM7TUWnDu2jraaesUh9aUOtphHAM3t1Bsi/VHSR1jKbHT0tJdqIxtLdTBTRymUkzGiO6WhEBIkETyaTab3WT33vf0B9mSmmRj0jz/7j33nPOc57zved8LTAEGxNhnjwe2T31CU8VIhZTODBABfNjtXrqcMp5Kg7iPCS4CtQ9K6dsUPHeYAOYbcXhWCTAgCJAnbr9r7RI4/jZPseX2myYSLJEpFDhVFVcS0deOpvHD1Q1fsQgGz4SESGXc7vHYsqV6KEuouR9Gh+Kh4Yi8OByV52MR60osFl9my9j6UIy2EwwZKC1Vppt8UgI+TVMIkF+Nig3zFPud7SMxq99K2AVIKERCAkqnOaIMmgnpJOUJTYOysa7OmjUCC7q6CADsAivtRDIqJQvcbLQAYIHFoJRCZXyuOFg4Z8xamBbUlFamAQkIhYgZ/7vSCMQ2IkhwLJyWPjzdxElMqEBSzuvSOvOJlRjKtdlJIbISzGAwTGa4hGLmqDYaAb9pNDRE+UbbZmcREsA+TVMeu9DQGWH5bI5qE8sd6cocVeVMoSJXtcmC9Ex7rxnv6oTczQBV+v2zuw0BgKELgiH/4V67M4dsz9mIFsSllA4hxBDkO9fk8I6Hgo3v64AwADlhDGYiohmRAwDooypVFRYufLto3fHgHffKU3es/fqn7clkyaKYmZhZjHk/IVLOAQAwANl822bHk6HQxwnJHQ4hqCdhNhCAeo/HNrby0UqZmRUiYiKS9z96f2YqBaYkwIBY1XJy5M/uu1a7oDyWkIzFZP8FAxh0OpObgwCgXC/Pqq6uziAiq6qmamHzldaX/dUnLteff2/rqBLjhlVKAgxQbWmpYIDmw17tFMqcsGkm8hTbA2+4PY+X1dWZAV1XAoGAojOLlYvXnOqKRJ5p/PcHD2zb8nD9ivxlT8TjCReIoqnaMCnqPR4bAJxa7am4vKaE3ykq5rPu9Vbjnfdy/e0bBo/krywYW8zB6prwmXPvRgZjIxyXzJfb2/3H/nrs86PVT0hgUlY+TVO8fr/1F7fnm2vszt+2JmKvx1QM5lnqI81260crIta+gfylQx8+sq0XI/HWuGn2ZqRnfuOe4mJyZqWbbddadpStLz00mlwQ0YS7ZEICrOuCDEP+fbXnweX2jBNhaZ4/GO5Y/x1XXsVi1fHcSdvw/Ns+iRfPz845Hiy5+xitKVqxIG/purarVxNSmj2qquaFwwNvRHq7trrdbvZ6vZOeE+MIjO5p/l2BZ2GRzdFhgS/9M95XUt7U1PFW0d0HFwnHk02JiPtrocbQK7cWrNzeeqEZAP7wx6Mf9UaGL7f3BbcscC67VREi7ekdO97FFNNx3Flg3HBgM9bT32/L/e4l03yzvKmpgwEKkDAhCKZQJAOCWi80BwKslpXB6gn/RjBR6MCuA4MAzqdKmpJAkvG329qGgbZDAOArLLRTKBQ/HY8TgwEVIEAGUKpu3AgLII6bv3pqJJEIMjNVVlYqAKRhGBP2/TMjUFqq6oAI6LoKAGe2bDvQ+uh2PuLZUMAAMfQp58hUSBmgrK7ONAC58ca0o8yS+9bN2/QF65YHv1RCANfqN/19Pp+i69MnNOVwYJ9PIa/XOr3H0ApyF/tUErgeCbed6/mg6PGMpUMwDJ7JMZzEVIwJwSCXb97syHNlPR9LxPua+zp/n58zP3+Vc/lOMgxZq+szugt+JiR7/7ax73vDrx7lf+19vhIALrzwy2uXXnxp4Lj+dC4z00ykT2JSR2amWkDW7Nw5N885t7Ktt7u7pb+7igB0RvoqFmVnZy1ScvYQEVe63f/Xz8nEBHw+BQDOGD/ZH3v1KNdV7v0+ALAeUDVNU97/2YuNVw++Ej9RUbGKmYlnqMKETrquC2ia9O3adcuSuTk/bOnqvPhW8PyvWddFLWrh9/utrujAM660dNuSNNd+ImL/bKrgG63+7N6f1kQOH+HT+o+3ATdVSdob9v/8ZPfLNfz67t0bxr6fDsYp4NM0xev1Wid1/Z4VuYu+dfF659kvGnteY10XlDxU/H4QgOvR8LMMYJlrXpWua3YtGExeUGZOQNM0AEAGqfnDVuKjnujQDwCwPxT6b2Cv32/9SdOUL+/b915L98cvsZTZGVGXgwxDMs/8/jkO2qZNc1LZk5cMTdPSZ5rjPzfT+NisolGsAAAAAElFTkSuQmCC">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="shortcut icon" type="image/png" sizes="32x32" href="favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- Analytics is loaded only after the player grants consent. -->
 <script>
@@ -72,59 +100,106 @@
       if(/(^|\.)github\.io$/.test(host)) return 'github-pages';
       return '';
     }
-    function platformForLabel(label){
-      label = String(label || '').toLowerCase().replace(/[._\s]/g, '-');
-      if(label === 'itch' || label === 'itch-io') return 'itch.io';
-      if(label === 'gamejolt' || label === 'game-jolt') return 'gamejolt';
-      if(label === 'github' || label === 'github-pages' || label === 'github-pages-io') return 'github-pages';
-      return '';
-    }
-    var fromCampaign = '';
-    try { fromCampaign = platformForLabel(new URLSearchParams(search || '').get('utm_source')); } catch(e) {}
-    if(fromCampaign) return fromCampaign;
-    var fromReferrer = '';
-    try { fromReferrer = platformForHost(new URL(referrer).hostname); } catch(e) {}
-    if(fromReferrer) return fromReferrer;
     var fromHost = platformForHost(hostname);
     if(fromHost) return fromHost;
-    if(isEmbedded && window.top !== window){
-      try{
-        var parentHost = window.top.location.hostname;
-        var fromParent = platformForHost(parentHost);
-        if(fromParent) return fromParent;
-      }catch(e){ /* cross-origin embeds expose their platform through document.referrer or UTM tags */ }
+    if(isEmbedded){
+      try { var referred = platformForHost(new URL(referrer).hostname); if(referred) return referred; } catch(e) {}
+      try { var parent = platformForHost(window.top.location.hostname); if(parent) return parent; } catch(e) {}
     }
     if(!hostname) return 'local-file';
     if(isEmbedded) return 'embedded';
     return 'other';
   };
   window.STICKTD_PLATFORM = window.detectPlayPlatform(location.hostname, document.referrer, window.top !== window, location.search);
-  var tagCookieOptions = { cookie_flags: 'SameSite=None;Secure' };
+  // ANALYTICS-ACCURACY-01 (1.7.168): one destination; no pre-consent event replay.
+  var STICKTD_MEASUREMENT_ID = 'G-B6H58BQ50N';
+  var analyticsVersion = document.querySelector('meta[name="application-version"]').content;
+  window['ga-disable-' + STICKTD_MEASUREMENT_ID] = true;
   window.sticktdAnalyticsReady = false;
   window.sticktdAnalyticsTagLoaded = false;
+  window.sticktdAnalyticsStatus = 'off';
+  var analyticsPageViewSent = false;
+  var analyticsPendingEvents = 0;
+  window.sticktdAnalyticsDropped = 0;
+  var analyticsDebug = new URLSearchParams(location.search).get('analytics_debug') === '1';
+  function analyticsPageLocation(){
+    var url = new URL(location.href);
+    if(!/^https?:$/.test(url.protocol)) return 'https://sauerninja.github.io/StickTD/';
+    var clean = new URL(url.origin + url.pathname);
+    // Keep campaign attribution; omit fragments, save data and arbitrary query strings.
+    ['utm_source','utm_medium','utm_campaign','utm_id','utm_term','utm_content'].forEach(function(key){
+      var value = url.searchParams.get(key);
+      if(value && /^[a-zA-Z0-9_. ~-]{1,100}$/.test(value)) clean.searchParams.set(key, value);
+    });
+    return clean.href;
+  }
+  function analyticsReferrer(){
+    try { return new URL(document.referrer).origin + '/'; } catch(e) { return ''; }
+  }
   window.enableStickTDAnalytics = function(){
-    gtag('consent', 'update', { 'analytics_storage': 'granted', 'ad_storage': 'denied', 'ad_user_data': 'denied', 'ad_personalization': 'denied' });
+    if(window.sticktdAnalyticsReady) return;
+    window['ga-disable-' + STICKTD_MEASUREMENT_ID] = false;
+    gtag('consent', 'update', { analytics_storage:'granted', ad_storage:'denied', ad_user_data:'denied', ad_personalization:'denied' });
+    window.sticktdAnalyticsReady = true;
     if(!window.sticktdAnalyticsTagLoaded){
       gtag('js', new Date());
-      gtag('config', 'GT-TW5SNHS6', tagCookieOptions);
-      gtag('config', 'G-B6H58BQ50N', tagCookieOptions);
+      gtag('config', STICKTD_MEASUREMENT_ID, {
+        send_page_view:false, debug_mode:analyticsDebug, cookie_flags:'SameSite=None;Secure',
+        allow_google_signals:false, allow_ad_personalization_signals:false,
+        page_location:analyticsPageLocation(), page_referrer:analyticsReferrer()
+      });
       var script = document.createElement('script');
       script.async = true;
-      script.src = 'https://www.googletagmanager.com/gtag/js?id=GT-TW5SNHS6';
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=' + STICKTD_MEASUREMENT_ID;
+      window.sticktdAnalyticsStatus = 'loading';
+      script.onload = function(){ analyticsPendingEvents = 0; window.sticktdAnalyticsStatus = window.sticktdAnalyticsReady ? 'loaded' : 'off'; };
+      script.onerror = function(){ window.sticktdAnalyticsStatus = 'blocked_or_failed'; };
       document.head.appendChild(script);
       window.sticktdAnalyticsTagLoaded = true;
     }
-    window.sticktdAnalyticsReady = true;
+    if(!analyticsPageViewSent){
+      window.trackEvent('page_view', { page_location:analyticsPageLocation(), page_referrer:analyticsReferrer(), page_title:document.title });
+      analyticsPageViewSent = true;
+    }
+    if(window.onStickTDAnalyticsEnabled) window.onStickTDAnalyticsEnabled();
   };
   window.disableStickTDAnalytics = function(){
-    gtag('consent', 'update', { 'analytics_storage': 'denied', 'ad_storage': 'denied', 'ad_user_data': 'denied', 'ad_personalization': 'denied' });
     window.sticktdAnalyticsReady = false;
+    window['ga-disable-' + STICKTD_MEASUREMENT_ID] = true;
+    window.sticktdAnalyticsStatus = 'off';
+    gtag('consent', 'update', { analytics_storage:'denied', ad_storage:'denied', ad_user_data:'denied', ad_personalization:'denied' });
   };
-  // CA002 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA002
   window.trackEvent = function(name, params){
-    if(!window.sticktdAnalyticsReady) return;
-    try{ gtag('event', name, params || {}); }catch(e){ /* analytics is never allowed to break the game */ }
+    if(!window.sticktdAnalyticsReady || !/^[a-z][a-z0-9_]{0,39}$/.test(name)) return false;
+    if(window.sticktdAnalyticsStatus === 'blocked_or_failed' || (window.sticktdAnalyticsStatus === 'loading' && analyticsPendingEvents >= 200)){ window.sticktdAnalyticsDropped++; return false; }
+    try{
+      var clean = { game_version:analyticsVersion, platform:window.STICKTD_PLATFORM, telemetry_schema:2 };
+      Object.keys(params || {}).forEach(function(key){
+        if(!/^[a-z][a-z0-9_]{0,39}$/.test(key) || ['source','medium','campaign','term','content','value','currency','send_to'].includes(key)) return;
+        var value = params[key];
+        if(typeof value === 'boolean') value = value ? 1 : 0;
+        if(typeof value === 'number' && !Number.isFinite(value)) return;
+        if(typeof value !== 'string' && typeof value !== 'number') return;
+        if(!(key in clean) && Object.keys(clean).length >= 24) return;
+        clean[key] = typeof value === 'string' ? value.slice(0, key === 'page_location' || key === 'page_referrer' ? 1000 : 100) : value;
+      });
+      clean.send_to = STICKTD_MEASUREMENT_ID;
+      if(window.sticktdAnalyticsStatus === 'loading') analyticsPendingEvents++;
+      gtag('event', name, clean);
+      return true; // queued, not proof of delivery to Google
+    }catch(e){ return false; }
   };
+  var analyticsErrors = new Set();
+  window.reportAnalyticsError = function(kind, line, errorName){
+    if(!window.sticktdAnalyticsReady) return;
+    var category = ['TypeError','ReferenceError','RangeError','SyntaxError','URIError','Error'].includes(errorName) ? errorName : 'Error';
+    var key = kind + ':' + category + ':' + (line || 0);
+    if(analyticsErrors.has(key) || analyticsErrors.size >= 5) return;
+    analyticsErrors.add(key);
+    window.trackEvent('game_error', { error_kind:kind, error_type:category, line:line || 0, event_group:'diagnostics' });
+  };
+  window.addEventListener('unhandledrejection', function(e){ window.reportAnalyticsError('promise', 0, e.reason && e.reason.name); });
+
 </script>
 <script>
   // CA003 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA003
@@ -136,7 +211,7 @@
       (e.message || 'unknown error') + '\n' +
       'at ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + '\n\n' +
       (e.error && e.error.stack ? e.error.stack : '(no stack available)');
-    if(window.trackEvent) window.trackEvent('game_error', { message: String(e.message || 'unknown').slice(0, 100), script_file: String(e.filename || '').split('/').pop().slice(0, 60), line: e.lineno || 0 });
+    if(window.reportAnalyticsError) window.reportAnalyticsError('runtime', e.lineno, e.error && e.error.name);
     // CA004 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA004
     (document.body || document.documentElement).appendChild(box);
   });
@@ -826,20 +901,7 @@
 </style>
 </head>
 <body>
-<!-- Crawlable page content — the game itself is a <canvas>, which Google can render but can't
-     read as text, so search engines otherwise see a nearly-empty page beyond the <head> meta tags.
-     Visually hidden with a standard accessible off-screen technique (not display:none/visibility:
-     hidden, which some crawlers discount as likely spam/cloaking) so this reads correctly for
-     screen readers and search engines alike without affecting the game's visual layout at all. -->
-<div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
-  <h1>StickTD — Stick Tower Defense</h1>
-  <p>A free browser-based stick figure tower defense game. Place and train stickman towers —
-  Swordsman, Archer, Mage, Axeman, Spearman, Hammerman, Bomber, Gatling, and more — across 100
-  waves of enemies plus an endless expedition mode beyond that. Features a growing spiral map,
-  procedural blood and combat effects, a stat-training and class-unlock system, and a final boss
-  fight against Santa. No download or install required — runs entirely in your browser. Created
-  by SauerNinja. Open source on <a href="https://github.com/SauerNinja/StickTD">GitHub</a>.</p>
-</div>
+<noscript><p>StickTD is a free browser tower defense game. JavaScript is required to play. Enable JavaScript and reload, or visit <a href="https://sauerninja.itch.io/sticktd">StickTD on itch.io</a> for game information.</p></noscript>
 <style>
   /* SANTA-CONSENT-VOICE-01 — see CHANGELOG.md § [1.6.167] Restore Santa's cookie notice, SANTA-CONSENT-VOICE-01. */
   #consent-banner{position:fixed;inset:0;z-index:999;
@@ -931,7 +993,7 @@
 </section>
 <div id="game-wrapper">
   <div id="canvas-frame">
-    <canvas id="gameCanvas">StickTD is a free browser tower defense game. Place and train stickman towers, defend a growing spiral road across 100 waves, and collect loot. Enable JavaScript and a canvas-capable browser to play.</canvas>
+    <canvas id="gameCanvas">StickTD is a free browser tower defense game. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play. Enable JavaScript and a canvas-capable browser to play.</canvas>
 
     <header id="hud-top">
       <div id="notification-bell"><button id="runRewardBtn" type="button" hidden aria-label="Choose a milestone reward">🎁</button><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
@@ -1224,7 +1286,12 @@
           </div>
           <div class="settings-panel hidden" data-panel="changes"><div id="settingsChangelog" class="settings-changelog">Release notes load when this tab opens.</div></div>
           <div class="settings-panel hidden" data-panel="about">
-            <p>Stick Tower Defense — a self-contained, dependency-free browser tower defense game.</p>
+            <h2>StickTD — Stick Tower Defense</h2>
+            <p>StickTD is a free browser tower defense game in development, playable on desktop and mobile without a download or account.</p>
+            <p>Build a squad of stickmen, train their stats, and equip what the enemies drop. Choose positions that keep enemies in range. Strengthen the squad or spend resources on new ground.</p>
+            <p>Terramorphing extends both ends of the path. Enemies that pass the finish remain on the map and can attack defenders; clear them to earn the wave-end expansion. Fight through 100 waves, then continue into endless play.</p>
+            <p>Choose a defender in Build, place it on grass, then select Start Wave. Save a run to a file to continue later.</p>
+            <p>Created by SauerNinja. <a href="https://sauerninja.itch.io/sticktd" target="_blank" rel="noopener">StickTD on itch.io</a> · <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener">Source and MIT license</a>.</p>
             <p id="aboutVersionLine">Version <span id="aboutVersionText"></span></p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
             <button id="downloadDebugLogBtn">🪲 Debug log</button>
@@ -1314,7 +1381,7 @@
         it's already paid for.</p>
         <p>A Barricade's HP is its literal block-strength (shown as a fraction, e.g. 7/10) — it
         loses at most 1 HP every 10 seconds, with the first point requiring a full contact interval. All attackers share that limit, so a Barricade can hold a chokepoint before breaking.</p>
-        <p>Each accepted expansion extends both ends of the existing path and reveals surrounding grass. Existing towers stay in place; blocked growth does not spend your expansion payment. Extra expansions wait for the next round.</p>
+        <p>Each accepted expansion extends both ends of the existing path and reveals surrounding grass. Existing towers stay in place; blocked expansion does not spend your expansion payment. Extra expansions wait for the next round.</p>
         <button id="barricade-help-modal-close">Got it</button>
       </div>
     </div>
@@ -1422,7 +1489,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.165'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.7.174'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -1858,7 +1925,7 @@ const STAT_TOTAL_CAP = 1000;        // combined trained stats per stickman
 const NAMING_THRESHOLD = 500;       // combined trained stats that unlock naming
 const MASTERY_THRESHOLD = STAT_TOTAL_CAP; // trophy + XP-to-gold conversion
 const MASTERY_XP_PER_GOLD = 25;
-const ARCHER_RATE_SHARE = 0.4; // Archers keep 40% of DEX's attack-rate bonus — DEX is already their damage stat
+const ARCHER_RATE_SHARE = 0.4; // Legacy balance reference; runtime cadence now uses attackRateFromDex.
 const PRIMARY_DAMAGE_STAT_OVERRIDE = {}; // every Archer-archetype class scales direct damage from DEX
 const CHEF_MAGAZINE = 5, CHEF_RELOAD_MS = 10000; // Crazy Chef: five knives per burst, then 10s to restock the block
 const PRIMARY_DAMAGE_PER_POINT = 0.0015; // +75% primary-stat damage at 500 — small on purpose; that stat also buys rate/range/HP/accuracy
@@ -2428,6 +2495,7 @@ function maybeShowFirstTimeAlert(storageKey, message, color){
 }
 function itemStatSummary(itemDef){
   const parts = [];
+  if(itemDef.cookedStats)for(const [stat,n] of Object.entries(itemDef.cookedStats))parts.push('+'+n+' '+stat.toUpperCase());
   if(itemDef.str) parts.push('+' + itemDef.str + ' STR');
   if(itemDef.dex) parts.push('+' + itemDef.dex + ' DEX');
   if(itemDef.int) parts.push('+' + itemDef.int + ' INT');
@@ -2591,8 +2659,10 @@ function buyPassive(id){
 function itemStatLine(def){ return itemStatSummary(def); }
 
 const SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER = 1.2;
+// RATE-CURVE-01: 50 DEX = 1.02x, 250 = 1.5x, 500 = 3x; no preferred-stat speed multiplier.
+function attackRateFromDex(dex){ const t = clampNum(dex / STAT_EFFECT_CAP, 0, 1); return 1 + 2*t*t; }
 function applyClassCooldownBalance(type, cooldown){
-  return Math.round(cooldown * (type === 'SWORDSMAN' ? SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER : 1));
+  return Math.round(cooldown * (type === 'SWORDSMAN' ? SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER : type === 'MAGE' ? 1.4 : 1.15));
 }
 const CONFIG = {
   TOWERS: {
@@ -2910,7 +2980,7 @@ const CONFIG = {
     COOKIE: { emoji:'🍪', baseHp:25,  speed:62,  bounty:3,  radius:9,  armor:0, breakawayChance:0,    breakDamage:2 },
     // CA071 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA071
     CHESS:  { emoji:'♟', baseHp:150, speed:20,  bounty:14, radius:14, armor:3, breakawayChance:0.9,  breakDamage:9 },
-    TROLL:  { emoji:'🧌', baseHp:183, speed:24,  bounty:52, radius:19, armor:2, breakawayChance:0, breakDamage:0 },
+    TROLL:  { emoji:'🧌', baseHp:275, speed:24,  bounty:52, radius:20.9, armor:2, breakawayChance:0, breakDamage:0 },
     FIRE:   { emoji:'🔥', baseHp:77,  speed:34,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:8, statusOnTower:'BURN' },
     ICE:    { emoji:'🧊', baseHp:84,  speed:28,  bounty:10, radius:13, armor:0, breakawayChance:0.6,  breakDamage:6, statusOnTower:'ICE' },
     SPLITTER: { emoji:'🦠', baseHp:98,  speed:22,  bounty:7,  radius:14, armor:0, breakawayChance:0.02, breakDamage:5, splits:true },
@@ -2935,7 +3005,8 @@ const CONFIG = {
     MONKEY:   { emoji:'🐒', baseHp:20, speed:20, bounty:0, radius:11, armor:0, breakawayChance:0, breakDamage:0 },
     ELEPHANT: { emoji:'🐘', baseHp:70, speed:9,  bounty:0, radius:19, armor:0, breakawayChance:0, breakDamage:0 },
     CLOWN:    { emoji:'🤡', baseHp:60, speed:18, bounty:0, radius:13, armor:0, breakawayChance:0, breakDamage:0 },
-    WANDERING_TROLL: { emoji:'🧌', baseHp:160, speed:16, bounty:0, radius:19, armor:2, breakawayChance:0, breakDamage:0 }
+    BEE: { emoji:'🐝', baseHp:20, speed:24, bounty:0, radius:8, armor:0, breakawayChance:0, breakDamage:0 },
+    WANDERING_TROLL: { emoji:'🧌', baseHp:240, speed:16, bounty:0, radius:20.9, armor:2, breakawayChance:0, breakDamage:0 }
   },
   SCENERY: {
     coverage: 0.22,          // fraction of buildable (non-path) tiles scattered with scenery at game start
@@ -3163,6 +3234,11 @@ function reportPathBorderProblems(){
 }
 function validateRangeBalance(){
   const problems = [];
+  if(attackRateFromDex(0)!==1 || attackRateFromDex(250)!==1.5 || attackRateFromDex(500)!==3) problems.push('DEX cadence must develop gradually toward 500 (RATE-CURVE-01).');
+  const cakeRecipe=FIRE_RECIPES.find(r=>r.id==='WEDDING_CAKE');
+  if(!cakeRecipe || cakeRecipe.ingredients.filter(id=>id==='HONEY').length!==5 || BERRY_FOOD_IDS.some(id=>cakeRecipe.ingredients.filter(v=>v===id).length!==2) || lookupItemDef('WEDDING_CAKE_SLICE').cookedStats.int!==lookupItemDef('WEDDING_CAKE').cookedStats.int/4) problems.push('Wedding cake needs two of each berry and five honey; slices retain quarter value (CAKE-SHARING-01).');
+  if(!String(applyFoodItem).includes("i<3") || !String(applyFoodItem).includes("foodDef.id==='WEDDING_CAKE'") || !String(updateCampfireCooking).includes('wood--') || chanceStructureSpawnChance('CAMPFIRE')!==0) problems.push('Campfires are built, consume shared wood gradually, and cake leaves three slices (CAMPFIRE-COOKING-02).');
+
   if(document.getElementById('inspLuckRow') || ['inspHpStatVal','inspDefVal','inspAtkVal','inspCritVal','inspSpeedVal','inspRangeVal'].some(id => !document.getElementById(id)?.parentElement?.title)) problems.push('Combat stats explain their meanings on hover and Luck is removed (STAT-TOOLTIPS-01).');
   const startsByRole = {}, capsByRole = {};
   for(const [type, def] of Object.entries(CONFIG.TOWERS)){
@@ -3284,7 +3360,7 @@ function validateDesignContract(){
       const [gx,gy] = key.split(',').map(Number);
       if(!pathCells.has(key) && !livestockOnGrass({x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE})) problems.push('bonus grass must support egg growth (EGG-ALL-GRASS-01)');
     }
-    if(!SHOVEL_ITEM.isReusable || FIXED_SCENERY_SCALE.BIRD_NEST > 0.22 || FIXED_SCENERY_SCALE.PICNIC !== 0.34 || typeof drawClearingHourglass !== 'function') problems.push('shovels are reusable, nests/baskets stay compact and clearing hourglasses overlay the world (SHOVEL-REUSABLE-01, PROP-SIZE-01, CLEAR-OVERLAY-01)');
+    if(!SHOVEL_ITEM.isReusable || FIXED_SCENERY_SCALE.BIRD_NEST > 0.22 || FIXED_SCENERY_SCALE.PICNIC !== FIXED_SCENERY_SCALE.BUSH || typeof drawClearingHourglass !== 'function') problems.push('shovels are reusable, nests/baskets stay compact and clearing hourglasses overlay the world (SHOVEL-REUSABLE-01, PROP-SIZE-01, CLEAR-OVERLAY-01)');
     if(LIVESTOCK_ADULT_ROUNDS !== 7 || livestockAdultRounds({type:'CHICKEN'}) !== 6 || !String(applyLivestockGrowthSize).includes('🥚') || FIXED_SCENERY_SCALE.BIRD_NEST > 0.35) problems.push('animals grow for seven rounds, chickens spend three as eggs and three as chicks, and nests stay small (ANIMAL-GROWTH-01, NEST-NEAR-TREE-01)');
     if(tinyGruntEvasion({type:'GRUNT',sizeTier:'TINY'}) !== 0.15 || attackMissChance(0,{type:'GRUNT',sizeTier:'TINY'}) !== 0.15 || tinyGruntEvasion({type:'GRUNT',sizeTier:'SMALL'}) !== 0) problems.push('only existing Tiny Grunts have an additional 15% evasion, including melee (TINY-GRUNT-EVASION-01)');
     if(heartBeatScale(90) <= 1 || !document.getElementById('livesHeart')) problems.push('HUD and flying damage hearts beat (HEART-BEAT-01)');
@@ -3310,9 +3386,9 @@ function validateDesignContract(){
   if(TREE_ROCK_TREE_SHARE_ON_EXPANSION !== 0.60 || Math.round((1-TREE_ROCK_TREE_SHARE_ON_EXPANSION)*100) !== 40 || treeRockKeepChance(0, 'contract') > 0.11 || treeRockKeepChance(0.5, 'contract') >= 0.4 || treeRockKeepChance(1, 'contract') !== 1) problems.push('expansion trees and stones must stay near a 60/40 mix with sparse middle scenery and denser road ends (EXPANSION-SCENERY-BALANCE-01)');
   if(DECAL_LIFESPAN!==75000 || BLOOD_STAIN_LIFE_MS!==75000 || typeof birthLivestockPairs!=='function' || LIVESTOCK_BREED_REST_ROUNDS!==3 || FIXED_SCENERY_SCALE.CHEST!==0.48) problems.push('Blood fades in60–90s, birth needs a saved mature pair with three-round rest, and props keep corrected sizes (BLOOD-LIFETIME-01, LIVESTOCK-PARENTS-01, PROP-SIZE-02).');
   if(String(updateWalkingBlood).includes('b.dx +=') || !String(landForensicDroplet).includes('pushSprayDecal') || !String(stampSettledDecal).includes('drawOneDecal')) problems.push('Ground puddles stay fixed, optional spray uses its own budget, and baking preserves live geometry (BLOOD-GROUND-FIXED-01, BLOOD-SPRAY-BUDGET-01).');
-  if(!isInstantOpenProp({type:'BUSH'}) || !String(Enemy.prototype.applyDamage).includes('spawnSwordsmanBloodArc(this, sourceTower)')) problems.push('Potted plants collect instantly; landed sword hits retain the circular ground blood signature (POTTED-INSTANT-01, SWORD-BLOOD-ARC-01).');
+  if(!isInstantOpenProp({type:'BUSH'}) || (!String(Enemy.prototype.applyDamage).includes('spawnWeaponBloodContact') || !String(spawnWeaponBloodContact).includes('spawnSwordsmanBloodArc(victim,sourceTower)'))) problems.push('Potted plants collect instantly; landed sword hits retain the circular ground blood signature (POTTED-INSTANT-01, SWORD-BLOOD-ARC-01).');
   if(sceneryClearCost({ type:'BUSH', clearCost:0 }) !== 0) problems.push('the potted plant must be free to harvest (POTTED-BUSH-FREE-01)');
-  if(!String(drawMap).includes('drawOuterWastelandTrees(ctx)') || !String(drawOuterWastelandTrees).includes('isInActiveRegion(gx, gy)') || !String(drawOuterWastelandTrees).includes('globalAlpha = 0.48')) problems.push('the outer dirt needs sparse, stable, low-contrast perimeter trees, with active play tiles left clear (WORLD-FRAMING-01)');
+  if(String(drawMap).includes('drawOuterWastelandTrees(ctx)') || !String(maybeSpawnAmbientLog).includes('nearPathTileSet.has(key)')) problems.push('Only collectible branches belong on unrevealed dirt (BRANCH-WASTELAND-02).');
   if(SMALL_SCENERY_SIZE_MULTIPLIER !== 0.5 || smallSceneryHarvestCost(100) !== 50 || SMALL_SCENERY_BUDDY_CHANCE <= 0 || SMALL_SCENERY_BUDDY_CHANCE > 1) problems.push('nearby small trees and rocks must be half scale, half harvest cost and use a bounded spawn chance (SMALL-SCENERY-CLUSTERS-01)');
   if(!Object.values(ITEM_USE_CLASSES).every(itemClass => itemClass.color && itemClass.notes.length >= 2) || ITEM_USE_HOLD_MS_BY_TIER.length !== 3) problems.push('every item class needs a colour and a sound motif, and each tier a hold time (ITEM-USE-FEEDBACK-01)');
   { const lane = acquireActive(enemyPool);
@@ -3328,8 +3404,8 @@ function validateDesignContract(){
     }
   }
   if(!GOLD_BAG_ITEM.isGoldBag || isConsumableDef(GOLD_BAG_ITEM) || GOLD_BAG_LIFESPAN_MS < 120000) problems.push('a gold bag is an ordinary ground item that opens only when clicked or dropped on a stickman and keeps its gold if it leaves the ground (GOLD-BAG-ITEM-01)');
-  if(GOLD_BAG_MIN_GOLD !== 1 || GOLD_BAG_MAX_GOLD !== 100 || normalizeGoldBagGold(0) !== 1 || normalizeGoldBagGold(1000) !== 100 || GOLD_BAG_MIN_COINS !== 3 || GOLD_BAG_MAX_COINS !== 9 || GOLD_BAG_MIN_COIN_VALUE !== 1 || GOLD_BAG_MAX_COIN_VALUE !== 25 || Tower.prototype.receiveItem.call({ type:'SWORDSMAN', equippedItems:[] }, GOLD_BAG_ITEM) !== false || !String(openGoldBag).includes('spawnGoldBagCoinBurst') || !String(creditGroundBagGold).includes('spawnGoldBagCoinBurst')) problems.push('Gold Bags pay 1–100 player Gold, spawn 3–9 collectible 1–25 Gold coins on open or automatic payout, and stay out of inventory (GOLD-BAG-COIN-BURST-01)');
-  if(AMBIENT_LOG_INTERVAL_MS !== 300000 || AMBIENT_LOG_WOOD !== 15 || AMBIENT_LOG_MAX_ON_BOARD !== 3 || !String(tryCollectAmbientLog).includes('wood += logWood') || !String(handleTap).includes('tryCollectAmbientLog')) problems.push('ambient logs should appear on a five-minute active-play cadence, remain clickable, and grant wood without entering inventory (AMBIENT-LOG-01)');
+  if(GOLD_BAG_MIN_GOLD !== 1 || GOLD_BAG_MAX_GOLD !== 100 || normalizeGoldBagGold(0) !== 1 || normalizeGoldBagGold(1000) !== 100 || GOLD_BAG_MIN_COINS !== 3 || GOLD_BAG_MAX_COINS !== 9 || GOLD_BAG_MIN_COIN_VALUE !== 1 || GOLD_BAG_MAX_COIN_VALUE !== 25 || Tower.prototype.receiveItem.call({ type:'SWORDSMAN', equippedItems:[] }, GOLD_BAG_ITEM) !== false || !String(openGoldBag).includes('spawnGoldBagCoinBurst') || !String(creditGroundBagGold).includes('spawnGoldBagCoinBurst')) problems.push('Gold Bags distribute their 1–100 total Gold once through collectible coins (fewer for totals below three), and stay out of inventory (GOLD-BAG-COIN-BURST-01)');
+  if(AMBIENT_LOG_INTERVAL_MS !== 45000 || AMBIENT_LOG_WOOD !== 15 || AMBIENT_LOG_MAX_ON_BOARD !== 12 || !String(tryCollectAmbientLog).includes('wood += logWood') || !String(handleTap).includes('tryCollectAmbientLog')) problems.push('wasteland branches should appear on a 45-second active-play cadence, remain clickable, and grant wood without entering inventory (AMBIENT-LOG-01)');
   if(!/spawnParticles\(tile\[0\]\*TILE_SIZE/.test(String(maybeSpawnChanceStructures)) || /\bitem\./.test(String(maybeSpawnChanceStructures))) problems.push('chance structure effects must use their selected tile coordinates and never reference an undefined item (CHANCE-STRUCTURE-SPAWN-CRASH-01)');
   if(!String(applyStimItem).includes('expiresAfterWave') || !String(clearRoundBuffs).includes('expiresAfterWave') || !String(useStoredConsumable).includes('!tower.active')) problems.push('round-only scope and combat consumables must expire at wave end and safely ignore stale inventory actions (ROUND-BUFF-LIFETIME-01)');
   if(itemDefinitionForSavedId('LUCKY_COIN') !== ITEM_BY_ID.get('BRASS_COMPASS')) problems.push('legacy Lucky Coin equipment must restore as Brass Compass (LUCKY-COIN-RETIRE-01)');
@@ -3351,9 +3427,13 @@ function validateDesignContract(){
   if(!isWithinEmojiSquare(10, -10, 0, 0, 20) || isWithinEmojiSquare(10.5, 0, 0, 0, 20) || isWithinEmojiSquare(0, -10.5, 0, 0, 20)) problems.push('the click area of an emoji is exactly its drawn square (EMOJI-HITBOX-01)');
   if(String(Tower.prototype.findTarget).includes('minimumTargetDistance') || String(Tower.prototype.update).includes('minimumTargetDistance')) problems.push('fighters must attack close targets without a minimum-range exclusion');
   if(!String(drawSelectedTowerRange).includes('tower.targetingRange') || !String(drawSelectedTowerRange).includes('RANGE_RING_DOT_PX') || !String(Enemy.prototype.spawn).includes('this.deathResolved = false') || !String(Enemy.prototype.die).includes('setMarkedTarget(null)')) problems.push('selected tactical reach and pooled pin/death lifecycle must remain protected');
-  { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || declared.length > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
+  { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || new Set([...TELEMETRY_SHARED_PARAMS, ...declared, 'send_to']).size > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
     if(oversized.length) problems.push('analytics events over the Google Analytics limits (40-character names, 25 parameters): ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
   }
+  if(ATTRACT_ENEMY_MOVE_SCALE !== 0.60) problems.push('attract movement must remain 40% slower without changing gameplay (ATTRACT-PACE-01)');
+  if(Object.keys(CONFIG.TOWERS).some(type => !WEAPON_BLOOD_PROFILES[type]) || !Object.isFrozen(WEAPON_BLOOD_PROFILES) || Object.values(WEAPON_BLOOD_PROFILES).some(profile => !Object.isFrozen(profile))) problems.push('every class needs an immutable explicit weapon blood profile (WEAPON-FORENSICS-01)');
+  if(window.detectPlayPlatform('sauerninja.github.io','https://itch.io/',false,'?utm_source=itch') !== 'github-pages' || window.detectPlayPlatform('cdn.example','https://sauerninja.itch.io/',true,'') !== 'itch.io') problems.push('host platform must not be overwritten by campaign or top-level referrer (ANALYTICS-ACCURACY-01)');
+  if(document.querySelector('meta[name="application-version"]').content !== GAME_VERSION || !String(window.enableStickTDAnalytics).includes('send_page_view:false') || !String(window.disableStickTDAnalytics).includes('ga-disable-')) problems.push('analytics version, single page view and revoke guard must stay aligned (ANALYTICS-ACCURACY-01)');
   { const reservedAnalyticsParams = ['source', 'medium', 'campaign', 'term', 'content', 'value', 'currency'];
     const offending = Object.entries(TELEMETRY_EVENTS).filter(([, declared]) => declared.some(param => reservedAnalyticsParams.includes(param))).map(([name]) => name);
     if(offending.length) problems.push('analytics events must not use parameter names Google Analytics reads as traffic source or revenue (source, medium, campaign, term, content, value, currency): ' + offending.join(', ') + ' (ANALYTICS-PARAMS-01)');
@@ -3389,6 +3469,8 @@ function validateDesignContract(){
   if(!PRODUCER_TYPES.every(type => CONFIG.TOWERS[type] && CONFIG.TOWERS[type].baseCost > 0 && CONFIG.TOWERS[type].tiers[0].damage === 0 && isStructureType(type) && !isFighterTower({ type }) && !/\bupgrad|\bevol/i.test(CONFIG.TOWERS[type].blurb))) problems.push('structures cost gold, never attack and are never counted as fighters (STRUCTURE-PRODUCERS-01)');
   if(!String(unlockAudioOnGesture).includes('state === \'running\'') || typeof AUDIO_UNLOCK_EVENTS === 'undefined' || !AUDIO_UNLOCK_EVENTS.includes('touchend') || !AUDIO_UNLOCK_EVENTS.includes('pointerup')) problems.push('audio unlock retries on touchend, pointerup and click until the context runs, so the start-screen music starts on a phone tap (AUDIO-GESTURE-01)');
   if(String(runBootWarmup).includes('hidden = true') || !String(startFirstFrame).includes("classList.add('done')") || typeof audioEngine.prewarm !== 'function') problems.push('the loading screen fades out over the opaque game and the audio graph is built during loading (BOOT-FADE-01, AUDIO-PREWARM-01)');
+  if(typeof SoundEngine.prototype.musicBassDrop !== 'function' || !POP_VOICES.warm || MUSIC_ATTRACT_SECTION_LEVEL[0] > 0.4) problems.push('intro and idle music open softly, keep a warm motif and resolve sweeps into bounded pitched bass (MUSIC-BUILD-DROP-01)');
+  if(typeof updateRoundEnemyFollow !== 'function' || !String(cancelCameraFollow).includes('roundEnemyFollow = null')) problems.push('manual camera control cancels the countdown pan and first-enemy follow (ROUND-CAMERA-01)');
   if(!MUSIC_ATTRACT_SECTION_LEVEL.every((level, index) => index === 0 || level > MUSIC_ATTRACT_SECTION_LEVEL[index - 1]) || typeof audioEngine.popTone !== 'function' || MUSIC_ATTRACT_VOICE_LIMIT <= MUSIC_VOICE_LIMIT) problems.push('the start-screen music builds from a quiet intro to a loud chorus and has its own larger voice budget (MUSIC-ATTRACT-02)');
   if(MUSIC_VOICE_LIMIT_LIGHT <= MUSIC_VOICE_LIMIT_MEDIUM || MUSIC_VOICE_LIMIT_MEDIUM <= MUSIC_VOICE_LIMIT || typeof SoundEngine.prototype.scheduleCombatLayers !== 'function' || !String(SoundEngine.prototype.reserveMusicVoice).includes('musicVoiceLimit')) problems.push('the in-game music voice budget follows frame load (24, 14, then 10) and the wave and boss themes carry pad, snare and riser layers (MUSIC-BUDGET-01, MUSIC-LAYERS-01)');
   if(itemSellValue({ cost: 100 }) !== 50 || itemSellValue({ id: 'ADRENALINE' }) !== 60 || !MEDICAL_ITEMS.some(item => item.isRevive) || typeof reviveSelectedStickman !== 'function' || merchantPotionDefs().length < 6) problems.push('selling returns half the price paid or the merchant price, and the merchant stocks every potion, medical item and a revive (MERCHANT-SELL-01, MERCHANT-POTIONS-01)');
@@ -3414,7 +3496,7 @@ function validateDesignContract(){
   if(String(update).includes('driveRingReveal(') || !String(updatePresentationEffects).includes('driveRingReveal(') || RING_REVEAL_TARGET_MS < 1500) problems.push('the expand reveal is slow, clean and drawn in real time at every game speed (EXPAND-REALTIME-01)');
   if(pathTurnFirstChance < 0.7) problems.push('the road prefers turning when it grows so it never becomes a long straight line (PATH-WINDY-01)');
   if(HEAVY_VISUAL_LOAD_HOLD_MS < 300 || HEAVY_VISUAL_LOAD_HOLD_MS > 2000 || typeof heavyVisualLoadHoldUntil !== 'number') problems.push('adaptive detail holds for a real-time interval, not a frame count (ADAPTIVE-HOLD-REALTIME-01)');
-  if(!String(spawnDecal).includes('bloodDecalBlocked') || !String(generateScenery).includes('spawnWastelandStumps')) problems.push('blood pools respect intervening bodies and new runs include two harvestable wasteland stumps (POOL-VOID-01, WASTELAND-STUMPS-01)');
+  if(!String(spawnDecal).includes('bloodDecalBlocked') || !String(generateScenery).includes('spawnWastelandStumps')) problems.push('blood pools respect intervening bodies and new runs include two harvestable wasteland branches (POOL-VOID-01, WASTELAND-STUMPS-01)');
   if(MAX_DECALS !== 2100 || MAX_DECALS_LOW_QUALITY !== 700 || !String(drawDecals).includes('camera.zoom > 1.25') || !String(render).includes('camera.zoom <= 1.25')) problems.push('blood defaults are high 2100 / low 700 and zoomed settled shapes replace the raster blit (BLOOD-ZOOM-01)');
   if(!String(spawnScenery).includes('sceneryPlanRandom') || !String(spawnArterialBeat).includes('bloodPoolSizeScale') || !String(spawnBloodStream).includes('bloodPoolSizeScale') || !String(updateBloodTrails).includes('bloodPoolSizeScale')) problems.push('ordinary scenery follows the saved seed and remaining blood emitters use victim weight (SCENERY-SEEDED-PLAN-01, BLOOD-WEIGHT-01)');
   if(typeof settledDecalHasContent !== 'boolean' || !String(render).includes('settledDecalHasContent')) problems.push('the empty settled decal layer is not drawn every frame (EMPTY-LAYER-SKIP-01)');
@@ -4421,13 +4503,14 @@ function livestockOnGrass(animal){ const key = Math.floor(animal.x/TILE_SIZE)+',
 function livestockIsEgg(animal){ return animal.type === 'CHICKEN' && animal.growthRounds < 3; }
 // CIRCUS-01 (1.7.114): the circus is a peaceful building; every round end it sends out a monkey, an elephant or a clown. Monkeys and elephants use the same mature-pair, next-round birth and three-round rest rules as farm animals; clowns hunt stickmen like the troll.
 const LIVESTOCK_TYPES = {
+  BEE: { emoji:'🐝', meatId:'HONEY', speed:24, radius:8 },
   CHICKEN: { emoji: '🐔', meatId: 'DRUMSTICK', speed: 18, radius: 10 },
   PIG:     { emoji: '🐷', meatId: 'BACON',     speed: 14, radius: 14 },
   COW:     { emoji: '🐄', meatId: 'STEAK',     speed: 10, radius: 15 },
   MONKEY:  { emoji: '🐒', meatId: 'BANANA',    speed: 20, radius: 11, roundBreeder: true },
   ELEPHANT:{ emoji: '🐘', meatId: 'STEAK',     speed: 9,  radius: 19, roundBreeder: true },
   CLOWN:   { emoji: '🤡', meatId: 'DRUMSTICK', speed: 18, radius: 13, hunter: { attackRadius: CLOWN_ATTACK_RADIUS, attackIntervalMs: CLOWN_ATTACK_INTERVAL_MS, attackDamage: CLOWN_ATTACK_DAMAGE, aggroRadius: CLOWN_AGGRO_RADIUS, speedMult: CLOWN_HUNT_SPEED_MULT, goldBags: 1, label: 'clown' } },
-  WANDERING_TROLL: { emoji: '🧌', meatId: 'STEAK', speed: 16, radius: 19, isTroll: true, hunter: { attackRadius: TROLL_ATTACK_RADIUS, attackIntervalMs: TROLL_ATTACK_INTERVAL_MS, attackDamage: TROLL_ATTACK_DAMAGE, aggroRadius: TROLL_AGGRO_RADIUS, speedMult: TROLL_HUNT_SPEED_MULT, goldBags: 2, label: 'wandering troll' } }
+  WANDERING_TROLL: { emoji: '🧌', meatId: 'STEAK', speed: 16, radius: 20.9, isTroll: true, hunter: { attackRadius: TROLL_ATTACK_RADIUS, attackIntervalMs: TROLL_ATTACK_INTERVAL_MS, attackDamage: TROLL_ATTACK_DAMAGE, aggroRadius: TROLL_AGGRO_RADIUS, speedMult: TROLL_HUNT_SPEED_MULT, goldBags: 2, label: 'wandering troll' } }
 };
 const LIVESTOCK_MAX_ON_BOARD = 8;
 const LIVESTOCK_BREED_CHANCE=0.25,LIVESTOCK_BIRTHS_PER_EXPANSION=2;
@@ -4598,6 +4681,7 @@ function restoreLivestock(savedAnimals, growthVersion){
     animal.growthRounds=Number.isFinite(saved.growthRounds) ? clampNum(Math.round(saved.growthRounds),0,livestockAdultRounds(animal)) : livestockAdultRounds(animal);
     if(growthVersion !== 2 && animal.growthRounds >= 3) animal.growthRounds=livestockAdultRounds(animal); // old three-round adults stay adults
     if(!Number.isFinite(animal.growthRounds)) animal.growthRounds=LIVESTOCK_ADULT_ROUNDS;
+    if(animal.type==='BEE') animal.honeyElapsedMs=clampNum(Number(saved.honeyElapsedMs)||0,0,BEE_HONEY_INTERVAL_MS);
     applyLivestockGrowthSize(animal);
     animal.hp=Math.max(1,Math.round(animal.maxHp*clampNum(Number(saved.healthFraction)||1,0.01,1)));
     animal.retargetTimer=LIVESTOCK_IDLE_MS_MAX;animal.livestockWalking=false;
@@ -4635,6 +4719,22 @@ function pickEndTileSpawnPoint(){
   const [gx, gy] = fallbackKeys[Math.floor(Math.random()*fallbackKeys.length)].split(',').map(Number);
   return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
 }
+// Bees wander on the playable ground; production uses real play time, never fast-forward.
+const BEE_HONEY_INTERVAL_MS=60000, BEE_MAX_ON_BOARD=2;
+function maybeSpawnBee(){
+  if(enemyPool.filter(e=>e.active && e.type==='BEE').length>=BEE_MAX_ON_BOARD) return;
+  const spot=pickEndTileSpawnPoint(); if(!spot) return;
+  const bee=placeLivestock('BEE',{...spot,radius:0},LIVESTOCK_ADULT_ROUNDS);
+  if(bee){bee.honeyElapsedMs=0;spawnFloatingText(bee.x,bee.y-20,'🐝 Bee','#ffe082');}
+}
+function updateBeeHoney(bee,dt){
+  if(gameState!=='PLAYING' || !bee.active || bee.type!=='BEE') return;
+  bee.honeyElapsedMs=Math.min(BEE_HONEY_INTERVAL_MS,(bee.honeyElapsedMs||0)+Math.min(100,Math.max(0,dt)));
+  if(bee.honeyElapsedMs<BEE_HONEY_INTERVAL_MS || !isLooseWalkableAt(bee.x,bee.y)) return;
+  if(groundItems.filter(gi=>gi.itemDef.id==='HONEY').length>=20) return;
+  bee.honeyElapsedMs=0;
+  spawnGroundItem(bee.x,bee.y,lookupItemDef('HONEY'),'bee honey');
+}
 function trollIsOnBoard(){ return enemyPool.some(e => e.active && e.type === 'WANDERING_TROLL'); }
 function spawnWanderingTroll(){
   if(!waypointsPx.length) return false;
@@ -4648,6 +4748,7 @@ function spawnWanderingTroll(){
   troll.isLivestock = true; troll.isHostileNpc = true;
   troll.x = spot.x; troll.y = spot.y;
   troll.retargetTimer = 0; troll.livestockWalking = false; troll.trollAttackTimer = TROLL_ATTACK_INTERVAL_MS;
+  startTrollCameraPan(troll);
   playSound('troll_arrive', troll.x, undefined, troll.y);
   spawnFloatingText(troll.x, troll.y - troll.radius - 22, '🧌 Troll!', '#ffb74d');
   showFirstTimeNotice('first_troll', '🧌 A Wandering Troll has arrived. It hunts nearby stickmen, so keep it inside the range of your strongest towers. One arrives every fifth round.');
@@ -5156,7 +5257,7 @@ function treeRockKeepChance(proximity, tileKey){
   const gradient = TREE_ROCK_MIN_KEEP_CHANCE + (1 - TREE_ROCK_MIN_KEEP_CHANCE) * proximity * proximity;
   return harvestedTileKeys.has(tileKey) ? gradient * HARVESTED_TILE_KEEP_FACTOR : gradient;
 }
-const FIXED_SCENERY_SCALE = { CHEST: 0.48, COIN_POUCH: 0.95, BUSH: 0.68, BIRD_NEST: 0.22, PICNIC: 0.34 }; // the potted berry bush stays compact beside trees, rocks and chests
+const FIXED_SCENERY_SCALE = { CHEST: 0.48, COIN_POUCH: 0.95, BUSH: 0.68, BIRD_NEST: 0.22, PICNIC: 0.68 }; // the potted berry bush stays compact beside trees, rocks and chests
 const SMALL_SCENERY_SIZE_MULTIPLIER = 0.5, SMALL_SCENERY_COST_MULTIPLIER = 0.5, SMALL_SCENERY_BUDDY_CHANCE = 0.5;
 function smallSceneryHarvestCost(fullSizeCost){ return Math.max(1, Math.round(fullSizeCost * SMALL_SCENERY_COST_MULTIPLIER)); }
 function isSceneryTileAvailable(gx,gy){
@@ -5381,7 +5482,7 @@ function spawnWastelandStumps(){
   const halfY=Math.max(TILE_SIZE*1.6,(CANVAS_H/2-70)/openingZoom-TILE_SIZE*0.35);
   for(let gx=1;gx<COLS-1;gx++) for(let gy=1;gy<ROWS-1;gy++){
     const key=gx+','+gy,x=(gx+0.5)*TILE_SIZE,y=(gy+0.5)*TILE_SIZE,distance=Math.hypot(x-cx,y-cy)/TILE_SIZE;
-    if(isInActiveRegion(gx,gy) || pathCells.has(key) || sceneryMap.has(key) || distance<1.5 || distance>6 || Math.abs(x-cx)>halfX || Math.abs(y-cy)>halfY) continue;
+    if(isInActiveRegion(gx,gy) || nearPathTileSet.has(key) || bonusGrassTiles.has(key) || pathCells.has(key) || sceneryMap.has(key) || distance<1.5 || distance>6 || Math.abs(x-cx)>halfX || Math.abs(y-cy)>halfY) continue;
     candidates.push({gx,gy,priority:distance*(0.6+0.4*sceneryPlanRandom(gx,gy,71)())});
   }
   candidates.sort((a,b)=>b.priority-a.priority);
@@ -5411,6 +5512,7 @@ function drawStumpShape(ctx,size){
   ctx.beginPath();ctx.ellipse(0,-size*0.12,size*0.07,size*0.04,0,0,Math.PI*2);ctx.stroke();
 }
 function generateScenery(){
+  placingCampfire=false; if(cookingDialog && cookingDialog.open) cookingDialog.close();
   sceneryMap.clear();
   guardedRoadEndKeys.clear();
   harvestedTileKeys.clear();
@@ -5434,6 +5536,7 @@ function generateScenery(){
   for(let i=0; i<count; i++){ spawnScenery(cells[i][0], cells[i][1]); spawnedKeys.add(cells[i][0]+','+cells[i][1]); }
   spawnExtraEndScenery(cells, spawnedKeys);
   spawnWastelandStumps();
+  for(let n=0;n<4;n++) maybeSpawnAmbientLog();
 }
 
 // FLORA-GROWTH-01 (1.6.108) — see CHANGELOG.md § [1.6.108]. HIGH graphics only: flora is drawn live instead of being baked into the
@@ -5761,7 +5864,7 @@ const FOOD_ITEM_ROWS = [
   ['APPLE', 'Apple', '🍎', 'FRUIT'], ['BANANA', 'Banana', '🍌', 'FRUIT'], ['GRAPES', 'Grapes', '🍇', 'FRUIT'],
   ['TANGERINE', 'Tangerine', '🍊', 'FRUIT'], ['STRAWBERRY', 'Strawberry', '🍓', 'FRUIT'], ['WATERMELON', 'Watermelon', '🍉', 'FRUIT'],
   ['CHERRIES', 'Cherries', '🍒', 'FRUIT'], ['PINEAPPLE', 'Pineapple', '🍍', 'FRUIT'], ['PEACH', 'Peach', '🍑', 'FRUIT'], ['KIWI', 'Kiwi', '🥝', 'FRUIT'],
-  ['BLUEBERRY', 'Blueberries', '🫐', 'FRUIT'],
+  ['BLUEBERRY', 'Blueberries', '🫐', 'FRUIT'], ['HONEY', 'Honey', '🍯', 'FRUIT'],
   ['CARROT', 'Carrot', '🥕', 'VEGETABLE'], ['HOT_PEPPER', 'Hot Pepper', '🌶️', 'VEGETABLE'], ['BROCCOLI', 'Broccoli', '🥦', 'VEGETABLE'],
   ['CORN', 'Corn', '🌽', 'VEGETABLE'], ['EGGPLANT', 'Eggplant', '🍆', 'VEGETABLE'], ['POTATO', 'Potato', '🥔', 'VEGETABLE'], ['GARLIC', 'Garlic', '🧄', 'VEGETABLE'], ['MUSHROOM', 'Mushroom', '🍄', 'VEGETABLE'],
   ['BACON', 'Bacon', '🥓', 'MEAT'], ['DRUMSTICK', 'Drumstick', '🍗', 'MEAT'], ['STEAK', 'Steak', '🥩', 'MEAT'], ['MEAT_BONE', 'Meat on the Bone', '🍖', 'MEAT']
@@ -5906,6 +6009,16 @@ function grantStatPoints(tower, stat, amount){
   return granted;
 }
 function grantFoodStat(foodDef, tower){
+  if(foodDef.cookedStats && tower){
+    const parts=[];
+    for(const [stat,wanted] of Object.entries(foodDef.cookedStats)){
+      let granted;
+      if(stat==='con'){granted=Math.min(wanted,Math.max(0,STAT_EFFECT_CAP-(tower.hpStat||0)));tower.foodConstitution=(tower.foodConstitution||0)+granted;tower.recomputeStats();}
+      else granted=grantStatPoints(tower,stat,wanted);
+      parts.push(stat.toUpperCase()+' +'+granted);
+    }
+    if(tower===selectedTower)updateInspectPanel();return parts.join(' · ');
+  }
   const stat = FOOD_STAT_BY_KIND[foodDef.kind]; if(!stat || !tower) return '';
   const wanted = rollFoodRange(FOOD_STAT_GAIN_MIN, FOOD_STAT_GAIN_MAX);
   let granted;
@@ -5930,6 +6043,10 @@ function healFedStickman(tower,amount){
 function applyFoodItem(foodDef, nearTower){
   if(!nearTower) return; // FOOD-STICKMAN-HEALTH-01 (1.7.141): food is for a stickman, never player lives.
   const foodStatText = grantFoodStat(foodDef, nearTower);
+  if(foodDef.id==='WEDDING_CAKE') for(let i=0;i<3;i++){
+    const angle=i*Math.PI*2/3;
+    spawnGroundItem(nearTower.x+Math.cos(angle)*18,nearTower.y+Math.sin(angle)*18,lookupItemDef('WEDDING_CAKE_SLICE'),'wedding cake shared');
+  }
   const foodXp = rollFoodRange(FOOD_XP_MIN, FOOD_XP_MAX);
   if(foodXp > 0) gainTowerExp(nearTower,foodXp);
   const healing = foodDef.kind === 'MEAT' ? (MEAT_HEAL_BY_ID[foodDef.id] || 6) : foodDef.kind === 'FRUIT' ? 1 : 2;
@@ -6070,7 +6187,7 @@ const MEAL_ITEMS = [
   Object.freeze({ id:'BERRY_PIE', name:'Berry Pie', icon:'🥧', isStim:true, isMeal:true, effects:[{ stat:'range', value:1.3 }, { stat:'heal', value:0.3 }] }),
   Object.freeze({ id:'HARVEST_CURRY', name:'Harvest Curry', icon:'🍛', isStim:true, isMeal:true, effects:[{ stat:'damage', value:1.2 }, { stat:'speed', value:1.2 }, { stat:'range', value:1.2 }, { stat:'heal', value:0.3 }] })
 ];
-// Cooking needs a lit campfire within reach of the cook; fuelCost is spent from that fire. Longer recipes are listed first so a superset matches before its simple pair.
+// Recipe catalog; fuelCost supplies the baseline for timed shared-storage cooking. Legacy meal definitions remain loadable.
 const COOKING_RECIPES = [
   { result: 'HARVEST_CURRY',   ingredients: ['CARROT', 'POTATO', 'CORN', 'HOT_PEPPER'], fuelCost: 3 },
   { result: 'FIERY_RAGOUT',    ingredients: ['STEAK', 'GARLIC', 'HOT_PEPPER'], fuelCost: 2 },
@@ -6081,7 +6198,7 @@ const COOKING_RECIPES = [
   { result: 'FRUIT_SALAD',     ingredients: ['APPLE', 'BLUEBERRY'], fuelCost: 1 },
   { result: 'ROAST_FEAST',     ingredients: ['MEAT_BONE', 'DRUMSTICK'], fuelCost: 1 }
 ];
-for(const cookingRecipe of COOKING_RECIPES) CRAFTING_RECIPES.push(cookingRecipe);
+// Cooking is selected at the campfire; equipment crafting remains in the inventory.
 function lookupItemDef(itemId){ return ITEM_BY_ID.get(itemId) || CONSUMABLE_BY_ID.get(itemId); }
 const CONSUMABLE_BY_ID = new Map();
 for(const consumableDef of MEAL_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
@@ -6091,6 +6208,112 @@ for(const consumableDef of TREAT_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, c
 for(const consumableDef of HUT_LOOT_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 for(const consumableDef of LOOT_TONIC_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 CONSUMABLE_BY_ID.set(SHOVEL_ITEM.id, SHOVEL_ITEM);
+// CAMPFIRE-COOKING-02: explicit board-wide ingredient collection, incremental shared wood.
+const CAMPFIRE_BUILD_GOLD=60, CAMPFIRE_BUILD_STONE=10, CAMPFIRE_WOOD_STEP_MS=5000;
+let placingCampfire=false, cookingDialog=null, cookingDialogFire=null, cookingUiClock=0;
+const FIRE_RECIPES=COOKING_RECIPES.map(r=>({...r,id:'COOKED_'+r.result,multiplier:r.ingredients.length===2?5:r.ingredients.length===3?10:15,woodCost:r.fuelCost*5}));
+FIRE_RECIPES.push({id:'WEDDING_CAKE',result:'WEDDING_CAKE',ingredients:[...BERRY_FOOD_IDS.flatMap(id=>[id,id]),...Array(5).fill('HONEY')],multiplier:25,woodCost:40});
+for(const recipe of FIRE_RECIPES){
+  const old=lookupItemDef(recipe.result), stats={};
+  for(const id of recipe.ingredients){ const food=lookupItemDef(id), stat=food && FOOD_STAT_BY_KIND[food.kind]; if(stat) stats[stat]=(stats[stat]||0)+((FOOD_STAT_GAIN_MIN+FOOD_STAT_GAIN_MAX)/2)*recipe.multiplier; }
+  const def=Object.freeze({id:recipe.id,name:old?old.name:'Wedding Cake',icon:old?old.icon:'🎂',isFood:true,isCookedMeal:true,kind:'FRUIT',cookedStats:Object.freeze(stats)});
+  recipe.def=def; CONSUMABLE_BY_ID.set(def.id,def);
+}
+const weddingCakeStats=CONSUMABLE_BY_ID.get('WEDDING_CAKE').cookedStats;
+CONSUMABLE_BY_ID.set('WEDDING_CAKE_SLICE',Object.freeze({id:'WEDDING_CAKE_SLICE',name:'Wedding Cake Slice',icon:'🍰',isFood:true,isCookedMeal:true,kind:'FRUIT',cookedStats:Object.freeze(Object.fromEntries(Object.entries(weddingCakeStats).map(([stat,value])=>[stat,value/4])))}));
+function findCampfireIngredients(recipe){
+  const candidates=[];
+  for(const gi of groundItems) if(gi!==draggingGroundItem) candidates.push({item:gi.itemDef,ground:gi});
+  for(const tower of towerPool) if(tower.active) for(const item of tower.equippedItems) candidates.push({item,tower});
+  const chosen=[];
+  for(const id of recipe.ingredients){ const index=candidates.findIndex(c=>c.item.id===id); if(index<0) return null; chosen.push(candidates.splice(index,1)[0]); }
+  return chosen;
+}
+function startCampfireRecipe(fire,recipeId){
+  if(gameState!=='PLAYING' || fire.cookingJob || sceneryMap.get(fire.gx+','+fire.gy)!==fire) return false;
+  const recipe=FIRE_RECIPES.find(r=>r.id===recipeId); if(!recipe) return false;
+  const chosen=findCampfireIngredients(recipe); if(!chosen) return false;
+  // Resolve every unique ingredient before consuming any of them.
+  const touched=new Set();
+  for(const source of chosen){
+    if(source.ground) groundItems.splice(groundItems.indexOf(source.ground),1);
+    else { source.tower.equippedItems.splice(source.tower.equippedItems.indexOf(source.item),1); touched.add(source.tower); }
+    itemLogReleased(source.item,'consumed by campfire: '+recipe.id);
+  }
+  for(const tower of touched){ refreshQuickUse(tower); tower.recomputeStats(); tower.checkHeroStatus(); }
+  fire.cookingJob={recipeId:recipe.id,woodUsed:0,segmentRemainingMs:0,progressMs:0};
+  if(selectedTower) updateInspectPanel();
+  logGameEvent('cooking started: '+recipe.id); updateHUD(); return true;
+}
+function normalizeCookingJob(fire){
+  if(fire.type!=='CAMPFIRE') return;
+  fire.fuel=0; // Legacy stored fuel does not create free shared wood.
+  const job=fire.cookingJob, recipe=job && FIRE_RECIPES.find(r=>r.id===job.recipeId);
+  if(!recipe || !Number.isFinite(job.woodUsed) || !Number.isFinite(job.segmentRemainingMs) || !Number.isFinite(job.progressMs)){ delete fire.cookingJob; return; }
+  job.woodUsed=clampNum(Math.floor(job.woodUsed),0,recipe.woodCost);
+  job.segmentRemainingMs=clampNum(job.segmentRemainingMs,0,CAMPFIRE_WOOD_STEP_MS);
+  if(job.woodUsed===0) job.segmentRemainingMs=0;
+  job.progressMs=job.woodUsed*CAMPFIRE_WOOD_STEP_MS-job.segmentRemainingMs;
+}
+function updateCampfireCooking(frameMs){
+  if(gameState!=='PLAYING') return;
+  for(const fire of sceneryMap.values()){
+    if(fire.type!=='CAMPFIRE') continue;
+    const job=fire.cookingJob; fire.fuel=0; if(!job) continue;
+    const recipe=FIRE_RECIPES.find(r=>r.id===job.recipeId); if(!recipe){ delete fire.cookingJob; continue; }
+    let remaining=Math.min(100,Math.max(0,frameMs));
+    while(remaining>0 && job.progressMs<recipe.woodCost*CAMPFIRE_WOOD_STEP_MS){
+      if(job.segmentRemainingMs<=0){
+        if(wood<1 || job.woodUsed>=recipe.woodCost) break;
+        wood--; job.woodUsed++; job.segmentRemainingMs=CAMPFIRE_WOOD_STEP_MS; updateHUD();
+      }
+      const advance=Math.min(remaining,job.segmentRemainingMs);
+      job.segmentRemainingMs-=advance; job.progressMs+=advance; remaining-=advance;
+    }
+    fire.fuel=job.segmentRemainingMs>0?1:0;
+    if(job.progressMs>=recipe.woodCost*CAMPFIRE_WOOD_STEP_MS){
+      spawnGroundItem(fire.x,fire.y,recipe.def,'cooked at campfire'); delete fire.cookingJob; fire.fuel=0;
+      spawnFloatingText(fire.x,fire.y-25,recipe.def.icon+' Ready','#ffe082'); logGameEvent('cooking completed: '+recipe.id);
+    }
+  }
+  if(cookingDialog && cookingDialog.open){ cookingUiClock+=frameMs; if(cookingUiClock>=500){ cookingUiClock=0; refreshCookingDialog(); } }
+}
+function cookingStatus(fire){
+  const job=fire.cookingJob; if(!job) return 'Choose a recipe';
+  const recipe=FIRE_RECIPES.find(r=>r.id===job.recipeId); if(!recipe) return 'Choose a recipe';
+  return recipe.def.name+' · '+Math.floor(job.progressMs/(recipe.woodCost*CAMPFIRE_WOOD_STEP_MS)*100)+'% · '+(job.segmentRemainingMs<=0 && wood<1?'Waiting for wood':(recipe.woodCost-job.woodUsed)+' wood left to burn');
+}
+function refreshCookingDialog(){
+  const fire=cookingDialogFire;
+  if(!fire || sceneryMap.get(fire.gx+','+fire.gy)!==fire){ cookingDialog.close(); return; }
+  cookingDialog.querySelector('[data-status]').textContent=cookingStatus(fire)+' · Stored wood: '+Math.floor(wood);
+  for(const button of cookingDialog.querySelectorAll('[data-recipe]')){ const recipe=FIRE_RECIPES.find(r=>r.id===button.dataset.recipe); button.disabled=!!fire.cookingJob || !findCampfireIngredients(recipe); }
+}
+function openCookingDialog(fire){
+  if(!cookingDialog){
+    cookingDialog=document.createElement('dialog');
+    cookingDialog.style.cssText='max-width:min(580px,90vw);max-height:80vh;overflow:auto;background:#29221b;color:#fff0d0;border:2px solid #a87539;border-radius:10px;padding:20px';
+    cookingDialog.setAttribute('aria-label','Campfire recipes');
+    cookingDialog.innerHTML='<h2>Campfire</h2><p data-status></p><p>Ingredients are taken from the ground and all stickman inventories when cooking starts. Wood burns from shared storage: one every five seconds. Cooking waits when wood runs out. Meals grant permanent stats, subject to the normal stat caps. Wedding cake gives its full stat value on the first bite and leaves three slices, each worth one-quarter of that value.</p><div data-recipes></div><button type="button" data-close>Close</button>';
+    for(const recipe of FIRE_RECIPES){
+      const row=document.createElement('p'),button=document.createElement('button');button.type='button';button.dataset.recipe=recipe.id;button.textContent='Cook '+recipe.def.icon+' '+recipe.def.name;
+      button.addEventListener('click',()=>{startCampfireRecipe(cookingDialogFire,recipe.id);refreshCookingDialog();});
+      const counts={};for(const id of recipe.ingredients) counts[id]=(counts[id]||0)+1;
+      const detail=document.createElement('small');detail.style.display='block';detail.textContent=Object.entries(counts).map(([id,n])=>n+' × '+(lookupItemDef(id)?.name || id)).join(', ')+' · '+recipe.woodCost+' wood · '+recipe.woodCost*5+' seconds · '+recipe.multiplier+'× ingredient stat value · '+Object.entries(recipe.def.cookedStats).map(([stat,n])=>'+'+n+' '+stat.toUpperCase()).join(', ');
+      row.append(button,detail);cookingDialog.querySelector('[data-recipes]').append(row);
+    }
+    cookingDialog.querySelector('[data-close]').onclick=()=>cookingDialog.close();
+    cookingDialog.addEventListener('keydown',e=>e.stopPropagation()); document.body.append(cookingDialog);
+  }
+  cookingDialogFire=fire;refreshCookingDialog();if(!cookingDialog.open)cookingDialog.showModal();
+}
+function placeCampfire(gx,gy){
+  if(!isInActiveRegion(gx,gy) || !isTileBuildable(gx,gy) || pathCells.has(gx+','+gy) || sceneryMap.has(gx+','+gy) || tileHasHut(gx,gy) || gold<CAMPFIRE_BUILD_GOLD || stone<CAMPFIRE_BUILD_STONE){playSound('ui_deny');return false;}
+  gold-=CAMPFIRE_BUILD_GOLD;stone-=CAMPFIRE_BUILD_STONE;
+  const fire={gx,gy,x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE,type:'CAMPFIRE',scale:0.85,isChanceStructure:true,fuel:0,healPool:0,isClearing:false,clearCost:0,clearMs:0,tallStretch:1,widthStretch:1};
+  sceneryMap.set(gx+','+gy,fire);placingCampfire=false;invalidateSpawnFlags();updateHUD();playSound('click');openCookingDialog(fire);return true;
+}
+
 function isConsumableDef(def){ return !!(def && (def.isFood || def.isTreat || def.isStim || def.isHutLoot || def.isDiggingTool)); } // CONSUMABLE-STORED-01 (1.6.132) — see CHANGELOG.md § [1.6.132]
 function useStoredConsumable(tower, slotIndex){
   if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return false;
@@ -6123,6 +6346,7 @@ function countChanceStructuresOnBoard(type){
   return onBoard;
 }
 function chanceStructureSpawnChance(type){
+  if(type === 'CAMPFIRE') return 0;
   const definition = CONFIG.CHANCE_STRUCTURES[type];
   if(wavesCompleted < definition.minWavesCompleted) return 0;
   if(countChanceStructuresOnBoard(type) >= definition.maxOnBoard) return 0;
@@ -6215,31 +6439,14 @@ function drawCampfire(ctx, item, size){
   }
   ctx.font = 'bold 11px Verdana';
   ctx.fillStyle = item.fuel > 0 ? '#ffe3b0' : '#c9a86a'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 3;
-  const fuelLabel = '🪵' + item.fuel;
+  const fuelLabel = item.cookingJob ? cookingStatus(item) : 'Recipes';
   ctx.strokeText(fuelLabel, item.x, item.y + size*0.5 + 10);
   ctx.fillText(fuelLabel, item.x, item.y + size*0.5 + 10);
 }
 // Returns true when the structure is used up (and should disappear), false when it stays.
 function useChanceStructure(item){
   const definition = CONFIG.CHANCE_STRUCTURES[item.type];
-  if(item.type === 'CAMPFIRE'){
-    if(item.fuel >= CAMPFIRE_MAX_FUEL){
-      spawnFloatingText(item.x, item.y - 22, '🔥 Fully stoked', definition.color);
-      return false;
-    }
-    if(wood < CAMPFIRE_WOOD_PER_LOG){
-      spawnFloatingText(item.x, item.y - 22, 'Needs ' + CAMPFIRE_WOOD_PER_LOG + ' 🪵', '#e63946');
-      return false;
-    }
-    wood -= CAMPFIRE_WOOD_PER_LOG;
-    item.fuel = Math.min(CAMPFIRE_MAX_FUEL, item.fuel + CAMPFIRE_FUEL_PER_LOG);
-    spawnFloatingText(item.x, item.y - 22, '+' + CAMPFIRE_FUEL_PER_LOG + ' fuel', definition.color);
-    spawnParticles(item.x, item.y, definition.color, 8);
-    playSound('click');
-    updateHUD();
-    if(selectedTower) updateInspectPanel();
-    return false;
-  }
+  if(item.type === 'CAMPFIRE'){ openCookingDialog(item); return false; }
   if(item.type === 'FOUNTAIN'){
     const healed = Math.min(item.healPool, livesMissingNow());
     if(healed <= 0){
@@ -6260,7 +6467,7 @@ function useChanceStructure(item){
 }
 function chanceStructureHoverLabel(item){
   const definition = CONFIG.CHANCE_STRUCTURES[item.type];
-  if(item.type === 'CAMPFIRE') return definition.emoji + ' fuel ' + item.fuel + '/' + CAMPFIRE_MAX_FUEL + ' — tap to add ' + CAMPFIRE_WOOD_PER_LOG + ' 🪵';
+  if(item.type === 'CAMPFIRE') return '🔥 ' + cookingStatus(item) + ' — tap for recipes';
   return definition.emoji + ' ' + item.healPool + ' ❤️ left';
 }
 
@@ -6483,14 +6690,14 @@ function confineLooseEnemyToRoute(enemy, previousX, previousY){
 const TELEMETRY_EVENTS = {
   game_started: ['device', 'viewport', 'first_visit', 'loaded_save'],
   wave_started: ['wave', 'lives', 'gold', 'towers', 'loose', 'unlocked_towers'],
-  wave_completed: ['wave', 'duration_s', 'lives_start', 'lives_end', 'lives_lost', 'escaped', 'loose_peak', 'loose_end', 'loose_drain_lives', 'towers_downed', 'gold_start', 'gold_end', 'towers', 'fps_median', 'gap_p95_ms'],
+  wave_completed: ['wave', 'duration_s', 'simulation_duration_s', 'lives_start', 'lives_end', 'lives_lost', 'escaped', 'loose_peak', 'loose_end', 'loose_drain_lives', 'towers_downed', 'gold_start', 'gold_end', 'towers', 'fps_median', 'gap_p95_ms'],
   wave_milestone: ['waves_completed'],
   engaged_player: ['waves_completed', 'duration_s'],
-  tower_built: ['tower_type', 'cost', 'towers', 'first_of_type'],
+  tower_built: ['tower_type', 'cost', 'wood_cost', 'stone_cost', 'payment_type', 'towers', 'first_of_type'],
   tower_upgraded: ['tower_type', 'level', 'cost'],
   tower_sold: ['tower_type', 'level', 'refund'],
   tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
-  item_purchased: ['item', 'payment_type', 'cost'],
+  item_purchased: ['item', 'payment_type', 'cost', 'wood_cost', 'stone_cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
   item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01 (1.6.149) — see CHANGELOG.md § [1.6.149]: never name a parameter source, medium, campaign, value or currency; GA4 reads those as traffic source or revenue
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
@@ -6499,7 +6706,7 @@ const TELEMETRY_EVENTS = {
   game_speed_changed: ['speed'],
   target_marked: ['target_type', 'enemy_type'],
   food_collected: ['item', 'tower_type'],
-  food_used: ['item', 'tower_type'],
+  food_used: ['item', 'tower_type', 'instant'],
   shovel_used: ['tower_type'],
   treat_used: ['item', 'tower_type'],
   stim_used: ['item', 'tower_type'],
@@ -6518,39 +6725,86 @@ const TELEMETRY_EVENTS = {
   settings_changed: ['setting', 'setting_value'],
   save_downloaded: ['waves_completed'],
   save_loaded: ['save_version', 'waves_completed'],
+  save_load_failed: ['reason'],
   progress_reset: ['kind'],
   santa_boss_encountered: ['wave'],
   game_over: ['cause', 'wave_reached', 'waves_completed', 'duration_s', 'towers_built', 'towers_downed', 'lives_bought', 'loose_end', 'fps_median'],
   lag_detected: ['median_gap_ms', 'p95_gap_ms', 'towers_downed', 'enemies', 'loose', 'decals', 'particles'],
-  session_summary: ['duration_s', 'max_wave', 'waves_completed', 'towers_built', 'ended_in_game_over'],
-  game_error: ['message', 'script_file', 'line']
+  session_summary: ['wave', 'duration_s', 'elapsed_s', 'max_wave', 'waves_completed', 'towers_built', 'ended_in_game_over', 'end_reason'],
+  play_activity: ['active_seconds', 'waves_completed', 'checkpoint_reason'],
+  onboarding_step: ['step'],
+  life_purchased: ['cost', 'lives_after'],
+  game_error: ['error_kind', 'error_type', 'line']
 };
 const TELEMETRY_RECENT_LIMIT = 200;
 const LAG_MEDIAN_GAP_THRESHOLD_MS = 90;
 const LAG_MIN_SAMPLES = 60;
 const telemetryRecent = [];
-const sessionTelemetry = { startedAtMs: 0, towersBuilt: 0, towersDowned: 0, gameOverReported: false, engagedReported: false };
+const sessionTelemetry = { startedAtMs: 0, activeMs: 0, activeSince: null, reportedActiveMs: 0, completedHere: 0, origin: 'fresh', runId:'none', onboarding: new Set(), towersBuilt: 0, towersDowned: 0, gameOverReported: false, engagedReported: false };
+const TELEMETRY_SHARED_PARAMS = ['game_version','wave','quality','platform','device','telemetry_schema','run_origin','event_group','run_id'];
+function telemetryActiveMs(){
+  return sessionTelemetry.activeMs + (sessionTelemetry.activeSince === null ? 0 : Math.max(0, performance.now() - sessionTelemetry.activeSince));
+}
+function telemetryStateChange(next){
+  sessionTelemetry.activeMs = telemetryActiveMs();
+  sessionTelemetry.activeSince = sessionTelemetry.startedAtMs && next === 'PLAYING' && !document.hidden ? performance.now() : null;
+}
+function beginTelemetryRun(loadedSave){
+  Object.assign(sessionTelemetry, { startedAtMs:performance.now(), activeMs:0, activeSince:document.hidden ? null : performance.now(), reportedActiveMs:0, completedHere:0, origin:loadedSave ? 'save' : 'fresh', runId:window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10), towersBuilt:0, towersDowned:0, gameOverReported:false, engagedReported:false });
+  sessionTelemetry.onboarding.clear();
+  builtTowerTypesThisSession.clear();
+  trackGameEvent('game_started', { device:IS_MOBILE_DEVICE ? 'mobile' : 'desktop', viewport:Math.round(innerWidth/100)*100+'x'+Math.round(innerHeight/100)*100, first_visit:telemetryFirstVisit(), loaded_save:loadedSave });
+  try{ localStorage.setItem('stickTD_welcomeSeen', '1'); }catch(e){}
+}
+function telemetryFirstVisit(){
+  try{ return !localStorage.getItem('stickTD_welcomeSeen'); }catch(e){ return false; }
+}
+function reportOnboardingStep(step){
+  if(!sessionTelemetry.startedAtMs || sessionTelemetry.origin !== 'fresh' || sessionTelemetry.onboarding.has(step)) return;
+  sessionTelemetry.onboarding.add(step);
+  trackGameEvent('onboarding_step', { step });
+}
+function reportPlayActivity(reason){
+  if(!sessionTelemetry.startedAtMs) return;
+  const total = telemetryActiveMs();
+  const seconds = Math.floor((total - sessionTelemetry.reportedActiveMs)/1000);
+  sessionTelemetry.reportedActiveMs += seconds*1000; // consume locally even without consent; never replay
+  if(seconds > 0) trackGameEvent('play_activity', { active_seconds:seconds, waves_completed:sessionTelemetry.completedHere, checkpoint_reason:reason });
+}
+window.onStickTDAnalyticsEnabled = function(){ sessionTelemetry.reportedActiveMs = telemetryActiveMs(); };
+setInterval(() => { if(!document.hidden && gameState === 'PLAYING') reportPlayActivity('interval'); }, 60000);
+function telemetryEventGroup(name){
+  if(/^(game_error|lag_detected)$/.test(name)) return 'diagnostics';
+  if(/^(game_started|game_over|session_summary|play_activity|engaged_player|onboarding_step)$/.test(name)) return 'engagement';
+  if(/^(wave_|tower_|target_|santa_)/.test(name)) return 'combat';
+  if(/^(settings_|save_|progress_|game_speed)/.test(name)) return 'settings';
+  return 'economy';
+}
 const ENGAGED_PLAYER_WAVES = 5; // ENGAGED-PLAYER-01 (1.6.150) — see CHANGELOG.md § [1.6.150]: the single clearest 'this person really played' signal, sent at most once per session
 function reportEngagedPlayerOnce(){
-  if(sessionTelemetry.engagedReported || wavesCompleted < ENGAGED_PLAYER_WAVES) return;
+  if(sessionTelemetry.engagedReported || sessionTelemetry.completedHere < ENGAGED_PLAYER_WAVES) return;
   sessionTelemetry.engagedReported = true;
-  trackGameEvent('engaged_player', { waves_completed: wavesCompleted, duration_s: Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000) });
+  trackGameEvent('engaged_player', { waves_completed: sessionTelemetry.completedHere, duration_s: Math.round(telemetryActiveMs()/1000) });
 }
-const waveTelemetry = { startedAtGameTime: 0, livesAtStart: 0, goldAtStart: 0, escaped: 0, towersDowned: 0, loosePeak: 0, looseDrainLives: 0, lagReported: false };
+const waveTelemetry = { activeAtStartMs: 0, startedAtGameTime: 0, livesAtStart: 0, goldAtStart: 0, escaped: 0, towersDowned: 0, loosePeak: 0, looseDrainLives: 0, lagReported: false };
 function trackGameEvent(name, params){
   const declaredParams = TELEMETRY_EVENTS[name];
   if(!declaredParams){ console.warn('trackGameEvent: "' + name + '" is not in TELEMETRY_EVENTS'); return; }
-  const payload = { game_version: GAME_VERSION, wave: waveIndex, quality: graphicsQuality, platform: window.STICKTD_PLATFORM || 'other' };
+  const payload = { game_version:GAME_VERSION, wave:waveIndex, quality:graphicsQuality, platform:window.STICKTD_PLATFORM || 'other', device:IS_MOBILE_DEVICE ? 'mobile' : 'desktop', telemetry_schema:2, run_origin:sessionTelemetry.origin, run_id:sessionTelemetry.runId, event_group:telemetryEventGroup(name) };
   if(params){
     for(const key of declaredParams){
       if(params[key] === undefined) continue;
-      payload[key] = typeof params[key] === 'string' ? params[key].slice(0, 100) : params[key];
+      const value = params[key];
+      if(typeof value === 'string') payload[key] = value.slice(0, 100);
+      else if(typeof value === 'boolean') payload[key] = value ? 1 : 0;
+      else if(typeof value === 'number' && Number.isFinite(value)) payload[key] = value;
     }
   }
-  telemetryRecent.push({ atSecond: Math.round(gameTime/1000), name, payload });
+  const queued = window.trackEvent ? window.trackEvent(name, payload) === true : false;
+  telemetryRecent.push({ atSecond: Math.round(gameTime/1000), name, payload, delivery:queued ? 'queued' : 'local_only' });
   if(telemetryRecent.length > TELEMETRY_RECENT_LIMIT) telemetryRecent.shift();
-  if(window.trackEvent) window.trackEvent(name, payload);
 }
+
 // RENDER-ENV-DIAG-01 (1.6.120) — see CHANGELOG.md § [1.6.120]
 const renderEnvironment = { gpuRenderer: 'not read yet', softwareRendering: null, battery: 'unavailable', energySaverHint: '' };
 (function readRenderEnvironment(){
@@ -6652,12 +6906,16 @@ function reportTowerDowned(tower, cause){
   startDowningCapture(tower, cause);
   trackGameEvent('tower_downed', { tower_type: tower.type, tower_level: tower.level, cause, towers_standing: countActiveTowers() - countTowersDownedNow() });
 }
-function reportSessionSummary(){
-  if(sessionTelemetry.startedAtMs === 0) return;
-  trackGameEvent('session_summary', {
-    duration_s: Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000), max_wave: waveIndex, waves_completed: wavesCompleted,
-    towers_built: sessionTelemetry.towersBuilt, ended_in_game_over: sessionTelemetry.gameOverReported
-  });
+function telemetrySummaryPayload(reason){
+  return { wave:waveIndex, duration_s:Math.round(telemetryActiveMs()/1000), elapsed_s:sessionTelemetry.startedAtMs ? Math.round((performance.now()-sessionTelemetry.startedAtMs)/1000) : 0,
+    max_wave:waveIndex, waves_completed:sessionTelemetry.completedHere, towers_built:sessionTelemetry.towersBuilt, ended_in_game_over:sessionTelemetry.gameOverReported, end_reason:reason };
+}
+function reportSessionSummary(reason = 'game_over', snapshot = null){
+  if(!sessionTelemetry.startedAtMs) return;
+  reportPlayActivity(reason);
+  trackGameEvent('session_summary', snapshot || telemetrySummaryPayload(reason));
+  sessionTelemetry.activeMs = telemetryActiveMs();
+  sessionTelemetry.activeSince = null;
   sessionTelemetry.startedAtMs = 0;
 }
 // CA145 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA145
@@ -7240,7 +7498,7 @@ function drawOuterWastelandTrees(ctx){
 function drawMap(ctx){
   ctx.fillStyle = DIRT_BACKGROUND_COLOR;
   ctx.fillRect(0,0,WORLD_MAX_W,WORLD_MAX_H);
-  drawOuterWastelandTrees(ctx);
+  // BRANCH-WASTELAND-02: only collectible branches populate unrevealed dirt.
 
   // PATH-CHESS-01 (1.6.68) — see CHANGELOG.md § [1.6.68]
   // GROUND-DETAIL-01 (1.6.72) — see CHANGELOG.md § [1.6.72]
@@ -7406,8 +7664,9 @@ const MUSIC_ATTRACT_TEMPO_BPM = 128, MUSIC_ATTRACT_TONIC = 48;
 const MUSIC_ATTRACT_CHORDS = [{ root: 36, triad: [0, 4, 7] }, { root: 43, triad: [0, 4, 7] }, { root: 45, triad: [0, 3, 7] }, { root: 41, triad: [0, 4, 7] }];
 const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
 // MUSIC-ATTRACT-02 (1.7.104) — see CHANGELOG.md § [1.7.104]: the 24-bar start-screen cycle is now a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
-const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.66, 0.68, 0.75, 0.79, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
+const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
 const POP_VOICES = {
+  warm: { wave: 'triangle', detunes: [0], attack: 0.035, sustain: 0.55, decay: 0.45, release: 0.12, cutoffStart: 2200, cutoffEnd: 1400, cutoffTime: 0.7, q: 0.3, echo: true },
   lead:  { wave: 'sawtooth', detunes: [-7, 7], attack: 0.008, sustain: 0.75, decay: 0.35, release: 0.07, cutoffStart: 5200, cutoffEnd: 3000, cutoffTime: 0.5, q: 0.6, echo: true },
   harmony: { wave: 'sawtooth', detunes: [0], attack: 0.01, sustain: 0.7, decay: 0.35, release: 0.06, cutoffStart: 3600, cutoffEnd: 2200, cutoffTime: 0.5, q: 0.5, echo: false },
   pad:   { wave: 'sawtooth', detunes: [0], attack: 0.07, sustain: 0.8, decay: 0.5, release: 0.3, cutoffStart: 1500, cutoffEnd: 1100, cutoffTime: 0.8, q: 0.3, echo: false },
@@ -7673,7 +7932,7 @@ class SoundEngine{
     gain.linearRampToValueAtTime(audioMusicVolume,now+0.32);
     this.musicTransitionUntil=now+0.32;
     this.musicPhase=phase;
-    this.musicStep=(Math.ceil(this.musicStep/MUSIC_STEPS_PER_BAR)*MUSIC_STEPS_PER_BAR)%MUSIC_CYCLE_STEPS;
+    this.musicStep=(phase === 'field' || phase === 'attract') ? 0 : (Math.ceil(this.musicStep/MUSIC_STEPS_PER_BAR)*MUSIC_STEPS_PER_BAR)%MUSIC_CYCLE_STEPS;
     this.musicNextTime=now+0.14;
   }
   setMusicPaused(paused){
@@ -7919,6 +8178,8 @@ class SoundEngine{
     osc.stop(endTime + 0.015);
   }
   scheduleMusicStep(step, time){
+    // Start quiet arrangements at their opening, even when returning mid-cycle from battle.
+    if(step % MUSIC_STEPS_PER_BAR === 0 && this.musicPhase !== this.requestedMusicPhase && (this.requestedMusicPhase === 'field' || this.requestedMusicPhase === 'attract')) step = this.musicStep = 0;
     const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
     const beatStep = step % MUSIC_STEPS_PER_BAR;
     if(beatStep === 0) this.musicPhase = this.requestedMusicPhase;
@@ -7968,8 +8229,9 @@ class SoundEngine{
       if(!breath && (section > 0 || intensity > 0.35)) this.scheduleMusicArpeggio(time, baseChord, chord, beatStep, stepSeconds, 0.55 + 0.55 * intensity);
     }
     if(combat) this.scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
-    this.scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat);
-    this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
+    if(!combat && (bar === 7 || bar === 15) && beatStep === 7) return;
+    if(combat || bar > 0) this.scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat);
+    if(combat || bar >= 8) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
     this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
     const cadence=false;
@@ -8066,16 +8328,40 @@ class SoundEngine{
     source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
     source.start(time, 0); source.stop(time + duration + 0.02);
   }
+  // MUSIC-BUILD-DROP-01 (1.7.171): reserve the landing before optional layers; no reverb on sub-bass.
+  musicBassDrop(time, root, stepSeconds, level){
+    if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
+    const duration = Math.min(1.2, stepSeconds * 4), frequency = midiToFrequency(root);
+    if(!this.reserveMusicVoice(time, duration + 0.03, 2)) return;
+    const sub = this.ctx.createOscillator(), body = this.ctx.createOscillator(), gain = this.ctx.createGain(), bodyGain = this.ctx.createGain();
+    sub.type = 'sine'; body.type = 'triangle';
+    sub.frequency.setValueAtTime(frequency * 2, time);
+    sub.frequency.exponentialRampToValueAtTime(frequency, time + 0.12);
+    body.frequency.setValueAtTime(frequency * 4, time);
+    body.frequency.exponentialRampToValueAtTime(frequency * 2, time + 0.12);
+    bodyGain.gain.value = 0.22;
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.linearRampToValueAtTime(0.15 * level, time + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.055 * level, time + duration * 0.45);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    sub.connect(gain); body.connect(bodyGain); bodyGain.connect(gain); gain.connect(this.musicBus);
+    sub.onended = () => { sub.disconnect(); body.disconnect(); bodyGain.disconnect(); gain.disconnect(); };
+    sub.start(time); body.start(time); sub.stop(time + duration + 0.02); body.stop(time + duration);
+  }
   scheduleAttractStep(time, bar, beatStep, stepSeconds, shift, cycleIndex){
     const section = bar < 4 ? 0 : bar < 8 ? 1 : bar < 12 ? 2 : bar < 16 ? 3 : 4, level = MUSIC_ATTRACT_SECTION_LEVEL[section];
     const chord = MUSIC_ATTRACT_CHORDS[section === 3 ? MUSIC_ATTRACT_BUILD_CHORDS[bar - 12] : Math.floor(bar / 2) % MUSIC_ATTRACT_CHORDS.length];
     const chordRoot = chord.root + shift, tonic = MUSIC_ATTRACT_TONIC + shift, halfStep = stepSeconds / 2, isIntro = section === 0, isBuild = section === 3, isChorus = section === 4;
+    // Leave one eighth-note of space before the main landing.
+    if(bar === 15 && beatStep === 7) return;
+    const drop = beatStep === 0 && (bar === 4 || bar === 16);
+    if(drop) this.musicBassDrop(time, chordRoot, stepSeconds, bar === 16 ? 1 : 0.65);
     if(beatStep === 0 && bar % 2 === 0){
       const swell = isIntro ? 0.55 + bar * 0.15 : 1;
       [chord.triad[0], chord.triad[2]].forEach(interval => this.popTone(midiToFrequency(chordRoot + 24 + interval), time, stepSeconds * MUSIC_STEPS_PER_BAR * 1.96, 'pad', 0.03 * level * swell, true));
     }
     const rollBar = bar === 15, kickOut = rollBar && beatStep >= 4;
-    if(!kickOut && (bar >= 2 ? beatStep % 2 === 0 : beatStep === 0)) this.musicTone(138, time, 0.14, 'kick', (beatStep === 0 ? 0.11 : 0.085) * level);
+    if(bar >= 4 && !drop && !kickOut && beatStep % 2 === 0) this.musicTone(138, time, 0.14, 'kick', (beatStep === 0 ? 0.11 : 0.085) * level);
     if(isChorus && beatStep === 7 && bar % 2 === 1) this.musicTone(138, time, 0.12, 'kick', 0.07);
     const backbeat = (beatStep === 2 || beatStep === 6) && bar >= 4 && !(bar === 14 || rollBar);
     if(backbeat){ this.popSnare(time, level * 0.9); if(isChorus || section === 2) this.popClap(time, level * 0.8); }
@@ -8085,24 +8371,23 @@ class SoundEngine{
       this.popSnare(time, 0.45 + 0.55 * progress);
       this.popSnare(time + halfStep, 0.4 + 0.6 * progress);
     }
-    this.musicPercussion(time, false, (isIntro ? 1.3 : 2) * (beatStep % 2 ? 1.15 : 0.8));
+    if(bar >= 2 && (!isIntro || beatStep % 2 === 1)) this.musicPercussion(time, false, (isIntro ? 0.3 : 1.1) * level * (beatStep % 2 ? 1.15 : 0.8));
     if(section >= 2 && beatStep % 2 === 1) this.musicOpenHat(time, 1.2 * level);
     if(isChorus) this.musicPercussion(time + halfStep, false, 0.95);
-    if(beatStep === 0 && ((bar === 16) || (bar === 20) || (bar === 0 && cycleIndex > 0))) this.musicCrash(time, bar === 20 ? 0.8 : 1.1);
-    if(beatStep === 0 && bar === 14) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, 1);
-    if(beatStep === 0 && bar === 3) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR, 0.55);
+    if(beatStep === 0 && ((bar === 16) || (bar === 20))) this.musicCrash(time, bar === 20 ? 0.8 : 1.1);
+    if(beatStep === 0 && bar === 14) this.popRiser(time, stepSeconds * (MUSIC_STEPS_PER_BAR * 2 - 1), 0.85);
+    if(beatStep === 0 && bar === 3) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR, 0.32);
     if(bar === 7 || bar === 23) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, 0.8);
     let bassOffset = null;
-    if(isIntro) bassOffset = beatStep === 0 || beatStep === 4 ? 0 : null;
+    if(isIntro) bassOffset = null;
     else if(isChorus) bassOffset = beatStep % 2 ? 12 : (beatStep === 4 ? 7 : 0);
     else if(isBuild) bassOffset = 0;
     else if(MUSIC_ATTRACT_BASS[beatStep] !== undefined) bassOffset = MUSIC_ATTRACT_BASS[beatStep];
-    if(bassOffset !== null && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + bassOffset), time, stepSeconds * (beatStep % 2 ? 0.55 : 0.85), 'bass', 0.062 * level);
-    if(bar >= 1){
+    if(bassOffset !== null && !drop && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + bassOffset), time, stepSeconds * (beatStep % 2 ? 0.55 : 0.85), 'bass', 0.062 * level);
+    if(bar >= 4){
       const arpIndex = MUSIC_ATTRACT_ARP[beatStep];
       this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[arpIndex] + (beatStep >= 4 ? 12 : 0)), time, stepSeconds * 0.5, 'pluck', (isChorus ? 0.02 : 0.03) * level, true);
     }
-    if(beatStep === 0 && bar >= 4 && bar % 2 === 0) this.popTone(midiToFrequency(chordRoot + 48 + chord.triad[(bar >> 1) % 3]), time, stepSeconds * 2.5, 'bell', 0.04 * level, true);
     if(section >= 2 && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
       this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[1]), time, halfStep * 1.6, 'pluck', 0.026 * level, true);
       this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[2]), time + 0.003, halfStep * 1.6, 'pluck', 0.022 * level, true);
@@ -8112,10 +8397,7 @@ class SoundEngine{
       this.popTone(midiToFrequency(nextChord.root + shift + 12), time + halfStep, halfStep * 1.5, 'bass', 0.06 * level);
     }
     if(isChorus && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + (beatStep % 2 ? 12 : 0)), time + halfStep, halfStep * 0.8, 'bass', 0.034 * level, true);
-    if(bar % 4 === 3 && beatStep >= 6 && section >= 1){
-      for(let sub = 0; sub < 2; sub++) this.popTone(midiToFrequency(tonic + 36 + MUSIC_MAJOR_INTERVALS[(beatStep - 6) * 2 + sub + 2]), time + sub * halfStep, halfStep * 0.9, 'bell', 0.045 * level, true);
-    }
-    const degree = MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
+    const degree = MUSIC_COMBAT_MELODY[bar % 4][beatStep];
     const fitToChord = note => {
       if(beatStep !== 0 && beatStep !== 4) return note;
       for(const interval of chord.triad){
@@ -8125,9 +8407,9 @@ class SoundEngine{
       }
       return note;
     };
-    if(section >= 1 && degree !== null && degree !== undefined && !kickOut){
+    if(degree !== null && degree !== undefined && !kickOut){
       const pitch = fitToChord(tonic + 24 + MUSIC_MAJOR_INTERVALS[degree]), held = beatStep === 0 ? stepSeconds * 1.7 : beatStep % 2 ? stepSeconds * 0.55 : stepSeconds * 0.85;
-      if(section === 1) this.popTone(midiToFrequency(pitch), time, held, 'bell', 0.07 * level);
+      if(section <= 1) this.popTone(midiToFrequency(pitch - 12), time, held * 1.4, 'warm', 0.09 * level);
       else {
         this.popTone(midiToFrequency(pitch), time, held, 'lead', (isChorus ? 0.058 : 0.04) * level);
         if(isChorus){
@@ -8227,7 +8509,7 @@ class SoundEngine{
       this.musicTone(midiToFrequency(incomingTonic + MUSIC_TURNAROUND_RUN[runIndex]), time + half * stepSeconds / 2, stepSeconds * 0.45, combat ? 'brass' : 'reed', (combat ? 0.1 : 0.075) * lift);
     }
   }
-  // IDLE-LAYERS-01 (1.7.114): the idle theme gains five layers over its 24 bars, built from techniques studied in the reference scores: a rolling sixteenth-note arpeggio over each chord (clean-guitar and chiptune rock ostinato), a 3+3+2 chord stab pattern against the 4/4 pulse, a held tonic with a moving add-nine bell, a chord change that arrives half a beat early, and a chromatic answer run into each phrase end.
+  // IDLE-LAYERS-01, MUSIC-BUILD-DROP-01 (1.7.171): later sections add chord arpeggios, 3+3+2 stabs and phrase answers. Decorative bells are removed; risers resolve into pitched bass at bars 8 and 16, leaving the last eighth-note clear.
   scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath){
     const tones = musicChordTones(baseRoot), half = stepSeconds / 2, tonic = root - baseRoot + 38;
     if(section >= 1 && !breath){
@@ -8243,19 +8525,18 @@ class SoundEngine{
     }
     if(beatStep === 0 && bar % 4 === 0) this.musicTone(midiToFrequency(tonic + 12), time, stepSeconds * 7.6, 'triangle', 0.03, true);
     if(section >= 1 && !breath && (beatStep === 3 || beatStep === 5)) this.musicTone(midiToFrequency(root - 12 + tones[beatStep === 3 ? 2 : 1]), time, stepSeconds * 0.85, 'fmbass', 0.038, true);
-    if(beatStep === 4 && section >= 1 && bar % 2 === 0) this.popTone(midiToFrequency(root + 36 + [0, 2, 7, 4][(bar >> 1) % 4]), time, stepSeconds * 3, 'bell', 0.034, true);
     if(beatStep === 7 && bar % 2 === 1){
       const nextBase = progression[(Math.floor(bar / 2) + 1) % progression.length];
       this.musicTone(midiToFrequency(nextBase + (root - baseRoot) + 12), time + half, stepSeconds * 0.9, 'fmbass', 0.06);
     }
-    if(section === 2 && beatStep === 0 && bar % 4 === 0) this.musicTone(92, time, 0.3, 'kick', 0.09);
+    if(section === 2 && beatStep === 0 && bar % 4 === 0 && bar !== 16) this.musicTone(92, time, 0.3, 'kick', 0.09);
     if(phraseBar === 3 && beatStep >= 6){
       for(let sub = 0; sub < 2; sub++){
         const run = (beatStep - 6) * 2 + sub;
         this.musicTone(midiToFrequency(tonic + 24 + MUSIC_MINOR_INTERVALS[run + 1]), time + sub * half, stepSeconds * 0.45, 'pluck', 0.04 * (0.7 + run * 0.1), true);
       }
     }
-    if(beatStep === 0 && bar % 8 === 6) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, 0.45);
+    if(beatStep === 0 && (bar === 6 || bar === 14)) this.popRiser(time, stepSeconds * (MUSIC_STEPS_PER_BAR * 2 - 1), 0.4);
   }
   // FIELD-VARIATION-01 (1.7.36): the idle theme never plays the same 24 bars twice. Four arrangements rotate cycle by cycle (theme, answer,
   // contrast, development), each with its own melody treatment, bass pattern, drums and harmony, and every bar draws its small decisions from a
@@ -8268,11 +8549,19 @@ class SoundEngine{
     const baseRoot = progression[Math.floor(bar / 2) % progression.length];
     const root = baseRoot + shift;
     const section = Math.floor(bar / 8);
-    const buildUp = arrangement === 2 && bar < 8;
+    const buildUp = bar < 8;
     const stepSeconds = this.musicStepSeconds();
+    if(bar < 4){
+      if(beatStep === 0 && bar % 2 === 0) this.popTone(midiToFrequency(root + 12), time, stepSeconds * 15, 'pad', 0.014, true);
+      const note = MUSIC_FIELD_MELODY[bar % 4][beatStep];
+      if(note !== null) this.popTone(midiToFrequency(50 + shift + note), time, stepSeconds * 1.4, 'warm', 0.035 + bar * 0.004);
+      return;
+    }
+    const drop = beatStep === 0 && (bar === 8 || bar === 16);
+    if(drop) this.musicBassDrop(time, root, stepSeconds, bar === 16 ? 0.8 : 0.65);
     // bass
     const bassPattern = FIELD_BASS_PATTERNS[buildUp ? 2 : arrangement === 1 ? 1 : (barPick < 0.5 ? 0 : barPick < 0.8 ? 3 : 1)];
-    if(!breath) for(const [bassStep, interval] of bassPattern) if(bassStep === beatStep) this.musicTone(midiToFrequency(root + interval), time, beatStep === 0 ? 0.27 : 0.16, arrangement === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
+    if(!breath && !drop) for(const [bassStep, interval] of bassPattern) if(bassStep === beatStep) this.musicTone(midiToFrequency(root + interval), time, beatStep === 0 ? 0.27 : 0.16, arrangement === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
     // pad drone under the answer and contrast arrangements
     if(beatStep === 0 && bar % 2 === 0 && (arrangement === 1 || arrangement === 2)){
       this.musicTone(midiToFrequency(root + 12), time, stepSeconds*7.5, 'triangle', 0.028);
@@ -8280,7 +8569,7 @@ class SoundEngine{
     }
     if(beatStep === 0 && bar % 2 === 0) this.musicTone(midiToFrequency(root + 12 + musicChordTones(baseRoot)[1]), time, stepSeconds*7.5, 'triangle', 0.016, true);
     // drums
-    if(!buildUp){
+    if(!buildUp && !drop){
       const drumStyle = arrangement === 0 ? 0 : arrangement === 1 ? 2 : arrangement === 2 ? 1 : (barPick2 < 0.5 ? 1 : 2);
       if(drumStyle === 0){
         if(beatStep === 0) this.musicTone(110, time, 0.22, 'kick', 0.07);
@@ -8299,11 +8588,15 @@ class SoundEngine{
     if(!buildUp && !breath) this.scheduleMusicArpeggio(time, baseRoot, root, beatStep, stepSeconds, section > 0 || cycleIndex > 0 ? 0.5 : 0.34);
     // melody
     this.scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath);
-    if(breath || barPick3 < 0.08) return;
+    if(breath || (bar >= 8 && barPick3 < 0.08)) return;
     let notes = (arrangement === 2 ? FIELD_MELODY_B : MUSIC_FIELD_MELODY)[bar % 12];
     if(arrangement === 3) notes = fieldVariedBar(notes, mulberry32(cycleIndex*104729 + bar*7919));
     const offset = notes[beatStep];
     if(offset === null || offset === undefined) return;
+    if(bar < 8){
+      this.popTone(midiToFrequency(50 + shift + offset), time, stepSeconds * 1.4, 'warm', 0.05);
+      return;
+    }
     const voice = arrangement === 1 ? 'fmkeys' : arrangement === 3 ? (bar % 2 ? 'fmkeys' : 'reed') : 'reed';
     const pitch = 38 + shift + 24 + offset;
     const strong = beatStep === 0 ? 1 : 0.86;
@@ -9013,7 +9306,7 @@ function refreshHeavyVisualLoadState(){
   const enemyLoad = (perfStats.visibleEnemies || 0) >= HEAVY_VISUAL_LOAD_ENEMY_THRESHOLD;
   const loadNow = performance.now();
   if(enemyLoad || perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS) heavyVisualLoadHoldUntil = loadNow + HEAVY_VISUAL_LOAD_HOLD_MS;
-  underHeavyVisualLoad = enemyLoad || loadNow < heavyVisualLoadHoldUntil || renderScaleStep > 0;
+  underHeavyVisualLoad = enemyLoad || loadNow < heavyVisualLoadHoldUntil || renderScaleStep > 0 || (gameSpeed >= 5 && loadNow-lastCameraInteractionAt < CAMERA_MOTION_FULL_RATE_MS);
   if(perfStats.lastDepthSortedMs >= HEAVY_VISUAL_LOAD_DEPTH_SORT_MS) perfStats.depthSortPressureFrames++;
   if(underHeavyVisualLoad) perfStats.adaptiveVisualFrames++;
 }
@@ -9091,7 +9384,7 @@ let lastCameraInteractionAt = -1e9, cameraMotionFullRateFrames = 0;
 function markCameraInteraction(){ lastCameraInteractionAt = performance.now(); }
 function isCameraMotionActive(now){
   if(now - lastCameraInteractionAt < CAMERA_MOTION_FULL_RATE_MS) return true;
-  if(panInertia.active || waveStartCameraPan || (cameraFollow && cameraFollow.phase === 'panning')) return true;
+  if(panInertia.active || waveStartCameraPan || (roundEnemyFollow && roundEnemyFollow.enemy) || (cameraFollow && cameraFollow.phase === 'panning')) return true;
   return isDragging && activePointers.size > 0;
 }
 const IS_MOBILE_DEVICE = (navigator.maxTouchPoints > 0) && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches); // MOBILE-CAP-FINE-POINTER-01 (1.6.127) — see CHANGELOG.md § [1.6.127]. A touch laptop or desktop with a mouse or trackpad is not a phone
@@ -10531,7 +10824,7 @@ function serializeGameState(){
     presentationClockMs: presentationTime, seed: generateSaveSeed(), savedAt: new Date().toISOString(), gameVersion: GAME_VERSION, schemaVersion: 1,
     looseInventory: groundItems.filter(gi=>!gi.itemDef.isGoldBag && !gi.itemDef.isMapScroll && itemDefinitionForSavedId(gi.itemDef.id)).map(gi=>({x:gi.x,y:gi.y,itemId:gi.itemDef.id,age:Math.max(0,presentationTime-gi.spawnTime),legacyLuckyCoin:!!gi.itemDef.legacyLuckyCoin})),
     livestockGrowthVersion:2,
-    livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].hunter).slice(0,LIVESTOCK_MAX_ON_BOARD+CIRCUS_EXTRA_LIVESTOCK_CAP).map(e=>({type:e.type,x:e.x,y:e.y,growthRounds:e.growthRounds,healthFraction:e.hp/e.maxHp,savedId:e.id,mateId:e.breedingPartner ? e.breedingPartner.id : null,birthDueRound:e.birthDueRound||0,breedReadyRound:e.breedReadyRound||0})),
+    livestock:enemyPool.filter(e=>e.active && e.isLivestock && LIVESTOCK_TYPES[e.type] && !LIVESTOCK_TYPES[e.type].hunter).slice(0,LIVESTOCK_MAX_ON_BOARD+CIRCUS_EXTRA_LIVESTOCK_CAP).map(e=>({type:e.type,x:e.x,y:e.y,growthRounds:e.growthRounds,honeyElapsedMs:e.type==='BEE'?(e.honeyElapsedMs||0):undefined,healthFraction:e.hp/e.maxHp,savedId:e.id,mateId:e.breedingPartner ? e.breedingPartner.id : null,birthDueRound:e.birthDueRound||0,breedReadyRound:e.breedReadyRound||0})),
     looseCoins: coinPickups.filter(c=>c.active).map(c=>({x:c.x,y:c.y,value:c.value,isDiamond:!!c.isDiamond,fromGoldBag:!!c.fromGoldBag,age:c.age,lifespan:c.lifespan})),
     gold, lives, livesBought, marketBought, drillsBought, merchantSold:{ wave: merchantBoughtWave, indexes: [...merchantBoughtIds] }, waveIndex:(stealthRun && waveIndex===10 && !stealthSantaDefeated) ? 9 : Math.max(0, waveIndex - (waveState !== 'IDLE' ? 1 : 0)), waveReplayed: waveState !== 'IDLE', freeExpansionOwed, hacksUsed, // WAVE-SAVE-01 (1.7.51): a save made in the middle of a wave resumes by starting that wave again (it used to skip it)
     wavesCompleted, stealthRun, wood, stone, freeBarricadesLeft, waveRunSeed, hasDefibrillator, donutShieldHits, bonusGrassTiles: [...bonusGrassTiles], bonusMaxLivesFromMeat,
@@ -10624,6 +10917,7 @@ function restoreGameStateInner(state){
   for(const s of skeletonPool) s.active = false; // same — skeletons are round-scoped, never saved
   for(const p of particles) p.active = false;
   for(const t of floatingTexts) t.active = false;
+  placingCampfire=false; if(cookingDialog && cookingDialog.open) cookingDialog.close();
   sceneryMap.clear();
   guardedRoadEndKeys.clear();
   invalidateSpawnFlags();
@@ -10711,6 +11005,7 @@ function restoreGameStateInner(state){
     const restoredItem = restoreSceneryClock(s.item, state.presentationClockMs);
     if(restoredItem.type === 'STONE_CAIRN') restoredItem.type = 'WOODPILE'; // EVENT-NO-CAIRN-01: migrate the copied item, preserving the input save
     normalizeSceneryHarvest(restoredItem);
+    normalizeCookingJob(restoredItem);
     sceneryMap.set(s.key, restoredItem);
   }
   rebuildClearingScenery();
@@ -10805,7 +11100,7 @@ function restoreGameStateInner(state){
   for(const log of (Array.isArray(state.ambientLogs) ? state.ambientLogs : []).slice(0, AMBIENT_LOG_MAX_ON_BOARD)){
     if(!log || !Number.isFinite(log.x) || !Number.isFinite(log.y)) continue;
     const gx = Math.floor(log.x/TILE_SIZE), gy = Math.floor(log.y/TILE_SIZE);
-    if(!isTileBuildable(gx, gy) || tileHasHut(gx, gy) || ambientLogs.some(saved => Math.floor(saved.x/TILE_SIZE) === gx && Math.floor(saved.y/TILE_SIZE) === gy)) continue;
+    if(gx<1 || gy<1 || gx>=COLS-1 || gy>=ROWS-1 || pathCells.has(gx+','+gy) || nearPathTileSet.has(gx+','+gy) || bonusGrassTiles.has(gx+','+gy) || tileHasHut(gx, gy) || ambientLogs.some(saved => Math.floor(saved.x/TILE_SIZE) === gx && Math.floor(saved.y/TILE_SIZE) === gy)) continue;
     ambientLogs.push({ x:gx*TILE_SIZE+TILE_SIZE/2, y:gy*TILE_SIZE+TILE_SIZE/2, count:Number.isFinite(log.count) ? clampNum(Math.round(log.count), 1, AMBIENT_LOG_STACK_SIZE) : AMBIENT_LOG_STACK_SIZE });
   }
 }
@@ -10837,16 +11132,20 @@ function validateSaveShape(state){
 }
 function loadSaveFileText(text){
   const jsonStart = text.indexOf('{');
-  if(jsonStart === -1){ showToast('⚠️ Not a valid save file'); return; }
+  if(jsonStart === -1){ trackGameEvent('save_load_failed', {reason:'missing_json'}); showToast('⚠️ Not a valid save file'); return; }
   try{
     const state = JSON.parse(text.slice(jsonStart));
-    if(!validateSaveShape(state)){ showToast('⚠️ Not a valid save file — your current game is untouched'); return; }
+    if(!validateSaveShape(state)){ trackGameEvent('save_load_failed', {reason:'invalid_shape'}); showToast('⚠️ Not a valid save file — your current game is untouched'); return; }
+    const previousTelemetry = telemetrySummaryPayload('save_replaced');
     restoreGameState(state);
+    reportSessionSummary('save_replaced', previousTelemetry);
+    beginTelemetryRun(true);
     const versionNote = (state.gameVersion && state.gameVersion !== GAME_VERSION)
       ? ' — from v' + state.gameVersion + ', this is v' + GAME_VERSION : '';
     showToast('💾 Loaded save (seed ' + (state.seed || '?') + ')' + versionNote + (state.waveReplayed ? ' - the unfinished wave starts again' : ''));
     trackGameEvent('save_loaded', { save_version: state.gameVersion || 'unknown', waves_completed: wavesCompleted });
   } catch(err){
+    trackGameEvent('save_load_failed', {reason:err instanceof SyntaxError ? 'invalid_json' : 'restore_failed'});
     showToast('⚠️ Could not read that save file');
   }
 }
@@ -10862,20 +11161,29 @@ const FIT_MAX_ZOOM = 2.1; // START-ZOOM-01 (1.6.123, set to the owner's preferre
 const camera = { x: 0, y: 0, zoom: 1 };
 let cameraFollow = null; // { tower, selectTime, phase: 'waiting'|'panning'|'locked', panStartX, panStartY }
 function startCameraFollow(tower){
+  roundEnemyFollow = null;
   waveStartCameraPan = null; // mutually exclusive with the wave-start pan below — whichever the player's attention is on wins, they never fight over camera.x/y/zoom in the same frame
   cameraFollow = { tower, selectTime: cameraPanClock, phase: 'waiting', panStartX: 0, panStartY: 0 };
 }
 // REAL-TIME-PRESENTATION-01 (1.6.103): every camera pan below runs on cameraPanClock (real elapsed time), never gameTime, so 1x/2x/3x/5x/10x cannot change how fast the camera moves.
 // CA260 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA260
 let waveStartCameraPan = null;
+let roundEnemyFollow = null; // first dispatched enemy plus spawn serial; never retarget this round
+function startTrollCameraPan(troll){
+  cancelCameraFollow(); panInertia.active=false;
+  const targetZoom=camera.zoom;
+  waveStartCameraPan={panStartTime:cameraPanClock,panStartX:camera.x,panStartY:camera.y,panStartZoom:camera.zoom,targetZoom,targetX:CANVAS_W/2-troll.x*targetZoom,targetY:CANVAS_H/2-troll.y*targetZoom};
+}
 function startWaveStartCameraPan(){
   if(!waypointsPx || !waypointsPx.length) return;
-  if(cameraFollow) return; // a tower is already being followed — don't fight it for the camera
+  cameraFollow = null;
+  panInertia.active = false;
+  roundEnemyFollow = { enemy: null, serial: 0, lastClock: cameraPanClock };
   const spawn = waypointsPx[0];
   const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
   waveStartCameraPan = {
     panStartTime: cameraPanClock, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
-    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - spawn.y*targetZoom
+    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - (spawn.y - 78)*targetZoom
   };
 }
 function updateWaveStartCameraPan(){
@@ -10891,7 +11199,26 @@ function updateWaveStartCameraPan(){
   if(t >= 1) waveStartCameraPan = null;
 }
 function cancelCameraFollow(){
+  waveStartCameraPan = null;
+  roundEnemyFollow = null;
   cameraFollow = null;
+}
+// ROUND-CAMERA-01 (1.7.172): track the rendered position on the presentation clock.
+function updateRoundEnemyFollow(){
+  const f = roundEnemyFollow;
+  if(!f || waveStartCameraPan || gameState === 'PAUSED') return;
+  if(gameState !== 'PLAYING'){ roundEnemyFollow = null; return; }
+  if(!f.enemy){ f.lastClock = cameraPanClock; return; }
+  const e = f.enemy;
+  if(!e.active || e.spawnSerial !== f.serial){ roundEnemyFollow = null; return; }
+  const blend = Math.min(1, accumulator / FIXED_DT);
+  const x = Number.isFinite(e.renderPrevX) ? e.renderPrevX + (e.x - e.renderPrevX) * blend : e.x;
+  const y = Number.isFinite(e.renderPrevY) ? e.renderPrevY + (e.y - e.renderPrevY) * blend : e.y;
+  const dt = Math.max(0, Math.min(CAMERA_CLOCK_MAX_STEP_MS, cameraPanClock - f.lastClock));
+  f.lastClock = cameraPanClock;
+  const ease = 1 - Math.exp(-dt / 100);
+  camera.x += (CANVAS_W / 2 - x * camera.zoom - camera.x) * ease;
+  camera.y += (CANVAS_H / 2 - y * camera.zoom - camera.y) * ease;
 }
 function towerVisualCenterY(t){
   // CA261 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA261
@@ -11206,7 +11533,8 @@ class Enemy{
   }
   updateLivestockWander(dt){
     if(livestockIsEgg(this)){ this.vx = 0; this.vy = 0; this.livestockWalking = false; return; }
-    if(!this.isHostileNpc) this.checkLivestockPairHearts(dt);
+    if(!this.isHostileNpc && this.type!=='BEE') this.checkLivestockPairHearts(dt);
+    if(this.type==='BEE') updateBeeHoney(this,dt);
     // LIVESTOCK-CUTE-01 (1.6.105): idle a moment, then amble in a direction for a bit, then idle again. Driven in real time
     // once per rendered frame (updatePresentationEffects()), so animals move between waves and at every game speed.
     this.retargetTimer = (this.retargetTimer||0) - dt;
@@ -11914,7 +12242,7 @@ class Enemy{
       else spawnHutGuardian(this);
     }
   }
-  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit, ignoreArmor){
+  applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit, ignoreArmor, bloodImpactAngle, bloodProfileKey){
     if(!this.active || this.deathResolved) return; // already dead — a stale reference (this tick's targeting/collision hash is built before towers attack, so a kill earlier in the same tick doesn't remove the corpse from it until the next rebuild) must not re-process damage, blood marks, or a second die() call
     this.damageHitCount = (this.damageHitCount || 0) + 1;
     // CA313 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA313
@@ -11960,7 +12288,7 @@ class Enemy{
       }
     }
     this.hp -= dmg;
-    if(countsAsShotHit !== false) spawnSwordsmanBloodArc(this, sourceTower); // SWORD-BLOOD-ARC-01 (1.7.163): outside generic spray chance, after shield absorption
+    if(countsAsShotHit !== false || bloodProfileKey) spawnWeaponBloodContact(this, sourceTower, bloodImpactAngle, bloodProfileKey); // SWORD-BLOOD-ARC-01 (1.7.163): outside generic spray chance, after shield absorption
     this.flashTimer = 120;
     // CA318 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA318
     const flinchSeverity = clampNum(dmg / this.maxHp, 0, 1);
@@ -11969,7 +12297,7 @@ class Enemy{
     // CA320 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA320
     const dmgRollT = clampNum((hitRoll - (1-effectiveVarianceHalfWidth)) / (effectiveVarianceHalfWidth*2), 0, 1);
     // CA321 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA321
-    this.flinchAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
+    this.flinchAngle = weaponBloodAngle(this, sourceTower, bloodImpactAngle);
     this.flinchMag = 1.5 + flinchSeverity*5;
     this.flinchStart = realTime;
     this.flinchDuration = 130 + flinchSeverity*90;
@@ -11986,11 +12314,11 @@ class Enemy{
     // PERF-DEATH-01 (1.6.14): the reference footage is set to Low and already shows dozens of
     // persistent hit decals with zero deaths. Keep impact gore, but thin repeated hit splashes on
     // Low/crowded frames; death bursts use the same quality-aware budget below.
-    } else if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE * ((graphicsQuality === 'low' || underHeavyVisualLoad) ? 0.35 : 1)){
+    } else if(goreMode && Math.random() < BLOOD_ON_HIT_CHANCE * ((graphicsQuality === 'low' || underHeavyVisualLoad || (gameSpeed >= 5 && performance.now()-lastCameraInteractionAt < CAMERA_MOTION_FULL_RATE_MS)) ? 0.15 : 1)){
       const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
-      const impactAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
+      const impactAngle = weaponBloodAngle(this, sourceTower, bloodImpactAngle);
       // CA323 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA323
       const NORMAL_HIT_CEILING = 0.55;
       let bloodScaleT = Math.pow(Math.random(), 3) * NORMAL_HIT_CEILING;
@@ -12010,7 +12338,7 @@ class Enemy{
       // CA326 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA326
       const bloodWeightScale = bloodPoolSizeScale(this.radius);
       const weapon = resolveWeaponSubtype(sourceTower);
-      spawnForensicSpatter(this.x, this.y, bio, sourceTower, hitPower, false, 1, graphicsQuality === 'low' || underHeavyVisualLoad, this);
+      spawnForensicSpatter(this.x, this.y, bio, sourceTower, hitPower, false, 1, graphicsQuality === 'low' || underHeavyVisualLoad, this, bloodImpactAngle, bloodProfileKey);
       if(bio.isDust){
         spawnParticles(this.x, this.y, bio.bright, 8, 200, undefined, undefined, undefined, undefined, undefined, !bio.isDust); // rock chips, no liquid streams or pooling
         if(Math.random() < 0.1) spawnRockChips(this.x, this.y, this.radius, 1); // 1-in-10 chance per hit — a visible chip, not just dust
@@ -12131,9 +12459,9 @@ class Enemy{
     } else {
       spawnParticles(this.x, this.y, '#ffaa33', 3, 0);
     }
-    if(this.hp <= 0) this.die(sourceTower, forStreak);
+    if(this.hp <= 0) this.die(sourceTower, forStreak, bloodImpactAngle, bloodProfileKey);
   }
-  die(sourceTower, forStreak){
+  die(sourceTower, forStreak, bloodImpactAngle, bloodProfileKey){
     if(!this.active || this.deathResolved) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
     recordUnitDeath('enemy',this.type,this.escaped ? 'escaped enemy defeated' : 'defeated');
     if(this.isLivestock && !LIVESTOCK_TYPES[this.type]) this.isLivestock = false; // LIVESTOCK-RECYCLE-01 safety net: a real enemy can never be treated as livestock
@@ -12206,9 +12534,7 @@ class Enemy{
       spawnFloatingText(this.x, this.y - this.radius - 20, '+' + bountyStone + '🪨', '#bdbdbd');
     } else if(this.sizeTier === 'LARGE' && !this.escaped && bountyGold >= 2){
       // LARGE-BAGS-01 (1.6.116) — see CHANGELOG.md § [1.6.116]
-      const firstBagGold = Math.floor(bountyGold/2);
-      dropGoldBag(this.x - 10, this.y, firstBagGold);
-      dropGoldBag(this.x + 10, this.y, bountyGold - firstBagGold);
+      dropGoldBag(this.x, this.y, bountyGold);
     } else {
       gold += bountyGold;
       
@@ -12229,8 +12555,8 @@ class Enemy{
       const bio = this.bloodProfile || getBloodProfile(this.type);
       const viscFriction = bio.viscous ? 0.88 : 0.93; // thicker fluids decelerate faster, don't travel as far
       const arch = resolveGoreArchetype(sourceTower);
-      if(explodesInGore) spawnGoreExplosion(this.x, this.y, bio, sourceTower, goreScale, low, this);
-      else spawnForensicSpatter(this.x, this.y, bio, sourceTower, 1, true, goreScale, low, this);
+      if(explodesInGore) spawnGoreExplosion(this.x, this.y, bio, sourceTower, goreScale, low, this, bloodImpactAngle, bloodProfileKey);
+      else spawnForensicSpatter(this.x, this.y, bio, sourceTower, 1, true, goreScale, low, this, bloodImpactAngle, bloodProfileKey);
       if(bio.isDust){
         // rock/debris burst — chunky dust, no liquid streams, no pooling decal
         spawnParticles(this.x, this.y, bio.bright, Math.round((low ? 14 : 36)*goreScale), 220, undefined, undefined, undefined, undefined, undefined, !bio.isDust);
@@ -12238,7 +12564,7 @@ class Enemy{
         spawnGibs(this.x, this.y, Math.round((low ? 5 : 12)*goreScale));
         spawnRockChips(this.x, this.y, this.radius, 2 + Math.floor(Math.random()*4)); // 2-5 visible chips on death
       } else {
-        const impactAngle = sourceTower ? Math.atan2(this.y - sourceTower.y, this.x - sourceTower.x) : Math.random()*Math.PI*2;
+        const impactAngle = weaponBloodAngle(this, sourceTower, bloodImpactAngle);
         if(arch === 'HOLY'){
           // CA357 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA357
           const holyBright = shiftHexColor(bio.bright, 25, 22);
@@ -12327,7 +12653,7 @@ class Enemy{
           spawnParticles(this.x, this.y, bio.spray, Math.max(3, Math.round(9*goreScale)), 130, 0.9, false, undefined, undefined, 0.5, !bio.isDust);
         }
         // CA367 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA367
-        if(!bio.isDust && Math.random() < 0.32) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < 0.18) spawnBoneDebris(this.x, this.y, this.radius);
         if(!bio.isDust && Math.random() < 0.08 + this.radius/200) spawnSkullDrop(this.x, this.y, this.radius); // bigger enemies leave a skull more often: about 12% at radius 9, 16% at 15, 19% at 22
         if(Math.random() < 0.55){
           // CA368 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA368
@@ -12768,9 +13094,9 @@ class Tower{
     // CA392 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA392
     const strMult = 1 + PRIMARY_DAMAGE_PER_POINT * strPoints;
     // CA393 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA393
-    const dexRateShare = archetype === 'ARCHER' ? ARCHER_RATE_SHARE : 1;
+    // DEX attack cadence uses the capped late-building curve below.
     // CA394 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA394
-    const dexMult = 1 + dexRateShare * diminishingStatValue(dexEff, 0.014);
+    const dexMult = attackRateFromDex(totalDex);
     const intRangeFraction = Math.min(1, intPoints / STAT_EFFECT_CAP); // reaches the class range cap exactly at 500 INT
     // Crazy Chef is an Archer that hits with Strength — her knives are thrown, not shot.
     const archerDamageStat = dexEff;
@@ -12843,6 +13169,7 @@ class Tower{
       if(def.woodCost && wood < def.woodCost) return false;
       if(def.stoneCost && stone < def.stoneCost) return false;
     }
+    const purchaseGoldBefore = gold, purchaseWoodBefore = wood, purchaseStoneBefore = stone;
     if(useFreeCharge){
       freeBarricadesLeft--;
     } else {
@@ -12856,7 +13183,7 @@ class Tower{
     refreshQuickUse(this);
     this.recomputeStats();
     this.checkHeroStatus();
-    trackGameEvent('item_purchased', { item: def.id || def.name, payment_type: useFreeCharge ? 'free_charge' : (def.woodCost ? 'wood_stone' : 'gold'), cost: def.cost || def.woodCost || 0 });
+    trackGameEvent('item_purchased', { item: def.id || def.name, payment_type: useFreeCharge ? 'free_charge' : (def.woodCost || def.stoneCost ? 'wood_stone' : def.cost > 0 ? 'gold' : 'free'), cost:Math.max(0,purchaseGoldBefore-gold), wood_cost:Math.max(0,purchaseWoodBefore-wood), stone_cost:Math.max(0,purchaseStoneBefore-stone) });
     return true;
   }
   // CA401 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA401
@@ -14146,7 +14473,7 @@ class Projectile{
         if(!e.active) continue;
         const d = Math.hypot(e.x-this.x, e.y-this.y);
         if(d <= this.splashRadius){
-          e.applyDamage(this.damage, this.sourceTower, !streakClaimed, false, true, false);
+          e.applyDamage(this.damage, this.sourceTower, !streakClaimed, false, true, false, false, Math.atan2(e.y-this.y,e.x-this.x), this.sourceTower ? this.sourceTower.type : 'ENVIRONMENT');
           applyAttunementStatus(this.sourceTower, e);
           if(e.hp <= 0 || !e.active) streakClaimed = true; // this hit killed it — only the first such kill counts for streak
         }
@@ -14157,7 +14484,7 @@ class Projectile{
       if(this.isMoneyBag) spawnCoinBurst(this.x, this.y, 1 + Math.floor(Math.random()*7));
     } else {
       const impactAngle = Math.atan2(this.vy, this.vx);
-      hitEnemy.applyDamage(this.damage, this.sourceTower);
+      hitEnemy.applyDamage(this.damage, this.sourceTower, undefined, false, true, true, false, impactAngle, this.isAxe ? 'AXE_THROWN' : (this.sourceTower ? this.sourceTower.type : 'ENVIRONMENT'));
       applyAttunementStatus(this.sourceTower, hitEnemy);
       if(this.slowFactor) hitEnemy.applySlow(this.slowFactor, this.slowDuration);
       if(this.poisonDamage > 0 && hitEnemy.active) hitEnemy.applyPoison(this.poisonDamage, this.poisonDuration, this.sourceTower);
@@ -14407,6 +14734,7 @@ function pushSprayDecal(decal){
   const capacity = sprayDecalCapacity();
   if(!goreMode || !bloodDropletsEnabled || capacity <= 0) return;
   decal.lifespan = bloodMarkLifespan();
+  if(waveState==='IDLE' && wavesCompleted>0){decal.cleanupStarted=true;decal.lifespan=18000;decal.spawnTime=presentationTime-12000;}
   if(sprayDecals.length < capacity) sprayDecals.push(decal);
   else { sprayDecalIndex %= capacity; sprayDecals[sprayDecalIndex] = decal; sprayDecalIndex = (sprayDecalIndex+1)%capacity; }
 }
@@ -14774,7 +15102,7 @@ function spawnSwordsmanBloodArc(victim, tower){
   const bio = victim.bloodProfile || getBloodProfile(victim.type);
   if(bio.isDust) return;
   const impactAngle = Math.atan2(victim.y-tower.y, victim.x-tower.x);
-  spawnCastOffArc(victim.x, victim.y, impactAngle + Math.PI*1.5, hexToRgba(bloodTintForFire(victim,bio.dark),0.65), 5, towerSwingDir(tower), victim, true);
+  spawnCastOffArc(victim.x, victim.y, impactAngle + Math.PI*1.5, hexToRgba(bloodTintForFire(victim,bio.bright),0.88), 8, towerSwingDir(tower), victim, true);
 }
 function spawnCastOffArc(x, y, baseAngle, color, count, arcDir, victim, circular){
   if(!bloodDropletsEnabled && !circular) return; // circular ground signature is independent of airborne droplets
@@ -14783,13 +15111,13 @@ function spawnCastOffArc(x, y, baseAngle, color, count, arcDir, victim, circular
   const dropScale = Math.sqrt(bodyScale);
   const scale = (0.65 + Math.random()*0.9)*dropScale;
   count = count || (BLOOD_ARC_MIN_DROPS + Math.floor(Math.random()*BLOOD_ARC_EXTRA_DROPS));
-  count = Math.max(circular ? 3 : 1, Math.round(count*bodyScale));
+  count = circular ? Math.max(7, Math.min(12, Math.round(count*bodyScale))) : Math.max(1, Math.round(count*bodyScale));
   arcDir = arcDir !== undefined ? arcDir : (Math.random() < 0.5 ? 1 : -1); // fallback random only when a caller genuinely has no tower/handedness context to pass
-  const angularStep = circular ? Math.PI*1.15/Math.max(1,count-1)*arcDir : (0.15 + Math.random()*0.32) * arcDir;
+  const angularStep = circular ? Math.PI/Math.max(1,count-1)*arcDir : (0.15 + Math.random()*0.32) * arcDir;
   let dist = circular ? (victim ? victim.radius : 15) + (8 + Math.random()*5)*dropScale : (6 + Math.random()*7) * scale;
   const rgb = parseColorToRgba(color);
   for(let i=0; i<count; i++){
-    const angle = baseAngle + angularStep*i;
+    const angle = baseAngle + angularStep*i + (circular && i>0 && i<count-1 ? (Math.random()-0.5)*0.12 : 0);
     dist += circular ? (0.6+i*0.15)*dropScale : (4 + Math.random()*5) * scale * (0.6 + i*0.2); // accelerating spread further along the swing, matching how real cast-off trails spread out
     const px = x + Math.cos(angle)*dist;
     const py = y + Math.sin(angle)*dist;
@@ -14818,7 +15146,7 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult, vic
   pushDecal(decal);
 }
 // CA507 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA507
-const BONE_LIFESPAN = 1080000; // 18 minutes — cut from 45, same reasoning as DECAL_LIFESPAN. Kept meaningfully longer than a blood stain's own ~12
+const BONE_LIFESPAN = 1080000; // Legacy rock-debris ceiling; round-end cleanup shortens all remains to a six-second fade.
 function spawnBoneDebris(x, y, enemyRadius){
   // BONE-SPREAD-01 (1.7.36): the average count stays 1.5 (60% one, 30% two, 10% three) but every bone now has its own size scaled from the enemy
   // (the old 9 px floor made every bone identical) and the spread is even across a disc a little wider than the body instead of piling up in the middle.
@@ -14828,8 +15156,8 @@ function spawnBoneDebris(x, y, enemyRadius){
     const scatterAngle = Math.random()*Math.PI*2;
     const decal = {
       x: x + Math.cos(scatterAngle)*scatterDist, y: y + Math.sin(scatterAngle)*scatterDist,
-      color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: presentationTime,
-      isEmojiDrop: true, char: '🦴', size: Math.max(7, enemyRadius*(0.45 + Math.random()*0.5)), rot: Math.random()*Math.PI*2
+      color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: 120000, spawnTime: presentationTime,
+      isEmojiDrop: true, char: '🦴', size: Math.max(5, enemyRadius*(0.35 + Math.random()*0.35)), rot: Math.random()*Math.PI*2
     };
     pushDecal(decal);
   }
@@ -14850,7 +15178,7 @@ function spawnRockChips(x, y, enemyRadius, count){
 function spawnSkullDrop(x, y, enemyRadius){
   const decal = {
     x: x + (Math.random()-0.5)*enemyRadius*0.5, y: y + (Math.random()-0.5)*enemyRadius*0.5,
-    color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: BONE_LIFESPAN, spawnTime: presentationTime,
+    color:'#fff', rgb:{r:255,g:255,b:255,a:1}, lifespan: 150000, spawnTime: presentationTime,
     isEmojiDrop: true, char: '💀', size: Math.max(12, enemyRadius), rot: (Math.random()-0.5)*0.6
   };
   pushDecal(decal);
@@ -15011,6 +15339,7 @@ function isBloodAreaSaturated(x, y){
 }
 function pushDecal(decal){
   if(isGroundBloodDecal(decal)) decal.lifespan=bloodMarkLifespan();
+  if(waveState==='IDLE' && wavesCompleted>0){decal.cleanupStarted=true;decal.lifespan=18000;decal.spawnTime=presentationTime-12000;}
   // CA523 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA523
   if(isGroundBloodDecal(decal) && decal.blobs === undefined && isBloodAreaSaturated(decal.x, decal.y)) return;
   const capacity = decalCapacity();
@@ -15045,6 +15374,27 @@ const DECAL_BAKE_PRESSURE_MIN_AGE_MS = 4000, DECAL_BAKE_PRESSURE_ON = 90, DECAL_
 let decalBakePressure = false;
 const DECAL_AGING_RESTAMP_MS = 5000;
 function decalBakeMinAgeMs(d){ return d.baked || decalBakePressure ? DECAL_BAKE_PRESSURE_MIN_AGE_MS : DECAL_BAKE_MIN_AGE_MS; }
+function beginRoundDebrisCleanup(){
+  for(const d of decals.concat(sprayDecals)){
+    if(d.cleanupStarted) continue;
+    d.cleanupStarted=true;
+    // Preserve an earlier expiry; enter the existing final fade segment now.
+    const remaining=Math.min(6000,Math.max(1,(d.lifespan || DECAL_LIFESPAN)-(presentationTime-d.spawnTime)));
+    d.lifespan=remaining*3; d.spawnTime=presentationTime-remaining*2;
+    d.baked=false; delete d.settledColor; delete d.settledAlpha;
+  }
+  for(const entity of [...towerPool,...enemyPool,...sceneryMap.values()]){
+    if(!entity.bloodStains) continue;
+    for(const stain of entity.bloodStains){
+      if(stain.cleanupStarted) continue;
+      const remaining=Math.min(6000,Math.max(1,(stain.lifespan||BLOOD_STAIN_LIFE_MS)-(presentationTime-stain.bornAt)));
+      stain.cleanupStarted=true;stain.lifespan=remaining*3;stain.bornAt=presentationTime-remaining*2;
+    }
+    entity.bloodStampKey=null;entity.bloodStainRevision=(entity.bloodStainRevision||0)+1;
+  }
+  if(settledDecalCanvasReady){ settledDecalContext().clearRect(0,0,WORLD_MAX_W,WORLD_MAX_H); settledDecalHasContent=false; }
+  settledDecalRebuildPending=true;
+}
 function decalLifeT(d){ return (presentationTime - d.spawnTime) / (d.lifespan || DECAL_LIFESPAN); }
 function isDecalBakeEligible(d){
   const lifeT = decalLifeT(d);
@@ -15338,7 +15688,7 @@ function drawOneDecal(ctx, d){
       // CA541 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA541
       ctx.save();
       // CA542 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA542
-      ctx.globalAlpha = d.isRubble ? clampNum((1 - decalLifeT(d)) / 0.1, 0, 1) : 1; // bone never fades; rubble only over its final 10%
+      ctx.globalAlpha = d.isRubble ? clampNum((1 - decalLifeT(d)) / 0.1, 0, 1) : (d.char === '🦴' || d.char === '💀') ? clampNum((1 - decalLifeT(d)) / 0.4, 0, 1) : 1; // skeletal remains fade over their final 40%
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = Math.round(d.size*growT) + 'px serif';
       ctx.fillStyle='#fff';ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0;
@@ -15501,7 +15851,6 @@ function spawnBloodStream(x, y, angle, count, sizeMult, brightColor, darkColor, 
 // background layer, and the droplet goes back to its pool slot.
 const GORE_EXPLOSION_CHANCE = 0.06, FORENSIC_DROPLET_COUNT = 700, FORENSIC_PX_PER_METER = 28, FORENSIC_GRAVITY_PX = 9.81*FORENSIC_PX_PER_METER;
 const FORENSIC_TERMINAL_PX = 7.65*FORENSIC_PX_PER_METER, FORENSIC_DRAG_K = FORENSIC_GRAVITY_PX/(FORENSIC_TERMINAL_PX*FORENSIC_TERMINAL_PX), FORENSIC_MAX_STAIN_ASPECT = 8, FORENSIC_STEP_S = 1/120;
-const FORENSIC_SNIPER_TYPES = ['SNIPER','GUNALINDER','MARKSMAN'];
 const forensicDroplets = Array.from({ length: FORENSIC_DROPLET_COUNT }, () => ({ active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, diameter: 1, color: '#a01818', rgb: null, ageS: 0 }));
 let forensicDropletIndex = 0;
 function launchForensicDroplet(x, y, z, speedMs, headingRad, elevationRad, diameterPx, color, victim){
@@ -15515,37 +15864,109 @@ function launchForensicDroplet(x, y, z, speedMs, headingRad, elevationRad, diame
   droplet.victim = victim || null; droplet.victimId = victim ? victim.id : undefined;
   droplet.originX = x; droplet.originY = y; droplet.originZ = z;
 }
-function spawnGoreExplosion(x, y, bio, sourceTower, goreScale, lowDetail, victim){
-  const bloodWeightScale = victim ? bloodPoolSizeScale(victim.radius) : 1;
-  const isSniper = !!sourceTower && FORENSIC_SNIPER_TYPES.includes(sourceTower.type);
-  const flightAngle = sourceTower ? Math.atan2(y - sourceTower.y, x - sourceTower.x) : Math.random()*Math.PI*2;
-  const dropletCount = Math.round((isSniper ? 70 : 46)*Math.min(1.5, goreScale)*(lowDetail ? 0.45 : 1));
-  const bodyHeightPx = 1.1*FORENSIC_PX_PER_METER*bloodWeightScale;
-  for(let drop = 0; drop < dropletCount; drop++){
-    const color = Math.random() < 0.6 ? bio.bright : bio.dark;
-    if(isSniper) launchForensicDroplet(x, y, bodyHeightPx*(0.6 + Math.random()*0.8), (14 + Math.random()*12)*Math.sqrt(bloodWeightScale), flightAngle + (Math.random() - 0.5)*0.9, (Math.random() - 0.45)*0.5, (0.7 + Math.random()*0.9)*Math.sqrt(bloodWeightScale), color, victim);
-    else launchForensicDroplet(x, y, bodyHeightPx*(0.4 + Math.random()*0.9), (2.5 + Math.random()*4)*Math.sqrt(bloodWeightScale), Math.random()*Math.PI*2, 0.15 + Math.random()*1.0, (1.6 + bloodSizeRoll()*0.9)*Math.sqrt(bloodWeightScale), color, victim);
-  }
-  spawnGibs(x, y, Math.round((lowDetail ? 4 : 9)*Math.min(1.5, goreScale)));
-  spawnBloodStream(x, y, flightAngle, 3, 1.4, bio.bright, bio.dark, victim);
-  playSound('gore_death', x, undefined, y);
+function spawnGoreExplosion(x, y, bio, sourceTower, goreScale, lowDetail, victim, incomingAngle, profileKey){
+  if(!goreMode || !bio || bio.isDust || (victim && victim.isHutBuilding)) return;
+  spawnForensicSpatter(x,y,bio,sourceTower,1.35,true,goreScale,lowDetail,victim,incomingAngle,profileKey);
+  spawnGibs(x,y,Math.round((lowDetail ? 4 : 9)*Math.min(1.5,goreScale)));
+  playSound('gore_death',x,undefined,y);
 }
 // FORENSIC-SPATTER-01 (1.7.126): the droplet physics above only ran for the rare gore explosion (6% of one-hit kills), so a normal fight showed no flying droplets. Every blood-drawing hit now throws a small droplet spray and every kill a larger one, shaped by how the wound was made: a sniper round gives a fast, fine, forward mist; a blunt weapon a medium radial spatter; a blade a cast-off fan along the swing; a spear a narrow forward-and-back jet; other ranged hits a light spray. The same droplets land as elongated stains (alpha = asin(W/L)).
-function forensicSpatterProfile(sourceTower){
-  const sourceType = sourceTower ? sourceTower.type : '';
-  if(FORENSIC_SNIPER_TYPES.includes(sourceType)) return { mechanism: 'MIST', count: 16, speedMin: 14, speedSpan: 12, spread: 0.5, elevationBase: -0.2, elevationSpan: 0.5, diameterMin: 0.5, diameterSpan: 0.7, backShare: 0.25 };
-  const weapon = resolveWeaponSubtype(sourceTower), archetype = resolveGoreArchetype(sourceTower);
-  if(archetype === 'MAGE') return { mechanism: 'IMPACT', count: 9, speedMin: 7, speedSpan: 10, spread: 1.15, elevationBase: 0.1, elevationSpan: 0.8, diameterMin: 0.55, diameterSpan: 0.9, backShare: 0.08 }; // a spell hits like a blast: a wide, fast forward cone, matching the older high-impact particle cone
-  if(archetype === 'ARCHER') return { mechanism: 'ARROW', count: 7, speedMin: 3, speedSpan: 5, spread: 0.7, elevationBase: 0.1, elevationSpan: 0.7, diameterMin: 0.7, diameterSpan: 1, backShare: 0.3 };
-  if(weapon === 'BLUNT') return { mechanism: 'RADIAL', count: 12, speedMin: 2.5, speedSpan: 4, spread: Math.PI, elevationBase: 0.15, elevationSpan: 1, diameterMin: 1.3, diameterSpan: 1.4, backShare: 0 };
-  if(weapon === 'PIERCE') return { mechanism: 'JET', count: 8, speedMin: 5, speedSpan: 6, spread: 0.3, elevationBase: 0, elevationSpan: 0.5, diameterMin: 0.9, diameterSpan: 1.1, backShare: 0.35 };
-  return { mechanism: 'CASTOFF', count: 9, speedMin: 5, speedSpan: 6, spread: 0.65, elevationBase: 0.05, elevationSpan: 0.6, diameterMin: 0.9, diameterSpan: 1.3, backShare: 0.1 };
+// WEAPON-FORENSICS-01: authored mechanism-informed effects; not medical identification.
+function weaponBloodProfile(shape, marks, reach, width, aspect, count, speedMin, speedSpan, spread, backShare){
+  const local = shape === 'LOCAL';
+  return Object.freeze({ shape, marks, reach, width, aspect, count, speedMin, speedSpan, spread, backShare,
+    mechanism:shape, elevationBase:local ? -0.35 : 0.05, elevationSpan:local ? 0.15 : 0.6,
+    diameterMin:Math.max(0.35,width*0.55), diameterSpan:Math.max(0.25,width*0.6) });
 }
-function spawnForensicSpatter(x, y, bio, sourceTower, hitPower, isKill, goreScale, lowDetail, victim){
+const WEAPON_BLOOD_PROFILES = Object.freeze({
+  SWORDSMAN:weaponBloodProfile("SWORD",5,15,1.8,2.0,9,5,6,0.65,0.1),
+  AXEMAN:weaponBloodProfile("ARC",3,11,2.2,1.8,7,4,5,0.62,0.1),
+  AXE_THROWN:weaponBloodProfile("AXIS",3,15,1.9,2.6,6,5,5,0.32,0.22),
+  BERSERKER:weaponBloodProfile("ARC",4,19,2.5,2.1,10,5.5,6,0.9,0.12),
+  SPEARMAN:weaponBloodProfile("AXIS",3,17,1.4,3.1,7,5,6,0.23,0.35),
+  LANCER:weaponBloodProfile("AXIS",3,23,1.3,3.8,8,6,7,0.16,0.3),
+  HAMMERMAN:weaponBloodProfile("FAN",4,9,2.6,1.2,10,2.5,4,1.5,0.05),
+  PALADIN:weaponBloodProfile("FAN",3,7,2.0,1.3,7,2.2,3,1.05,0.03),
+  NINJA:weaponBloodProfile("AXIS",2,8,0.7,2.7,3,3.5,4,0.2,0.12),
+  CRAZY_CHEF:weaponBloodProfile("AXIS",3,12,1.1,3.0,4,4,4.5,0.36,0.17),
+  ARCHER:weaponBloodProfile("AXIS",5,22,1.7,3.2,7,3,5,0.35,0.3),
+  BLOWDART:weaponBloodProfile("AXIS",1,4,0.55,1.5,2,1.1,1.8,0.12,0.1),
+  BLOW_GUNNER:weaponBloodProfile("AXIS",2,6,0.7,1.7,3,1.5,2.3,0.27,0.14),
+  SQUIRTGUN:weaponBloodProfile("LOCAL",2,3,1.4,1.1,3,0.35,0.7,1.3,0),
+  GATLING:weaponBloodProfile("AXIS",2,12,0.65,2.5,3,8,7,0.18,0.18),
+  GUNALINDER:weaponBloodProfile("AXIS",3,15,0.9,2.9,5,9,8,0.34,0.24),
+  MARKSMAN:weaponBloodProfile("AXIS",3,22,0.65,3.5,8,13,10,0.2,0.2),
+  SNIPER:weaponBloodProfile("AXIS",3,29,0.5,4.4,10,14,12,0.12,0.25),
+  GLAIVE:weaponBloodProfile("AXIS",4,20,1.0,3.2,8,10,10,0.48,0.2),
+  BOMBER:weaponBloodProfile("FAN",4,18,1.6,2.0,10,4,7,1.25,0.03),
+  MERCHANT:weaponBloodProfile("FAN",2,5,1.25,1.2,3,1,2,1.15,0.05),
+  MAGE:weaponBloodProfile("FAN",6,22,2.0,1.8,8,6,8,0.78,0.08),
+  SNAPCASTER:weaponBloodProfile("FAN",2,10,0.8,2.2,4,5,6,0.42,0.06),
+  CLERIC:weaponBloodProfile("LOCAL",2,2,1.3,1.05,3,0.3,0.5,0.8,0),
+  POPE:weaponBloodProfile("LOCAL",3,5,1.1,1.15,4,0.5,0.8,2.1,0),
+  NECROMANCER:weaponBloodProfile("LOCAL",2,4,1.2,1.3,4,1,1.5,0.65,0.02),
+  SKELETON_CONTACT:weaponBloodProfile("ARC",2,7,1.1,2.2,4,2.5,3,0.48,0.1),
+  CAT_SNAPPER:weaponBloodProfile("CLAW",3,5,0.7,3.2,3,1.8,2,0.3,0.02),
+  PROTON:weaponBloodProfile("AXIS",3,18,0.75,3.3,6,7,9,0.25,0.1),
+  DARK_MATTER:weaponBloodProfile("LOCAL",2,3.5,1.5,1.25,3,0.6,1.2,0.95,0.02),
+  QUASAR:weaponBloodProfile("FAN",4,16,0.85,2.4,8,7,9,1.0,0.06),
+  ENVIRONMENT:weaponBloodProfile("LOCAL",1,1,1.0,1.0,2,0.2,0.4,1.8,0),
+  HACKER:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
+  BARRICADE:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
+  LOG_MILL:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
+  STONE_QUARRY:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0)
+});
+function forensicSpatterProfile(sourceTower, profileKey){
+  return WEAPON_BLOOD_PROFILES[profileKey || (sourceTower && sourceTower.type)] || WEAPON_BLOOD_PROFILES.ENVIRONMENT;
+}
+function weaponBloodAngle(victim, sourceTower, incomingAngle){
+  return Number.isFinite(incomingAngle) ? incomingAngle : sourceTower ? Math.atan2(victim.y-sourceTower.y,victim.x-sourceTower.x) : Math.PI/2;
+}
+function spawnWeaponBloodContact(victim, sourceTower, incomingAngle, profileKey){
+  if(!goreMode || victim.isHutBuilding) return;
+  const bio = victim.bloodProfile || getBloodProfile(victim.type);
   if(!bio || bio.isDust) return;
+  const profile = forensicSpatterProfile(sourceTower,profileKey);
+  if(profile.shape === 'NONE') return;
+  // Multiple simulation hits in one displayed frame share one contact signature per weapon.
+  const key=profileKey || (sourceTower && sourceTower.type) || 'ENVIRONMENT';
+  if(victim.lastCoreBloodClock === presentationTime && victim.lastCoreBloodKey === key && victim.lastCoreBloodSerial === victim.spawnSerial) return;
+  victim.lastCoreBloodClock=presentationTime; victim.lastCoreBloodKey=key; victim.lastCoreBloodSerial=victim.spawnSerial;
+  if(profile.shape === 'SWORD'){ spawnSwordsmanBloodArc(victim,sourceTower); return; }
+  if(key === 'MAGE'){
+    const heading=weaponBloodAngle(victim,sourceTower,incomingAngle), scale=bloodPoolSizeScale(victim.radius);
+    for(let n=0;n<3;n++) spawnBloodCastoff(victim.x,victim.y,heading+(n-1)*0.48+(Math.random()-0.5)*0.18,hexToRgba(bloodTintForFire(victim,bio.bright),0.85),1,scale*(0.9+n*0.25),victim,Math.sqrt(scale)*1.5);
+  }
+  const weight = Math.sqrt(bloodPoolSizeScale(victim.radius));
+  const heading = weaponBloodAngle(victim,sourceTower,incomingAngle);
+  const color = hexToRgba(bloodTintForFire(victim,bio.bright),0.88), rgb = parseColorToRgba(color);
+  const arcDir = sourceTower ? towerSwingDir(sourceTower) : 1;
+  for(let i=0;i<profile.marks;i++){
+    const t = profile.marks === 1 ? 0.5 : i/(profile.marks-1);
+    let angle = heading, distance = victim.radius*0.8 + profile.reach*(0.3+t*0.7)*weight;
+    let offset = 0;
+    if(profile.shape === 'ARC'){ angle += (t-0.5)*profile.spread*2*arcDir; }
+    else if(profile.shape === 'CLAW'){ offset = (i-1)*2.5*weight; distance = victim.radius*0.6 + profile.reach*weight; }
+    else if(profile.shape === 'LOCAL'){ angle += i*2.39996; distance = profile.reach*(0.4+t*0.6)*weight; }
+    else if(profile.shape === 'FAN'){ angle += (t-0.5)*profile.spread*2; }
+    else if(i === 0 && profile.marks > 1 && profile.backShare > 0){ angle += Math.PI; distance *= 0.45; }
+    else angle += (t-0.5)*profile.spread;
+    const width = profile.width*weight*(0.85+Math.random()*0.3);
+    const len = width*profile.aspect*(0.9+t*0.2);
+    const travel = profile.shape === 'ARC' ? angle + Math.PI/2*arcDir : angle;
+    const decal = { x:victim.x+Math.cos(angle)*distance-Math.sin(heading)*offset,
+      y:victim.y+Math.sin(angle)*distance+Math.cos(heading)*offset,
+      color,rgb,isDrop:true,angle:travel,len,width,footprintRadius:Math.max(len,width),
+      lifespan:DECAL_LIFESPAN*decalLifespanVariance(),spawnTime:presentationTime };
+    if(!bloodDecalBlocked(decal,victim.x,victim.y,victim)) pushDecal(decal);
+  }
+}
+function spawnForensicSpatter(x, y, bio, sourceTower, hitPower, isKill, goreScale, lowDetail, victim, incomingAngle, profileKey){
+  if(!goreMode || !bloodDropletsEnabled || !bio || bio.isDust || (victim && victim.isHutBuilding)) return;
   const bloodWeightScale = victim ? bloodPoolSizeScale(victim.radius) : 1;
-  const profile = forensicSpatterProfile(sourceTower);
-  const sprayAngle = sourceTower ? Math.atan2(y - sourceTower.y, x - sourceTower.x) : Math.random()*Math.PI*2;
+  const profile = forensicSpatterProfile(sourceTower, profileKey);
+  if(profile.shape === 'NONE') return;
+  const sprayAngle = weaponBloodAngle(victim || {x,y}, sourceTower, incomingAngle);
   const killMult = isKill ? 2.6*Math.min(1.5, goreScale) : Math.sqrt(bloodWeightScale);
   const dropletCount = Math.max(1, Math.round(profile.count*1.18*Math.min(1.4, 0.35 + hitPower*0.7)*killMult*(lowDetail ? 0.4 : 1))); // BLOOD-READABILITY-01 (1.7.140): modest volume increase, existing weight dimensions retained
   const bodyHeightPx = 1.1*FORENSIC_PX_PER_METER*bloodWeightScale;
@@ -15561,8 +15982,10 @@ function spawnForensicSpatter(x, y, bio, sourceTower, hitPower, isKill, goreScal
   for(let drop = 0; drop < dropletCount; drop++){
     const color = Math.random() < 0.6 ? bio.bright : bio.dark;
     const backSpatter = Math.random() < profile.backShare;
-    const heading = (backSpatter ? sprayAngle + Math.PI : sprayAngle) + (Math.random() - 0.5)*2*profile.spread;
-    const exitSpray = profile.mechanism === 'ARROW' && !backSpatter && hitPower > 0.7; // an arrow that passes through throws a faster forward exit spray; the entry wound only gives a thin back-spatter
+    const castoff = profile.shape === 'ARC' || profile.shape === 'SWORD';
+    const launchAxis = castoff ? sprayAngle + Math.PI/2*(sourceTower ? towerSwingDir(sourceTower) : 1) : sprayAngle;
+    const heading = (backSpatter ? launchAxis + Math.PI : launchAxis) + (Math.random() - 0.5)*2*profile.spread;
+    const exitSpray = false; // no anatomical pass-through solver // an arrow that passes through throws a faster forward exit spray; the entry wound only gives a thin back-spatter
     launchForensicDroplet(x, y, bodyHeightPx*(0.35 + Math.random()*0.8), (profile.speedMin + Math.random()*profile.speedSpan)*Math.sqrt(bloodWeightScale)*(exitSpray ? 1.6 : backSpatter && profile.mechanism === 'ARROW' ? 0.6 : 1), heading, profile.elevationBase + Math.random()*profile.elevationSpan, (profile.diameterMin + bloodSizeRoll()*0.25 + Math.random()*profile.diameterSpan*0.5)*Math.sqrt(bloodWeightScale), color, victim);
   }
 }
@@ -15616,6 +16039,7 @@ const VOID_BODY_HEIGHT_PX = 1.1*FORENSIC_PX_PER_METER;
 function stainEntity(entity, offsetX, offsetY, size, rgb, angle){
   if(!entity.bloodStains) entity.bloodStains = [];
   const stain = { offsetX, offsetY, size, rgb, angle, lifespan:bloodMarkLifespan(), bornAt: presentationTime };
+  if(waveState==='IDLE' && wavesCompleted>0){stain.cleanupStarted=true;stain.lifespan=18000;stain.bornAt=presentationTime-12000;}
   entity.bloodStainRevision=(entity.bloodStainRevision || 0)+1;
   if(entity instanceof Tower && isFighterTower(entity)) bindStickmanStain(entity,stain);
   if(entity.bloodStains.length < BLOOD_STAIN_MAX) entity.bloodStains.push(stain);
@@ -15871,20 +16295,19 @@ const COIN_GRAVITY_PX_PER_S2 = 900;
 const COIN_EMOJI_PX = 12;
 const COIN_PICKUP_MIN_MS = 15000, COIN_PICKUP_MAX_MS = 20000; // COIN-LIFETIME-01 (1.7.36): owner decision — coins stay 15 to 20 seconds before they despawn (was 5 to 15)
 // AMBIENT-LOG-STACK-01 (1.7.112) — see CHANGELOG.md § [1.7.112]: a log pile holds three logs and each tap collects one (a third of the pile's wood)
-const AMBIENT_LOG_INTERVAL_MS = 300000, AMBIENT_LOG_WOOD = 15, AMBIENT_LOG_MAX_ON_BOARD = 3, AMBIENT_LOG_STACK_SIZE = 3;
+const AMBIENT_LOG_INTERVAL_MS = 45000, AMBIENT_LOG_WOOD = 15, AMBIENT_LOG_MAX_ON_BOARD = 12, AMBIENT_LOG_STACK_SIZE = 3;
 const ambientLogs = [];
 let ambientLogElapsedMs = 0;
 function maybeSpawnAmbientLog(){
   if(!activeRegion || ambientLogs.length >= AMBIENT_LOG_MAX_ON_BOARD) return false;
   const candidates = [];
-  for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++) for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
-    if(!isTileBuildable(gx, gy) || nearPathTileSet.has(gx+','+gy)) continue;
-    const x = gx*TILE_SIZE + TILE_SIZE/2, y = gy*TILE_SIZE + TILE_SIZE/2;
-    if(groundItems.some(item => Math.floor(item.x/TILE_SIZE) === gx && Math.floor(item.y/TILE_SIZE) === gy)) continue;
-    if(ambientLogs.some(log => Math.hypot(log.x-x, log.y-y) < TILE_SIZE)) continue;
-    if(tileHasHut(gx, gy)) continue;
-    if(enemyPool.some(enemy => enemy.active && Math.hypot(enemy.x-x, enemy.y-y) < 28)) continue;
-    candidates.push({ x, y });
+  const x0=Math.max(1,activeRegion.x0-4), x1=Math.min(COLS-2,activeRegion.x1+4), y0=Math.max(1,activeRegion.y0-4), y1=Math.min(ROWS-2,activeRegion.y1+4);
+  for(let attempt=0;attempt<96;attempt++){
+    const gx=x0+Math.floor(Math.random()*(x1-x0+1)),gy=y0+Math.floor(Math.random()*(y1-y0+1)),key=gx+','+gy;
+    if(pathCells.has(key) || nearPathTileSet.has(key) || bonusGrassTiles.has(key) || sceneryMap.has(key) || tileHasHut(gx,gy))continue;
+    const x=(gx+0.5)*TILE_SIZE,y=(gy+0.5)*TILE_SIZE;
+    if(ambientLogs.some(log=>Math.hypot(log.x-x,log.y-y)<TILE_SIZE) || groundItems.some(item=>Math.hypot(item.x-x,item.y-y)<TILE_SIZE))continue;
+    candidates.push({x,y}); break;
   }
   if(!candidates.length) return false;
   const tile = candidates[Math.floor(Math.random()*candidates.length)];
@@ -15926,11 +16349,9 @@ function drawAmbientLogs(ctx){
   ctx.save(); ctx.font='22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const log of ambientLogs){
     if(!fxVisible(log.x, log.y, bounds)) continue;
-    const slots = AMBIENT_LOG_STACK_SLOTS.slice(0, Math.max(1, log.count));
-    for(const [slotX, slotY] of slots){
-      drawEmojiGroundShadow(ctx,'🪵',log.x+slotX,log.y+slotY,16,'sans-serif',1);
-      ctx.save(); ctx.translate(log.x+slotX, log.y+slotY); drawEmojiSprite(ctx, '🪵', 16); ctx.restore();
-    }
+    ctx.save(); ctx.translate(log.x,log.y); ctx.rotate((log.x*0.013+log.y*0.007)%Math.PI);
+    ctx.strokeStyle='#54351e'; ctx.lineWidth=2.5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-12,7); ctx.lineTo(12,-7); ctx.moveTo(-2,1); ctx.lineTo(-5,-8); ctx.moveTo(5,-3); ctx.lineTo(13,2); ctx.stroke(); ctx.restore();
   }
   ctx.restore();
 }
@@ -16138,8 +16559,7 @@ function dropGoldBag(x, y, goldOverride){
 function creditGroundBagGold(groundItem){
   const definition = groundItem.itemDef;
   if(!definition.isGoldBag) return;
-  gold += definition.gold;
-  spawnGoldBagCoinBurst(groundItem.x, groundItem.y);
+  spawnGoldBagCoinBurst(groundItem.x, groundItem.y, definition.gold);
   rollMapFromBag(groundItem.x, groundItem.y); // ONE-KIND-OF-BAG-01: a bag paid out by timing out gets the same luck roll
   spawnFloatingText(groundItem.x, groundItem.y - 14, '+💰' + definition.gold, '#e6c200');
   updateHUD();
@@ -16151,21 +16571,21 @@ function launchCoin(c, x, y){
   c.vz = 180 + Math.random()*120;
   c.airborne = true; c.age = 0; c.lifespan = coinPickupLifespan();
 }
-function spawnGoldBagCoinBurst(x, y){
-  const count = rollGoldBagCoinCount();
-  for(let i = 0; i < count; i++){
+function spawnGoldBagCoinBurst(x, y, value){
+  const total = normalizeGoldBagGold(value);
+  const count = Math.min(total, Math.max(Math.ceil(total / GOLD_BAG_MAX_COIN_VALUE), rollGoldBagCoinCount()));
+  for(let i=0;i<count;i++){
     const coin = acquireCoinSlot();
     launchCoin(coin, x + (Math.random()-0.5)*16, y - 3);
-    coin.value = rollGoldBagCoinValue();
-    coin.fromGoldBag=true;
+    coin.value = Math.floor(total/count) + (i < total%count ? 1 : 0);
+    coin.fromGoldBag = true;
   }
 }
 function openGoldBag(groundItem, x, y){
   const bagGold = groundItem.itemDef.gold;
-  gold += bagGold;
   launchGoldHudFlight(x,y);
   spawnFloatingText(x, y - 16, '+💰' + bagGold, '#ffd700');
-  spawnGoldBagCoinBurst(x, y);
+  spawnGoldBagCoinBurst(x, y, bagGold);
   rollMapFromBag(x, y); // ONE-KIND-OF-BAG-01: the luck roll
   groundItems = groundItems.filter(gi => gi !== groundItem);
   itemLogReleased(groundItem.itemDef, 'opened');
@@ -16606,7 +17026,7 @@ class CatCompanion{
     this.attackProgress = Math.max(0, this.attackProgress - dt/220);
     this.attackTimer -= dt;
     if(this.attackTimer <= 0 && this.targetEnemy.active){ // re-checked here too — update() above can null/deactivate it, and applyDamage() itself is not safe to call on an inactive enemy
-      if(!rollDirectAttackMiss(this.sourceTower, this.targetEnemy)) this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower, undefined, false, true, false);
+      if(!rollDirectAttackMiss(this.sourceTower, this.targetEnemy)) this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower, undefined, false, true, false, false, Math.atan2(this.targetEnemy.y-this.y,this.targetEnemy.x-this.x), 'CAT_SNAPPER');
       this.attackTimer += this.attackCooldown;
       this.attackProgress = 1;
     }
@@ -16640,7 +17060,7 @@ class SkeletonMinion{
     if(this.attackTimer > 0) return;
     const target = firstActiveEnemy(queryNearby(enemyHash, this.x, this.y, this.range));
     if(!target) return; // stays raised and waiting — does not expire just for having nothing in range right now, only at round-complete
-    if(!rollDirectAttackMiss(this.sourceTower, target)) target.applyDamage(this.damage, this.sourceTower, undefined, false, true, false);
+    if(!rollDirectAttackMiss(this.sourceTower, target)) target.applyDamage(this.damage, this.sourceTower, undefined, false, true, false, false, Math.atan2(target.y-this.y,target.x-this.x), 'SKELETON_CONTACT');
     this.attackTimer = this.attackCooldown;
     this.attackProgress = 1;
   }
@@ -17847,7 +18267,7 @@ const SIZE_TIER_BANDS = {
   TINY:     { label:'Tiny',     radiusMin:6,  radiusMax:10, speedMin:50, speedMax:60, hpMult:0.7, bountyMult:0.9, xp:17, batchGapMs:380 },
   SMALL:    { label:'Small',    radiusMin:11, radiusMax:13, speedMin:41, speedMax:49, hpMult:1.3, bountyMult:1.5, xp:20, batchGapMs:500 },
   STANDARD: { label:'Standard', radiusMin:14, radiusMax:19, speedMin:30, speedMax:40, hpMult:2.0,  bountyMult:2.2, xp:25, batchGapMs:650 },
-  LARGE:    { label:'Large',    radiusMin:21, radiusMax:30, speedMin:20, speedMax:29, hpMult:5.6,  bountyMult:5.5, xp:40, batchGapMs:900 },
+  LARGE:    { label:'Large',    radiusMin:21, radiusMax:30, speedMin:20, speedMax:29, hpMult:5.6,  bountyMult:3.5, xp:40, batchGapMs:900 },
   BOSS:     { label:'Boss',     radiusMin:44, radiusMax:52, speedMin:8,  speedMax:13, hpMult:1.0,  bountyMult:2.2, xp:50, batchGapMs:2200 }
 };
 const SIZE_PHASE_BANNERS = {
@@ -18194,6 +18614,10 @@ function spawnWaveUnit(spec){
   e.isStealthSanta=isStealthSanta;
   if(isStealthSanta) stealthSantaSpawned=true;
   if(spec.sizeTier === 'LARGE') spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
+  if(roundEnemyFollow && !roundEnemyFollow.enemy){
+    roundEnemyFollow.enemy = e; roundEnemyFollow.serial = e.spawnSerial; roundEnemyFollow.lastClock = cameraPanClock;
+  }
+  if(e.type==='TROLL'){e.radius*=1.1;startTrollCameraPan(e);}
   lastSpawnedEnemy = e;
   lastSpawnedSerial = e.spawnSerial;
   return true;
@@ -18223,7 +18647,7 @@ function announceSizePhase(phase){
     bossWarningLog.push({ wave: waveIndex, phaseIndex: waveDispatch.phaseIndex, reason: 'BOSS phase entered' });
     if(bossWarningLog.length > 10) bossWarningLog.shift();
     showBossWarning(isSanta ? '🎅 SANTA APPROACHING' : 'BOSS APPROACHING');
-    if(isSanta && window.trackEvent) window.trackEvent('santa_boss_encountered', { wave: waveIndex });
+    if(isSanta) trackGameEvent('santa_boss_encountered', { wave: waveIndex });
   }
   else if(phase.sizeTier === 'LARGE') showKillstreakBanner(SIZE_PHASE_BANNERS[phase.sizeTier]);
   else showToast(SIZE_PHASE_BANNERS[phase.sizeTier]);
@@ -18329,7 +18753,7 @@ function startNextWave(){
   logGameEvent('wave started: lives ' + lives + ', gold ' + gold + ', speed ' + gameSpeed + 'x');
   startWaveStartCameraPan();
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
-  Object.assign(waveTelemetry, { startedAtGameTime: gameTime, livesAtStart: lives, goldAtStart: gold, escaped: 0, towersDowned: 0, loosePeak: countLooseEnemies(), looseDrainLives: 0, lagReported: false });
+  Object.assign(waveTelemetry, { activeAtStartMs:telemetryActiveMs(), startedAtGameTime: gameTime, livesAtStart: lives, goldAtStart: gold, escaped: 0, towersDowned: 0, loosePeak: countLooseEnemies(), looseDrainLives: 0, lagReported: false });
   waveMaxHpGainedFromMeat = 0;
   trackGameEvent('wave_started', { wave: waveIndex, lives, gold, towers: countActiveTowers(), loose: countLooseEnemies(), unlocked_towers: unlockedTowerTypes.size });
   for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
@@ -18511,6 +18935,7 @@ function maybeShowWaveTutorialTip(){
 const MAX_EXTRA_BUILDINGS_ON_BOARD = 3;
 function runWaveClearRandomEvents(){
   runCircusRoundEnd();
+  maybeSpawnBee();
   maybeSpawnGuaranteedTroll();
   const attempts = [maybeSpawnWanderingTroll, maybeSpawnChanceStructures, maybeSpawnExtraBuilding, maybeSpawnCircus];
   shuffleArray(attempts); // shuffled order; expansion-wide cap prevents event floods
@@ -18698,14 +19123,16 @@ function update(dt){
       audioEngine.setMusicPhase(countLooseEnemies() > 0 ? 'wave' : 'field');
       if(countLooseEnemies() === 0) playSound('wave_clear');
       wavesCompleted++;
+      sessionTelemetry.completedHere++;
+      reportOnboardingStep('first_wave_completed');
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
       clearDonutShieldAtWaveEnd();
       clearRoundBuffs();
-      burnCampfiresAtWaveEnd();
+      beginRoundDebrisCleanup();
       if(lives < 20) barkFromRandomTower(BARK_TIER_IMPORTANT, '😮‍💨', BARK_LINES.CLOSE_CALL, BARK_CHANCE.CLOSE_CALL);
       maybeReportLag();
       trackGameEvent('wave_completed', {
-        wave: waveIndex, duration_s: Math.round((gameTime - waveTelemetry.startedAtGameTime)/1000), lives_start: waveTelemetry.livesAtStart, lives_end: lives,
+        wave: waveIndex, duration_s: Math.round((telemetryActiveMs() - waveTelemetry.activeAtStartMs)/1000), simulation_duration_s: Math.round((gameTime - waveTelemetry.startedAtGameTime)/1000), lives_start: waveTelemetry.livesAtStart, lives_end: lives,
         lives_lost: Math.max(0, waveTelemetry.livesAtStart - lives), escaped: waveTelemetry.escaped, loose_peak: waveTelemetry.loosePeak, loose_end: countLooseEnemies(),
         loose_drain_lives: waveTelemetry.looseDrainLives, towers_downed: waveTelemetry.towersDowned, gold_start: waveTelemetry.goldAtStart, gold_end: gold,
         towers: countActiveTowers(), fps_median: perfMedianFps(), gap_p95_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95))
@@ -18952,6 +19379,7 @@ function render(ctx){
   updateTargetFrame();
   updateCameraFollow();
   updateWaveStartCameraPan();
+  updateRoundEnemyFollow();
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.fillStyle = OPAQUE_CANVAS_BACKGROUND; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
   ctx.save();
@@ -19433,6 +19861,7 @@ function recentDiagnosticDeaths(){
 }
 function recordStateTransition(next){
   if(gameState === next) return;
+  telemetryStateChange(next);
   retainDiagnostic(extendedDiagnostics.transitions,{time:new Date().toISOString(),from:gameState,to:next,wave:waveIndex,hidden:document.hidden},60);
 }
 function countUnexpiredAudioSources(expiry, now){
@@ -19823,6 +20252,7 @@ const ATTRACT_FORMATION = [
 // CA689 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA689
 const ATTRACT_ELEMENT_COLOR = { FIRE: '#ff6b35', ICE: '#7dd3fc', ELECTRIC: '#f1c40f' };
 // CA690 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA690
+const ATTRACT_ENEMY_MOVE_SCALE = 0.60; // ATTRACT-PACE-01: movement only, not demo timing or gameplay
 const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','RUNNER','SPLITTER','SPLITMINI','ZOMBIE','WOLF','MONARCH']; // living creatures only: the archers never shoot rocks, bones, statues or other objects (ATTRACT-LIVING-01)
 // CA691 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA691
 const ATTRACT_PHASES = [
@@ -20031,7 +20461,7 @@ function renderAttractMode(ctx, now){
   let keptEnemies = 0;
   for(const enemy of st.enemies){
     if(!enemy.dead){
-      enemy.t += enemy.speed * st.speedMult * attractArrowDrag(enemy) * dt;
+      enemy.t += enemy.speed * st.speedMult * ATTRACT_ENEMY_MOVE_SCALE * attractArrowDrag(enemy) * dt;
       if(enemy.t >= 1){ enemy.dead = true; enemy.diedAt = now; } // reached the formation center — cleared without a kill-flash
     }
     if(!enemy.dead || now - enemy.diedAt < ATTRACT_CORPSE_MS) st.enemies[keptEnemies++] = enemy; // dead enemies stay long enough for their burst to play
@@ -20416,6 +20846,7 @@ function sellToCaravan(resource, requestedAmount){
   return true;
 }
 function updatePresentationEffects(frameMs){
+  updateCampfireCooking(frameMs);
   updateCaravan(frameMs);
   attackStateClock += frameMs; if(attackStateClock >= 250){ attackStateClock = 0; refreshAttackState(); }
   driveRingReveal(Math.min(frameMs, 100)); // EXPAND-REALTIME-01 (1.7.36): slower (1.9 s in 60 ms steps), always visible, and independent of game speed
@@ -20431,6 +20862,7 @@ function updatePresentationEffects(frameMs){
   updateCoinPickups(clampedMs);
   updateGoldHudFlights(clampedMs);
   updateHeartHudFlights(clampedMs);
+  for(let n=ambientLogs.length-1;n>=0;n--){const log=ambientLogs[n],key=Math.floor(log.x/TILE_SIZE)+','+Math.floor(log.y/TILE_SIZE);if(pathCells.has(key)||nearPathTileSet.has(key)||bonusGrassTiles.has(key)){wood+=log.count*AMBIENT_LOG_WOOD/AMBIENT_LOG_STACK_SIZE;ambientLogs.splice(n,1);updateHUD();}}
   ambientLogElapsedMs += clampedMs;
   if(ambientLogElapsedMs >= AMBIENT_LOG_INTERVAL_MS){ ambientLogElapsedMs %= AMBIENT_LOG_INTERVAL_MS; maybeSpawnAmbientLog(); }
   updateBarks(clampedMs);
@@ -20532,13 +20964,16 @@ function loop(now){
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
   let droppedSimulationTimeThisFrame = 0;
+  const cameraInputBudget = simulationSpeed >= 5 && performance.now()-lastCameraInteractionAt < CAMERA_MOTION_FULL_RATE_MS;
+  let cameraBudgetReached=false;
   while(accumulator + 1e-9 >= FIXED_DT && ticksThisFrame < tickCapThisFrame && gameState === 'PLAYING'){
     update(FIXED_DT);
     accumulator = Math.max(0, accumulator - FIXED_DT);
     ticksThisFrame++;
+    if(cameraInputBudget && ticksThisFrame % 2 === 0 && performance.now()-updateStart >= 6){ cameraBudgetReached=true; break; }
   }
   // CA721 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA721
-  if(ticksThisFrame >= tickCapThisFrame && accumulator >= FIXED_DT){
+  if((ticksThisFrame >= tickCapThisFrame || cameraBudgetReached) && accumulator >= FIXED_DT){
     perfStats.simulationCatchUpCapHits++;
     droppedSimulationTimeThisFrame = Math.max(0, accumulator);
     perfStats.simulationDebtDroppedMs += droppedSimulationTimeThisFrame;
@@ -20930,6 +21365,7 @@ function handleTap(clientX, clientY, pointerType){
   const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return;
 
+  if(placingCampfire){ placeCampfire(gx,gy); return; }
   if(moveModeTower){
     attemptMoveTower(gx, gy);
     return;
@@ -20974,6 +21410,7 @@ function handleTap(clientX, clientY, pointerType){
     if(!canAffordTower(selectedBuildType)) return;
     const t = acquireActive(towerPool);
     if(!t) return;
+    const buildGoldBefore = gold, buildWoodBefore = wood, buildStoneBefore = stone;
     let paidProducerGold = 0;
     if(selectedBuildType === 'BARRICADE'){
       // CA741 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA741
@@ -20993,7 +21430,7 @@ function handleTap(clientX, clientY, pointerType){
     {
       const isFirstOfType = !builtTowerTypesThisSession.has(selectedBuildType);
       builtTowerTypesThisSession.add(selectedBuildType);
-      trackGameEvent('tower_built', { tower_type: selectedBuildType, cost: currentBuildCost(selectedBuildType), towers: countActiveTowers(), first_of_type: isFirstOfType });
+      trackGameEvent('tower_built', { tower_type: selectedBuildType, cost:Math.max(0,buildGoldBefore-gold), wood_cost:Math.max(0,buildWoodBefore-wood), stone_cost:Math.max(0,buildStoneBefore-stone), payment_type:buildGoldBefore !== gold ? 'gold' : (buildWoodBefore !== wood || buildStoneBefore !== stone) ? 'resources' : 'free', towers:countActiveTowers(), first_of_type:isFirstOfType });
     }
     spawnTowerQuip(t.x, t.y - 40, randomJobQuote(t.type));
     playSound('spawn_chatter', t.x, CLASS_ARCHETYPE[t.type], t.y);
@@ -21410,6 +21847,7 @@ function refreshTrayUI(){
 }
 
 function refreshBuildMenuAvailability(grid){
+  const fireRow=grid.querySelector('.campfire-build-row');if(fireRow)fireRow.disabled=gold<CAMPFIRE_BUILD_GOLD || stone<CAMPFIRE_BUILD_STONE;
   const expandRow = grid.querySelector('.expand-row');
   if(expandRow){
     const full = regionFullyExpanded();
@@ -21452,6 +21890,7 @@ function refreshBuildMenuAvailability(grid){
 }
 let buildMenuSignature = null;
 function buildTowerModal(){
+  placingCampfire=false;
   const grid = document.getElementById('tower-modal-grid');
   const signature = 'hacks:' + hacksEnabled + '|' + STARTER_TOWER_TYPES.map(type => type+':'+isTowerBuildableNow(type)).join('|') + '|' + [...unlockedTowerTypes].sort().join('|');
   if(buildMenuSignature === signature && grid.children.length){
@@ -21462,6 +21901,12 @@ function buildTowerModal(){
   grid.innerHTML = '';
   const addBuildSection = label => { const heading = document.createElement('div'); heading.className = 'build-section-title'; heading.textContent = label; grid.appendChild(heading); };
 
+  const fireRow=document.createElement('button');fireRow.type='button';fireRow.className='build-row campfire-build-row';
+  fireRow.textContent='🔥 Campfire · 💰'+CAMPFIRE_BUILD_GOLD+' 🪨'+CAMPFIRE_BUILD_STONE;
+  fireRow.title='Build on empty grass. Cook ingredients from the board and inventories using stored wood.';
+  fireRow.disabled=gold<CAMPFIRE_BUILD_GOLD || stone<CAMPFIRE_BUILD_STONE;
+  fireRow.addEventListener('click',()=>{selectedBuildType=null;selectedTower=null;moveModeTower=null;cancelCameraFollow();placingCampfire=true;closeTowerModal();refreshTrayUI();showToast('🔥 Place campfire on empty grass');});
+  grid.appendChild(fireRow);
   const fullyExpanded = regionFullyExpanded();
   const cost = expansionCost();
   const canExpand = !fullyExpanded && !expansionBlockedReason() && gold >= cost;
@@ -22072,6 +22517,7 @@ window.addEventListener('blur',cancelPointerGesture);
 canvas.addEventListener('lostpointercapture',e=>{if(activePointers.has(e.pointerId))cancelPointerGesture();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelPointerGesture();});
 document.addEventListener('keydown', (e) => {
+  if(e.key==='Escape') placingCampfire=false;
   if(gameState !== 'PLAYING' || e.ctrlKey || e.metaKey || e.altKey) return;
   if(document.querySelector('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(document.activeElement?.tagName) || document.activeElement?.closest?.('[role="button"]')) return;
   if(e.key < '1' || e.key > '6' || e.key.length !== 1) return;
@@ -22490,8 +22936,8 @@ function getReadmeText(){
 '====================\n' +
 'Version ' + GAME_VERSION + '\n\n' +
 'By SauerNinja — github.com/SauerNinja\n\n' +
-'A self-contained, dependency-free browser tower defense game. Single index.html file, ' +
-'no build step, no external assets — everything is drawn procedurally on a Canvas.\n\n' +
+'A free browser tower defense game in development. Build a squad of stickmen, train their stats, ' +
+'equip loot and extend the path. Fight through 100 waves, then continue into endless play.\n\n' +
 'HOW TO PLAY\n' +
 '-----------\n' +
 'Tap Build, pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, ' +
@@ -23011,9 +23457,10 @@ function generateDebugLog(){
 
   s += extendedDiagnosticReport();
   s += '\nDEVICE DIAGNOSTICS (browser-reported; unavailable fields are not inferred)\n' + deviceDebugReport();
-  s += '\nTELEMETRY (last ' + telemetryRecent.length + ' events reported; sent to analytics only if cookies were accepted)\n';
+  s += '\nTELEMETRY (last ' + telemetryRecent.length + ' local events; queued does not confirm Google delivery)\n';
   s += '---------------------------------------------------------------------------------------------\n';
-  for(const reported of telemetryRecent) s += '  +' + reported.atSecond + 's  ' + reported.name + '  ' + JSON.stringify(reported.payload) + '\n';
+  s += 'Analytics loader: ' + window.sticktdAnalyticsStatus + '; dropped while unavailable: ' + window.sticktdAnalyticsDropped + '\n';
+  for(const reported of telemetryRecent) s += '  [' + reported.delivery + '] +' + reported.atSecond + 's  ' + reported.name + '  ' + JSON.stringify(reported.payload) + '\n';
   s += '\n' + itemLogReport();
   s += '\n' + gameEventReport() + '\n';
   if(hacksUsed) s += 'Hack menu used this run: yes\n';
@@ -23636,6 +24083,7 @@ shopBuyLifeBtn.addEventListener('pointerdown', (e) => {
   gold -= cost;
   lives += 1;
   livesBought++;
+  trackGameEvent('life_purchased', { cost, lives_after:lives });
   playSound('ui_buy');
   updateHUD();
 });
@@ -23710,6 +24158,7 @@ function syncFirstPlayCues(){
   positionNotificationControls();
 }
 function markFirstWaveStarted(){
+  reportOnboardingStep('first_wave_started');
   firstWaveStartedInSession = true;
   syncFirstPlayCues();
 }
@@ -23720,6 +24169,7 @@ function markFirstNextWaveUsed(){
 }
 function markFirstNextWaveCueAction(){ markFirstNextWaveUsed(); }
 function markFirstFighterBuilt(){
+  reportOnboardingStep('first_defender');
   firstFighterBuiltInSession = true;
   const hint = document.getElementById('first-build-hint');
   if(hint) hint.classList.add('hidden');
@@ -23728,6 +24178,7 @@ function markFirstFighterBuilt(){
 function firstFighterWasBuilt(){ return firstFighterBuiltInSession; }
 function markFirstSpeedUpUsed(){
   if(!firstWaveWasStarted() && waveIndex === 0 && wavesCompleted === 0) return;
+  reportOnboardingStep('first_speed_change');
   firstSpeedUpUsedInSession = true;
   const hint = document.getElementById('first-speed-hint');
   if(hint) hint.classList.add('hidden');
@@ -23751,17 +24202,25 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   lastTime = performance.now();
   blowingLeaves = [];
   updateHUD();
-  sessionTelemetry.startedAtMs = performance.now();
+  beginTelemetryRun(false);
   const hasBuiltFighter = towerPool.some(tower => tower.active && isFighterTower(tower));
   if(hasBuiltFighter) markFirstFighterBuilt();
   const firstBuildHint = document.getElementById('first-build-hint');
   if(firstBuildHint) firstBuildHint.classList.toggle('hidden', firstFighterWasBuilt());
   syncFirstPlayCues();
-  trackGameEvent('game_started', { device: IS_MOBILE_DEVICE ? 'mobile' : 'desktop', viewport: Math.round(window.innerWidth/100)*100 + 'x' + Math.round(window.innerHeight/100)*100, first_visit: isFirstVisit, loaded_save: false });
   try{ if(isFirstVisit) localStorage.setItem('stickTD_welcomeSeen', '1'); }catch(err){}
 });
 
-window.addEventListener('pagehide', reportSessionSummary);
+window.addEventListener('pagehide', (event) => {
+  telemetryStateChange('PAUSED');
+  if(event.persisted) reportPlayActivity('pagehide');
+  else reportSessionSummary('pagehide');
+});
+window.addEventListener('pageshow', () => telemetryStateChange(gameState));
+document.addEventListener('visibilitychange', () => {
+  telemetryStateChange(gameState);
+  if(document.hidden) reportPlayActivity('hidden');
+});
 document.addEventListener('visibilitychange', () => audioEngine.setMusicPaused(document.hidden || gameState === 'PAUSED'));
 document.getElementById('endDownloadLogBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -23787,7 +24246,7 @@ function endGame(message, cause){
   endScreen.classList.remove('hidden');
   trackGameEvent('game_over', {
     cause: cause || 'lives', wave_reached: waveIndex, waves_completed: wavesCompleted,
-    duration_s: sessionTelemetry.startedAtMs ? Math.round((performance.now() - sessionTelemetry.startedAtMs)/1000) : 0,
+    duration_s: Math.round(telemetryActiveMs()/1000),
     towers_built: sessionTelemetry.towersBuilt, towers_downed: sessionTelemetry.towersDowned, lives_bought: livesBought, loose_end: countLooseEnemies(), fps_median: perfMedianFps()
   });
   maybeReportLag();
