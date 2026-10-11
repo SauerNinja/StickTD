@@ -1,7 +1,9 @@
 """Validate, archive and package StickTD; standard-library-only release tooling."""
 from pathlib import Path
 import json, re, shutil, sys, zipfile
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
+if not (ROOT/'index.html').is_file():
+    ROOT = ROOT.parent
 s = (ROOT/'index.html').read_text(encoding='utf-8')
 v = re.search(r"const GAME_VERSION = '([0-9.]+)'", s).group(1)
 family = '.'.join(v.split('.')[:2])

@@ -1,0 +1,154 @@
+name: Release StickTD
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: version
+        run: echo "version=$(python release.py web)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/*
+  windows:
+    needs: web
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python release.py native
+      - run: npm install --no-audit --no-fund
+        working-directory: packaging
+      - run: npx electron-builder --win portable --x64 --publish never
+        working-directory: packaging
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: packaging/dist/*.exe
+  desktop:
+    needs: web
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: macos-latest
+            platform: mac
+            arch: arm64
+          - os: macos-latest
+            platform: mac
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python release.py native
+      - run: npm install --no-audit --no-fund
+        working-directory: packaging
+      - run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+        working-directory: packaging
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            packaging/dist/*.AppImage
+            packaging/dist/*.dmg
+          if-no-files-found: error
+  android:
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: python release.py native
+      - run: npm install --no-audit --no-fund --ignore-scripts
+        working-directory: packaging
+      - run: npx cap add android && npx cap sync android
+        working-directory: packaging
+      - name: Set APK version
+        env:
+          VERSION: ${{ needs.web.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os,re
+          from pathlib import Path
+          p=Path('packaging/android/app/build.gradle')
+          major,minor,patch=map(int,os.environ['VERSION'].split('.'))
+          code=major*1000000+minor*10000+patch
+          assert patch<10000 and minor<100
+          s=re.sub(r'versionCode \d+',f'versionCode {code}',p.read_text())
+          s=re.sub(r'versionName "[^"]+"',f'versionName "{os.environ["VERSION"]}"',s)
+          p.write_text(s)
+          PY
+      - run: chmod +x gradlew && ./gradlew assembleDebug
+        working-directory: packaging/android
+      - run: cp packaging/android/app/build/outputs/apk/debug/app-debug.apk "dist/StickTD-${{ needs.web.outputs.version }}-android-debug.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*.apk
+  release:
+    needs: [web, windows, android, desktop]
+    if: always() && needs.web.result == 'success' && needs.desktop.result == 'success' && (needs.windows.result == 'success' || needs.windows.result == 'skipped') && (needs.android.result == 'success' || needs.android.result == 'skipped')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish this commit's builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.web.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}-build-${GITHUB_SHA}"
+          TITLE="StickTD ${VERSION} · ${GITHUB_SHA:0:7}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "This exact commit already has a release; keeping its assets unchanged."
+            exit 0
+          fi
+          printf '\n\nBuild commit: %s\nDesktop packages are unsigned. Android APK is debug-signed; native builds are experimental.\n' "$GITHUB_SHA" >> dist/release-notes.md
+          shopt -s nullglob
+          assets=(dist/*.html dist/CHANGELOG-*.md dist/*.zip dist/*.exe dist/*.apk dist/*.AppImage dist/*.dmg)
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file dist/release-notes.md "${assets[@]}"
