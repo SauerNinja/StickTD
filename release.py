@@ -27,8 +27,8 @@ ENTRY_PATTERN = re.compile(r'^## \[(\d+\.\d+\.\d+)\][^\n]*\n[\s\S]*?(?=^## \[|\Z
 TAG_VERSION = re.compile(r'^v(\d+\.\d+\.\d+)')
 DOWNLOADS = (
     ('Windows 64-bit, portable', '*-win-x64.exe'),
-    ('macOS, Apple Silicon', '*-mac-arm64.dmg'),
-    ('macOS, Intel', '*-mac-x64.dmg'),
+    ('macOS ARM64, DMG', '*-mac-arm64.dmg'),
+    ('macOS x64, DMG', '*-mac-x64.dmg'),
     ('Linux 64-bit, AppImage', '*-linux-x86_64.AppImage'),
     ('Linux ARM64, AppImage', '*-linux-arm*.AppImage'),
     ('Android', '*-android*.apk'),
