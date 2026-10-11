@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.7.174">
+<meta name="application-version" content="1.8.1">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="StickTD is a free browser tower defense game in development. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -72,7 +72,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.7.174",
+  "softwareVersion": "1.8.1",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -1489,7 +1489,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.7.174'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.1'; // see CHANGELOG.md § [1.7.51]. Every upload bumps this and the top changelog heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see CHANGELOG.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -2691,8 +2691,8 @@ const CONFIG = {
       blurb: "A patient marksman who draws the bow fully before each shot. Arrows land hard, and the ones that bite deep leave the target bleeding. He is the root of the ranged branch: training a stat to 250 attunes him to an element, and 500 unlocks a specialization.",
       tiers: [
         { range: 140, damage: 20, cooldown: 1430, drawTime: 800, projectileSpeed: 480 }, // tier-1 cooldown raised 1150→1300, same "too fast starting off" feedback as Swordsman
-        { range: 170, damage: 30, cooldown: 693, drawTime: 450, projectileSpeed: 540, upgradeCost: 95 },
-        { range: 200, damage: 44, cooldown: 572, drawTime: 400, projectileSpeed: 600, upgradeCost: 135 }
+        { range: 170, damage: 30, cooldown: 1350, drawTime: 650, projectileSpeed: 540, upgradeCost: 95 },
+        { range: 200, damage: 44, cooldown: 1250, drawTime: 550, projectileSpeed: 600, upgradeCost: 135 }
       ]
     },
     AXEMAN: {
@@ -2783,7 +2783,7 @@ const CONFIG = {
       name: 'Bomber', icon: '💣', baseCost: 450, unlocksAfterWave: 6,
       blurb: "Lobs explosives that splash across a whole group: strong against dense crowds, wasted on a lone target. Unlocked by training a Gatling's Strength to 40.",
       tiers: [
-        { range: 150, damage: 26, cooldown: 1500, projectileSpeed: 260, splashRadius: 55 },
+        { range: 150, damage: 22, cooldown: 1500, projectileSpeed: 260, splashRadius: 55 },
         { range: 168, damage: 38, cooldown: 1350, projectileSpeed: 280, splashRadius: 65, upgradeCost: 110 },
         { range: 186, damage: 54, cooldown: 1200, projectileSpeed: 300, splashRadius: 78, upgradeCost: 155 }
       ]
@@ -3388,6 +3388,8 @@ function validateDesignContract(){
   if(String(updateWalkingBlood).includes('b.dx +=') || !String(landForensicDroplet).includes('pushSprayDecal') || !String(stampSettledDecal).includes('drawOneDecal')) problems.push('Ground puddles stay fixed, optional spray uses its own budget, and baking preserves live geometry (BLOOD-GROUND-FIXED-01, BLOOD-SPRAY-BUDGET-01).');
   if(!isInstantOpenProp({type:'BUSH'}) || (!String(Enemy.prototype.applyDamage).includes('spawnWeaponBloodContact') || !String(spawnWeaponBloodContact).includes('spawnSwordsmanBloodArc(victim,sourceTower)'))) problems.push('Potted plants collect instantly; landed sword hits retain the circular ground blood signature (POTTED-INSTANT-01, SWORD-BLOOD-ARC-01).');
   if(sceneryClearCost({ type:'BUSH', clearCost:0 }) !== 0) problems.push('the potted plant must be free to harvest (POTTED-BUSH-FREE-01)');
+  if(enemyHealthAtWeight('GRUNT',2,1,false)!==2*enemyHealthAtWeight('GRUNT',1,1,false) || enemyHealthAtWeight('GRUNT',1,1,true)!==1) problems.push('Weight HP and tiny exception (WEIGHT-HP-181).');
+  if(!String(drawBranchSprite).includes('🪾') || String(tryCollectAmbientLog).includes('log.count--')) problems.push('Branches use the emoji and collect once (BRANCH-PICKUP-03).');
   if(String(drawMap).includes('drawOuterWastelandTrees(ctx)') || !String(maybeSpawnAmbientLog).includes('nearPathTileSet.has(key)')) problems.push('Only collectible branches belong on unrevealed dirt (BRANCH-WASTELAND-02).');
   if(SMALL_SCENERY_SIZE_MULTIPLIER !== 0.5 || smallSceneryHarvestCost(100) !== 50 || SMALL_SCENERY_BUDDY_CHANCE <= 0 || SMALL_SCENERY_BUDDY_CHANCE > 1) problems.push('nearby small trees and rocks must be half scale, half harvest cost and use a bounded spawn chance (SMALL-SCENERY-CLUSTERS-01)');
   if(!Object.values(ITEM_USE_CLASSES).every(itemClass => itemClass.color && itemClass.notes.length >= 2) || ITEM_USE_HOLD_MS_BY_TIER.length !== 3) problems.push('every item class needs a colour and a sound motif, and each tier a hold time (ITEM-USE-FEEDBACK-01)');
@@ -5463,9 +5465,9 @@ function ensureEndGuardScenery(){
   topUpCloseGuard(finishTile);
 }
 function drawBranchSprite(ctx,size,color){
-  ctx.save();ctx.strokeStyle=color || '#80502d';ctx.lineWidth=Math.max(2,size*0.12);ctx.lineCap='round';
-  ctx.beginPath();ctx.moveTo(-size*0.35,size*0.13);ctx.lineTo(size*0.32,-size*0.12);ctx.moveTo(-size*0.04,0);ctx.lineTo(-size*0.12,-size*0.23);ctx.moveTo(size*0.16,-size*0.06);ctx.lineTo(size*0.30,size*0.14);ctx.stroke();ctx.restore();
+  drawEmojiSprite(ctx, '🪾', size);
 }
+
 function spawnOutsideBranches(count){
   const ends=[pathWaypointTiles[0],pathWaypointTiles[pathWaypointTiles.length-1]];
   for(let n=0;n<count;n++) for(let attempt=0;attempt<30;attempt++){
@@ -5718,7 +5720,7 @@ function sceneryClearCost(item){
   return cost;
 }
 function startClearingScenery(item){
-  if(item.isClearing) return;
+  if(item.isClearing || sceneryMap.get(item.gx+','+item.gy) !== item) return;
   normalizeSceneryHarvest(item);
   const cost = sceneryClearCost(item);
   if(gold < cost){
@@ -5742,7 +5744,7 @@ function grantEventProp(item){
     // a picnic basket is food only: one meat, one fruit and one vegetable, so it raises Constitution, INT and DEX
     for(const [n, kind] of ['MEAT', 'FRUIT', 'VEGETABLE'].entries()){ const angle = n/3*Math.PI*2; spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, pickFoodOfKind(kind), 'scenery'); }
   } else if(item.type === 'WOODPILE'){
-    const amount = 30 + Math.floor(Math.random()*31); wood += amount; spawnFloatingText(x, y - 22, '+🪵' + amount, '#c8a46a'); updateHUD();
+    const amount = 30 + Math.floor(Math.random()*31); wood += amount; launchGoldHudFlight(x,y,'🪵'); spawnFloatingText(x, y - 22, '+🪵' + amount, '#c8a46a'); updateHUD();
   } else if(item.type === 'BIRD_NEST'){
     spawnChestCoinFountain(x, y - 6, 18 + Math.floor(Math.random()*26));
     if(Math.random() < 0.2) dropFood(1, berries);
@@ -5830,6 +5832,7 @@ function updateScenery(dt){
         playSound('death');
       } else {
         wood += item.woodYield;
+        if(item.woodYield) launchGoldHudFlight(item.x,item.y,'🪵');
         stone += item.stoneYield;
         let msg = '';
         if(item.woodYield) msg += '+' + item.woodYield + '🪵 ';
@@ -6541,7 +6544,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
   const emoji = chanceDefinition ? chanceDefinition.emoji : EVENT_PROP_EMOJI[item.type] ? EVENT_PROP_EMOJI[item.type] : item.type === 'TREE' ? (TREE_VARIANT_EMOJI[item.variant || 0] || '🌳') : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
   if(item.type==='BRANCH'){
-    if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=0.24;ctx.translate(item.x+size*0.08,item.y+2);ctx.transform(1,0,-0.35,0.25,0,0);drawBranchSprite(ctx,size,'#000');ctx.restore();}
+    if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=0.24;ctx.translate(item.x+size*0.08,item.y+2);ctx.transform(1,0,-0.35,0.25,0,0);drawBranchSprite(ctx,size);ctx.restore();}
   } else if(item.type==='STUMP'){
     if(graphicsQuality==='high'){ctx.save();ctx.fillStyle='rgba(0,0,0,0.24)';ctx.beginPath();ctx.ellipse(item.x+size*0.1,item.y+2+size*0.30,size*0.37,size*0.12,0,0,Math.PI*2);ctx.fill();ctx.restore();}
   } else drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',(item.flip ? -1 : 1)*(item.widthStretch || 1),item.tallStretch || 1);
@@ -7028,6 +7031,7 @@ function drawDepthSortedLayer(ctx){
     switch(it.kind){
       case 's': drawOneSceneryItem(ctx, it.key, it.item, it.size); drawBloodStains(ctx, it.item); renderPhaseTime.worldScenery += performance.now() - worldMark; break;
       case 'e': {
+        if(it.e.type==='BEE') break; // elevated pass below
         const e=it.e,blend=gameState==='PLAYING' ? Math.min(1,accumulator/FIXED_DT) : 1;
         ctx.save();
         if(!e.isLivestock && Number.isFinite(e.renderPrevX) && Number.isFinite(e.renderPrevY))ctx.translate((e.renderPrevX-e.x)*(1-blend),(e.renderPrevY-e.y)*(1-blend));
@@ -10445,8 +10449,9 @@ const CHANGES_NOTICE_RELEASES = 8, CHANGES_NOTICE_ITEMS_PER_RELEASE = 6;
 const CHANGELOG_URL = 'https://github.com/SauerNinja/StickTD/blob/main/CHANGELOG.md';
 function appendChangelogLink(root){
   const link = document.createElement('a');
-  link.href = CHANGELOG_URL; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View the complete changelog';
+  link.href = CHANGELOG_URL; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'View current release notes';
   root.appendChild(link);
+  const history=document.createElement('a'); history.href='https://github.com/SauerNinja/StickTD/blob/main/HISTORY.md'; history.target='_blank'; history.rel='noopener'; history.textContent=' · Earlier versions'; root.appendChild(history);
 }
 async function openChangesNotice(){
   document.getElementById('updateVersionBig').textContent = 'v' + GAME_VERSION;
@@ -11369,12 +11374,17 @@ function rollDirectAttackMiss(tower, enemy){
   return true;
 }
 function lancerWeightDamageMultiplier(weight){ return clampNum(Number(weight) || 1, 0.5, 1.75); }
+// WEIGHT-HP-181: same species and wave scale, double weight means double HP before integer rounding.
+function enemyHealthAtWeight(type,weight,hpScale,tiny){
+  if(type==='GRUNT' && tiny) return 1;
+  return Math.max(1,Math.round(CONFIG.ENEMIES[type].baseHp * Math.max(0.25,weight) * hpScale * 1.25));
+}
 class Enemy{
   constructor(){ this.active = false; }
   // Weight is a readable size-scale stat: radius 15 is the standard 1.0 reference.
   // Enemy family and wave-size radius changes therefore update weight automatically.
   get weight(){ return Math.max(0.25, (this.radius || 15) / 15); }
-  get constitution(){ return this.type === 'GRUNT' ? (this.isMini ? 1 : Math.max(1,Math.round(CONFIG.ENEMIES.GRUNT.baseHp*this.weight))) : this.maxHp; }
+  get constitution(){ return this.maxHp; }
   spawn(type, hpMultiplier, isBig, isMini){
     if(markedTargetEnemy === this) setMarkedTarget(null);
     this.deathResolved = false;
@@ -11419,7 +11429,7 @@ class Enemy{
       this.hp = this.maxHp;
       this.bounty = Math.max(1, Math.round(this.bounty * bountyMult));
     }
-    if(type === 'GRUNT'){this.maxHp=this.constitution;this.hp=this.maxHp;} // GRUNT-CONSTITUTION-01: weight, not wave scaling
+    if(!LIVESTOCK_TYPES[type]){this.maxHp=enemyHealthAtWeight(type,this.weight,hpMultiplier,this.isMini);this.hp=this.maxHp;} // GRUNT-CONSTITUTION-01: weight, not wave scaling
     this.pathIndex = 0;
     this.x = waypointsPx[0].x; this.y = waypointsPx[0].y;
     this.vx = 0; this.vy = 0;
@@ -11911,8 +11921,7 @@ class Enemy{
     const visualSizeRank = 0.5 + 0.5*Math.sign(sizeRank*2-1)*Math.pow(Math.abs(sizeRank*2-1),0.65); // ENEMY-SIZE-VARIETY-01 (1.7.141): more visible extremes inside the existing tier.
     this.radius = band.radiusMin + visualSizeRank*(band.radiusMax-band.radiusMin);
     this.speed = (band.speedMin + familySpeedRank * (band.speedMax - band.speedMin)) * ENEMY_WALK_SPEED_SCALE; // ENEMY-PACE-01 (1.6.79) — see CHANGELOG.md § [1.6.79]
-    this.maxHp = Math.max(1, Math.round(def.baseHp * hpScale * band.hpMult * ENEMY_HP_SCALE * (0.75 + sizeRank * 0.5)));
-    if(this.type === 'GRUNT') this.maxHp = this.constitution; // TINY-GRUNT-EVASION-01 (1.7.136) — see CHANGELOG.md § [1.7.136]
+    this.maxHp = enemyHealthAtWeight(this.type,this.weight,hpScale,this.isMini);
     this.hp = this.maxHp;
     this.bounty = Math.max(1, Math.round(def.bounty * band.bountyMult));
     this.footstepDist = this.footstepWeight === null ? Infinity : (this.radius * 17);
@@ -13104,7 +13113,7 @@ class Tower{
     const intDamageMult = 1 + PRIMARY_DAMAGE_PER_POINT * intPoints;
     // CA395 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA395
     const primaryDamageMult = archetype === 'WARRIOR' ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
-    this.damage = Math.round(this.baseDamage * primaryDamageMult);
+    this.damage = Math.max(1, Math.round(this.baseDamage * primaryDamageMult * 0.7)); // COMBAT-BALANCE-181: lower direct damage, including loaded defenders
     // CA396 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA396
     this.primaryStatEff = archetype === 'WARRIOR' ? strEff : archetype === 'ARCHER' ? archerDamageStat : archetype === 'MAGE' ? intEff : 0;
     // CA397 — see CHANGELOG.md § [1.5.7] Code Archaeology, CA397
@@ -13119,7 +13128,7 @@ class Tower{
     // so a trained Axeman out-reached it. Cleric now scales like everyone else, toward the longest cap of the melee and support lineage.
     const cap = RANGE_CAPS[this.type] || this.baseRange * 2;
     this.range = interpolateRangeByInt(this.baseRange, cap, intRangeFraction) * rangeItemMult;
-    if(this.baseMeleeDamage) this.meleeDamage = Math.round(this.baseMeleeDamage * primaryDamageMult);
+    if(this.baseMeleeDamage) this.meleeDamage = Math.max(1, Math.round(this.baseMeleeDamage * primaryDamageMult * 0.7));
     if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange){
       const cap = RANGE_CAPS[this.type] || this.baseMeleeRange * 2;
@@ -16332,11 +16341,11 @@ function nearestPickupAt(items, x, y, hitSize, eligible){
 function tryCollectAmbientLog(x, y, pointerType){
   const log = nearestPickupAt(ambientLogs, x, y, pickupHitSizeWorld(30, pointerType), () => true);
   if(!log) return false;
-  const logWood = AMBIENT_LOG_WOOD / AMBIENT_LOG_STACK_SIZE;
-  log.count--;
-  if(log.count <= 0) ambientLogs.splice(ambientLogs.indexOf(log), 1);
-  wood += logWood; // one log of the pile per tap
-  spawnFloatingText(log.x, log.y-12, '+'+logWood+' 🪵', '#c99a5b');
+  const logWood = Math.max(0,log.count) * AMBIENT_LOG_WOOD / AMBIENT_LOG_STACK_SIZE;
+  ambientLogs.splice(ambientLogs.indexOf(log), 1); // remove before payout: one pickup per branch
+  log.count = 0;
+  wood += logWood;
+  launchGoldHudFlight(log.x,log.y,'🪵');
   playSound('click');
   updateHUD();
   logGameEvent('ambient log collected: '+logWood+' wood');
@@ -16349,9 +16358,7 @@ function drawAmbientLogs(ctx){
   ctx.save(); ctx.font='22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const log of ambientLogs){
     if(!fxVisible(log.x, log.y, bounds)) continue;
-    ctx.save(); ctx.translate(log.x,log.y); ctx.rotate((log.x*0.013+log.y*0.007)%Math.PI);
-    ctx.strokeStyle='#54351e'; ctx.lineWidth=2.5; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(-12,7); ctx.lineTo(12,-7); ctx.moveTo(-2,1); ctx.lineTo(-5,-8); ctx.moveTo(5,-3); ctx.lineTo(13,2); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(log.x,log.y); drawBranchSprite(ctx,30); ctx.restore();
   }
   ctx.restore();
 }
@@ -16435,7 +16442,8 @@ function launchGoldHudFlight(x,y,icon){
   if(PREFERS_REDUCED_MOTION || (gameState!=='PLAYING' && gameState!=='PAUSED') || document.hidden) return;
   let flight=goldHudFlights.find(f=>!f.active);
   if(!flight){
-    flight=goldHudFlights.reduce((a,b)=>a.age<b.age ? a : b);
+    flight=goldHudFlights.filter(f=>f.icon===(icon||null)).reduce((a,b)=>!a || a.age<b.age ? a : b,null);
+    if(!flight) return;
     flight.count=(flight.count || 1)+1;return;
   }
   flight.x=x*camera.zoom+camera.x;flight.y=y*camera.zoom+camera.y;
@@ -16456,7 +16464,9 @@ function drawGoldHudFlights(ctx){
   for(const f of goldHudFlights) if(f.active){
     const t=Math.min(1,f.age/680),p=t*t*(3-2*t),arc=Math.sin(t*Math.PI);
     const startX=f.x*CANVAS_W/f.startWidth,startY=f.y*CANVAS_H/f.startHeight;
-    const x=startX+(tx-startX)*p+arc*18,y=startY+(ty-startY)*p-arc*38;
+    let targetX=tx,targetY=ty;
+    if(f.icon==='🪵'){ const r=document.getElementById('buildBtn').getBoundingClientRect(); targetX=(r.left+r.width/2-canvasRect.left)*CANVAS_W/canvasRect.width; targetY=(r.top+r.height/2-canvasRect.top)*CANVAS_H/canvasRect.height; }
+    const x=startX+(targetX-startX)*p+arc*18,y=startY+(targetY-startY)*p-arc*38;
     ctx.globalAlpha=t>0.88 ? (1-t)/0.12 : 1;
     ctx.fillStyle='#fff';
     if(f.icon){ ctx.font='20px sans-serif'; ctx.fillText(f.icon,x,y); ctx.font='14px sans-serif'; } // DIAMOND-FLIES-01 (1.7.48): a diamond flies to the gold counter as the gem itself
@@ -19505,6 +19515,7 @@ function render(ctx){
   drawCoinPickups(ctx);
   drawAmbientLogs(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
+  for(const it of depthSortItems) if(it.kind==='e' && it.e.type==='BEE') it.e.draw(ctx); // above world emojis, below interface overlays
   drawSpawnWarningMarker(ctx);
   drawWaveCountdown(ctx);
   for(const it of depthSortItems) if(it.kind === 's') drawClearingHourglass(ctx,it.item,it.size); // CLEAR-OVERLAY-01: above all world props and actors
