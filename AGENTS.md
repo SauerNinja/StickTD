@@ -3,6 +3,7 @@
 ## Release, signing and changelog rules — 1.8.2
 
 BRANCH-STICKS-01 (supersedes the 🪾 glyph in BRANCH-PICKUP-03): wasteland branches are small scattered sticks of random size and orientation drawn procedurally, never a tree or tree-like glyph; pickup stays one atomic click.
+MODULE-FILES-01: the game is `index.html` (markup, styles, analytics and consent) plus classic script files in `js/`, loaded by `<script src="js/NAME.js?v=VERSION">` tags in the order listed in the file map at the top of `js/config.js`; no bundler, no modules, no libraries. Top-level names are shared between files. A file may use another file's names inside functions, and at load time only when that file comes earlier in the list; a top-level call to a function declared in a later file fails at load. Each new feature file is added to the tag list and the file map in the same change, every tag's `?v=` equals `GAME_VERSION` (SCRIPT-VERSION-01, enforced by `release.py check` and the design contract), and the end of `js/waves.js` (the last file) starts the game. The source scan in the design contract (SOURCE-SCAN-01) reads the files over http(s) and skips on `file:`.
 CAMPFIRE-STRUCTURE-01: the Campfire is a normal Structures row in the Build menu costing 💰60 🪵50 🪨10, never a separate button.
 CASTOFF-TANGENT-01: blade cast-off lands as a curved row along the swing tangent beyond the wound, never a ring around the victim.
 FORENSIC-TERMINAL-02: each drop has its own terminal speed (ceiling 7.65 m/s) and lands at the exact ground-contact point.
@@ -130,13 +131,29 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 36. Archers loose from the bow hand, in the game and on the attract screen (ARROW-GRIP-01).
 37. The top bar has no wave bar and no lives bar: the wave row ends in a phase label (STANDBY, INCOMING, FIGHTING) that fills the row up to the pause button (WAVE-PHASE-TEXT-01, HUD-FLUSH-01).
 
+38. The established look does not drift (VISUAL-DRIFT-01). A change keeps every existing colour, font, size, spacing, shape, icon and layout unless the request is about it. The `LOOK_LOCKS` table in `js/config.js` pins the title, top bar and button styles and `validateDesignContract()` fails when one changes; changing a locked style means updating the table and the list below in the same release. Before delivering a change that touches drawing or styles, render the start screen and a gameplay frame at 1280x800 and 390x780 with a seeded `Math.random`, and compare them with the same frames from the previous version.
+
 ### Mandatory pre-delivery checklist (run before every present_files)
 1. `GAME_VERSION` bumped; top `CHANGELOG.md` heading is `## [x.y.z] — date (UTC)` for the same version; the two agree.
 2. Every change is described under that version with `###` subheadings: what was asked, what was found, what changed, how it was verified, what was not verified. Never put new work under an old version or without a version.
 3. `sitemap.xml` `lastmod` is set to the release date; `manifest.json`, `robots.txt` and `LICENSE` are delivered with the rest so the complete uploadable set is always present (images stay in the repository).
-4. The page loads with the design contract clean (no problems, no console errors) and the regression suite passes.
+4. The page loads with the design contract clean (no problems, no console errors, no `look changed` lines) and the regression suite passes; for any change to drawing or styles the before and after frames named in VISUAL-DRIFT-01 match except for what was asked.
 5. AGENTS.md ledger and BACKLOG.md updated when a rule or open item changed; memory updated with the new rule.
 6. All files are delivered together: index.html, CHANGELOG.md, AGENTS.md, README.md, BACKLOG.md, sitemap.xml, manifest.json, robots.txt, LICENSE.
+
+## Look continuity (VISUAL-DRIFT-01)
+Each item is a look the project rules settled; a later change does not undo it without a request.
+- Title screen: gold Georgia wordmark "STICK TD" with the stick-figure letter, pill-shaped PLAY button, graphics toggle bottom centre, "See changes" bottom left and "Options" bottom right (1.7.165 onward).
+- Top bar: Build, Shop, Settings and Start Wave buttons, hearts and gold readouts, wave phase label (STANDBY, INCOMING, FIGHTING) with no wave bar and no lives bar; pause and speed buttons in brown.
+- Shadows follow the object's own silhouette, never a round blob (1.7.x shadow rules).
+- A selected fighter's reach is a thin gold dashed outline with a very faint gold interior, drawn below units.
+- The pin marker's tip sits at the enemy; the glyph is centred and raised, never displaced to one side.
+- The Mage staff tip is a solid white core with soft falloff; the rainbow pinwheel is rejected.
+- Quick items float outside the faceplate and the plate never grows.
+- "See changes" opens the silver changes dialog (big silver version, recent releases); no unsolicited update or introduction popups.
+- Fresh blood is bright red at impact and darkens to the enemy's own colour; landed marks keep the baked ground-decal look.
+- Glows may pulse (loose-enemy ring); objects the player needs never fade in and out.
+- Dark brown ground, green hedge-edged path, checkered finish and white and black spawn pennants stay as they are.
 
 ## Standing project decisions
 
@@ -165,7 +182,7 @@ A gold bag drops a diamond about one time in ten; diamonds fall into the landsca
 
 ### Release rule: version every upload (project rule, RELEASE-VERSION-01)
 
-Every file delivery that changes `index.html` must, in the same delivery: (1) bump `GAME_VERSION` in `index.html`; (2) add or extend a dated, numbered top entry in `CHANGELOG.md` (`## [x.y.z] — date (UTC)`) that describes only what changed since the previous version, with `###` subheadings; (3) update `README.md` for anything player-facing that changed; and (4) update `AGENTS.md` and `BACKLOG.md` when rules or open items change. Each upload is committed to GitHub, so an upload that keeps the old version number cannot be told apart from the previous one. Never reuse a version number for different files. Before delivering, confirm the version in `index.html`, the top changelog heading and the README agree. This was broken in the 1.7.36 session, when many uploads all said 1.7.36; it was repaired in 1.7.37.
+Every file delivery that changes `index.html` must, in the same delivery: (1) bump `GAME_VERSION` in `js/config.js` and the matching `application-version` meta, JSON-LD `softwareVersion` and every `?v=` on the script tags in `index.html` (`sed -i 's/?v=OLD/?v=NEW/' index.html`); (2) add or extend a dated, numbered top entry in `CHANGELOG.md` (`## [x.y.z] — date (UTC)`) that describes only what changed since the previous version, with `###` subheadings; (3) update `README.md` for anything player-facing that changed; and (4) update `AGENTS.md` and `BACKLOG.md` when rules or open items change. Each upload is committed to GitHub, so an upload that keeps the old version number cannot be told apart from the previous one. Never reuse a version number for different files. Before delivering, confirm the version in `index.html`, the top changelog heading and the README agree. This was broken in the 1.7.36 session, when many uploads all said 1.7.36; it was repaired in 1.7.37.
 
 ### Standing project rules added from playtests (1.7.36)
 
@@ -361,7 +378,7 @@ These have been stated repeatedly. They are written generally on purpose: the de
 **How work is done**
 - **Evidence comes from play-testing** (debug log, save file, screenshots, clips, opinion). Do not run long or arbitrary simulations to settle a balance or lag question; decide from these notes and the code, and ask for data when evidence is really needed. Short, targeted checks of your own change are fine.
 - **Check a report against the live version first.** Screenshots often come from an older build; the debug overlay shows the version. Say so plainly instead of assuming the fix failed.
-- **Never create new files unless one is requested.** Fold guidance into `AGENTS.md`, `README.md`, `BACKLOG.md` or `CHANGELOG.md`; the game stays one `index.html` with its existing companions.
+- **Never create new files unless one is requested.** Fold guidance into `AGENTS.md`, `README.md`, `BACKLOG.md` or `CHANGELOG.md`; the game is `index.html` plus the scripts in `js/` (MODULE-FILES-01), with its existing companions.
 - **Deliver the complete current `index.html` plus only the documents that changed**, flat and individually, never zipped. Every change gets a version bump, a changelog entry and, for a stated rule, a contract check.
 - **Player-facing text is professional.** No jokes, filler or dialogue on item use. First play uses no blocking tutorial or tower-choice/win popups; the approved gentle bobbing 👆 cues are beside Build until the first non-Barricade tower is placed; after the first fighter is built and before wave one starts, the cue points to Start Wave, then moves to Fast Forward when wave one starts. Each cue ends after its action and is remembered (`FIRST-BUILD-CUE-01`, `FIRST-PLAY-CUE-SEQUENCE-01`). Gameplay notifications stack at the top-left and can be clicked to expand their explanations; preserve Mark all read and individual dismissal (`NOTIFICATION-EXPLAIN-01`). The Build menu starts with **Map growth**, then puts every available fighter under **Stickmen Defenders**, with Fortifications and locked fighters in separate sections. Before the first round, the button says **Start Wave** with no number; between rounds it says **Next Wave**. The README stays general and unshowy.
 
@@ -602,8 +619,7 @@ hand — this part is not meant to be read in full every session.
 ## Architecture overview
 
 - `CONFIG.TOWERS`, `CONFIG.ENEMIES`, `CONFIG.WAVES` are the three top-level data tables inside one
-  `CONFIG` object — most of the practical benefit of split config files without breaking the
-  single-file rule.
+  `CONFIG` object — most of the practical benefit of split config files without a build step.
 - **A tower never transforms into a new class — this is the permanent design, not a WIP state.**
   `Tower.evolveInto()` still exists in the source but is fully unused/dead code (kept defined
   rather than deleted); nothing calls it. Reaching a threshold instead permanently unlocks the
@@ -1259,14 +1275,14 @@ Notification panel/stack left position is measured from the bell box relative to
 
 ## Code map and project notes
 
-StickTD is one `index.html` with no libraries and no build step. These notes were the README's developer section; they live here so the README can stay a plain description of the game.
+StickTD is `index.html` plus plain script files in `js/`, with no libraries and no build step. These notes were the README's developer section; they live here so the README can stay a plain description of the game.
 
 ### Tech stack
 
 - **HTML5 Canvas 2D** draws stickmen, weapons, enemies, particles, and decals procedurally.
 - **Vanilla JavaScript** powers the game and its interface.
 - **Web Audio API** synthesizes the original soundtrack and sound effects in the browser. The field arrangement gains a steady pulse during combat; music, sound effects and overall volume have separate controls.
-- The game lives in `index.html`, with `CHANGELOG.md` alongside it for in-game release notes.
+- The game lives in `index.html` and the files in `js/` (listed in the file map at the top of `js/config.js`), with `CHANGELOG.md` alongside it for in-game release notes.
 
 ### Project structure
 

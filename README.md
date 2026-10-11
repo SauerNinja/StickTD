@@ -43,13 +43,13 @@ A lone barricade stands watch at the finish when the first wave rolls in. From t
 
 ## Get the game
 
-Play instantly in a browser, or install a build for Windows, macOS, Linux or Android from the [Releases](https://github.com/SauerNinja/StickTD/releases/latest) page. Every download is published with checksums and a build attestation, so you can confirm exactly what you are running.
+Play instantly in a browser, or install a build for Windows, macOS, Linux (Intel/AMD or ARM) or Android from the [Releases](https://github.com/SauerNinja/StickTD/releases/latest) page. Every download is published with checksums and a build attestation, so you can confirm exactly what you are running.
 
 On iPhone or iPad, open the game in Safari, tap Share, then Add to Home Screen. It gets its own icon and fills the screen like an app.
 
 ## Made with
 
-HTML5 Canvas, plain JavaScript and the Web Audio API. Every picture is drawn by code and every sound and piece of music is synthesized in the browser. The whole game is one `index.html` with no libraries, no build step and no image or audio files.
+HTML5 Canvas, plain JavaScript and the Web Audio API. Every picture is drawn by code and every sound and piece of music is synthesized in the browser. The game is plain scripts with no libraries, no build step and no image or audio files.
 
 ## License
 

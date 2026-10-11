@@ -37,56 +37,19 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "publish=${publish}" >> "$GITHUB_OUTPUT"
           echo "tags=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
-  windows:
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: python release.py native
-      - run: npm install --no-audit --no-fund
-        working-directory: packaging
-      - name: Build portable executable
-        shell: bash
-        working-directory: packaging
-        env:
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [ -n "${WIN_CSC_LINK:-}" ]; then
-            export CSC_LINK="$WIN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
-          else
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
-          npx electron-builder --win portable --x64 --publish never
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows
-          path: packaging/dist/*.exe
-          if-no-files-found: error
   desktop:
+    name: ${{ matrix.label }}
     needs: prepare
     if: needs.prepare.outputs.publish == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            platform: linux
-            arch: x64
-          - os: macos-latest
-            platform: mac
-            arch: arm64
-          - os: macos-latest
-            platform: mac
-            arch: x64
+          - { label: Windows, os: windows-latest, platform: win, arch: x64, target: portable }
+          - { label: Linux x64, os: ubuntu-latest, platform: linux, arch: x64, target: AppImage }
+          - { label: Linux ARM64, os: ubuntu-24.04-arm, platform: linux, arch: arm64, target: AppImage }
+          - { label: macOS Apple Silicon, os: macos-latest, platform: mac, arch: arm64, target: dmg }
+          - { label: macOS Intel, os: macos-latest, platform: mac, arch: x64, target: dmg }
     runs-on: ${{ matrix.os }}
     env:
       SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
@@ -101,10 +64,12 @@ jobs:
       - run: python release.py native
       - run: npm install --no-audit --no-fund
         working-directory: packaging
-      - name: Build desktop package
+      - name: Build and sign
         shell: bash
         working-directory: packaging
         env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -112,20 +77,24 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "${MAC_CSC_LINK:-}" ]; then
+          if [ "${{ matrix.platform }}" = "win" ] && [ -n "${WIN_CSC_LINK:-}" ]; then
+            export CSC_LINK="$WIN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+          elif [ "${{ matrix.platform }}" = "mac" ] && [ -n "${MAC_CSC_LINK:-}" ]; then
             export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
           else
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
-          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+          npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --${{ matrix.arch }} --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}
           path: |
+            packaging/dist/*.exe
             packaging/dist/*.AppImage
             packaging/dist/*.dmg
           if-no-files-found: error
   android:
+    name: Android
     needs: prepare
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
@@ -195,8 +164,9 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
   release:
-    needs: [prepare, windows, desktop, android]
-    if: always() && needs.prepare.outputs.publish == 'true' && needs.windows.result == 'success' && needs.desktop.result == 'success' && needs.android.result == 'success'
+    name: Publish release
+    needs: [prepare, desktop, android]
+    if: always() && needs.prepare.outputs.publish == 'true' && needs.desktop.result == 'success' && needs.android.result == 'success'
     permissions:
       contents: write
       id-token: write

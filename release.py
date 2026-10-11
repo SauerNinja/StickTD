@@ -30,6 +30,7 @@ DOWNLOADS = (
     ('macOS, Apple Silicon', '*-mac-arm64.dmg'),
     ('macOS, Intel', '*-mac-x64.dmg'),
     ('Linux 64-bit, AppImage', '*-linux-x86_64.AppImage'),
+    ('Linux ARM64, AppImage', '*-linux-arm*.AppImage'),
     ('Android', '*-android*.apk'),
 )
 
@@ -40,10 +41,14 @@ def version_key(version):
 
 def read_game_version():
     html = (ROOT / 'index.html').read_text(encoding='utf-8')
-    version = re.search(r"const GAME_VERSION = '([0-9.]+)'", html).group(1)
+    scripts = ''.join(path.read_text(encoding='utf-8') for path in sorted((ROOT / 'js').glob('*.js')))
+    version = re.search(r"const GAME_VERSION = '([0-9.]+)'", scripts).group(1)
     for marker in (f'content="{version}"', f'"softwareVersion": "{version}"'):
         if marker not in html:
             raise SystemExit(f'Release blocked: index.html metadata does not carry version {version} ({marker}).')
+    stale = sorted({tag for tag in re.findall(r'<script src="js/[^"]+\?v=([0-9.]+)"', html) if tag != version})
+    if stale or '<script src="js/' not in html:
+        raise SystemExit(f'Release blocked: script tags in index.html must all carry ?v={version} (found {stale or "none"}).')
     return version
 
 
@@ -171,7 +176,7 @@ app.whenReady().then(()=>{
  mainWindow.webContents.setWindowOpenHandler(({url})=>{ if(/^https:\\/\\//.test(url)) shell.openExternal(url); return {action:'deny'}; });
  mainWindow.webContents.on('will-navigate',event=>event.preventDefault());
  mainWindow.webContents.on('before-input-event',(event,input)=>{ if(input.type==='keyDown' && input.key==='F11'){ mainWindow.setFullScreen(!mainWindow.isFullScreen()); event.preventDefault(); } });
- mainWindow.loadFile(path.join(__dirname,'www','index.html'));
+ mainWindow.loadFile(path.join(__dirname,'www','index.html'),{query:{os:process.platform,arch:process.arch}});
 });
 app.on('window-all-closed',()=>app.quit());
 """, encoding='utf-8')
