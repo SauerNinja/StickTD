@@ -9,23 +9,37 @@ concurrency:
   group: release-${{ github.sha }}
   cancel-in-progress: false
 jobs:
-  web:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+      tags: ${{ steps.version.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - id: version
-        run: echo "version=$(python scripts/release.py web)" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web
-          path: dist/*
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(python release.py check)
+          test -n "$version"
+          if gh release view "v${version}" >/dev/null 2>&1; then
+            publish=false
+            echo "::notice::Release v${version} already exists and is never replaced. Bump GAME_VERSION and add a CHANGELOG.md entry to publish new builds."
+          else
+            publish=true
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+          echo "tags=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
   windows:
-    needs: web
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,19 +49,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python scripts/release.py native
+      - run: python release.py native
       - run: npm install --no-audit --no-fund
         working-directory: packaging
-      - run: npx electron-builder --win portable --x64 --publish never
+      - name: Build portable executable
+        shell: bash
         working-directory: packaging
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${WIN_CSC_LINK:-}" ]; then
+            export CSC_LINK="$WIN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder --win portable --x64 --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: windows
           path: packaging/dist/*.exe
+          if-no-files-found: error
   desktop:
-    needs: web
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +88,8 @@ jobs:
             platform: mac
             arch: x64
     runs-on: ${{ matrix.os }}
+    env:
+      SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -70,13 +98,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python scripts/release.py native
+      - run: python release.py native
       - run: npm install --no-audit --no-fund
         working-directory: packaging
-      - run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+      - name: Build desktop package
+        shell: bash
         working-directory: packaging
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.platform }}" = "mac" ] && [ -n "${MAC_CSC_LINK:-}" ]; then
+            export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}
@@ -85,7 +126,8 @@ jobs:
             packaging/dist/*.dmg
           if-no-files-found: error
   android:
-    needs: web
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,14 +139,19 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
-      - run: python scripts/release.py native
+        with:
+          packages: 'platform-tools'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python release.py native
       - run: npm install --no-audit --no-fund --ignore-scripts
         working-directory: packaging
       - run: npx cap add android && npx cap sync android
         working-directory: packaging
       - name: Set APK version
         env:
-          VERSION: ${{ needs.web.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           python - <<'PY'
           import os,re
@@ -117,38 +164,73 @@ jobs:
           s=re.sub(r'versionName "[^"]+"',f'versionName "{os.environ["VERSION"]}"',s)
           p.write_text(s)
           PY
-      - run: chmod +x gradlew && ./gradlew assembleDebug
+      - name: Build and sign APK
+        shell: bash
         working-directory: packaging/android
-      - run: cp packaging/android/app/build/outputs/apk/debug/app-debug.apk "dist/StickTD-${{ needs.web.outputs.version }}-android-debug.apk"
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          out="$GITHUB_WORKSPACE/dist"
+          mkdir -p "$out"
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            ./gradlew assembleRelease
+            tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            "$tools/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass env:ANDROID_KEY_PASSWORD --out "$out/StickTD-${VERSION}-android.apk" "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" verify "$out/StickTD-${VERSION}-android.apk"
+          else
+            ./gradlew assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$out/StickTD-${VERSION}-android-debug.apk"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: android
           path: dist/*.apk
+          if-no-files-found: error
   release:
-    needs: [web, windows, android, desktop]
-    if: always() && needs.web.result == 'success' && needs.desktop.result == 'success' && (needs.windows.result == 'success' || needs.windows.result == 'skipped') && (needs.android.result == 'success' || needs.android.result == 'skipped')
+    needs: [prepare, windows, desktop, android]
+    if: always() && needs.prepare.outputs.publish == 'true' && needs.windows.result == 'success' && needs.desktop.result == 'success' && needs.android.result == 'success'
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     runs-on: ubuntu-latest
+    env:
+      SIGN_WIN: ${{ secrets.WIN_CSC_LINK != '' && 'true' || 'false' }}
+      SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
+      SIGN_ANDROID: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
-      - name: Publish this commit's builds
+      - name: Compose notes and checksums
+        env:
+          RELEASED_TAGS: ${{ needs.prepare.outputs.tags }}
+        run: python release.py compose
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+            dist/*.apk
+            dist/SHA256SUMS.txt
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.web.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          TAG="v${VERSION}-build-${GITHUB_SHA}"
-          TITLE="StickTD ${VERSION} · ${GITHUB_SHA:0:7}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "This exact commit already has a release; keeping its assets unchanged."
-            exit 0
-          fi
-          printf '\n\nBuild commit: %s\nDesktop packages are unsigned. Android APK is debug-signed; native builds are experimental.\n' "$GITHUB_SHA" >> dist/release-notes.md
-          shopt -s nullglob
-          assets=(dist/*.html dist/CHANGELOG-*.md dist/*.zip dist/*.exe dist/*.apk dist/*.AppImage dist/*.dmg)
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TITLE" --notes-file dist/release-notes.md "${assets[@]}"
+          gh release create "v${VERSION}" --target "$GITHUB_SHA" --title "StickTD ${VERSION}" --notes-file dist/release-notes.md --latest dist/*.exe dist/*.dmg dist/*.AppImage dist/*.apk dist/SHA256SUMS.txt
