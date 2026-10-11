@@ -19,11 +19,17 @@ jobs:
         with:
           python-version: '3.12'
       - id: version
-        run: echo "version=$(python release.py web)" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python release.py web)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: web
           path: dist/*
+          if-no-files-found: error
   windows:
     needs: web
     runs-on: windows-latest
@@ -46,6 +52,7 @@ jobs:
         with:
           name: windows
           path: packaging/dist/*.exe
+          if-no-files-found: error
   desktop:
     needs: web
     strategy:
@@ -97,6 +104,11 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' 
       - run: python release.py native
       - run: npm install --no-audit --no-fund --ignore-scripts
         working-directory: packaging
@@ -124,6 +136,7 @@ jobs:
         with:
           name: android
           path: dist/*.apk
+          if-no-files-found: error
   release:
     needs: [web, windows, android, desktop]
     if: always() && needs.web.result == 'success' && needs.desktop.result == 'success' && (needs.windows.result == 'success' || needs.windows.result == 'skipped') && (needs.android.result == 'success' || needs.android.result == 'skipped')

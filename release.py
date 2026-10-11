@@ -11,7 +11,8 @@ log = ROOT/'CHANGELOG.md'
 text = log.read_text(encoding='utf-8')
 entries = re.findall(r'^## \[(\d+\.\d+\.\d+)\][\s\S]*?(?=^## \[|\Z)', text, re.M)
 blocks = re.findall(r'^## \[\d+\.\d+\.\d+\][\s\S]*?(?=^## \[|\Z)', text, re.M)
-assert entries and entries[0] == v, 'Changelog version mismatch'
+if not entries or entries[0] != v:
+    raise SystemExit(f"Release blocked: index.html is {v}, but CHANGELOG.md starts with {entries[0] if entries else 'no version'}. Upload the matching complete index.html and CHANGELOG.md together.")
 assert f'content="{v}"' in s and f'"softwareVersion": "{v}"' in s, 'HTML metadata mismatch'
 older = [b for n,b in zip(entries,blocks) if not n.startswith(family+'.')]
 command = sys.argv[1] if len(sys.argv)>1 else 'check'
