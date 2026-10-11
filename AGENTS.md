@@ -1,5 +1,9 @@
 # Agent Instructions — Stick Tower Defense
 
+## Release and branch rules — 1.8.1
+WEIGHT-HP-181: non-livestock spawn HP is species base × linear weight × wave scale ×1.25; Tiny Grunt stays1. Reduce direct/alternate melee damage through recomputation once. Archer upgrades must not halve starting cooldown. Bees render once above world emojis and below speech/UI. Every main push builds all supported packages; record observed Actions outcomes separately from device playtesting.
+BRANCH-PICKUP-03 supersedes vector branch and multi-tap stack rules: 🪾 only, one atomic pickup, wood flies to Build. Use current CHANGELOG.md for the active major.minor family; search HISTORY.md only for relevant historical rules. Run `python scripts/release.py prepare` after a version change to archive older families. Never read the entire archive. Copy stays broad, direct game-magazine/strategy-guide language; omit obvious button instructions. ANALYTICS.md is optional and must not be required for upload.
+
 ## Start here
 
 One `index.html` (about 22,000 lines, no libraries, no build step, everything drawn and synthesized in the browser) plus README, CHANGELOG, AGENTS, BACKLOG, sitemap, manifest, robots and LICENSE. Rules come from play-testing on desktop and phone; the ledger below is the contract. Part 2 further down is reference: open a section only when its subsystem is involved.

@@ -1,3 +1,8 @@
+# 1.8.1 release verification
+- Confirm actual Actions results on all four native platforms and web; do not infer build success from YAML parsing.
+- Playtest Archer/Mage starts and same-species weight/HP progression. Verify bee overlap, wood flight and repeated branch taps.
+- Native: verify audio, save import/export, links, Android lifecycle/back behavior and resizing; add permanent release signing before stable distribution. Debug APK keys are ephemeral between clean builds.
+
 ## 1.7.174 — implemented; acceptance remaining
 - [x] Buildable timed campfire cooking, shared wood pause/resume, saved jobs, recipe menu.
 - [x] Bees/honey, exact wedding-cake ingredients and three quarter-value slices.
@@ -6,7 +11,7 @@
 - [x] Manual camera-input simulation budget and retained SEO/analytics/music/round-follow changes.
 - [x] Focused source/function checks recorded in CHANGELOG 1.7.174.
 - [ ] Browser acceptance: recipe dialog on phone/desktop; actual blood readability at several enemy weights; intro/idle listening; 10× pan/zoom frame pacing; sustained combat/economy balance.
-- [ ] Upload all eight changed files together. Confirm 1.7.174; analytics property/report configuration remains an account-side task described in ANALYTICS.md.
+- [ ] Upload the changed 1.8.1 files at their documented paths; ANALYTICS.md is not required. Run Actions and verify browser pickup visuals plus native audio, save import/export and links on devices.
 
 ## 1.7.173 — impact visibility and basket
 - Strengthened sword/Mage/Archer ground signatures, reduced lasting skeletal clutter and matched basket size to the potted plant. Visual acceptance pending; screenshot paths unavailable.

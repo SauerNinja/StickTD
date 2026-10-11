@@ -113,7 +113,7 @@ Bees arrive after cleared rounds, up to two while animal capacity allows. Each b
 
 A run is saved to a file you download and load again later. Nothing is stored on a server.
 
-Current release: **1.7.174**. See [CHANGELOG.md](CHANGELOG.md) for release details and [ANALYTICS.md](ANALYTICS.md) for report organization, metric definitions and setup.
+Current release: **1.8.1**. See [CHANGELOG.md](CHANGELOG.md) for release details; older releases are in [HISTORY.md](HISTORY.md).
 
 ## Made with
 
@@ -122,3 +122,9 @@ HTML5 Canvas, plain JavaScript and the Web Audio API. Every picture is drawn by 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+
+### Release builds
+Every file change committed to main starts the web, Windows, Linux, macOS and Android builds. Successful runs publish the exact commit's HTML, notes, web bundle, portable EXE, AppImage, Intel/Apple Silicon DMGs and debug APK. Keep `.github/workflows/release.yml` and `scripts/release.py` at those paths.
+
+Desktop packages are unsigned; Android is test-signed. Native builds require device checks for audio, save import/export, links and resizing. Production signing and store distribution are separate work. Run `python scripts/release.py prepare` when changing the major.minor family to move prior notes into HISTORY.md.
