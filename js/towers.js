@@ -1687,7 +1687,7 @@ class Tower{
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       // CA449 — see HISTORY.md § [1.5.7] Code Archaeology, CA449
       ctx.fillStyle = '#ffffff';
-      drawEmojiGroundShadow(ctx,'🚧',this.x,this.y,28*STICKMAN_SCALE,'Verdana',1);
+      drawEmojiGroundShadow(ctx,'🚧',this.x,this.y,28*STICKMAN_SCALE,'serif',1); // SHADOW-ALIGN-01 (1.8.14): the mask uses the font the glyph is drawn with, so the foot lines up
       ctx.fillText('🚧', this.x, this.y);
       if(this.hp < this.maxHp && this.hp > 0){
         const frac = this.hp / this.maxHp;

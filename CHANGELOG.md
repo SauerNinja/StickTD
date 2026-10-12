@@ -4,6 +4,35 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.15] — 2026-10-12 (UTC)
+### Music follows the reference scores
+- MUSIC-REFERENCE-01: fourteen reference MIDI files were parsed for tempo, key, voicing, bass movement and rhythm. They show that the dark scores hold a bass note for several bars, repeat a short motif over a fixed groove, pair two timbres, leave rests, and accent with timpani. Only those general techniques are used; no melody, chord sequence or rhythm from the files is copied.
+- Start screen (`scheduleAttractStep()`): `MUSIC_ATTRACT_TEMPO_BPM` goes from 98 to 88. Verse chords change every four bars, not two (the chorus keeps two). A quiet low root-and-fifth pad and a timpani hit (`MUSIC_TIMPANI_HZ`) mark each four-bar change. A new `oboe` entry in `POP_VOICES` plays a counter-line on beats two and four. The verse kick drops to beats one and three, the plucked arpeggio starts at bar 8 and plays only on strong steps until the build, and bars 3 and 11 rest for their last three eighths. The second and chorus phrases use rows 4–7 of `MUSIC_COMBAT_MELODY`, so the motif develops instead of repeating.
+- Field and wave music: a timpani downbeat every fourth bar (`scheduleFieldStep()`, `scheduleMusicStep()`), a low fifth under the wave chord pad (`scheduleCombatLayers()`), a quiet root-and-fifth drone in the field arrangements that had none, and a short tom fill at the end of every fourth bar of the wave and boss themes (`scheduleDrumFill()`). `MUSIC_TOM_PITCHES` is lowered to 150, 128, 108 and 92 Hz so the fills sound like timpani rather than small toms.
+- Ran all 192 steps of the start screen, field, wave and boss themes without errors; the voice load matches 1.8.14 within 2%. Not listened to.
+
+## [1.8.14] — 2026-10-12 (UTC)
+### Shadows line up with their objects
+- SHADOW-ALIGN-01: `drawEmojiGroundShadow()` measures where an emoji touches the ground in the font family it is given, but the barricade's shadow asked for `Verdana` while its glyph is drawn in `serif`, so the shadow's foot sat lower than the legs. `Tower.draw()` now passes `serif`. The ground-item shadow in `js/config.js` asked for `serif` while the item glyph is drawn in `sans-serif`; it now asks for `sans-serif`. Coins, dragged items, scenery, enemies and structures already matched.
+- FLAG-SHADOW-01: `drawFinishFlagPole()` cast the pole, finial and pennant as separate translucent shapes, so the shadow was darker where they overlapped. `drawFlagGroundShadow()` in `js/environment.js` paints them opaque into one small canvas and casts that once at the usual 24% opacity, with the same slant and anchor as before.
+- `validateDesignContract()` checks both; `AGENTS.md` ledger item 39 states the rule.
+
+## [1.8.13] — 2026-10-12 (UTC)
+### Start-screen music tempo
+- MUSIC-ATTRACT-03: `MUSIC_ATTRACT_TEMPO_BPM` in `js/config.js` goes from 112 to 98, because the start-screen march played too fast. Everything else in the arrangement is unchanged.
+
+## [1.8.12] — 2026-10-12 (UTC)
+### Wasteland branches return to the leafless-tree emoji
+- BRANCH-EMOJI-01: `drawBranchSprite()` in `js/environment.js` draws one to three 🪾 glyphs per branch pile (`BRANCH_GLYPH`) through `drawEmojiSprite()`, each at its own size, offset, angle and mirroring from `branchRandomFor(piece, variant)`, so the glyphs lie scattered and read as loose sticks while staying identical across frames, saves and loads. This replaces the procedural stick drawing of BRANCH-STICKS-01 (1.8.4) and restores the glyph of BRANCH-PICKUP-03 (1.8.1, `ba30f1e`). Pickup, masks, shadows and wood yield are unchanged. `validateDesignContract()` now checks for `BRANCH_GLYPH`.
+- 🪾 needs an emoji font that includes Unicode 16; a system without it shows an empty box. Not checked on older systems.
+### Start-screen music
+- MUSIC-ATTRACT-03: the attract arrangement in `scheduleAttractStep()` moves from the bright major pop progression (I-V-vi-IV, 128 BPM) to a minor-key march (i, VI, VII, V from `MUSIC_ATTRACT_CHORDS`) at 112 BPM. The melody uses `MUSIC_COMBAT_INTERVALS`, the lead and harmony sit an octave lower, the plucked arpeggio moves down an octave and gets quieter, and the offbeat open hats and the claps are gone. Structure, bass, snares, fills, risers and crashes are unchanged. Run through every one of the 24 bars without errors; not listened to.
+
+## [1.8.11] — 2026-10-12 (UTC)
+### Music starts with the loading screen in the installed apps
+- AUTOPLAY-APP-01: `tryAutoplayAudio()` in `js/config.js` resumed the audio context only when the page already had a click or key press (`navigator.userActivation.hasBeenActive`). The desktop and Android apps allow sound without one (`autoplay-policy` switch in `main.cjs`), so their music waited for the first click after loading. When `window.STICKTD_PLATFORM` is `desktop-app` or `android-app`, the attempt now runs at once and the start-screen music begins about half a second into loading. A browser still needs a first click, tap or key press, because browsers refuse sound before one; that click starts the music immediately, and the unlock listeners are active from the first moment of loading.
+- Measured in Chromium with autoplay allowed: the context is running and the music scheduler started 0.6 s after the page began loading and played through the whole loading screen. Not measured in the packaged apps.
+
 ## [1.8.10] — 2026-10-11 (UTC)
 ### Four files, grouped by what a designer edits
 - MODULE-FILES-01: `js/` holds four files, loaded in this order: `config.js` (settings, balance numbers, game state, camera, effects, rendering, main loop, sound engine and music, input, HUD, menus, debug log, design contract), `environment.js` (map and path, scenery, flora, campfire, chance structures), `towers.js` and `waves.js`. The file map at the top of `js/config.js` lists them. `js/core.js`, `js/world.js`, `js/units.js`, `js/audio.js` and `js/ui.js` from 1.8.8 are gone.
@@ -13,6 +42,7 @@ Entry rules: every entry names the functions, rule IDs, constants and files it c
 - 12 statements that read a later file's names at load time moved with their data (for example `LIVESTOCK_TYPES` to `js/waves.js`). Line contents are otherwise unchanged apart from banners; a parse of every file finds no top-level use of a later file's names.
 - `release.py`, `AGENTS.md` and the `?v=` tags point at the new files.
 - RELEASE-PIPELINE-01: `.github/workflows/release.yml` builds each package in its own job (`windows`, `linux_x64`, `linux_arm64`, `mac_arm64`, `mac_x64`, `android`) instead of a matrix; the steps and uploaded artifact names are unchanged and `release` waits for all six. The macOS jobs and download rows are named `macOS ARM64` and `macOS x64` after their architecture.
+- RELEASE-PIPELINE-01: the Authenticity section of the generated release notes now says the files were built from the public source at the release commit by GitHub Actions on GitHub-hosted machines, with links to the commit, the workflow file at that commit and the workflow run (`compose_release_notes()` in `release.py`).
 - VISUAL-DRIFT-01: `LOOK_LOCKS` and `validateLookLocks()` in `js/config.js` pin the title, top bar and button colours, fonts and shapes; `validateDesignContract()` reports `look changed` when one differs. `AGENTS.md` gains ledger item 38, a "Look continuity" list and a pre-delivery step that compares start and gameplay frames before and after a change. Found by rendering 1.0.0, 1.4.64, 1.6.42, 1.7.7, 1.7.75, 1.7.165, 1.8.1 and this version: the look is identical from 1.7.165 on, and the earlier visual changes were the title-screen overhaul and HUD rework; the only flip-flop in the style rules across 119 commits is the update dialog (removed in 1.4.43, restored later).
 
 ## [1.8.8] — 2026-10-11 (UTC)

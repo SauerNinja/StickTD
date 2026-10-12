@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.10">
+<meta name="application-version" content="1.8.15">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -78,7 +78,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.10",
+  "softwareVersion": "1.8.15",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -119,7 +119,7 @@
     return 'other';
   };
   window.STICKTD_PLATFORM = window.detectPlayPlatform(location.hostname, document.referrer, window.top !== window, location.search);
-  // ANALYTICS-BUILD-01 (1.8.10): names the exact build, e.g. windows-x64, macos-arm64, linux-arm64, android or web. The desktop shell passes os and arch in the page address.
+  // ANALYTICS-BUILD-01 (1.8.14): names the exact build, e.g. windows-x64, macos-arm64, linux-arm64, android or web. The desktop shell passes os and arch in the page address.
   window.STICKTD_BUILD = (function(){
     var query = new URLSearchParams(location.search);
     if(window.STICKTD_PLATFORM === 'desktop-app'){
@@ -1514,9 +1514,9 @@
     });
   })();
 </script>
-<script src="js/config.js?v=1.8.10"></script>
-<script src="js/environment.js?v=1.8.10"></script>
-<script src="js/towers.js?v=1.8.10"></script>
-<script src="js/waves.js?v=1.8.10"></script>
+<script src="js/config.js?v=1.8.15"></script>
+<script src="js/environment.js?v=1.8.15"></script>
+<script src="js/towers.js?v=1.8.15"></script>
+<script src="js/waves.js?v=1.8.15"></script>
 </body>
 </html>

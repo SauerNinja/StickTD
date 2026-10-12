@@ -2,7 +2,7 @@
 
 ## Release, signing and changelog rules — 1.8.2
 
-BRANCH-STICKS-01 (supersedes the 🪾 glyph in BRANCH-PICKUP-03): wasteland branches are small scattered sticks of random size and orientation drawn procedurally, never a tree or tree-like glyph; pickup stays one atomic click.
+BRANCH-EMOJI-01 (supersedes BRANCH-STICKS-01 and restores the 🪾 glyph of BRANCH-PICKUP-03): wasteland branches are one to three small leafless-tree emojis (🪾) lying at random sizes and angles, never drawn sticks; pickup stays one atomic click.
 MODULE-FILES-01: the game is `index.html` (markup, styles, analytics and consent) plus classic script files in `js/`, loaded by `<script src="js/NAME.js?v=VERSION">` tags in the order listed in the file map at the top of `js/config.js`; no bundler, no modules, no libraries. Top-level names are shared between files. A file may use another file's names inside functions, and at load time only when that file comes earlier in the list; a top-level call to a function declared in a later file fails at load. Each new feature file is added to the tag list and the file map in the same change, every tag's `?v=` equals `GAME_VERSION` (SCRIPT-VERSION-01, enforced by `release.py check` and the design contract), and the end of `js/waves.js` (the last file) starts the game. The source scan in the design contract (SOURCE-SCAN-01) reads the files over http(s) and skips on `file:`.
 CAMPFIRE-STRUCTURE-01: the Campfire is a normal Structures row in the Build menu costing 💰60 🪵50 🪨10, never a separate button.
 CASTOFF-TANGENT-01: blade cast-off lands as a curved row along the swing tangent beyond the wound, never a ring around the victim.
@@ -133,6 +133,10 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 
 38. The established look does not drift (VISUAL-DRIFT-01). A change keeps every existing colour, font, size, spacing, shape, icon and layout unless the request is about it. The `LOOK_LOCKS` table in `js/config.js` pins the title, top bar and button styles and `validateDesignContract()` fails when one changes; changing a locked style means updating the table and the list below in the same release. Before delivering a change that touches drawing or styles, render the start screen and a gameplay frame at 1280x800 and 390x780 with a seeded `Math.random`, and compare them with the same frames from the previous version.
 
+39. Shadows sit where the object touches the ground (SHADOW-ALIGN-01, FLAG-SHADOW-01). An emoji's shadow mask is measured in the same font family the glyph is drawn with, so the foot lines up; a shadow made of several parts (a flag's pole, finial and pennant) is painted opaque into one shape and cast once at one opacity, so overlapping parts never make a darker patch. A new shadow follows the stickman shadow: silhouette, anchored at the foot, one opacity.
+
+40. Music borrows techniques, not notes (MUSIC-REFERENCE-01). Reference scores teach structure: hold a bass pedal for four bars or more, repeat a short motif over a fixed groove, pair two timbres, leave rests, accent with timpani. A melody, chord sequence or rhythm is never copied from a copyrighted score into the game. Every music change runs all 192 steps of the start screen, field, wave and boss themes without errors and keeps the voice load within a few percent of the previous version.
+
 ### Mandatory pre-delivery checklist (run before every present_files)
 1. `GAME_VERSION` bumped; top `CHANGELOG.md` heading is `## [x.y.z] — date (UTC)` for the same version; the two agree.
 2. Every change is described under that version with `###` subheadings: what was asked, what was found, what changed, how it was verified, what was not verified. Never put new work under an old version or without a version.
@@ -153,6 +157,7 @@ Each item is a look the project rules settled; a later change does not undo it w
 - "See changes" opens the silver changes dialog (big silver version, recent releases); no unsolicited update or introduction popups.
 - Fresh blood is bright red at impact and darkens to the enemy's own colour; landed marks keep the baked ground-decal look.
 - Glows may pulse (loose-enemy ring); objects the player needs never fade in and out.
+- Wasteland branches are scattered 🪾 emojis at random sizes and angles, not drawn sticks (BRANCH-EMOJI-01).
 - Dark brown ground, green hedge-edged path, checkered finish and white and black spawn pennants stay as they are.
 
 ## Standing project decisions

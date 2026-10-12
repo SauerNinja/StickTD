@@ -17,7 +17,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.10'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.15'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -7422,7 +7422,7 @@ function render(ctx){
       const t=Math.max(0,(presentationTime-gi.rejectStartedAt)/240),p=1-Math.pow(1-t,2);
       ctx.translate((gi.rejectFromX-gi.x)*(1-p),(gi.rejectFromY-gi.y)*(1-p)-Math.sin(t*Math.PI)*10);
     }
-    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'serif',1);
+    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'sans-serif',1); // SHADOW-ALIGN-01 (1.8.14)
     // CA668 — see HISTORY.md § [1.5.7] Code Archaeology, CA668
     const isFoodOrTreat = gi.itemDef.isFood || gi.itemDef.isTreat || gi.itemDef.isHutLoot;
     const isGoldCurrencyItem = !!gi.itemDef.isGoldBag || !!(gi.itemDef.isHutLoot && gi.itemDef.kind === 'gold');
@@ -9092,15 +9092,18 @@ const MUSIC_VOICE_LIMIT_LIGHT = 24, MUSIC_VOICE_LIMIT_MEDIUM = 14, MUSIC_LOAD_LI
 const MUSIC_MINOR_CHORD_ROOTS = new Set([38, 43]);
 const MUSIC_ARPEGGIO_SHAPE = [0, 1, 2, 3, 2, 1];
 const MUSIC_TURNAROUND_RUN = [-17, -14, -12, -9, -7, -5, -3, -1];
-const MUSIC_TOM_PITCHES = [236, 198, 166, 140];
+const MUSIC_TOM_PITCHES = [150, 128, 108, 92];
+const MUSIC_TIMPANI_HZ = 84;
 const MUSIC_VIBRATO_CENTS = 16;
 const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
 const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
 const MUSIC_TEMPO_CREEP = 0.06;
 const MUSIC_STING_PAIRS = [[0, 3], [3, 7], [7, 10], [12, 15]];
-// MUSIC-ATTRACT-01 (1.7.100) — see HISTORY.md § [1.7.100]: the start screen plays a bright, major-key pop arrangement of the battle melody (I-V-vi-IV, four on the floor, offbeat hats, bouncing bass)
-const MUSIC_ATTRACT_TEMPO_BPM = 128, MUSIC_ATTRACT_TONIC = 48;
-const MUSIC_ATTRACT_CHORDS = [{ root: 36, triad: [0, 4, 7] }, { root: 43, triad: [0, 4, 7] }, { root: 45, triad: [0, 3, 7] }, { root: 41, triad: [0, 4, 7] }];
+// MUSIC-ATTRACT-01 (1.7.100) — see HISTORY.md § [1.7.100]: the start screen plays its own arrangement of the battle melody
+// MUSIC-ATTRACT-03 (1.8.12) — see CHANGELOG.md § [1.8.12]: the start screen is a dark minor-key march (i, VI, VII, V), slower, in a lower register, without the sparkling arpeggio octave, open hats and claps
+// MUSIC-REFERENCE-01 (1.8.15) — see CHANGELOG.md § [1.8.15]: the start screen slows to 88 BPM, holds each verse chord as a four-bar bass pedal under a quiet low fifth, answers the lead with an oboe line, rests twice per cycle and develops its motif; wave and field music gain a timpani downbeat and a fill every fourth bar
+const MUSIC_ATTRACT_TEMPO_BPM = 88, MUSIC_ATTRACT_TONIC = 48;
+const MUSIC_ATTRACT_CHORDS = [{ root: 36, triad: [0, 3, 7] }, { root: 32, triad: [0, 4, 7] }, { root: 34, triad: [0, 4, 7] }, { root: 43, triad: [0, 4, 7] }];
 const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
 // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]: the 24-bar start-screen cycle is now a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
 const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
@@ -9111,6 +9114,7 @@ const POP_VOICES = {
   pad:   { wave: 'sawtooth', detunes: [0], attack: 0.07, sustain: 0.8, decay: 0.5, release: 0.3, cutoffStart: 1500, cutoffEnd: 1100, cutoffTime: 0.8, q: 0.3, echo: false },
   pluck: { wave: 'square', detunes: [0], attack: 0.003, sustain: 0.12, decay: 0.3, release: 0.04, cutoffStart: 8000, cutoffEnd: 1000, cutoffTime: 0.35, q: 0.8, echo: true },
   bass:  { wave: 'sawtooth', detunes: [0], sub: true, attack: 0.004, sustain: 0.55, decay: 0.4, release: 0.04, cutoffStart: 1500, cutoffEnd: 420, cutoffTime: 0.4, q: 1.2, echo: false },
+  oboe:  { wave: 'sawtooth', detunes: [-4, 4], attack: 0.05, sustain: 0.7, decay: 0.4, release: 0.12, cutoffStart: 2000, cutoffEnd: 1300, cutoffTime: 0.6, q: 1.4, echo: true },
   bell:  { wave: 'sine', detunes: [0], fmRatio: 3.5, fmIndex: 3.2, attack: 0.002, sustain: 0.1, decay: 0.5, release: 0.05, cutoffStart: 9000, cutoffEnd: 5000, cutoffTime: 0.6, q: 0.3, echo: true }
 };
 // MUSIC-SPACE-01 (1.7.116): tonal voices are spread across the stereo field by pitch, alternating sides note by note (leads stay near the centre), and sent to a short stereo hall; the music bus gets a gentle low-mid cut so the bass and chords stop masking the melody, and the idle theme opens its lowpass from 3200 to 4200 Hz for air.
@@ -9646,6 +9650,7 @@ class SoundEngine{
     const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : combat ? 4 : 6);
     if(combat){
       if(beatStep === 0 || section === 1 && beatStep === 3 || section === 2 && beatStep === 6) this.musicTone(138, time, 0.15, 'kick', beatStep === 0 ? 0.15 : 0.10);
+      if(beatStep === 0 && bar % 4 === 0) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.34, 'kick', 0.13);
       if(beatStep === 4){
         this.musicPercussion(time, true);
         this.musicTone(195, time, 0.065, 'snap', 0.075);
@@ -9789,10 +9794,16 @@ class SoundEngine{
   }
   scheduleAttractStep(time, bar, beatStep, stepSeconds, shift, cycleIndex){
     const section = bar < 4 ? 0 : bar < 8 ? 1 : bar < 12 ? 2 : bar < 16 ? 3 : 4, level = MUSIC_ATTRACT_SECTION_LEVEL[section];
-    const chord = MUSIC_ATTRACT_CHORDS[section === 3 ? MUSIC_ATTRACT_BUILD_CHORDS[bar - 12] : Math.floor(bar / 2) % MUSIC_ATTRACT_CHORDS.length];
+    const chord = MUSIC_ATTRACT_CHORDS[section === 3 ? MUSIC_ATTRACT_BUILD_CHORDS[bar - 12] : section === 4 ? Math.floor(bar / 2) % MUSIC_ATTRACT_CHORDS.length : Math.floor(bar / 4) % MUSIC_ATTRACT_CHORDS.length];
     const chordRoot = chord.root + shift, tonic = MUSIC_ATTRACT_TONIC + shift, halfStep = stepSeconds / 2, isIntro = section === 0, isBuild = section === 3, isChorus = section === 4;
     // Leave one eighth-note of space before the main landing.
     if(bar === 15 && beatStep === 7) return;
+    const restBar = (bar === 3 || bar === 11) && beatStep >= 5;
+    if(beatStep === 0 && bar % 4 === 0 && section < 3){
+      this.popTone(midiToFrequency(chordRoot), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.02 * level, true);
+      this.popTone(midiToFrequency(chordRoot + 7), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.014 * level, true);
+      if(bar > 0) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.3, 'kick', 0.1 * level);
+    }
     const drop = beatStep === 0 && (bar === 4 || bar === 16);
     if(drop) this.musicBassDrop(time, chordRoot, stepSeconds, bar === 16 ? 1 : 0.65);
     if(beatStep === 0 && bar % 2 === 0){
@@ -9800,18 +9811,17 @@ class SoundEngine{
       [chord.triad[0], chord.triad[2]].forEach(interval => this.popTone(midiToFrequency(chordRoot + 24 + interval), time, stepSeconds * MUSIC_STEPS_PER_BAR * 1.96, 'pad', 0.03 * level * swell, true));
     }
     const rollBar = bar === 15, kickOut = rollBar && beatStep >= 4;
-    if(bar >= 4 && !drop && !kickOut && beatStep % 2 === 0) this.musicTone(138, time, 0.14, 'kick', (beatStep === 0 ? 0.11 : 0.085) * level);
+    if(bar >= 4 && !drop && !kickOut && (isChorus || isBuild ? beatStep % 2 === 0 : beatStep === 0 || beatStep === 4)) this.musicTone(138, time, 0.14, 'kick', (beatStep === 0 ? 0.11 : 0.085) * level);
     if(isChorus && beatStep === 7 && bar % 2 === 1) this.musicTone(138, time, 0.12, 'kick', 0.07);
     const backbeat = (beatStep === 2 || beatStep === 6) && bar >= 4 && !(bar === 14 || rollBar);
-    if(backbeat){ this.popSnare(time, level * 0.9); if(isChorus || section === 2) this.popClap(time, level * 0.8); }
+    if(backbeat){ this.popSnare(time, level * 0.9); }
     if(bar === 13 && (beatStep === 4 || beatStep === 7)) this.popSnare(time, 0.7);
     if(bar === 14 || rollBar){
       const progress = ((bar - 14) * MUSIC_STEPS_PER_BAR + beatStep) / (2 * MUSIC_STEPS_PER_BAR);
       this.popSnare(time, 0.45 + 0.55 * progress);
       this.popSnare(time + halfStep, 0.4 + 0.6 * progress);
     }
-    if(bar >= 2 && (!isIntro || beatStep % 2 === 1)) this.musicPercussion(time, false, (isIntro ? 0.3 : 1.1) * level * (beatStep % 2 ? 1.15 : 0.8));
-    if(section >= 2 && beatStep % 2 === 1) this.musicOpenHat(time, 1.2 * level);
+    if(bar >= 2 && !restBar && (isChorus || isBuild || beatStep % 2 === 1)) this.musicPercussion(time, false, (isIntro ? 0.3 : 1.1) * level * (beatStep % 2 ? 1.15 : 0.8));
     if(isChorus) this.musicPercussion(time + halfStep, false, 0.95);
     if(beatStep === 0 && ((bar === 16) || (bar === 20))) this.musicCrash(time, bar === 20 ? 0.8 : 1.1);
     if(beatStep === 0 && bar === 14) this.popRiser(time, stepSeconds * (MUSIC_STEPS_PER_BAR * 2 - 1), 0.85);
@@ -9823,20 +9833,25 @@ class SoundEngine{
     else if(isBuild) bassOffset = 0;
     else if(MUSIC_ATTRACT_BASS[beatStep] !== undefined) bassOffset = MUSIC_ATTRACT_BASS[beatStep];
     if(bassOffset !== null && !drop && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + bassOffset), time, stepSeconds * (beatStep % 2 ? 0.55 : 0.85), 'bass', 0.062 * level);
-    if(bar >= 4){
+    if(bar >= 8 && !restBar && (section >= 3 || beatStep % 2 === 0)){
       const arpIndex = MUSIC_ATTRACT_ARP[beatStep];
-      this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[arpIndex] + (beatStep >= 4 ? 12 : 0)), time, stepSeconds * 0.5, 'pluck', (isChorus ? 0.02 : 0.03) * level, true);
+      this.popTone(midiToFrequency(chordRoot + 12 + chord.triad[arpIndex] + (beatStep >= 4 ? 12 : 0)), time, stepSeconds * 0.5, 'pluck', (isChorus ? 0.016 : 0.022) * level, true);
     }
-    if(section >= 2 && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
-      this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[1]), time, halfStep * 1.6, 'pluck', 0.026 * level, true);
-      this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[2]), time + 0.003, halfStep * 1.6, 'pluck', 0.022 * level, true);
+    if(section >= 2 && !restBar && (beatStep === 0 || beatStep === 3 || beatStep === 6)){
+      this.popTone(midiToFrequency(chordRoot + 12 + chord.triad[1]), time, halfStep * 1.6, 'pluck', 0.02 * level, true);
+      this.popTone(midiToFrequency(chordRoot + 12 + chord.triad[2]), time + 0.003, halfStep * 1.6, 'pluck', 0.017 * level, true);
     }
     if(beatStep === 7 && bar % 2 === 1 && bar >= 4 && !kickOut){
       const nextChord = MUSIC_ATTRACT_CHORDS[(Math.floor(bar / 2) + 1) % MUSIC_ATTRACT_CHORDS.length];
       this.popTone(midiToFrequency(nextChord.root + shift + 12), time + halfStep, halfStep * 1.5, 'bass', 0.06 * level);
     }
     if(isChorus && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + (beatStep % 2 ? 12 : 0)), time + halfStep, halfStep * 0.8, 'bass', 0.034 * level, true);
-    const degree = MUSIC_COMBAT_MELODY[bar % 4][beatStep];
+    const motifRow = bar % 4 + ((section === 2 || section === 4 && bar >= 20) ? 4 : 0);
+    const degree = restBar ? null : MUSIC_COMBAT_MELODY[motifRow][beatStep];
+    if(section >= 1 && section !== 3 && !restBar && !kickOut && (beatStep === 2 || beatStep === 6)){
+      const counterTone = chord.triad[(bar + (beatStep >> 2)) % chord.triad.length];
+      this.popTone(midiToFrequency(chordRoot + 24 + counterTone), time, stepSeconds * 1.7, 'oboe', 0.036 * level, true);
+    }
     const fitToChord = note => {
       if(beatStep !== 0 && beatStep !== 4) return note;
       for(const interval of chord.triad){
@@ -9847,14 +9862,11 @@ class SoundEngine{
       return note;
     };
     if(degree !== null && degree !== undefined && !kickOut){
-      const pitch = fitToChord(tonic + 24 + MUSIC_MAJOR_INTERVALS[degree]), held = beatStep === 0 ? stepSeconds * 1.7 : beatStep % 2 ? stepSeconds * 0.55 : stepSeconds * 0.85;
+      const pitch = fitToChord(tonic + 24 + MUSIC_COMBAT_INTERVALS[degree]), held = beatStep === 0 ? stepSeconds * 1.7 : beatStep % 2 ? stepSeconds * 0.55 : stepSeconds * 0.85;
       if(section <= 1) this.popTone(midiToFrequency(pitch - 12), time, held * 1.4, 'warm', 0.09 * level);
       else {
-        this.popTone(midiToFrequency(pitch), time, held, 'lead', (isChorus ? 0.058 : 0.04) * level);
-        if(isChorus){
-          this.popTone(midiToFrequency(fitToChord(tonic + 24 + MUSIC_MAJOR_INTERVALS[Math.min(9, degree + 2)])), time, held, 'harmony', 0.03, true);
-          this.popTone(midiToFrequency(pitch + 12), time, held * 0.6, 'pluck', 0.026, true);
-        }
+        this.popTone(midiToFrequency(pitch - 12), time, held, 'lead', (isChorus ? 0.058 : 0.04) * level);
+        if(isChorus) this.popTone(midiToFrequency(fitToChord(tonic + 12 + MUSIC_COMBAT_INTERVALS[Math.min(9, degree + 2)])), time, held, 'harmony', 0.03, true);
       }
     }
   }
@@ -9864,6 +9876,7 @@ class SoundEngine{
       const tones = musicChordTones(baseChord), padGain = (section === 2 || boss ? 0.032 : 0.024);
       this.popTone(midiToFrequency(chord + 24), time, stepSeconds * 15.5, 'pad', padGain, true);
       this.popTone(midiToFrequency(chord + 24 + tones[1]), time, stepSeconds * 15.5, 'pad', padGain * 0.8, true);
+      this.popTone(midiToFrequency(chord + 12 + 7), time, stepSeconds * 15.5, 'pad', padGain * 0.6, true);
     }
     if(beatStep === 4 && !breath && (section > 0 || boss)) this.popSnare(time, boss ? 0.7 : 0.5);
     if(beatStep === 0 && bar % 8 === 6) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, boss ? 0.8 : 0.55);
@@ -9932,10 +9945,11 @@ class SoundEngine{
   }
   // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
   scheduleDrumFill(time, bar, beatStep, stepSeconds, level){
-    if(bar % 8 !== 7 || beatStep < 4) return;
+    const majorFill = bar % 8 === 7;
+    if(!(majorFill || level >= 1 && bar % 4 === 3) || beatStep < (majorFill ? 4 : 6)) return;
     for(let half = 0; half < 2; half++){
       const hitIndex = (beatStep - 4) * 2 + half;
-      this.musicTone(MUSIC_TOM_PITCHES[Math.min(MUSIC_TOM_PITCHES.length - 1, Math.floor(hitIndex / 2))], time + half * stepSeconds / 2, 0.11, 'kick', 0.1 * level);
+      this.musicTone(MUSIC_TOM_PITCHES[Math.min(MUSIC_TOM_PITCHES.length - 1, Math.floor(hitIndex / 2))], time + half * stepSeconds / 2, 0.11, 'kick', (majorFill ? 0.1 : 0.07) * level);
     }
   }
   // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
@@ -10007,6 +10021,8 @@ class SoundEngine{
       this.musicTone(midiToFrequency(root + 19), time, stepSeconds*7.5, 'triangle', 0.018);
     }
     if(beatStep === 0 && bar % 2 === 0) this.musicTone(midiToFrequency(root + 12 + musicChordTones(baseRoot)[1]), time, stepSeconds*7.5, 'triangle', 0.016, true);
+    if(beatStep === 0 && bar % 4 === 0 && !buildUp && !drop) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.34, 'kick', 0.08);
+    if(beatStep === 0 && bar % 4 === 0 && arrangement !== 1 && arrangement !== 2) this.musicTone(midiToFrequency(root + 19), time, stepSeconds*MUSIC_STEPS_PER_BAR*3.9, 'triangle', 0.014, true);
     // drums
     if(!buildUp && !drop){
       const drumStyle = arrangement === 0 ? 0 : arrangement === 1 ? 2 : arrangement === 2 ? 1 : (barPick2 < 0.5 ? 1 : 2);
@@ -10611,9 +10627,10 @@ function synthesizeImpactSound(archOrWeapon, worldX, hitPower, isCritical, tower
     audioEngine.tone(70 + hp*10, 0.14, 'sine', 35, pan, true);
   }
 }
-function tryAutoplayAudio(){
+function tryAutoplayAudio(){ // AUTOPLAY-APP-01 (1.8.11) — see CHANGELOG.md § [1.8.11]: installed apps allow sound without a click, so their music starts with the loading screen
   audioEngine.prewarm();
-  if(!audioEngine.ctx || !(navigator.userActivation && navigator.userActivation.hasBeenActive)) return;
+  const installedApp = window.STICKTD_PLATFORM === 'desktop-app' || window.STICKTD_PLATFORM === 'android-app';
+  if(!audioEngine.ctx || !(installedApp || (navigator.userActivation && navigator.userActivation.hasBeenActive))) return;
   audioEngine.ctx.resume().then(() => {
     if(audioEngine.ctx.state !== 'running' || audioEngine.unlocked) return;
     audioEngine.unlocked = true; audioEngine.applyMix();
@@ -13799,7 +13816,7 @@ function validateDesignContract(){
   if(!isInstantOpenProp({type:'BUSH'}) || (!String(Enemy.prototype.applyDamage).includes('spawnWeaponBloodContact') || !String(spawnWeaponBloodContact).includes('spawnSwordsmanBloodArc(victim,sourceTower)'))) problems.push('Potted plants collect instantly; landed sword hits retain the circular ground blood signature (POTTED-INSTANT-01, SWORD-BLOOD-ARC-01).');
   if(sceneryClearCost({ type:'BUSH', clearCost:0 }) !== 0) problems.push('the potted plant must be free to harvest (POTTED-BUSH-FREE-01)');
   if(enemyHealthAtWeight('GRUNT',2,1,false)!==2*enemyHealthAtWeight('GRUNT',1,1,false) || enemyHealthAtWeight('GRUNT',1,1,true)!==1) problems.push('Weight HP and tiny exception (WEIGHT-HP-181).');
-  if(String(drawBranchSprite).includes('🪾') || typeof branchRandomFor !== 'function' || String(tryCollectAmbientLog).includes('log.count--')) problems.push('Branches are small scattered sticks of random size and orientation, never a tree glyph, and collect once (BRANCH-STICKS-01, BRANCH-PICKUP-03).');
+  if(!String(drawBranchSprite).includes('BRANCH_GLYPH') || BRANCH_GLYPH !== '🪾' || typeof branchRandomFor !== 'function' || String(tryCollectAmbientLog).includes('log.count--')) problems.push('Branches are leafless-tree glyphs scattered at random sizes and angles, and collect once (BRANCH-EMOJI-01, BRANCH-PICKUP-03).');
   if(String(drawMap).includes('drawOuterWastelandTrees(ctx)') || !String(maybeSpawnAmbientLog).includes('nearPathTileSet.has(key)')) problems.push('Only collectible branches belong on unrevealed dirt (BRANCH-WASTELAND-02).');
   if(SMALL_SCENERY_SIZE_MULTIPLIER !== 0.5 || smallSceneryHarvestCost(100) !== 50 || SMALL_SCENERY_BUDDY_CHANCE <= 0 || SMALL_SCENERY_BUDDY_CHANCE > 1) problems.push('nearby small trees and rocks must be half scale, half harvest cost and use a bounded spawn chance (SMALL-SCENERY-CLUSTERS-01)');
   if(!Object.values(ITEM_USE_CLASSES).every(itemClass => itemClass.color && itemClass.notes.length >= 2) || ITEM_USE_HOLD_MS_BY_TIER.length !== 3) problems.push('every item class needs a colour and a sound motif, and each tier a hold time (ITEM-USE-FEEDBACK-01)');
@@ -13882,6 +13899,7 @@ function validateDesignContract(){
   if(!PRODUCER_TYPES.every(type => CONFIG.TOWERS[type] && CONFIG.TOWERS[type].baseCost > 0 && CONFIG.TOWERS[type].tiers[0].damage === 0 && isStructureType(type) && !isFighterTower({ type }) && !/\bupgrad|\bevol/i.test(CONFIG.TOWERS[type].blurb))) problems.push('structures cost gold, never attack and are never counted as fighters (STRUCTURE-PRODUCERS-01)');
   if(!String(unlockAudioOnGesture).includes('state === \'running\'') || typeof AUDIO_UNLOCK_EVENTS === 'undefined' || !AUDIO_UNLOCK_EVENTS.includes('touchend') || !AUDIO_UNLOCK_EVENTS.includes('pointerup')) problems.push('audio unlock retries on touchend, pointerup and click until the context runs, so the start-screen music starts on a phone tap (AUDIO-GESTURE-01)');
   if(String(runBootWarmup).includes('hidden = true') || !String(startFirstFrame).includes("classList.add('done')") || typeof audioEngine.prewarm !== 'function') problems.push('the loading screen fades out over the opaque game and the audio graph is built during loading (BOOT-FADE-01, AUDIO-PREWARM-01)');
+  if(MUSIC_ATTRACT_TEMPO_BPM > 92 || !POP_VOICES.oboe || MUSIC_TOM_PITCHES[0] > 160) problems.push('the start screen stays slow and dark, answers the lead with an oboe line and the fills sound like timpani (MUSIC-REFERENCE-01)');
   if(typeof SoundEngine.prototype.musicBassDrop !== 'function' || !POP_VOICES.warm || MUSIC_ATTRACT_SECTION_LEVEL[0] > 0.4) problems.push('intro and idle music open softly, keep a warm motif and resolve sweeps into bounded pitched bass (MUSIC-BUILD-DROP-01)');
   if(typeof updateRoundEnemyFollow !== 'function' || !String(cancelCameraFollow).includes('roundEnemyFollow = null')) problems.push('manual camera control cancels the countdown pan and first-enemy follow (ROUND-CAMERA-01)');
   if(!MUSIC_ATTRACT_SECTION_LEVEL.every((level, index) => index === 0 || level > MUSIC_ATTRACT_SECTION_LEVEL[index - 1]) || typeof audioEngine.popTone !== 'function' || MUSIC_ATTRACT_VOICE_LIMIT <= MUSIC_VOICE_LIMIT) problems.push('the start-screen music builds from a quiet intro to a loud chorus and has its own larger voice budget (MUSIC-ATTRACT-02)');
@@ -13969,6 +13987,7 @@ function validateDesignContract(){
   if(FOOD_STAT_BY_KIND.MEAT !== 'con' || FOOD_STAT_BY_KIND.FRUIT !== 'int' || FOOD_STAT_BY_KIND.VEGETABLE !== 'dex' || !String(applyFoodItem).includes('grantFoodStat') || !String(onPointerEnd).includes('eatDroppedFood') || String(grantEventProp).includes('rollStimItem') && String(grantEventProp).split("item.type === 'PICNIC'")[1].split("WOODPILE")[0].includes('rollStimItem')) problems.push('food is eaten instantly on a stickman and raises stats: meat Constitution, fruit INT, vegetables DEX; a picnic basket is food only (FOOD-STATS-01)');
   if(String(creditCoin).includes('grantDiamondReward') || !String(creditCoin).includes("'💎'") || typeof grantDiamondReward !== 'undefined') problems.push('a diamond turns into gold only and the gem flies up into the gold counter (DIAMOND-GOLD-01, DIAMOND-FLIES-01)');
   if(typeof buyRation !== 'function' || typeof buyDrill !== 'function' || typeof merchantStock !== 'function' || !String(buildShopGrid).includes('GOLD-SINKS-01') || !String(serializeGameState).includes('marketBought')) problems.push('the Shop has more places to sink gold: a ration market, a training yard and a travelling merchant (GOLD-SINKS-01)');
+  if(typeof drawFlagGroundShadow !== 'function' || !String(drawFinishFlagPole).includes('drawFlagGroundShadow') || !String(Tower.prototype.draw).includes("'🚧',this.x,this.y,28*STICKMAN_SCALE,'serif'")) problems.push('flag shadows are one shape and each emoji shadow is measured in the font its glyph is drawn with (FLAG-SHADOW-01, SHADOW-ALIGN-01)');
   if(typeof stickmanShadowEntry !== 'function' || !String(drawStickmanGroundShadow).includes('SHADOW-CACHE-01') && !String(drawStickmanGroundShadow).includes('owner') || typeof drawBatchedEnemyShadows !== 'function' || !String(drawDepthSortedLayer).includes('enemyShadowsBatched')) problems.push('fighter shadows are cached per pose and a crowd of enemies shares one batched shadow fill (SHADOW-CACHE-01, ENEMY-SHADOW-BATCH-01)');
   if(typeof grantStatPoints !== 'function' || String(grantFoodStat).includes('tower[stat] =') || !String(grantStatPoints).includes('refreshProgressionMilestones') || false) problems.push('food and rations honour the stat caps and milestones through one shared grant (STAT-GRANT-01)');
   if(!String(serializeGameState).includes('itemCosts') || !String(serializeGameState).includes('merchantSold') || String(pickItemLandingPoint).includes('fallback') || !String(queryNearby).includes('COLLISION-FAIR-01') || !String(flushHUDIfDirty).includes('HUD-TIMING-01')) problems.push('merchant prices and sold state are saved, item landings are always valid, crowded collision queries rotate fairly and the HUD time is measured (MERCHANT-SAVE-01, ITEM-ARC-01, COLLISION-FAIR-01, HUD-TIMING-01)');

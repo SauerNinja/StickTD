@@ -231,11 +231,17 @@ def compose_release_notes(version):
     for label, pattern in DOWNLOADS:
         for path in sorted(DIST.glob(pattern)):
             rows.append(f'| {label} | `{path.name}` | {format_size(path.stat().st_size)} |')
+    commit_url = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{REPOSITORY}/commit/{commit}"
+    provenance = (
+        f'Every file below was built from this repository\'s public source at commit [`{commit[:7]}`]({commit_url}) by GitHub Actions on GitHub-hosted machines, '
+        f'following the public [release workflow](https://github.com/{REPOSITORY}/blob/{commit}/.github/workflows/release.yml). '
+        f'Nothing was built or uploaded by hand; the [workflow run]({run_url}) shows each build step and its log.'
+    )
     notes = [
         f'## StickTD {version}', '',
         f'Play in the browser at [{PLAY_URL}]({PLAY_URL}) or download a build below.', '',
         '### Downloads', '', '\n'.join(rows), '',
-        '### Authenticity', '', signing_summary(), '',
+        '### Authenticity', '', provenance, '', signing_summary(), '',
         f'Verify a download with `gh attestation verify <file> --repo {REPOSITORY}`, or compare its hash with `SHA256SUMS.txt`.', '',
         f'### {scope}', '', '\n\n'.join(shown), '',
         f'Build commit `{commit}` · [workflow run]({run_url})', '',

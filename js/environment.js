@@ -1659,8 +1659,8 @@ function ensureEndGuardScenery(){
   topUpCloseGuard(startTile);
   topUpCloseGuard(finishTile);
 }
-// BRANCH-STICKS-01 (1.8.4) — see CHANGELOG.md § [1.8.4]: a branch is a small scatter of loose sticks, never a standing tree. Count, length, thickness, bend, twigs and orientation come from a hash of the piece's tile, so every pile looks different and stays identical every frame.
-const BRANCH_STICK_COLORS = ['#a37a4d', '#94693f', '#7c5733', '#b08655'];
+// BRANCH-EMOJI-01 (1.8.12) — see CHANGELOG.md § [1.8.12]: a branch is one to three small leafless-tree glyphs lying at random angles. Count, size, angle and offset come from a hash of the piece's tile, so every pile differs and stays identical across frames, saves and loads
+const BRANCH_GLYPH = '🪾';
 function branchRandomFor(piece, variant){
   const tileHash = piece ? (Number.isFinite(piece.gx) ? (piece.gx*73856093) ^ (piece.gy*19349663) : (Math.round(piece.x)*73856093) ^ (Math.round(piece.y)*19349663)) : 0;
   let state = (tileHash ^ (variant*83492791)) >>> 0;
@@ -1672,26 +1672,14 @@ function branchRandomFor(piece, variant){
   };
 }
 function drawBranchSprite(ctx, size, color, piece, variant = 0){
-  const random = branchRandomFor(piece, variant), stickCount = 2 + Math.floor(random()*3);
-  ctx.save();
-  ctx.lineCap = 'round';
-  for(let stick = 0; stick < stickCount; stick++){
-    const length = size*(0.3 + random()*0.5), thickness = Math.max(1.2, size*(0.06 + random()*0.05)), bend = (random() - 0.5)*length*0.3;
+  const random = branchRandomFor(piece, variant), glyphCount = 1 + Math.floor(random()*3);
+  for(let glyph = 0; glyph < glyphCount; glyph++){
+    const glyphSize = size*(0.55 + random()*0.4), offsetX = (random() - 0.5)*size*0.7, offsetY = (random() - 0.5)*size*0.45, angle = random()*Math.PI*2, mirrored = random() < 0.5;
     ctx.save();
-    ctx.translate((random() - 0.5)*size*0.7, (random() - 0.5)*size*0.45);
-    ctx.rotate(random()*Math.PI);
-    ctx.strokeStyle = '#4a321d'; ctx.lineWidth = thickness;
-    ctx.beginPath(); ctx.moveTo(-length/2, thickness*0.4); ctx.quadraticCurveTo(0, bend + thickness*0.4, length/2, thickness*0.4); ctx.stroke();
-    ctx.strokeStyle = BRANCH_STICK_COLORS[Math.floor(random()*BRANCH_STICK_COLORS.length)]; ctx.lineWidth = thickness;
-    ctx.beginPath(); ctx.moveTo(-length/2, 0); ctx.quadraticCurveTo(0, bend, length/2, 0); ctx.stroke();
-    if(random() < 0.55){
-      const along = (random() - 0.5)*length*0.5, twigAngle = (random() < 0.5 ? -1 : 1)*(0.5 + random()*0.5), twigLength = length*(0.18 + random()*0.17);
-      ctx.lineWidth = thickness*0.6;
-      ctx.beginPath(); ctx.moveTo(along, bend*0.5); ctx.lineTo(along + Math.cos(twigAngle)*twigLength, bend*0.5 + Math.sin(twigAngle)*twigLength); ctx.stroke();
-    }
+    ctx.translate(offsetX, offsetY); ctx.rotate(angle); if(mirrored) ctx.scale(-1, 1);
+    drawEmojiSprite(ctx, BRANCH_GLYPH, glyphSize);
     ctx.restore();
   }
-  ctx.restore();
 }
 function spawnOutsideBranches(count){
   const ends=[pathWaypointTiles[0],pathWaypointTiles[pathWaypointTiles.length-1]];
@@ -3647,17 +3635,30 @@ function drawPennantFoldShading(ctx, isBlack){
 // CA158 — see HISTORY.md § [1.5.7] Code Archaeology, CA158
 // FLAG-POLE-CONTRAST-01 (1.6.67) — see HISTORY.md § [1.6.67]
 const FLAG_SORT_BIAS = 1e6; // FLAG-OVER-SCENERY-01 (1.6.110) — see HISTORY.md § [1.6.110]
+// FLAG-SHADOW-01 (1.8.14) — see CHANGELOG.md § [1.8.14]: pole, finial and pennant are painted opaque into one small canvas and cast as one shape at one opacity, so overlapping parts never double-darken
+const FLAG_SHADOW_PAD_X = 90, FLAG_SHADOW_PAD_TOP = 70, FLAG_SHADOW_PAD_BOTTOM = 12;
+const flagShadowCanvas = document.createElement('canvas');
+flagShadowCanvas.width = FLAG_SHADOW_PAD_X*2; flagShadowCanvas.height = FLAG_SHADOW_PAD_TOP + FLAG_SHADOW_PAD_BOTTOM;
+const flagShadowCtx = flagShadowCanvas.getContext('2d');
+function drawFlagGroundShadow(ctx, x, y, poleH){
+  const shape = flagShadowCtx;
+  shape.setTransform(1,0,0,1,0,0); shape.clearRect(0,0,flagShadowCanvas.width,flagShadowCanvas.height);
+  shape.translate(FLAG_SHADOW_PAD_X - x, FLAG_SHADOW_PAD_TOP - y);
+  shape.fillStyle='#000'; shape.strokeStyle='#000'; shape.lineWidth=4.4; shape.lineCap='round';
+  shape.beginPath(); shape.moveTo(x,y); shape.lineTo(x,y-poleH); shape.stroke();
+  shape.beginPath(); shape.arc(x,y-poleH-1.5,2.9,0,Math.PI*2); shape.fill();
+  tracePennantSilhouette(shape); shape.fill();
+  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24;
+  ctx.translate(x,y); ctx.transform(1,0,-0.55,0.34,0,0);
+  ctx.drawImage(flagShadowCanvas,-FLAG_SHADOW_PAD_X,-FLAG_SHADOW_PAD_TOP);
+  ctx.restore();
+}
 function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const poleH = 34;
   if(graphicsQuality==='high'){
     const dir=awayX>=0?1:-1;
     computeFlagPennantShape(x,y-poleH+FLAG_HOIST_HALF_HEIGHT,dir,0,0,dir,isBlack);
-    ctx.save();ctx.shadowBlur=0;ctx.globalAlpha*=0.24;
-    ctx.translate(x,y);ctx.transform(1,0,-0.55,0.34,0,0);ctx.translate(-x,-y);
-    ctx.fillStyle='#000';ctx.strokeStyle='#000';ctx.lineWidth=4.4;ctx.lineCap='round';
-    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-poleH);ctx.stroke();
-    ctx.beginPath();ctx.arc(x,y-poleH-1.5,2.9,0,Math.PI*2);ctx.fill();
-    tracePennantSilhouette(ctx);ctx.fill();ctx.restore();
+    drawFlagGroundShadow(ctx, x, y, poleH);
   }
   ctx.save();
   ctx.lineCap = 'round';
