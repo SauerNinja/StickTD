@@ -759,6 +759,8 @@ class Tower{
   receiveItem(def){
     if(def && def.isGoldBag) return false; // see HISTORY.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, GOLD-BAG-COIN-BURST-01.
     if(isStructureType(this.type)) return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see HISTORY.md § [1.6.121]
+    const stack = STACKABLE_ITEM_IDS.has(def.id) ? this.equippedItems.find(item => item.id === def.id) : null;
+    if(stack){ stack.count = heldCount(stack) + heldCount(def); refreshQuickUse(this); return true; }
     if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
     const received = makeItemInstance(def, 'given');
     this.equippedItems.push(received);
@@ -1018,6 +1020,7 @@ class Tower{
 
   update(dt, enemyHash){
     this.updateHealthStatus(dt);
+    if(this.shovelDig && gameTime >= this.shovelDig.finishAt){ const dig = this.shovelDig; this.shovelDig = null; digWithShovel(this, dig.site); refreshQuickUse(this); }
     if(isProducerType(this.type)){ this.updateProducer(dt); return; }
     if(this.isWalking){ this.advanceWalk(dt); return; } // MOVE-WALKS-01: no targeting or attacking while walking
     if(this.type === 'HACKER') return; // HACKER-01: never targets, attacks, trains or promotes
@@ -1804,6 +1807,7 @@ class Tower{
     }
     extra.enchantElement = (activeElement && !isDisabled) ? activeElement : null; // drawn inside drawStickman, on the weapon itself (WEAPON-ENCHANT-SYNC-01)
     drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
+    if(this.shovelDig) drawShovelDigSwing(ctx, this);
     if(hackerStealth){
       ctx.restore();
       ctx.save(); ctx.fillStyle = 'rgba(160,170,178,0.35)';

@@ -690,14 +690,84 @@ function shovelDigPoint(tower){
   }
   return null;
 }
-function digWithShovel(tower){
+const ITEM_DRIFT_SPEED_PX_PER_S = 9, ITEM_DRIFT_STOP_PX = 13, ITEM_DRIFT_STORE_PX = 15; // ITEM-DRIFT-01 (1.8.18)
+function itemDriftsToTowers(def){ return !def.isGoldBag && !def.isMapScroll && !def.isBarricade; }
+function updateGroundItemDrift(dt){
+  if(!groundItems.length) return;
+  let candidates = null;
+  for(const gi of groundItems){
+    if(gi === draggingGroundItem || !itemDriftsToTowers(gi.itemDef)) continue;
+    if(gi.flyStart !== undefined && presentationTime - gi.flyStart < gi.flyDur) continue;
+    if(gi.rejectStartedAt !== undefined && presentationTime - gi.rejectStartedAt < 1500) continue;
+    if(!candidates) candidates = towerPool.filter(t => t.active && !t.isWalking && !isStructureType(t.type));
+    let nearest = null, nearestDistance = Infinity;
+    for(const t of candidates){
+      const distance = Math.hypot(t.x - gi.x, t.y - gi.y);
+      if(distance < nearestDistance && distance <= (t.targetingRange || t.range || 0)){ nearest = t; nearestDistance = distance; }
+    }
+    if(!nearest) continue;
+    if(nearestDistance <= ITEM_DRIFT_STORE_PX && nearest.receiveItem(gi.itemDef)){ // Warcraft-style: anything in a stickman's inventory counts as carried, gear included
+      groundItems = groundItems.filter(other => other !== gi);
+      spawnFloatingText(nearest.x, nearest.y - 40, gi.itemDef.icon, '#ffffff', ITEM_POPUP_LIFE_MS);
+      trackGameEvent('item_drifted', { item: gi.itemDef.id, tower_type: nearest.type });
+      if(selectedTower === nearest) updateInspectPanel();
+      continue;
+    }
+    if(nearestDistance <= ITEM_DRIFT_STOP_PX) continue;
+    const step = Math.min(nearestDistance - ITEM_DRIFT_STOP_PX, ITEM_DRIFT_SPEED_PX_PER_S * dt / 1000);
+    gi.x += (nearest.x - gi.x) / nearestDistance * step;
+    gi.y += (nearest.y - gi.y) / nearestDistance * step;
+  }
+}
+function shovelChargesLeft(tower){ return tower.shovelCharges === undefined ? SHOVEL_CHARGES_PER_ROUND : tower.shovelCharges; }
+function resetShovelCharges(){ // SHOVEL-CHARGES-01 (1.8.18): clearing a wave refills every stickman's digs
+  for(const t of towerPool){ if(t.active && t.shovelCharges !== undefined){ t.shovelCharges = SHOVEL_CHARGES_PER_ROUND; refreshQuickUse(t); } }
+}
+function beginShovelDig(tower){
+  if(tower.shovelDig) return false;
+  if(shovelChargesLeft(tower) <= 0){ showToast('The shovel needs a rest until the wave is cleared.'); playSound('ui_deny'); return false; }
   const site = shovelDigPoint(tower);
-  if(!site){ showToast('No clear patch of ground nearby.'); return false; }
-  spawnParticles(site.x, site.y, '#c9a66b', 6);
+  if(!site){ showToast('No clear patch of ground nearby.'); playSound('ui_deny'); return false; }
+  tower.shovelCharges = shovelChargesLeft(tower) - 1;
+  tower.shovelDig = { site, startedAt: gameTime, finishAt: gameTime + SHOVEL_DIG_MS };
+  spawnParticles(tower.x, tower.y + 6, '#c9a66b', 8);
+  playSound('click');
+  return true;
+}
+function drawShovelDigSwing(ctx, tower){
+  const dig = tower.shovelDig, progress = clampNum((gameTime - dig.startedAt) / SHOVEL_DIG_MS, 0, 1);
+  const swing = Math.sin(progress * Math.PI * 3);
+  ctx.save();
+  ctx.translate(tower.x + 12, tower.y - 4);
+  ctx.rotate(-0.9 + swing * 0.7);
+  ctx.font = pxFont(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(SHOVEL_ITEM.icon, 0, 0);
+  ctx.restore();
+  ctx.save();
+  ctx.fillStyle = '#8b6a3e';
+  for(let fleck = 0; fleck < 5; fleck++){
+    const lift = Math.max(0, Math.sin(progress * Math.PI * 3 + fleck)) * 8;
+    ctx.beginPath(); ctx.arc(dig.site.x + (fleck - 2) * 3, dig.site.y - lift, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+function digWithShovel(tower, site){
+  spawnParticles(site.x, site.y, '#c9a66b', 10);
   const roll = Math.random();
   if(roll < 0.02){
     const gear = pickGenericDropItem(rollDropRarity(false));
     if(gear){ spawnGroundItem(site.x, site.y, gear, 'dug up'); showToast('A buried ' + gear.name + '!'); trackGameEvent('item_dropped', { item: gear.id, rarity: gear.rarity, enemy_type: 'shovel' }); playSound('evolution'); return true; }
+  }
+  if(roll < 0.02 + SHOVEL_CHEST_CHANCE){
+    const bagCount = 2 + Math.floor(Math.random()*3);
+    for(let bagIndex = 0; bagIndex < bagCount; bagIndex++){
+      const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
+      dropGoldBag(site.x + (bagIndex - (bagCount-1)/2)*16, site.y, bagGold);
+    }
+    spawnParticles(site.x, site.y, '#ffd700', 14);
+    spawnFloatingText(site.x, site.y - 14, '🧰 Treasure chest!', '#ffd700', ITEM_POPUP_LIFE_MS);
+    playSound('wave');
+    return true;
   }
   if(roll < 0.84){
     const food = pickFoodOfKind('VEGETABLE');
@@ -1455,6 +1525,7 @@ function treeRockKeepChance(proximity, tileKey){
   const gradient = TREE_ROCK_MIN_KEEP_CHANCE + (1 - TREE_ROCK_MIN_KEEP_CHANCE) * proximity * proximity;
   return harvestedTileKeys.has(tileKey) ? gradient * HARVESTED_TILE_KEEP_FACTOR : gradient;
 }
+const LOG_MAX_SCALE = 0.54; // LOG-SIZE-01 (1.8.18): branches and logs never draw larger than a regular small log
 const FIXED_SCENERY_SCALE = { CHEST: 0.48, COIN_POUCH: 0.95, BUSH: 0.68, BIRD_NEST: 0.22, PICNIC: 0.68 }; // the potted berry bush stays compact beside trees, rocks and chests
 const SMALL_SCENERY_SIZE_MULTIPLIER = 0.5, SMALL_SCENERY_COST_MULTIPLIER = 0.5, SMALL_SCENERY_BUDDY_CHANCE = 0.5;
 function smallSceneryHarvestCost(fullSizeCost){ return Math.max(1, Math.round(fullSizeCost * SMALL_SCENERY_COST_MULTIPLIER)); }
@@ -1674,7 +1745,7 @@ function branchRandomFor(piece, variant){
 function drawBranchSprite(ctx, size, color, piece, variant = 0){
   const random = branchRandomFor(piece, variant), glyphCount = 1 + Math.floor(random()*3);
   for(let glyph = 0; glyph < glyphCount; glyph++){
-    const glyphSize = size*(0.55 + random()*0.4), offsetX = (random() - 0.5)*size*0.7, offsetY = (random() - 0.5)*size*0.45, angle = random()*Math.PI*2, mirrored = random() < 0.5;
+    const glyphSize = size*(0.38 + random()*0.24), offsetX = (random() - 0.5)*size*0.5, offsetY = (random() - 0.5)*size*0.32, angle = random()*Math.PI*2, mirrored = random() < 0.5;
     ctx.save();
     ctx.translate(offsetX, offsetY); ctx.rotate(angle); if(mirrored) ctx.scale(-1, 1);
     drawEmojiSprite(ctx, BRANCH_GLYPH, glyphSize);
@@ -1716,7 +1787,7 @@ function drawStumpSprite(ctx,size){
     stumpSpriteCanvas=document.createElement('canvas');stumpSpriteCanvas.width=64;stumpSpriteCanvas.height=64;
     const m=stumpSpriteCanvas.getContext('2d');m.translate(32,32);drawStumpShape(m,40);
   }
-  ctx.drawImage(stumpSpriteCanvas,-size*0.8,-size*0.8,size*1.6,size*1.6);
+  ctx.drawImage(stumpSpriteCanvas,-size*0.5,-size*0.5,size,size);
 }
 function drawStumpShape(ctx,size){
   ctx.fillStyle='#69432d';ctx.beginPath();ctx.ellipse(0,size*0.22,size*0.36,size*0.19,0,0,Math.PI*2);ctx.fill();
@@ -2438,7 +2509,7 @@ CONSUMABLE_BY_ID.set('WEDDING_CAKE_SLICE',Object.freeze({id:'WEDDING_CAKE_SLICE'
 function findCampfireIngredients(recipe){
   const candidates=[];
   for(const gi of groundItems) if(gi!==draggingGroundItem) candidates.push({item:gi.itemDef,ground:gi});
-  for(const tower of towerPool) if(tower.active) for(const item of tower.equippedItems) candidates.push({item,tower});
+  for(const tower of towerPool) if(tower.active) for(const item of tower.equippedItems) for(let unit=0;unit<heldCount(item);unit++) candidates.push({item,tower});
   const chosen=[];
   for(const id of recipe.ingredients){ const index=candidates.findIndex(c=>c.item.id===id); if(index<0) return null; chosen.push(candidates.splice(index,1)[0]); }
   return chosen;
@@ -2451,7 +2522,7 @@ function startCampfireRecipe(fire,recipeId){
   const touched=new Set();
   for(const source of chosen){
     if(source.ground) groundItems.splice(groundItems.indexOf(source.ground),1);
-    else { source.tower.equippedItems.splice(source.tower.equippedItems.indexOf(source.item),1); touched.add(source.tower); }
+    else { takeOneFromHeld(source.tower,source.item); touched.add(source.tower); }
     itemLogReleased(source.item,'consumed by campfire: '+recipe.id);
   }
   for(const tower of touched){ refreshQuickUse(tower); tower.recomputeStats(); tower.checkHeroStatus(); }
@@ -2532,12 +2603,19 @@ function useStoredConsumable(tower, slotIndex){
   if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return false;
   const def = tower.equippedItems[slotIndex];
   if(!isConsumableDef(def)) return false;
-  if(!def.isDiggingTool){ tower.equippedItems.splice(slotIndex, 1); itemLogUsed(def, tower); } // SHOVEL-REUSABLE-01 (1.7.139)
+  if(def.isDiggingTool){ // SHOVEL-REUSABLE-01 (1.7.139), SHOVEL-CHARGES-01 (1.8.18): the shovel is never consumed, it has three digs per round
+    if(!beginShovelDig(tower)) return false;
+    refreshQuickUse(tower);
+    recordFirstItemUse(def);
+    trackGameEvent('shovel_used', { item: def.id, tower_type: tower.type });
+    return true;
+  }
+  if(takeOneFromHeld(tower, def)) itemLogUsed(def, tower);
   refreshQuickUse(tower);
   recordFirstItemUse(def);
-  if(def.isDiggingTool) digWithShovel(tower); else if(def.isHutLoot) applyHutLootItem(def, tower); else if(def.isStim) applyStimItem(def, tower); else if(def.isFood) applyFoodItem(def, tower); else applyTreatItem(def, tower, tower.x, tower.y);
+  if(def.isHutLoot) applyHutLootItem(def, tower); else if(def.isStim) applyStimItem(def, tower); else if(def.isFood) applyFoodItem(def, tower); else applyTreatItem(def, tower, tower.x, tower.y);
   tower.recomputeStats();
-  trackGameEvent(def.isDiggingTool ? 'shovel_used' : def.isHutLoot ? 'hut_loot_used' : def.isStim ? 'stim_used' : def.isFood ? 'food_used' : 'treat_used', { item: def.id, tower_type: tower.type });
+  trackGameEvent(def.isHutLoot ? 'hut_loot_used' : def.isStim ? 'stim_used' : def.isFood ? 'food_used' : 'treat_used', { item: def.id, tower_type: tower.type });
   if(selectedTower === tower) updateInspectPanel();
   return true;
 }
@@ -2699,7 +2777,7 @@ function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the
   return best;
 }
 function sceneryVisualSize(item){
-  return TILE_SIZE*0.72*(item.type==='MUSHROOMS' ? Math.min(CONFIG.SCENERY.maxScale,item.scale || CONFIG.SCENERY.minScale) : item.type==='BIRD_NEST' ? Math.min(0.22,item.scale || 0.22) : item.type==='PICNIC' ? FIXED_SCENERY_SCALE.PICNIC : item.type==='CHEST' ? FIXED_SCENERY_SCALE.CHEST : item.type==='SUPPLY_CRATE' ? Math.min(0.68,item.scale) : item.scale);
+  return TILE_SIZE*0.72*(item.type==='MUSHROOMS' ? Math.min(CONFIG.SCENERY.maxScale,item.scale || CONFIG.SCENERY.minScale) : item.type==='BIRD_NEST' ? Math.min(0.22,item.scale || 0.22) : item.type==='PICNIC' ? FIXED_SCENERY_SCALE.PICNIC : item.type==='CHEST' ? FIXED_SCENERY_SCALE.CHEST : item.type==='SUPPLY_CRATE' ? Math.min(0.68,item.scale) : (item.type==='BRANCH' || item.type==='STUMP') ? Math.min(LOG_MAX_SCALE,item.scale) : item.scale); // LOG-SIZE-01
 }
 // Tree kinds: a leafy tree (58%), an evergreen (30%) and a palm (12%). Saved scenery keeps its kind because it is stored with the item.
 const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];

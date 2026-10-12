@@ -179,9 +179,8 @@ function rollDirectAttackMiss(tower, enemy){
   return true;
 }
 function lancerWeightDamageMultiplier(weight){ return clampNum(Number(weight) || 1, 0.5, 1.75); }
-// WEIGHT-HP-181: same species and wave scale, double weight means double HP before integer rounding.
-function enemyHealthAtWeight(type,weight,hpScale,tiny){
-  if(type==='GRUNT' && tiny) return 1;
+// WEIGHT-HP-181, WEIGHT-HP-182 (1.8.17): same species and wave scale, double weight means double HP before integer rounding, Tiny Grunts included.
+function enemyHealthAtWeight(type,weight,hpScale){
   return Math.max(1,Math.round(CONFIG.ENEMIES[type].baseHp * Math.max(0.25,weight) * hpScale * 1.25));
 }
 /* =========================================================
@@ -986,7 +985,7 @@ class Enemy{
       this.hp = this.maxHp;
       this.bounty = Math.max(1, Math.round(this.bounty * bountyMult));
     }
-    if(!LIVESTOCK_TYPES[type]){this.maxHp=enemyHealthAtWeight(type,this.weight,hpMultiplier,this.isMini);this.hp=this.maxHp;} // GRUNT-CONSTITUTION-01: weight, not wave scaling
+    if(!LIVESTOCK_TYPES[type]){this.maxHp=enemyHealthAtWeight(type,this.weight,hpMultiplier);this.hp=this.maxHp;} // GRUNT-CONSTITUTION-01: weight, not wave scaling
     this.pathIndex = 0;
     this.x = waypointsPx[0].x; this.y = waypointsPx[0].y;
     this.vx = 0; this.vy = 0;
@@ -1478,7 +1477,7 @@ class Enemy{
     const visualSizeRank = 0.5 + 0.5*Math.sign(sizeRank*2-1)*Math.pow(Math.abs(sizeRank*2-1),0.65); // ENEMY-SIZE-VARIETY-01 (1.7.141): more visible extremes inside the existing tier.
     this.radius = band.radiusMin + visualSizeRank*(band.radiusMax-band.radiusMin);
     this.speed = (band.speedMin + familySpeedRank * (band.speedMax - band.speedMin)) * ENEMY_WALK_SPEED_SCALE; // ENEMY-PACE-01 (1.6.79) — see HISTORY.md § [1.6.79]
-    this.maxHp = enemyHealthAtWeight(this.type,this.weight,hpScale,this.isMini);
+    this.maxHp = enemyHealthAtWeight(this.type,this.weight,hpScale);
     this.hp = this.maxHp;
     this.bounty = Math.max(1, Math.round(def.bounty * band.bountyMult));
     this.footstepDist = this.footstepWeight === null ? Infinity : (this.radius * 17);
@@ -2219,7 +2218,7 @@ class Enemy{
           spawnParticles(this.x, this.y, bio.spray, Math.max(3, Math.round(9*goreScale)), 130, 0.9, false, undefined, undefined, 0.5, !bio.isDust);
         }
         // CA367 — see HISTORY.md § [1.5.7] Code Archaeology, CA367
-        if(!bio.isDust && Math.random() < 0.18) spawnBoneDebris(this.x, this.y, this.radius);
+        if(!bio.isDust && Math.random() < BONE_DROP_CHANCE) spawnBoneDebris(this.x, this.y, this.radius);
         if(!bio.isDust && Math.random() < 0.08 + this.radius/200) spawnSkullDrop(this.x, this.y, this.radius); // bigger enemies leave a skull more often: about 12% at radius 9, 16% at 15, 19% at 22
         if(Math.random() < 0.55){
           // CA368 — see HISTORY.md § [1.5.7] Code Archaeology, CA368

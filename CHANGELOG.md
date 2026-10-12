@@ -4,6 +4,26 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.18] — 2026-10-12 (UTC)
+### Small logs, rarer bones, shovel charges and treasure
+- LOG-SIZE-01: `sceneryVisualSize()` caps BRANCH and STUMP items at `LOG_MAX_SCALE` (0.54) and `drawStumpSprite()` now draws at 1.0× instead of 1.6× its cell, so no giant log can appear, including in old saves.
+- GORE-RARITY-01: `BONE_DROP_CHANCE` is 0.05 per death (was 0.18) and `spawnBoneDebris()` drops one bone 90% of the time, two otherwise (was 1.5 on average). Skulls (12–19%) are now more common than bones, and blood still marks every hit.
+- PIN-BEE-01: `drawMarkedTargetIcon()` is now called after the bee's elevated draw pass, so a pinned bee has a painted-top anchor on the frame it is drawn (it was drawn one pass too early, so the pin never appeared on bees).
+- CAMERA-MARKER-01: `startWaveStartCameraPan()` centres on the exclamation mark (`SPAWN_MARKER_RISE_PX`, 34, shared with `drawSpawnWarningMarker()`) instead of 78 px above the spawn.
+- STACK-HONEY-01: Honey stacks in one slot with a count (`STACKABLE_ITEM_IDS`, `heldCount()`, `takeOneFromHeld()`). The quick-use row shows `×N`, using or cooking takes one at a time, and dragging a stack out lifts a single honey.
+- ITEM-DRIFT-01: `updateGroundItemDrift()` slowly moves loose items toward the nearest stickman whose range covers them. Every item that arrives is stored in the stickman's inventory: consumables are kept, not used, and gear counts as equipped at once because `recomputeStats()` already adds the stats of everything carried (Warcraft-style). Gold bags, expansion scrolls and barricades stay put. Dragging a consumable onto a stickman still uses it.
+- SHOVEL-CHARGES-01: the shovel shows in the quick-use row with its remaining digs, has `SHOVEL_CHARGES_PER_ROUND` (3) digs, and `resetShovelCharges()` refills them when a wave is cleared. Using it starts a 700 ms dig (`beginShovelDig()`, `drawShovelDigSwing()`): the stickman swings the shovel and dirt flies at the chosen spot, then `digWithShovel()` resolves the result. A 3% roll finds a treasure chest that opens into 2–4 gold bags. The shovel is still never consumed (SHOVEL-REUSABLE-01).
+
+## [1.8.17] — 2026-10-12 (UTC)
+### Build order, pin position, Grunt health
+- BUILD-MENU-ORDER-02: `buildTowerModal()` in `js/config.js` lists Stickmen Defenders first, then Structures (Expand, Log Mill, Stone Quarry, Campfire), then Fortifications and Locked. This reverses BUILD-MAP-GROWTH-ORDER-01 (1.6.x); the design-contract check now requires Defenders before Structures.
+- PIN-SINK-01: `drawMarkedTargetIcon()` places the pin's tip `PIN_TIP_SINK_CSS_PX` (3) CSS pixels below the painted top of the enemy emoji, where it was 1, so the pin touches the emoji instead of hovering over it.
+- WEIGHT-HP-182: `enemyHealthAtWeight()` in `js/waves.js` no longer returns 1 for a Tiny Grunt. Every road enemy's HP is species base × weight × wave scale × 1.25, and weight is radius ÷ 15, so size, weight and HP rise together. The Tiny Grunt keeps its 15-point evasion bonus. This reverses the owner decision of 1.7.136 (AGENTS.md updated); Tiny Grunt waves are now far tougher than the 1 HP they had and may need rebalancing.
+
+## [1.8.16] — 2026-10-12 (UTC)
+### Smaller branch piles
+- BRANCH-SIZE-01: `drawBranchSprite()` in `js/environment.js` draws each 🪾 glyph at 0.38–0.62 of the piece size (was 0.55–0.95) and keeps the glyphs within 0.5 by 0.32 of the piece size of the centre (was 0.7 by 0.45), so a pile covers about half its former area and each stick is smaller. Count, angles, mirroring, pickup, masks, shadows and wood yield are unchanged.
+
 ## [1.8.15] — 2026-10-12 (UTC)
 ### Music follows the reference scores
 - MUSIC-REFERENCE-01: fourteen reference MIDI files were parsed for tempo, key, voicing, bass movement and rhythm. They show that the dark scores hold a bass note for several bars, repeat a short motif over a fixed groove, pair two timbres, leave rests, and accent with timpani. Only those general techniques are used; no melody, chord sequence or rhythm from the files is copied.

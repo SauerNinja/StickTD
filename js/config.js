@@ -17,7 +17,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.15'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.18'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -760,6 +760,7 @@ function applyLegacyLuckyCoinMigration(item, savedId, hasLegacyMarker){
   }
   return item;
 }
+const SHOVEL_CHARGES_PER_ROUND = 3, SHOVEL_DIG_MS = 700, SHOVEL_CHEST_CHANCE = 0.03; // SHOVEL-CHARGES-01 (1.8.18)
 const SHOVEL_ITEM = Object.freeze({ id: 'SHOVEL', name: 'Shovel', icon: '🪏', rarity: 'UNCOMMON', isDiggingTool: true, isReusable: true, str: 0, dex: 0, int: 0, armor: 0, cost: 0, isDropOnly: true });
 // LOOT-TABLE-01 (1.6.99) — see HISTORY.md § [1.6.99]. Morrowind-style container table. THEME: medieval-modern
 // fusion — knights and crossbows beside energy drinks, nano-tonics and bounty chips. New loot names, icons and
@@ -837,8 +838,15 @@ const CRAFTING_RECIPES = [
   { result: 'AURORA_PRISM',    ingredients: ['STAR_COMPASS', 'LIGHTNING_BOLT', 'CHAMPION_MEDAL'] }
 ];
 // Consumes-first order the ingredients list into a lookup for fast "does this tower have the pieces" checks.
+const STACKABLE_ITEM_IDS = new Set(['HONEY']); // STACK-HONEY-01 (1.8.18): these share one inventory slot and carry a count
+function heldCount(item){ return item.count || 1; }
+function takeOneFromHeld(tower, item){
+  if(heldCount(item) > 1){ item.count = heldCount(item) - 1; return false; }
+  tower.equippedItems.splice(tower.equippedItems.indexOf(item), 1);
+  return true;
+}
 function findCraftableRecipeFor(equippedItems, cook){
-  const heldIds = equippedItems.map(item => item.id);
+  const heldIds = equippedItems.flatMap(item => Array(heldCount(item)).fill(item.id));
   for(const recipe of CRAFTING_RECIPES){
     if(recipe.fuelCost && !(cook && findLitCampfireNear(cook, recipe.fuelCost))) continue;
     const heldCopy = [...heldIds];
@@ -858,8 +866,8 @@ function craftItemOn(tower){
   const cookingFire = recipe.fuelCost ? findLitCampfireNear(tower, recipe.fuelCost) : null;
   if(cookingFire){ cookingFire.fuel -= recipe.fuelCost; spawnFloatingText(cookingFire.x, cookingFire.y - 22, '🪵 -' + recipe.fuelCost + ' fuel', '#ffb74d', ITEM_POPUP_LIFE_MS); }
   for(const ingredientId of recipe.ingredients){
-    const index = tower.equippedItems.findIndex(item => item.id === ingredientId);
-    if(index !== -1) itemLogReleased(tower.equippedItems.splice(index, 1)[0], 'consumed by crafting');
+    const held = tower.equippedItems.find(item => item.id === ingredientId);
+    if(held){ if(takeOneFromHeld(tower, held)) itemLogReleased(held, 'consumed by crafting'); }
   }
   const resultDef = makeItemInstance(lookupItemDef(recipe.result), 'crafted by ' + itemHolderLabel(tower));
   tower.equippedItems.push(resultDef);
@@ -1945,6 +1953,7 @@ function captureMarkedEmojiTop(ctx,enemy,size){
   for(let i=0;i<paint.edges.length;i+=2){const x=(paint.edges[i]-sprite.side/2)*scale,y=(paint.edges[i+1]-sprite.side/2)*scale;top=Math.min(top,m.b*x+m.d*y+m.f);}
   enemy.pinTopDeviceY=top;enemy.pinCenterDeviceX=m.e;enemy.pinPaintedId=enemy.id;
 }
+const PIN_TIP_SINK_CSS_PX = 3; // PIN-SINK-01 (1.8.17): the pin's tip sits this many CSS pixels below the painted top of the enemy emoji, so it touches the emoji instead of floating over it
 function drawMarkedTargetIcon(ctx){
   const enemy=markedTargetEnemy;
   if(!enemy || !enemy.active || enemy.pinPaintedId!==enemy.id || !Number.isFinite(enemy.pinTopDeviceY)) return;
@@ -1953,7 +1962,7 @@ function drawMarkedTargetIcon(ctx){
   const sprite=emojiSpriteFor('📌',bucket),paint=markedSpritePixels(sprite),scale=size*camera.zoom*dprValue/sprite.fontPx;
   const tipX=(paint.tipX+0.5)*scale,tipY=(paint.tipY+0.5)*scale;
   ctx.save();ctx.setTransform(1,0,0,1,0,0);
-  ctx.drawImage(sprite,enemy.pinCenterDeviceX-tipX,Math.floor(enemy.pinTopDeviceY)+dprValue-tipY,sprite.side*scale,sprite.side*scale);
+  ctx.drawImage(sprite,enemy.pinCenterDeviceX-tipX,Math.floor(enemy.pinTopDeviceY)+dprValue*PIN_TIP_SINK_CSS_PX-tipY,sprite.side*scale,sprite.side*scale);
   ctx.restore();
 }
 let hoverCell = null; // {gx,gy} - for build-placement snap preview and move-mode snap preview
@@ -3226,6 +3235,7 @@ function startTrollCameraPan(troll){
   const targetZoom=camera.zoom;
   waveStartCameraPan={panStartTime:cameraPanClock,panStartX:camera.x,panStartY:camera.y,panStartZoom:camera.zoom,targetZoom,targetX:CANVAS_W/2-troll.x*targetZoom,targetY:CANVAS_H/2-troll.y*targetZoom};
 }
+const SPAWN_MARKER_RISE_PX = 34; // the height of the exclamation mark above the spawn tile centre, shared by the marker and the pan
 function startWaveStartCameraPan(){
   if(!waypointsPx || !waypointsPx.length) return;
   cameraFollow = null;
@@ -3235,7 +3245,7 @@ function startWaveStartCameraPan(){
   const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
   waveStartCameraPan = {
     panStartTime: cameraPanClock, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
-    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - (spawn.y - 78)*targetZoom
+    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - (spawn.y - SPAWN_MARKER_RISE_PX)*targetZoom // CAMERA-MARKER-01 (1.8.18): the wave-start pan centres on the exclamation mark
   };
 }
 function updateWaveStartCameraPan(){
@@ -3843,11 +3853,12 @@ function spawnBloodCastoff(x, y, impactAngle, color, lifespanMult, sizeMult, vic
   pushDecal(decal);
 }
 // CA507 — see HISTORY.md § [1.5.7] Code Archaeology, CA507
+const BONE_DROP_CHANCE = 0.05; // GORE-RARITY-01: bones 5% of deaths, skulls 12-19%, blood on every hit
 const BONE_LIFESPAN = 1080000; // Legacy rock-debris ceiling; round-end cleanup shortens all remains to a six-second fade.
 function spawnBoneDebris(x, y, enemyRadius){
-  // BONE-SPREAD-01 (1.7.36): the average count stays 1.5 (60% one, 30% two, 10% three) but every bone now has its own size scaled from the enemy
-  // (the old 9 px floor made every bone identical) and the spread is even across a disc a little wider than the body instead of piling up in the middle.
-  const roll = Math.random(), count = roll < 0.6 ? 1 : roll < 0.9 ? 2 : 3;
+  // BONE-SPREAD-01 (1.7.36): every bone has its own size scaled from the enemy and the spread is even across a disc a little wider than the body.
+  // GORE-RARITY-01 (1.8.18): a bone is mostly a single piece (90% one, 10% two), so bones stay rarer than skulls and far rarer than blood.
+  const count = Math.random() < 0.9 ? 1 : 2;
   for(let i=0; i<count; i++){
     const scatterDist = Math.sqrt(Math.random())*enemyRadius*1.1;
     const scatterAngle = Math.random()*Math.PI*2;
@@ -7029,6 +7040,7 @@ function update(dt){
       });
     }
   }
+  updateGroundItemDrift(dt);
   // CA651 — see HISTORY.md § [1.5.7] Code Archaeology, CA651
   let __pt = performance.now();
   updateWind(dt);
@@ -7106,6 +7118,7 @@ function update(dt){
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
       clearDonutShieldAtWaveEnd();
       clearRoundBuffs();
+      resetShovelCharges();
       beginRoundDebrisCleanup();
       if(lives < 20) barkFromRandomTower(BARK_TIER_IMPORTANT, '😮‍💨', BARK_LINES.CLOSE_CALL, BARK_CHANCE.CLOSE_CALL);
       maybeReportLag();
@@ -7475,7 +7488,6 @@ function render(ctx){
   for(const p of projectilePool) if(p.active) drawProjectileSmoothed(ctx, p);
   renderPhaseTime.minionsProjectiles += performance.now() - __rpt; __rpt = performance.now();
   drawLightningArcs(ctx);
-  drawMarkedTargetIcon(ctx);
   drawParticles(ctx);
   drawFloatingTexts(ctx);
   drawItemUseEffects(ctx);
@@ -7483,6 +7495,7 @@ function render(ctx){
   drawAmbientLogs(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
   for(const it of depthSortItems) if(it.kind==='e' && it.e.type==='BEE') it.e.draw(ctx); // above world emojis, below interface overlays
+  drawMarkedTargetIcon(ctx); // PIN-BEE-01 (1.8.18): after the bee's own pass, so a marked bee has an anchor this frame
   drawSpawnWarningMarker(ctx);
   drawWaveCountdown(ctx);
   for(const it of depthSortItems) if(it.kind === 's') drawClearingHourglass(ctx,it.item,it.size); // CLEAR-OVERLAY-01: above all world props and actors
@@ -7704,7 +7717,7 @@ function drawSpawnWarningMarker(ctx){
   ctx.fillStyle = '#e63946';
   if(graphicsQuality !== 'low'){ ctx.shadowColor = '#e63946'; ctx.shadowBlur = 10; }
   // CA675 — see HISTORY.md § [1.5.7] Code Archaeology, CA675
-  ctx.translate(spawn.x, spawn.y - 34 + bob);
+  ctx.translate(spawn.x, spawn.y - SPAWN_MARKER_RISE_PX + bob);
   ctx.scale(1.7, 1);
   ctx.fillText('❗', 0, 0);
   ctx.restore();
@@ -11493,37 +11506,6 @@ function buildTowerModal(){
     e.stopPropagation();
     expandBlurb.classList.toggle('show');
   });
-  addBuildSection('Structures');
-  grid.appendChild(expandRow);
-  for(const producerType of PRODUCER_TYPES){
-    const producerConfig = CONFIG.TOWERS[producerType], liveCost = producerBuildCost(producerType), affordable = canAffordProducerCost(liveCost), costLabel = producerCostLabel(liveCost);
-    const row = document.createElement('div');
-    row.dataset.buildType = producerType;
-    row.className = 'build-row' + (selectedBuildType === producerType ? ' selected' : '') + (affordable ? '' : ' unaffordable');
-    row.innerHTML = '<div class="icon">' + producerConfig.icon + '</div><div class="name">' + producerConfig.name + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + producerConfig.blurb + '</div>';
-    row.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
-      e.stopPropagation();
-      if(!canAffordTower(producerType)) return;
-      selectedBuildType = producerType; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
-      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
-    });
-    const producerHelp = row.querySelector('.help-btn'), producerBlurb = row.querySelector('.build-row-blurb');
-    producerHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); producerBlurb.classList.toggle('show'); });
-    grid.appendChild(row);
-  }
-  const campfireRow = document.createElement('div');
-  campfireRow.className = 'build-row campfire-build-row' + (canAffordCampfire() ? '' : ' unaffordable');
-  campfireRow.innerHTML = '<div class="icon">🔥</div><div class="name">Campfire</div><div class="cost">' + producerCostLabel({ gold: CAMPFIRE_BUILD_GOLD, wood: CAMPFIRE_BUILD_WOOD, stone: CAMPFIRE_BUILD_STONE }) + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">Built on empty grass. Cooks ingredients gathered from the ground and every stickman\'s inventory, burning stored wood as fuel.</div>';
-  campfireRow.addEventListener('pointerdown', (e) => {
-    if(e.target.classList.contains('help-btn')) return;
-    e.stopPropagation();
-    if(!canAffordCampfire()){ playSound('ui_deny'); return; }
-    selectedBuildType = null; selectedTower = null; moveModeTower = null; cancelCameraFollow(); placingCampfire = true; closeTowerModal(); refreshTrayUI(); showToast('🔥 Place campfire on empty grass');
-  });
-  const campfireHelp = campfireRow.querySelector('.help-btn'), campfireBlurb = campfireRow.querySelector('.build-row-blurb');
-  campfireHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); campfireBlurb.classList.toggle('show'); });
-  grid.appendChild(campfireRow);
   addBuildSection('Stickmen Defenders');
 
   for(const type of STARTER_TOWER_TYPES){
@@ -11568,6 +11550,37 @@ function buildTowerModal(){
     });
     grid.appendChild(row);
   }
+  addBuildSection('Structures');
+  grid.appendChild(expandRow);
+  for(const producerType of PRODUCER_TYPES){
+    const producerConfig = CONFIG.TOWERS[producerType], liveCost = producerBuildCost(producerType), affordable = canAffordProducerCost(liveCost), costLabel = producerCostLabel(liveCost);
+    const row = document.createElement('div');
+    row.dataset.buildType = producerType;
+    row.className = 'build-row' + (selectedBuildType === producerType ? ' selected' : '') + (affordable ? '' : ' unaffordable');
+    row.innerHTML = '<div class="icon">' + producerConfig.icon + '</div><div class="name">' + producerConfig.name + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + producerConfig.blurb + '</div>';
+    row.addEventListener('pointerdown', (e) => {
+      if(e.target.classList.contains('help-btn')) return;
+      e.stopPropagation();
+      if(!canAffordTower(producerType)) return;
+      selectedBuildType = producerType; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
+      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+    });
+    const producerHelp = row.querySelector('.help-btn'), producerBlurb = row.querySelector('.build-row-blurb');
+    producerHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); producerBlurb.classList.toggle('show'); });
+    grid.appendChild(row);
+  }
+  const campfireRow = document.createElement('div');
+  campfireRow.className = 'build-row campfire-build-row' + (canAffordCampfire() ? '' : ' unaffordable');
+  campfireRow.innerHTML = '<div class="icon">🔥</div><div class="name">Campfire</div><div class="cost">' + producerCostLabel({ gold: CAMPFIRE_BUILD_GOLD, wood: CAMPFIRE_BUILD_WOOD, stone: CAMPFIRE_BUILD_STONE }) + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">Built on empty grass. Cooks ingredients gathered from the ground and every stickman\'s inventory, burning stored wood as fuel.</div>';
+  campfireRow.addEventListener('pointerdown', (e) => {
+    if(e.target.classList.contains('help-btn')) return;
+    e.stopPropagation();
+    if(!canAffordCampfire()){ playSound('ui_deny'); return; }
+    selectedBuildType = null; selectedTower = null; moveModeTower = null; cancelCameraFollow(); placingCampfire = true; closeTowerModal(); refreshTrayUI(); showToast('🔥 Place campfire on empty grass');
+  });
+  const campfireHelp = campfireRow.querySelector('.help-btn'), campfireBlurb = campfireRow.querySelector('.build-row-blurb');
+  campfireHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); campfireBlurb.classList.toggle('show'); });
+  grid.appendChild(campfireRow);
   // CA760 — see HISTORY.md § [1.5.7] Code Archaeology, CA760
   // UNLOCK-HELP-01 (1.7.111) — see HISTORY.md § [1.7.111]: a locked class shows its full description, which says what it does and exactly how it is unlocked
   const TOWER_UNLOCK_RIDDLE = Object.fromEntries(UNLOCKABLE_TOWER_TYPES.filter(type => CONFIG.TOWERS[type]).map(type => [type, '🔒 ' + CONFIG.TOWERS[type].blurb]));
@@ -12026,12 +12039,15 @@ function beginSlotItemDrag(sourceTower, idx, e, expectedItem){
   if(!sourceTower.active || !['PLAYING','PAUSED'].includes(gameState)) return;
   const item = sourceTower.equippedItems[idx];
   if(!item || item!==expectedItem) return;
-  sourceTower.equippedItems.splice(idx, 1);
-  itemLogReleased(item, 'on the ground (dragged out of ' + itemHolderLabel(sourceTower) + ')');
+  const draggedDef = heldCount(item) > 1 ? makeItemInstance(Object.getPrototypeOf(item), 'split from a stack') : item;
+  if(draggedDef === item){
+    sourceTower.equippedItems.splice(idx, 1);
+    itemLogReleased(item, 'on the ground (dragged out of ' + itemHolderLabel(sourceTower) + ')');
+  } else item.count = heldCount(item) - 1;
   refreshQuickUse(sourceTower);
   sourceTower.recomputeStats();
   updateInspectPanel();
-  const groundItem = spawnGroundItem(sourceTower.x, sourceTower.y, item);
+  const groundItem = spawnGroundItem(sourceTower.x, sourceTower.y, draggedDef);
   draggingGroundItem = groundItem;
   dragItemPos = { x: sourceTower.x, y: sourceTower.y };
   activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
@@ -13139,8 +13155,8 @@ function updateQuickSlots(tower, isBarricade){
       const box = quickSlotElements[shown++];
       box.dataset.slot = String(slotIndex);
       box.dataset.key = String(slotIndex + 1);
-      box.textContent = item.icon;
-      box.title = item.name + ' — click to use (key ' + (slotIndex + 1) + '); drag to another stickman or onto the map';
+      box.textContent = item.icon + (item.isDiggingTool ? ' ' + shovelChargesLeft(tower) : heldCount(item) > 1 ? ' ×' + heldCount(item) : '');
+      box.title = item.name + (item.isDiggingTool ? ' (' + shovelChargesLeft(tower) + ' of ' + SHOVEL_CHARGES_PER_ROUND + ' digs left this round)' : '') + ' — click to use (key ' + (slotIndex + 1) + '); drag to another stickman or onto the map';
       box.classList.add('filled', 'usable');
       applyItemGlowClass(box, item);
       box.classList.remove('hidden');
@@ -13804,7 +13820,7 @@ function validateDesignContract(){
   if(![...FOOD_ITEMS, ...TREAT_ITEMS, ...STIM_ITEMS, ...MEAL_ITEMS, ...HUT_LOOT_ITEMS, ...LOOT_TONIC_ITEMS, SHOVEL_ITEM].every(isConsumableDef)) problems.push('every consumable must be stored in a stickman\'s slots and used by a click or hotkey, never on the spot (CONSUMABLE-STORED-01)');
   if(!(TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE + TREE_ROCK_SIZE_FRAC_SPREAD/2 < END_RING_MIN_SIZE_FRAC && END_GUARD_MAX_SIZE_FRAC <= END_RING_MIN_SIZE_FRAC && TREE_ROCK_SIZE_FRAC_AT_MIDDLE < TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE && HARVESTED_TILE_KEEP_FACTOR < 0.5)) problems.push('scenery: the ring tiles at the road ends hold the biggest pieces, size shrinks toward the middle, and cleared tiles rarely regrow trees or rocks (SCENERY-GRADIENT-01)');
   if(!String(buildTowerModal).includes('Stickmen Defenders') || !String(buildTowerModal).includes("addBuildSection('Fortifications')") || String(buildTowerModal).includes('Starter defenders') || String(buildTowerModal).includes('Specialist defenders')) problems.push('all available fighter characters must share Stickmen Defenders, with fortifications and locked characters in their own sections (BUILD-MENU-GROUPS-02)');
-  if(!(String(buildTowerModal).indexOf("addBuildSection('Structures')") >= 0 && String(buildTowerModal).indexOf("addBuildSection('Structures')") < String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')"))) problems.push('Structures (Expand) must be the first section in Build (BUILD-MAP-GROWTH-ORDER-01)');
+  if(!(String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')") >= 0 && String(buildTowerModal).indexOf("addBuildSection('Stickmen Defenders')") < String(buildTowerModal).indexOf("addBuildSection('Structures')"))) problems.push('Stickmen Defenders come first in Build, followed by Structures (BUILD-MENU-ORDER-02)');
   if(document.getElementById('notification-filters') || /notificationFilter|notificationCategory/.test(String(renderNotificationPanel) + String(recordNotification))) problems.push('the notification inbox must use one unfiltered list without category buttons (NOTIFICATION-INBOX-SIMPLE-01)');
   if(String(Enemy.prototype.draw).includes('this.radius*1.08') || String(Enemy.prototype.draw).includes('this.pack &&') || String(Tower.prototype.draw).includes('rgba(255,255,255,0.25)')) problems.push('enemy hit flashes, wolf packs and selected units must not draw white outline circles (NO-WHITE-HALO-01)');
   { const popupStack = document.getElementById('notification-popups');
@@ -13815,7 +13831,7 @@ function validateDesignContract(){
   if(String(updateWalkingBlood).includes('b.dx +=') || !String(landForensicDroplet).includes('pushSprayDecal') || !String(stampSettledDecal).includes('drawOneDecal')) problems.push('Ground puddles stay fixed, optional spray uses its own budget, and baking preserves live geometry (BLOOD-GROUND-FIXED-01, BLOOD-SPRAY-BUDGET-01).');
   if(!isInstantOpenProp({type:'BUSH'}) || (!String(Enemy.prototype.applyDamage).includes('spawnWeaponBloodContact') || !String(spawnWeaponBloodContact).includes('spawnSwordsmanBloodArc(victim,sourceTower)'))) problems.push('Potted plants collect instantly; landed sword hits retain the circular ground blood signature (POTTED-INSTANT-01, SWORD-BLOOD-ARC-01).');
   if(sceneryClearCost({ type:'BUSH', clearCost:0 }) !== 0) problems.push('the potted plant must be free to harvest (POTTED-BUSH-FREE-01)');
-  if(enemyHealthAtWeight('GRUNT',2,1,false)!==2*enemyHealthAtWeight('GRUNT',1,1,false) || enemyHealthAtWeight('GRUNT',1,1,true)!==1) problems.push('Weight HP and tiny exception (WEIGHT-HP-181).');
+  if(enemyHealthAtWeight('GRUNT',2,1)!==2*enemyHealthAtWeight('GRUNT',1,1) || enemyHealthAtWeight('GRUNT',0.6,1)<=1) problems.push('HP follows weight for every Grunt, Tiny included (WEIGHT-HP-181, WEIGHT-HP-182).');
   if(!String(drawBranchSprite).includes('BRANCH_GLYPH') || BRANCH_GLYPH !== '🪾' || typeof branchRandomFor !== 'function' || String(tryCollectAmbientLog).includes('log.count--')) problems.push('Branches are leafless-tree glyphs scattered at random sizes and angles, and collect once (BRANCH-EMOJI-01, BRANCH-PICKUP-03).');
   if(String(drawMap).includes('drawOuterWastelandTrees(ctx)') || !String(maybeSpawnAmbientLog).includes('nearPathTileSet.has(key)')) problems.push('Only collectible branches belong on unrevealed dirt (BRANCH-WASTELAND-02).');
   if(SMALL_SCENERY_SIZE_MULTIPLIER !== 0.5 || smallSceneryHarvestCost(100) !== 50 || SMALL_SCENERY_BUDDY_CHANCE <= 0 || SMALL_SCENERY_BUDDY_CHANCE > 1) problems.push('nearby small trees and rocks must be half scale, half harvest cost and use a bounded spawn chance (SMALL-SCENERY-CLUSTERS-01)');
@@ -13926,6 +13942,8 @@ function validateDesignContract(){
   { const quickRow = document.getElementById('inspQuickSlots'), plate = document.getElementById('inspect-panel'); if(quickRow && plate && (plate.contains(quickRow) || getComputedStyle(quickRow).position !== 'absolute')) problems.push('the quick items are free floating buttons outside the faceplate; the faceplate never grows to hold them (QUICK-FLOAT-01)'); }
   if(/roll < 0\.0[4-9]\) type = '/.test(String(spawnScenery)) || typeof maybeSpawnRandomEventsOnExpansion !== 'function' || !String(finalizeRingExpansion).includes('maybeSpawnRandomEventsOnExpansion')) problems.push('each expansion makes one random event near the flags and one near the finish carpet, and chests, crates and bushes are never rolled on ordinary tiles (ONE-EVENT-PER-END-01)');
   if(!String(initAttractLoop).includes('SCENE-TIME-OF-DAY-01')) problems.push('each new attract scene changes the time of day (SCENE-TIME-OF-DAY-01)');
+  if(BONE_DROP_CHANCE >= 0.08 || typeof SHOVEL_CHARGES_PER_ROUND === 'undefined' || SHOVEL_CHARGES_PER_ROUND !== 3 || LOG_MAX_SCALE > 0.54 || !String(useStoredConsumable).includes('beginShovelDig') || !String(update).includes('resetShovelCharges(') || !String(digWithShovel).includes('dropGoldBag')) problems.push('bones stay rarer than skulls and blood, logs stay small, and the shovel has three digs per round that refill when a wave is cleared (GORE-RARITY-01, LOG-SIZE-01, SHOVEL-CHARGES-01)');
+  if(!STACKABLE_ITEM_IDS.has('HONEY') || typeof updateGroundItemDrift !== 'function' || !String(update).includes('updateGroundItemDrift(') || !/BEE'\) it\.e\.draw\(ctx\);[^\n]*\n\s*drawMarkedTargetIcon/.test(String(render))) problems.push('honey stacks in one slot, loose items drift to the nearest stickman whose range covers them and consumables are stored, and the pin is drawn after the bee (STACK-HONEY-01, ITEM-DRIFT-01, PIN-BEE-01)');
   if(!String(spawnBoneDebris).includes('BONE-SPREAD-01')) problems.push('bones vary in size with the enemy and spread evenly (BONE-SPREAD-01)');
   if(String(update).includes('driveRingReveal(') || !String(updatePresentationEffects).includes('driveRingReveal(') || RING_REVEAL_TARGET_MS < 1500) problems.push('the expand reveal is slow, clean and drawn in real time at every game speed (EXPAND-REALTIME-01)');
   if(pathTurnFirstChance < 0.7) problems.push('the road prefers turning when it grows so it never becomes a long straight line (PATH-WINDY-01)');
