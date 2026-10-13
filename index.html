@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.18">
+<meta name="application-version" content="1.8.28">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -11,7 +11,7 @@
 <link rel="canonical" href="https://sauerninja.github.io/StickTD/">
 <!-- Open Graph / social share preview -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="StickTD — Stick Tower Defense">
+<meta property="og:title" content="StickTD — Free Stick Tower Defense Game">
 <meta property="og:description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta property="og:image:width" content="1200">
@@ -22,7 +22,7 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:image:alt" content="StickTD artwork with stickman defenders overlooking a winding battlefield.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="StickTD — Stick Tower Defense">
+<meta name="twitter:title" content="StickTD — Free Stick Tower Defense Game">
 <meta name="twitter:description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta name="theme-color" content="#8a5a2a">
@@ -78,7 +78,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.18",
+  "softwareVersion": "1.8.28",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -103,6 +103,7 @@
       host = String(host || '').toLowerCase().replace(/\.$/, '');
       if(/(^|\.)(itch\.io|itch\.zone|hwcdn\.net)$/.test(host)) return 'itch.io';
       if(/(^|\.)(gamejolt\.com|gamejolt\.net|gjcdn\.net)$/.test(host)) return 'gamejolt';
+      if(/(^|\.)(newgrounds\.com|ungrounded\.net|ngfiles\.com)$/.test(host)) return 'newgrounds';
       if(/(^|\.)github\.io$/.test(host)) return 'github-pages';
       return '';
     }
@@ -129,6 +130,16 @@
     }
     return window.STICKTD_PLATFORM === 'android-app' ? 'android' : 'web';
   })();
+  // ANALYTICS-LABEL-01 (1.8.27): every report names where and what is being played in one pattern, <platform>/<build> (github-pages/web, itch.io/web, desktop-app/windows-x64). The page title and page address in Analytics are built from it, and referrer_site names the site that sent the player in the same short form.
+  window.STICKTD_PLAY_LABEL = window.STICKTD_PLATFORM + '/' + window.STICKTD_BUILD;
+  window.STICKTD_REFERRER_SITE = (function(){
+    var host = '';
+    try { host = new URL(document.referrer).hostname.toLowerCase(); } catch(e) {}
+    if(!host) return 'direct';
+    var sites = [['newgrounds',/(^|\.)(newgrounds\.com|ungrounded\.net)$/],['itch.io',/(^|\.)itch\.io$/],['github',/(^|\.)github\.(com|io)$/],['steam',/(^|\.)steamcommunity\.com$/],['youtube',/(^|\.)youtube\.com$/],['reddit',/(^|\.)reddit\.com$/],['search',/(^|\.)(google|bing|duckduckgo|yahoo)\./],['gamejolt',/(^|\.)gamejolt\.com$/]];
+    for(var i = 0; i < sites.length; i++) if(sites[i][1].test(host)) return sites[i][0];
+    return 'other';
+  })();
   // ANALYTICS-ACCURACY-01 (1.7.168): one destination; no pre-consent event replay.
   var STICKTD_MEASUREMENT_ID = 'G-B6H58BQ50N';
   var analyticsVersion = document.querySelector('meta[name="application-version"]').content;
@@ -142,8 +153,8 @@
   var analyticsDebug = new URLSearchParams(location.search).get('analytics_debug') === '1';
   function analyticsPageLocation(){
     var url = new URL(location.href);
-    if(window.STICKTD_PLATFORM === 'desktop-app' || window.STICKTD_PLATFORM === 'android-app' || !/^https?:$/.test(url.protocol)) return 'https://sauerninja.github.io/StickTD/';
-    var clean = new URL(url.origin + url.pathname);
+    var clean = new URL('https://sauerninja.github.io/StickTD/play/' + window.STICKTD_PLAY_LABEL);
+    if(window.STICKTD_PLATFORM === 'desktop-app' || window.STICKTD_PLATFORM === 'android-app' || !/^https?:$/.test(url.protocol)) return clean.href;
     // Keep campaign attribution; omit fragments, save data and arbitrary query strings.
     ['utm_source','utm_medium','utm_campaign','utm_id','utm_term','utm_content'].forEach(function(key){
       var value = url.searchParams.get(key);
@@ -151,6 +162,7 @@
     });
     return clean.href;
   }
+  function analyticsPageTitle(){ return 'StickTD · ' + window.STICKTD_PLAY_LABEL; }
   function installedClientId(){
     try {
       var stored = localStorage.getItem('sticktd_ga_client');
@@ -174,7 +186,7 @@
       gtag('config', STICKTD_MEASUREMENT_ID, Object.assign(installedApp ? { client_storage:'none', client_id:installedClientId() } : {}, {
         send_page_view:false, debug_mode:analyticsDebug, cookie_flags:'SameSite=None;Secure',
         allow_google_signals:false, allow_ad_personalization_signals:false,
-        page_location:analyticsPageLocation(), page_referrer:analyticsReferrer()
+        page_location:analyticsPageLocation(), page_referrer:analyticsReferrer(), page_title:analyticsPageTitle()
       }));
       var script = document.createElement('script');
       script.async = true;
@@ -186,7 +198,7 @@
       window.sticktdAnalyticsTagLoaded = true;
     }
     if(!analyticsPageViewSent){
-      window.trackEvent('page_view', { page_location:analyticsPageLocation(), page_referrer:analyticsReferrer(), page_title:document.title });
+      window.trackEvent('page_view', { page_location:analyticsPageLocation(), page_referrer:analyticsReferrer(), page_title:analyticsPageTitle() });
       analyticsPageViewSent = true;
     }
     if(window.onStickTDAnalyticsEnabled) window.onStickTDAnalyticsEnabled();
@@ -201,7 +213,7 @@
     if(!window.sticktdAnalyticsReady || !/^[a-z][a-z0-9_]{0,39}$/.test(name)) return false;
     if(window.sticktdAnalyticsStatus === 'blocked_or_failed' || (window.sticktdAnalyticsStatus === 'loading' && analyticsPendingEvents >= 200)){ window.sticktdAnalyticsDropped++; return false; }
     try{
-      var clean = { game_version:analyticsVersion, platform:window.STICKTD_PLATFORM, build:window.STICKTD_BUILD, telemetry_schema:2 };
+      var clean = { game_version:analyticsVersion, platform:window.STICKTD_PLATFORM, build:window.STICKTD_BUILD, play_label:window.STICKTD_PLAY_LABEL, referrer_site:window.STICKTD_REFERRER_SITE, telemetry_schema:2 };
       Object.keys(params || {}).forEach(function(key){
         if(!/^[a-z][a-z0-9_]{0,39}$/.test(key) || ['source','medium','campaign','term','content','value','currency','send_to'].includes(key)) return;
         var value = params[key];
@@ -477,9 +489,9 @@
   .telemetry-bar span{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,rgba(241,196,15,0.85),rgba(241,196,15,0.45));}
   .telemetry-bar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.72em;color:#fff;text-shadow:0 1px 2px #000;font-weight:normal;}
   .telemetry-head{color:#aab4bd;font-size:0.72em;text-transform:uppercase;letter-spacing:0.5px;}
-  #itemCodexList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
-  #itemCodexList li{background:rgba(0,0,0,0.25);border:1px solid var(--wood-light);border-radius:6px;padding:5px 8px;}
-  #itemCodexList li.unseen{opacity:0.5;}
+  #itemCodexList,#medalList{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;}
+  #itemCodexList li,#medalList li{background:rgba(0,0,0,0.25);border:1px solid var(--wood-light);border-radius:6px;padding:5px 8px;}
+  #itemCodexList li.unseen,#medalList li.unseen{opacity:0.5;}
   #settings-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:4px;padding:8px 10px;border-bottom:1px solid var(--wood-light);}
   #settings-tabs::-webkit-scrollbar{display:none;}
   .settings-tab{flex:0 0 auto;white-space:nowrap;background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
@@ -881,7 +893,7 @@
   #titleWordmark svg{width:min(740px,92vw);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,0.55));}
   #versionTag{font-size:clamp(15px,2.6vw,22px);font-weight:700;letter-spacing:0.12em;color:var(--paper);opacity:0.85;margin-top:2px;text-shadow:0 2px 0 #000;}
   #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
-  #end-screen #endMessage{white-space:pre-line;text-align:center;}
+  #end-screen #endMessage,#end-screen #endRunSummary{white-space:pre-line;text-align:center;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;}
   .quality-label{font-size:clamp(11px,1.8vw,14px);opacity:0.85;}
@@ -1238,6 +1250,7 @@
           <button class="settings-tab" data-tab="audio">🔊 Audio</button>
           <button class="settings-tab" data-tab="game">🎮 Game</button>
           <button class="settings-tab" data-tab="items">📖 Items</button>
+          <button class="settings-tab" data-tab="medals">🏅 Medals</button>
           <button class="settings-tab" data-tab="stats">📊 Stats</button>
           <button class="settings-tab" data-tab="about">ℹ️ About</button>
           <button class="settings-tab" data-tab="changes">🗒️ Changes</button>
@@ -1284,6 +1297,10 @@
             <p id="itemCodexSummary"></p>
             <ul id="itemCodexList"></ul>
           </div>
+          <div class="settings-panel hidden" data-panel="medals">
+            <p id="medalSummary"></p>
+            <ul id="medalList"></ul>
+          </div>
           <div class="settings-panel hidden" data-panel="stats">
             <p class="stats-hint">Per-tower telemetry for this run. Bars are relative to your best tower in each column.</p>
             <div id="towerTelemetry"></div>
@@ -1292,12 +1309,15 @@
             <div class="audio-mix-control"><label for="audioMasterVolume">Overall <output id="audioMasterValue">100%</output></label><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Overall volume"></div>
             <div class="audio-mix-control"><label for="audioMusicVolume">Music <output id="audioMusicValue">100%</output></label><input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Music volume"></div>
             <div class="audio-mix-control"><label for="audioSfxVolume">Sound effects <output id="audioSfxValue">100%</output></label><input id="audioSfxVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound effects volume"></div>
-            <p class="stats-hint">The field arrangement is calm; the same theme gains a light pulse during waves. Music stays at the same tempo when you fast-forward.</p>
+            <p class="stats-hint">The field arrangement is calm; the same theme gains a light pulse during waves, and the wave theme is titled Path to Victory. Music stays at the same tempo when you fast-forward.</p>
             <label><input type="checkbox" id="settingsMuteToggle"> Mute all sound</label>
           </div>
           <div class="settings-panel hidden" data-panel="game">
             <label><input type="checkbox" id="settingsDebugToggle"> 🛠️ Debug overlay — FPS, entities, wave phase, version (default off)</label>
             <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
+            <label><input type="checkbox" id="settingsMedalToggle"> 🏅 Medal notifications (default on)</label>
+            <label>🎲 Seed for your next run (blank = random) <input type="text" id="settingsRunSeed" maxlength="24" autocomplete="off" style="width:130px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;"></label>
+            <p id="runSeedNote" class="stats-hint"></p>
             <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
 
             <p id="analyticsConsentState">Analytics are off until you choose to allow them.</p>
@@ -1490,7 +1510,10 @@
     <div id="end-screen" class="hidden">
       <h1 id="endTitle">Game Over</h1>
       <p id="endMessage"></p>
+      <p id="endRunSummary"></p>
       <button class="big-btn" id="restartBtn">↻ Play Again</button>
+      <button class="link-btn" id="endCopySeedBtn">🎲 Copy run seed</button>
+      <button class="link-btn hidden" id="endRateBtn">⭐ Rate or comment on this page</button>
       <button class="link-btn" id="endDownloadLogBtn">📋 Debug log</button>
     </div>
 
@@ -1514,9 +1537,9 @@
     });
   })();
 </script>
-<script src="js/config.js?v=1.8.18"></script>
-<script src="js/environment.js?v=1.8.18"></script>
-<script src="js/towers.js?v=1.8.18"></script>
-<script src="js/waves.js?v=1.8.18"></script>
+<script src="js/config.js?v=1.8.28"></script>
+<script src="js/environment.js?v=1.8.28"></script>
+<script src="js/towers.js?v=1.8.28"></script>
+<script src="js/waves.js?v=1.8.28"></script>
 </body>
 </html>

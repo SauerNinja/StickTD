@@ -355,6 +355,7 @@ function startNextWave(){
   waveStartGold = gold; // snapshot for the wave-end summary popup's gold-gained readout
   Object.assign(waveTelemetry, { activeAtStartMs:telemetryActiveMs(), startedAtGameTime: gameTime, livesAtStart: lives, goldAtStart: gold, escaped: 0, towersDowned: 0, loosePeak: countLooseEnemies(), looseDrainLives: 0, lagReported: false });
   waveMaxHpGainedFromMeat = 0;
+  announceActStart(waveIndex);
   trackGameEvent('wave_started', { wave: waveIndex, lives, gold, towers: countActiveTowers(), loose: countLooseEnemies(), unlocked_towers: unlockedTowerTypes.size });
   for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
@@ -533,15 +534,25 @@ function maybeShowWaveTutorialTip(){
 }
 // CA647 — see HISTORY.md § [1.5.7] Code Archaeology, CA647
 const MAX_EXTRA_BUILDINGS_ON_BOARD = 3;
+// EVENT-PACING-01 (1.8.25): a random hostile event (wandering troll, extra building, circus) needs a breather behind it, so after one appears the next wave clear brings only peaceful events.
+const HOSTILE_EVENT_BREATHER_WAVES = 2;
+let lastHostileEventWave = -HOSTILE_EVENT_BREATHER_WAVES;
 function runWaveClearRandomEvents(){
   runCircusRoundEnd();
   maybeSpawnBee();
+  const trollBefore = trollIsOnBoard();
   maybeSpawnGuaranteedTroll();
+  if(!trollBefore && trollIsOnBoard()) lastHostileEventWave = wavesCompleted;
+  const hostileAttempts = new Set([maybeSpawnWanderingTroll, maybeSpawnExtraBuilding, maybeSpawnCircus]);
   const attempts = [maybeSpawnWanderingTroll, maybeSpawnChanceStructures, maybeSpawnExtraBuilding, maybeSpawnCircus];
   shuffleArray(attempts); // shuffled order; expansion-wide cap prevents event floods
   for(const attempt of attempts){
     if(randomEventSlotsUsed >= 2) break;
+    if(!hostileAttempts.has(attempt)){ attempt(); continue; }
+    if(wavesCompleted - lastHostileEventWave < HOSTILE_EVENT_BREATHER_WAVES) continue;
+    const slotsBefore = randomEventSlotsUsed, trollWasOnBoard = trollIsOnBoard();
     attempt();
+    if(randomEventSlotsUsed > slotsBefore || (!trollWasOnBoard && trollIsOnBoard())) lastHostileEventWave = wavesCompleted;
   }
 }
 function maybeSpawnExtraBuilding(){
@@ -688,7 +699,7 @@ const WAVE_COUNTDOWN_MS = 3000;
 const WAVE_COUNTDOWN_GO_HOLD_MS = 500; // how long the "GO!" label lingers after the 3-2-1 finishes, before drawWaveCountdown() stops drawing it — hoisted here (was a local const inside drawWaveCountdown()) so loop()'s real-time countdown advance uses the exact same upper bound
 // CA246 — see HISTORY.md § [1.5.7] Code Archaeology, CA246
 const WAVE_CLEAR_XP_BASE = 8, WAVE_CLEAR_XP_PER_WAVE = 1.5;
-let waveRunSeed = (Math.random() * 4294967296) >>> 0;
+let waveRunSeed = runSeedFor(0xA3);
 let activeWavePlan = null;
 const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
 // CA626 — see HISTORY.md § [1.5.7] Code Archaeology, CA626
@@ -1589,7 +1600,7 @@ class Enemy{
       this.breakAttackTimer -= dt;
       if(this.breakAttackTimer <= 0){
         this.breakAttackTimer = Math.round(800 * ENEMY_ATTACK_INTERVAL_SCALE);
-        const defeated = t.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower);
+        const defeated = t.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower, this);
         if(this.holyLifesteal){
           const healed = Math.min(this.maxHp - this.hp, Math.round(this.breakDamage*0.5));
           if(healed > 0) this.hp += healed;
@@ -1669,7 +1680,7 @@ class Enemy{
         this.escapedAttackTimer -= dt;
         if(this.escapedAttackTimer <= 0){
           this.escapedAttackTimer = 800; // same cadence as the normal on-path breakaway attack
-          const defeated = t.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower);
+          const defeated = t.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower, this);
           // CA304 — see HISTORY.md § [1.5.7] Code Archaeology, CA304
           if(defeated && t === this.escapedAttackTarget){ this.escapedAttackTarget = null; this.attackBumpTarget = null; }
         }
@@ -1756,7 +1767,7 @@ class Enemy{
           this.guardAttackTimer = (this.guardAttackTimer||0) - dt;
           if(this.guardAttackTimer <= 0){
             this.guardAttackTimer = Math.round(800 * ENEMY_ATTACK_INTERVAL_SCALE); // same cadence updateBreakaway() uses
-            leader.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower);
+            leader.takeDamage(Math.max(1, Math.round(this.breakDamage * ENEMY_DAMAGE_SCALE * this.bossDamageMult())), this.statusOnTower, this);
           }
         }
         return;

@@ -17,7 +17,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.18'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.28'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -1510,10 +1510,23 @@ let decalBudgetOverride = null;
 let builtTowerTypesThisSession = new Set(); // which tower types have been built this session — see the tower_built GA event
 const extendedDiagnostics = { workloadOver33:0, workloadOver50:0, workloadOver100:0, gapOver33:0, gapOver50:0, gapOver100:0, decalRebuilds:{count:0,totalMs:0,maxMs:0,lastMs:0,lastStamps:0,over8ms:0}, saves:[], deaths:[], transitions:[], context:[], lastContextAt:-Infinity, lastContextKey:'' };
 const PREFS_KEY = 'sticktd:prefs:v1';
+// RUN-SEED-01 (1.8.26): every run is built from a short code. A code typed in Settings > Game is used once for the next run; otherwise a random one is made and shown on the end screen, so any run can be replayed.
+const RUN_SEED_KEY = 'sticktd:seed:v1';
+function hashSeedText(text, salt){
+  let hash = (2166136261 ^ salt) >>> 0;
+  for(let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619) >>> 0;
+  return hash >>> 0;
+}
+const runSeedCode = (function(){
+  let typed = '';
+  try{ typed = (localStorage.getItem(RUN_SEED_KEY) || '').trim().toUpperCase().slice(0, 24); localStorage.removeItem(RUN_SEED_KEY); }catch(err){ /* storage unavailable: a random code is used */ }
+  return typed || Math.random().toString(36).slice(2, 8).toUpperCase();
+})();
+function runSeedFor(salt){ return hashSeedText(runSeedCode, salt); }
 function savePrefs(){
   const started = performance.now();
   try{
-    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, bloodDropletsEnabled, hacksEnabled, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, decalBudgetOverride });
+    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, bloodDropletsEnabled, hacksEnabled, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, medalNotificationsEnabled, decalBudgetOverride });
     const jsonDone = performance.now();
     localStorage.setItem(PREFS_KEY,payload);
     retainDiagnostic(extendedDiagnostics.saves,{time:new Date().toISOString(),kind:'preferences',success:true,jsonMs:jsonDone-started,writeMs:performance.now()-jsonDone,codeUnits:payload.length},20);
@@ -1538,6 +1551,7 @@ function loadPrefs(){
     if(typeof p.showFpsCounter === 'boolean') showFpsCounter = p.showFpsCounter;
     if(typeof p.debugOverlay === 'boolean') debugOverlay = p.debugOverlay;
     if(typeof p.autoCameraPans === 'boolean') autoCameraPans = p.autoCameraPans;
+    if(typeof p.medalNotificationsEnabled === 'boolean') medalNotificationsEnabled = p.medalNotificationsEnabled;
     if(typeof p.screenShakeEnabled === 'boolean'){ screenShakeEnabled = p.screenShakeEnabled; screenShakeUserSet = true; }
     else screenShakeEnabled = graphicsQuality === 'high' && !PREFERS_REDUCED_MOTION;
     if(typeof p.frameCapEnabled === 'boolean') frameCapEnabled = p.frameCapEnabled;
@@ -1918,6 +1932,7 @@ let enemyPresenceDirty = true, laneEnemiesPresent = false, targetableWandererPre
 function setMarkedTarget(enemy){
   markedTargetEnemy = enemy;
   enemyPresenceDirty = true;
+  if(enemy && enemy.type === 'BEE') awardMedal('BEE_WATCHER');
   if(enemy) trackGameEvent('target_marked', { target_type: enemy.isLivestock ? 'livestock' : 'enemy', enemy_type: enemy.type });
 }
 function tryMarkTargetAt(worldX, worldY){
@@ -2006,14 +2021,96 @@ function renderNotificationPanel(){
   const unread = countUnreadNotifications(notificationHistory);
   document.getElementById('notification-badge').textContent = unread ? ' ' + unread : '';
 }
-function recordNotification(message, explanation, enemyTypes){
-  if(!introTextEnabled) return null;
+function recordNotification(message, explanation, enemyTypes, always){
+  if(!introTextEnabled && !always) return null;
   const entry = { id: ++notificationIdSequence, message: notificationTitle(message), explanation: explanation || (notificationTitle(message) !== message ? message : defaultNotificationExplanation(message)), read: false };
   if(enemyTypes && enemyTypes.length) entry.enemyTypes = enemyTypes.slice();
   notificationHistory.push(entry);
   if(notificationHistory.length > 60) notificationHistory.shift();
   renderNotificationPanel();
   return entry.id;
+}
+// RUN-PROGRESS-01 (1.8.26): named acts, medals and an end-of-run summary. Medals and the best run are remembered in this browser; acts are announced in Notifications.
+const ACT_NAMES = Object.freeze(['The Meadow Road', 'Pinewood Passage', 'Sunburnt Dunes', 'The Long Detour', 'Crow Hill', 'Stonewater Crossing', 'The Hollow Mile', 'Ember Pass', 'The Last Camp', 'The North Road']);
+const ACT_NUMERALS = Object.freeze(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
+function actNumberForWave(wave){ return clampNum(Math.ceil(Math.max(1, wave) / 10), 1, ACT_NAMES.length); }
+function actTitleForWave(wave){ const act = actNumberForWave(wave); return 'Act ' + ACT_NUMERALS[act - 1] + ' — ' + ACT_NAMES[act - 1]; }
+function announceActStart(wave){
+  if(wave % 10 !== 1) return;
+  recordNotification('🗺️ ' + actTitleForWave(wave), 'A new act begins on wave ' + wave + '. Each act is ten waves long.', undefined, true);
+  trackGameEvent('act_started', { act: actNumberForWave(wave), act_name: ACT_NAMES[actNumberForWave(wave) - 1] });
+}
+const MEDALS_KEY = 'sticktd:medals:v1', BEST_RUN_KEY = 'sticktd:bestrun:v1';
+const MEDAL_DEFS = Object.freeze([
+  { id:'FIRST_STEPS', icon:'🥉', name:'First Steps', text:'Clear wave 1.' },
+  { id:'TEN_DOWN', icon:'🥈', name:'Ten Down', text:'Clear wave 10.' },
+  { id:'FLAWLESS_TEN', icon:'🛡️', name:'Flawless Ten', text:'Clear wave 10 without losing a single life.' },
+  { id:'QUARTER', icon:'🥇', name:'Quarter Century', text:'Clear wave 25.' },
+  { id:'HALFWAY', icon:'🏆', name:'Halfway There', text:'Clear wave 50.' },
+  { id:'CENTURY', icon:'👑', name:'Path to Victory', text:'Clear wave 100.' },
+  { id:'CARTOGRAPHER', icon:'🗺️', name:'Cartographer', text:'Expand the map five times.' },
+  { id:'DIGGER', icon:'🪏', name:'Digger', text:'Dig with a shovel.' },
+  { id:'TREASURE', icon:'🧰', name:'Treasure Hunter', text:'Dig up a treasure chest.' },
+  { id:'BEE_WATCHER', icon:'🐝', name:'Bee Watcher', text:'Pin a bee.' },
+  { id:'HONEY_HOARDER', icon:'🍯', name:'Honey Hoarder', text:'Carry five honey at once.' },
+  { id:'ENRAGED', icon:'😡', name:'Seeing Red', text:'Have a stickman fly into a rage.' },
+  { id:'HOT_STREAK', icon:'🔥', name:'Hot Streak', text:'Trigger a killstreak.' },
+  { id:'CHEF', icon:'🍳', name:'Camp Chef', text:'Start a recipe at a campfire.' }
+]);
+let medalNotificationsEnabled = true;
+const earnedMedals = new Set();
+try{ for(const id of JSON.parse(localStorage.getItem(MEDALS_KEY) || '[]')) if(MEDAL_DEFS.some(def => def.id === id)) earnedMedals.add(id); }catch(err){ /* storage unavailable: medals last for this session */ }
+function renderMedalList(){
+  const list = document.getElementById('medalList'), summary = document.getElementById('medalSummary');
+  if(!list || !summary) return;
+  summary.textContent = earnedMedals.size + ' of ' + MEDAL_DEFS.length + ' medals earned.';
+  list.textContent = '';
+  for(const def of MEDAL_DEFS){
+    const row = document.createElement('li');
+    row.classList.toggle('unseen', !earnedMedals.has(def.id));
+    row.title = def.text;
+    row.textContent = (earnedMedals.has(def.id) ? def.icon : '🔒') + ' ' + def.name + ' — ' + def.text;
+    list.appendChild(row);
+  }
+}
+function awardMedal(id){
+  if(earnedMedals.has(id)) return;
+  const def = MEDAL_DEFS.find(medal => medal.id === id);
+  if(!def) return;
+  earnedMedals.add(id);
+  try{ localStorage.setItem(MEDALS_KEY, JSON.stringify([...earnedMedals])); }catch(err){ /* storage unavailable: medals last for this session */ }
+  renderMedalList();
+  trackGameEvent('medal_earned', { medal: id, medals_total: earnedMedals.size });
+  if(medalNotificationsEnabled) recordNotification(def.icon + ' Medal: ' + def.name, def.text, undefined, true);
+}
+function awardWaveMedals(){
+  if(wavesCompleted >= 1) awardMedal('FIRST_STEPS');
+  if(wavesCompleted >= 10) awardMedal('TEN_DOWN');
+  if(wavesCompleted === 10 && lives >= 100) awardMedal('FLAWLESS_TEN');
+  if(wavesCompleted >= 25) awardMedal('QUARTER');
+  if(wavesCompleted >= 50) awardMedal('HALFWAY');
+  if(wavesCompleted >= 100) awardMedal('CENTURY');
+}
+let sessionKills = 0, bestKillStreak = 0, runEndedAsBest = false;
+// RUN-SHARE-01 (1.8.28): gamers can copy the run seed from the end screen, and players on a storefront build get a button to that storefront's page to rate or comment.
+const PLATFORM_RATING_PAGES = Object.freeze({ 'itch.io':'https://sauerninja.itch.io/sticktd', gamejolt:'https://gamejolt.com/games/sticktd/1103755' });
+function copyRunSeed(button){
+  const done = () => { button.textContent = '✓ Seed copied'; };
+  try{ navigator.clipboard.writeText(runSeedCode).then(done, () => { button.textContent = 'Seed ' + runSeedCode; }); }catch(err){ button.textContent = 'Seed ' + runSeedCode; }
+}
+function describeRunEnd(){
+  let best = null;
+  try{ best = JSON.parse(localStorage.getItem(BEST_RUN_KEY) || 'null'); }catch(err){ /* storage unavailable: no personal best */ }
+  const reached = Math.max(waveIndex, wavesCompleted);
+  const isNewBest = !best || !(best.wave >= reached);
+  runEndedAsBest = isNewBest;
+  if(isNewBest){ try{ localStorage.setItem(BEST_RUN_KEY, JSON.stringify({ wave: reached, kills: sessionKills })); }catch(err){ /* storage unavailable */ } }
+  return [
+    'Reached wave ' + reached + ' — ' + actTitleForWave(reached),
+    sessionKills + ' kills · best streak ' + bestKillStreak,
+    isNewBest ? '★ New personal best' : 'Personal best: wave ' + best.wave,
+    'Run seed ' + runSeedCode
+  ].join('\n');
 }
 function toggleNotificationPanel(open){
   const panel = document.getElementById('notification-panel');
@@ -2693,6 +2790,7 @@ function gainTowerExp(tower, amount){
 function creditKill(tower, forStreak, lastHitXp){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
+  sessionKills++;
   gainTowerExp(tower, lastHitXp);
   tower.waveLastHits = (tower.waveLastHits || 0) + 1;
   spawnXpText(tower.x + 12, tower.y - 22, lastHitXp, true);
@@ -2706,8 +2804,10 @@ function creditKill(tower, forStreak, lastHitXp){
   killstreakHolder = tower;
   tower.lastKillTime = gameTime;
   tower.killStreak++;
+  bestKillStreak = Math.max(bestKillStreak, tower.killStreak);
   while(tower.nextStreakTier < KILLSTREAK_TIERS.length && tower.killStreak >= KILLSTREAK_TIERS[tower.nextStreakTier].count){
     showKillstreakBanner(KILLSTREAK_TIERS[tower.nextStreakTier].label);
+    awardMedal('HOT_STREAK');
     tower.bloodLustUntil = gameTime + 12000;
     if(autoCameraPans) panCameraToTower(tower);
     tower.nextStreakTier++;
@@ -3518,21 +3618,23 @@ const BARRICADE_CHUNK_LIFE_MS = 1100;
 const BARRICADE_RUBBLE_LIFESPAN = 90000; // timber/stone lies in the dirt for ~90s, then fades out over its final 10% — cut down from 5 minutes: a hut fight (16x a normal enemy's HP, so many more hits land over its lifetime than a 10-HP barricade ever takes) was piling up rubble far faster than it could clear, and the pieces are explicitly protected from the decal-cap eviction that recycles everything else (see pushDecal()'s isEmojiDrop skip), so nothing else was ever going to thin them out either
 const barricadeChunks = Array.from({ length: 64 }, () => ({ active:false }));
 let barricadeChunkIndex = 0;
-function spawnBarricadeChunk(x, y, isStone){
+function spawnBarricadeChunk(x, y, isStone, awayAngle, leavesRubble = true){
   const chunk = barricadeChunks[barricadeChunkIndex];
   barricadeChunkIndex = (barricadeChunkIndex + 1) % barricadeChunks.length;
   // CA485 — see HISTORY.md § [1.5.7] Code Archaeology, CA485
-  const angle = Math.random() * Math.PI * 2;
-  const speed = 60 + Math.random() * 120;
+  const directed = Number.isFinite(awayAngle);
+  const angle = directed ? awayAngle + (Math.random() - 0.5) * 1.1 : Math.random() * Math.PI * 2;
+  const speed = directed ? 110 + Math.random() * 130 : 60 + Math.random() * 120;
+  chunk.leavesRubble = leavesRubble;
   chunk.active = true;
   chunk.x = x; chunk.y = y;
   chunk.vx = Math.cos(angle) * speed;
   chunk.vy = Math.sin(angle) * speed * 0.6; // squashed vertically for the game's shallow top-down perspective
-  chunk.lift = 0; chunk.liftV = 90 + Math.random() * 130;
+  chunk.lift = 0; chunk.liftV = directed ? 170 + Math.random() * 150 : 90 + Math.random() * 130;
   chunk.rot = Math.random() * Math.PI * 2;
   chunk.spin = (Math.random() - 0.5) * 9;
   chunk.char = isStone ? '🪨' : '🪵';
-  chunk.size = (isStone ? 6 : 7) + Math.random() * 3;
+  chunk.size = (isStone ? 8 : 9) + Math.random() * 4;
   chunk.life = BARRICADE_CHUNK_LIFE_MS;
   chunk.landed = false;
 }
@@ -3552,7 +3654,7 @@ function updateBarricadeChunks(dt){
         chunk.lift = 0;
         chunk.landed = true;
         chunk.life = Math.min(chunk.life, 260); // brief settle, then the permanent ground piece takes over
-        pushDecal({
+        if(chunk.leavesRubble) pushDecal({
           x: chunk.x, y: chunk.y,
           color: '#fff', rgb: { r:255, g:255, b:255, a:1 }, lifespan: BARRICADE_RUBBLE_LIFESPAN, spawnTime: presentationTime,
           isEmojiDrop: true, isRubble: true, char: chunk.char, size: chunk.size, rot: chunk.rot
@@ -4643,6 +4745,16 @@ function forensicSpatterProfile(sourceTower, profileKey){
 }
 function weaponBloodAngle(victim, sourceTower, incomingAngle){
   return Number.isFinite(incomingAngle) ? incomingAngle : sourceTower ? Math.atan2(victim.y-sourceTower.y,victim.x-sourceTower.x) : Math.PI/2;
+}
+const STICKMAN_BLOOD = Object.freeze({ bright:'#c1121f', dark:'#6b0f1a', spray:'#e5383b', isDust:false, viscous:false });
+const STICKMAN_RAGE_CHANCE = 0.05, STICKMAN_RAGE_MS = 6000, STICKMAN_RAGE_DAMAGE = 1.3, STICKMAN_RAGE_SPEED = 1.25;
+// STICKMAN-WOUND-01 (1.8.20): a stickman struck by an enemy bleeds with the same spatter, stains and droplets as an enemy does, thrown away from the attacker.
+function spawnStickmanWound(tower, attacker, damage){
+  if(!goreMode) return;
+  const angle = Math.atan2(tower.y - attacker.y, tower.x - attacker.x);
+  const power = clampNum(0.45 + damage / Math.max(1, tower.maxHp) * 5, 0.45, 1.5);
+  spawnForensicSpatter(tower.x, tower.y, STICKMAN_BLOOD, null, power, false, 1, graphicsQuality === 'low' || underHeavyVisualLoad, tower, angle);
+  spawnParticles(tower.x, tower.y, STICKMAN_BLOOD.bright, Math.max(2, Math.round(5 * power)), 110, 0.9, true, angle, 0.9, undefined, true);
 }
 function spawnWeaponBloodContact(victim, sourceTower, incomingAngle, profileKey){
   if(!goreMode || victim.isHutBuilding) return;
@@ -6653,13 +6765,13 @@ function barricadeAttackReady(barricade){
   return gameTime - since >= BARRICADE_HIT_INTERVAL_MS;
 }
 // One point off, with the wood-and-stone burst that sells it.
-function chipBarricade(barricade){
+function chipBarricade(barricade, attacker){
   barricade.lastBarricadeHitAt = gameTime;
   barricade.barricadeHpLabelUntil = gameTime + 2000;
   barricade.hp = Math.max(0, barricade.hp - 1);
   barricade.barricadeChipUntil = gameTime + BARRICADE_CHIP_MS;
   spawnFloatingText(barricade.x, barricade.y - 26, '-1', '#e63946');
-  spawnBarricadeDebris(barricade);
+  spawnBarricadeStrikeDebris(barricade, attacker, true);
   playSound('hit', barricade.x);
   if(screenShakeEnabled){ screenShakeUntil = presentationTime + 140; screenShakeMag = Math.max(screenShakeMag, 4); }
   if(barricade.hp <= 0){
@@ -6673,6 +6785,14 @@ function chipBarricade(barricade){
   }
 }
 // CA605 — see HISTORY.md § [1.5.7] Code Archaeology, CA605
+// BARRICADE-STRIKE-01 (1.8.20): every enemy strike on a barricade throws wood and stone away from the attacker; the strike that removes a point also leaves rubble.
+function spawnBarricadeStrikeDebris(barricade, attacker, isChip){
+  const awayAngle = attacker ? Math.atan2(barricade.y - attacker.y, barricade.x - attacker.x) : undefined;
+  spawnParticles(barricade.x, barricade.y, '#b07a3a', isChip ? 5 : 3, 140, 0.9, false, awayAngle, 1.2);
+  if(isChip || Math.random() < 0.5) spawnBarricadeChunk(barricade.x, barricade.y - 6, true, awayAngle, isChip);
+  const woodPieces = isChip ? 2 : 1;
+  for(let i = 0; i < woodPieces; i++) spawnBarricadeChunk(barricade.x, barricade.y - 6, false, awayAngle, isChip);
+}
 function spawnBarricadeDebris(barricade){
   spawnParticles(barricade.x, barricade.y, '#b07a3a', 4);
   spawnParticles(barricade.x, barricade.y, '#9aa0a6', 3);
@@ -7118,6 +7238,7 @@ function update(dt){
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
       clearDonutShieldAtWaveEnd();
       clearRoundBuffs();
+      awardWaveMedals();
       resetShovelCharges();
       beginRoundDebrisCleanup();
       if(lives < 20) barkFromRandomTower(BARK_TIER_IMPORTANT, '😮‍💨', BARK_LINES.CLOSE_CALL, BARK_CHANCE.CLOSE_CALL);
@@ -9069,7 +9190,7 @@ const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX 
 const AUDIO_UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']; // AUDIO-GESTURE-01 (1.7.107); declared here, before the design contract runs
 const MUSIC_TEMPO_BPM = 104;
 const MUSIC_COMBAT_TEMPO_BPM = 144;
-const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 0, 5, 7, 3]; // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
+const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 10, 2, 0, 7, 5, 8, 3, 10]; // MUSIC-JOURNEY-01 (1.8.20): twelve cycles before the key path repeats, up from eight // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
 const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
 function mulberry32(seed){ let a = seed|0; return function(){ a = (a + 0x6D2B79F5)|0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const FIELD_MELODY_B = [ // the contrasting second theme: slower, stepwise, higher, leaning on the relative major
@@ -9107,6 +9228,8 @@ const MUSIC_ARPEGGIO_SHAPE = [0, 1, 2, 3, 2, 1];
 const MUSIC_TURNAROUND_RUN = [-17, -14, -12, -9, -7, -5, -3, -1];
 const MUSIC_TOM_PITCHES = [150, 128, 108, 92];
 const MUSIC_TIMPANI_HZ = 84;
+const MUSIC_DUCKED_KINDS = new Set(['pad', 'harmony', 'pluck', 'warm']), MUSIC_LEAD_DUCK = 0.8, MUSIC_LEAD_SWELL = 1.15, MUSIC_LEAD_OCTAVE_LEVEL = 0.22;
+const MUSIC_LEITMOTIF = Object.freeze([[0, 0, 2], [2, 7, 2], [4, 12, 2], [6, 14, 1], [7, 12, 1]]);
 const MUSIC_VIBRATO_CENTS = 16;
 const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
 const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
@@ -9122,16 +9245,16 @@ const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
 const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
 const POP_VOICES = {
   warm: { wave: 'triangle', detunes: [0], attack: 0.035, sustain: 0.55, decay: 0.45, release: 0.12, cutoffStart: 2200, cutoffEnd: 1400, cutoffTime: 0.7, q: 0.3, echo: true },
-  lead:  { wave: 'sawtooth', detunes: [-7, 7], attack: 0.008, sustain: 0.75, decay: 0.35, release: 0.07, cutoffStart: 5200, cutoffEnd: 3000, cutoffTime: 0.5, q: 0.6, echo: true },
+  lead:  { vibrato: { rate: 5.6, cents: 9, delay: 0.18 }, wave: 'sawtooth', detunes: [-7, 7], attack: 0.008, sustain: 0.75, decay: 0.35, release: 0.07, cutoffStart: 5200, cutoffEnd: 3000, cutoffTime: 0.5, q: 0.6, echo: true },
   harmony: { wave: 'sawtooth', detunes: [0], attack: 0.01, sustain: 0.7, decay: 0.35, release: 0.06, cutoffStart: 3600, cutoffEnd: 2200, cutoffTime: 0.5, q: 0.5, echo: false },
   pad:   { wave: 'sawtooth', detunes: [0], attack: 0.07, sustain: 0.8, decay: 0.5, release: 0.3, cutoffStart: 1500, cutoffEnd: 1100, cutoffTime: 0.8, q: 0.3, echo: false },
   pluck: { wave: 'square', detunes: [0], attack: 0.003, sustain: 0.12, decay: 0.3, release: 0.04, cutoffStart: 8000, cutoffEnd: 1000, cutoffTime: 0.35, q: 0.8, echo: true },
   bass:  { wave: 'sawtooth', detunes: [0], sub: true, attack: 0.004, sustain: 0.55, decay: 0.4, release: 0.04, cutoffStart: 1500, cutoffEnd: 420, cutoffTime: 0.4, q: 1.2, echo: false },
-  oboe:  { wave: 'sawtooth', detunes: [-4, 4], attack: 0.05, sustain: 0.7, decay: 0.4, release: 0.12, cutoffStart: 2000, cutoffEnd: 1300, cutoffTime: 0.6, q: 1.4, echo: true },
+  oboe:  { vibrato: { rate: 5.2, cents: 11, delay: 0.22 }, wave: 'sawtooth', detunes: [-4, 4], attack: 0.05, sustain: 0.7, decay: 0.4, release: 0.12, cutoffStart: 2000, cutoffEnd: 1300, cutoffTime: 0.6, q: 1.4, echo: true },
   bell:  { wave: 'sine', detunes: [0], fmRatio: 3.5, fmIndex: 3.2, attack: 0.002, sustain: 0.1, decay: 0.5, release: 0.05, cutoffStart: 9000, cutoffEnd: 5000, cutoffTime: 0.6, q: 0.3, echo: true }
 };
 // MUSIC-SPACE-01 (1.7.116): tonal voices are spread across the stereo field by pitch, alternating sides note by note (leads stay near the centre), and sent to a short stereo hall; the music bus gets a gentle low-mid cut so the bass and chords stop masking the melody, and the idle theme opens its lowpass from 3200 to 4200 Hz for air.
-const MUSIC_PAN_FLOOR_HZ = 240, MUSIC_PAN_SPAN_HZ = 1500, MUSIC_PAN_MAX = 0.6, MUSIC_PAN_LEAD_SHARE = 0.3, MUSIC_REVERB_SEND = 0.2, MUSIC_REVERB_SECONDS = 1.9, MUSIC_MUD_CUT_HZ = 280, MUSIC_MUD_CUT_DB = -2.5, MUSIC_FIELD_FILTER_HZ = 4200, MUSIC_MAKEUP_GAIN = 1.33, MUSIC_SECTION_LEVEL = [0.88, 1, 1.12], MUSIC_AIR_HZ = 3500, MUSIC_AIR_DB = 2.5;
+const MUSIC_PAN_FLOOR_HZ = 240, MUSIC_PAN_SPAN_HZ = 1500, MUSIC_PAN_MAX = 0.6, MUSIC_PAN_LEAD_SHARE = 0.3, MUSIC_REVERB_SEND = 0.2, MUSIC_REVERB_SECONDS = 1.9, MUSIC_MUD_CUT_HZ = 280, MUSIC_MUD_CUT_DB = -2.5, MUSIC_FIELD_FILTER_HZ = 4200, MUSIC_MAKEUP_GAIN = 1.75, MUSIC_SECTION_LEVEL = [0.92, 1.02, 1.16], MUSIC_AIR_HZ = 3500, MUSIC_AIR_DB = 3.2; // MUSIC-LOUD-01 (1.8.19)
 const MUSIC_ECHO_SEND = 0.2, MUSIC_ECHO_FEEDBACK = 0.34, MUSIC_ECHO_DAMPING_HZ = 2600;
 const MUSIC_CYCLE_STEPS = MUSIC_STEPS_PER_BAR * MUSIC_BARS;
 const MUSIC_MINOR_INTERVALS = [0,2,3,5,7,9,10,12,14,17];
@@ -9290,8 +9413,9 @@ class SoundEngine{
     this.prepareMusicPalette();
     this.ensureNoiseBuffer();
     this.compressor = this.ctx.createDynamicsCompressor();
-    this.compressor.threshold.setValueAtTime(-12, this.ctx.currentTime);
-    this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+    this.compressor.threshold.setValueAtTime(-15, this.ctx.currentTime);
+    this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
+    this.compressor.ratio.setValueAtTime(5, this.ctx.currentTime);
     this.compressor.connect(this.ctx.destination);
     // CA177 — see HISTORY.md § [1.5.7] Code Archaeology, CA177
     this.saturation = this.ctx.createWaveShaper();
@@ -9714,7 +9838,10 @@ class SoundEngine{
   // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]
   popTone(freq, time, duration, kind, peak, optional=false){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0 || !freq) return;
-    const spec = POP_VOICES[kind], oscillatorCount = spec.detunes.length + (spec.sub || spec.fmRatio ? 1 : 0), endTime = time + duration, releaseEnd = endTime + spec.release;
+    const spec = POP_VOICES[kind], expressive = spec.vibrato && duration >= 0.3, oscillatorCount = spec.detunes.length + (spec.sub || spec.fmRatio ? 1 : 0) + (expressive ? 2 : 0), endTime = time + duration, releaseEnd = endTime + spec.release;
+    // MUSIC-LEAD-02 (1.8.22): accompaniment steps back a fifth under a sounding lead note so the melody always cuts through.
+    if(expressive) this.leadSoundingUntil = Math.max(this.leadSoundingUntil || 0, endTime);
+    else if(MUSIC_DUCKED_KINDS.has(kind) && time < (this.leadSoundingUntil || 0)) peak *= MUSIC_LEAD_DUCK;
     if(!this.reserveMusicVoice(time, duration + spec.release, oscillatorCount, optional)) return;
     const filter = this.ctx.createBiquadFilter(), gain = this.ctx.createGain(), sources = [];
     filter.type = 'lowpass'; filter.Q.value = spec.q;
@@ -9724,11 +9851,30 @@ class SoundEngine{
     gain.gain.setValueAtTime(0.0001, time);
     gain.gain.linearRampToValueAtTime(peak, time + spec.attack);
     gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * spec.sustain), sustainTime);
-    gain.gain.setValueAtTime(Math.max(0.0001, peak * spec.sustain), Math.max(sustainTime, endTime));
+    const swells = expressive && duration >= 0.6;
+    gain.gain.setValueAtTime(Math.max(0.0001, peak * spec.sustain), swells ? sustainTime : Math.max(sustainTime, endTime));
+    if(swells) gain.gain.linearRampToValueAtTime(peak * spec.sustain * MUSIC_LEAD_SWELL, endTime); // held notes bloom toward their end like a sung phrase
     gain.gain.exponentialRampToValueAtTime(0.0001, releaseEnd);
+    // MUSIC-LEAD-01 (1.8.22): sustained lead notes enter with a quick scoop from slightly flat and gain a vibrato that arrives after a short delay, the way a console lead is played.
+    const vibratoLfo = expressive ? this.ctx.createOscillator() : null, vibratoDepth = expressive ? this.ctx.createGain() : null;
+    if(expressive){
+      vibratoLfo.type = 'sine'; vibratoLfo.frequency.setValueAtTime(spec.vibrato.rate, time);
+      vibratoDepth.gain.setValueAtTime(0, time);
+      vibratoDepth.gain.linearRampToValueAtTime(spec.vibrato.cents, time + spec.vibrato.delay + 0.2);
+      vibratoLfo.connect(vibratoDepth); sources.push(vibratoLfo);
+    }
+    if(expressive){ // a quiet triangle an octave above gives the lead the bright shimmer of a console pulse-and-triangle pair
+      const octave = this.ctx.createOscillator(), octaveGain = this.ctx.createGain();
+      octave.type = 'triangle'; octave.frequency.setValueAtTime(freq * 2, time); octaveGain.gain.value = MUSIC_LEAD_OCTAVE_LEVEL;
+      octave.connect(octaveGain); octaveGain.connect(filter); sources.push(octave);
+    }
     for(const detune of spec.detunes){
       const oscillator = this.ctx.createOscillator();
-      oscillator.type = spec.wave; oscillator.frequency.setValueAtTime(freq, time); oscillator.detune.value = detune;
+      oscillator.type = spec.wave; oscillator.frequency.setValueAtTime(freq, time);
+      if(expressive){
+        oscillator.detune.setValueAtTime(detune - 24, time); oscillator.detune.linearRampToValueAtTime(detune, time + 0.035);
+        vibratoDepth.connect(oscillator.detune);
+      } else oscillator.detune.value = detune;
       oscillator.connect(filter); sources.push(oscillator);
     }
     if(spec.sub){
@@ -9746,7 +9892,7 @@ class SoundEngine{
     filter.connect(gain);
     const tail = this.routeMusicVoice(gain, freq, kind === 'lead' ? MUSIC_PAN_LEAD_SHARE : 1, true);
     if(spec.echo && this.musicEchoSend) gain.connect(this.musicEchoSend);
-    sources[0].onended = () => { for(const source of sources) source.disconnect(); filter.disconnect(); gain.disconnect(); if(tail !== gain) tail.disconnect(); };
+    sources[0].onended = () => { for(const source of sources) source.disconnect(); if(vibratoDepth) vibratoDepth.disconnect(); filter.disconnect(); gain.disconnect(); if(tail !== gain) tail.disconnect(); };
     for(const source of sources){ source.start(time); source.stop(releaseEnd + 0.02); }
   }
   popSnare(time, level){
@@ -9893,7 +10039,25 @@ class SoundEngine{
     }
     if(beatStep === 4 && !breath && (section > 0 || boss)) this.popSnare(time, boss ? 0.7 : 0.5);
     if(beatStep === 0 && bar % 8 === 6) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, boss ? 0.8 : 0.55);
+    if(beatStep === 0 && bar > 0 && bar % 8 === 0 && (section > 0 || boss)) this.scheduleHeroicPhraseHit(time, chord, boss, stepSeconds);
+    if(bar % 8 === 4 && (section > 0 || boss) && !breath) this.scheduleLeitmotif(time, beatStep, chord, stepSeconds, 'brass', boss ? 0.052 : 0.044);
     this.scheduleCombatDrive(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
+  }
+  // MUSIC-LEITMOTIF-01 (1.8.20): one rising call (root, fifth, octave, ninth, octave) returns in the idle score as an oboe and in the wave and boss scores as brass, so the two scores share a theme.
+  scheduleLeitmotif(time, beatStep, root, stepSeconds, voice, gain){
+    for(const [step, interval, length] of MUSIC_LEITMOTIF){
+      if(step !== beatStep) continue;
+      if(voice === 'brass') this.musicTone(midiToFrequency(root + 12 + interval), time, stepSeconds * length, 'brass', gain, true);
+      else this.popTone(midiToFrequency(root + 12 + interval), time, stepSeconds * length, voice, gain, true);
+      this.popTone(midiToFrequency(root + 24 + interval), time + 0.004, stepSeconds * length, 'bell', gain * 0.35, true);
+    }
+  }
+  // MUSIC-HEROIC-01 (1.8.19): every eighth bar of the wave and boss themes lands as a full orchestral hit, a crash, a timpani stroke and a held brass power chord (root, fifth, octave) that rings for two bars.
+  scheduleHeroicPhraseHit(time, chord, boss, stepSeconds){
+    this.musicCrash(time, boss ? 1 : 0.75);
+    this.musicTone(MUSIC_TIMPANI_HZ, time, 0.42, 'kick', boss ? 0.16 : 0.13);
+    const hold = stepSeconds * MUSIC_STEPS_PER_BAR * 2;
+    for(const [interval, gain] of [[12, 0.055], [19, 0.048], [24, 0.042]]) this.musicTone(midiToFrequency(chord + interval), time, hold, 'brass', gain * (boss ? 1.15 : 1), true);
   }
   // COMBAT-DRIVE-01 (1.7.116): the wave and boss themes gain the engines of the late-era action scores: a galloping sixteenth bass with octave jumps and a chromatic lift (Ys, Soldier Blade), a high pedal ostinato alternating fifth and tonic (Monster Hunter), power-chord stabs on each second bar, a crescendo snare roll into every eighth bar, and a flat-fifth stab on boss off-beats.
   scheduleCombatDrive(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath){
@@ -10054,6 +10218,7 @@ class SoundEngine{
     if(!buildUp && !breath && arrangement > 0 && beatStep === 4) this.musicPercussion(time, true, 0.55);
     if(!buildUp && !breath && section > 0 && arrangement >= 2 && beatStep % 2 === 0) this.musicPercussion(time + stepSeconds / 2, false, 0.7);
     if(!buildUp && !breath) this.scheduleMusicArpeggio(time, baseRoot, root, beatStep, stepSeconds, section > 0 || cycleIndex > 0 ? 0.5 : 0.34);
+    if(!buildUp && !breath && bar % 8 === 4) this.scheduleLeitmotif(time, beatStep, root, stepSeconds, 'oboe', 0.03);
     // melody
     this.scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath);
     if(breath || (bar >= 8 && barPick3 < 0.08)) return;
@@ -10774,7 +10939,7 @@ let resizeSnapshotCanvas = null;
 function setupCanvas(){
   if(graphicsQuality === 'high'){ renderScaleStep = 0; renderScaleFloorPercent = 100; }
   updateCanvasDimensions();
-  const dprCap = graphicsQuality === 'low' ? 1 : 2;
+  const dprCap = 2; // SHARP-CANVAS-01 (1.8.27)
   const newDpr = Math.min(window.devicePixelRatio || 1, dprCap) * RENDER_SCALE_STEPS[renderScaleStep];
   const dprChanged = newDpr !== dprValue;
   dprValue = newDpr;
@@ -11209,6 +11374,7 @@ function onPointerEnd(e){
       }
       if(!target && isDragging && groundItems.includes(draggingGroundItem)){
         draggingGroundItem.x = dragItemPos.x; draggingGroundItem.y = dragItemPos.y;
+        draggingGroundItem.placedByPlayer = true; // ITEM-DRIFT-01: an item the player set down stays where it was put
         playSound('click');
       }
     } else if(!isCancel && !collectedPickup && !draggingGroundItem && !isDragging){
@@ -12211,6 +12377,9 @@ function syncSettingsUI(){
   document.getElementById('settingsFpsToggle').checked = showFpsCounter;
   document.getElementById('settingsDebugToggle').checked = debugOverlay;
   document.getElementById('settingsAutoPanToggle').checked = autoCameraPans;
+  document.getElementById('settingsMedalToggle').checked = medalNotificationsEnabled;
+  document.getElementById('runSeedNote').textContent = 'This run: ' + runSeedCode;
+  renderMedalList();
     document.getElementById('settingsIntroTextToggle').checked = introTextEnabled;
   document.getElementById('settingsFrameCapToggle').checked = frameCapEnabled;
   document.getElementById('settingsFrameCapSlider').value = String(frameCapFps());
@@ -12333,6 +12502,17 @@ document.getElementById('settingsFpsToggle').addEventListener('change', (e) => {
 document.getElementById('settingsDebugToggle').addEventListener('change', (e) => {
   debugOverlay = e.target.checked;
   savePrefs();
+});
+document.getElementById('endCopySeedBtn').addEventListener('click', (e) => copyRunSeed(e.currentTarget));
+document.getElementById('endRateBtn').addEventListener('click', () => { const page = PLATFORM_RATING_PAGES[window.STICKTD_PLATFORM]; if(page) window.open(page, '_blank', 'noopener'); });
+document.getElementById('settingsMedalToggle').addEventListener('change', (e) => {
+  medalNotificationsEnabled = e.target.checked;
+  savePrefs();
+});
+document.getElementById('settingsRunSeed').addEventListener('change', (e) => {
+  const typed = e.target.value.trim().toUpperCase().slice(0, 24);
+  e.target.value = typed;
+  try{ if(typed) localStorage.setItem(RUN_SEED_KEY, typed); else localStorage.removeItem(RUN_SEED_KEY); }catch(err){ /* storage unavailable: the code cannot be kept */ }
 });
 document.getElementById('settingsAutoPanToggle').addEventListener('change', (e) => {
   autoCameraPans = e.target.checked;
@@ -13944,6 +14124,20 @@ function validateDesignContract(){
   if(!String(initAttractLoop).includes('SCENE-TIME-OF-DAY-01')) problems.push('each new attract scene changes the time of day (SCENE-TIME-OF-DAY-01)');
   if(BONE_DROP_CHANCE >= 0.08 || typeof SHOVEL_CHARGES_PER_ROUND === 'undefined' || SHOVEL_CHARGES_PER_ROUND !== 3 || LOG_MAX_SCALE > 0.54 || !String(useStoredConsumable).includes('beginShovelDig') || !String(update).includes('resetShovelCharges(') || !String(digWithShovel).includes('dropGoldBag')) problems.push('bones stay rarer than skulls and blood, logs stay small, and the shovel has three digs per round that refill when a wave is cleared (GORE-RARITY-01, LOG-SIZE-01, SHOVEL-CHARGES-01)');
   if(!STACKABLE_ITEM_IDS.has('HONEY') || typeof updateGroundItemDrift !== 'function' || !String(update).includes('updateGroundItemDrift(') || !/BEE'\) it\.e\.draw\(ctx\);[^\n]*\n\s*drawMarkedTargetIcon/.test(String(render))) problems.push('honey stacks in one slot, loose items drift to the nearest stickman whose range covers them and consumables are stored, and the pin is drawn after the bee (STACK-HONEY-01, ITEM-DRIFT-01, PIN-BEE-01)');
+  if(typeof spawnBarricadeStrikeDebris !== 'function' || typeof spawnStickmanWound !== 'function' || !String(Tower.prototype.takeDamage).includes('maybeEnrage') || STICKMAN_RAGE_CHANCE > 0.1) problems.push('enemy strikes throw barricade debris away from the attacker, wound stickmen and rarely enrage them (BARRICADE-STRIKE-01, STICKMAN-WOUND-01, STICKMAN-RAGE-01)');
+  { const engineSource = String(SoundEngine), voiceNames = kind => [...engineSource.matchAll(new RegExp(kind + "\\((?:[^()]|\\([^()]*\\))*?,\\s*'([a-z]+)'", 'g'))].map(match => match[1]);
+    const missingPop = voiceNames('popTone').filter(name => !POP_VOICES[name]), missingTone = voiceNames('musicTone').filter(name => !String(SoundEngine.prototype.musicTone).includes("'" + name + "'"));
+    if(missingPop.length || missingTone.length) problems.push('every music call names a voice the engine has: ' + [...new Set([...missingPop, ...missingTone])].join(', ') + ' (MUSIC-VOICES-01)'); }
+  // Run progress, sharing, analytics labels, titles and canvas sharpness (RUN-SEED-01, RUN-PROGRESS-01, RUN-SUMMARY-01, RUN-SHARE-01, ANALYTICS-LABEL-01, SEO-TITLE-01, SHARP-CANVAS-01)
+  { const titles = [document.title, document.querySelector('meta[property="og:title"]').content, document.querySelector('meta[name="twitter:title"]').content]; if(new Set(titles).size !== 1) problems.push('page, social and install titles must be one identical string (SEO-TITLE-01)');
+    if(window.STICKTD_PLAY_LABEL !== window.STICKTD_PLATFORM + '/' + window.STICKTD_BUILD || !/^[a-z0-9.-]+$/.test(window.STICKTD_REFERRER_SITE) || !String(window.trackEvent).includes('play_label') || !String(window.enableStickTDAnalytics).includes('analyticsPageTitle')) problems.push('analytics must name every report by play label and referrer site (ANALYTICS-LABEL-01)'); }
+  if(!String(setupCanvas).includes('const dprCap = 2')) problems.push('canvas pixel ratio cap must be 2 for every graphics profile (SHARP-CANVAS-01)');
+  if(!TELEMETRY_EVENTS.act_started || !TELEMETRY_EVENTS.medal_earned || !TELEMETRY_EVENTS.game_over.includes('seed') || typeof copyRunSeed !== 'function' || !document.getElementById('endCopySeedBtn') || !document.getElementById('endRateBtn')) problems.push('act, medal and run-end telemetry plus the seed and rating buttons must stay (RUN-SHARE-01)');
+  if(typeof runSeedFor !== 'function' || typeof runSeedCode !== 'string' || !runSeedCode || waveRunSeed !== runSeedFor(0xA3) || groundDetailRunSeed !== runSeedFor(0x51)) problems.push('run seeds are not built from the run code (RUN-SEED-01)');
+  if(ACT_NAMES.length !== 10 || actNumberForWave(1) !== 1 || actNumberForWave(11) !== 2 || actNumberForWave(999) !== 10 || MEDAL_DEFS.length < 10 || new Set(MEDAL_DEFS.map(m => m.id)).size !== MEDAL_DEFS.length || typeof awardMedal !== 'function') problems.push('acts or medals are malformed (RUN-PROGRESS-01)');
+  if(!document.getElementById('endRunSummary') || !document.getElementById('settingsMedalToggle') || !document.getElementById('settingsRunSeed')) problems.push('run summary, medal toggle or seed input is missing (RUN-SUMMARY-01)');
+  if(typeof HOSTILE_EVENT_BREATHER_WAVES === 'undefined' || HOSTILE_EVENT_BREATHER_WAVES < 2 || !String(runWaveClearRandomEvents).includes('lastHostileEventWave')) problems.push('a hostile random event is followed by a wave clear with only peaceful events (EVENT-PACING-01)');
+  if(!isInstantOpenProp({type:'MUSHROOMS'}) || typeof spawnExpansionFinale !== 'function') problems.push('mushrooms open instantly and map expansion glitters tile by tile and ends in a golden burst (MUSHROOM-INSTANT-01, EXPANSION-GLORY-01)');
   if(!String(spawnBoneDebris).includes('BONE-SPREAD-01')) problems.push('bones vary in size with the enemy and spread evenly (BONE-SPREAD-01)');
   if(String(update).includes('driveRingReveal(') || !String(updatePresentationEffects).includes('driveRingReveal(') || RING_REVEAL_TARGET_MS < 1500) problems.push('the expand reveal is slow, clean and drawn in real time at every game speed (EXPAND-REALTIME-01)');
   if(pathTurnFirstChance < 0.7) problems.push('the road prefers turning when it grows so it never becomes a long straight line (PATH-WINDY-01)');
@@ -14349,11 +14543,14 @@ function endGame(message, cause){
   endTitle.textContent = 'Game Over';
   endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '.\nRebuild your squad and try again.'); // GAMEOVER-LAYOUT-01 (1.6.79) — see HISTORY.md § [1.6.79]
   playSound('lose');
+  document.getElementById('endRunSummary').textContent = describeRunEnd();
+  document.getElementById('endRateBtn').classList.toggle('hidden', !PLATFORM_RATING_PAGES[window.STICKTD_PLATFORM]);
   endScreen.classList.remove('hidden');
   trackGameEvent('game_over', {
     cause: cause || 'lives', wave_reached: waveIndex, waves_completed: wavesCompleted,
     duration_s: Math.round(telemetryActiveMs()/1000),
-    towers_built: sessionTelemetry.towersBuilt, towers_downed: sessionTelemetry.towersDowned, lives_bought: livesBought, loose_end: countLooseEnemies(), fps_median: perfMedianFps()
+    towers_built: sessionTelemetry.towersBuilt, towers_downed: sessionTelemetry.towersDowned, lives_bought: livesBought, loose_end: countLooseEnemies(), fps_median: perfMedianFps(),
+    kills: sessionKills, best_streak: bestKillStreak, seed: runSeedCode, personal_best: runEndedAsBest, act: actNumberForWave(Math.max(waveIndex, wavesCompleted))
   });
   maybeReportLag();
   reportSessionSummary();

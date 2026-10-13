@@ -4,6 +4,61 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.28] — 2026-10-13 (UTC)
+### Gamer-facing run sharing and telemetry, one organised pattern
+- AGENTS.md Code map gains a "Run progress, sharing and reporting" group naming each system by function; the related contract checks sit together under one label in `js/config.js`; the `ANALYTICS.md` rule now says "when present" because the file is optional (it is not in the repository).
+- RUN-SHARE-01: the end screen gains `endCopySeedBtn` (`copyRunSeed()` copies `runSeedCode`) and `endRateBtn`, shown only on itch.io and Game Jolt builds, which opens that storefront page (`PLATFORM_RATING_PAGES`). No prompt appears during play.
+- TELEMETRY-01: `act_started` and `medal_earned` are new events in `TELEMETRY_EVENTS` (`js/environment.js`), sent from `announceActStart()` and `awardMedal()`. `game_over` now also carries `kills`, `best_streak`, `seed`, `personal_best` and `act`, so reports can show where players stop, which medals they earn and how deep their runs go.
+
+## [1.8.27] — 2026-10-13 (UTC)
+### One naming pattern for SEO and Analytics
+- SEO-TITLE-01: the page title, `og:title`, `twitter:title` and the install name in `manifest.json` are the same string, "StickTD — Free Stick Tower Defense Game". Analytics had split one site across three page titles (older builds used different titles), which made views look like three pages.
+- ANALYTICS-LABEL-01: `STICKTD_PLAY_LABEL` in `index.html` is `<platform>/<build>` (github-pages/web, itch.io/web, newgrounds/web, desktop-app/windows-x64, android-app/android). `analyticsPageTitle()` sends "StickTD · <label>" as the Analytics page title, `analyticsPageLocation()` sends `…/StickTD/play/<label>` (campaign tags still kept), and every event carries `play_label` and `referrer_site` (newgrounds, itch.io, github, steam, youtube, reddit, search, gamejolt, other, direct). `detectPlayPlatform()` now recognises Newgrounds hosts (`newgrounds`). Register `play_label` and `referrer_site` as event-scoped custom dimensions in GA4 to report on them.
+
+### Sharp canvas on every profile
+- SHARP-CANVAS-01: `setupCanvas()` in `js/config.js` caps the pixel ratio at 2 for the low graphics profile as well as high (it was 1), so phones are drawn at their real sharpness. The automatic render-scale governor still lowers resolution (floor 75%) only when frame rate drops.
+
+## [1.8.26] — 2026-10-13 (UTC)
+### Seeded runs, named acts, medals, end-of-run summary
+- RUN-SEED-01: `runSeedCode`, `hashSeedText()` and `runSeedFor()` in `js/config.js` build `waveRunSeed` (`js/waves.js`) and `groundDetailRunSeed` (`js/environment.js`) from a short code. A code typed in Settings > Game (`settingsRunSeed`, stored under `RUN_SEED_KEY`) is used once for the next run; otherwise a random code is made. Wave composition, road growth, scenery and ground details repeat for the same code; other random events do not.
+- RUN-PROGRESS-01: `ACT_NAMES`, `actTitleForWave()` and `announceActStart()` name each ten-wave act and announce it in Notifications. `MEDAL_DEFS`, `awardMedal()`, `awardWaveMedals()` and `renderMedalList()` add 14 medals kept in this browser (`MEDALS_KEY`), listed in a new Settings > Medals tab. `settingsMedalToggle` (`medalNotificationsEnabled`, saved in prefs, default on) controls whether earned medals appear in Notifications. `recordNotification()` gains an `always` argument so act and medal notices show even with intro text off.
+- RUN-SUMMARY-01: `describeRunEnd()` fills `#endRunSummary` on the end screen with wave reached, act, kills, best streak, seed and personal best (`BEST_RUN_KEY`). `creditKill()` counts `sessionKills` and `bestKillStreak`.
+
+## [1.8.25] — 2026-10-13 (UTC)
+### Event pacing
+- EVENT-PACING-01: `runWaveClearRandomEvents()` in `js/waves.js` records the wave of each hostile event (`lastHostileEventWave`) and skips the random troll, extra building and circus rolls for `HOSTILE_EVENT_BREATHER_WAVES` (2) wave clears afterwards. Peaceful events (bees, chests, picnics, chance structures), the guaranteed troll every fifth wave and every existing chance are unchanged, so hostile events arrive with a rest behind each one instead of in clusters.
+
+## [1.8.24] — 2026-10-13 (UTC)
+### Music voice guard, items you place stay put
+- MUSIC-VOICES-01: the design contract scans `SoundEngine` for every voice name passed to `popTone()` and `musicTone()` and fails when the engine has no such voice, which is the mistake that broke the wave theme in 1.8.20.
+- ITEM-DRIFT-01: an item the player drops on the ground (`placedByPlayer`) no longer drifts toward a stickman, so items left for cooking or placement stay where they were put.
+
+## [1.8.23] — 2026-10-13 (UTC)
+### Lead voice: ducking, shimmer, swell
+- MUSIC-LEAD-02: `popTone()` ducks `pad`, `harmony`, `pluck` and `warm` notes by 20% (`MUSIC_LEAD_DUCK`) while a lead or oboe note sounds, adds a quiet triangle an octave above every lead note (`MUSIC_LEAD_OCTAVE_LEVEL`), and lets lead notes of 0.6 s or longer swell 15% toward their end (`MUSIC_LEAD_SWELL`).
+
+## [1.8.22] — 2026-10-13 (UTC)
+### Console-style lead articulation
+- MUSIC-LEAD-01: `popTone()` gives the `lead` and `oboe` voices (`vibrato` in `POP_VOICES`) a 35 ms scoop up from 24 cents flat at the start of every note of 0.3 s or longer, and a sine vibrato (5.2–5.6 Hz, 9–11 cents) that fades in after a short delay, so held melody notes sing instead of sitting still.
+
+## [1.8.21] — 2026-10-13 (UTC)
+### Instant mushrooms, a grander expansion
+- MUSHROOM-INSTANT-01: `isInstantOpenProp()` includes MUSHROOMS and `normalizeSceneryHarvest()` no longer gives them a 20–50 s clearing time, so a tap collects them at once like a bush.
+- MUSIC-LEITMOTIF-01 fix: `scheduleLeitmotif()` plays its brass through `musicTone()` (the `brass` voice is not in `POP_VOICES`; the 1.8.20 call raised an error in the wave and boss themes). The wave theme is titled Path to Victory in the settings text.
+- EXPANSION-GLORY-01: `advanceRingReveal()` calls `spawnExpansionSparkles()` for every tile as it opens, and `finalizeRingExpansion()` ends with `spawnExpansionFinale()`: a golden burst from the centre of the new map, the level-up chime and a brief gentle shake (honouring the screen-shake setting and low-detail mode).
+
+## [1.8.20] — 2026-10-13 (UTC)
+### Barricade strikes, stickman wounds, rage, a shared music theme
+- BARRICADE-STRIKE-01: `spawnBarricadeStrikeDebris()` throws wood and stone away from the attacker on every enemy strike on a barricade (`Tower.takeDamage()` now receives the attacker), larger and on a higher arc. Only the strike that removes a point leaves rubble, so the ground does not fill with it.
+- STICKMAN-WOUND-01: `spawnStickmanWound()` gives a struck stickman the same forensic spatter, stains and spray an enemy gets, thrown away from the attacker.
+- STICKMAN-RAGE-01: each hit on a stickman has a `STICKMAN_RAGE_CHANCE` (5%) to enrage it for 6 s with +30% damage and +25% attack speed, the red aura and a "😡 Enraged!" call.
+- MUSIC-LEITMOTIF-01: `MUSIC_LEITMOTIF` plays as an oboe in the idle score and as brass in the wave and boss scores every eighth bar, so both share one theme. MUSIC-JOURNEY-01: `MUSIC_CYCLE_SHIFTS` has twelve keys, so the score takes longer to repeat its key path.
+
+## [1.8.19] — 2026-10-13 (UTC)
+### Louder, fuller music
+- MUSIC-LOUD-01: `MUSIC_MAKEUP_GAIN` 1.33 → 1.75, `MUSIC_SECTION_LEVEL` [0.92, 1.02, 1.16], `MUSIC_AIR_DB` 3.2, and the master compressor in `SoundEngine` uses threshold −15 dB, knee 18 and ratio 5 so the louder mix stays clean instead of clipping.
+- MUSIC-HEROIC-01: `scheduleHeroicPhraseHit()` adds a crash, a timpani stroke and a two-bar brass power chord (root, fifth, octave) on every eighth bar of the wave and boss themes, called from `scheduleCombatLayers()`.
+
 ## [1.8.18] — 2026-10-12 (UTC)
 ### Small logs, rarer bones, shovel charges and treasure
 - LOG-SIZE-01: `sceneryVisualSize()` caps BRANCH and STUMP items at `LOG_MAX_SCALE` (0.54) and `drawStumpSprite()` now draws at 1.0× instead of 1.6× its cell, so no giant log can appear, including in old saves.

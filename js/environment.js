@@ -536,12 +536,27 @@ function beginNextRingReveal(){
   return true;
 }
 // CA103 — see HISTORY.md § [1.5.7] Code Archaeology, CA103
+// EXPANSION-GLORY-01 (1.8.21): each tile glitters as it opens, and the finished map ends in a golden burst, a rising chime and a gentle shake.
+function spawnExpansionSparkles(x, y){
+  const lowDetail = graphicsQuality === 'low' || underHeavyVisualLoad;
+  spawnParticles(x, y, '#ffe08a', lowDetail ? 2 : 6, 70, 0.92, false);
+  if(!lowDetail) spawnParticles(x, y, '#ffffff', 2, 40, 0.9, false);
+}
+function spawnExpansionFinale(region){
+  const x = (region.x0 + region.x1 + 1) / 2 * TILE_SIZE, y = (region.y0 + region.y1 + 1) / 2 * TILE_SIZE;
+  const lowDetail = graphicsQuality === 'low' || underHeavyVisualLoad;
+  spawnParticles(x, y, '#ffd700', lowDetail ? 12 : 40, 260, 0.92, false);
+  if(!lowDetail) spawnParticles(x, y, '#fff6c9', 16, 180, 0.9, false);
+  playSound('levelup');
+  if(screenShakeEnabled){ screenShakeUntil = presentationTime + 220; screenShakeMag = Math.max(screenShakeMag, 3); }
+}
 function advanceRingReveal(n){
   if(!ringRevealQueue.length) return;
   for(let i=0; i<n && ringRevealQueue.length; i++){
     const t = ringRevealQueue.shift();
     ringRevealed.add(t.x+','+t.y);
     pendingRevealTileKeys.delete(t.x+','+t.y);
+    spawnExpansionSparkles((t.x+0.5)*TILE_SIZE, (t.y+0.5)*TILE_SIZE);
     // Reveal useful scenery with its own tile, rather than the final batch.
     const key=t.x+','+t.y;
     if(!pathCells.has(key) && !sceneryMap.has(key) && sceneryPlanRandom(t.x,t.y,32+expansionLevel+1)() < CONFIG.SCENERY.coverage){
@@ -645,6 +660,8 @@ function finalizeRingExpansion(){
   drawFinishCarpet(mctx, computeFinishLine());
   spawnFloatingText((newRegion.x0+newRegion.x1)/2*TILE_SIZE, newRegion.y0*TILE_SIZE-10, pendingRingLabel, pendingRingLabelColor);
   playSound('wave');
+  spawnExpansionFinale(newRegion);
+  if(expansionLevel >= 5) awardMedal('CARTOGRAPHER');
   trackGameEvent('map_expanded', { expansion_level: expansionLevel, route_tiles: pathWaypointTiles.length, spacing_relaxed: routeSpacingRelaxedExpansions });
   updateHUD();
 }
@@ -696,7 +713,7 @@ function updateGroundItemDrift(dt){
   if(!groundItems.length) return;
   let candidates = null;
   for(const gi of groundItems){
-    if(gi === draggingGroundItem || !itemDriftsToTowers(gi.itemDef)) continue;
+    if(gi === draggingGroundItem || gi.placedByPlayer || !itemDriftsToTowers(gi.itemDef)) continue;
     if(gi.flyStart !== undefined && presentationTime - gi.flyStart < gi.flyDur) continue;
     if(gi.rejectStartedAt !== undefined && presentationTime - gi.rejectStartedAt < 1500) continue;
     if(!candidates) candidates = towerPool.filter(t => t.active && !t.isWalking && !isStructureType(t.type));
@@ -729,6 +746,7 @@ function beginShovelDig(tower){
   const site = shovelDigPoint(tower);
   if(!site){ showToast('No clear patch of ground nearby.'); playSound('ui_deny'); return false; }
   tower.shovelCharges = shovelChargesLeft(tower) - 1;
+  awardMedal('DIGGER');
   tower.shovelDig = { site, startedAt: gameTime, finishAt: gameTime + SHOVEL_DIG_MS };
   spawnParticles(tower.x, tower.y + 6, '#c9a66b', 8);
   playSound('click');
@@ -766,6 +784,7 @@ function digWithShovel(tower, site){
     }
     spawnParticles(site.x, site.y, '#ffd700', 14);
     spawnFloatingText(site.x, site.y - 14, '🧰 Treasure chest!', '#ffd700', ITEM_POPUP_LIFE_MS);
+    awardMedal('TREASURE');
     playSound('wave');
     return true;
   }
@@ -1971,7 +1990,7 @@ function maybeSpawnMoreScenery(){
 }
 // CA141 — see HISTORY.md § [1.5.7] Code Archaeology, CA141
 function isInstantOpenProp(item){
-  return ['SUPPLY_CRATE','CHEST','PICNIC','COIN_POUCH','ITEM','STUMP','BRANCH','BUSH'].includes(item.type);
+  return ['SUPPLY_CRATE','CHEST','PICNIC','COIN_POUCH','ITEM','STUMP','BRANCH','BUSH','MUSHROOMS'].includes(item.type); // MUSHROOM-INSTANT-01 (1.8.21)
 }
 function rollMushroomScale(rng = Math.random){
   const tier = rng(), size = rng();
@@ -1988,7 +2007,7 @@ function normalizeSceneryHarvest(item){
   if(item.type==='MUSHROOMS'){
     if(item.mushroomSizeVersion !== 1){if(!item.isClearing) item.scale=rollMushroomScale(sceneryPlanRandom(item.gx,item.gy,159));item.mushroomSizeVersion=1;}
     item.scale=clampNum(item.scale || CONFIG.SCENERY.minScale,CONFIG.SCENERY.minScale,CONFIG.SCENERY.maxScale);
-    item.clearCost=0;item.clearMs=20000+Math.round((item.scale-CONFIG.SCENERY.minScale)/(CONFIG.SCENERY.maxScale-CONFIG.SCENERY.minScale)*30000);
+    item.clearCost=0;item.clearMs=0;
   }
 }
 function sceneryClearCost(item){
@@ -2527,6 +2546,7 @@ function startCampfireRecipe(fire,recipeId){
   }
   for(const tower of touched){ refreshQuickUse(tower); tower.recomputeStats(); tower.checkHeroStatus(); }
   fire.cookingJob={recipeId:recipe.id,woodUsed:0,segmentRemainingMs:0,progressMs:0};
+  awardMedal('CHEF');
   if(selectedTower) updateInspectPanel();
   logGameEvent('cooking started: '+recipe.id); updateHUD(); return true;
 }
@@ -3021,7 +3041,9 @@ const TELEMETRY_EVENTS = {
   save_load_failed: ['reason'],
   progress_reset: ['kind'],
   santa_boss_encountered: ['wave'],
-  game_over: ['cause', 'wave_reached', 'waves_completed', 'duration_s', 'towers_built', 'towers_downed', 'lives_bought', 'loose_end', 'fps_median'],
+  act_started: ['act', 'act_name'],
+  medal_earned: ['medal', 'medals_total'],
+  game_over: ['kills', 'best_streak', 'seed', 'personal_best', 'act', 'cause', 'wave_reached', 'waves_completed', 'duration_s', 'towers_built', 'towers_downed', 'lives_bought', 'loose_end', 'fps_median'],
   lag_detected: ['median_gap_ms', 'p95_gap_ms', 'towers_downed', 'enemies', 'loose', 'decals', 'particles'],
   session_summary: ['wave', 'duration_s', 'elapsed_s', 'max_wave', 'waves_completed', 'towers_built', 'ended_in_game_over', 'end_reason'],
   play_activity: ['active_seconds', 'waves_completed', 'checkpoint_reason'],
@@ -3384,7 +3406,7 @@ const GRASS_BLADE_TONES_ON_DARK_TILE = ['#86b364', '#6f9c55'];
 const STARTER_PEBBLE_TILES_MAX = 2;
 const STARTER_PEBBLES_PER_TILE_MAX = 2;
 const STARTER_TUFT_TILES_MAX = 2;
-let groundDetailRunSeed = (Math.random() * 4294967296) >>> 0;
+let groundDetailRunSeed = runSeedFor(0x51);
 const starterRegionTileKeys = new Set();
 const starterPebbleTileKeys = new Set();
 const starterTuftTileKeys = new Set();

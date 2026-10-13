@@ -529,6 +529,7 @@ class Tower{
     this.ninjaHand=0;this.ninjaSoundAt=-Infinity;
     this.lastFireTime = -99999; // used for brief post-fire flourish animations (e.g. Mage's wand cast)
     this.killCount = 0;      // total kills — each one grants a small amount of EXP toward the tower's level
+    this.rageUntil = 0;
     this.bloodLustUntil = 0; // gameTime until the killstreak blood-lust aura fades
     this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
     this.lastKillTime = 0;
@@ -717,6 +718,12 @@ class Tower{
     this.critChance = Math.min(0.5, 0.025 + diminishingStatValue(dexEff, 0.005));
     this.critMult = Math.min(3, 1.2 + diminishingStatValue(intEff, 0.01));
 
+    if(this.rageUntil > gameTime){
+      this.damage = Math.round(this.damage * STICKMAN_RAGE_DAMAGE);
+      this.cooldown = Math.max(this.type==='NINJA'?45:80, Math.round(this.cooldown / STICKMAN_RAGE_SPEED));
+      if(this.meleeDamage) this.meleeDamage = Math.round(this.meleeDamage * STICKMAN_RAGE_DAMAGE);
+      if(this.meleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.meleeCooldown / STICKMAN_RAGE_SPEED));
+    }
     const roundBuffs = this.roundBuffs;
     if(roundBuffs){
       this.damage = Math.round(this.damage * roundBuffs.damage);
@@ -760,7 +767,7 @@ class Tower{
     if(def && def.isGoldBag) return false; // see HISTORY.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, GOLD-BAG-COIN-BURST-01.
     if(isStructureType(this.type)) return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see HISTORY.md § [1.6.121]
     const stack = STACKABLE_ITEM_IDS.has(def.id) ? this.equippedItems.find(item => item.id === def.id) : null;
-    if(stack){ stack.count = heldCount(stack) + heldCount(def); refreshQuickUse(this); return true; }
+    if(stack){ stack.count = heldCount(stack) + heldCount(def); if(stack.id === 'HONEY' && stack.count >= 5) awardMedal('HONEY_HOARDER'); refreshQuickUse(this); return true; }
     if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
     const received = makeItemInstance(def, 'given');
     this.equippedItems.push(received);
@@ -1127,11 +1134,11 @@ class Tower{
     spawnFloatingText(this.x, this.y - 44, '💨 Stealth', '#cfd8dc');
     for(const enemy of enemyPool) if(enemy.active && enemy.breakawayTarget === this && typeof enemy.endBreakaway === 'function') enemy.endBreakaway();
   }
-  takeDamage(amount, statusType){
+  takeDamage(amount, statusType, attacker){
     if(hackGodMode && this.type !== 'BARRICADE') return false;
     if(this.type === 'BARRICADE'){
-      if(!barricadeAttackReady(this)) return this.hp <= 0;
-      chipBarricade(this);
+      if(!barricadeAttackReady(this)){ spawnBarricadeStrikeDebris(this, attacker, false); return this.hp <= 0; }
+      chipBarricade(this, attacker);
       return this.hp <= 0;
     }
     // CA424 — see HISTORY.md § [1.5.7] Code Archaeology, CA424
@@ -1139,6 +1146,7 @@ class Tower{
     this.hp = Math.max(0, this.hp - reduced);
     spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
     lastCombatDamageAt = presentationTime;
+    if(attacker && isFighterTower(this)){ spawnStickmanWound(this, attacker, reduced); this.maybeEnrage(); }
     if(this.type === 'HACKER') this.goStealth();
     if(this.hp > 0){
       const hpFrac = this.hp / this.maxHp;
@@ -1165,7 +1173,16 @@ class Tower{
     }
     return false;
   }
+  maybeEnrage(){ // STICKMAN-RAGE-01 (1.8.20): a struck stickman has a small chance to fly into a rage
+    if(this.hp <= 0 || this.rageUntil > gameTime || Math.random() >= STICKMAN_RAGE_CHANCE) return;
+    this.rageUntil = gameTime + STICKMAN_RAGE_MS;
+    awardMedal('ENRAGED');
+    this.recomputeStats();
+    spawnFloatingText(this.x, this.y - 44, '😡 Enraged!', '#ff4d4d');
+    playSound('hero', this.x);
+  }
   updateHealthStatus(dt){
+    if(this.rageUntil && gameTime >= this.rageUntil){ this.rageUntil = 0; this.recomputeStats(); }
     this.statusLabelTimer -= dt;
     if(this.statusLabelTimer <= 0){
       this.statusLabelTimer = 120000;
@@ -1682,7 +1699,7 @@ class Tower{
   }
   draw(ctx, isSelected){
     if(isProducerType(this.type)){ this.drawProducer(ctx); return; }
-    if(this.bloodLustUntil > gameTime && isFighterTower(this)) this.drawBloodLustAura(ctx);
+    if((this.bloodLustUntil > gameTime || this.rageUntil > gameTime) && isFighterTower(this)) this.drawBloodLustAura(ctx);
     this.drawElementSwingArc(ctx);
     if(this.type === 'BARRICADE'){
       // ENEMY-HEADBUTT-01 (1.7.139): the attacking emoji carries the impact cue; no red damage disc.
