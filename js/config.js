@@ -17,7 +17,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.28'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.35'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -216,7 +216,7 @@ function drawCompanionGroundShadow(ctx,x,y,kind,phase,attack){
   ctx.transform(1,0,-0.55,0.34,0,0);
   ctx.drawImage(companionShadowMask,-32,-32-foot);ctx.restore();
 }
-function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX,tallStretch){
+function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX,tallStretch,strength){
   if(graphicsQuality !== 'high') return;
   const key=emoji+'|'+(family || 'serif');
   let mask=emojiShadowMasks.get(key);
@@ -256,7 +256,7 @@ function drawEmojiGroundShadow(ctx,emoji,x,y,size,family,stretchX,tallStretch){
     ctx.closePath(); ctx.fill(); ctx.restore();
     return;
   }
-  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,anchorY); // SHADOW-TALL-01 (1.7.36): a stretched tree casts a proportionally longer shadow, anchored at the same foot
+  ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=(strength === undefined ? 0.24 : strength); ctx.translate(x,anchorY); // SHADOW-TALL-01 (1.7.36): a stretched tree casts a proportionally longer shadow, anchored at the same foot
   ctx.transform(1,0,(emoji==='📦' ? -0.28 : -0.55)*tall,(emoji==='📦' ? 0.22 : 0.34)*tall,0,0);
   ctx.scale(stretchX || 1,1); ctx.drawImage(mask,-32*factor,-32*factor-foot,64*factor,64*factor); ctx.restore();
 }
@@ -9188,8 +9188,8 @@ let particleIndex = 0;
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
 const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX burst over boss music peaked at 0.37 of full scale with the old 0.5 gain, so +3.5 dB still leaves about 4 dB of headroom before the compressor
 const AUDIO_UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']; // AUDIO-GESTURE-01 (1.7.107); declared here, before the design contract runs
-const MUSIC_TEMPO_BPM = 104;
-const MUSIC_COMBAT_TEMPO_BPM = 144;
+const MUSIC_TEMPO_BPM = 88; // MUSIC-COHESION-01 (1.8.35): one 88 BPM pulse, field and start screen at 1x, wave and boss at 1.5x
+const MUSIC_COMBAT_TEMPO_BPM = 132;
 const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 10, 2, 0, 7, 5, 8, 3, 10]; // MUSIC-JOURNEY-01 (1.8.20): twelve cycles before the key path repeats, up from eight // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
 const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
 function mulberry32(seed){ let a = seed|0; return function(){ a = (a + 0x6D2B79F5)|0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -9213,7 +9213,7 @@ function fieldVariedBar(notes, rng){
   let kept = 0; for(let i = 0; i < 8; i++) if(out[i] !== null && kept++ % 2 === 1) out[i] = null; // thinned: every other note rests
   return out;
 }
-const MUSIC_BOSS_TEMPO_BPM = 152; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
+const MUSIC_BOSS_TEMPO_BPM = 132; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
 const MUSIC_COMBAT_ROOTS = [38,38,41,36,38,43,41,38,38,36,43,38];
 const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
 const MUSIC_COMBAT_INTERVALS = [0,2,3,5,7,8,11,12,14,17];
@@ -9234,12 +9234,12 @@ const MUSIC_VIBRATO_CENTS = 16;
 const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
 const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
 const MUSIC_TEMPO_CREEP = 0.06;
-const MUSIC_STING_PAIRS = [[0, 3], [3, 7], [7, 10], [12, 15]];
+const MUSIC_STING_PICKUPS = Object.freeze([[0, 0, 7, 0.05], [2, 3, 10, 0.062], [4, 5, 12, 0.076]]), MUSIC_STING_DROP_STEP = MUSIC_STEPS_PER_BAR; // MUSIC-STING-02 (1.8.33): [step, root offset, fifth-or-above offset, gain]
 // MUSIC-ATTRACT-01 (1.7.100) — see HISTORY.md § [1.7.100]: the start screen plays its own arrangement of the battle melody
 // MUSIC-ATTRACT-03 (1.8.12) — see CHANGELOG.md § [1.8.12]: the start screen is a dark minor-key march (i, VI, VII, V), slower, in a lower register, without the sparkling arpeggio octave, open hats and claps
 // MUSIC-REFERENCE-01 (1.8.15) — see CHANGELOG.md § [1.8.15]: the start screen slows to 88 BPM, holds each verse chord as a four-bar bass pedal under a quiet low fifth, answers the lead with an oboe line, rests twice per cycle and develops its motif; wave and field music gain a timpani downbeat and a fill every fourth bar
-const MUSIC_ATTRACT_TEMPO_BPM = 88, MUSIC_ATTRACT_TONIC = 48;
-const MUSIC_ATTRACT_CHORDS = [{ root: 36, triad: [0, 3, 7] }, { root: 32, triad: [0, 4, 7] }, { root: 34, triad: [0, 4, 7] }, { root: 43, triad: [0, 4, 7] }];
+const MUSIC_ATTRACT_TEMPO_BPM = 88, MUSIC_ATTRACT_TONIC = 50;
+const MUSIC_ATTRACT_CHORDS = [{ root: 38, triad: [0, 3, 7] }, { root: 34, triad: [0, 4, 7] }, { root: 36, triad: [0, 4, 7] }, { root: 45, triad: [0, 4, 7] }];
 const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
 // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]: the 24-bar start-screen cycle is now a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
 const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
@@ -9779,7 +9779,13 @@ class SoundEngine{
     if(beatStep === 0 && this.musicPhase !== this.musicStingPhase){
       this.musicStingPhase = this.musicPhase;
       if(combat) this.scheduleMusicSting(time, shift, stepSeconds, boss);
+      this.musicOpeningBarsLeft = combat ? 2 : 0;
     }
+    if(beatStep === 0){
+      this.musicBarRole = combat && this.musicOpeningBarsLeft > 0 ? (this.musicOpeningBarsLeft === 2 ? 'opening' : 'landing') : null;
+      if(this.musicOpeningBarsLeft > 0) this.musicOpeningBarsLeft--;
+    }
+    if(this.musicBarRole === 'opening') return;
     const baseChord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
     const chord = baseChord + shift;
     const minor = baseChord === 38;
@@ -9810,13 +9816,14 @@ class SoundEngine{
       if(!breath && (section > 0 || intensity > 0.35)) this.scheduleMusicArpeggio(time, baseChord, chord, beatStep, stepSeconds, 0.55 + 0.55 * intensity);
     }
     if(combat) this.scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
+    if(this.musicBarRole === 'landing') this.scheduleLeitmotif(time, beatStep, chord, stepSeconds, 'brass', boss ? 0.066 : 0.058);
     if(!combat && (bar === 7 || bar === 15) && beatStep === 7) return;
     if(combat || bar > 0) this.scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat);
     if(combat || bar >= 8) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
     this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
     const cadence=false;
-    const degree = !combat ? null : MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
+    const degree = !combat || this.musicBarRole === 'landing' ? null : MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
     if(degree !== null && !breath){
       const intervals = combat ? (boss || section === 2 && phraseBar === 3 ? MUSIC_PHRYGIAN_INTERVALS : MUSIC_COMBAT_INTERVALS) : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
       const octave = combat && section === 2 && beatStep === 2 ? 12 : 0;
@@ -10095,16 +10102,18 @@ class SoundEngine{
   }
   // MUSIC-STING-01 (1.7.98) — see HISTORY.md § [1.7.98]
   scheduleMusicSting(time, shift, stepSeconds, boss){
-    const tonic = 38 + shift + 24;
-    const level = boss ? 1.25 : 1;
-    MUSIC_STING_PAIRS.forEach(([lowerOffset, upperOffset], hit) => {
-      const hitTime = time + hit * stepSeconds * 2;
-      const hold = hit === MUSIC_STING_PAIRS.length - 1 ? stepSeconds * 6 : stepSeconds * 1.8;
-      this.musicTone(midiToFrequency(tonic + lowerOffset), hitTime, hold, 'brass', 0.075 * level);
-      this.musicTone(midiToFrequency(tonic + upperOffset), hitTime, hold, 'brass', 0.06 * level);
-    });
-    this.musicTone(midiToFrequency(tonic - 24), time, stepSeconds * 4, 'fmbass', 0.1 * level);
-    this.musicCrash(time + stepSeconds * 6, level);
+    const tonic = 38 + shift + 24, level = boss ? 1.25 : 1, dropTime = time + MUSIC_STING_DROP_STEP * stepSeconds;
+    for(const [step, lowerOffset, upperOffset, gain] of MUSIC_STING_PICKUPS){
+      const hitTime = time + step * stepSeconds;
+      this.musicTone(midiToFrequency(tonic + lowerOffset), hitTime, stepSeconds * 1.3, 'brass', gain * level);
+      this.musicTone(midiToFrequency(tonic + upperOffset), hitTime, stepSeconds * 1.3, 'brass', gain * 0.8 * level);
+      this.musicTone(MUSIC_TIMPANI_HZ, hitTime, 0.3, 'kick', 0.1 * level);
+    }
+    this.popRiser(time + stepSeconds * 4.5, stepSeconds * (MUSIC_STING_DROP_STEP - 4.5), 0.35 * level);
+    this.musicBassDrop(dropTime, 38 + shift, stepSeconds, 1.25 * level);
+    this.musicTone(MUSIC_TIMPANI_HZ, dropTime, 0.5, 'kick', 0.17 * level);
+    this.musicCrash(dropTime, level);
+    for(const interval of [0, 7, 12]) this.musicTone(midiToFrequency(tonic + interval), dropTime, stepSeconds * 6, 'brass', 0.075 * level);
   }
   // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
   scheduleMusicArpeggio(time, baseRoot, shiftedRoot, beatStep, stepSeconds, level){
@@ -14133,6 +14142,13 @@ function validateDesignContract(){
     if(window.STICKTD_PLAY_LABEL !== window.STICKTD_PLATFORM + '/' + window.STICKTD_BUILD || !/^[a-z0-9.-]+$/.test(window.STICKTD_REFERRER_SITE) || !String(window.trackEvent).includes('play_label') || !String(window.enableStickTDAnalytics).includes('analyticsPageTitle')) problems.push('analytics must name every report by play label and referrer site (ANALYTICS-LABEL-01)'); }
   if(!String(setupCanvas).includes('const dprCap = 2')) problems.push('canvas pixel ratio cap must be 2 for every graphics profile (SHARP-CANVAS-01)');
   if(!TELEMETRY_EVENTS.act_started || !TELEMETRY_EVENTS.medal_earned || !TELEMETRY_EVENTS.game_over.includes('seed') || typeof copyRunSeed !== 'function' || !document.getElementById('endCopySeedBtn') || !document.getElementById('endRateBtn')) problems.push('act, medal and run-end telemetry plus the seed and rating buttons must stay (RUN-SHARE-01)');
+  if(typeof ESCAPE_WALKBACK_MAX_TILES === 'undefined' || typeof Enemy.prototype.walkBackOntoRoute !== 'function' || !String(Enemy.prototype.updateEscaped).includes('walkBackOntoRoute') || String(Enemy.prototype.updateEscaped).includes('placeOnNearestRouteTile')) problems.push('an escaped enemy walks back onto the route instead of jumping (ESCAPE-WALKBACK-01)');
+  if(typeof LIVESTOCK_AVOID_STRENGTH === 'undefined' || typeof Enemy.prototype.steerAroundEnemies !== 'function' || !String(Enemy.prototype.updateLivestockWander).includes('steerAroundEnemies')) problems.push('animals and bees steer away from enemies (LIVESTOCK-AVOID-01)');
+  if(typeof drawSceneryGroundShadow !== 'function' || String(drawOneSceneryItem).includes('drawEmojiGroundShadow')) problems.push('scenery ground shadows are painted in their own pass before any sprite (SCENERY-SHADOW-PASS-01)');
+  if(MUSIC_TEMPO_BPM !== MUSIC_ATTRACT_TEMPO_BPM || MUSIC_COMBAT_TEMPO_BPM !== MUSIC_TEMPO_BPM * 1.5 || MUSIC_BOSS_TEMPO_BPM !== MUSIC_COMBAT_TEMPO_BPM || MUSIC_ATTRACT_TONIC !== 50 || MUSIC_ATTRACT_CHORDS.map(chord => chord.root).join() !== MUSIC_BASS_ROOTS.slice(0, 4).join()) problems.push('every theme shares one key (D minor, i VI VII V) and one pulse: start screen and field 88 BPM, wave and boss 1.5 times that (MUSIC-COHESION-01)');
+  if(!String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'opening'") || !String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'landing'")) problems.push('the wave and boss opening bar plays only the sting and the bar after the drop states the leitmotif alone over the groove (MUSIC-OPENING-01)');
+  if(MUSIC_STING_PICKUPS.length !== 3 || MUSIC_STING_DROP_STEP !== MUSIC_STEPS_PER_BAR || !String(SoundEngine.prototype.scheduleMusicSting).includes('musicBassDrop')) problems.push('the wave and boss opening is three rising brass pickups, a short riser and a bass drop on the next downbeat (MUSIC-STING-02)');
+  if(typeof paintSceneryGroundShadows !== 'function' || SCENERY_SHADOW_STRENGTH !== 0.24 || !String(paintSceneryGroundShadows).includes('beginSceneryShadowLayer')) problems.push('scenery silhouette shadows are one union layer at strength 0.24 (SCENERY-SHADOW-UNION-01)');
   if(typeof runSeedFor !== 'function' || typeof runSeedCode !== 'string' || !runSeedCode || waveRunSeed !== runSeedFor(0xA3) || groundDetailRunSeed !== runSeedFor(0x51)) problems.push('run seeds are not built from the run code (RUN-SEED-01)');
   if(ACT_NAMES.length !== 10 || actNumberForWave(1) !== 1 || actNumberForWave(11) !== 2 || actNumberForWave(999) !== 10 || MEDAL_DEFS.length < 10 || new Set(MEDAL_DEFS.map(m => m.id)).size !== MEDAL_DEFS.length || typeof awardMedal !== 'function') problems.push('acts or medals are malformed (RUN-PROGRESS-01)');
   if(!document.getElementById('endRunSummary') || !document.getElementById('settingsMedalToggle') || !document.getElementById('settingsRunSeed')) problems.push('run summary, medal toggle or seed input is missing (RUN-SUMMARY-01)');

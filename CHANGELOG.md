@@ -4,6 +4,34 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.35] — 2026-10-14 (UTC)
+### One key and one pulse across all the music
+- MUSIC-COHESION-01: the start screen was in C minor while the field, wave and boss themes were in D minor, and the four themes ran at 88, 104, 144 and 152 BPM. The start screen now plays the same i, VI, VII, V progression in D minor as the field theme (`MUSIC_ATTRACT_TONIC` 50, chords 38, 34, 36, 45), and the tempos share one pulse: start screen and field 88 BPM, wave and boss 132 BPM (1.5 times). The boss keeps its Phrygian mode, faster drums and extra volume to stay distinct. All themes keep rotating keys together through `musicKeyShift()`.
+
+## [1.8.34] — 2026-10-14 (UTC)
+### Fewer voices at the opening, the theme stated right after the drop
+- MUSIC-OPENING-01: when a wave or boss theme starts, the first bar now plays only the sting (pickups, riser and the silence before the drop), with no groove, hats, layers or melody under it, so the drop lands cleanly. The bar after the drop plays the rising leitmotif in brass over the groove and holds back the regular melody, so the theme is heard on its own before the song proceeds. Both bars are tracked by `musicBarRole` in `scheduleMusicStep()`.
+
+## [1.8.33] — 2026-10-14 (UTC)
+### Path to Victory opening: a bass drop on the downbeat
+- MUSIC-STING-02: the four evenly spaced brass hits and long sweep that opened the wave and boss themes are replaced. `scheduleMusicSting()` in `js/config.js` now plays three rising brass pickups (`MUSIC_STING_PICKUPS`, each with a timpani stroke and growing in volume), a short riser through the last half bar, then lands the bass drop on the next downbeat (`MUSIC_STING_DROP_STEP`, one bar after the start) together with a timpani stroke, a crash and a held brass power chord. Boss waves use the same shape, louder.
+
+## [1.8.32] — 2026-10-14 (UTC)
+### Overlapping tree shadows no longer double-darken
+- SCENERY-SHADOW-UNION-01: where one tree's shadow crossed another's the ground was darker than under either (each shadow was a separate 24% black fill). `paintSceneryGroundShadows()` in `js/environment.js` now paints the silhouette shadows fully dark into one layer (`beginSceneryShadowLayer()`) and lays the layer on the ground once at `SCENERY_SHADOW_STRENGTH` (0.24), so overlaps match the rest of the shadow. `drawEmojiGroundShadow()` in `js/config.js` gains an optional `strength` argument (default 0.24, so tower and enemy shadows are unchanged). The box shadow (0.3) and the branch shadow keep their own strengths and are still painted directly. Shadow shapes, sizes and strengths are unchanged; the same idea already governs the batched enemy shadows (ENEMY-SHADOW-BATCH-01) and the box shadow (BOX-SHADOW-01).
+
+## [1.8.31] — 2026-10-14 (UTC)
+### Shadows never cross a tree
+- SCENERY-SHADOW-PASS-01: `drawOneSceneryItem()` in `js/environment.js` painted each item's ground shadow immediately before its sprite, so a shadow drawn later (a neighbouring tree, rock or box standing at the same depth) lay across the sprite of the item drawn before it, such as the trunk of the tree beside it. The shadow code is now `drawSceneryGroundShadow()` (with `sceneryEmojiFor()` for the shared glyph choice) and runs for every scenery item in one pass before any sprite in the world draw loop, as the batched enemy shadows already do (ENEMY-SHADOW-BATCH-01). The shadow shapes, sizes and strengths are unchanged.
+
+## [1.8.30] — 2026-10-14 (UTC)
+### Animals and bees avoid enemies
+- LIVESTOCK-AVOID-01: `Enemy.steerAroundEnemies()` in `js/waves.js`, called from `updateLivestockWander()`, bends the heading of every wandering animal and bee away from, and to the side of, active enemies within the enemy's radius plus its own plus `LIVESTOCK_AVOID_MARGIN_PX` (26), harder the closer the enemy is (`LIVESTOCK_AVOID_STRENGTH` 2.2). Walking speed is unchanged. Hostile hunters such as the troll ignore it, because they walk toward towers on purpose.
+
+## [1.8.29] — 2026-10-14 (UTC)
+### Escaped enemies no longer jump
+- ESCAPE-WALKBACK-01: `Enemy.updateEscaped()` in `js/waves.js` called `placeOnNearestRouteTile()` the moment an enemy that had crossed the finish line stood off the walkable area, which moved it instantly to the nearest route tile. `walkBackOntoRoute()` now walks it there at its own speed. Only a position more than `ESCAPE_WALKBACK_MAX_TILES` (4) tiles away, such as after loading a save, is still placed directly.
+
 ## [1.8.28] — 2026-10-13 (UTC)
 ### Gamer-facing run sharing and telemetry, one organised pattern
 - AGENTS.md Code map gains a "Run progress, sharing and reporting" group naming each system by function; the related contract checks sit together under one label in `js/config.js`; the `ANALYTICS.md` rule now says "when present" because the file is optional (it is not in the repository).

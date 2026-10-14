@@ -700,6 +700,8 @@ const WAVE_COUNTDOWN_GO_HOLD_MS = 500; // how long the "GO!" label lingers after
 // CA246 — see HISTORY.md § [1.5.7] Code Archaeology, CA246
 const WAVE_CLEAR_XP_BASE = 8, WAVE_CLEAR_XP_PER_WAVE = 1.5;
 let waveRunSeed = runSeedFor(0xA3);
+const ESCAPE_WALKBACK_MAX_TILES = 4;
+const LIVESTOCK_AVOID_MARGIN_PX = 26, LIVESTOCK_AVOID_STRENGTH = 2.2;
 let activeWavePlan = null;
 const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
 // CA626 — see HISTORY.md § [1.5.7] Code Archaeology, CA626
@@ -1177,9 +1179,30 @@ class Enemy{
       this.vx = Math.cos(turn)*walkSpeed; this.vy = Math.sin(turn)*walkSpeed;
       if(this.vx > 1) this.livestockFacesRight = true; else if(this.vx < -1) this.livestockFacesRight = false;
     }
+    if(walkSpeed > 0 && !hunter) this.steerAroundEnemies(walkSpeed);
     const stepX = this.x + this.vx*dt/1000, stepY = this.y + this.vy*dt/1000;
     if(isLooseWalkableAt(stepX, stepY)){ this.x = stepX; this.y = stepY; }
     else { this.vx = 0; this.vy = 0; this.retargetTimer = 0; }
+  }
+  // LIVESTOCK-AVOID-01 (1.8.30): animals and bees bend their walk away from enemies on the road instead of passing through them. Enemies within their own radius plus LIVESTOCK_AVOID_MARGIN_PX push the heading away and to the side it already leans, harder the closer they are, so a head-on animal curves around instead of backing up; the walking speed is unchanged.
+  steerAroundEnemies(walkSpeed){
+    let pushX = 0, pushY = 0;
+    for(const other of enemyPool){
+      if(!other.active || other.isLivestock) continue;
+      const reach = other.radius + this.radius + LIVESTOCK_AVOID_MARGIN_PX;
+      const offsetX = this.x - other.x, offsetY = this.y - other.y, squaredDistance = offsetX*offsetX + offsetY*offsetY;
+      if(squaredDistance >= reach*reach || squaredDistance === 0) continue;
+      const distance = Math.sqrt(squaredDistance), closeness = (reach - distance) / reach;
+      pushX += offsetX / distance * closeness; pushY += offsetY / distance * closeness;
+    }
+    const pushLength = Math.hypot(pushX, pushY);
+    if(pushLength === 0) return;
+    const awayX = pushX / pushLength, awayY = pushY / pushLength, headingX = this.vx / walkSpeed, headingY = this.vy / walkSpeed;
+    const side = (awayX * headingY - awayY * headingX) >= 0 ? 1 : -1;
+    const steerX = headingX + (awayX - awayY * side) * pushLength * LIVESTOCK_AVOID_STRENGTH, steerY = headingY + (awayY + awayX * side) * pushLength * LIVESTOCK_AVOID_STRENGTH;
+    const steerLength = Math.hypot(steerX, steerY) || 1;
+    this.vx = steerX / steerLength * walkSpeed; this.vy = steerY / steerLength * walkSpeed;
+    if(this.vx > 1) this.livestockFacesRight = true; else if(this.vx < -1) this.livestockFacesRight = false;
   }
   applyFreeze(ms){
     this.frozenUntil = Math.max(this.frozenUntil, gameTime + ms);
@@ -1643,10 +1666,24 @@ class Enemy{
       waveTelemetry.looseDrainLives++;
     }
     // LOOSE-CONFINE-01 (1.6.77) — see HISTORY.md § [1.6.77]
-    if(!isLooseWalkableAt(this.x, this.y)) this.placeOnNearestRouteTile();
+    if(!isLooseWalkableAt(this.x, this.y) && this.walkBackOntoRoute(dt)) return;
     const positionBeforeMoveX = this.x, positionBeforeMoveY = this.y;
     this.updateEscapedMovement(dt);
     if(gameState === 'PLAYING' && confineLooseEnemyToRoute(this, positionBeforeMoveX, positionBeforeMoveY) && this.escapedAttackTarget) this.escapedAttackTarget = null;
+  }
+  // ESCAPE-WALKBACK-01 (1.8.29): an enemy that slips past the finish line stands just off the walkable area; it walks back onto the nearest route tile instead of jumping there. Only a far-off position (a loaded save or a changed map) is still placed directly.
+  walkBackOntoRoute(dt){
+    let nearestPoint = null, nearestDistance = Infinity;
+    for(const point of waypointsPx){
+      const distance = Math.hypot(point.x - this.x, point.y - this.y);
+      if(distance < nearestDistance){ nearestDistance = distance; nearestPoint = point; }
+    }
+    if(!nearestPoint) return false;
+    if(nearestDistance > ESCAPE_WALKBACK_MAX_TILES * TILE_SIZE){ this.x = nearestPoint.x; this.y = nearestPoint.y; return false; }
+    const stepPx = Math.min(nearestDistance, this.packedSpeed() * enemyMoveMultiplier(this) * dt / 1000);
+    this.x += (nearestPoint.x - this.x) / nearestDistance * stepPx;
+    this.y += (nearestPoint.y - this.y) / nearestDistance * stepPx;
+    return true;
   }
   placeOnNearestRouteTile(){
     let nearestPoint = null, nearestDistance = Infinity;

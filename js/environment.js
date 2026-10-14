@@ -2834,6 +2834,40 @@ function drawSceneryEmoji(ctx, emoji, item, size){
   if(item.type === 'BRANCH') drawBranchSprite(ctx,size,undefined,item); else if(item.type === 'STUMP') drawStumpSprite(ctx,size); else drawEmojiSprite(ctx, emoji, size);
   ctx.restore();
 }
+// SCENERY-SHADOW-PASS-01 (1.8.31): every scenery ground shadow is painted in one pass before any scenery, actor or tower sprite, so a shadow never lies across a tree, rock or stickman standing beside it.
+function sceneryEmojiFor(item, chanceDefinition){
+  return chanceDefinition ? chanceDefinition.emoji : EVENT_PROP_EMOJI[item.type] ? EVENT_PROP_EMOJI[item.type] : item.type === 'TREE' ? (TREE_VARIANT_EMOJI[item.variant || 0] || '🌳') : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
+}
+function drawSceneryGroundShadow(ctx, item, size, strength = SCENERY_SHADOW_STRENGTH){
+  const emoji = sceneryEmojiFor(item, CONFIG.CHANCE_STRUCTURES[item.type]);
+  if(item.type==='BRANCH'){
+    if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=0.24;ctx.translate(item.x+size*0.08,item.y+2);ctx.transform(1,0,-0.35,0.25,0,0);drawBranchSprite(ctx,size,undefined,item);ctx.restore();}
+  } else if(item.type==='STUMP'){
+    if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=strength;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(item.x+size*0.1,item.y+2+size*0.30,size*0.37,size*0.12,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+  } else drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',(item.flip ? -1 : 1)*(item.widthStretch || 1),item.tallStretch || 1,strength);
+}
+// SCENERY-SHADOW-UNION-01 (1.8.32): silhouette shadows are painted fully dark into one layer and the layer is laid on the ground once at the shadow strength, so where two shadows overlap the ground is no darker than under one. The box shadow and the branch shadow keep their own strengths and are painted directly.
+const SCENERY_SHADOW_STRENGTH = 0.24;
+const sceneryShadowLayer = document.createElement('canvas'), sceneryShadowLayerContext = sceneryShadowLayer.getContext('2d');
+function beginSceneryShadowLayer(ctx){
+  const target = ctx.canvas;
+  if(sceneryShadowLayer.width !== target.width || sceneryShadowLayer.height !== target.height){ sceneryShadowLayer.width = target.width; sceneryShadowLayer.height = target.height; }
+  else { sceneryShadowLayerContext.setTransform(1,0,0,1,0,0); sceneryShadowLayerContext.clearRect(0,0,target.width,target.height); }
+  sceneryShadowLayerContext.setTransform(ctx.getTransform());
+  return sceneryShadowLayerContext;
+}
+function paintSceneryGroundShadows(ctx, sortedItems){
+  let layerContext = null;
+  for(const it of sortedItems){
+    if(it.kind !== 's') continue;
+    if(it.item.type === 'BRANCH' || sceneryEmojiFor(it.item, CONFIG.CHANCE_STRUCTURES[it.item.type]) === '📦'){ drawSceneryGroundShadow(ctx, it.item, it.size); continue; }
+    if(graphicsQuality !== 'high') continue;
+    if(!layerContext) layerContext = beginSceneryShadowLayer(ctx);
+    drawSceneryGroundShadow(layerContext, it.item, it.size, 1);
+  }
+  if(!layerContext) return;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha *= SCENERY_SHADOW_STRENGTH; ctx.drawImage(sceneryShadowLayer, 0, 0); ctx.restore();
+}
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
     const glow = ctx.createRadialGradient(item.x, item.y, 0, item.x, item.y, size*0.72);
@@ -2852,12 +2886,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff'; // must never inherit leftover fillStyle from whatever drew immediately before it
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
-  const emoji = chanceDefinition ? chanceDefinition.emoji : EVENT_PROP_EMOJI[item.type] ? EVENT_PROP_EMOJI[item.type] : item.type === 'TREE' ? (TREE_VARIANT_EMOJI[item.variant || 0] || '🌳') : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
-  if(item.type==='BRANCH'){
-    if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=0.24;ctx.translate(item.x+size*0.08,item.y+2);ctx.transform(1,0,-0.35,0.25,0,0);drawBranchSprite(ctx,size,undefined,item);ctx.restore();}
-  } else if(item.type==='STUMP'){
-    if(graphicsQuality==='high'){ctx.save();ctx.fillStyle='rgba(0,0,0,0.24)';ctx.beginPath();ctx.ellipse(item.x+size*0.1,item.y+2+size*0.30,size*0.37,size*0.12,0,0,Math.PI*2);ctx.fill();ctx.restore();}
-  } else drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',(item.flip ? -1 : 1)*(item.widthStretch || 1),item.tallStretch || 1);
+  const emoji = sceneryEmojiFor(item, chanceDefinition);
   if(chanceDefinition){
     // CHANCE-STRUCTURE-GLOW-01 (1.6.91) — see HISTORY.md § [1.6.91]. A soft radial glow behind the
     // structure while it can actually help, replacing the earlier stroked ring outline. Steady, never
@@ -3335,6 +3364,9 @@ function drawDepthSortedLayer(ctx){
   }
   depthSortItems.sort((a,b) => a.sortY - b.sortY);
   renderPhaseTime.worldSort += performance.now() - worldMark;
+  worldMark = performance.now();
+  paintSceneryGroundShadows(ctx, depthSortItems);
+  renderPhaseTime.worldScenery += performance.now() - worldMark;
   for(const it of depthSortItems){
     worldMark = performance.now();
     switch(it.kind){
