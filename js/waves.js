@@ -257,6 +257,7 @@ function announceSizePhase(phase){
 // mid-wave, the remaining unit-spacing and batch/phase presentation gaps are pointless waiting: drop them so the next
 // enemy is released immediately. Held back only while a boss warning banner is on screen.
 function rushDispatchIfFieldClear(){
+  if(activeWavePlan && activeWavePlan.waveNumber <= EARLY_NO_RUSH_LAST_WAVE) return;
   if(bossWarningUntil > 0 && presentationTime < bossWarningUntil) return;
   if(waveRouteObligationsOutstanding()) return;
   waveDispatch.unitGapRemainingMs = 0;
@@ -347,7 +348,7 @@ function startNextWave(){
   showToast(plan.label);
   resetWaveDispatch();
   activeWavePlan = plan;
-  waveTimer = 0; countdownBeatPlayed = -1;
+  waveTimer = 0; countdownBeatPlayed = -1; countdownMusicStage = 0;
   waveIndex++;
   waveState = 'SPAWNING';
   logGameEvent('wave started: lives ' + lives + ', gold ' + gold + ', speed ' + gameSpeed + 'x');
@@ -360,7 +361,6 @@ function startNextWave(){
   for(const t of towerPool) if(t.active){ t.waveXp = 0; t.waveLastHits = 0; t.waveAssists = 0; t.waveCleanups = 0; t.waveDamage = 0; t.waveStatPoints = 0; }
   for(const t of towerPool) if(t.active && t.type === 'AXEMAN') t.axeSwitchesLeft = 1;
   playSound('roundStart');
-  audioEngine.setMusicPhase('wave',true);
   updateHUD();
 }
 // CA639 — see HISTORY.md § [1.5.7] Code Archaeology, CA639
@@ -607,10 +607,43 @@ const LIVESTOCK_TYPES = {
   WANDERING_TROLL: { emoji: '🧌', meatId: 'STEAK', speed: 16, radius: 20.9, isTroll: true, hunter: { attackRadius: TROLL_ATTACK_RADIUS, attackIntervalMs: TROLL_ATTACK_INTERVAL_MS, attackDamage: TROLL_ATTACK_DAMAGE, aggroRadius: TROLL_AGGRO_RADIUS, speedMult: TROLL_HUNT_SPEED_MULT, goldBags: 2, label: 'wandering troll' } }
 };
 const TROLL_EVENT_CHANCE_PER_WAVE = 0.18;
+// TROLL-ENTRANCE-01 (1.8.40): the troll no longer appears on the finish tile and charges. It steps in from the map edge, crosses the bare ground, enters the grass, strolls along the grass rim to a few spots, and only then starts hunting.
+const TROLL_ENTRANCE_SPEED_MULT = 2.2, TROLL_RIM_STOPS = 3;
+function pickTrollEdgeSpawnPoint(){
+  const margin = 24;
+  let best = null, bestDistance = Infinity;
+  for(let attempt = 0; attempt < 6; attempt++){
+    const side = Math.floor(Math.random()*4), along = Math.random();
+    const point = side === 0 ? { x: margin, y: along*WORLD_MAX_H } : side === 1 ? { x: WORLD_MAX_W - margin, y: along*WORLD_MAX_H } : side === 2 ? { x: along*WORLD_MAX_W, y: margin } : { x: along*WORLD_MAX_W, y: WORLD_MAX_H - margin };
+    const inward = nearestLooseWalkableTileCenter(point.x, point.y);
+    const distance = inward ? Math.hypot(inward.x - point.x, inward.y - point.y) : Infinity;
+    if(distance < bestDistance){ best = point; bestDistance = distance; }
+  }
+  return best;
+}
+function buildTrollEntranceRoute(spot){
+  const route = [];
+  const entry = nearestLooseWalkableTileCenter(spot.x, spot.y);
+  if(!entry) return route;
+  route.push(entry);
+  const rim = [];
+  for(let gy = 0; gy < ROWS; gy++) for(let gx = 0; gx < COLS; gx++){
+    if(!isLooseWalkableAt(gx*TILE_SIZE + 1, gy*TILE_SIZE + 1)) continue;
+    const open = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx, dy]) => !isLooseWalkableAt((gx+dx)*TILE_SIZE + 1, (gy+dy)*TILE_SIZE + 1));
+    if(open) rim.push({ x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 });
+  }
+  let from = entry;
+  for(let stop = 0; stop < TROLL_RIM_STOPS && rim.length; stop++){
+    const choice = rim.filter(tile => Math.hypot(tile.x - from.x, tile.y - from.y) > TILE_SIZE*1.5);
+    const next = (choice.length ? choice : rim)[Math.floor(Math.random()*(choice.length || rim.length))];
+    route.push(next); from = next;
+  }
+  return route;
+}
 function trollIsOnBoard(){ return enemyPool.some(e => e.active && e.type === 'WANDERING_TROLL'); }
 function spawnWanderingTroll(){
   if(!waypointsPx.length) return false;
-  const spot = pickEndTileSpawnPoint();
+  const spot = pickTrollEdgeSpawnPoint();
   if(!spot) return false;
   const troll = acquireActive(enemyPool);
   if(!troll) return false;
@@ -620,6 +653,7 @@ function spawnWanderingTroll(){
   troll.isLivestock = true; troll.isHostileNpc = true;
   troll.x = spot.x; troll.y = spot.y;
   troll.retargetTimer = 0; troll.livestockWalking = false; troll.trollAttackTimer = TROLL_ATTACK_INTERVAL_MS;
+  troll.trollRoute = buildTrollEntranceRoute(spot);
   startTrollCameraPan(troll);
   playSound('troll_arrive', troll.x, undefined, troll.y);
   spawnFloatingText(troll.x, troll.y - troll.radius - 22, '🧌 Troll!', '#ffb74d');
@@ -671,9 +705,17 @@ const FAMILY_TIER_ELIGIBILITY = {
   MONARCH:['TINY','SMALL'], BOSS:['BOSS'], SANTA:['BOSS']
 };
 const FAMILY_NATIVE_TIER = { SWARM:'TINY', MONARCH:'TINY', BOSS:'BOSS' };
+// EARLY-HOOK-01 (1.8.41): the first minutes escape an all-Grunt run. Wave 1 stays the gentle one-at-a-time Tiny lesson, wave 2 mixes Small Grunts in, a new kind of enemy
+// guests every few waves ahead of its own chapter (a share of eligible Tiny and Small slots), wave 4 ends on Standard-size champion Grunts,
+// and waves 1 and 2 never rush the spawn gaps, so the opening two waves take about five to six minutes at 1x.
+const EARLY_PREVIEW_BY_WAVE = Object.freeze({ 2: ['SWARM', 0.15], 3: ['SWARM', 0.25], 4: ['WOLF', 0.15], 5: ['WOLF', 0.2], 7: ['RUNNER', 0.15], 8: ['RUNNER', 0.2] });
+const EARLY_NO_RUSH_LAST_WAVE = 2;
+function earlyPreviewFamily(waveNumber){ return EARLY_PREVIEW_BY_WAVE[waveNumber] ? EARLY_PREVIEW_BY_WAVE[waveNumber][0] : null; }
+// ENEMY-EMOJI-VARIETY-01 (1.8.41): Grunts and Swarm pick one of several faces per unit from the wave seed, so a wave reads as a crowd, not clones.
+const ENEMY_EMOJI_VARIANTS = Object.freeze({ GRUNT: ['😡', '😠', '🤬', '😤'], SWARM: ['🐜', '🪲', '🐞'] });
 const EARLY_WAVE_POPULATION = [
   null,
-  { TINY:10 }, { TINY:24 }, { TINY:36 }, { TINY:45, SMALL:9 }, { TINY:54, SMALL:12, LARGE:8 },
+  { TINY:10 }, { TINY:18, SMALL:6 }, { TINY:36, SMALL:4 }, { TINY:45, SMALL:9, STANDARD:1 }, { TINY:54, SMALL:12, LARGE:8 },
   { TINY:63, SMALL:15, STANDARD:2 }, { TINY:72, SMALL:18, STANDARD:3 }, { TINY:81, SMALL:21, STANDARD:4 },
   { TINY:90, SMALL:24, STANDARD:5 }, { TINY:100, SMALL:27, STANDARD:6, LARGE:16, BOSS:1 },
   { TINY:108, SMALL:30, STANDARD:7 }, { TINY:117, SMALL:33, STANDARD:8 }, { TINY:126, SMALL:36, STANDARD:9 },
@@ -700,7 +742,7 @@ const WAVE_COUNTDOWN_GO_HOLD_MS = 500; // how long the "GO!" label lingers after
 // CA246 — see HISTORY.md § [1.5.7] Code Archaeology, CA246
 const WAVE_CLEAR_XP_BASE = 8, WAVE_CLEAR_XP_PER_WAVE = 1.5;
 let waveRunSeed = runSeedFor(0xA3);
-const ESCAPE_WALKBACK_MAX_TILES = 4;
+const ESCAPE_WALKBACK_MAX_TILES = 4, LOOSE_SETTLE_MIN_MS = 20000, LOOSE_SETTLE_SPREAD_MS = 10000; // LOOSE-SETTLE-01 (1.8.37)
 const LIVESTOCK_AVOID_MARGIN_PX = 26, LIVESTOCK_AVOID_STRENGTH = 2.2;
 let activeWavePlan = null;
 const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
@@ -783,7 +825,9 @@ function buildWavePlan(waveNumber){
     const introSlots = sizeTier === introTier ? (chapterFamily === 'GRUNT' ? tierCount : introductionSlotCount(tierCount)) : 0;
     const weights = sizeTier === 'BOSS' ? [{ family: (waveNumber === CAMPAIGN_WAVE_COUNT || (stealthRun && waveNumber===10) ? 'SANTA' : 'BOSS'), weight:1 }] : familyWeightsForTier(waveNumber, sizeTier, partnerFamily, emphasisFamilies);
     for(let i = 0; i < tierCount; i++){
-      const family = i < introSlots ? chapterFamily : (weights.length ? pickWeightedFamily(rng, weights) : 'GRUNT');
+      let family = i < introSlots ? chapterFamily : (weights.length ? pickWeightedFamily(rng, weights) : 'GRUNT');
+      const preview = EARLY_PREVIEW_BY_WAVE[waveNumber];
+      if(preview && i >= introSlots && (sizeTier === 'TINY' || sizeTier === 'SMALL') && FAMILY_TIER_ELIGIBILITY[preview[0]].includes(sizeTier) && rng() < preview[1]) family = preview[0];
       units.push({ uniqueId: uniqueId++, family, sizeTier, sizeJitter: rng(), phaseIndex: phases.length, batchIndex: 0 });
       xpBudget += band.xp;
       goldBudget += Math.max(1, Math.round(CONFIG.ENEMIES[family].bounty * band.bountyMult));
@@ -846,7 +890,7 @@ function validateWavePlan(plan){
       for(const unit of batch.units){
         if(unit.sizeTier !== phase.sizeTier) problems.push(where + ': unit tier ' + unit.sizeTier + ' inside ' + phase.sizeTier + ' phase');
         if(!FAMILY_TIER_ELIGIBILITY[unit.family] || !FAMILY_TIER_ELIGIBILITY[unit.family].includes(unit.sizeTier)) problems.push(where + ': ' + unit.family + ' not eligible for ' + unit.sizeTier);
-        if(FAMILY_INTRODUCTION_WAVE[unit.family] > plan.waveNumber && !(stealthRun && plan.waveNumber===10 && unit.family==='SANTA' && phase.sizeTier==='BOSS')) problems.push(where + ': ' + unit.family + ' appears before its introduction wave');
+        if(FAMILY_INTRODUCTION_WAVE[unit.family] > plan.waveNumber && earlyPreviewFamily(plan.waveNumber) !== unit.family && !(stealthRun && plan.waveNumber===10 && unit.family==='SANTA' && phase.sizeTier==='BOSS')) problems.push(where + ': ' + unit.family + ' appears before its introduction wave');
       }
     }
   }
@@ -905,6 +949,8 @@ function spawnWaveUnit(spec){
   const hpScale = waveHpScale(strengthWave) * (spec.sizeTier === 'BOSS' ? bossHpScale(strengthWave) : 1);
   e.spawn(spec.family, hpScale, false, false);
   e.applySizeTier(spec.sizeTier, spec.sizeJitter, hpScale);
+  const emojiVariants = ENEMY_EMOJI_VARIANTS[spec.family];
+  if(emojiVariants) e.emoji = emojiVariants[Math.floor(spec.sizeJitter * 997) % emojiVariants.length];
   e.isStealthSanta=isStealthSanta;
   if(isStealthSanta) stealthSantaSpawned=true;
   if(spec.sizeTier === 'LARGE') spawnFloatingText(e.x, e.y - e.radius - 14, 'BIG!', '#ffd700');
@@ -947,6 +993,23 @@ function enemySurroundPoint(enemy,target){
   }
   // Reuse enemy fields instead of allocating destinations each tick.
   return enemy;
+}
+const looseEnemyGlowSprites = new Map(), LOOSE_GLOW_PULSE_STEPS = 8, LOOSE_GLOW_SPRITE_MAX = 96;
+function looseEnemyGlowSprite(enemyRadius, glowPulse){
+  const radiusKey = Math.round(enemyRadius), pulseStep = Math.round(glowPulse*LOOSE_GLOW_PULSE_STEPS), key = radiusKey*64 + pulseStep;
+  let entry = looseEnemyGlowSprites.get(key);
+  if(entry) return entry;
+  const pulse = pulseStep/LOOSE_GLOW_PULSE_STEPS, glowRadius = radiusKey*2.6 + pulse*3, side = Math.ceil(glowRadius*2);
+  const canvas = document.createElement('canvas'); canvas.width = canvas.height = side;
+  const spriteCtx = canvas.getContext('2d'), halo = spriteCtx.createRadialGradient(side/2, side/2, radiusKey*0.4, side/2, side/2, glowRadius);
+  halo.addColorStop(0, 'rgba(255,50,50,' + (0.42 + 0.18*pulse).toFixed(2) + ')');
+  halo.addColorStop(0.55, 'rgba(255,60,60,' + (0.16 + 0.08*pulse).toFixed(2) + ')');
+  halo.addColorStop(1, 'rgba(255,60,60,0)');
+  spriteCtx.fillStyle = halo; spriteCtx.fillRect(0, 0, side, side);
+  if(looseEnemyGlowSprites.size >= LOOSE_GLOW_SPRITE_MAX) looseEnemyGlowSprites.delete(looseEnemyGlowSprites.keys().next().value);
+  entry = { canvas, radius: side/2 };
+  looseEnemyGlowSprites.set(key, entry);
+  return entry;
 }
 class Enemy{
   constructor(){ this.active = false; }
@@ -1015,6 +1078,7 @@ class Enemy{
     this.poisonTickTimer = 0;
     this.poisonDamagePerTick = 0;
     this.lastPoisonSource = null;
+    this.acidStacks = 0; this.acidUntil = 0; this.acidTickTimer = 0; this.acidDamagePerStack = 0; this.acidSlowPerStack = 0; this.acidNextStackAt = 0; this.lastAcidSource = null;
     this.bleedUntil = 0;         // open-wound bleeding DOT — lasts as long as any arrow is stuck, independent of the passive low-HP drip
     this.bleedStartedAt = 0;     // reference point for the cessation taper — spurt intensity winds down as the wound approaches bleedUntil instead of cutting off abruptly at full strength
     this.bleedTickTimer = 0;
@@ -1081,11 +1145,11 @@ class Enemy{
     this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0;
     this.wanderTurnRate = 0; this.wanderGoalActive = false; this.wanderGoalX = 0; this.wanderGoalY = 0;
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
-    this.looseDrainMs = 0;
+    this.looseDrainMs = 0; this.escapeSettleMs = 0;
     // CA275 — see HISTORY.md § [1.5.7] Code Archaeology, CA275
     this.breedingPartner=null;this.birthDueRound=0;this.breedReadyRound=0;
     this.heartStartAt = -1e9; this.heartCooldownUntil = 0; this.heartCheckTimer = 0;
-    this.isHostileNpc = false; this.isLivestock = false; this.livestockWalking = false; // LIVESTOCK-RECYCLE-01 (1.6.106): pooled enemies are reused, so a slot that once held a pig must not stay flagged as livestock
+    this.isHostileNpc = false; this.isLivestock = false; this.livestockWalking = false; this.trollRoute = null; // LIVESTOCK-RECYCLE-01 (1.6.106): pooled enemies are reused, so a slot that once held a pig must not stay flagged as livestock
     this.isGuardian = false; this.hutRef = null; this.hutAnchorX = 0; this.hutAnchorY = 0;
     this.isHutBuilding = false; this.guardiansAliveCount = 0; this.respawnAt = null; this.destroyed = false; this.buildingKind = null;
     this.growthRounds = LIVESTOCK_ADULT_ROUNDS;
@@ -1112,6 +1176,7 @@ class Enemy{
   }
   updateLivestockWander(dt){
     if(livestockIsEgg(this)){ this.vx = 0; this.vy = 0; this.livestockWalking = false; return; }
+    if(this.trollRoute && this.trollRoute.length){ this.walkTrollEntrance(dt); return; }
     if(!this.isHostileNpc && this.type!=='BEE') this.checkLivestockPairHearts(dt);
     if(this.type==='BEE') updateBeeHoney(this,dt);
     // LIVESTOCK-CUTE-01 (1.6.105): idle a moment, then amble in a direction for a bit, then idle again. Driven in real time
@@ -1184,6 +1249,15 @@ class Enemy{
     if(isLooseWalkableAt(stepX, stepY)){ this.x = stepX; this.y = stepY; }
     else { this.vx = 0; this.vy = 0; this.retargetTimer = 0; }
   }
+  walkTrollEntrance(dt){
+    const stop = this.trollRoute[0], dx = stop.x - this.x, dy = stop.y - this.y, distance = Math.hypot(dx, dy);
+    const stepPx = LIVESTOCK_TYPES[this.type].speed * LIVESTOCK_WALK_SPEED_MULT * TROLL_ENTRANCE_SPEED_MULT * dt/1000;
+    this.livestockWalking = true; this.attackBumpTarget = null;
+    if(distance <= Math.max(stepPx, 4)){ this.x = stop.x; this.y = stop.y; this.vx = 0; this.vy = 0; this.trollRoute.shift(); if(!this.trollRoute.length){ this.retargetTimer = 0; this.livestockWalking = false; } return; }
+    this.vx = dx/distance*stepPx*1000/dt; this.vy = dy/distance*stepPx*1000/dt;
+    this.livestockFacesRight = dx > 0;
+    this.x += dx/distance*stepPx; this.y += dy/distance*stepPx;
+  }
   // LIVESTOCK-AVOID-01 (1.8.30): animals and bees bend their walk away from enemies on the road instead of passing through them. Enemies within their own radius plus LIVESTOCK_AVOID_MARGIN_PX push the heading away and to the side it already leans, harder the closer they are, so a head-on animal curves around instead of backing up; the walking speed is unchanged.
   steerAroundEnemies(walkSpeed){
     let pushX = 0, pushY = 0;
@@ -1215,6 +1289,14 @@ class Enemy{
     this.poisonUntil = Math.max(this.poisonUntil, gameTime + ms);
     this.poisonDamagePerTick = Math.max(this.poisonDamagePerTick||0, damagePerTick); // strongest poison wins, doesn't stack
     if(sourceTower) this.lastPoisonSource = sourceTower;
+  }
+  applyAcidCoat(damagePerStack, ms, slowPerStack, sourceTower){
+    if(this.acidUntil <= gameTime) this.acidStacks = 0;
+    if(gameTime >= this.acidNextStackAt && this.acidStacks < ACID_MAX_STACKS){ this.acidStacks++; this.acidNextStackAt = gameTime + ACID_STACK_GAP_MS; }
+    this.acidUntil = Math.max(this.acidUntil, gameTime + ms);
+    this.acidDamagePerStack = Math.max(this.acidDamagePerStack, damagePerStack); this.acidSlowPerStack = Math.max(this.acidSlowPerStack, slowPerStack);
+    this.applySlow(this.acidSlowPerStack*this.acidStacks, ACID_SLOW_REFRESH_MS);
+    if(sourceTower) this.lastAcidSource = sourceTower;
   }
   applyBleed(damagePerTick, ms, sourceTower){
     // CA276 — see HISTORY.md § [1.5.7] Code Archaeology, CA276
@@ -1291,6 +1373,19 @@ class Enemy{
     } else {
       this.poisonDamagePerTick = 0; // expired — a fresh application starts clean rather than keeping a stale strength
     }
+    if(this.acidUntil > gameTime){
+      this.acidTickTimer -= dt;
+      if(this.acidTickTimer <= 0){
+        this.acidTickTimer = ACID_TICK_MS;
+        const acidDmg = Math.max(1, Math.round(this.acidDamagePerStack*this.acidStacks));
+        this.applySlow(this.acidSlowPerStack*this.acidStacks, ACID_SLOW_REFRESH_MS);
+        this.recordContribution(this.lastAcidSource, acidDmg, false);
+        this.hp -= acidDmg;
+        this.showDotDamageText(DOT_TEXT_POISON, acidDmg, '🧪', '#8bd62f');
+        spawnParticles(this.x, this.y, '#8bd62f', 2);
+        if(this.hp <= 0){ this.die(this.lastAcidSource, false); return; }
+      }
+    } else { this.acidStacks = 0; this.acidDamagePerStack = 0; this.acidSlowPerStack = 0; }
     if(this.bleedStackCount > 0 && this.embeddedArrows.length > 0) this.bleedUntil = Math.max(this.bleedUntil, gameTime + BLEED_ARROW_REFRESH_MS); // BLEED-WHILE-STUCK-01 (1.6.131)
     if(this.bleedUntil > gameTime){
       this.bleedTickTimer -= dt;
@@ -1650,6 +1745,7 @@ class Enemy{
     waveTelemetry.loosePeak = Math.max(waveTelemetry.loosePeak, countLooseEnemies() + 1);
     // CA301 — see HISTORY.md § [1.5.7] Code Archaeology, CA301
     this.escaped = true;
+    this.escapeSettleMs = LOOSE_SETTLE_MIN_MS + Math.random() * LOOSE_SETTLE_SPREAD_MS;
     logGameEvent(this.type + ' escaped the road at ' + Math.round(this.hp) + '/' + this.maxHp + ' HP; lives ' + lives);
     { const leakWitness = findNearestActiveTower(this.x, this.y, 260); if(leakWitness) requestStickmanBark(leakWitness, BARK_TIER_IMPORTANT, '💢', BARK_LINES.LEAK, 0, BARK_CHANCE.LEAK); }
     this.wanderRepickTimer = 0; // pick a wander heading on the very next tick instead of waiting out a leftover timer value
@@ -1696,6 +1792,7 @@ class Enemy{
   bossDamageMult(){ return (this.type === 'BOSS' || this.type === 'SANTA') ? BOSS_ATTACK_MULT : 1; }
   updateEscapedMovement(dt){
     this.attackBumpTarget = null; // recomputed fresh below every tick — never left stale if the target changes or drops
+    if(this.escapeSettleMs > 0){ this.escapeSettleMs -= dt; this.vx = 0; this.vy = 0; this.curiousTarget = null; return; }
     if(this.escapedAttackTarget && this.escapedAttackTarget.active && !(this.escapedAttackTarget.disabledWavesLeft > 0)){
       // CA303 — see HISTORY.md § [1.5.7] Code Archaeology, CA303
       const blocker = findTouchingBarricade(this);
@@ -1733,14 +1830,10 @@ class Enemy{
         const bossTarget = findNearestActiveTower(this.x, this.y, BOSS_AGGRO_RADIUS);
         if(bossTarget){ this.escapedAttackTarget = bossTarget; this.escapedAttackTimer = 0; }
       } else {
-        // LOOSE-CURIOUS-01 (1.7.36): the closer an escaped enemy wanders to a stickman, the likelier it is to aggro that stickman
-        // (about 8% at the edge of its notice radius rising to about 90% when touching); farther away it only drifts toward them.
-        const target = findNearestActiveTower(this.x, this.y, LOOSE_NOTICE_RADIUS);
+        // LOOSE-SETTLE-01 (1.8.37): after sitting still near the finish line an escaped enemy heads for the closest stickman wherever it stands.
+        const target = findNearestActiveTower(this.x, this.y);
         this.curiousTarget = target || null;
-        if(target){
-          const closeness = 1 - Math.min(1, Math.hypot(target.x - this.x, target.y - this.y) / LOOSE_NOTICE_RADIUS);
-          if(Math.random() < 0.08 + 0.82 * closeness * closeness){ this.escapedAttackTarget = target; this.escapedAttackTimer = 0; }
-        }
+        if(target){ this.escapedAttackTarget = target; this.escapedAttackTimer = 0; }
       }
     }
     // LOOSE-WANDERLUST-01 (1.7.73): owner request — loose enemies explore the grass and loop around instead of jiggling in place next to the finish line. Every few seconds an
@@ -2113,6 +2206,7 @@ class Enemy{
     // recordContribution() runs before HP subtraction, so it cannot detect the lethal hit.
     // Count only an actual death, after the revive guard, and only once.
     if(sourceTower && sourceTower.active && sourceTower.telemetry) sourceTower.telemetry.killsSecured++;
+    if(sourceTower && sourceTower.active) sourceTower.lastKillTime = gameTime;
     awardKillExperience(this, sourceTower, forStreak);
     applyKillShake(this);
     if((this.type === 'BOSS' || this.type === 'SANTA') && sourceTower) grantTowerMove(sourceTower, 'boss kill');
@@ -2312,12 +2406,8 @@ class Enemy{
     if(this.escaped && !this.isLivestock && !this.isGuardian && !this.isHutBuilding){
       // LOOSE-GLOW-01 (1.7.42): owner dislikes the red ring; a loose enemy now sits in a soft red glow, the same idea as the glow on items, with no outline anywhere.
       // It brightens and dims gently (pulsing glows are fine; only phasing of things the player needs is not) and the enemy itself is always fully drawn.
-      const glowPulse = 0.5 + 0.5*Math.sin(presentationTime/500), glowRadius = this.radius*2.6 + glowPulse*3;
-      const halo = ctx.createRadialGradient(this.x, this.y, this.radius*0.4, this.x, this.y, glowRadius);
-      halo.addColorStop(0, 'rgba(255,50,50,' + (0.42 + 0.18*glowPulse).toFixed(2) + ')');
-      halo.addColorStop(0.55, 'rgba(255,60,60,' + (0.16 + 0.08*glowPulse).toFixed(2) + ')');
-      halo.addColorStop(1, 'rgba(255,60,60,0)');
-      ctx.save(); ctx.fillStyle = halo; ctx.fillRect(this.x - glowRadius, this.y - glowRadius, glowRadius*2, glowRadius*2); ctx.restore();
+      const glowPulse = 0.5 + 0.5*Math.sin(presentationTime/500), looseGlow = looseEnemyGlowSprite(this.radius, glowPulse);
+      ctx.drawImage(looseGlow.canvas, this.x - looseGlow.radius, this.y - looseGlow.radius); // LOOSE-GLOW-CACHE-01 (1.8.41): one cached sprite per radius and pulse step instead of a new gradient per loose enemy per frame
     }
     // PERF-02 (1.6.9) — see HISTORY.md § [1.6.9]. The translucent aura RINGS below are purely
     // decorative reinforcement of information the status icons (drawStatusIcons calls) already
@@ -2342,6 +2432,12 @@ class Enemy{
     }
     if(this.frozenUntil > gameTime){
       drawStatusIcons(ctx, this.x, this.y - this.radius*1.35, this.radius*0.75, '🧊', 2, 400, true);
+    }
+    if(this.acidUntil > gameTime && this.acidStacks > 0){
+      ctx.fillStyle = 'rgba(139,214,47,' + (0.16 + 0.12*this.acidStacks) + ')';
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius*1.04, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#8bd62f';
+      for(let stack = 0; stack < this.acidStacks; stack++){ ctx.beginPath(); ctx.arc(this.x + (stack-(this.acidStacks-1)/2)*7, this.y - this.radius*1.3, 2.4, 0, Math.PI*2); ctx.fill(); }
     }
     if(this.poisonUntil > gameTime && !underHeavyVisualLoad){
       ctx.fillStyle = 'rgba(124,181,24,0.3)';
@@ -2648,7 +2744,7 @@ function listBootWarmupJobs(){
   // WARMUP-NEW-SPRITES-01 (1.7.110): the structures, the caravan and floating numbers are drawn from sprite caches, so their sprites are built here instead of on first use in a wave
   for(const producerType of PRODUCER_TYPES) for(const [partEmoji, partSize] of PRODUCER_DEFS[producerType].parts) queueGlyph(partEmoji, partSize);
   queueGlyph('🪵', 16); queueGlyph('🎩', 15); queueGlyph('👟', 9);
-  queueGlyph('🐴', 26); queueGlyph('👳', 15); queueGlyph('🛍️', 16);
+  queueGlyph('🐪', 26); queueGlyph('👳', 15); queueGlyph('🛍️', 16);
   const sceneryDrawGlyphs = [...TREE_VARIANT_EMOJI, '🪨', '🪴', '📦', '🎁', '🥢', ...Object.values(EVENT_PROP_EMOJI)];
   for(let scale = CONFIG.SCENERY.minScale; scale <= CONFIG.SCENERY.maxScale + 1e-6; scale += BOOT_SCENERY_SCALE_STEP) for(const glyph of sceneryDrawGlyphs) queueGlyph(glyph, Math.round(TILE_SIZE * 0.72 * scale));
   const textScaleIndexes = new Set();

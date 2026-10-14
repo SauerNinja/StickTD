@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.35">
+<meta name="application-version" content="1.8.41">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -78,7 +78,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.35",
+  "softwareVersion": "1.8.41",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -376,6 +376,10 @@
   .shop-lock-badge{position:absolute;top:-6px;right:-6px;font-size:14px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));}
   .shop-lock-badge.hidden{display:none;}
   #shopBtn{position:relative;}
+  .caravan-wag{position:absolute;left:50%;top:100%;margin-top:3px;font-size:22px;line-height:1;pointer-events:none;transform:translateX(-50%);transform-origin:50% 0;animation:caravanWag 7s ease-in-out infinite;}
+  .caravan-wag[hidden]{display:none;}
+  @keyframes caravanWag{0%,68%,100%{transform:translateX(-50%) rotate(0);}72%{transform:translateX(-50%) rotate(-20deg);}78%{transform:translateX(-50%) rotate(20deg);}84%{transform:translateX(-50%) rotate(-14deg);}90%{transform:translateX(-50%) rotate(8deg);}}
+  @media (prefers-reduced-motion:reduce){.caravan-wag{animation:none;}}
   .hud-action-btn.selected{box-shadow:0 0 8px var(--gold);outline:2px solid #fff;}
   .hud-action-btn.has-unlock{position:relative;}
   .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
@@ -667,7 +671,7 @@
   #updateHighlights a{color:#cfd6de;}
   .update-entry-head{color:#cfd6de;font-weight:bold;font-size:0.95em;margin-top:8px;letter-spacing:0.3px;}
   #updateFooterNote{color:#8b95a1;font-size:0.78em;letter-spacing:0.5px;text-transform:uppercase;margin:8px 0 10px;}
-  .settings-changelog{max-height:58vh;overflow:auto;text-align:left;line-height:1.45;}
+  .settings-changelog{text-align:left;line-height:1.45;}
   .settings-changelog-entry{border-bottom:1px solid rgba(255,255,255,0.14);padding:6px 0;}
   .settings-changelog-entry h3{font-size:0.95em;color:var(--gold);margin:5px 0;}
   .settings-changelog-entry ul{padding-left:20px;margin:4px 0 9px;}
@@ -787,6 +791,7 @@
   #inspItemsRow{flex-basis:100%;display:flex;flex-direction:column;gap:6px;
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
   #inspItemSlots{display:flex;flex-wrap:wrap;gap:6px;}
+  .item-slot[hidden]{display:none;}
   /* QUICK-USE-01 (1.6.134) — see HISTORY.md § [1.6.134]. Usable items sit inside the compact panel; only the slots that hold a consumable are shown, packed from the left. */
   /* QUICK-FLOAT-01 (1.7.36): the quick items are free floating buttons above the faceplate, never part of it. They live outside the panel
      (which scrolls and would clip them) and are positioned by script just above its top edge, so the nameplate never grows to hold them. */
@@ -801,6 +806,8 @@
     display:flex;align-items:center;justify-content:center;font-size:1.15em;cursor:pointer;}
   .item-slot,.quick-slot{position:relative;}
   .item-slot::after,.quick-slot::after{content:attr(data-key);position:absolute;top:0;left:3px;font-size:9px;font-weight:bold;color:#ffe9a8;text-shadow:0 0 2px #000;pointer-events:none;}
+  .item-slot[data-count]::before,.quick-slot[data-count]::before{content:attr(data-count);position:absolute;right:1px;bottom:1px;min-width:12px;padding:1px 3px;box-sizing:border-box;border-radius:7px;background:rgba(0,0,0,0.72);color:#fff;font-size:10px;font-weight:bold;line-height:1.1;text-align:center;white-space:nowrap;text-shadow:none;pointer-events:none;}
+  .item-slot[data-count=""]::before,.quick-slot[data-count=""]::before{display:none;}
   .item-slot.usable,.quick-slot.usable{border-color:#8bc34a;}
   .item-slot.filled,.quick-slot.filled{background:rgba(74,47,29,0.6);border-color:var(--gold);
     box-shadow:inset 0 1px 2px rgba(0,0,0,0.4), 0 0 6px rgba(241,196,15,0.35);}
@@ -1048,7 +1055,7 @@
     <header id="hud-top">
       <div id="notification-bell"><button id="runRewardBtn" type="button" hidden aria-label="Choose a milestone reward">🎁</button><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
       <span id="buildBtnWrap"><button id="buildBtn" class="hud-action-btn">🏗️ Build</button><span id="first-build-hint" class="hidden" aria-hidden="true">👆</span></span>
-      <button id="shopBtn" class="hud-action-btn">🛒 Shop<span id="shopLockBadge" class="shop-lock-badge hidden">🔒</span></button>
+      <button id="shopBtn" class="hud-action-btn">🛒 Shop<span id="shopLockBadge" class="shop-lock-badge hidden">🔒</span><span id="caravanWag" class="caravan-wag" aria-hidden="true" hidden>👳</span></button>
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
       <div id="hud-stats-stack">
         <div class="hud-stat-row">
@@ -1134,6 +1141,30 @@
             <div class="item-slot" data-slot="3"></div>
             <div class="item-slot" data-slot="4"></div>
             <div class="item-slot" data-slot="5"></div>
+            <div class="item-slot" data-slot="6" hidden></div>
+            <div class="item-slot" data-slot="7" hidden></div>
+            <div class="item-slot" data-slot="8" hidden></div>
+            <div class="item-slot" data-slot="9" hidden></div>
+            <div class="item-slot" data-slot="10" hidden></div>
+            <div class="item-slot" data-slot="11" hidden></div>
+            <div class="item-slot" data-slot="12" hidden></div>
+            <div class="item-slot" data-slot="13" hidden></div>
+            <div class="item-slot" data-slot="14" hidden></div>
+            <div class="item-slot" data-slot="15" hidden></div>
+            <div class="item-slot" data-slot="16" hidden></div>
+            <div class="item-slot" data-slot="17" hidden></div>
+            <div class="item-slot" data-slot="18" hidden></div>
+            <div class="item-slot" data-slot="19" hidden></div>
+            <div class="item-slot" data-slot="20" hidden></div>
+            <div class="item-slot" data-slot="21" hidden></div>
+            <div class="item-slot" data-slot="22" hidden></div>
+            <div class="item-slot" data-slot="23" hidden></div>
+            <div class="item-slot" data-slot="24" hidden></div>
+            <div class="item-slot" data-slot="25" hidden></div>
+            <div class="item-slot" data-slot="26" hidden></div>
+            <div class="item-slot" data-slot="27" hidden></div>
+            <div class="item-slot" data-slot="28" hidden></div>
+            <div class="item-slot" data-slot="29" hidden></div>
             <button id="inspCraftBtn" class="hidden" title="">🔧 Combine</button>
             <button id="inspAuraBox" class="hidden" aria-label="Tower strategy" title=""></button>
           </div>
@@ -1285,7 +1316,8 @@
               <span>🩸 Max ground decals — puddles, streaks and debris; optional spray marks use a separate short-lived limit</span>
               <select id="settingsDecalBudget" style="margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
                 <option value="700">Low — 700</option>
-                <option value="2100">High — 2100</option>
+                <option value="4200">High — 4200</option>
+                <option value="2100">Classic — 2100</option>
                 <option value="1500">Royal — 1500</option>
                 <option value="2500">Insane — 2500</option>
                 <option value="custom">Custom…</option>
@@ -1537,9 +1569,9 @@
     });
   })();
 </script>
-<script src="js/config.js?v=1.8.35"></script>
-<script src="js/environment.js?v=1.8.35"></script>
-<script src="js/towers.js?v=1.8.35"></script>
-<script src="js/waves.js?v=1.8.35"></script>
+<script src="js/config.js?v=1.8.41"></script>
+<script src="js/environment.js?v=1.8.41"></script>
+<script src="js/towers.js?v=1.8.41"></script>
+<script src="js/waves.js?v=1.8.41"></script>
 </body>
 </html>

@@ -31,7 +31,7 @@ Raise a squad from humble beginnings, send it out to meet every wave, and watch 
 | **Magic and support** | Mage, Snap Caster, Cleric, Pope, Necromancer |
 | **Explosives and guns** | Bomber, Cowboy, Glaive |
 | **Special** | Ninja, Cat Snapper, Merchant, Hacker |
-| **Structures** | Barricade, Log Mill, Stone Quarry |
+| **Structures** | Barricade, Log Mill, Stone Quarry, Vault |
 
 ## Elements
 
@@ -46,6 +46,22 @@ A lone barricade stands watch at the finish when the first wave rolls in. From t
 Play instantly in a browser, or install a build for Windows, macOS, Linux (Intel/AMD or ARM) or Android from the [Releases](https://github.com/SauerNinja/StickTD/releases/latest) page. Every download is published with checksums and a build attestation, so you can confirm exactly what you are running.
 
 On iPhone or iPad, open the game in Safari, tap Share, then Add to Home Screen. It gets its own icon and fills the screen like an app.
+
+## Run it locally
+
+Serve the folder with any static server and open `index.html`, for example `python3 -m http.server`, then visit `http://localhost:8000`. Opening the file directly also works in most browsers. Run `python3 release.py check` before publishing to verify versions, script tags and the design contract.
+
+## Project layout
+
+| Path | Purpose |
+|---|---|
+| `index.html` | Page shell, styles and interface |
+| `js/config.js` | Rendering, audio, blood, menus, saves and the design contract |
+| `js/environment.js` | Map, road growth, biomes, scenery and items |
+| `js/towers.js` | Stickman classes, targeting, projectiles and combat |
+| `js/waves.js` | Enemies, wave plans, random events and livestock |
+| `CHANGELOG.md` | Current-version release notes; older entries in `HISTORY.md` |
+| `AGENTS.md` | Owner rules and the rule-ID ledger |
 
 ## Made with
 

@@ -17,7 +17,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.35'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.41'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -551,15 +551,18 @@ const EVOLUTIONS = {
   CLERIC: { int: {target:'POPE', threshold:STAT_EFFECT_CAP} } // 500 INT (the per-stat cap); the old extra 750-combined requirement was unreachable under the caps and is gone
 };
 // STRUCTURE-PRODUCERS-01 (1.7.100) — see HISTORY.md § [1.7.100]
-const PRODUCER_TYPES = ['LOG_MILL','STONE_QUARRY'];
+const PRODUCER_TYPES = ['LOG_MILL','STONE_QUARRY','VAULT'];
 const PRODUCER_INTERVAL_MS = 60000, PRODUCER_COST_GROWTH = 1.6;
 const PRODUCER_DEFS = {
   LOG_MILL: { resource:'wood', icon:'🪵', field:'🏭', parts:[['🌲',24,-12,-5],['🌳',24,12,-7],['🪵',15,-14,8],['🪵',15,13,9],['🏭',22,0,3]], yields:[12,24,45], build:{gold:90,wood:80,stone:40}, upgrades:[{gold:110,wood:120,stone:60},{gold:220,wood:240,stone:120}], hp:[120,180,260] },
+  VAULT: { vault:true, resource:null, icon:'🏛️', field:'🏛️', parts:[['🏛️',36,0,0]], yields:[0,0,0], slots:[18,24,30], build:{gold:60,wood:70,stone:320}, upgrades:[{gold:0,wood:90,stone:480},{gold:0,wood:150,stone:800}], hp:[160,240,340] }, // VAULT-01 (1.8.37)
   STONE_QUARRY: { resource:'stone', icon:'⛰️', field:'⛰️', parts:[['⛰️',38,0,-2],['🏭',17,2,9]], yields:[10,20,38], build:{gold:90,wood:40,stone:80}, upgrades:[{gold:110,wood:60,stone:120},{gold:220,wood:120,stone:240}], hp:[120,180,260] }
 };
 const PRODUCER_MAX_LEVEL = 3;
 const isProducerType = type => PRODUCER_TYPES.includes(type);
 const isStructureType = type => type === 'BARRICADE' || isProducerType(type);
+const isVaultType = type => type === 'VAULT';
+const itemCapacityOf = tower => isVaultType(tower.type) ? PRODUCER_DEFS.VAULT.slots[Math.max(1, Math.min(PRODUCER_MAX_LEVEL, tower.level)) - 1] : MAX_ITEM_SLOTS;
 const isFighterTower = tower => !!tower && !isStructureType(tower.type);
 const STARTER_TOWER_TYPES = ['SWORDSMAN','ARCHER','MAGE','BARRICADE']; // the only types shown in the Build menu (beyond what unlocking reveals) — always exactly these 4: Swordsman/Archer/Mage as the 3 basic intro classes, plus Barricade (not a fighter, but still Build-purchased, not Shop) so its already-written display logic in the Build tray loop is actually reachable. Everything else — including Cat Snapper — has to be unlocked first; nothing gets added here going forward.
 const EVOLVED_TOWER_TYPES = ['NINJA','HAMMERMAN','AXEMAN','SPEARMAN','GATLING','BLOWDART','BOMBER','CLERIC','SQUIRTGUN','PALADIN','GUNALINDER','SNIPER','SNAPCASTER','MARKSMAN','POPE','NECROMANCER','BLOW_GUNNER','CAT_SNAPPER','BERSERKER','LANCER','CRAZY_CHEF','MERCHANT','GLAIVE']; // reachable via evolution OR a pure wave gate (Merchant/Glaive have no evolution path at all, same as this list already accommodates for the wave-gate side of Axeman/Spearman/Hammerman) — never built directly before being unlocked one way or the other
@@ -1371,7 +1374,7 @@ function currentBuildCost(type){
 }
 // CA212 — see HISTORY.md § [1.5.7] Code Archaeology, CA212
 function isTowerTypeAvailable(type){
-  if(!MAX_ONE_PER_BOARD_TYPES.includes(type)) return true;
+  if(!MAX_ONE_PER_BOARD_TYPES.includes(type) && !UNLOCKABLE_TOWER_TYPES.includes(type)) return true; // SPECIAL-ONE-01 (1.8.40): every special stickman, not only a few, is limited to one on the board
   return towerCountOnBoard(type) === 0;
 }
 // BARRICADE-COST-01 (1.6.110) — see HISTORY.md § [1.6.110]
@@ -1386,7 +1389,7 @@ function producerBuildCost(type){
 }
 function canAffordProducerCost(cost){ return gold >= cost.gold && wood >= cost.wood && stone >= cost.stone; }
 function producerUpgradeCost(tower){ return PRODUCER_DEFS[tower.type].upgrades[tower.level - 1] || null; }
-function producerCostLabel(cost){ return '💰' + cost.gold + ' 🪵' + cost.wood + ' 🪨' + cost.stone; }
+function producerCostLabel(cost){ return [cost.gold > 0 ? '💰' + cost.gold : '', '🪵' + cost.wood, '🪨' + cost.stone].filter(Boolean).join(' '); }
 function canAffordTower(type){
   if(hackFreeBuild && type !== 'BARRICADE') return true;
   if(isProducerType(type)) return canAffordProducerCost(producerBuildCost(type));
@@ -1589,7 +1592,7 @@ function syncPrefsToDOM(){
   const sel = document.getElementById('settingsDecalBudget');
   const customInput = document.getElementById('settingsDecalBudgetCustom');
   if(!sel || !customInput) return;
-  const presets = [700, 2100, 1500, 2500];
+  const presets = [700, 4200, 2100, 1500, 2500];
   function applyFromControls(){
     if(sel.value === 'custom'){
       customInput.classList.remove('hidden');
@@ -1612,7 +1615,7 @@ function syncPrefsToDOM(){
     customInput.classList.remove('hidden');
   } else {
     // CA219 — see HISTORY.md § [1.5.7] Code Archaeology, CA219
-    sel.value = graphicsQuality === 'low' ? '700' : '2100';
+    sel.value = graphicsQuality === 'low' ? '700' : '4200';
   }
   sel.addEventListener('change', applyFromControls);
   customInput.addEventListener('input', applyFromControls);
@@ -1631,7 +1634,7 @@ let waveStartGold = 0;      // gold snapshot taken when a wave starts, for the w
 let seenEnemyTypes = new Set(); // enemy types the player has already been shown a "new enemy" popup for
 let anyBarricadeQueued = false; // set by updateBarricadesAndPileup() each frame — when true, wave spawning pauses (see update()) so new enemies don't keep piling onto an already-backed-up queue
 let barricadeQueueStartedAt = 0; // when the current unbroken stretch of congestion began — drives the 15s force-resume safety valve so spawning can never pause permanently, even if the player has no way left to break the jam
-let waveTimer = 0, countdownBeatPlayed = -1;
+let waveTimer = 0, countdownBeatPlayed = -1, countdownMusicStage = 0;
 // CA221 — see HISTORY.md § [1.5.7] Code Archaeology, CA221
 const sessionStartRealTime = Date.now();
 // CA222 — see HISTORY.md § [1.5.7] Code Archaeology, CA222
@@ -1746,7 +1749,7 @@ function spawnGroundItem(x, y, itemDef, source){
   // ITEM-ARC-01 (1.7.44): owner decision — dropped items fly out in an arc and land at a random spot around where they dropped, preferably on grass and off the road, so they do not
   // cover the path. Items restored from a save, and the very first frame of a loaded game, appear in place.
   const landing = groundItemsRestoring ? { x, y } : pickItemLandingPoint(x, y); // reduced-motion players still land on grass, only the flight is skipped
-  const item = { id: idCounter++, x: landing.x, y: landing.y, itemDef: makeItemInstance(itemDef, source), spawnTime: presentationTime };
+  const item = { id: idCounter++, x: landing.x, y: landing.y, itemDef: makeItemInstance(itemDef, source), spawnTime: presentationTime, driftAt: presentationTime + ITEM_DRIFT_DELAY_MIN_MS + Math.random()*ITEM_DRIFT_DELAY_SPREAD_MS };
   if(!PREFERS_REDUCED_MOTION && (landing.x !== x || landing.y !== y)){ item.flyFromX = x; item.flyFromY = y; item.flyStart = presentationTime; item.flyDur = 520; }
   if(item.itemDef.isGoldBag) item.goldBagLifespanMs = GOLD_BAG_LIFESPAN_MS;
   groundItems.push(item);
@@ -1796,6 +1799,15 @@ function rollRegularLootItem(enemy, category){
   const signatureId = ENEMY_SIGNATURE_DROPS[enemy.type];
   const useSignature = signatureId && Math.random() < SIGNATURE_SHARE_OF_GEAR_DROPS;
   return { category, item: useSignature ? ITEM_BY_ID.get(signatureId) : pickGenericDropItem(rollDropRarity(false)) };
+}
+// EARLY-HOOK-01 (1.8.41): clearing the first wave always leaves an Uncommon item beside a stickman, so the player has something to equip before wave 2.
+function grantEarlyGift(){
+  if(wavesCompleted !== 1) return;
+  const holder = towerPool.find(t => t.active && isFighterTower(t));
+  const gift = pickGenericDropItem('UNCOMMON');
+  if(!holder || !gift) return;
+  spawnGroundItem(holder.x + 34, holder.y + 6, gift, 'first wave reward');
+  showToast('🎁 First spoils! Drag the item onto a stickman to equip it.');
 }
 function dropItemsFromEnemy(enemy){
   if(enemy.isGuardian || enemy.isHutBuilding) return;
@@ -1877,7 +1889,7 @@ const ITEM_DROP_SNAP_RADIUS=16;
 function itemDropTargetAt(point){
   let nearest=null,nearestDistSquared=ITEM_DROP_SNAP_RADIUS*ITEM_DROP_SNAP_RADIUS;
   for(const tower of towerPool){
-    if(!tower.active || isStructureType(tower.type)) continue;
+    if(!tower.active || (isStructureType(tower.type) && !isVaultType(tower.type))) continue;
     // HEAD-SNAP-01 (1.7.36): the whole stickman counts, so hovering over the head snaps as readily as hovering over the body.
     const dx=tower.x-point.x,dy=tower.y-point.y,dyHead=tower.y-28-point.y,dyTorso=tower.y-12-point.y;
     const distanceSquared=Math.min(dx*dx+dy*dy, dx*dx+dyHead*dyHead, dx*dx+dyTorso*dyTorso);
@@ -3345,7 +3357,7 @@ function startWaveStartCameraPan(){
   const targetZoom = Math.max(camera.zoom, 1.2); // guaranteed minimum close-up, never zooms OUT from wherever the player already is — same idea as the tower-follow zoom guarantee, slightly less aggressive since this is a broader "here's where the wave is coming from" glance, not a close look at one tower
   waveStartCameraPan = {
     panStartTime: cameraPanClock, panStartX: camera.x, panStartY: camera.y, panStartZoom: camera.zoom,
-    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - (spawn.y - SPAWN_MARKER_RISE_PX)*targetZoom // CAMERA-MARKER-01 (1.8.18): the wave-start pan centres on the exclamation mark
+    targetZoom, targetX: CANVAS_W/2 - spawn.x*targetZoom, targetY: CANVAS_H/2 - spawn.y*targetZoom // CAMERA-SPAWN-01 (1.8.37): the wave-start pan centres on the spawn tile where the enemies appear, so the marker and the 3-2-1 sit above the middle of the view
   };
 }
 function updateWaveStartCameraPan(){
@@ -3509,7 +3521,7 @@ function centerCameraOnActiveRegion(zoom){
 /* =========================================================
    BLOOD, DECALS AND FORENSIC SPATTER
    ========================================================= */
-const MAX_DECALS = 2100; // 1.7.144: requested high graphics default
+const MAX_DECALS = 4200; // BLOOD-LAYER-01: high graphics holds twice the old 2100 so a wave's blood is never recycled
 const MAX_DECALS_LOW_QUALITY = 700; // 1.7.144: requested low graphics default
 // CA476 — see HISTORY.md § [1.5.7] Code Archaeology, CA476
 function decalCapacity(){
@@ -3532,7 +3544,7 @@ function pushSprayDecal(decal){
 function maintainSprayDecals(){
   if(!goreMode || !bloodDropletsEnabled){ sprayDecals.length=0; sprayDecalIndex=0; return; }
   let write=0;
-  for(let read=0;read<sprayDecals.length;read++) if(presentationTime-sprayDecals[read].spawnTime < sprayDecals[read].lifespan) sprayDecals[write++]=sprayDecals[read];
+  for(let read=0;read<sprayDecals.length;read++) if(!sprayDecals[read].cleanupStarted || presentationTime-sprayDecals[read].spawnTime < sprayDecals[read].lifespan) sprayDecals[write++]=sprayDecals[read];
   sprayDecals.length=write;
   const capacity=sprayDecalCapacity();
   if(sprayDecals.length>capacity) sprayDecals.splice(0,sprayDecals.length-capacity);
@@ -4130,7 +4142,7 @@ function updateWalkingBlood(dt){
 }
 // CA522 — see HISTORY.md § [1.5.7] Code Archaeology, CA522
 const BLOOD_SATURATION_RADIUS = 26;
-const BLOOD_SATURATION_MAX = 10;
+const BLOOD_SATURATION_MAX = 10, BLOOD_SATURATION_MAX_HIGH = 40;
 function isGroundBloodDecal(d){ return !d.isEmojiDrop && !d.isWorm && !d.isRubble && (d.blobs !== undefined || d.isDrop || d.isLine || d.isDripTrail || d.isPeel || d.isFootprint); }
 function isBloodAreaSaturated(x, y){
   let count = 0;
@@ -4142,7 +4154,7 @@ function isBloodAreaSaturated(x, y){
     if(dx > BLOOD_SATURATION_RADIUS || dx < -BLOOD_SATURATION_RADIUS || dy > BLOOD_SATURATION_RADIUS || dy < -BLOOD_SATURATION_RADIUS) continue; // cheap box reject before the real distance check
     if(dx*dx + dy*dy < BLOOD_SATURATION_RADIUS*BLOOD_SATURATION_RADIUS){
       count++;
-      if(count >= BLOOD_SATURATION_MAX) return true;
+      if(count >= (graphicsQuality === 'low' ? BLOOD_SATURATION_MAX : BLOOD_SATURATION_MAX_HIGH)) return true;
     }
   }
   return false;
@@ -4170,7 +4182,7 @@ function pushDecal(decal){
 }
 const DECAL_LIFESPAN = 75000, DEBRIS_LIFESPAN = 720000;
 function bloodMarkLifespan(){ return 60000+Math.random()*30000; }
-function bloodStainLifeT(stain){ return (presentationTime-stain.bornAt)/(stain.lifespan || DECAL_LIFESPAN); }
+function bloodStainLifeT(stain){ const age = presentationTime-stain.bornAt, span = stain.lifespan || DECAL_LIFESPAN; return (stain.cleanupStarted ? age : Math.min(age, span*BLOOD_HOLD_LIFE_T))/span; }
 function bloodFadeAlpha(t){ return clampNum((1-t)/0.35,0,1); }
 function decalLifespanVariance(){
   // CA525 — see HISTORY.md § [1.5.7] Code Archaeology, CA525
@@ -4179,17 +4191,15 @@ function decalLifespanVariance(){
 // CA527 — see HISTORY.md § [1.5.7] Code Archaeology, CA527
 const DECAL_BAKE_MIN_AGE_MS = 12000; // BLOOD-READABILITY-01: fresh detail stays live/sharp longer before cache baking
 // FRESH-BLOOD-02 (1.7.122): fresh blood keeps its bright wet red for the first 12% of a stain's life (about 7–11 seconds) and only reaches its dried colour at 60% (about 36–54 seconds), so a fight leaves a readable, forensic record of what happened when.
-const BLOOD_WET_END_T = 0.12, BLOOD_DRY_END_T = 0.60;
+const BLOOD_HOLD_LIFE_T = 0.5, BLOOD_DRY_END_T = 0.60;
 const DECAL_BAKE_PRESSURE_MIN_AGE_MS = 4000, DECAL_BAKE_PRESSURE_ON = 90, DECAL_BAKE_PRESSURE_OFF = 40; // DECAL-BAKE-PRESSURE-01 (1.7.99) — see HISTORY.md § [1.7.99]
 let decalBakePressure = false;
-const DECAL_AGING_RESTAMP_MS = 5000;
 function decalBakeMinAgeMs(d){ return d.baked || decalBakePressure ? DECAL_BAKE_PRESSURE_MIN_AGE_MS : DECAL_BAKE_MIN_AGE_MS; }
 function beginRoundDebrisCleanup(){
   for(const d of decals.concat(sprayDecals)){
     if(d.cleanupStarted) continue;
     d.cleanupStarted=true;
-    // Preserve an earlier expiry; enter the existing final fade segment now.
-    const remaining=Math.min(6000,Math.max(1,(d.lifespan || DECAL_LIFESPAN)-(presentationTime-d.spawnTime)));
+    const remaining=6000; // BLOOD-STABLE-01: every mark held through the round fades over the same final six seconds
     d.lifespan=remaining*3; d.spawnTime=presentationTime-remaining*2;
     d.baked=false; delete d.settledColor; delete d.settledAlpha;
   }
@@ -4197,7 +4207,7 @@ function beginRoundDebrisCleanup(){
     if(!entity.bloodStains) continue;
     for(const stain of entity.bloodStains){
       if(stain.cleanupStarted) continue;
-      const remaining=Math.min(6000,Math.max(1,(stain.lifespan||BLOOD_STAIN_LIFE_MS)-(presentationTime-stain.bornAt)));
+      const remaining=6000;
       stain.cleanupStarted=true;stain.lifespan=remaining*3;stain.bornAt=presentationTime-remaining*2;
     }
     entity.bloodStampKey=null;entity.bloodStainRevision=(entity.bloodStainRevision||0)+1;
@@ -4205,7 +4215,8 @@ function beginRoundDebrisCleanup(){
   if(settledDecalCanvasReady){ settledDecalContext().clearRect(0,0,WORLD_MAX_W,WORLD_MAX_H); settledDecalHasContent=false; }
   settledDecalRebuildPending=true;
 }
-function decalLifeT(d){ return (presentationTime - d.spawnTime) / (d.lifespan || DECAL_LIFESPAN); }
+function decalAgeMs(d){ const age = presentationTime - d.spawnTime; return d.cleanupStarted ? age : Math.min(age, (d.lifespan || DECAL_LIFESPAN) * BLOOD_HOLD_LIFE_T); } // BLOOD-STABLE-01: until the round-end clean-up starts a mark holds still, neither fading nor expiring
+function decalLifeT(d){ return decalAgeMs(d) / (d.lifespan || DECAL_LIFESPAN); }
 function isDecalBakeEligible(d){
   const lifeT = decalLifeT(d);
   const age = presentationTime - d.spawnTime;
@@ -4220,18 +4231,10 @@ function isDecalBakeEligible(d){
 // FRESH-BLOOD-01 (1.7.36): red-blooded enemies (most of them) show realistic fresh blood: bright red at impact, darkening through dark red to the enemy's own
 // shade (the 1.6.159 curve, restored). Enemies whose blood is not red (green, blue, pale and so on) keep their own colour, only lifted a little while wet.
 function bloodIsRed(rgb){ return rgb.r >= rgb.g*1.5 && rgb.r >= rgb.b*1.5; }
-function agedBloodRgb(d, lifeT){
+// BLOOD-STABLE-01 (1.8.37): blood keeps the colour it landed with until the round-end clean-up, so it never recolours when a later splatter lands; red blood stays fresh red, other blood keeps its own colour.
+function agedBloodRgb(d){
   const rgb = d.rgb;
-  if(!bloodIsRed(rgb)){
-    const wetLift = 1 + 0.18*(1 - Math.min(1, Math.max(0, lifeT)*(d.lifespan || DECAL_LIFESPAN)/DECAL_BAKE_MIN_AGE_MS));
-    return { r: Math.min(255, Math.round(rgb.r*wetLift)), g: Math.min(255, Math.round(rgb.g*wetLift)), b: Math.min(255, Math.round(rgb.b*wetLift)) };
-  }
-  if(lifeT < BLOOD_WET_END_T){
-    const t = lifeT / BLOOD_WET_END_T;
-    return { r: Math.round(255 + (175-255)*t), g: Math.round(40 + (32-40)*t), b: Math.round(40 + (30-40)*t) };
-  }
-  const t = Math.min(1, (lifeT - BLOOD_WET_END_T) / (BLOOD_DRY_END_T - BLOOD_WET_END_T));
-  return { r: Math.round(175 + (rgb.r-175)*t), g: Math.round(32 + (rgb.g-32)*t), b: Math.round(30 + (rgb.b-30)*t) };
+  return bloodIsRed(rgb) ? { r: 255, g: 40, b: 40 } : { r: rgb.r, g: rgb.g, b: rgb.b };
 }
 function agedBloodColor(d, lifeT){
   const c = agedBloodRgb(d, lifeT);
@@ -4290,7 +4293,6 @@ function rebuildSettledDecalCanvas(){
 function sweepSettledDecals(expiredBakedCount){
   if(!settledDecalCanvasReady) return;
   let sctx = null;
-  let agingDropBaked = false;
   let liveBloodCount = 0;
   if(expiredBakedCount > 0) settledDecalRebuildPending = true;
   for(const d of decals){
@@ -4304,11 +4306,10 @@ function sweepSettledDecals(expiredBakedCount){
     } else if(!eligible && d.baked){
       settledDecalRebuildPending = true;
     }
-    if(d.baked && (d.isDrop || d.isFootprint || d.blobs !== undefined) && decalLifeT(d) < BLOOD_DRY_END_T) agingDropBaked = true;
   }
   decalBakePressure = liveBloodCount >= (decalBakePressure ? DECAL_BAKE_PRESSURE_OFF : DECAL_BAKE_PRESSURE_ON);
   const sinceRebuild = presentationTime - lastSettledDecalRebuild;
-  if((settledDecalRebuildPending && sinceRebuild >= SETTLED_DECAL_REBUILD_MIN_MS) || (agingDropBaked && sinceRebuild >= DECAL_AGING_RESTAMP_MS)) rebuildSettledDecalCanvas();
+  if(settledDecalRebuildPending && sinceRebuild >= SETTLED_DECAL_REBUILD_MIN_MS) rebuildSettledDecalCanvas();
 }
 function maintainDecals(){
   enforceDecalCapacity();
@@ -4325,7 +4326,7 @@ function maintainDecals(){
       const d = decals[read];
       const age = presentationTime - d.spawnTime;
       const lifespan = d.lifespan || DECAL_LIFESPAN;
-      if(age >= lifespan){ if(d.baked) expiredBakedCount++; continue; } // actually expires now, not just capacity-recycled
+      if(d.cleanupStarted && age >= lifespan){ if(d.baked) expiredBakedCount++; continue; } // only a mark in its round-end clean-up expires; capacity still recycles the oldest
       decals[write++] = d;
     }
     decals.length = write;
@@ -4371,7 +4372,7 @@ function drawDecals(ctx){
   perfStats.totalDecals = decals.length + sprayDecals.length;
   perfStats.visibleDecals = 0;
   depthSortedDecalsThisFrame.length = 0;
-  if(goreMode && bloodDropletsEnabled) for(const d of sprayDecals) if(presentationTime-d.spawnTime < d.lifespan && decalVisible(d,bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx,d); }
+  if(goreMode && bloodDropletsEnabled) for(const d of sprayDecals) if(decalAgeMs(d) < d.lifespan && decalVisible(d,bounds)){ perfStats.visibleDecals++; drawOneDecal(ctx,d); }
   for(const d of decals){
     if(d.isRubble){
       if((!d.baked || camera.zoom > 1.25) && decalVisible(d,bounds)) drawOneDecal(ctx,d);
@@ -4428,9 +4429,9 @@ function fxExtentVisible(x, y, extent, b){
 }
 function fxVisible(x, y, b){ return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }
 function drawOneDecal(ctx, d){
-    const age = presentationTime - d.spawnTime;
+    const age = decalAgeMs(d);
     const lifespan = d.lifespan || DECAL_LIFESPAN;
-    if(age < 0 || age >= lifespan) return;
+    if(presentationTime - d.spawnTime < 0 || age >= lifespan) return;
     const growT = 1; // no grow-in animation — real blood spatter appears instantaneously on impact, not as a fade/expand effect. A decal now renders at full size the exact frame it spawns.
     const lifeT = age / lifespan;
     // CA535 — see HISTORY.md § [1.5.7] Code Archaeology, CA535
@@ -4738,7 +4739,8 @@ const WEAPON_BLOOD_PROFILES = Object.freeze({
   HACKER:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
   BARRICADE:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
   LOG_MILL:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
-  STONE_QUARRY:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0)
+  STONE_QUARRY:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0),
+  VAULT:weaponBloodProfile("NONE",0,0,0,1,0,0,0,0,0)
 });
 function forensicSpatterProfile(sourceTower, profileKey){
   return WEAPON_BLOOD_PROFILES[profileKey || (sourceTower && sourceTower.type)] || WEAPON_BLOOD_PROFILES.ENVIRONMENT;
@@ -4876,7 +4878,7 @@ function updateBloodTrails(dt){
   }
 }
 // BLOOD-VOID-01 (1.7.130): a body that stands between a wound and the ground catches the droplets that would have landed behind it, which leaves a clean patch (a void pattern) in the spatter and blood on the body itself. When a droplet lands, the straight line from where it left to where it came down is tested against every stickman, barricade and enemy; if one is in the way and tall enough there, the droplet stains that body and leaves no mark on the ground. An emoji or stickman that blocked a spray stays stained for a few minutes, drying from red to brown and then fading.
-const BLOOD_STAIN_MAX = 14, BLOOD_STAIN_LIFE_MS = 75000, BLOOD_STAIN_DRY_RGB = { r: 92, g: 38, b: 28 };
+const STICKMAN_STAIN_DRAW_MAX = 16, BLOOD_STAIN_MAX = 64, BLOOD_STAIN_LIFE_MS = 75000, BLOOD_STAIN_DRY_RGB = { r: 92, g: 38, b: 28 };
 const VOID_BODY_HEIGHT_PX = 1.1*FORENSIC_PX_PER_METER;
 function stainEntity(entity, offsetX, offsetY, size, rgb, angle){
   if(!entity.bloodStains) entity.bloodStains = [];
@@ -4885,7 +4887,7 @@ function stainEntity(entity, offsetX, offsetY, size, rgb, angle){
   entity.bloodStainRevision=(entity.bloodStainRevision || 0)+1;
   if(entity instanceof Tower && isFighterTower(entity)) bindStickmanStain(entity,stain);
   if(entity.bloodStains.length < BLOOD_STAIN_MAX) entity.bloodStains.push(stain);
-  else { entity.bloodStainNext = ((entity.bloodStainNext || 0) + 1) % BLOOD_STAIN_MAX; entity.bloodStains[entity.bloodStainNext] = stain; }
+  else { entity.bloodStains.shift(); entity.bloodStains.push(stain); } // BLOOD-LAYER-01: the oldest mark leaves, the newest always lands on top
 }
 function drawBloodStains(ctx, entity){
   if(!goreMode || (entity instanceof Tower && isFighterTower(entity))) return;
@@ -4897,12 +4899,10 @@ function drawBloodStains(ctx, entity){
   const stains = entity.bloodStains;
   if(!stains || !stains.length) return;
   const drawCap = (graphicsQuality === 'low' || underHeavyVisualLoad) ? 6 : BLOOD_STAIN_MAX;
-  let live = 0;
   ctx.save();
-  for(let index = stains.length - 1; index >= 0 && live < drawCap; index--){
+  for(let index = Math.max(0, stains.length - drawCap); index < stains.length; index++){
     const stain = stains[index], ageT = bloodStainLifeT(stain);
     if(ageT >= 1) continue;
-    live++;
     const rgb = stain.rgb || BLOOD_STAIN_DRY_RGB;
     ctx.globalAlpha = 0.88*bloodFadeAlpha(ageT);
     ctx.fillStyle = bloodStainPaint(stain);
@@ -5699,9 +5699,8 @@ function bloodStainPaint(stain){
 }
 function drawStickmanBloodStains(ctx,owner,headRx,headRy){
   if(!goreMode || !owner || !owner.bloodStains) return;
-  const cap=(graphicsQuality==='low' || underHeavyVisualLoad) ? 6 : BLOOD_STAIN_MAX;
-  let live=0;
-  for(let i=owner.bloodStains.length-1;i>=0 && live<cap;i--){
+  const cap=(graphicsQuality==='low' || underHeavyVisualLoad) ? 6 : STICKMAN_STAIN_DRAW_MAX; // each stickman mark is clipped to a limb, so far fewer are drawn than on rocks and trees
+  for(let i=Math.max(0,owner.bloodStains.length-cap);i<owner.bloodStains.length;i++){
     const stain=owner.bloodStains[i],age=bloodStainLifeT(stain);
     if(age>=1) continue;
     if(stain.part===undefined) bindStickmanStain(owner,stain);
@@ -5719,16 +5718,17 @@ function drawStickmanBloodStains(ctx,owner,headRx,headRy){
       x=seg.x1+dx*stain.u-dy/len*stain.v;y=seg.y1+dy*stain.u+dx/len*stain.v;
     }
     ctx.clip();ctx.globalAlpha *= (stain.rgb.a===undefined ? 1 : stain.rgb.a)*0.88*bloodFadeAlpha(age);
-    ctx.fillStyle=bloodStainPaint(stain);ctx.beginPath();ctx.ellipse(x,y,stain.bodySize,stain.bodySize*0.75,stain.angle,0,Math.PI*2);ctx.fill();ctx.restore();live++;
+    ctx.fillStyle=bloodStainPaint(stain);ctx.beginPath();ctx.ellipse(x,y,stain.bodySize,stain.bodySize*0.75,stain.angle,0,Math.PI*2);ctx.fill();ctx.restore();
   }
 }
+const surfacePixelCache = new Map(), SURFACE_PIXEL_CACHE_MAX = 48;
 function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
   emoji=emoji || entity.emoji;
   if(!goreMode || !entity.bloodStains || !entity.bloodStains.length) return;
   if(!entity.bloodStains.some(stain=>bloodStainLifeT(stain)<1)){
     entity.bloodStains.length=0; entity.bloodStampKey=null; return; // expired marks never rerasterize an empty mask every 500ms
   }
-  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+Math.floor(presentationTime/500)+':'+graphicsQuality+':'+underHeavyVisualLoad;
+  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+(entity.bloodStains.some(stain=>stain.cleanupStarted) ? Math.floor(presentationTime/500) : 0)+':'+graphicsQuality+':'+underHeavyVisualLoad; // BLOOD-STAMP-CACHE-01: marks only change over time during the round-end fade, so a held stamp is never re-rasterized
   let canvas=entity.bloodStampCanvas;
   if(!canvas || typeof canvas.getContext !== 'function'){
     canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
@@ -5740,13 +5740,18 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
     const surfaceKey=emoji+':'+size+':'+(entity.widthStretch || 1)+':'+(entity.tallStretch || 1)+':'+entity.flip;
     let surfacePixels=null;
     if(scenery && entity.bloodStains.some((stain,index)=>index>=entity.bloodStains.length-cap && bloodStainLifeT(stain)<1 && stain.surfaceKey!==surfaceKey)){
-      m.globalAlpha=1;if(scenery && entity.type==='BRANCH') drawBranchSprite(m,size,undefined,entity); else if(scenery && entity.type==='STUMP') drawStumpSprite(m,size); else drawEmojiSprite(m,emoji,size);surfacePixels=m.getImageData(0,0,128,128).data;
-      m.save();m.setTransform(1,0,0,1,0,0);m.clearRect(0,0,128,128);m.restore();
+      const pixelKey=surfaceKey+':'+entity.type+(entity.type==='BRANCH' ? ':'+entity.x+','+entity.y : '');
+      surfacePixels=surfacePixelCache.get(pixelKey);
+      if(!surfacePixels){ // BLOOD-STAMP-CACHE-01: the opaque-pixel map of a sprite is read back from the canvas once per sprite shape, never once per new mark
+        m.globalAlpha=1;if(scenery && entity.type==='BRANCH') drawBranchSprite(m,size,undefined,entity); else if(scenery && entity.type==='STUMP') drawStumpSprite(m,size); else drawEmojiSprite(m,emoji,size);surfacePixels=m.getImageData(0,0,128,128).data;
+        m.save();m.setTransform(1,0,0,1,0,0);m.clearRect(0,0,128,128);m.restore();
+        if(surfacePixelCache.size>=SURFACE_PIXEL_CACHE_MAX) surfacePixelCache.delete(surfacePixelCache.keys().next().value);
+        surfacePixelCache.set(pixelKey,surfacePixels);
+      }
     }
-    let live=0;
-    for(let i=entity.bloodStains.length-1;i>=0 && live<cap;i--){
+    for(let i=Math.max(0,entity.bloodStains.length-cap);i<entity.bloodStains.length;i++){
       const stain=entity.bloodStains[i],age=bloodStainLifeT(stain);
-      if(age>=1) continue;live++;
+      if(age>=1) continue;
       m.globalAlpha=(stain.rgb.a===undefined ? 1 : stain.rgb.a)*0.88*bloodFadeAlpha(age);m.fillStyle=bloodStainPaint(stain);
       const sx=scenery ? (entity.widthStretch || 1)*(entity.flip ? -1 : 1) : 1,sy=scenery ? (entity.tallStretch || 1) : 1;
       let px=stain.offsetX/sx,py=scenery ? (stain.offsetY-size*0.5)/sy+size*0.5-2 : stain.offsetY;
@@ -5766,6 +5771,16 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
     m.globalAlpha=1;m.globalCompositeOperation='destination-in';if(scenery && entity.type==='BRANCH') drawBranchSprite(m,size,undefined,entity); else if(scenery && entity.type==='STUMP') drawStumpSprite(m,size); else drawEmojiSprite(m,emoji,size);m.restore();entity.bloodStampKey=stampKey;
   }
   ctx.drawImage(canvas,-size*0.9,-size*0.9,size*1.8,size*1.8);
+}
+// GUN-FACING-01 (1.8.40): the 🔫 glyph is drawn muzzle-left, so rotating it by the aim angle held the gun backwards. It is mirrored so the muzzle leads along the aim, and kept upright when aiming left.
+function drawGunEmoji(ctx, handX, handY, aimAngle){
+  ctx.save();
+  ctx.translate(handX, handY);
+  ctx.rotate(aimAngle);
+  ctx.scale(-1, Math.cos(aimAngle) < 0 ? -1 : 1);
+  ctx.textAlign = 'right';
+  ctx.fillText('🔫', 0, 0);
+  ctx.restore();
 }
 function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   if(bend === undefined) bend = -0.3;
@@ -6420,21 +6435,24 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const shaftLen = weaponLenFromScale(type === 'LANCER' ? 20 : 15, type === 'LANCER' ? 30 : 24, extra.weaponScale);
     const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
     markWeapon(handX, handY, spearAngle, shaftLen);
-    const backX = handX - Math.cos(spearAngle)*8, backY = handY - Math.sin(spearAngle)*8;
+    // SPEARHEAD-01 (1.8.40): the shaft stops where the blade starts, and the leaf-shaped head is what reaches the tip of the weapon.
+    const headLen = type === 'LANCER' ? 14 : 12, headHalfWidth = (type === 'LANCER' ? 5 : 4.4)*Math.min(1.3, extra.weaponThickness);
+    const dirX = Math.cos(spearAngle), dirY = Math.sin(spearAngle), perpX = -dirY, perpY = dirX;
+    const headBaseX = tipX - dirX*headLen, headBaseY = tipY - dirY*headLen;
+    const backX = handX - dirX*8, backY = handY - dirY*8;
     ctx.strokeStyle = type === 'LANCER' ? '#6b4930' : '#8a5a2b';
     ctx.lineWidth = (type === 'LANCER' ? 3.5 : 2.5)*extra.weaponThickness;
-    ctx.beginPath(); ctx.moveTo(backX,backY); ctx.lineTo(tipX,tipY); ctx.stroke();
-    // small triangular spearhead
-    const perpX = -Math.sin(spearAngle), perpY = Math.cos(spearAngle);
+    ctx.beginPath(); ctx.moveTo(backX,backY); ctx.lineTo(headBaseX,headBaseY); ctx.stroke();
     ctx.fillStyle = type === 'LANCER' || level >= 3 ? '#bdeaff' : '#c7ccd1';
+    ctx.strokeStyle = '#7d848c'; ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(tipX, tipY);
-    ctx.lineTo(tipX - Math.cos(spearAngle)*(type === 'LANCER' ? 12 : 8) + perpX*(type === 'LANCER' ? 4.5 : 3), tipY - Math.sin(spearAngle)*(type === 'LANCER' ? 12 : 8) + perpY*(type === 'LANCER' ? 4.5 : 3));
-    ctx.lineTo(tipX - Math.cos(spearAngle)*(type === 'LANCER' ? 12 : 8) - perpX*(type === 'LANCER' ? 4.5 : 3), tipY - Math.sin(spearAngle)*(type === 'LANCER' ? 12 : 8) - perpY*(type === 'LANCER' ? 4.5 : 3));
+    ctx.moveTo(headBaseX, headBaseY);
+    ctx.quadraticCurveTo(headBaseX + dirX*headLen*0.45 + perpX*headHalfWidth*1.8, headBaseY + dirY*headLen*0.45 + perpY*headHalfWidth*1.8, tipX, tipY);
+    ctx.quadraticCurveTo(headBaseX + dirX*headLen*0.45 - perpX*headHalfWidth*1.8, headBaseY + dirY*headLen*0.45 - perpY*headHalfWidth*1.8, headBaseX, headBaseY);
     ctx.closePath();
-    ctx.fill();
+    ctx.fill(); ctx.stroke();
     if(type === 'LANCER'){
-      const guardX = tipX - Math.cos(spearAngle)*14, guardY = tipY - Math.sin(spearAngle)*14;
+      const guardX = headBaseX, guardY = headBaseY;
       ctx.strokeStyle = '#c7ccd1'; ctx.lineWidth = 2.2*extra.weaponThickness;
       ctx.beginPath(); ctx.moveTo(guardX - perpX*5, guardY - perpY*5); ctx.lineTo(guardX + perpX*5, guardY + perpY*5); ctx.stroke();
     }
@@ -6615,11 +6633,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.textBaseline = 'middle';
     for(const hand of [hand1, hand2]){
       // pivot at the hand (the grip), glyph extends outward from there toward the aim direction
-      ctx.save();
-      ctx.translate(hand.handX, hand.handY);
-      ctx.rotate(gunAngle);
-      ctx.fillText('🔫', 0, 0);
-      ctx.restore();
+      drawGunEmoji(ctx, hand.handX, hand.handY, gunAngle);
       markWeapon(hand.handX, hand.handY, gunAngle, weaponLenFromScale(11, 17, extra.weaponScale));
       if(!lowGfx){
         const gunLen = weaponLenFromScale(11, 17, extra.weaponScale);
@@ -6635,11 +6649,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle + 0.35, armLen*0.75, skinMain, 0.1); // off-hand cupping underneath
     ctx.font = (15 * extra.weaponScale * (0.85 + extra.weaponThickness*0.15)) + 'px sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.save();
-    ctx.translate(mainHand.handX, mainHand.handY);
-    ctx.rotate(gunAngle);
-    ctx.fillText('🔫', 0, 0);
-    ctx.restore();
+    drawGunEmoji(ctx, mainHand.handX, mainHand.handY, gunAngle);
     markWeapon(mainHand.handX, mainHand.handY, gunAngle, weaponLenFromScale(12, 18, extra.weaponScale));
     if(!lowGfx){
       const gunLen = weaponLenFromScale(12, 18, extra.weaponScale);
@@ -7259,11 +7269,12 @@ function update(dt){
       checkTowerUnlocks();
       maybeSpawnMoreScenery();
       runWaveClearRandomEvents();
+      grantEarlyGift();
       maybeSpawnCaravan();
       maybeShowWaveTutorialTip();
       // TENNIS-SHOES-MOVE-01 (1.7.44), now the Running Shoes (1.7.113): shoes are a normal item with a passive bonus, not a used item: every pair a stickman carries gives one free move
       // at the start of every round (counted once per pair, up to the cap), with no action from the player.
-      for(const t of towerPool) if(t.active) for(const item of t.equippedItems) if(item.extraMove) grantTowerMove(t, '👟');
+      for(const t of towerPool) if(t.active && isFighterTower(t)) for(const item of t.equippedItems) if(item.extraMove) grantTowerMove(t, '👟');
       // CA658 — see HISTORY.md § [1.5.7] Code Archaeology, CA658
       if(wavesCompleted % 5 === 0 && freeBarricadesLeft < MAX_FREE_BARRICADES){
         freeBarricadesLeft++;
@@ -7573,7 +7584,7 @@ function render(ctx){
     ctx.globalAlpha = entryAlpha * Math.min(1, glowPulse);
     ctx.drawImage(glowSprite, gi.x - glowRadius, gi.y + bob - glowRadius);
     ctx.globalAlpha = entryAlpha;
-    if(graphicsQuality === 'high'){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // GROUND-GLOW-SPRITE-01 (1.7.52): the glow is a cached sprite; the text halo stays on High only
+    if(graphicsQuality === 'high' && !underHeavyVisualLoad){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // GROUND-GLOW-SPRITE-01 (1.7.52): the glow is a cached sprite; the text halo stays on High only
     ctx.font = GROUND_ITEM_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
@@ -7843,6 +7854,13 @@ function drawSpawnWarningMarker(ctx){
   ctx.fillText('❗', 0, 0);
   ctx.restore();
 }
+// MUSIC-COUNTDOWN-01 (1.8.37): the idle music plays on through the start of the 3-2-1 under a short riser, then the wave theme begins early enough that its three pickups fall on the countdown and its bass drop lands exactly on GO!
+function waveMusicLeadMs(){ return Math.round(MUSIC_STING_DROP_STEP * 60000 / MUSIC_COMBAT_TEMPO_BPM / 2) + 140; }
+function countdownHoldsFieldMusic(){ return waveState === 'SPAWNING' && countdownMusicStage < 2 && waveTimer < WAVE_COUNTDOWN_MS; }
+function advanceCountdownMusic(){
+  if(countdownMusicStage < 1 && audioEngine.musicPhase === 'field'){ countdownMusicStage = 1; audioEngine.popRiser(audioEngine.ctx.currentTime, (WAVE_COUNTDOWN_MS - waveMusicLeadMs()) / 1000, 0.4); }
+  if(countdownMusicStage < 2 && waveTimer >= WAVE_COUNTDOWN_MS - waveMusicLeadMs()){ countdownMusicStage = 2; audioEngine.setMusicPhase(bossIsOnField() ? 'boss' : 'wave', true); }
+}
 function drawWaveCountdown(ctx){
   if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
   if(waveTimer >= WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS) return;
@@ -7926,7 +7944,7 @@ const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, max
   // CA679 — see HISTORY.md § [1.5.7] Code Archaeology, CA679
   actualSpeedWindowRealMs: 0, actualSpeedWindowSimulationMs: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
   lastSimulationTickCap: MAX_SIMULATION_TICKS_PER_FRAME, lastFrameTimeClampMs: NORMAL_MAX_FRAME_TIME_MS,
-  wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
+  wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, cameraBudgetCapHits: 0, cameraBudgetDroppedMs: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
   cameraMoveXLastFrame: 0, cameraMoveYLastFrame: 0, cameraMovePixelsLastFrame: 0, cameraZoomDeltaLastFrame: 0, cameraMovingLastFrame: false,
   simulationCapEvents: [], sessionTrendSamples: [],
   adaptiveVisualFrames: 0, depthSortPressureFrames: 0,
@@ -8842,20 +8860,33 @@ function scanFieldForMusic(){
 let softwareRenderingNoticeShown = false;
 let attackStateClock = 0;
 // CARAVAN-01 (1.7.100) — see HISTORY.md § [1.7.100]
-const CARAVAN_FIRST_ROUND_AFTER = 5, CARAVAN_CHANCE = 0.4, CARAVAN_MIN_GAP_ROUNDS = 2, CARAVAN_SPEED_PX_PER_S = 46, CARAVAN_TAP_RADIUS_PX = 36, CARAVAN_EXIT_PX = 520;
+const CARAVAN_FIRST_ROUND_AFTER = 2, CARAVAN_CHANCE = 0.4, CARAVAN_MIN_GAP_ROUNDS = 2, CARAVAN_SPEED_PX_PER_S = 46, CARAVAN_TAP_RADIUS_PX = 36;
 const CARAVAN_CLOP_STRIDE_PX = 24, WOOD_SELL_GOLD = 2, STONE_SELL_GOLD = 4;
-const caravan = { active: false, exiting: false, x: 0, y: 0, dirX: 1, dirY: 0, targetIndex: 1, pathLength: 0, exitPx: 0, wheelPhase: 0, clopPx: 0, lastRound: -99 };
+const caravan = { active: false, exiting: false, phase: 'approach', x: 0, y: 0, dirX: 1, dirY: 0, targetIndex: 1, pathLength: 0, travelPx: 0, wheelPhase: 0, clopPx: 0, lastRound: -99, announced: false };
+// CARAVAN-JOURNEY-01 (1.8.40): the merchant crosses the whole map. He steps in from beyond the map edge along the line of the first road tile, walks the bare wilderness, passes the spawn flags, follows the road to the finish carpet, and leaves past it off the other edge, where he is cleared from memory.
+const CARAVAN_EDGE_MARGIN_PX = 70, CARAVAN_MAX_TRAVEL_PX = 6000;
+function caravanOutsideWorld(x, y){ return x < -CARAVAN_EDGE_MARGIN_PX || x > WORLD_MAX_W + CARAVAN_EDGE_MARGIN_PX || y < -CARAVAN_EDGE_MARGIN_PX || y > WORLD_MAX_H + CARAVAN_EDGE_MARGIN_PX; }
+function caravanEdgePoint(fromX, fromY, unitX, unitY){
+  let distance = 0;
+  while(distance < CARAVAN_MAX_TRAVEL_PX && !caravanOutsideWorld(fromX + unitX*distance, fromY + unitY*distance)) distance += 8;
+  return { x: fromX + unitX*distance, y: fromY + unitY*distance };
+}
+function syncCaravanWag(){ const wag = document.getElementById('caravanWag'); if(wag) wag.hidden = !caravan.active; }
 function caravanShopAvailable(){ return caravan.active && !caravan.exiting; }
-function resetCaravan(){ caravan.active = false; caravan.exiting = false; caravan.lastRound = -99; }
+function releaseCaravan(){ caravan.active = false; caravan.exiting = false; caravan.phase = 'approach'; caravan.travelPx = 0; syncCaravanWag(); updateHUD(); }
+function resetCaravan(){ caravan.active = false; caravan.exiting = false; caravan.phase = 'approach'; caravan.lastRound = -99; syncCaravanWag(); }
 function maybeSpawnCaravan(){
   if(caravan.active || wavesCompleted <= CARAVAN_FIRST_ROUND_AFTER || wavesCompleted - caravan.lastRound < CARAVAN_MIN_GAP_ROUNDS) return;
-  if(wood <= 0 && stone <= 0) return;
-  if(waypointsPx.length < 2 || Math.random() >= CARAVAN_CHANCE) return;
-  caravan.active = true; caravan.exiting = false; caravan.exitPx = 0; caravan.clopPx = 0; caravan.lastRound = wavesCompleted;
-  caravan.x = waypointsPx[0].x; caravan.y = waypointsPx[0].y; caravan.targetIndex = 1; caravan.pathLength = waypointsPx.length;
-  caravan.dirX = waypointsPx[1].x - caravan.x; caravan.dirY = waypointsPx[1].y - caravan.y;
-  playSound('caravan_arrive', caravan.x, undefined, caravan.y);
-  showToast('🐴 A merchant caravan is on the road — tap him to trade, or open the Shop');
+  if(wood <= 0 && stone <= 0 && caravan.lastRound > -99) return;
+  if(waypointsPx.length < 2 || (caravan.lastRound > -99 && Math.random() >= CARAVAN_CHANCE)) return; // EARLY-HOOK-01: the first visit always comes
+  const lead = Math.hypot(waypointsPx[1].x - waypointsPx[0].x, waypointsPx[1].y - waypointsPx[0].y) || 1;
+  const unitX = (waypointsPx[1].x - waypointsPx[0].x)/lead, unitY = (waypointsPx[1].y - waypointsPx[0].y)/lead;
+  const entry = caravanEdgePoint(waypointsPx[0].x, waypointsPx[0].y, -unitX, -unitY);
+  caravan.active = true; caravan.exiting = false; caravan.phase = 'approach'; caravan.travelPx = 0; caravan.clopPx = 0; caravan.announced = false; caravan.lastRound = wavesCompleted;
+  caravan.x = entry.x; caravan.y = entry.y; caravan.targetIndex = 1; caravan.pathLength = waypointsPx.length;
+  caravan.dirX = unitX; caravan.dirY = unitY;
+  syncCaravanWag();
+  showToast('🐪 A merchant caravan is crossing the map — tap him to trade, or open the Shop');
   logGameEvent('caravan arrived after round ' + wavesCompleted);
   trackGameEvent('caravan_arrived', { round: wavesCompleted, wood, stone });
   updateHUD();
@@ -8869,57 +8900,101 @@ function retargetCaravanAfterPathChange(){
   caravan.targetIndex = Math.min(nearestIndex + 1, waypointsPx.length);
   caravan.pathLength = waypointsPx.length;
 }
+function stepCaravanToward(target, stepPx){
+  const dx = target.x - caravan.x, dy = target.y - caravan.y, distance = Math.hypot(dx, dy) || 0.0001;
+  caravan.dirX = dx/distance; caravan.dirY = dy/distance;
+  if(distance <= stepPx){ caravan.x = target.x; caravan.y = target.y; return true; }
+  caravan.x += caravan.dirX*stepPx; caravan.y += caravan.dirY*stepPx;
+  return false;
+}
 function updateCaravan(frameMs){
   if(!caravan.active) return;
   if(!document.getElementById('shop-modal').classList.contains('hidden') && !caravan.exiting) return; // he waits while the player trades
-  if(!caravan.exiting && caravan.pathLength !== waypointsPx.length) retargetCaravanAfterPathChange();
-  let stepPx = CARAVAN_SPEED_PX_PER_S * Math.min(100, frameMs) / 1000;
+  if(caravan.phase === 'path' && caravan.pathLength !== waypointsPx.length) retargetCaravanAfterPathChange();
+  const stepPx = CARAVAN_SPEED_PX_PER_S * Math.min(100, frameMs) / 1000;
   const startX = caravan.x, startY = caravan.y;
-  if(!caravan.exiting){
+  if(caravan.phase === 'approach'){
+    if(!waypointsPx.length){ releaseCaravan(); return; }
+    if(stepCaravanToward(waypointsPx[0], stepPx)){ caravan.phase = 'path'; caravan.targetIndex = 1; caravan.pathLength = waypointsPx.length; }
+  } else if(caravan.phase === 'path'){
     const target = waypointsPx[caravan.targetIndex];
     if(!target){
       const finishLine = computeFinishLine();
       if(finishLine){ caravan.dirX = finishLine.ux; caravan.dirY = finishLine.uy; }
-      caravan.exiting = true; updateHUD();
-    } else {
-      const dx = target.x - caravan.x, dy = target.y - caravan.y, distance = Math.hypot(dx, dy) || 0.0001;
-      caravan.dirX = dx/distance; caravan.dirY = dy/distance;
-      if(distance <= stepPx){ caravan.x = target.x; caravan.y = target.y; caravan.targetIndex++; }
-      else { caravan.x += caravan.dirX*stepPx; caravan.y += caravan.dirY*stepPx; }
-    }
+      caravan.phase = 'exit'; caravan.exiting = true; syncCaravanWag(); updateHUD();
+    } else if(stepCaravanToward(target, stepPx)) caravan.targetIndex++;
   } else {
-    caravan.x += caravan.dirX*stepPx; caravan.y += caravan.dirY*stepPx; caravan.exitPx += stepPx;
-    if(caravan.exitPx >= CARAVAN_EXIT_PX){ caravan.active = false; caravan.exiting = false; updateHUD(); return; }
+    caravan.x += caravan.dirX*stepPx; caravan.y += caravan.dirY*stepPx;
   }
   const movedPx = Math.hypot(caravan.x - startX, caravan.y - startY);
+  caravan.travelPx += movedPx;
+  if(caravan.phase === 'exit' && (caravanOutsideWorld(caravan.x, caravan.y) || caravan.travelPx > CARAVAN_MAX_TRAVEL_PX)){ releaseCaravan(); return; }
+  if(!caravan.announced && !caravanOutsideWorld(caravan.x, caravan.y)){ caravan.announced = true; playSound('caravan_arrive', caravan.x, undefined, caravan.y); }
   caravan.wheelPhase += movedPx/6;
   caravan.clopPx += movedPx;
-  if(caravan.clopPx >= CARAVAN_CLOP_STRIDE_PX){ caravan.clopPx -= CARAVAN_CLOP_STRIDE_PX; playSound('caravan_clop', caravan.x, undefined, caravan.y); }
+  if(caravan.clopPx >= CARAVAN_CLOP_STRIDE_PX){ caravan.clopPx -= CARAVAN_CLOP_STRIDE_PX; if(!caravanOutsideWorld(caravan.x, caravan.y)) playSound('caravan_clop', caravan.x, undefined, caravan.y); }
+}
+// CARAVAN-LOOK-01 (1.8.40): a covered wagon with a drawn camel and one swept ground shadow, in place of a flat ellipse, a mirrored animal emoji and a floating stack of icons.
+function fillSweptShadow(ctx, footprint, sweepX, sweepY, alpha){
+  const points = [];
+  for(const point of footprint){ points.push([point[0], point[1]], [point[0] + sweepX, point[1] + sweepY]); }
+  points.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]);
+  const lower = []; for(const point of points){ while(lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], point) <= 0) lower.pop(); lower.push(point); }
+  const upper = []; for(let index = points.length - 1; index >= 0; index--){ const point = points[index]; while(upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], point) <= 0) upper.pop(); upper.push(point); }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  ctx.save(); ctx.globalAlpha *= alpha; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(hull[0][0], hull[0][1]);
+  for(let index = 1; index < hull.length; index++) ctx.lineTo(hull[index][0], hull[index][1]);
+  ctx.closePath(); ctx.fill(); ctx.restore();
 }
 function drawCaravan(ctx){
-  if(!caravan.active) return;
-  const facing = caravan.dirX >= 0 ? 1 : -1, bob = Math.sin(caravan.wheelPhase*0.55)*1.2;
+  if(!caravan.active || caravanOutsideWorld(caravan.x, caravan.y)) return;
+  const facing = caravan.dirX >= 0 ? 1 : -1, bob = Math.sin(caravan.wheelPhase*0.55)*1.1, gait = caravan.wheelPhase*0.35;
   ctx.save();
   ctx.translate(caravan.x, caravan.y);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, 9, 30, 6, 0, 0, Math.PI*2); ctx.fill();
+  if(graphicsQuality === 'high'){
+    const left = Math.min(-26*facing, 48*facing), right = Math.max(-26*facing, 48*facing);
+    fillSweptShadow(ctx, [[left, 4], [right, 4], [right, 9], [left, 9]], 0.55*30, -0.34*30, 0.24);
+  }
   ctx.save();
   ctx.scale(facing, 1);
-  ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(6, -4 + bob); ctx.lineTo(16, -6 + bob); ctx.stroke();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // camel: four swinging legs, body, one hump, long curved neck, head, tail
+  ctx.strokeStyle = '#7a5530'; ctx.lineWidth = 2.4;
+  for(const leg of [{ x: 30, phase: 0 }, { x: 34, phase: Math.PI }, { x: 42, phase: Math.PI }, { x: 46, phase: 0 }]){
+    const swing = Math.sin(gait + leg.phase)*3.2;
+    ctx.beginPath(); ctx.moveTo(leg.x, -11); ctx.lineTo(leg.x + swing*0.5, -6); ctx.lineTo(leg.x + swing, -1); ctx.stroke();
+  }
+  ctx.fillStyle = '#c99a5b'; ctx.beginPath(); ctx.ellipse(38, -15 + bob, 12, 6.2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(33, -19 + bob); ctx.quadraticCurveTo(37, -29 + bob, 42, -19 + bob); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#c99a5b'; ctx.lineWidth = 4.2; ctx.beginPath(); ctx.moveTo(46, -17 + bob); ctx.quadraticCurveTo(52, -22 + bob, 51, -31 + bob); ctx.stroke();
+  ctx.fillStyle = '#c99a5b'; ctx.beginPath(); ctx.ellipse(54, -32 + bob, 5.2, 3, 0.25, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#a97c45'; ctx.beginPath(); ctx.arc(50, -35 + bob, 1.4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1b1210'; ctx.beginPath(); ctx.arc(54.5, -33 + bob, 0.9, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#7a5530'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(26, -17 + bob); ctx.quadraticCurveTo(22, -14 + bob, 23, -8 + bob + Math.sin(gait)*1.5); ctx.stroke();
+  // harness shaft from the wagon to the camel
+  ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(8, -8 + bob); ctx.lineTo(30, -12 + bob); ctx.stroke();
+  // wagon bed with plank line
   ctx.fillStyle = '#8d5a2b'; ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 1.5;
-  roundedRectPath(ctx, -22, -17 + bob, 30, 13, 2); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = 'rgba(62,39,35,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-22, -11 + bob); ctx.lineTo(8, -11 + bob); ctx.stroke();
-  ctx.fillStyle = '#d7b46a'; ctx.beginPath(); ctx.arc(-14, -19 + bob, 5, Math.PI, 0); ctx.fill(); ctx.beginPath(); ctx.arc(-4, -19 + bob, 4, Math.PI, 0); ctx.fill();
-  for(const wheelX of [-15, 1]){
-    ctx.save(); ctx.translate(wheelX, 0);
+  roundedRectPath(ctx, -26, -15 + bob, 36, 11, 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(62,39,35,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-26, -10 + bob); ctx.lineTo(10, -10 + bob); ctx.stroke();
+  // canopy with a red trim and two ribs
+  ctx.fillStyle = '#f1e3b8'; ctx.strokeStyle = '#8a7a52'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-25, -15 + bob); ctx.quadraticCurveTo(-8, -40 + bob, 9, -15 + bob); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#b5483b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-25, -15 + bob); ctx.lineTo(9, -15 + bob); ctx.stroke();
+  ctx.strokeStyle = 'rgba(138,122,82,0.8)'; ctx.lineWidth = 1;
+  for(const ribX of [-14, -3]){ ctx.beginPath(); ctx.moveTo(ribX, -15 + bob); ctx.quadraticCurveTo(ribX + 1, -30 + bob, ribX + 3, -15 + bob); ctx.stroke(); }
+  // wheels
+  for(const wheelX of [-17, 2]){
+    ctx.save(); ctx.translate(wheelX, -6);
     ctx.fillStyle = '#d7ccc8'; ctx.strokeStyle = '#3e2723'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.rotate(caravan.wheelPhase*facing); ctx.lineWidth = 1.2; ctx.beginPath();
+    ctx.rotate(caravan.wheelPhase*facing); ctx.lineWidth = 1.1; ctx.beginPath();
     for(let spoke = 0; spoke < 3; spoke++){ const angle = spoke*Math.PI/3; ctx.moveTo(Math.cos(angle)*6, Math.sin(angle)*6); ctx.lineTo(-Math.cos(angle)*6, -Math.sin(angle)*6); }
     ctx.stroke(); ctx.restore();
   }
-  ctx.save(); ctx.translate(27, -9 + bob); ctx.scale(-1, 1); drawEmojiSprite(ctx, '🐴', 26); ctx.restore();
   ctx.restore();
-  ctx.save(); ctx.translate(-6*facing, -26 + bob); drawEmojiSprite(ctx, '👳', 15); ctx.restore();
-  if(!caravan.exiting){ ctx.save(); ctx.translate(0, -44 + Math.sin(presentationTime/380)*2); drawEmojiSprite(ctx, '🛍️', 16); ctx.restore(); }
+  ctx.save(); ctx.translate(7*facing, -24 + bob); drawEmojiSprite(ctx, '👳', 14); ctx.restore();
+  if(!caravan.exiting){ ctx.save(); ctx.translate(-4*facing, -45 + Math.sin(presentationTime/380)*1.6); drawEmojiSprite(ctx, '🛍️', 13); ctx.restore(); }
   ctx.restore();
 }
 function tryOpenCaravan(worldX, worldY){
@@ -8952,7 +9027,7 @@ function updatePresentationEffects(frameMs){
     recordNotification('🖥️ Graphics acceleration is off', 'Your browser is drawing the game on the CPU (' + renderEnvironment.gpuRenderer + '). Turning on hardware acceleration in the browser settings (Settings, System, Use graphics acceleration when available, then restart) usually makes play much smoother. You can also pick Low graphics in Settings.');
   }
   if(freeExpansionOwed > 0 && waveState === 'IDLE'){ freeExpansionOwed--; if(!grantFreeExpansion()) freeExpansionOwed = 0; }
-  audioEngine.setMusicPhase(gameState === 'START' ? 'attract' : waveState !== 'IDLE' || countLooseEnemies() > 0 ? (bossIsOnField() ? 'boss' : 'wave') : 'field');
+  audioEngine.setMusicPhase(gameState === 'START' ? 'attract' : (waveState !== 'IDLE' && !countdownHoldsFieldMusic()) || countLooseEnemies() > 0 ? (bossIsOnField() ? 'boss' : 'wave') : 'field');
   updateDeathAnims();
   const clampedMs = Math.min(100, frameMs);
   updateFloatingTexts(clampedMs);
@@ -9046,6 +9121,7 @@ function loop(now){
     waveTimer += frameTime;
     const countdownBeat = Math.min(3, Math.floor(waveTimer / 1000)); // COUNTDOWN-BUZZER-01 (1.7.36): a buzzer on 3, 2, 1 and a higher one on GO
     if(countdownBeat > countdownBeatPlayed){ countdownBeatPlayed = countdownBeat; playSound(countdownBeat < 3 ? 'countdown_tick' : 'countdown_go', undefined, countdownBeat); }
+    advanceCountdownMusic();
   }
   updatePresentationEffects(frameTime);
   const simulationSpeed = effectiveGameSpeed();
@@ -9074,6 +9150,7 @@ function loop(now){
     perfStats.simulationCatchUpCapHits++;
     droppedSimulationTimeThisFrame = Math.max(0, accumulator);
     perfStats.simulationDebtDroppedMs += droppedSimulationTimeThisFrame;
+    if(cameraBudgetReached && ticksThisFrame < tickCapThisFrame){ perfStats.cameraBudgetCapHits++; perfStats.cameraBudgetDroppedMs += droppedSimulationTimeThisFrame; } // CATCHUP-REASON-01 (1.8.41): the camera's 6 ms budget is counted apart from the tick cap
     accumulator = 0;
   }
   perfStats.updateMs = performance.now() - updateStart;
@@ -9243,6 +9320,12 @@ const MUSIC_ATTRACT_CHORDS = [{ root: 38, triad: [0, 3, 7] }, { root: 34, triad:
 const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
 // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]: the 24-bar start-screen cycle is now a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
 const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
+// MUSIC-ATTRACT-EASE-01 (1.8.36): each start-screen section glides from the previous section's level to its own over its first half instead of stepping, so drums, snare and hats grow in rather than arriving at full strength.
+function attractEasedLevel(section, bar, beatStep){
+  const sectionBars = section === 4 ? 8 : 4, progress = ((bar - section * 4) * MUSIC_STEPS_PER_BAR + beatStep) / (sectionBars * MUSIC_STEPS_PER_BAR), amount = Math.min(1, progress * 2), smooth = amount * amount * (3 - 2 * amount);
+  const previous = MUSIC_ATTRACT_SECTION_LEVEL[Math.max(0, section - 1)], target = MUSIC_ATTRACT_SECTION_LEVEL[section];
+  return previous + (target - previous) * smooth;
+}
 const POP_VOICES = {
   warm: { wave: 'triangle', detunes: [0], attack: 0.035, sustain: 0.55, decay: 0.45, release: 0.12, cutoffStart: 2200, cutoffEnd: 1400, cutoffTime: 0.7, q: 0.3, echo: true },
   lead:  { vibrato: { rate: 5.6, cents: 9, delay: 0.18 }, wave: 'sawtooth', detunes: [-7, 7], attack: 0.008, sustain: 0.75, decay: 0.35, release: 0.07, cutoffStart: 5200, cutoffEnd: 3000, cutoffTime: 0.5, q: 0.6, echo: true },
@@ -9264,6 +9347,15 @@ const MUSIC_FIELD_MELODY = [ // FIELD-THEME-02 (1.7.98) — see HISTORY.md § [1
   [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,7,null], [0,null,null,7, 5,null,3,5], [10,null,8,null, 7,null,null,null],
   [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,8,null], [7,null,null,5, 3,null,2,3], [2,null,-1,null, 0,null,null,null],
   [7,null,null,12, 10,null,8,null], [7,null,10,null, 12,null,14,null], [12,null,10,null, 8,null,7,5], [5,null,2,null, -1,null,0,null]
+];
+// MUSIC-THEME-01 (1.8.40): the wave theme is a real 24-bar tune in absolute semitones above the key's D3, over Dm Dm F C / Dm Gm F Dm / Dm C Gm Dm. Section A states a heroic rising call and answers it higher, section B climbs and sequences through Gm and F, section C soars to the top of the range and lands home. The old table was degrees of whichever chord was sounding, so the tune only ever shuffled around the same five notes.
+const MUSIC_WAVE_THEME = [
+  [12,null,null,7,8,null,7,null], [5,null,7,null,12,null,null,null], [12,null,14,15,14,null,12,null], [10,null,7,null,8,null,7,5],
+  [15,null,12,null,10,null,12,15], [17,null,15,null,12,null,10,null], [14,null,17,19,17,null,14,null], [12,null,14,null,10,null,null,null],
+  [19,null,17,null,15,null,14,null], [12,null,14,15,17,null,19,null], [20,null,19,null,17,null,15,null], [17,null,15,null,12,null,8,null],
+  [15,null,17,null,19,null,22,null], [24,null,22,null,19,null,17,15], [14,null,17,null,15,null,12,null], [14,12,null,7,null,12,null,null],
+  [24,null,null,19,17,null,19,null], [15,null,17,null,19,null,24,null], [26,null,24,null,22,null,19,null], [22,null,26,null,29,null,26,null],
+  [24,null,20,null,17,null,20,24], [29,null,27,null,24,null,20,null], [24,null,19,null,24,null,27,null], [26,24,null,19,null,24,null,null]
 ];
 const MUSIC_COMBAT_MELODY = [
   [0,null,4,1,null,2,0,null],
@@ -9788,7 +9880,6 @@ class SoundEngine{
     if(this.musicBarRole === 'opening') return;
     const baseChord = (combat ? MUSIC_COMBAT_ROOTS : MUSIC_BASS_ROOTS)[Math.floor(bar / 2) % MUSIC_BASS_ROOTS.length];
     const chord = baseChord + shift;
-    const minor = baseChord === 38;
     const intensity = this.musicIntensity || 0;
     const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : combat ? 4 : 6);
     if(combat){
@@ -9823,16 +9914,14 @@ class SoundEngine{
     this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
     const cadence=false;
-    const degree = !combat || this.musicBarRole === 'landing' ? null : MUSIC_COMBAT_MELODY[bar % MUSIC_COMBAT_MELODY.length][beatStep];
+    const degree = !combat || this.musicBarRole === 'landing' ? null : MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep];
     if(degree !== null && !breath){
-      const intervals = combat ? (boss || section === 2 && phraseBar === 3 ? MUSIC_PHRYGIAN_INTERVALS : MUSIC_COMBAT_INTERVALS) : minor ? MUSIC_MINOR_INTERVALS : MUSIC_MAJOR_INTERVALS;
-      const octave = combat && section === 2 && beatStep === 2 ? 12 : 0;
       const keysFirst = (section === 0 || phraseBar === 2) !== (cycleIndex % 2 === 1);
       const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (cadence ? 'reed' : keysFirst ? 'fmkeys' : 'pluck');
       const duration=combat ? (beatStep===0 ? 0.25 : beatStep%2 ? 0.11 : 0.15) : cadence ? this.musicStepSeconds()*1.65 : voice==='reed' ? 0.28 : voice==='fmkeys' ? 0.24 : beatStep%2 ? 0.13 : 0.20;
       const accent=beatStep===0 ? 1 : beatStep%2 ? 0.78 : 0.90;
       const phraseGain=phraseBar===3 ? 0.82 : section===1 ? 0.94 : 1;
-      const leadPitch = chord + (combat ? 12 : 24) + intervals[degree] + octave;
+      const leadPitch = 38 + shift + 12 + (boss && degree % 12 === 2 ? degree - 1 : degree);
       this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain*(0.92 + Math.random()*0.16));
       if(combat && (boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
       if(combat && (boss || section > 0)) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
@@ -9841,6 +9930,9 @@ class SoundEngine{
         this.popTone(midiToFrequency(leadPitch + 12), time + 0.002, duration * 0.8, 'bell', 0.03 * accent, true);
       }
     }
+    // MUSIC-BIP-01 (1.8.41): a very quiet high pluck answers the lead in its rests, an octave above the note it follows, on alternating rests only, so the theme keeps its breaths and gains small bips between phrases.
+    const echoedDegree = combat && !breath && degree === null && this.musicBarRole !== 'landing' && beatStep > 0 && (bar + beatStep) % 2 === 1 ? MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep - 1] : null;
+    if(echoedDegree !== null) this.musicTone(midiToFrequency(38 + shift + 24 + echoedDegree), time + 0.004, 0.07, 'pluck', 0.02 * (0.6 + 0.4 * intensity), true);
   }
   // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]
   popTone(freq, time, duration, kind, peak, optional=false){
@@ -9959,22 +10051,21 @@ class SoundEngine{
     sub.start(time); body.start(time); sub.stop(time + duration + 0.02); body.stop(time + duration);
   }
   scheduleAttractStep(time, bar, beatStep, stepSeconds, shift, cycleIndex){
-    const section = bar < 4 ? 0 : bar < 8 ? 1 : bar < 12 ? 2 : bar < 16 ? 3 : 4, level = MUSIC_ATTRACT_SECTION_LEVEL[section];
+    const section = bar < 4 ? 0 : bar < 8 ? 1 : bar < 12 ? 2 : bar < 16 ? 3 : 4, level = attractEasedLevel(section, bar, beatStep);
     const chord = MUSIC_ATTRACT_CHORDS[section === 3 ? MUSIC_ATTRACT_BUILD_CHORDS[bar - 12] : section === 4 ? Math.floor(bar / 2) % MUSIC_ATTRACT_CHORDS.length : Math.floor(bar / 4) % MUSIC_ATTRACT_CHORDS.length];
     const chordRoot = chord.root + shift, tonic = MUSIC_ATTRACT_TONIC + shift, halfStep = stepSeconds / 2, isIntro = section === 0, isBuild = section === 3, isChorus = section === 4;
     // Leave one eighth-note of space before the main landing.
     if(bar === 15 && beatStep === 7) return;
     const restBar = (bar === 3 || bar === 11) && beatStep >= 5;
-    if(beatStep === 0 && bar % 4 === 0 && section < 3){
+    if(beatStep === 0 && bar % 4 === 0 && section >= 1 && section < 3){
       this.popTone(midiToFrequency(chordRoot), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.02 * level, true);
       this.popTone(midiToFrequency(chordRoot + 7), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.014 * level, true);
       if(bar > 0) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.3, 'kick', 0.1 * level);
     }
     const drop = beatStep === 0 && (bar === 4 || bar === 16);
-    if(drop) this.musicBassDrop(time, chordRoot, stepSeconds, bar === 16 ? 1 : 0.65);
-    if(beatStep === 0 && bar % 2 === 0){
-      const swell = isIntro ? 0.55 + bar * 0.15 : 1;
-      [chord.triad[0], chord.triad[2]].forEach(interval => this.popTone(midiToFrequency(chordRoot + 24 + interval), time, stepSeconds * MUSIC_STEPS_PER_BAR * 1.96, 'pad', 0.03 * level * swell, true));
+    if(drop) this.musicBassDrop(time, chordRoot, stepSeconds, bar === 16 ? 0.8 : 0.4);
+    if(beatStep === 0 && bar % 2 === 0 && section >= 1){
+      [chord.triad[0], chord.triad[2]].forEach(interval => this.popTone(midiToFrequency(chordRoot + 24 + interval), time, stepSeconds * MUSIC_STEPS_PER_BAR * 1.96, 'pad', 0.03 * level, true));
     }
     const rollBar = bar === 15, kickOut = rollBar && beatStep >= 4;
     if(bar >= 4 && !drop && !kickOut && (isChorus || isBuild ? beatStep % 2 === 0 : beatStep === 0 || beatStep === 4)) this.musicTone(138, time, 0.14, 'kick', (beatStep === 0 ? 0.11 : 0.085) * level);
@@ -10014,7 +10105,7 @@ class SoundEngine{
     if(isChorus && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + (beatStep % 2 ? 12 : 0)), time + halfStep, halfStep * 0.8, 'bass', 0.034 * level, true);
     const motifRow = bar % 4 + ((section === 2 || section === 4 && bar >= 20) ? 4 : 0);
     const degree = restBar ? null : MUSIC_COMBAT_MELODY[motifRow][beatStep];
-    if(section >= 1 && section !== 3 && !restBar && !kickOut && (beatStep === 2 || beatStep === 6)){
+    if(section >= 2 && section !== 3 && !restBar && !kickOut && (beatStep === 2 || beatStep === 6)){
       const counterTone = chord.triad[(bar + (beatStep >> 2)) % chord.triad.length];
       this.popTone(midiToFrequency(chordRoot + 24 + counterTone), time, stepSeconds * 1.7, 'oboe', 0.036 * level, true);
     }
@@ -11146,6 +11237,7 @@ function handleTap(clientX, clientY, pointerType){
   const existing = towerPool.find(t => t.active && t.gridX===gx && t.gridY===gy);
   if(existing){
     if(selectedBuildType){ playSound('ui_deny'); return; }
+    closeBuildMenuIfOpen();
     selectedTower = existing;
     playSound('spawn_chatter', existing.x, CLASS_ARCHETYPE[existing.type], existing.y); // the unit answers when you select it
     startCameraFollow(existing);
@@ -11348,7 +11440,7 @@ function onPointerEnd(e){
         else if(!isDragging) openGoldBag(draggingGroundItem, draggingGroundItem.x, draggingGroundItem.y);
       } else if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01 (1.6.132) — a consumable dropped on a stickman is stored in its slots, never used on the spot
         const def = draggingGroundItem.itemDef;
-        if(def.isFood && target){ eatDroppedFood(draggingGroundItem, target); // FOOD-STATS-01: food is eaten on the spot
+        if(def.isFood && target && !isVaultType(target.type)){ eatDroppedFood(draggingGroundItem, target); // FOOD-STATS-01: food is eaten on the spot
         } else if(target && target.receiveItem(def)){
           groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
           spawnFloatingText(target.x, target.y - 40, def.icon, '#ffffff', ITEM_POPUP_LIFE_MS); // ITEM-DROP-EMOJI-01 (1.6.116) — see HISTORY.md § [1.6.116]
@@ -11365,7 +11457,7 @@ function onPointerEnd(e){
         trackGameEvent('item_equipped', { item: equippedDef.id, rarity: equippedDef.rarity, tower_type: target.type, items_carried: target.equippedItems.length });
         playSound('click');
         if(selectedTower === target) updateInspectPanel();
-      } else if(target && target.equippedItems.length >= MAX_ITEM_SLOTS){
+      } else if(target && target.equippedItems.length >= itemCapacityOf(target)){
         rejectFullInventoryDrop(draggingGroundItem,target);
       } else if(draggingGroundItem.itemDef.isBarricade){
         // CA747 — see HISTORY.md § [1.5.7] Code Archaeology, CA747
@@ -11633,7 +11725,7 @@ function refreshBuildMenuAvailability(grid){
       affordable = gold >= cost;
       capacity = !STARTER_TOWER_TYPES.includes(type) && !isTowerTypeAvailable(type);
     }
-    const nameHtml = def.name + (capacity ? ' <span style="color:#e63946">(already on the field)</span>' : '');
+    const nameHtml = def.name + (capacity ? ' <span style="color:#e63946">(already active)</span>' : '');
     if(!capacity) row.classList.toggle('unaffordable', !affordable);
     const name = row.querySelector('.name');
     if(row.dataset.liveName !== nameHtml){ name.innerHTML = nameHtml; row.dataset.liveName = nameHtml; }
@@ -11725,6 +11817,97 @@ function buildTowerModal(){
     });
     grid.appendChild(row);
   }
+  // CA760 — see HISTORY.md § [1.5.7] Code Archaeology, CA760
+  // UNLOCK-HELP-01 (1.7.111) — see HISTORY.md § [1.7.111]: a locked class shows its full description, which says what it does and exactly how it is unlocked
+  const TOWER_UNLOCK_RIDDLE = Object.fromEntries(UNLOCKABLE_TOWER_TYPES.filter(type => CONFIG.TOWERS[type]).map(type => [type, '🔒 ' + CONFIG.TOWERS[type].blurb]));
+  // BUILD-ORDER-01 (1.6.4) — see HISTORY.md § [1.6.4]. Unlocked towers sort to the top, locked
+  // ones stay below — direct request ("unlocked units should be higher in the build menu once
+  // they're unlocked... harder unlocks feel like mystery achievements"). Stable sort keeps each
+  // group's own relative order (the fixed unlock-path order UNLOCKABLE_TOWER_TYPES was already in).
+  const sortedUnlockableTowerTypes = [...UNLOCKABLE_TOWER_TYPES].sort((a, b) => {
+    const aLocked = unlockedTowerTypes.has(a) ? 0 : 1;
+    const bLocked = unlockedTowerTypes.has(b) ? 0 : 1;
+    return aLocked - bLocked;
+  });
+  const appendUnlockableRow = (type) => {
+    // CA762 — see HISTORY.md § [1.5.7] Code Archaeology, CA762
+    const def = CONFIG.TOWERS[type];
+    const unlocked = unlockedTowerTypes.has(type);
+    const affordable = gold >= def.baseCost;
+    const costLabel = '💰' + def.baseCost;
+    const lockMsg = TOWER_UNLOCK_RIDDLE[type] || '🔒 Locked — a secret combination unlocks this';
+    // CA763 — see HISTORY.md § [1.5.7] Code Archaeology, CA763
+    const atCapacity = unlocked && !isTowerTypeAvailable(type);
+    const row = document.createElement('div');
+    row.dataset.buildType = type;
+    row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
+    row.innerHTML =
+      '<div class="icon">' + def.icon + '</div>' +
+      '<div class="name">' + def.name +
+        (atCapacity ? ' <span style="color:#e63946">(already active)</span>'
+          : '') +
+        '</div>' +
+      (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') +
+      '<button class="help-btn" type="button">?</button>' +
+      (unlocked
+        ? '<div class="build-row-blurb">' + def.blurb + (def.blurb.includes('Only one') ? '' : ' Only one can be active.') + '</div>'
+        : '<div class="build-row-lock">' + lockMsg + '</div>');
+    if(unlocked){
+      row.addEventListener('pointerdown', (e) => {
+        if(e.target.classList.contains('help-btn')) return;
+        e.stopPropagation();
+        // CA764 — see HISTORY.md § [1.5.7] Code Archaeology, CA764
+        const stillAffordable = gold >= def.baseCost;
+        const stillAtCapacity = unlocked && !isTowerTypeAvailable(type);
+        if(!stillAffordable || stillAtCapacity) return;
+        selectedBuildType = type;
+        selectedTower = null; cancelCameraFollow();
+        inspPanelExpanded = false;
+        playSound('click');
+        closeTowerModal();
+        updateInspectPanel();
+        refreshTrayUI();
+      });
+    }
+    const helpBtn2 = row.querySelector('.help-btn');
+    const blurb2 = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
+    helpBtn2.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      blurb2.classList.toggle('show');
+    });
+    grid.appendChild(row);
+  };
+  let lastUnlockGroup = null;
+  let fortificationSectionAdded = false;
+  const appendBarricadeSection = () => {
+    if(fortificationSectionAdded) return;
+    fortificationSectionAdded = true;
+    addBuildSection('Fortifications');
+    const def = CONFIG.TOWERS.BARRICADE;
+    const unlocked = isTowerBuildableNow('BARRICADE');
+    const isFreeBarricade = freeBarricadesLeft > 0;
+    const liveBarricadeCost = currentBarricadeCost();
+    const affordable = isFreeBarricade || (wood >= liveBarricadeCost.wood && stone >= liveBarricadeCost.stone);
+    const costLabel = isFreeBarricade ? '🎁 FREE!' : '🪵' + liveBarricadeCost.wood + ' 🪨' + liveBarricadeCost.stone;
+    const row = document.createElement('div');
+    row.dataset.buildType = 'BARRICADE';
+    row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType==='BARRICADE' ? ' selected' : '');
+    row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + '</div>' +
+      (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') + '<button class="help-btn" type="button">?</button>' +
+      (unlocked ? '<div class="build-row-blurb">' + def.blurb + '</div>' : '<div class="build-row-lock">🔒 Unlocks through play</div>');
+    if(unlocked) row.addEventListener('pointerdown', (e) => {
+      if(e.target.classList.contains('help-btn')) return;
+      e.stopPropagation();
+      if(!canAffordTower('BARRICADE')) return;
+      selectedBuildType = 'BARRICADE'; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
+      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+    });
+    const barricadeHelp = row.querySelector('.help-btn');
+    const barricadeBlurb = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
+    barricadeHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); barricadeBlurb.classList.toggle('show'); });
+    grid.appendChild(row);
+  };
+  for(const type of sortedUnlockableTowerTypes) if(unlockedTowerTypes.has(type)) appendUnlockableRow(type); // BUILD-MENU-GROUPS-03 (1.8.40): every unlocked stickman stands in Stickmen Defenders
   addBuildSection('Structures');
   grid.appendChild(expandRow);
   for(const producerType of PRODUCER_TYPES){
@@ -11756,103 +11939,10 @@ function buildTowerModal(){
   const campfireHelp = campfireRow.querySelector('.help-btn'), campfireBlurb = campfireRow.querySelector('.build-row-blurb');
   campfireHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); campfireBlurb.classList.toggle('show'); });
   grid.appendChild(campfireRow);
-  // CA760 — see HISTORY.md § [1.5.7] Code Archaeology, CA760
-  // UNLOCK-HELP-01 (1.7.111) — see HISTORY.md § [1.7.111]: a locked class shows its full description, which says what it does and exactly how it is unlocked
-  const TOWER_UNLOCK_RIDDLE = Object.fromEntries(UNLOCKABLE_TOWER_TYPES.filter(type => CONFIG.TOWERS[type]).map(type => [type, '🔒 ' + CONFIG.TOWERS[type].blurb]));
-  // BUILD-ORDER-01 (1.6.4) — see HISTORY.md § [1.6.4]. Unlocked towers sort to the top, locked
-  // ones stay below — direct request ("unlocked units should be higher in the build menu once
-  // they're unlocked... harder unlocks feel like mystery achievements"). Stable sort keeps each
-  // group's own relative order (the fixed unlock-path order UNLOCKABLE_TOWER_TYPES was already in).
-  const sortedUnlockableTowerTypes = [...UNLOCKABLE_TOWER_TYPES].sort((a, b) => {
-    const aLocked = unlockedTowerTypes.has(a) ? 0 : 1;
-    const bLocked = unlockedTowerTypes.has(b) ? 0 : 1;
-    return aLocked - bLocked;
-  });
-  let lastUnlockGroup = null;
-  let fortificationSectionAdded = false;
-  const appendBarricadeSection = () => {
-    if(fortificationSectionAdded) return;
-    fortificationSectionAdded = true;
-    addBuildSection('Fortifications');
-    const def = CONFIG.TOWERS.BARRICADE;
-    const unlocked = isTowerBuildableNow('BARRICADE');
-    const isFreeBarricade = freeBarricadesLeft > 0;
-    const liveBarricadeCost = currentBarricadeCost();
-    const affordable = isFreeBarricade || (wood >= liveBarricadeCost.wood && stone >= liveBarricadeCost.stone);
-    const costLabel = isFreeBarricade ? '🎁 FREE!' : '🪵' + liveBarricadeCost.wood + ' 🪨' + liveBarricadeCost.stone;
-    const row = document.createElement('div');
-    row.dataset.buildType = 'BARRICADE';
-    row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType==='BARRICADE' ? ' selected' : '');
-    row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + '</div>' +
-      (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') + '<button class="help-btn" type="button">?</button>' +
-      (unlocked ? '<div class="build-row-blurb">' + def.blurb + '</div>' : '<div class="build-row-lock">🔒 Unlocks through play</div>');
-    if(unlocked) row.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
-      e.stopPropagation();
-      if(!canAffordTower('BARRICADE')) return;
-      selectedBuildType = 'BARRICADE'; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
-      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
-    });
-    const barricadeHelp = row.querySelector('.help-btn');
-    const barricadeBlurb = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
-    barricadeHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); barricadeBlurb.classList.toggle('show'); });
-    grid.appendChild(row);
-  };
   for(const type of sortedUnlockableTowerTypes){
-    const isLockedGroup = !unlockedTowerTypes.has(type);
-    if(isLockedGroup !== lastUnlockGroup){
-      if(isLockedGroup){
-        appendBarricadeSection();
-        addBuildSection('Locked');
-      }
-      lastUnlockGroup = isLockedGroup;
-    }
-    // CA762 — see HISTORY.md § [1.5.7] Code Archaeology, CA762
-    const def = CONFIG.TOWERS[type];
-    const unlocked = unlockedTowerTypes.has(type);
-    const affordable = gold >= def.baseCost;
-    const costLabel = '💰' + def.baseCost;
-    const lockMsg = TOWER_UNLOCK_RIDDLE[type] || '🔒 Locked — a secret combination unlocks this';
-    // CA763 — see HISTORY.md § [1.5.7] Code Archaeology, CA763
-    const atCapacity = unlocked && !isTowerTypeAvailable(type);
-    const row = document.createElement('div');
-    row.dataset.buildType = type;
-    row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
-    row.innerHTML =
-      '<div class="icon">' + def.icon + '</div>' +
-      '<div class="name">' + def.name +
-        (atCapacity ? ' <span style="color:#e63946">(already on the field)</span>'
-          : '') +
-        '</div>' +
-      (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') +
-      '<button class="help-btn" type="button">?</button>' +
-      (unlocked
-        ? '<div class="build-row-blurb">' + def.blurb + '</div>'
-        : '<div class="build-row-lock">' + lockMsg + '</div>');
-    if(unlocked){
-      row.addEventListener('pointerdown', (e) => {
-        if(e.target.classList.contains('help-btn')) return;
-        e.stopPropagation();
-        // CA764 — see HISTORY.md § [1.5.7] Code Archaeology, CA764
-        const stillAffordable = gold >= def.baseCost;
-        const stillAtCapacity = unlocked && !isTowerTypeAvailable(type);
-        if(!stillAffordable || stillAtCapacity) return;
-        selectedBuildType = type;
-        selectedTower = null; cancelCameraFollow();
-        inspPanelExpanded = false;
-        playSound('click');
-        closeTowerModal();
-        updateInspectPanel();
-        refreshTrayUI();
-      });
-    }
-    const helpBtn2 = row.querySelector('.help-btn');
-    const blurb2 = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
-    helpBtn2.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      blurb2.classList.toggle('show');
-    });
-    grid.appendChild(row);
+    if(unlockedTowerTypes.has(type)) continue;
+    if(lastUnlockGroup === null){ appendBarricadeSection(); addBuildSection('Locked'); lastUnlockGroup = true; }
+    appendUnlockableRow(type);
   }
   appendBarricadeSection();
   if(hacksEnabled){
@@ -11864,7 +11954,7 @@ function buildTowerModal(){
     const row = document.createElement('div');
     row.dataset.buildType = 'HACKER';
     row.className = 'build-row' + (selectedBuildType === 'HACKER' ? ' selected' : '');
-    row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + (atCapacity ? ' <span style="color:#e63946">(already on the field)</span>' : '') + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + def.blurb + '</div>';
+    row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + (atCapacity ? ' <span style="color:#e63946">(already active)</span>' : '') + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + def.blurb + '</div>';
     row.addEventListener('pointerdown', (e) => {
       if(e.target.classList.contains('help-btn')) return;
       e.stopPropagation();
@@ -11892,6 +11982,7 @@ let hackMenuOpenFor = null;
 function openHackMenu(tower){
   const modal = document.getElementById('hack-modal');
   if(!modal) return;
+  closeBuildMenuIfOpen();
   hackMenuOpenFor = tower;
   modal.classList.remove('hidden');
   const body = document.getElementById('hack-modal-body');
@@ -11979,6 +12070,12 @@ function closeTowerModal(){
   towerModalEl.classList.add('hidden');
   playSound('ui_close');
 }
+// MENU-EXCLUSIVE-01 (1.8.41): opening the shop, settings, a stickman's panel, the hack menu or the cooking dialog closes the build menu so two panels never stack.
+function closeBuildMenuIfOpen(){
+  if(towerModalEl.classList.contains('hidden')) return;
+  closeBuildHelp();
+  towerModalEl.classList.add('hidden');
+}
 function requireShopAccess(){
   if(gameState!=='PLAYING' && gameState!=='PAUSED')return false;
   if(merchantShopOpen())return true;
@@ -11991,6 +12088,7 @@ function shopTowerIsCurrent(tower){
 }
 function openShopModal(){
   if(!requireShopAccess())return false;
+  closeBuildMenuIfOpen();
   buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
   playSound('ui_open');
@@ -12159,7 +12257,7 @@ function buildShopGrid(){
   if(caravanShopAvailable()){
     const sellFragment = document.createDocumentFragment();
     const sellDivider = document.createElement('div'); sellDivider.className = 'shop-section-divider'; sellDivider.style.gridColumn = '1/-1';
-    sellDivider.textContent = '🐴 Caravan Rare Shop — sell him wood (💰' + WOOD_SELL_GOLD + ' each) and stone (💰' + STONE_SELL_GOLD + ' each) while he is on the road';
+    sellDivider.textContent = '🐪 Caravan Rare Shop — sell him wood (💰' + WOOD_SELL_GOLD + ' each) and stone (💰' + STONE_SELL_GOLD + ' each) while he is on the road';
     sellFragment.appendChild(sellDivider);
     for(const [resource, icon, rate, held] of [['wood', '🪵', WOOD_SELL_GOLD, wood], ['stone', '🪨', STONE_SELL_GOLD, stone]]){
       for(const [label, amount] of [['Sell 10', 10], ['Sell 100', 100], ['Sell all', held]]){
@@ -12238,7 +12336,7 @@ document.querySelectorAll('.item-slot, .quick-slot').forEach(slot => {
     if(!selectedTower || !selectedTower.active) return;
     const idx = +slot.dataset.slot;
     if(!selectedTower.equippedItems[idx]){
-      openShopModal();
+      if(!isVaultType(selectedTower.type)) openShopModal();
       return;
     }
     pendingSlotPress = { idx, item:selectedTower.equippedItems[idx], tower: selectedTower, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
@@ -12412,6 +12510,7 @@ document.getElementById('settingsBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
   syncSettingsUI();
+  closeBuildMenuIfOpen();
   document.getElementById('settings-modal').classList.remove('hidden');
   playSound('ui_open');
 });
@@ -12536,6 +12635,7 @@ document.getElementById('startSettingsBtn').addEventListener('pointerdown', (e) 
   e.stopPropagation();
   unlockAudio();
   syncSettingsUI();
+  closeBuildMenuIfOpen();
   document.getElementById('settings-modal').classList.remove('hidden');
   playSound('ui_open');
 });
@@ -12923,6 +13023,7 @@ function generateDebugLog(){
   s += '---------------------------------\n';
   s += 'Frame-time clamp: ' + perfStats.wallTimeClampHits + ' frame(s), ' + perfStats.wallTimeClampedMs.toFixed(2) +
     'ms of wall time excluded (100ms at 1x; 150ms during fast-forward; last ceiling ' + perfStats.lastFrameTimeClampMs + 'ms).\n';
+  s += 'Catch-up by reason: tick cap ' + (perfStats.simulationCatchUpCapHits - perfStats.cameraBudgetCapHits) + ' frame(s), camera 6ms budget ' + perfStats.cameraBudgetCapHits + ' frame(s) dropping ' + perfStats.cameraBudgetDroppedMs.toFixed(2) + 'ms\n';
   s += 'Simulation tick cap: ' + perfStats.simulationCatchUpCapHits + ' frame(s) reached the speed-scaled cap (last cap ' + perfStats.lastSimulationTickCap + ' ticks; base ' + MAX_SIMULATION_TICKS_PER_FRAME + ' at 1x); discarded simulation debt total ' +
     perfStats.simulationDebtDroppedMs.toFixed(2) + 'ms, last frame ' +
     perfStats.lastDroppedSimulationTimeMs.toFixed(2) + 'ms. Remaining accumulator debt is ' +
@@ -13344,14 +13445,15 @@ function updateQuickSlots(tower, isBarricade){
       const box = quickSlotElements[shown++];
       box.dataset.slot = String(slotIndex);
       box.dataset.key = String(slotIndex + 1);
-      box.textContent = item.icon + (item.isDiggingTool ? ' ' + shovelChargesLeft(tower) : heldCount(item) > 1 ? ' ×' + heldCount(item) : '');
+      box.textContent = item.icon;
+      box.dataset.count = item.isDiggingTool ? String(shovelChargesLeft(tower)) : heldCount(item) > 1 ? '×' + heldCount(item) : '';
       box.title = item.name + (item.isDiggingTool ? ' (' + shovelChargesLeft(tower) + ' of ' + SHOVEL_CHARGES_PER_ROUND + ' digs left this round)' : '') + ' — click to use (key ' + (slotIndex + 1) + '); drag to another stickman or onto the map';
       box.classList.add('filled', 'usable');
       applyItemGlowClass(box, item);
       box.classList.remove('hidden');
     });
   }
-  for(let i = shown; i < quickSlotElements.length; i++){ quickSlotElements[i].classList.add('hidden'); quickSlotElements[i].textContent = ''; }
+  for(let i = shown; i < quickSlotElements.length; i++){ quickSlotElements[i].classList.add('hidden'); quickSlotElements[i].textContent = ''; quickSlotElements[i].dataset.count = ''; }
   inspQuickSlots.classList.toggle('hidden', shown === 0);
   positionQuickSlots();
 }
@@ -13382,11 +13484,11 @@ function updateInspectPanel(){
   inspExpandChevron.classList.toggle('has-points', selectedTower.statPoints > 0);
   const t = selectedTower;
   const isBarricade = t.type === 'BARRICADE';
-  const isProducer = isProducerType(t.type), isStructure = isBarricade || isProducer;
+  const isProducer = isProducerType(t.type), isStructure = isBarricade || isProducer, isVault = isVaultType(t.type);
   inspEvoBarTrack.classList.toggle('hidden', isStructure);
   inspCombatRow.classList.toggle('hidden', isStructure);
   inspStatsRow.classList.toggle('hidden', isStructure);
-  inspItemsRow.classList.toggle('hidden', isStructure);
+  inspItemsRow.classList.toggle('hidden', isStructure && !isVault);
   inspUpgradeBtn.classList.toggle('hidden', isBarricade);
   inspMoveBtn.classList.toggle('hidden', isProducer);
   const repairBtn = inspRepairBtn;
@@ -13402,7 +13504,7 @@ function updateInspectPanel(){
   inspName.textContent = (t.isLegendary && t.legendaryName) ? ('🏆 ' + t.legendaryName) : t.def.name;
   const specLabel = t.spec ? (t.spec === 'TWOHANDER' ? ' · Zweihander' : ' · Dual Wield') : '';
   const heroLabel = t.isHero ? ' ⭐HERO' : '';
-  inspLevel.textContent = isBarricade ? '' : isProducer ? ('Level ' + t.level + '/' + PRODUCER_MAX_LEVEL + ' · ' + PRODUCER_DEFS[t.type].icon + '+' + PRODUCER_DEFS[t.type].yields[t.level - 1] + ' every 60s') : (promotionRankLabel(t.level) + specLabel + heroLabel);
+  inspLevel.textContent = isBarricade ? '' : isVault ? ('Level ' + t.level + '/' + PRODUCER_MAX_LEVEL + ' · ' + itemCapacityOf(t) + ' slots') : isProducer ? ('Level ' + t.level + '/' + PRODUCER_MAX_LEVEL + ' · ' + PRODUCER_DEFS[t.type].icon + '+' + PRODUCER_DEFS[t.type].yields[t.level - 1] + ' every 60s') : (promotionRankLabel(t.level) + specLabel + heroLabel);
   inspPortraitFace.textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   inspHpBarFill.style.width = hpPct + '%';
@@ -13419,6 +13521,7 @@ function updateInspectPanel(){
     statsInfoBtn.classList.add('hidden');
     barricadeInfoBtn.classList.add('hidden');
     inspAuraBox.classList.add('hidden');
+    if(isVault){ renderInventorySlots(t); document.getElementById('inspCraftBtn').classList.add('hidden'); }
     return;
   }
   if(isBarricade){
@@ -13592,26 +13695,7 @@ function updateInspectPanel(){
   statsInfoBtn.classList.remove('hidden');
   barricadeInfoBtn.classList.add('hidden');
 
-  const slots = document.querySelectorAll('.item-slot');
-  slots.forEach((slot, i) => {
-    const item = t.equippedItems[i];
-    slot.dataset.key = String(i + 1);
-    if(item){
-      slot.textContent = item.icon;
-      slot.title = isConsumableDef(item)
-        ? item.name + (item.isDiggingTool ? ' (reusable)' : '') + ' — click or press ' + (i + 1) + ' to use; drag to another stickman or onto the map'
-        : item.name + (itemStatSummary(item) ? ' — ' + itemStatSummary(item) : '');
-      slot.classList.add('filled');
-      slot.classList.toggle('usable', isConsumableDef(item));
-      applyItemGlowClass(slot, item);
-    } else {
-      slot.textContent = '';
-      slot.title = 'Empty slot';
-      slot.classList.remove('filled');
-      slot.classList.remove('usable');
-      applyItemGlowClass(slot, null);
-    }
-  });
+  renderInventorySlots(t);
   updateQuickSlots(t, isBarricade);
   updateBuffPips(t);
   const craftRecipe = findCraftableRecipeFor(t.equippedItems, t);
@@ -13643,6 +13727,33 @@ function updateInspectPanel(){
     btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : stat === 'int' ? 'Intelligence — drives Mage damage and every stickman\'s accuracy' : 'Support stat';
   }
 }
+// VAULT-01 (1.8.37): one renderer for a stickman's six slots and a vault's 18 to 30; slots past the holder's capacity stay hidden.
+function renderInventorySlots(t){
+  const capacity = itemCapacityOf(t), vault = isVaultType(t.type);
+  document.getElementById('inspItemsLabel').textContent = vault ? 'VAULT · ' + t.equippedItems.length + '/' + capacity : 'INVENTORY';
+  document.querySelectorAll('.item-slot').forEach((slot, i) => {
+    slot.hidden = i >= capacity;
+    const item = t.equippedItems[i];
+    slot.dataset.key = vault ? '' : String(i + 1);
+    if(item){
+      slot.textContent = item.icon;
+      slot.dataset.count = heldCount(item) > 1 ? '×' + heldCount(item) : '';
+      slot.title = vault ? item.name + ' — drag out to take it' : isConsumableDef(item)
+        ? item.name + (item.isDiggingTool ? ' (reusable)' : '') + ' — click or press ' + (i + 1) + ' to use; drag to another stickman or onto the map'
+        : item.name + (itemStatSummary(item) ? ' — ' + itemStatSummary(item) : '');
+      slot.classList.add('filled');
+      slot.classList.toggle('usable', !vault && isConsumableDef(item));
+      applyItemGlowClass(slot, item);
+    } else {
+      slot.textContent = '';
+      slot.dataset.count = '';
+      slot.title = 'Empty slot';
+      slot.classList.remove('filled');
+      slot.classList.remove('usable');
+      applyItemGlowClass(slot, null);
+    }
+  });
+}
 inspUpgradeBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower) return;
@@ -13658,7 +13769,8 @@ inspSellBtn.addEventListener('pointerdown', (e) => {
   logGameEvent('sold ' + itemHolderLabel(selectedTower) + ' for ' + selectedTower.sellValue() + ' gold');
   trackGameEvent('tower_sold', { tower_type: selectedTower.type, level: selectedTower.level, refund: selectedTower.sellValue() });
   gold += selectedTower.sellValue();
-  for(const lostItem of selectedTower.equippedItems) itemLogReleased(lostItem, 'lost: ' + itemHolderLabel(selectedTower) + ' was sold');
+  if(isVaultType(selectedTower.type)) for(const storedItem of selectedTower.equippedItems) for(let copy = 0; copy < heldCount(storedItem); copy++) spawnGroundItem(selectedTower.x, selectedTower.y, Object.getPrototypeOf(storedItem), 'vault sold');
+  else for(const lostItem of selectedTower.equippedItems) itemLogReleased(lostItem, 'lost: ' + itemHolderLabel(selectedTower) + ' was sold');
   selectedTower.active = false;
   invalidateSpawnFlags();
   activeBarricades.delete(selectedTower);
@@ -14113,7 +14225,7 @@ function validateDesignContract(){
   if(!String(loop).includes('repaintPending') || !String(setupCanvas).includes('resizeSnapshotCanvas') || typeof restoreCanvasLayers !== 'function') problems.push('a resize, a return from the background or a restored canvas asks for one immediate repaint that skips the frame limiter, and a resize keeps the old picture (RESIZE-KEEP-01, REPAINT-01, CONTEXT-RESTORE-01)');
   if(MOBILE_FRAME_CAP_FPS !== 30 || !String(loop).includes('IS_MOBILE_DEVICE') || !String(defaultFrameCapFps).includes('IS_MOBILE_DEVICE') || !String(startFirstFrame).includes('vsyncProbeActive')) problems.push('a phone is locked to a steady 30 FPS with no camera exception, and the screen refresh rate is measured during loading (MOBILE-LOCK-30-01, VSYNC-PROBE-01)');
   { const seenIcons = new Map(), shared = []; for(const [type, def] of Object.entries(CONFIG.TOWERS)){ if(seenIcons.has(def.icon)) shared.push(seenIcons.get(def.icon) + ' and ' + type + ' share ' + def.icon); else seenIcons.set(def.icon, type); } if(shared.length) problems.push('no two classes can share an emoji: ' + shared.join('; ') + ' (CLASS-EMOJI-01)'); }
-  if(WOOD_SELL_GOLD !== 2 || STONE_SELL_GOLD !== 4 || CARAVAN_FIRST_ROUND_AFTER !== 5 || !String(merchantShopOpen).includes('caravanShopAvailable') || !String(sellToCaravan).includes('caravanShopAvailable')) problems.push('the caravan pays 2 gold per wood and 4 per stone, comes only after round 5 and trades only while on the road (CARAVAN-01)');
+  if(WOOD_SELL_GOLD !== 2 || STONE_SELL_GOLD !== 4 || CARAVAN_FIRST_ROUND_AFTER !== 2 || !String(merchantShopOpen).includes('caravanShopAvailable') || !String(sellToCaravan).includes('caravanShopAvailable')) problems.push('the caravan pays 2 gold per wood and 4 per stone, first comes after round 3 and trades only while on the road (CARAVAN-01)');
   if(!(forensicDropletSizeFactor(1) > forensicDropletSizeFactor(4) && forensicDropletSizeFactor(4) > forensicDropletSizeFactor(FORENSIC_HIGH_VELOCITY_MS) && forensicDropletSizeFactor(FORENSIC_HIGH_VELOCITY_MS) > forensicDropletSizeFactor(25)) || forensicDropletSizeFactor(25) > 0.45 || String(spawnForensicSpatter).includes('exitSpray') || !String(spawnForensicSpatter).includes('launchAtomizedMist')) problems.push('drop size falls as launch speed rises and anything above 7.65 m/s atomizes into mist; back-spatter leaves slower than forward spatter (FORENSIC-CLASS-01)');
   if(CAMPFIRE_BUILD_WOOD !== 50 || !String(buildTowerModal).includes('campfireRow') || String(buildTowerModal).includes("createElement('button');fireRow") || !String(placeCampfire).includes('wood-=CAMPFIRE_BUILD_WOOD')) problems.push('the campfire is a normal row in the Structures list costing gold, 50 wood and stone (CAMPFIRE-STRUCTURE-01)');
   if(typeof spawnCastOffTrail !== 'function' || !String(spawnSwordsmanBloodArc).includes('spawnCastOffTrail') || String(spawnCastOffArc).includes('circular')) problems.push('blade cast-off lands as a curved row along the swing tangent beyond the wound, never a ring around the victim (CASTOFF-TANGENT-01)');
@@ -14123,7 +14235,7 @@ function validateDesignContract(){
   if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
   if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
   if(String(offerRunReward).indexOf('RUN-REWARD-REMOVED-01') < 0 && !String(offerRunReward).includes('return;') || typeof SoundEngine.prototype.setWindLevel === 'function' || !String(Tower.prototype.update).length || typeof expansionBlockedReason !== 'function' || !String(canvas.onpointermove || '1') || !String(updatePresentationEffects).includes('freeExpansionOwed')) problems.push('no wave choice rewards, no wind sound, the free expansion arrives only after every enemy is cleared, and coins collect on hover or slide (RUN-REWARD-REMOVED-01, EXPAND-AFTER-CLEAR-01, HOVER-COIN-01)');
-  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-CURIOUS-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || typeof GOLD_MAP_BAG_ITEM !== 'undefined') problems.push('escaped enemies are curious and aggro by distance, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-CURIOUS-01, HEAD-SNAP-01, CHEST-ONLY-01)');
+  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-SETTLE-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || typeof GOLD_MAP_BAG_ITEM !== 'undefined') problems.push('escaped enemies settle, then head for the closest stickman, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-SETTLE-01, HEAD-SNAP-01, CHEST-ONLY-01)');
   if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9 || projectileStickChance(500) > 0.95) problems.push('arrows stick in enemies sometimes at 0 STR and gradually more often up to very likely at 500 STR (STICK-CHANCE-01)');
   if(!String(Enemy.prototype.draw).includes('LOOSE-GLOW-01') || typeof launchHeartHudFlights !== 'function' || !String(Tower.prototype.update).length) problems.push('loose enemies sit in a soft red glow with no ring and the fountain sends hearts to the lives counter (LOOSE-GLOW-01, HEART-FLIGHT-01)');
   { let attractOffScreenTopBottom = false, attractGrunts = 0; for(let i = 0; i < 300; i++){ const point = attractSpawnPoint(); if(point.yf < 0 || point.yf > 1 || (point.xf >= 0 && point.xf <= 1)) attractOffScreenTopBottom = true; if(attractPickEnemyType() === 'GRUNT') attractGrunts++; } if(attractOffScreenTopBottom || attractGrunts < 180) problems.push('the attract screen is mostly the big angry red guy and enemies come in from the left or right horizon, never from the sky (ATTRACT-HORIZON-01)'); }
@@ -14145,6 +14257,13 @@ function validateDesignContract(){
   if(typeof ESCAPE_WALKBACK_MAX_TILES === 'undefined' || typeof Enemy.prototype.walkBackOntoRoute !== 'function' || !String(Enemy.prototype.updateEscaped).includes('walkBackOntoRoute') || String(Enemy.prototype.updateEscaped).includes('placeOnNearestRouteTile')) problems.push('an escaped enemy walks back onto the route instead of jumping (ESCAPE-WALKBACK-01)');
   if(typeof LIVESTOCK_AVOID_STRENGTH === 'undefined' || typeof Enemy.prototype.steerAroundEnemies !== 'function' || !String(Enemy.prototype.updateLivestockWander).includes('steerAroundEnemies')) problems.push('animals and bees steer away from enemies (LIVESTOCK-AVOID-01)');
   if(typeof drawSceneryGroundShadow !== 'function' || String(drawOneSceneryItem).includes('drawEmojiGroundShadow')) problems.push('scenery ground shadows are painted in their own pass before any sprite (SCENERY-SHADOW-PASS-01)');
+  if(!PRODUCER_DEFS.VAULT || PRODUCER_DEFS.VAULT.slots.join() !== '18,24,30' || PRODUCER_DEFS.VAULT.slots.length !== PRODUCER_MAX_LEVEL || PRODUCER_DEFS.VAULT.upgrades.length !== PRODUCER_MAX_LEVEL - 1 || PRODUCER_DEFS.VAULT.build.stone <= PRODUCER_DEFS.VAULT.build.wood * 2 || document.querySelectorAll('.item-slot').length !== PRODUCER_DEFS.VAULT.slots[PRODUCER_MAX_LEVEL - 1] || isFighterTower({ type: 'VAULT' })) problems.push('the vault is a Build structure with 18 slots in three rows of six and two upgrades of six more, costing a little gold and wood and a lot of stone (VAULT-01)');
+  if(BEE_HONEY_MIN_MS !== 300000 || BEE_HONEY_SPREAD_MS !== 300000 || !String(updateBeeHoney).includes('honeyDueMs')) problems.push('a bee makes honey after a random 5 to 10 minutes, like a Minecraft chicken laying eggs (BEE-HONEY-02)');
+  if(ITEM_DRIFT_DELAY_MIN_MS !== 20000 || ITEM_DRIFT_DELAY_SPREAD_MS !== 10000 || typeof towerCanTakeDriftItem !== 'function' || !String(updateGroundItemDrift).includes('driftAt') || !String(updateGroundItemDrift).includes('towerCanTakeDriftItem')) problems.push('loose items wait 20 to 30 seconds, then drift only to a stickman that can take them (ITEM-DRIFT-02)');
+  if(LOOSE_SETTLE_MIN_MS !== 20000 || LOOSE_SETTLE_SPREAD_MS !== 10000 || !String(Enemy.prototype.updateEscapedMovement).includes('escapeSettleMs') || !String(Enemy.prototype.reachEnd).includes('escapeSettleMs')) problems.push('an escaped enemy stands still for 20 to 30 seconds before it heads for the closest stickman (LOOSE-SETTLE-01)');
+  if(typeof advanceCountdownMusic !== 'function' || waveMusicLeadMs() < 1500 || waveMusicLeadMs() > 2600 || String(startWaveStartCameraPan).includes('SPAWN_MARKER_RISE_PX')) problems.push('the wave theme starts during the 3-2-1 so its bass drop lands on GO, and the wave-start camera centres on the spawn tile (MUSIC-COUNTDOWN-01, CAMERA-SPAWN-01)');
+  if(typeof attractEasedLevel !== 'function' || attractEasedLevel(1, 4, 0) !== MUSIC_ATTRACT_SECTION_LEVEL[0] || attractEasedLevel(1, 7, 7) <= attractEasedLevel(1, 5, 0) || Math.abs(attractEasedLevel(2, 11, 7) - MUSIC_ATTRACT_SECTION_LEVEL[2]) > 0.001) problems.push('start-screen sections glide from the previous level to their own instead of stepping (MUSIC-ATTRACT-EASE-01)');
+  if(!String(SoundEngine.prototype.scheduleAttractStep).includes("section >= 1 && section < 3") || !String(SoundEngine.prototype.scheduleAttractStep).includes('section >= 2 && section !== 3')) problems.push('the start-screen intro has no held drone chords or reed line; the pads join in the first verse and the oboe in the second (MUSIC-ATTRACT-EASE-01)');
   if(MUSIC_TEMPO_BPM !== MUSIC_ATTRACT_TEMPO_BPM || MUSIC_COMBAT_TEMPO_BPM !== MUSIC_TEMPO_BPM * 1.5 || MUSIC_BOSS_TEMPO_BPM !== MUSIC_COMBAT_TEMPO_BPM || MUSIC_ATTRACT_TONIC !== 50 || MUSIC_ATTRACT_CHORDS.map(chord => chord.root).join() !== MUSIC_BASS_ROOTS.slice(0, 4).join()) problems.push('every theme shares one key (D minor, i VI VII V) and one pulse: start screen and field 88 BPM, wave and boss 1.5 times that (MUSIC-COHESION-01)');
   if(!String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'opening'") || !String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'landing'")) problems.push('the wave and boss opening bar plays only the sting and the bar after the drop states the leitmotif alone over the groove (MUSIC-OPENING-01)');
   if(MUSIC_STING_PICKUPS.length !== 3 || MUSIC_STING_DROP_STEP !== MUSIC_STEPS_PER_BAR || !String(SoundEngine.prototype.scheduleMusicSting).includes('musicBassDrop')) problems.push('the wave and boss opening is three rising brass pickups, a short riser and a bass drop on the next downbeat (MUSIC-STING-02)');
@@ -14159,10 +14278,26 @@ function validateDesignContract(){
   if(pathTurnFirstChance < 0.7) problems.push('the road prefers turning when it grows so it never becomes a long straight line (PATH-WINDY-01)');
   if(HEAVY_VISUAL_LOAD_HOLD_MS < 300 || HEAVY_VISUAL_LOAD_HOLD_MS > 2000 || typeof heavyVisualLoadHoldUntil !== 'number') problems.push('adaptive detail holds for a real-time interval, not a frame count (ADAPTIVE-HOLD-REALTIME-01)');
   if(!String(spawnDecal).includes('bloodDecalBlocked') || !String(generateScenery).includes('spawnWastelandStumps')) problems.push('blood pools respect intervening bodies and new runs include two harvestable wasteland branches (POOL-VOID-01, WASTELAND-STUMPS-01)');
-  if(MAX_DECALS !== 2100 || MAX_DECALS_LOW_QUALITY !== 700 || !String(drawDecals).includes('camera.zoom > 1.25') || !String(render).includes('camera.zoom <= 1.25')) problems.push('blood defaults are high 2100 / low 700 and zoomed settled shapes replace the raster blit (BLOOD-ZOOM-01)');
+  if(typeof caravanEdgePoint !== 'function' || !String(updateCaravan).includes("'approach'") || !String(maybeSpawnCaravan).includes('caravanEdgePoint') || !document.getElementById('caravanWag')) problems.push('CARAVAN-JOURNEY-01: the merchant must enter from beyond the map edge, cross the road and leave off the far edge, with his wag icon under Shop');
+  if(SPEARMAN_SWEEP_ARC_FRACTION <= 1.1 || !String(Tower.prototype.draw).includes("this.type === 'LANCER' ? this.baseAngle")) problems.push('SPEARMAN-SWEEP-01: the Spearman sweeps the widest melee arc (wider than the Berserker) and the Lancer keeps its thrust');
+  if(!String(Tower.prototype.update).includes('POST_KILL_READY_MS') || !String(Tower.prototype.draw).includes('holdingAfterKill')) problems.push('KILL-READY-01: a stickman keeps the weapon raised for a few seconds after a kill before the idle pose');
+  if(MUSIC_WAVE_THEME.length !== 24 || MUSIC_WAVE_THEME.some(row => row.length !== MUSIC_STEPS_PER_BAR)) problems.push('MUSIC-THEME-01: the wave theme must be a 24-bar tune of eight steps per bar');
+  if(!(CONFIG.TOWERS.SQUIRTGUN.tiers[2].acidDamage > 0) || CONFIG.TOWERS.SQUIRTGUN.tiers[2].damage > 6 || ACID_MAX_STACKS !== 3 || typeof Enemy.prototype.applyAcidCoat !== 'function') problems.push('ACID-COAT-01: the squirt gun coats a small area with up to 3 stacks of acid and its direct damage stays low');
+  if(!String(drawGunEmoji).includes('scale(-1')) problems.push('GUN-FACING-01: the gun glyph must be mirrored so the muzzle leads the aim');
+  if(typeof pickTrollEdgeSpawnPoint !== 'function' || !String(spawnWanderingTroll).includes('buildTrollEntranceRoute') || !String(Enemy.prototype.updateLivestockWander).includes('walkTrollEntrance')) problems.push('TROLL-ENTRANCE-01: the wandering troll must enter from the map edge and tour the grass rim before hunting');
+  if(!String(buildTowerModal).includes('appendUnlockableRow') || !String(isTowerTypeAvailable).includes('UNLOCKABLE_TOWER_TYPES') || String(buildTowerModal).includes('already on the field')) problems.push('BUILD-MENU-GROUPS-03 and SPECIAL-ONE-01: unlocked stickmen stand in Stickmen Defenders, each special one is limited to one and reads already active');
+  if(typeof roadCharacterForRun !== 'function' || ROAD_CHARACTERS.length < 4 || !String(orderRoadDirections).includes('roadCurlDirection')) problems.push('ROAD-CHARACTER-01: each run must draw a road character and turning styles must keep a straight stretch between turns');
+  if(typeof looseEnemyGlowSprite !== 'function' || String(Enemy.prototype.draw).includes('createRadialGradient')) problems.push('LOOSE-GLOW-CACHE-01: the loose-enemy glow is a cached sprite, never a gradient built per frame');
+  if(!String(SoundEngine.prototype.scheduleMusicStep).includes('MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep - 1]')) problems.push('MUSIC-BIP-01: the wave theme answers its own rests with quiet high plucks');
+  if(!String(openShopModal).includes('closeBuildMenuIfOpen') || !String(openHackMenu).includes('closeBuildMenuIfOpen')) problems.push('MENU-EXCLUSIVE-01: opening another menu closes the build menu');
+  if(earlyPreviewFamily(3) !== 'SWARM' || !String(rushDispatchIfFieldClear).includes('EARLY_NO_RUSH_LAST_WAVE') || tierPopulationForWave(4).STANDARD < 1 || typeof grantEarlyGift !== 'function') problems.push('EARLY-HOOK-01: wave 3 previews Swarm, wave 4 has a champion and wave 1 leaves a gift');
+  if(!String(tileBiome).includes('biomeNoise')) problems.push('BIOME-GRADIENT-01: biomes must follow one smooth field so Pinewood and Dunes never touch');
+  if(BLOOD_STAIN_MAX < 48 || !String(stainEntity).includes('shift()') || String(stainEntity).includes('bloodStainNext') || BLOOD_SATURATION_MAX_HIGH <= BLOOD_SATURATION_MAX) problems.push('BLOOD-LAYER-01: blood marks on scenery and stickmen must stack newest-on-top without ring overwrite');
+  if(!String(updateQuickSlots).includes('dataset.count')) problems.push('SLOT-COUNT-01: item stack counts must render as a corner badge');
+  if(MAX_DECALS !== 4200 || MAX_DECALS_LOW_QUALITY !== 700 || !String(drawDecals).includes('camera.zoom > 1.25') || !String(render).includes('camera.zoom <= 1.25')) problems.push('blood defaults are high 2100 / low 700 and zoomed settled shapes replace the raster blit (BLOOD-ZOOM-01)');
   if(!String(spawnScenery).includes('sceneryPlanRandom') || !String(spawnArterialBeat).includes('bloodPoolSizeScale') || !String(spawnBloodStream).includes('bloodPoolSizeScale') || !String(updateBloodTrails).includes('bloodPoolSizeScale')) problems.push('ordinary scenery follows the saved seed and remaining blood emitters use victim weight (SCENERY-SEEDED-PLAN-01, BLOOD-WEIGHT-01)');
   if(typeof settledDecalHasContent !== 'boolean' || !String(render).includes('settledDecalHasContent')) problems.push('the empty settled decal layer is not drawn every frame (EMPTY-LAYER-SKIP-01)');
-  { const redFresh = agedBloodRgb({ rgb: { r: 140, g: 20, b: 20, a: 1 }, lifespan: DECAL_LIFESPAN }, 0), greenFresh = agedBloodRgb({ rgb: { r: 60, g: 160, b: 50, a: 1 }, lifespan: DECAL_LIFESPAN }, 0); if(redFresh.r !== 255 || redFresh.g !== 40 || greenFresh.r > 80 || greenFresh.g < 160) problems.push('red blooded enemies show bright fresh blood and other colours keep their own (FRESH-BLOOD-01)'); }
+  { const redFresh = agedBloodRgb({ rgb: { r: 140, g: 20, b: 20, a: 1 }, lifespan: DECAL_LIFESPAN }, 0), greenFresh = agedBloodRgb({ rgb: { r: 60, g: 160, b: 50, a: 1 }, lifespan: DECAL_LIFESPAN }, 0); const redLate = agedBloodRgb({ rgb: { r: 140, g: 20, b: 20, a: 1 }, lifespan: DECAL_LIFESPAN }, 0.9), greenLate = agedBloodRgb({ rgb: { r: 60, g: 160, b: 50, a: 1 }, lifespan: DECAL_LIFESPAN }, 0.9); if(redFresh.r !== 255 || redFresh.g !== 40 || greenFresh.r > 80 || greenFresh.g < 160 || redLate.r !== redFresh.r || redLate.g !== redFresh.g || greenLate.g !== greenFresh.g || decalAgeMs({ spawnTime: presentationTime - 1e9, lifespan: 1000 }) > 500) problems.push('red blooded enemies show bright fresh blood, other colours keep their own, and no mark changes colour or fades before the round-end clean-up (FRESH-BLOOD-01, BLOOD-STABLE-01)'); }
   if(MUSIC_VOICE_LIMIT < 9 || ['scheduleMusicArpeggio', 'scheduleCombatHats', 'scheduleMusicSting', 'musicOpenHat', 'musicSkippedSteps', 'scheduleDrumFill', 'scheduleCycleTurnaround', 'scheduleSectionAccent', 'musicCrash', 'syncMusicEcho'].some(name => typeof SoundEngine.prototype[name] !== 'function')) problems.push('the score drives forward: arpeggiated chords, a drum kit with fills and section crashes, a turnaround that climbs into each new key, delayed vibrato and an echo on the leads (MUSIC-DRIVE-01)');
   if(typeof SoundEngine.prototype.scheduleFieldStep !== 'function' || FIELD_ROOT_PROGRESSIONS.length < 3 || SFX_VARIANT_PITCH.length < 4) problems.push('the idle theme rotates four arrangements and sound effects rotate variants so nothing loops identically (FIELD-VARIATION-01, SFX-VARIANT-01)');
   { const waveTypes = new Set(); let repeats = 0, previousFormation = null; for(let n = 1; n <= 60; n++){ const f = waveFormationFor(n); waveTypes.add(f); if(f === previousFormation && f !== 'STEADY') repeats++; previousFormation = f; } if(waveFormationFor(1) !== 'STEADY' || waveTypes.size < 5 || repeats > 0) problems.push('waves are dealt in varied formations, never the same non-steady formation twice in a row, with wave 1 always steady (WAVE-FORMATION-01)'); }

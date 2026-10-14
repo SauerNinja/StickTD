@@ -1,3 +1,12 @@
+## 1.8.41 — play-test and open items
+- *Play-test* — Waves 1 to 5 pacing and difficulty: wave 2 with no rushing, the Swarm, Wolf and Runner guests, the two wave-4 champions, early gold from the larger waves.
+- *Play-test* — Listen to the new wave theme and the quiet rest plucks (MUSIC-THEME-01, MUSIC-BIP-01); the pluck level is one gain value in `scheduleMusicStep`.
+- *Play-test* — Merchant camel, route and swept shadow in a real browser; first visit after round 3.
+- *Play-test* — Spearman sweep and spearhead, weapons held up after a kill, squirt-gun glyph direction on Windows.
+- *Evidence first* — A 1.8.41 debug log from a run that hitches (wave 9 downing included) with the new "Catch-up by reason" line, before any further lag work.
+- *Owner decision* — Biome meadow band is about two tiles wide in places; widen if transitions still feel abrupt.
+- *Open* — Show the formation name on the wave label; class and item emoji overlaps (Mage and Glass Marble, Snap Caster and Lightning Bolt).
+
 # 1.8.1 release verification
 - Confirm actual Actions results on all four native platforms and web; do not infer build success from YAML parsing.
 - Playtest Archer/Mage starts and same-species weight/HP progression. Verify bee overlap, wood flight and repeated branch taps.

@@ -44,7 +44,7 @@ CONFIG.TOWERS = {
   },
   SPEARMAN: {
     name: 'Spearman', icon: '🔱', baseCost: 325, unlocksAfterWave: 5,
-    blurb: "A long, sweeping thrust that reaches well past a sword, at the cost of a slow wind-up. Unlocked by training a Swordsman's Intelligence to 500.",
+    blurb: "Sweeps its long spear through the widest arc of any melee fighter, catching a whole crowd with reach well past a sword, at the cost of a slow wind-up. Unlocked by training a Swordsman's Intelligence to 500.",
     tiers: [
       { range: 125, damage: 40, cooldown: 1800 },
       { range: 140, damage: 60, cooldown: 1650, upgradeCost: 110 },
@@ -179,6 +179,11 @@ CONFIG.TOWERS = {
     blurb: "Cuts and hauls stone every 60 seconds, including between waves, with a larger delivery at each level. Costs gold, wood and stone, and each extra quarry costs more. It does not fight and cannot be moved; enemies can attack it like any stickman, and it burns as its health falls.",
     tiers: [ { range: 0, damage: 0, cooldown: 999999 }, { range: 0, damage: 0, cooldown: 999999 }, { range: 0, damage: 0, cooldown: 999999 } ]
   },
+  VAULT: {
+    name: 'Vault', icon: '🏛️', baseCost: PRODUCER_DEFS.VAULT.build.gold, woodCost: PRODUCER_DEFS.VAULT.build.wood, stoneCost: PRODUCER_DEFS.VAULT.build.stone, unlocksAfterWave: 0,
+    blurb: "A stone vault that only stores items: 18 slots in three rows of six, and two stone-and-wood expansions each add another row of six. Drag items in from the ground or from a stickman and drag them out again; gear inside gives no bonus. Costs a little gold and wood and a lot of stone, and each extra vault costs more. It does not fight and cannot be moved; enemies can attack it like any stickman, and selling it puts its items back on the ground.",
+    tiers: [ { range: 0, damage: 0, cooldown: 999999 }, { range: 0, damage: 0, cooldown: 999999 }, { range: 0, damage: 0, cooldown: 999999 } ]
+  },
   CLERIC: {
     name: 'Cleric', icon: '✝️', baseCost: 375, unlocksAfterWave: 5,
     blurb: "Calls down holy light after the longest cooldown of any tower, dealing 5x damage to undead and ignoring their armor, enough to finish small undead in one strike (bosses can survive). Once per wave it also heals the weakest tower, and several Clerics each choose a different one. Unlocked by training a Mage's Intelligence to 500.",
@@ -227,11 +232,11 @@ CONFIG.TOWERS = {
   },
   SQUIRTGUN: {
     name: 'Dual Squirt Gun', icon: '🔫', baseCost: 650, unlocksAfterWave: 0,
-    blurb: "Twin water pistols spraying corrosive acid: faster than the Blowdart, with a longer-lingering burn. Only one can stand on the board. Unlocked by training a Blowdart's Dexterity to 40.",
+    blurb: "Twin water pistols spraying green acid that coats every enemy in a small splash. Each coat stacks up to 3 times, slowing like glue and burning like poison, but the shots themselves barely hurt. Only one can stand on the board. Unlocked by training a Blowdart's Dexterity to 40.",
     tiers: [
-      { range: 125, damage: 6,  cooldown: 200, projectileSpeed: 460, poisonDamage: 4,  poisonDuration: 4000 },
-      { range: 140, damage: 9,  cooldown: 170, projectileSpeed: 490, poisonDamage: 6,  poisonDuration: 4000, upgradeCost: 95 },
-      { range: 160, damage: 14, cooldown: 140, projectileSpeed: 520, poisonDamage: 10, poisonDuration: 4500, upgradeCost: 135 }
+      { range: 125, damage: 2, cooldown: 340, projectileSpeed: 460, acidDamage: 2, acidDuration: 3600, acidSlow: 0.10, acidRadius: 34 },
+      { range: 140, damage: 3, cooldown: 300, projectileSpeed: 490, acidDamage: 3, acidDuration: 3900, acidSlow: 0.12, acidRadius: 40, upgradeCost: 95 },
+      { range: 160, damage: 5, cooldown: 260, projectileSpeed: 520, acidDamage: 5, acidDuration: 4200, acidSlow: 0.15, acidRadius: 46, upgradeCost: 135 }
     ]
   },
   // CA064 — see HISTORY.md § [1.5.7] Code Archaeology, CA064
@@ -511,7 +516,7 @@ class Tower{
     this.hitSet = new Set();
     this.lastSwordAngle = 0;
     this.swingStart = 0;
-    this.swingArc = type === 'BERSERKER' ? Math.PI * 1.1 : Math.PI * 0.85; // Berserker's own wide cleave (~198°) — same per-type override precedent as TWOHANDER Swordsman's own chooseSpec(), just fixed at construction instead of chosen mid-game since Berserker is a whole separate class, not a spec pick
+    this.swingArc = type === 'BERSERKER' ? Math.PI * 1.1 : type === 'SPEARMAN' ? Math.PI * SPEARMAN_SWEEP_ARC_FRACTION : Math.PI * 0.85; // SPEARMAN-SWEEP-01 (1.8.40): the Spearman's sweep is the widest melee arc in the game // Berserker's own wide cleave (~198°) — same per-type override precedent as TWOHANDER Swordsman's own chooseSpec(), just fixed at construction instead of chosen mid-game since Berserker is a whole separate class, not a spec pick
     this.swingDuration = type === 'SPEARMAN' ? 550 : 300;
     this.slowFactor = 0; this.slowDuration = 0; this.splashRadius = 0;
     this.meleeRange = 0; this.meleeDamage = 0; this.meleeCooldown = 0;
@@ -562,6 +567,7 @@ class Tower{
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
     this.equippedItems = []; this.isHero = false;
     this.roundBuffs = null;
+    this.lastKillTime = -1e9; // KILL-READY-01 (1.8.40): when this stickman last secured a kill
     this.lastTargetTime = 0; // grace-period anchor so briefly losing a target doesn't instantly snap the attack pose back to idle — see update()
     this.axeMode = 'MELEE'; // AXEMAN only: manual toggle, switchable once per wave
     this.axeSwitchesLeft = 1;
@@ -765,10 +771,10 @@ class Tower{
   // CA401 — see HISTORY.md § [1.5.7] Code Archaeology, CA401
   receiveItem(def){
     if(def && def.isGoldBag) return false; // see HISTORY.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, GOLD-BAG-COIN-BURST-01.
-    if(isStructureType(this.type)) return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see HISTORY.md § [1.6.121]
+    if(isStructureType(this.type) && !isVaultType(this.type)) return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see HISTORY.md § [1.6.121]
     const stack = STACKABLE_ITEM_IDS.has(def.id) ? this.equippedItems.find(item => item.id === def.id) : null;
     if(stack){ stack.count = heldCount(stack) + heldCount(def); if(stack.id === 'HONEY' && stack.count >= 5) awardMedal('HONEY_HOARDER'); refreshQuickUse(this); return true; }
-    if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
+    if(this.equippedItems.length >= itemCapacityOf(this)) return false;
     const received = makeItemInstance(def, 'given');
     this.equippedItems.push(received);
     itemLogHeldBy(received, this);
@@ -790,6 +796,7 @@ class Tower{
     return true;
   }
   checkHeroStatus(){
+    if(isStructureType(this.type)) return;
     let gearCount = 0;
     for(const carried of this.equippedItems) if(!isConsumableDef(carried)) gearCount++;
     if(!this.isHero && gearCount >= MAX_ITEM_SLOTS){
@@ -904,6 +911,7 @@ class Tower{
   // CA413 — see HISTORY.md § [1.5.7] Code Archaeology, CA413
   nextUpgradeCost(){ if(isProducerType(this.type)) return 0; return this.canUpgrade() ? promotionCostFor(firstPromotionCost(this.def), this.level) : 0; }
   updateProducer(dt){
+    if(isVaultType(this.type)) return;
     if(this.disabledUntil > gameTime || this.disabledWavesLeft > 0) return;
     this.producerTimerMs += dt;
     if(this.producerTimerMs < PRODUCER_INTERVAL_MS) return;
@@ -1075,7 +1083,7 @@ class Tower{
         const predY = this.target.y + this.target.vy*timeToImpact;
         this.angle = Math.atan2(predY-this.y, predX-this.x);
       }
-    } else if((usesRangedRestPose(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')){
+    } else if(((usesRangedRestPose(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')) && !(gameTime - this.lastKillTime < POST_KILL_READY_MS)){
       // CA421 — see HISTORY.md § [1.5.7] Code Archaeology, CA421
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
@@ -1349,9 +1357,10 @@ class Tower{
     p.sourceTower = this;
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
+    p.acidDamage = this.acidDamage || 0; p.acidDuration = this.acidDuration || 0; p.acidSlow = this.acidSlow || 0; p.acidRadius = this.acidRadius || 0; // ACID-COAT-01
     p.elementKey = towerElement(this);
     p.elementColor = (ELEMENT_VISUALS[p.elementKey] || {}).color || null;
-    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : this.type === 'CAT_SNAPPER' ? '#2a2a2a' : this.type === 'NECROMANCER' ? '#5a2d82' : this.type === 'BLOW_GUNNER' ? '#c8e8f0' : this.type === 'PROTON' ? '#a855f7' : this.type === 'DARK_MATTER' ? '#1a1a2e' : this.type === 'QUASAR' ? '#fdf6d8' : '#f1c40f';
+    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : this.type === 'CAT_SNAPPER' ? '#2a2a2a' : this.type === 'NECROMANCER' ? '#5a2d82' : this.type === 'BLOW_GUNNER' ? '#c8e8f0' : this.type === 'SQUIRTGUN' ? '#8bd62f' : this.type === 'PROTON' ? '#a855f7' : this.type === 'DARK_MATTER' ? '#1a1a2e' : this.type === 'QUASAR' ? '#fdf6d8' : '#f1c40f';
     // CA434 — see HISTORY.md § [1.5.7] Code Archaeology, CA434
     p.trackedTarget = null; p.trackedId = undefined; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
     if(!p.splashRadius && this.target){
@@ -1439,7 +1448,7 @@ class Tower{
     p.maxFlightMs = Math.max(600, (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000 * 1.8);
     p.damage = this.damage;
     p.angle = angle;
-    p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0;
+    p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0; p.acidDamage = 0;
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this; p.isMagicMissile = false;
     // CA438 — see HISTORY.md § [1.5.7] Code Archaeology, CA438
     p.axeSpawnTime = gameTime;
@@ -1691,7 +1700,7 @@ class Tower{
     ctx.save();
     ctx.fillStyle = '#ffd54f';
     for(let pip = 0; pip < this.level; pip++){ ctx.beginPath(); ctx.arc(this.x - 8 + pip*8, this.y + 19, 2.2, 0, Math.PI*2); ctx.fill(); }
-    if(!downed){ const barW = 28; ctx.fillStyle = '#2a2a2a'; ctx.fillRect(this.x - barW/2, this.y + 23, barW, 3); ctx.fillStyle = producerDef.resource === 'wood' ? '#8bc34a' : '#90a4ae'; ctx.fillRect(this.x - barW/2, this.y + 23, barW*Math.min(1, this.producerTimerMs/PRODUCER_INTERVAL_MS), 3); }
+    if(!downed){ const barW = 28; ctx.fillStyle = '#2a2a2a'; ctx.fillRect(this.x - barW/2, this.y + 23, barW, 3); ctx.fillStyle = isVaultType(this.type) ? '#ffd54f' : producerDef.resource === 'wood' ? '#8bc34a' : '#90a4ae'; ctx.fillRect(this.x - barW/2, this.y + 23, barW*Math.min(1, (isVaultType(this.type) ? this.equippedItems.length / itemCapacityOf(this) : this.producerTimerMs/PRODUCER_INTERVAL_MS)), 3); }
     const hpFraction = this.hp / this.maxHp;
     if(hpFraction < 1){ const barW = 30, barY = this.y - 24; ctx.fillStyle = '#3a1a1a'; ctx.fillRect(this.x - barW/2, barY, barW, 4); ctx.fillStyle = 'rgb(' + Math.round(230 - hpFraction*154) + ',' + Math.round(57 + hpFraction*118) + ',' + Math.round(70 + hpFraction*10) + ')'; ctx.fillRect(this.x - barW/2, barY, barW*hpFraction, 4); }
     ctx.restore();
@@ -1755,11 +1764,12 @@ class Tower{
     const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
     // CA453 — see HISTORY.md § [1.5.7] Code Archaeology, CA453
-    const restBlend = clampNum(((gameTime - (this.lastTargetTime||0)) - 2000) / 1500, 0, 1);
-    const hasTargetPose = !!this.target || (!usesRangedRestPose(this) &&
+    const holdingAfterKill = gameTime - this.lastKillTime < POST_KILL_READY_MS; // KILL-READY-01 (1.8.40): after a kill the weapon stays raised for a few seconds before the idle pose
+    const restBlend = clampNum(((gameTime - Math.max(this.lastTargetTime||0, this.lastKillTime + POST_KILL_READY_MS - 2000)) - 2000) / 1500, 0, 1);
+    const hasTargetPose = !!this.target || holdingAfterKill || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
-    const isSpearType = this.type === 'SPEARMAN' || this.type === 'LANCER';
+    const isSpearType = this.type === 'LANCER';
     const swingTrail = (this.isSwinging && !isSpearType && swingProgress > 0.2 && swingProgress < 0.82 && this.baseAngle !== undefined && graphicsQuality !== 'low')
       ? { from: this.baseAngle + this.visualSwingOffset(Math.max(0, swingProgress - MELEE_SMEAR_SPAN_T)), to: this.baseAngle + this.visualSwingOffset(swingProgress), strength: swingProgress < 0.6 ? 1 : 1 - (swingProgress - 0.6) / 0.22 } : null;
     const extra = { trailFrom: swingTrail ? swingTrail.from : undefined, trailTo: swingTrail ? swingTrail.to : undefined, trailStrength: swingTrail ? swingTrail.strength : 0, thrustPx: isSpearType && this.isSwinging ? spearThrustPx(swingProgress) : 0, walkPhase: this.isWalking ? (this.walkPhase || 0) : undefined, skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, nockAmount: this.type === 'ARCHER' ? this.archerNockAmount() : undefined, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
@@ -1779,7 +1789,7 @@ class Tower{
     }
     const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
     const swingingVisualAngle = (usesSwingAngle && this.isSwinging && this.baseAngle !== undefined)
-      ? (this.type === 'SPEARMAN' || this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
+      ? (this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
     const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : (usesSwingAngle ? this.renderSwordAngle : this.angle);
     const poseElapsed = Math.min(100,Math.max(0,presentationTime-(this.poseDrawTime || presentationTime)));
     this.poseDrawTime=presentationTime;
@@ -1897,6 +1907,15 @@ const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_S
 // about 52% at 250 and about 92% at 500 (the stat effect cap).
 const PROJECTILE_STICK_BASE_CHANCE = 0.12, PROJECTILE_STICK_PER_STRENGTH = 0.0016;
 function projectileStickChance(strength){ return clampNum(PROJECTILE_STICK_BASE_CHANCE + Math.min(STAT_EFFECT_CAP, Math.max(0, strength || 0))*PROJECTILE_STICK_PER_STRENGTH, 0, 0.95); }
+const SPEARMAN_SWEEP_ARC_FRACTION = 1.3, POST_KILL_READY_MS = 4000;
+const ACID_MAX_STACKS = 3, ACID_STACK_GAP_MS = 450, ACID_TICK_MS = 600, ACID_SLOW_REFRESH_MS = 700;
+function coatEnemiesInAcid(x, y, projectile){
+  for(const enemy of enemyPool){
+    if(!enemy.active || Math.hypot(enemy.x-x, enemy.y-y) > projectile.acidRadius + enemy.radius) continue;
+    enemy.applyAcidCoat(projectile.acidDamage, projectile.acidDuration, projectile.acidSlow, projectile.sourceTower);
+  }
+  spawnParticles(x, y, '#8bd62f', 5);
+}
 function projectileStickKind(sourceTower){
   if(!sourceTower) return null;
   if(sourceTower.type === 'ARCHER') return 'ARROW';
@@ -2015,6 +2034,7 @@ class Projectile{
       applyAttunementStatus(this.sourceTower, hitEnemy);
       if(this.slowFactor) hitEnemy.applySlow(this.slowFactor, this.slowDuration);
       if(this.poisonDamage > 0 && hitEnemy.active) hitEnemy.applyPoison(this.poisonDamage, this.poisonDuration, this.sourceTower);
+      if(this.acidDamage > 0) coatEnemiesInAcid(hitEnemy.x, hitEnemy.y, this);
       const stickKind = projectileStickKind(this.sourceTower);
       if(stickKind && hitEnemy.active && hitEnemy.embeddedArrows.length < MAX_STUCK_ARROWS && Math.random() < projectileStickChance(this.sourceTower.str)){
           // CA467 — see HISTORY.md § [1.5.7] Code Archaeology, CA467

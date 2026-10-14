@@ -252,9 +252,23 @@ let pathTurnFirstChance = 0.85;
 // Whatever the style, the spacing and exit rules still decide what is possible, so a road can be wild but never cuts itself off.
 const ROAD_GROWTH_STYLE_WEIGHTS = [['TURN', 0.47], ['ZIGZAG', 0.17], ['STRAIGHT', 0.12], ['HOOK', 0.14], ['DRIFT', 0.10]];
 const ROAD_WILD_STYLES = new Set(['HOOK', 'DRIFT']), ROAD_WILD_CHANCE = 0.12;
-function pickRoadGrowthStyle(rng = Math.random){
+// ROAD-CHARACTER-01 (1.8.39): every run draws one road character from its seed, so one run winds, another coils, another runs long, another wanders. Turning styles now
+// need a straight stretch between turns (a lone TURN no longer chains into a diagonal staircase), and the coil style is common enough to actually produce spirals.
+const ROAD_CHARACTERS = [
+  { name: 'MEANDER', chance: 0.40, weights: [['TURN', 0.52], ['ZIGZAG', 0.05], ['STRAIGHT', 0.15], ['HOOK', 0.18], ['DRIFT', 0.10]] },
+  { name: 'COILING', chance: 0.25, weights: [['TURN', 0.20], ['ZIGZAG', 0.03], ['STRAIGHT', 0.07], ['HOOK', 0.60], ['DRIFT', 0.10]] },
+  { name: 'LONG', chance: 0.20, weights: [['TURN', 0.28], ['ZIGZAG', 0.04], ['STRAIGHT', 0.50], ['HOOK', 0.08], ['DRIFT', 0.10]] },
+  { name: 'WANDERING', chance: 0.15, weights: [['TURN', 0.25], ['ZIGZAG', 0.05], ['STRAIGHT', 0.10], ['HOOK', 0.20], ['DRIFT', 0.40]] }
+];
+function roadCharacterForRun(){
+  let roll = createSeededRandom(waveSeedFor(waveRunSeed ^ 0x3c6ef372, 17))();
+  for(const character of ROAD_CHARACTERS){ if(roll < character.chance) return character; roll -= character.chance; }
+  return ROAD_CHARACTERS[0];
+}
+function roadCurlDirection(){ return createSeededRandom(waveSeedFor(waveRunSeed ^ 0x510e527f, 23))() < 0.5 ? -1 : 1; }
+function pickRoadGrowthStyle(rng = Math.random, weights = ROAD_GROWTH_STYLE_WEIGHTS){
   let roll = rng();
-  for(const [style, weight] of ROAD_GROWTH_STYLE_WEIGHTS){ if(roll < weight) return style; roll -= weight; }
+  for(const [style, weight] of weights){ if(roll < weight) return style; roll -= weight; }
   return 'TURN';
 }
 function roadOpenness(tile, occupied, region){
@@ -277,8 +291,8 @@ function orderRoadDirections(chain, occupied, region, style, wild, rng = Math.ra
       const isStraight = dir[0] === straight[0] && dir[1] === straight[1];
       const turn = straight[0]*dir[1] - straight[1]*dir[0];
       if(style === 'STRAIGHT') stylePull = isStraight ? 1 : 0;
-      else if(style === 'TURN') stylePull = isStraight ? 0 : 1;
-      else if(style === 'HOOK') stylePull = turn && (!lastTurn || Math.sign(turn) === Math.sign(lastTurn)) ? 1.2 : 0;
+      else if(style === 'TURN') stylePull = (isStraight ? lastTurn !== 0 : lastTurn === 0) ? 1 : 0;
+      else if(style === 'HOOK') stylePull = lastTurn !== 0 ? (isStraight ? 1.2 : 0) : (turn && Math.sign(turn) === roadCurlDirection() ? 1.2 : 0);
       else if(style === 'ZIGZAG') stylePull = turn && (!lastTurn || Math.sign(turn) !== Math.sign(lastTurn)) ? 1.2 : 0;
     }
     // ROAD-PATTERN-PREFERENCE-01 (1.7.135) — see HISTORY.md § [1.7.135]
@@ -319,7 +333,7 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
   const occupied = new Set(oldPath.map(p => p.x+','+p.y));
   const towerTileKeys = activeTowerTileKeys().filter(key => !occupied.has(key));
   const growthRng = createSeededRandom(waveSeedFor(waveRunSeed ^ 0x6a09e667,oldPath.length)); // ROAD-SEEDED-PLAN-01 (1.7.141): future styles/ties derive from the run's saved seed.
-  const growthStyle = pickRoadGrowthStyle(growthRng);
+  const growthStyle = pickRoadGrowthStyle(growthRng, roadCharacterForRun().weights);
   const wildGrowth = ROAD_WILD_STYLES.has(growthStyle) || growthRng() < ROAD_WILD_CHANCE;
   const perEndGrowth = Math.max(1, Math.min(PATH_GROWTH_TILES_MAX, arcLength || 2)); // EXPAND-BOTH-ENDS-01 (1.7.62): both ends grow by the same 1 to 3 tiles
   const existingSpacingViolations=routeSpacingViolationCount(oldPath);
@@ -708,19 +722,22 @@ function shovelDigPoint(tower){
   return null;
 }
 const ITEM_DRIFT_SPEED_PX_PER_S = 9, ITEM_DRIFT_STOP_PX = 13, ITEM_DRIFT_STORE_PX = 15; // ITEM-DRIFT-01 (1.8.18)
+const ITEM_DRIFT_DELAY_MIN_MS = 20000, ITEM_DRIFT_DELAY_SPREAD_MS = 10000; // ITEM-DRIFT-02 (1.8.37)
+function towerCanTakeDriftItem(tower, def){ return tower.equippedItems.length < MAX_ITEM_SLOTS || (STACKABLE_ITEM_IDS.has(def.id) && tower.equippedItems.some(item => item.id === def.id)); }
 function itemDriftsToTowers(def){ return !def.isGoldBag && !def.isMapScroll && !def.isBarricade; }
 function updateGroundItemDrift(dt){
   if(!groundItems.length) return;
   let candidates = null;
   for(const gi of groundItems){
     if(gi === draggingGroundItem || gi.placedByPlayer || !itemDriftsToTowers(gi.itemDef)) continue;
+    if(presentationTime < gi.driftAt) continue;
     if(gi.flyStart !== undefined && presentationTime - gi.flyStart < gi.flyDur) continue;
     if(gi.rejectStartedAt !== undefined && presentationTime - gi.rejectStartedAt < 1500) continue;
     if(!candidates) candidates = towerPool.filter(t => t.active && !t.isWalking && !isStructureType(t.type));
     let nearest = null, nearestDistance = Infinity;
     for(const t of candidates){
       const distance = Math.hypot(t.x - gi.x, t.y - gi.y);
-      if(distance < nearestDistance && distance <= (t.targetingRange || t.range || 0)){ nearest = t; nearestDistance = distance; }
+      if(distance < nearestDistance && distance <= (t.targetingRange || t.range || 0) && towerCanTakeDriftItem(t, gi.itemDef)){ nearest = t; nearestDistance = distance; }
     }
     if(!nearest) continue;
     if(nearestDistance <= ITEM_DRIFT_STORE_PX && nearest.receiveItem(gi.itemDef)){ // Warcraft-style: anything in a stickman's inventory counts as carried, gear included
@@ -1014,7 +1031,7 @@ function restoreLivestock(savedAnimals, growthVersion){
     animal.growthRounds=Number.isFinite(saved.growthRounds) ? clampNum(Math.round(saved.growthRounds),0,livestockAdultRounds(animal)) : livestockAdultRounds(animal);
     if(growthVersion !== 2 && animal.growthRounds >= 3) animal.growthRounds=livestockAdultRounds(animal); // old three-round adults stay adults
     if(!Number.isFinite(animal.growthRounds)) animal.growthRounds=LIVESTOCK_ADULT_ROUNDS;
-    if(animal.type==='BEE') animal.honeyElapsedMs=clampNum(Number(saved.honeyElapsedMs)||0,0,BEE_HONEY_INTERVAL_MS);
+    if(animal.type==='BEE') animal.honeyElapsedMs=clampNum(Number(saved.honeyElapsedMs)||0,0,BEE_HONEY_MAX_MS);
     applyLivestockGrowthSize(animal);
     animal.hp=Math.max(1,Math.round(animal.maxHp*clampNum(Number(saved.healthFraction)||1,0.01,1)));
     animal.retargetTimer=LIVESTOCK_IDLE_MS_MAX;animal.livestockWalking=false;
@@ -1028,7 +1045,6 @@ function restoreLivestock(savedAnimals, growthVersion){
   }
   for(const {animal} of restored.values()) if(!livestockPairValid(animal)) clearLivestockPair(animal);
 }
-const LOOSE_NOTICE_RADIUS = 220;
 // RANDOM-EVENT-SLOT-01 (1.6.171): at most two random events can claim slots per expansion.
 let randomEventSlotsUsed = 0;
 function openRandomEventSlot(){ randomEventSlotsUsed = 0; }
@@ -1048,19 +1064,21 @@ function pickEndTileSpawnPoint(){
   return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
 }
 // Bees wander on the playable ground; production uses real play time, never fast-forward.
-const BEE_HONEY_INTERVAL_MS=60000, BEE_MAX_ON_BOARD=2;
+const BEE_HONEY_MIN_MS=300000, BEE_HONEY_SPREAD_MS=300000, BEE_HONEY_MAX_MS=BEE_HONEY_MIN_MS+BEE_HONEY_SPREAD_MS, BEE_MAX_ON_BOARD=2; // BEE-HONEY-02 (1.8.37): each honey comes after a random 5 to 10 minutes, the way a Minecraft chicken lays eggs
+function rollBeeHoneyDueMs(){ return BEE_HONEY_MIN_MS+Math.random()*BEE_HONEY_SPREAD_MS; }
 function maybeSpawnBee(){
   if(enemyPool.filter(e=>e.active && e.type==='BEE').length>=BEE_MAX_ON_BOARD) return;
   const spot=pickEndTileSpawnPoint(); if(!spot) return;
   const bee=placeLivestock('BEE',{...spot,radius:0},LIVESTOCK_ADULT_ROUNDS);
-  if(bee){bee.honeyElapsedMs=0;spawnFloatingText(bee.x,bee.y-20,'🐝 Bee','#ffe082');}
+  if(bee){bee.honeyElapsedMs=0;bee.honeyDueMs=rollBeeHoneyDueMs();spawnFloatingText(bee.x,bee.y-20,'🐝 Bee','#ffe082');}
 }
 function updateBeeHoney(bee,dt){
   if(gameState!=='PLAYING' || !bee.active || bee.type!=='BEE') return;
-  bee.honeyElapsedMs=Math.min(BEE_HONEY_INTERVAL_MS,(bee.honeyElapsedMs||0)+Math.min(100,Math.max(0,dt)));
-  if(bee.honeyElapsedMs<BEE_HONEY_INTERVAL_MS || !isLooseWalkableAt(bee.x,bee.y)) return;
+  if(!Number.isFinite(bee.honeyDueMs)) bee.honeyDueMs=rollBeeHoneyDueMs();
+  bee.honeyElapsedMs=Math.min(BEE_HONEY_MAX_MS,(bee.honeyElapsedMs||0)+Math.min(100,Math.max(0,dt)));
+  if(bee.honeyElapsedMs<bee.honeyDueMs || !isLooseWalkableAt(bee.x,bee.y)) return;
   if(groundItems.filter(gi=>gi.itemDef.id==='HONEY').length>=20) return;
-  bee.honeyElapsedMs=0;
+  bee.honeyElapsedMs=0; bee.honeyDueMs=rollBeeHoneyDueMs();
   spawnGroundItem(bee.x,bee.y,lookupItemDef('HONEY'),'bee honey');
 }
 function maybeSpawnGuaranteedTroll(){
@@ -2595,6 +2613,7 @@ function refreshCookingDialog(){
   for(const button of cookingDialog.querySelectorAll('[data-recipe]')){ const recipe=FIRE_RECIPES.find(r=>r.id===button.dataset.recipe); button.disabled=!!fire.cookingJob || !findCampfireIngredients(recipe); }
 }
 function openCookingDialog(fire){
+  closeBuildMenuIfOpen();
   if(!cookingDialog){
     cookingDialog=document.createElement('dialog');
     cookingDialog.style.cssText='max-width:min(580px,90vw);max-height:80vh;overflow:auto;background:#29221b;color:#fff0d0;border:2px solid #a87539;border-radius:10px;padding:20px';
@@ -2640,7 +2659,7 @@ function useStoredConsumable(tower, slotIndex){
   return true;
 }
 function activateInventorySlot(tower, slotIndex){
-  if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return;
+  if(!tower || !tower.active || isVaultType(tower.type) || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return;
   const def = tower.equippedItems[slotIndex];
   if(!def) return;
   if(isConsumableDef(def)){ useStoredConsumable(tower, slotIndex); if(gameState==='PAUSED') requestPausedRender(); return; }
@@ -2804,19 +2823,27 @@ const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
 // BIOMES-01 (1.7.66): owner rule — the other tree kinds and grass colours only appear after a very long road. Near the start every tile is meadow with leafy trees; from
 // BIOME_MIN_DISTANCE_TILES away from the starting tile, wavy patches of land (about 5 tiles across, edges warped so they are not squares) become Pinewood (cool green grass, mostly
 // evergreens) or Dunes (sandy ground, mostly palms), with meadow in between, like Minecraft biomes. The biome is a fixed function of the tile and the run seed, so a tile never changes.
-const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 5, BIOME_WARP_TILES = 2.2;
+const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 8, BIOME_WARP_TILES = 1.6;
+// BIOME-GRADIENT-01 (1.8.41): biomes follow one smooth noise field ordered Pinewood, Meadow, Dunes, so Pinewood and Dunes never touch and every change passes through a wide meadow band.
 const BIOME_GRASS = Object.freeze({ MEADOW: ['#8fae6e', '#4f7a3f'], PINEWOOD: ['#7fa68f', '#3f6f5a'], DUNES: ['#c9b97a', '#a89b58'] });
 function biomeCellHash(cellX, cellY){
   let hash = (Math.imul(cellX + 7919, 374761393) ^ Math.imul(cellY + 104729, 668265263) ^ groundDetailRunSeed) >>> 0;
   hash = Math.imul(hash ^ (hash >>> 13), 1274126177) >>> 0;
   return ((hash ^ (hash >>> 16)) >>> 0) / 4294967296;
 }
+function biomeNoise(fieldX, fieldY){
+  const cellX = Math.floor(fieldX), cellY = Math.floor(fieldY), fractionX = fieldX - cellX, fractionY = fieldY - cellY;
+  const easeX = fractionX*fractionX*(3 - 2*fractionX), easeY = fractionY*fractionY*(3 - 2*fractionY);
+  const top = biomeCellHash(cellX, cellY)*(1 - easeX) + biomeCellHash(cellX + 1, cellY)*easeX;
+  const bottom = biomeCellHash(cellX, cellY + 1)*(1 - easeX) + biomeCellHash(cellX + 1, cellY + 1)*easeX;
+  return top*(1 - easeY) + bottom*easeY;
+}
 function tileBiome(gx, gy){
   if(Math.max(Math.abs(gx - Math.floor(COLS/2)), Math.abs(gy - Math.floor(ROWS/2))) < BIOME_MIN_DISTANCE_TILES) return 'MEADOW';
   const seedPhase = (groundDetailRunSeed % 6283) / 1000;
-  const warpedX = gx + Math.round(BIOME_WARP_TILES * Math.sin(gy * 0.83 + seedPhase)), warpedY = gy + Math.round(BIOME_WARP_TILES * Math.sin(gx * 0.77 + seedPhase * 1.7));
-  const roll = biomeCellHash(Math.floor(warpedX / BIOME_PATCH_TILES), Math.floor(warpedY / BIOME_PATCH_TILES));
-  return roll < 0.4 ? 'MEADOW' : roll < 0.7 ? 'PINEWOOD' : 'DUNES';
+  const warpedX = gx + BIOME_WARP_TILES * Math.sin(gy * 0.31 + seedPhase), warpedY = gy + BIOME_WARP_TILES * Math.sin(gx * 0.27 + seedPhase * 1.7);
+  const level = biomeNoise(warpedX / BIOME_PATCH_TILES, warpedY / BIOME_PATCH_TILES);
+  return level < 0.38 ? 'PINEWOOD' : level > 0.62 ? 'DUNES' : 'MEADOW';
 }
 function grassTileFill(gx, gy, isLightTile){ return BIOME_GRASS[tileBiome(gx, gy)][isLightTile ? 0 : 1]; }
 function rollTreeVariant(gx, gy, rng = Math.random){
@@ -2849,24 +2876,32 @@ function drawSceneryGroundShadow(ctx, item, size, strength = SCENERY_SHADOW_STRE
 // SCENERY-SHADOW-UNION-01 (1.8.32): silhouette shadows are painted fully dark into one layer and the layer is laid on the ground once at the shadow strength, so where two shadows overlap the ground is no darker than under one. The box shadow and the branch shadow keep their own strengths and are painted directly.
 const SCENERY_SHADOW_STRENGTH = 0.24;
 const sceneryShadowLayer = document.createElement('canvas'), sceneryShadowLayerContext = sceneryShadowLayer.getContext('2d');
+let sceneryShadowDirty = null; // SCENERY-SHADOW-UNION-01: only the box the last frame painted is cleared and laid down, never the whole screen
 function beginSceneryShadowLayer(ctx){
   const target = ctx.canvas;
   if(sceneryShadowLayer.width !== target.width || sceneryShadowLayer.height !== target.height){ sceneryShadowLayer.width = target.width; sceneryShadowLayer.height = target.height; }
-  else { sceneryShadowLayerContext.setTransform(1,0,0,1,0,0); sceneryShadowLayerContext.clearRect(0,0,target.width,target.height); }
+  else if(sceneryShadowDirty){ sceneryShadowLayerContext.setTransform(1,0,0,1,0,0); sceneryShadowLayerContext.clearRect(sceneryShadowDirty.x, sceneryShadowDirty.y, sceneryShadowDirty.w, sceneryShadowDirty.h); }
+  sceneryShadowDirty = null;
   sceneryShadowLayerContext.setTransform(ctx.getTransform());
   return sceneryShadowLayerContext;
 }
 function paintSceneryGroundShadows(ctx, sortedItems){
-  let layerContext = null;
+  const matrix = ctx.getTransform();
+  let layerContext = null, left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
   for(const it of sortedItems){
     if(it.kind !== 's') continue;
     if(it.item.type === 'BRANCH' || sceneryEmojiFor(it.item, CONFIG.CHANCE_STRUCTURES[it.item.type]) === '📦'){ drawSceneryGroundShadow(ctx, it.item, it.size); continue; }
     if(graphicsQuality !== 'high') continue;
     if(!layerContext) layerContext = beginSceneryShadowLayer(ctx);
+    const reach = it.size * 2 * matrix.a, screenX = matrix.a * it.item.x + matrix.e, screenY = matrix.d * it.item.y + matrix.f;
+    left = Math.min(left, screenX - reach); right = Math.max(right, screenX + reach); top = Math.min(top, screenY - reach); bottom = Math.max(bottom, screenY + reach);
     drawSceneryGroundShadow(layerContext, it.item, it.size, 1);
   }
   if(!layerContext) return;
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha *= SCENERY_SHADOW_STRENGTH; ctx.drawImage(sceneryShadowLayer, 0, 0); ctx.restore();
+  const boxX = Math.max(0, Math.floor(left)), boxY = Math.max(0, Math.floor(top)), boxW = Math.min(ctx.canvas.width, Math.ceil(right)) - boxX, boxH = Math.min(ctx.canvas.height, Math.ceil(bottom)) - boxY;
+  if(boxW <= 0 || boxH <= 0) return;
+  sceneryShadowDirty = { x: boxX, y: boxY, w: boxW, h: boxH };
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha *= SCENERY_SHADOW_STRENGTH; ctx.drawImage(sceneryShadowLayer, boxX, boxY, boxW, boxH, boxX, boxY, boxW, boxH); ctx.restore();
 }
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
