@@ -25,6 +25,7 @@ WEB_ASSET_NAMES = ('CHANGELOG.md', 'HISTORY.md', 'LICENSE')
 EXCLUDED_PARTS = ('packaging', 'dist', 'scripts', 'node_modules')
 ENTRY_PATTERN = re.compile(r'^## \[(\d+\.\d+\.\d+)\][^\n]*\n[\s\S]*?(?=^## \[|\Z)', re.M)
 TAG_VERSION = re.compile(r'^v(\d+\.\d+\.\d+)')
+AI_ASSIST_NOTE = 'Coding assisted by Claude (Anthropic). Design is human.'
 DOWNLOADS = (
     ('Windows 64-bit, portable', '*-win-x64.exe'),
     ('macOS ARM64, DMG', '*-mac-arm64.dmg'),
@@ -49,6 +50,12 @@ def read_game_version():
     stale = sorted({tag for tag in re.findall(r'<script src="js/[^"]+\?v=([0-9.]+)"', html) if tag != version})
     if stale or '<script src="js/' not in html:
         raise SystemExit(f'Release blocked: script tags in index.html must all carry ?v={version} (found {stale or "none"}).')
+    tagged = set(re.findall(r'<script src="js/([a-z]+)\.js\?v=', html))
+    untagged = sorted(path.stem for path in (ROOT / 'js').glob('*.js') if path.stem not in tagged)
+    if untagged:
+        raise SystemExit(f'Release blocked: js files without a script tag in index.html: {untagged} (FILE-SPLIT-01).')
+    if AI_ASSIST_NOTE not in html or AI_ASSIST_NOTE not in (ROOT / 'README.md').read_text(encoding='utf-8'):
+        raise SystemExit(f'Release blocked: README.md and Settings > About must carry "{AI_ASSIST_NOTE}" (AI-DISCLOSURE-01).')
     return version
 
 

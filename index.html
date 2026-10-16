@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.43">
+<meta name="application-version" content="1.8.47">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -78,7 +78,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.43",
+  "softwareVersion": "1.8.47",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -910,6 +910,7 @@
   #titleWordmark svg{width:min(740px,92vw);height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,0.55));}
   #versionTag{font-size:clamp(15px,2.6vw,22px);font-weight:700;letter-spacing:0.12em;color:var(--paper);opacity:0.85;margin-top:2px;text-shadow:0 2px 0 #000;}
   #aboutVersionLine{opacity:0.75;font-size:11.5px;margin-top:-6px;}
+  #aboutAssistNote{opacity:0.55;font-size:clamp(8px,2.7vw,10.5px);margin-top:-8px;white-space:nowrap;}
   #end-screen #endMessage,#end-screen #endRunSummary{white-space:pre-line;text-align:center;}
   #start-screen p,#end-screen p{max-width:420px;font-size:clamp(12px,2vw,16px);line-height:1.5;}
   #quality-picker{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:10px;}
@@ -1400,6 +1401,7 @@
             <p>Choose a defender in Build, place it on grass, then select Start Wave. Save a run to a file to continue later.</p>
             <p>Created by SauerNinja. <a href="https://sauerninja.itch.io/sticktd" target="_blank" rel="noopener">StickTD on itch.io</a> · <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener">Source and MIT license</a>.</p>
             <p id="aboutVersionLine">Version <span id="aboutVersionText"></span></p>
+            <p id="aboutAssistNote">Coding assisted by Claude (Anthropic). Design is human.</p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
             <button id="downloadDebugLogBtn">🪲 Debug log</button>
             <button id="viewReadmeBtn">📄 View as page</button>
@@ -1586,10 +1588,16 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.43"></script>
-<script src="js/config.js?v=1.8.43"></script>
-<script src="js/environment.js?v=1.8.43"></script>
-<script src="js/towers.js?v=1.8.43"></script>
-<script src="js/waves.js?v=1.8.43"></script>
+<script src="js/audio.js?v=1.8.47"></script>
+<script src="js/config.js?v=1.8.47"></script>
+<script src="js/effects.js?v=1.8.47"></script>
+<script src="js/stickman.js?v=1.8.47"></script>
+<script src="js/loop.js?v=1.8.47"></script>
+<script src="js/ui.js?v=1.8.47"></script>
+<script src="js/diagnostics.js?v=1.8.47"></script>
+<script src="js/screens.js?v=1.8.47"></script>
+<script src="js/environment.js?v=1.8.47"></script>
+<script src="js/towers.js?v=1.8.47"></script>
+<script src="js/waves.js?v=1.8.47"></script>
 </body>
 </html>

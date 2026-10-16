@@ -1172,7 +1172,7 @@ class Tower{
       this.disabledUntil = gameTime + 4000;
       this.disabledWavesLeft = 3; // decrements at the start of each wave; 3 correctly locks through both N+1 and N+2, free by N+3 — "out for 2 of the next rounds"
       reportTowerDowned(this, 'attack');
-      maybeShowFirstTimeAlert(FIRST_TOWER_DOWN_SEEN_KEY, '⚠️ Your ' + (this.def ? this.def.name : this.type) + ' was overrun — it will recover in a few rounds.', '#ff4444');
+      maybeShowFirstTimeAlert(FIRST_TOWER_DOWN_SEEN_KEY, '⚠️ ' + (this.def ? this.def.name : this.type) + ' overrun. Recovers in a few rounds.', '#ff4444');
       this.hp = Math.round(this.maxHp * 0.3); // recovers with partial HP once the disable ends
       this.killStreak = 0; this.nextStreakTier = 0;
       spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');

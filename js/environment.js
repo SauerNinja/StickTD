@@ -3041,6 +3041,7 @@ function drawClearingHourglass(ctx, item, size){
 const DOWNED_TOWER_SKIN_MAIN = '#9b9b9b';
 const DOWNED_TOWER_SKIN_SHADE = '#7a7a7a';
 const LOOSE_ENEMY_LIFE_DRAIN_MS = 6000;
+const LOOSE_DRAIN_FIRST_WAVE = 4; // LOOSE-DRAIN-GRACE-01 (1.8.46): in waves 1 to 3 an escape costs its one life but a loose enemy does not keep draining, so one leaky early wave cannot end a new run
 function advanceLooseDrain(drainMs, dtMs){
   const totalMs = drainMs + dtMs;
   const hearts = Math.floor(totalMs / LOOSE_ENEMY_LIFE_DRAIN_MS);
@@ -3105,6 +3106,7 @@ const TELEMETRY_EVENTS = {
   tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
   item_purchased: ['item', 'payment_type', 'cost', 'wood_cost', 'stone_cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
+  item_drifted: ['item', 'tower_type'], // TELEMETRY-CATALOG-01 (1.8.46): every event the code sends is declared
   item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01 (1.6.149) — see HISTORY.md § [1.6.149]: never name a parameter source, medium, campaign, value or currency; GA4 reads those as traffic source or revenue
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
   item_guide_shown: [],

@@ -82,6 +82,8 @@ const ENEMY_SPAWN_GAP_MS = 5000;
 // OPENING-PACE-01 (1.8.43): owner agreed the start was slow. Waves 1 and 2 space units 2.5 s apart, and wave 1 lets two enemies walk the route at once
 // (it was strictly one at a time, about 13 s of waiting per enemy), so the first enemy is on screen at GO and the lesson keeps moving.
 const OPENING_SPAWN_GAP_MS = 2500, OPENING_PACE_LAST_WAVE = 2, WAVE_ONE_MAX_ON_ROUTE = 2;
+const SAVE_TIP_WAVE = 3;
+const WAVE_ONE_HP_SCALE = 0.6; // FIRST-KILLS-01 (1.8.44): wave-1 units fall in two or three hits, as the genre's first enemies do
 function spawnGapForWave(waveNumber){ return waveNumber <= OPENING_PACE_LAST_WAVE ? OPENING_SPAWN_GAP_MS : ENEMY_SPAWN_GAP_MS; }
 const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK: 'GRANITE_HEART', RUNNER: 'SHADOW_SASH', BOSS: 'FIEND_HORN', SANTA: 'HOLIDAY_STOCKING', COOKIE: 'FORTUNE_SLIP', CHESS: 'KNIGHT_PAWN', TROLL: 'BRIDGE_TOLL', FIRE: 'EMBER_CORE', ICE: 'FROST_SHARD', SPLITTER: 'SPORE_FLASK', HEALER: 'MENDERS_PIN', SHIELDED: 'FIELD_HELMET', ZOMBIE: 'GRAVE_CHARM', WRAITH: 'SPECTRAL_VEIL', SKELETON: 'BONE_WHISTLE', WOLF: 'WOLF_FANG', REAPER: 'MIDNIGHT_CHARM', BOULDER: 'GEODE', MONARCH: 'BUTTERFLY_WING' };
 function enemyDropTier(enemy){
@@ -530,6 +532,7 @@ function showTutorialTipOnce(id, message){
   playSound('wave');
 }
 function maybeShowWaveTutorialTip(){
+  if(wavesCompleted === SAVE_TIP_WAVE) showTutorialTipOnce('save_stopping_point', '💾 Good stopping point. Save from ⚙️ Settings.'); // SAVE-TIP-01 (1.8.45): the first short session ends on a win with a way to keep it
   if(wavesCompleted === 25){
     showTutorialTipOnce('zombies_incoming', '🧟 Zombies arrive at Wave 30 — only Holy damage (Cleric/Pope) hurts them well. Train a Mage\'s INT to 100 to unlock Cleric.');
   }
@@ -954,7 +957,7 @@ function spawnWaveUnit(spec){
   if(!e) return false;
   const isStealthSanta=stealthRun && waveIndex===10 && spec.family==='SANTA';
   const strengthWave=isStealthSanta?CAMPAIGN_WAVE_COUNT:waveIndex;
-  const hpScale = waveHpScale(strengthWave) * (spec.sizeTier === 'BOSS' ? bossHpScale(strengthWave) : 1);
+  const hpScale = waveHpScale(strengthWave) * (spec.sizeTier === 'BOSS' ? bossHpScale(strengthWave) : 1) * (strengthWave === 1 ? WAVE_ONE_HP_SCALE : 1);
   e.spawn(spec.family, hpScale, false, false);
   e.applySizeTier(spec.sizeTier, spec.sizeJitter, hpScale);
   const emojiVariants = ENEMY_EMOJI_VARIANTS[spec.family];
@@ -1699,7 +1702,7 @@ class Enemy{
     if(!target){ this.breakawayDone = true; return; } // nothing worth breaking away for — stay on path
     this.isBreakaway = true;
     playSound('threat', this.x, undefined, this.y);
-    maybeShowFirstTimeAlert('stickTD_firstBreakawaySeen', '⚡ An enemy left the path to attack a tower. Defend the threatened unit or move it to safety.', '#ff8a65');
+    maybeShowFirstTimeAlert('stickTD_firstBreakawaySeen', '⚡ An enemy left the path. Protect your tower!', '#ff8a65');
     this.breakawayTarget = target;
     this.breakAttackTimer = 0;
     this.aggroStartedAt=presentationTime;
@@ -1748,7 +1751,7 @@ class Enemy{
     loseLife(1);
     if(lives < livesBeforeEscape) launchHeartHudFlights(this.x, this.y - this.radius - 10, 1, true); // HEART-BREAK-01 (1.7.74): the life lost to an escape flies to the counter too
     playSound('threat', this.x, undefined, this.y);
-    maybeShowFirstTimeAlert(FIRST_ESCAPE_SEEN_KEY, '🏃 An enemy escaped and is wandering — it will attack your towers if left alone!', '#ff8a65');
+    maybeShowFirstTimeAlert(FIRST_ESCAPE_SEEN_KEY, '🏃 An enemy escaped. It will attack your towers.', '#ff8a65');
     waveTelemetry.escaped++;
     waveTelemetry.loosePeak = Math.max(waveTelemetry.loosePeak, countLooseEnemies() + 1);
     // CA301 — see HISTORY.md § [1.5.7] Code Archaeology, CA301
@@ -1761,7 +1764,7 @@ class Enemy{
   // CA302 — see HISTORY.md § [1.5.7] Code Archaeology, CA302
   updateEscaped(dt){
     // LOOSE-DRAIN-01 (1.6.77) — see HISTORY.md § [1.6.77]
-    const looseDrain = advanceLooseDrain(this.looseDrainMs, dt);
+    const looseDrain = advanceLooseDrain(this.looseDrainMs, waveIndex >= LOOSE_DRAIN_FIRST_WAVE ? dt : 0);
     this.looseDrainMs = looseDrain.remainingMs;
     for(let heartIndex=0; heartIndex<looseDrain.hearts && gameState === 'PLAYING'; heartIndex++){
       const livesBeforeDrain = lives;

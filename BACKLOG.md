@@ -1,10 +1,27 @@
+## 1.8.47 — reference books checked against the code
+Game Balance (Schreiber and Romero), Game Feel (Swink), Programming Game AI by Example (Buckland) and Real-Time Collision Detection (Ericson), compared with the current code.
+- *Already in line* — Projectiles test the whole segment they travelled each tick against enemy circles and then the glyph mask (`Projectile.update`, `pointSegmentDist2`, `segmentHitsEnemyMask`), so fast shots at 10x cannot tunnel (Ericson 5.5). The enemy hash is rebuilt each tick, which Ericson 7.1.7 recommends when most objects move.
+- *Candidate* — Splash impacts loop over every enemy in `enemyPool` (`Projectile.onImpact`); querying the spatial hash for the splash radius would cut the cost with crowds on the road (Ericson 7.1).
+- *Candidate, needs a design decision* — Reward chart for the first 15 waves: list every reward (gold, drops, unlocks, gift, caravan, medals, music lift) per wave to find stretches with none and waves where several land at once (Game Balance 11, reward schedules). Data from the user's play-tests decides it.
+- *Play-test 1.8.47* — A scripted three-fighter opening lost 50 lives to escapes in wave 3 in one run and kept 69 lives in another, so wave 3 is the first real wall for a small squad. Owner play-tests decide whether wave 3 needs a gentler mix.
+
+## 1.8.43 — genre comparison: first 15 minutes
+Measured against Kingdom Rush, Bloons TD 6, Plants vs. Zombies, Rogue Tower, Rush Royale and the current itch.io web tower defense charts. Ordered by expected effect on the first 15 minutes.
+- *Open, needs a design decision* — Call the next wave early for a reward (Kingdom Rush): Next Wave becomes available once every unit of the current wave has entered, and calling it pays bonus gold for the time saved. Confident players set their own pace and new players are never rushed. Requires wave-clear rewards (`wavesCompleted`, medals, cheer, gift) to settle per wave while two waves overlap.
+- *Open, needs a design decision* — Shorter opening waves, more of them. Kingdom Rush opens with three Goblins and Bloons TD 6 rounds 1 to 10 each pass in well under a minute; StickTD wave 1 is ten Tiny Grunts and took about three minutes (about 105 seconds after OPENING-PACE-01 and FIRST-KILLS-01), so the first wave-clear reward (cheer, gift, medals, music lift) arrives late. Option: wave 1 of five units, the second five moved into wave 2.
+- *Done 1.8.44* — Faster first kills: wave-1 units spawn with 60% hit points (FIRST-KILLS-01). *Play-test* the feel.
+- *Done 1.8.44, 1.8.45* — First-time alerts and early messages are eight words or fewer and say "Press" (FIRST-ALERT-SHORT-01); a fighter placed out of reach gets a one-time hint (REACH-HINT-01); wave 3 suggests saving (SAVE-TIP-01).
+- *Not built, by rule* — A pick-one-of-three reward after early waves (Rogue Tower, itch.io card games) is excluded by RUN-REWARD-REMOVED-01: no wave or milestone choice rewards.
+- *Play-test 1.8.46* — Waves 1 to 3 with escapes: loose enemies no longer drain lives before wave 4 (LOOSE-DRAIN-GRACE-01); one constant, `LOOSE_DRAIN_FIRST_WAVE`, sets where the drain starts. Wave 2 still runs about 6 minutes at 1x in the scripted opening.
+- *Keep* — The strengths the top games do not have: no install, character stickmen instead of abstract turrets, forensic blood, the victory cheer, close calls, adaptive music, and the first enemy walking out at GO, 3 seconds after Start Wave.
+
 ## 1.8.41 — play-test and open items
 - *Play-test* — Waves 1 to 5 pacing and difficulty: wave 2 with no rushing, the Swarm, Wolf and Runner guests, the two wave-4 champions, early gold from the larger waves.
 - *Play-test* — Listen to the new wave theme and the quiet rest plucks (MUSIC-THEME-01, MUSIC-BIP-01); the pluck level is one gain value in `scheduleMusicStep`.
 - *Play-test* — Merchant camel, route and swept shadow in a real browser; first visit after round 3.
 - *Play-test* — Spearman sweep and spearhead, weapons held up after a kill, squirt-gun glyph direction on Windows.
 - *Evidence first* — A 1.8.41 debug log from a run that hitches (wave 9 downing included) with the new "Catch-up by reason" line, before any further lag work.
-- *Open* — Show the formation name on the wave label.
+- *Owner decision* — Show the formation name on the wave label (only if players should see it).
 
 # 1.8.1 release verification
 - Confirm actual Actions results on all four native platforms and web; do not infer build success from YAML parsing.
