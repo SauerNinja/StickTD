@@ -470,6 +470,7 @@ function paintCommittedExpansionPath(oldPath){
   const oldKeys = new Set(oldPath.map(p => p.x+','+p.y));
   const changed = pathWaypointTiles.filter(p => !oldKeys.has(p.x+','+p.y));
   if(!changed.length) return;
+  mapBakeRevision++;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
   const dirtyTiles = new Set();
@@ -539,6 +540,7 @@ function beginNextRingReveal(){
   const distanceFromOldTip = tile => Math.min(Math.hypot(tile.x-oldTip.x,tile.y-oldTip.y),Math.hypot(tile.x-oldPath[0].x,tile.y-oldPath[0].y));
   revealTiles.sort((tileA, tileB) => distanceFromOldTip(tileA) - distanceFromOldTip(tileB));
   paintCommittedExpansionPath(oldPath);
+  mapBakeRevision++;
   const finishCtx=mapCanvas.getContext('2d');
   finishCtx.setTransform(dprValue,0,0,dprValue,0,0);
   repaintFinishCarpetFootprint(finishCtx,previousFinishLine);
@@ -661,6 +663,7 @@ function finalizeRingExpansion(){
   maybeDropExpansionShovel(revealedBorderKeys);
   animateNewExpansionScenery(previousScenery); // entrance for endpoint top-ups and fallback props, preserving old objects
   // CA105 — see HISTORY.md § [1.5.7] Code Archaeology, CA105
+  mapBakeRevision++;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
   repaintFinishCarpetFootprint(mctx, oldFinishLine);
@@ -833,6 +836,7 @@ function maybeDropExpansionShovel(revealedKeys){
 }
 // PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
 const pendingRevealTileKeys = new Set();
+let mapBakeRevision = 0; // CRISP-MAP-01: bumps whenever the baked map bitmap changes
 // STARTING-MAP-01 (1.6.79) — see HISTORY.md § [1.6.79]
 const STARTING_PATH_TILE_COUNT = 2;
 const STARTING_GRASS_TILE_COUNT = 2;
@@ -2823,7 +2827,7 @@ const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
 // BIOMES-01 (1.7.66): owner rule — the other tree kinds and grass colours only appear after a very long road. Near the start every tile is meadow with leafy trees; from
 // BIOME_MIN_DISTANCE_TILES away from the starting tile, wavy patches of land (about 5 tiles across, edges warped so they are not squares) become Pinewood (cool green grass, mostly
 // evergreens) or Dunes (sandy ground, mostly palms), with meadow in between, like Minecraft biomes. The biome is a fixed function of the tile and the run seed, so a tile never changes.
-const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 8, BIOME_WARP_TILES = 1.6;
+const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 11, BIOME_WARP_TILES = 1.6;
 // BIOME-GRADIENT-01 (1.8.41): biomes follow one smooth noise field ordered Pinewood, Meadow, Dunes, so Pinewood and Dunes never touch and every change passes through a wide meadow band.
 const BIOME_GRASS = Object.freeze({ MEADOW: ['#8fae6e', '#4f7a3f'], PINEWOOD: ['#7fa68f', '#3f6f5a'], DUNES: ['#c9b97a', '#a89b58'] });
 function biomeCellHash(cellX, cellY){
@@ -2843,7 +2847,7 @@ function tileBiome(gx, gy){
   const seedPhase = (groundDetailRunSeed % 6283) / 1000;
   const warpedX = gx + BIOME_WARP_TILES * Math.sin(gy * 0.31 + seedPhase), warpedY = gy + BIOME_WARP_TILES * Math.sin(gx * 0.27 + seedPhase * 1.7);
   const level = biomeNoise(warpedX / BIOME_PATCH_TILES, warpedY / BIOME_PATCH_TILES);
-  return level < 0.38 ? 'PINEWOOD' : level > 0.62 ? 'DUNES' : 'MEADOW';
+  return level < 0.36 ? 'PINEWOOD' : level > 0.64 ? 'DUNES' : 'MEADOW';
 }
 function grassTileFill(gx, gy, isLightTile){ return BIOME_GRASS[tileBiome(gx, gy)][isLightTile ? 0 : 1]; }
 function rollTreeVariant(gx, gy, rng = Math.random){
@@ -2876,32 +2880,57 @@ function drawSceneryGroundShadow(ctx, item, size, strength = SCENERY_SHADOW_STRE
 // SCENERY-SHADOW-UNION-01 (1.8.32): silhouette shadows are painted fully dark into one layer and the layer is laid on the ground once at the shadow strength, so where two shadows overlap the ground is no darker than under one. The box shadow and the branch shadow keep their own strengths and are painted directly.
 const SCENERY_SHADOW_STRENGTH = 0.24;
 const sceneryShadowLayer = document.createElement('canvas'), sceneryShadowLayerContext = sceneryShadowLayer.getContext('2d');
-let sceneryShadowDirty = null; // SCENERY-SHADOW-UNION-01: only the box the last frame painted is cleared and laid down, never the whole screen
-function beginSceneryShadowLayer(ctx){
-  const target = ctx.canvas;
-  if(sceneryShadowLayer.width !== target.width || sceneryShadowLayer.height !== target.height){ sceneryShadowLayer.width = target.width; sceneryShadowLayer.height = target.height; }
-  else if(sceneryShadowDirty){ sceneryShadowLayerContext.setTransform(1,0,0,1,0,0); sceneryShadowLayerContext.clearRect(sceneryShadowDirty.x, sceneryShadowDirty.y, sceneryShadowDirty.w, sceneryShadowDirty.h); }
-  sceneryShadowDirty = null;
-  sceneryShadowLayerContext.setTransform(ctx.getTransform());
-  return sceneryShadowLayerContext;
-}
-function paintSceneryGroundShadows(ctx, sortedItems){
+// SCENERY-SHADOW-CACHE-01 (1.8.42): painting the shadow layer and laying it on the ground in the same frame forces the browser to flush the layer every frame,
+// which measured 16 ms per frame against under 2 ms for the same work split up, and lines up with the scenery spikes in debug logs. The layer is repainted only
+// when the zoom, canvas size, graphics quality or a scenery item's position, size or kind changes. SCENERY-SHADOW-PAN-01 (1.8.43): the layer is painted with a
+// margin around the screen, so a pan only slides the painted layer and repaints after the camera has moved further than the margin.
+const SCENERY_SHADOW_MARGIN_PX = 256;
+let sceneryShadowSignature = 0, sceneryShadowPaintE = 0, sceneryShadowPaintF = 0, sceneryShadowBox = null;
+function sceneryShadowSignatureFor(ctx, sortedItems){
   const matrix = ctx.getTransform();
-  let layerContext = null, left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  let hash = Math.imul(Math.round(matrix.a * 1000), 31) ^ Math.imul(ctx.canvas.width, 7919) ^ Math.imul(ctx.canvas.height, 104729) ^ (graphicsQuality === 'high' ? 1 : 2);
   for(const it of sortedItems){
     if(it.kind !== 's') continue;
-    if(it.item.type === 'BRANCH' || sceneryEmojiFor(it.item, CONFIG.CHANCE_STRUCTURES[it.item.type]) === '📦'){ drawSceneryGroundShadow(ctx, it.item, it.size); continue; }
-    if(graphicsQuality !== 'high') continue;
-    if(!layerContext) layerContext = beginSceneryShadowLayer(ctx);
-    const reach = it.size * 2 * matrix.a, screenX = matrix.a * it.item.x + matrix.e, screenY = matrix.d * it.item.y + matrix.f;
-    left = Math.min(left, screenX - reach); right = Math.max(right, screenX + reach); top = Math.min(top, screenY - reach); bottom = Math.max(bottom, screenY + reach);
-    drawSceneryGroundShadow(layerContext, it.item, it.size, 1);
+    const item = it.item;
+    hash = Math.imul(hash ^ (Math.round(item.x) * 73856093 ^ Math.round(item.y) * 19349663 ^ Math.round(it.size * 8) * 83492791 ^ item.type.length * 2654435761 ^ item.type.charCodeAt(0)), 16777619) >>> 0;
   }
-  if(!layerContext) return;
-  const boxX = Math.max(0, Math.floor(left)), boxY = Math.max(0, Math.floor(top)), boxW = Math.min(ctx.canvas.width, Math.ceil(right)) - boxX, boxH = Math.min(ctx.canvas.height, Math.ceil(bottom)) - boxY;
-  if(boxW <= 0 || boxH <= 0) return;
-  sceneryShadowDirty = { x: boxX, y: boxY, w: boxW, h: boxH };
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha *= SCENERY_SHADOW_STRENGTH; ctx.drawImage(sceneryShadowLayer, boxX, boxY, boxW, boxH, boxX, boxY, boxW, boxH); ctx.restore();
+  return hash || 1;
+}
+function isDirectSceneryShadow(item){ return item.type === 'BRANCH' || sceneryEmojiFor(item, CONFIG.CHANCE_STRUCTURES[item.type]) === '📦'; }
+function repaintSceneryShadowLayer(ctx, sortedItems){
+  const matrix = ctx.getTransform(), margin = SCENERY_SHADOW_MARGIN_PX, layer = sceneryShadowLayerContext;
+  const width = ctx.canvas.width + margin*2, height = ctx.canvas.height + margin*2;
+  if(sceneryShadowLayer.width !== width || sceneryShadowLayer.height !== height){ sceneryShadowLayer.width = width; sceneryShadowLayer.height = height; }
+  else if(sceneryShadowBox){ layer.setTransform(1,0,0,1,0,0); layer.clearRect(sceneryShadowBox.x, sceneryShadowBox.y, sceneryShadowBox.w, sceneryShadowBox.h); }
+  sceneryShadowBox = null;
+  layer.setTransform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e + margin, matrix.f + margin);
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for(const it of sortedItems){
+    if(it.kind !== 's' || isDirectSceneryShadow(it.item)) continue;
+    const reach = it.size * 2 * matrix.a, layerX = matrix.a * it.item.x + matrix.e + margin, layerY = matrix.d * it.item.y + matrix.f + margin;
+    if(layerX + reach < 0 || layerY + reach < 0 || layerX - reach > width || layerY - reach > height) continue;
+    left = Math.min(left, layerX - reach); right = Math.max(right, layerX + reach); top = Math.min(top, layerY - reach); bottom = Math.max(bottom, layerY + reach);
+    drawSceneryGroundShadow(layer, it.item, it.size, 1);
+  }
+  const boxX = Math.max(0, Math.floor(left)), boxY = Math.max(0, Math.floor(top)), boxW = Math.min(width, Math.ceil(right)) - boxX, boxH = Math.min(height, Math.ceil(bottom)) - boxY;
+  if(boxW > 0 && boxH > 0) sceneryShadowBox = { x: boxX, y: boxY, w: boxW, h: boxH };
+  sceneryShadowPaintE = matrix.e; sceneryShadowPaintF = matrix.f;
+}
+function paintSceneryGroundShadows(ctx, sortedItems){
+  for(const it of sortedItems) if(it.kind === 's' && isDirectSceneryShadow(it.item)) drawSceneryGroundShadow(ctx, it.item, it.size);
+  if(graphicsQuality !== 'high') return;
+  const matrix = ctx.getTransform(), margin = SCENERY_SHADOW_MARGIN_PX, signature = sceneryShadowSignatureFor(ctx, sortedItems);
+  const shiftX = matrix.e - sceneryShadowPaintE, shiftY = matrix.f - sceneryShadowPaintF;
+  if(signature !== sceneryShadowSignature || Math.abs(shiftX) > margin || Math.abs(shiftY) > margin){
+    repaintSceneryShadowLayer(ctx, sortedItems);
+    sceneryShadowSignature = signature;
+  }
+  const box = sceneryShadowBox;
+  if(!box) return;
+  const offsetX = matrix.e - sceneryShadowPaintE - margin, offsetY = matrix.f - sceneryShadowPaintF - margin;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha *= SCENERY_SHADOW_STRENGTH;
+  ctx.drawImage(sceneryShadowLayer, box.x, box.y, box.w, box.h, box.x + offsetX, box.y + offsetY, box.w, box.h);
+  ctx.restore();
 }
 function drawOneSceneryItem(ctx, key, item, size){
   if(item.type === 'COIN_POUCH'){
@@ -3940,6 +3969,7 @@ function drawMap(ctx){
 }
 function rebakeMap(){
   // CA168 — see HISTORY.md § [1.5.7] Code Archaeology, CA168
+  mapBakeRevision++;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
   drawMap(mctx);

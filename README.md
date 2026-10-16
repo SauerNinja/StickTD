@@ -56,7 +56,8 @@ Serve the folder with any static server and open `index.html`, for example `pyth
 | Path | Purpose |
 |---|---|
 | `index.html` | Page shell, styles and interface |
-| `js/config.js` | Rendering, audio, blood, menus, saves and the design contract |
+| `js/audio.js` | Sound engine, sound effects and music |
+| `js/config.js` | Rendering, blood, menus, saves and the design contract |
 | `js/environment.js` | Map, road growth, biomes, scenery and items |
 | `js/towers.js` | Stickman classes, targeting, projectiles and combat |
 | `js/waves.js` | Enemies, wave plans, random events and livestock |

@@ -79,6 +79,10 @@ CONFIG.ENEMIES = {
 // ENEMY-PACE-01 (1.6.80) — see HISTORY.md § [1.6.80]
 const ENEMY_WALK_SPEED_SCALE = 0.25;
 const ENEMY_SPAWN_GAP_MS = 5000;
+// OPENING-PACE-01 (1.8.43): owner agreed the start was slow. Waves 1 and 2 space units 2.5 s apart, and wave 1 lets two enemies walk the route at once
+// (it was strictly one at a time, about 13 s of waiting per enemy), so the first enemy is on screen at GO and the lesson keeps moving.
+const OPENING_SPAWN_GAP_MS = 2500, OPENING_PACE_LAST_WAVE = 2, WAVE_ONE_MAX_ON_ROUTE = 2;
+function spawnGapForWave(waveNumber){ return waveNumber <= OPENING_PACE_LAST_WAVE ? OPENING_SPAWN_GAP_MS : ENEMY_SPAWN_GAP_MS; }
 const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK: 'GRANITE_HEART', RUNNER: 'SHADOW_SASH', BOSS: 'FIEND_HORN', SANTA: 'HOLIDAY_STOCKING', COOKIE: 'FORTUNE_SLIP', CHESS: 'KNIGHT_PAWN', TROLL: 'BRIDGE_TOLL', FIRE: 'EMBER_CORE', ICE: 'FROST_SHARD', SPLITTER: 'SPORE_FLASK', HEALER: 'MENDERS_PIN', SHIELDED: 'FIELD_HELMET', ZOMBIE: 'GRAVE_CHARM', WRAITH: 'SPECTRAL_VEIL', SKELETON: 'BONE_WHISTLE', WOLF: 'WOLF_FANG', REAPER: 'MIDNIGHT_CHARM', BOULDER: 'GEODE', MONARCH: 'BUTTERFLY_WING' };
 function enemyDropTier(enemy){
   if(enemy.type === 'BOSS' || enemy.type === 'SANTA') return 'BOSS';
@@ -276,13 +280,14 @@ function advanceWaveDispatch(dt){
       waveDispatch.unitIndex++;
       waveDispatch.batchEnemies.push(lastSpawnedEnemy);
       waveDispatch.batchSerials.push(lastSpawnedSerial);
-      waveDispatch.unitGapRemainingMs = ENEMY_SPAWN_GAP_MS;
+      waveDispatch.unitGapRemainingMs = spawnGapForWave(plan.waveNumber);
     }
     return;
   }
   const isLastBatchOfPhase = waveDispatch.batchIndex >= phase.batches.length - 1;
   if(plan.waveNumber === 1){
-    if(waveRouteObligationsOutstanding()) return; // wave 1 stays strictly one enemy at a time
+    if(routeObligationCount() >= WAVE_ONE_MAX_ON_ROUTE) return;
+    if(waveDispatch.unitGapRemainingMs > 0){ waveDispatch.unitGapRemainingMs -= dt; return; }
   } else if(isLastBatchOfPhase){
     if(waveRouteObligationsOutstanding()) return;
   } else if(!currentBatchReleased()){
@@ -707,12 +712,12 @@ const FAMILY_TIER_ELIGIBILITY = {
 const FAMILY_NATIVE_TIER = { SWARM:'TINY', MONARCH:'TINY', BOSS:'BOSS' };
 // EARLY-HOOK-01 (1.8.41): the first minutes escape an all-Grunt run. Wave 1 stays the gentle one-at-a-time Tiny lesson, wave 2 mixes Small Grunts in, a new kind of enemy
 // guests every few waves ahead of its own chapter (a share of eligible Tiny and Small slots), wave 4 ends on Standard-size champion Grunts,
-// and waves 1 and 2 never rush the spawn gaps, so the opening two waves take about five to six minutes at 1x.
+// and waves 1 and 2 never rush the spawn gaps; OPENING-PACE-01 (1.8.43) keeps those gaps short so the opening stays busy.
 const EARLY_PREVIEW_BY_WAVE = Object.freeze({ 2: ['SWARM', 0.15], 3: ['SWARM', 0.25], 4: ['WOLF', 0.15], 5: ['WOLF', 0.2], 7: ['RUNNER', 0.15], 8: ['RUNNER', 0.2] });
 const EARLY_NO_RUSH_LAST_WAVE = 2;
 function earlyPreviewFamily(waveNumber){ return EARLY_PREVIEW_BY_WAVE[waveNumber] ? EARLY_PREVIEW_BY_WAVE[waveNumber][0] : null; }
 // ENEMY-EMOJI-VARIETY-01 (1.8.41): Grunts and Swarm pick one of several faces per unit from the wave seed, so a wave reads as a crowd, not clones.
-const ENEMY_EMOJI_VARIANTS = Object.freeze({ GRUNT: ['😡', '😠', '🤬', '😤'], SWARM: ['🐜', '🪲', '🐞'] });
+const ENEMY_EMOJI_VARIANTS = Object.freeze({ GRUNT: ['😡', '🤬'], SWARM: ['🐜', '🪲'] }); // GRUNT-RED-01 (1.8.43): Grunts stay red faces; yellow faces read as a different enemy
 const EARLY_WAVE_POPULATION = [
   null,
   { TINY:10 }, { TINY:18, SMALL:6 }, { TINY:36, SMALL:4 }, { TINY:45, SMALL:9, STANDARD:1 }, { TINY:54, SMALL:12, LARGE:8 },
@@ -920,12 +925,15 @@ function waveHpScale(waveNumber){
   // CA629 — see HISTORY.md § [1.5.7] Code Archaeology, CA629
   return 1 + chapterIndex * 0.9 + ((waveNumber - 1) % 5) * 0.09;
 }
+function isRouteObligation(enemy){ return enemy.active && !enemy.escaped && !enemy.isGuardian && !enemy.isHutBuilding && !enemy.isLivestock; }
 function waveRouteObligationsOutstanding(){
-  for(const e of enemyPool){
-    if(!e.active || e.escaped || e.isGuardian || e.isHutBuilding || e.isLivestock) continue;
-    return true;
-  }
+  for(const e of enemyPool) if(isRouteObligation(e)) return true;
   return false;
+}
+function routeObligationCount(){
+  let count = 0;
+  for(const e of enemyPool) if(isRouteObligation(e)) count++;
+  return count;
 }
 function resetWaveDispatch(){
   activeWavePlan = null;
@@ -2390,6 +2398,12 @@ class Enemy{
       }
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
+    }
+    const finish = waypointsPx[waypointsPx.length - 1];
+    if(finish && !this.escaped && !this.isLivestock && !this.isGuardian && presentationTime - lastCloseCallAt > CLOSE_CALL_GAP_MS && Math.hypot(this.x - finish.x, this.y - finish.y) < CLOSE_CALL_RADIUS_PX){
+      lastCloseCallAt = presentationTime;
+      hitStopUntil = Math.max(hitStopUntil, gameTime + CLOSE_CALL_FREEZE_MS);
+      spawnFloatingText(this.x, this.y - this.radius - 14, 'CLOSE!', '#ffd54f', 900);
     }
     // CA371 — see HISTORY.md § [1.5.7] Code Archaeology, CA371
     playSound('gore_death', this.x, goreScale, this.y);

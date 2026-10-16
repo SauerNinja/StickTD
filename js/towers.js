@@ -1766,7 +1766,8 @@ class Tower{
     // CA453 — see HISTORY.md § [1.5.7] Code Archaeology, CA453
     const holdingAfterKill = gameTime - this.lastKillTime < POST_KILL_READY_MS; // KILL-READY-01 (1.8.40): after a kill the weapon stays raised for a few seconds before the idle pose
     const restBlend = clampNum(((gameTime - Math.max(this.lastTargetTime||0, this.lastKillTime + POST_KILL_READY_MS - 2000)) - 2000) / 1500, 0, 1);
-    const hasTargetPose = !!this.target || holdingAfterKill || (!usesRangedRestPose(this) &&
+    const cheering = presentationTime < waveCheerUntil && !this.target && !this.isSwinging && !(this.disabledWavesLeft > 0) && isFighterTower(this); // WAVE-CHEER-01 (1.8.43)
+    const hasTargetPose = !!this.target || holdingAfterKill || cheering || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
     const isSpearType = this.type === 'LANCER';
@@ -1790,7 +1791,7 @@ class Tower{
     const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
     const swingingVisualAngle = (usesSwingAngle && this.isSwinging && this.baseAngle !== undefined)
       ? (this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
-    const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : (usesSwingAngle ? this.renderSwordAngle : this.angle);
+    const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : cheering ? -Math.PI/2 + Math.sin((presentationTime - waveCheerStart)/160 + this.id)*0.35 : (usesSwingAngle ? this.renderSwordAngle : this.angle);
     const poseElapsed = Math.min(100,Math.max(0,presentationTime-(this.poseDrawTime || presentationTime)));
     this.poseDrawTime=presentationTime;
     if(!Number.isFinite(this.poseDrawAngle) || this.isSwinging || this.isSwinging2 || PREFERS_REDUCED_MOTION) this.poseDrawAngle=desiredDrawAngle;
@@ -1833,7 +1834,8 @@ class Tower{
       ctx.save(); ctx.globalAlpha = 0.3;
     }
     extra.enchantElement = (activeElement && !isDisabled) ? activeElement : null; // drawn inside drawStickman, on the weapon itself (WEAPON-ENCHANT-SYNC-01)
-    drawStickman(ctx, this.x, this.y, drawAngle, this.level, this.type, extra);
+    const cheerHop = cheering && !PREFERS_REDUCED_MOTION ? -Math.abs(Math.sin((presentationTime - waveCheerStart)/150 + this.id*1.7))*WAVE_CHEER_HOP_PX : 0;
+    drawStickman(ctx, this.x, this.y + cheerHop, drawAngle, this.level, this.type, extra);
     if(this.shovelDig) drawShovelDigSwing(ctx, this);
     if(hackerStealth){
       ctx.restore();

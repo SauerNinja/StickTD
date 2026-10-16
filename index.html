@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.41">
+<meta name="application-version" content="1.8.43">
 <title>StickTD — Free Stick Tower Defense Game</title>
 <meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
@@ -78,7 +78,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.41",
+  "softwareVersion": "1.8.43",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -631,6 +631,14 @@
   #targetStatsRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;font-size:0.95em;color:#bdeaff;font-weight:bold;}
   #targetStatsRow>span{overflow-wrap:anywhere;}
   #targetEffects{grid-column:1/-1;color:#ffcc80;font-size:0.9em;}
+  /* PHONE-TARGET-CARD-01 (1.8.43): on a phone the target card keeps every stat but packs them three to a row with a smaller portrait, so it covers less of the board. */
+  @media (max-width:640px){
+    #inspTargetFrame{padding:6px 8px;gap:8px;}
+    #targetPortraitFrame{width:40px;height:40px;font-size:1.5em;}
+    #targetInfoMid{gap:2px;}
+    #targetHpBarTrack{height:15px;}
+    #targetStatsRow{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 6px;font-size:0.88em;}
+  }
   #inspect-panel{transform-origin:bottom left;max-height:calc((100dvh - 100px)/var(--inspect-scale,1));overflow-y:auto;overflow-x:hidden;transform:scale(var(--inspect-scale,1));}
   @media(min-width:1000px) and (min-height:650px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.25;}}
   @media(min-width:1600px) and (min-height:850px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.5;}}
@@ -889,6 +897,8 @@
   #startMenu{flex:1;display:flex;flex-direction:column;align-items:center;width:100%;}
   #startMenu #quality-picker{margin-top:auto;padding-bottom:calc(clamp(8px,3vh,28px) + var(--safe-bottom));}
   @media (max-width:640px){#startMenu #quality-picker{padding-bottom:calc(68px + var(--safe-bottom));}}
+  body:has(#consent-banner:not(.hidden)) #startMenu #quality-picker{padding-bottom:calc(128px + var(--safe-bottom));} /* SANTA-CONSENT-BAR-01: the graphics picker sits above the Santa bar */
+  @media (max-width:640px){body:has(#consent-banner:not(.hidden)) #startMenu #quality-picker{padding-bottom:calc(178px + var(--safe-bottom));}}
   #playBtn{position:absolute;inset:0;margin:auto;width:fit-content;height:fit-content;display:flex;align-items:center;justify-content:center;padding:clamp(10px,1.8vh,16px) clamp(34px,6vw,60px);cursor:pointer;
     background:rgba(10,15,8,0.55);border:3px solid var(--gold);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,0.5);transition:transform 0.12s ease,box-shadow 0.12s ease,background 0.12s ease;}
   #playBtn svg{display:block;width:clamp(120px,22vw,190px);height:auto;}
@@ -961,22 +971,29 @@
 <noscript><p>StickTD is a free browser tower defense game. JavaScript is required to play. Enable JavaScript and reload, or visit <a href="https://sauerninja.itch.io/sticktd">StickTD on itch.io</a> for game information.</p></noscript>
 <style>
   /* SANTA-CONSENT-VOICE-01 — see HISTORY.md § [1.6.167] Restore Santa's cookie notice, SANTA-CONSENT-VOICE-01. */
-  #consent-banner{position:fixed;inset:0;z-index:999;
-    background:rgba(8,6,3,0.96);color:#f5f0e6;
-    display:flex;align-items:center;justify-content:center;padding:24px;
-    font-family:inherit;font-size:16px;}
+  /* SANTA-CONSENT-BAR-01 (1.8.43): the notice is a slim bar along the bottom, so the title, the logo and Play are the first thing a player sees. */
+  #consent-banner{position:fixed;left:0;right:0;bottom:0;z-index:999;
+    color:#f5f0e6;display:flex;justify-content:center;padding:10px;pointer-events:none;
+    font-family:inherit;font-size:15px;}
   #consent-banner.hidden{display:none;}
-  #consent-inner{display:flex;flex-direction:column;align-items:center;gap:16px;
-    max-width:480px;text-align:center;background:rgba(30,20,10,0.97);
-    border:2px solid #f1c40f;border-radius:14px;padding:28px 28px 32px;}
-  #consent-banner p{margin:0;line-height:1.5;text-wrap:balance;}
-  #consentSantaFace{font-size:min(30vw,110px);line-height:1;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));}
-  #consentSantaLine{font-weight:bold;font-size:1.05em;}
-  #consentOpenSource{font-size:0.85em;opacity:0.8;}
+  #consent-inner{pointer-events:auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:14px;row-gap:4px;
+    max-width:min(820px,100%);text-align:left;background:rgba(30,20,10,0.97);
+    border:2px solid #f1c40f;border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,0.55);}
+  #consent-banner p{margin:0;line-height:1.35;text-wrap:pretty;}
+  #consentSantaFace{grid-row:1 / span 2;font-size:44px;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5));}
+  #consentSantaLine{font-weight:bold;font-size:0.9em;}
+  #consentOpenSource{font-size:0.75em;opacity:0.8;}
   #consentOpenSource a{color:#f1c40f;}
-  #consentActions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%;}
-  #consentActions button{border-radius:8px;padding:12px 22px;font-weight:bold;cursor:pointer;
-    font-size:1em;min-height:48px;white-space:nowrap;}
+  #consentActions{grid-column:3;grid-row:1 / span 2;display:flex;flex-direction:column;gap:6px;}
+  #consentActions button{border-radius:8px;padding:8px 14px;font-weight:bold;cursor:pointer;
+    font-size:0.9em;min-height:40px;white-space:nowrap;}
+  @media (max-width:640px){
+    #consent-banner{padding:6px;font-size:13px;}
+    #consent-inner{grid-template-columns:auto 1fr;padding:8px 10px;column-gap:10px;}
+    #consentSantaFace{font-size:34px;}
+    #consentActions{grid-column:1 / span 2;grid-row:3;flex-direction:row;}
+    #consentActions button{flex:1;min-height:44px;}
+  }
   #consentAccept{border:2px solid #f1c40f;background:#f1c40f;color:#3a2a00;}
   #consentDecline{border:2px solid #b9a98e;background:transparent;color:#f5f0e6;}
 </style>
@@ -1190,7 +1207,7 @@
         <div id="targetHeaderLabel">TARGETING</div>
         <div id="targetNameRow"><strong id="targetName">-</strong></div>
         <div id="targetHpBarTrack"><div id="targetHpBarFill"></div><span id="targetHpBarText">0/0</span></div>
-        <div id="targetStatsRow"><span>🛡️ Armor <span id="targetDefVal">0</span></span><span>👟 Speed <span id="targetSpeedVal">0</span></span><span>⚖️ Weight <span id="targetWeightVal">1.0</span></span><span>💰 Gold <span id="targetGoldVal">0</span></span><span>✨ XP <span id="targetXpVal">0</span></span><span>⚔️ Damage <span id="targetDamageVal">0</span></span><span>🛡️ Shield <span id="targetShieldVal">0</span></span><span>💨 Evasion <span id="targetEvasionVal">0%</span></span><span id="targetEffects"></span></div>
+        <div id="targetStatsRow"><span>🛡️ Armor <span id="targetDefVal">0</span></span><span>👟 Speed <span id="targetSpeedVal">0</span></span><span>⚖️ Weight <span id="targetWeightVal">1.0</span></span><span>💰 Gold <span id="targetGoldVal">0</span></span><span>✨ XP <span id="targetXpVal">0</span></span><span>⚔️ Damage <span id="targetDamageVal">0</span></span><span>🔰 Shield <span id="targetShieldVal">0</span></span><span>💨 Evasion <span id="targetEvasionVal">0%</span></span><span id="targetEffects"></span></div>
       </div>
     </div>
 
@@ -1569,9 +1586,10 @@
     });
   })();
 </script>
-<script src="js/config.js?v=1.8.41"></script>
-<script src="js/environment.js?v=1.8.41"></script>
-<script src="js/towers.js?v=1.8.41"></script>
-<script src="js/waves.js?v=1.8.41"></script>
+<script src="js/audio.js?v=1.8.43"></script>
+<script src="js/config.js?v=1.8.43"></script>
+<script src="js/environment.js?v=1.8.43"></script>
+<script src="js/towers.js?v=1.8.43"></script>
+<script src="js/waves.js?v=1.8.43"></script>
 </body>
 </html>

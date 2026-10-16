@@ -4,8 +4,7 @@
 - *Play-test* — Merchant camel, route and swept shadow in a real browser; first visit after round 3.
 - *Play-test* — Spearman sweep and spearhead, weapons held up after a kill, squirt-gun glyph direction on Windows.
 - *Evidence first* — A 1.8.41 debug log from a run that hitches (wave 9 downing included) with the new "Catch-up by reason" line, before any further lag work.
-- *Owner decision* — Biome meadow band is about two tiles wide in places; widen if transitions still feel abrupt.
-- *Open* — Show the formation name on the wave label; class and item emoji overlaps (Mage and Glass Marble, Snap Caster and Lightning Bolt).
+- *Open* — Show the formation name on the wave label.
 
 # 1.8.1 release verification
 - Confirm actual Actions results on all four native platforms and web; do not infer build success from YAML parsing.
