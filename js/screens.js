@@ -1,5 +1,7 @@
 "use strict";
 // Start and end screens and the first-play cues. Loaded after js/diagnostics.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   START / END SCREENS
 /* =========================================================
    START / END SCREENS
    ========================================================= */

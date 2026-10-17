@@ -1,5 +1,13 @@
 "use strict";
-
+// Tower definitions, elements, promotions, the Tower class and projectiles. Loaded after js/environment.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   TOWER DEFINITIONS (CONFIG.TOWERS)
+//   STRATEGY TIPS, ARCHETYPES AND UNLOCKS
+//   ELEMENTS
+//   PROMOTIONS AND MASTERY
+//   CLASS BALANCE AND ANIMATION
+//   TOWER CLASS
+//   PROJECTILES
 /* =========================================================
    TOWER DEFINITIONS (CONFIG.TOWERS)
    ========================================================= */

@@ -1,5 +1,7 @@
 "use strict";
 // Stickman figure, weapon and pose drawing. Loaded after js/effects.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   STICKMAN RENDERING
 /* =========================================================
    STICKMAN RENDERING
    ========================================================= */

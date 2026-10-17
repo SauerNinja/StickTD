@@ -1,5 +1,8 @@
 "use strict";
 // Debug log, README export, the design contract and the self-tests. Loaded after js/ui.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   DEBUG LOG
+//   DESIGN CONTRACT (load-time self-check, run by the boot sequence at the end of js/waves.js)
 /* =========================================================
    DEBUG LOG
    ========================================================= */
@@ -506,8 +509,28 @@ function loadGameSourceText(){
   if(!/^https?:$/.test(location.protocol)) return Promise.resolve();
   const inlineText = [...document.scripts].filter(script => !script.src).map(script => script.textContent);
   return Promise.all([...document.scripts].filter(script => script.src).map(script => fetch(script.src).then(response => response.ok ? response.text() : Promise.reject(new Error(script.src)))))
-    .then(parts => { gameSourceText = inlineText.concat(parts).join('\n'); })
-    .catch(() => { gameSourceText = null; });
+    .then(parts => { gameScriptSources = sourcesByScriptFile(parts); gameSourceText = inlineText.concat(parts).join('\n'); })
+    .catch(() => { gameScriptSources = {}; gameSourceText = null; });
+}
+// FILE-CONTENTS-01 (1.8.48): every js/ file opens with a Contents list naming its section banners in order, so a reader can find a topic without scrolling.
+let gameScriptSources = {};
+function sourcesByScriptFile(parts){
+  const sources = {};
+  [...document.scripts].filter(script => script.src).forEach((script, index) => {
+    const fileMatch = (script.getAttribute('src') || '').match(/^js\/([a-z]+)\.js/);
+    if(fileMatch) sources[fileMatch[1]] = parts[index];
+  });
+  return sources;
+}
+const SECTION_BANNER_PATTERN = /^\/\* =+\n {3}(.+)$/gm;
+const CONTENTS_LINE_PATTERN = /^\/\/ {3}(.+)$/gm;
+function contentsListMatchesBanners(sourceText){
+  const contentsStart = sourceText.indexOf('// Contents (');
+  if(contentsStart < 0) return false;
+  const contentsBlock = sourceText.slice(contentsStart, sourceText.indexOf('\n/*', contentsStart));
+  const listedTitles = [...contentsBlock.matchAll(CONTENTS_LINE_PATTERN)].map(match => match[1].trim());
+  const bannerTitles = [...sourceText.matchAll(SECTION_BANNER_PATTERN)].map(match => match[1].trim()).filter(title => !title.startsWith('FILE MAP'));
+  return listedTitles.join('|') === bannerTitles.join('|');
 }
 // VISUAL-DRIFT-01 (1.8.10) — see CHANGELOG.md § [1.8.10]: the established look of the title, top bar and buttons; a change to any of these needs the table and AGENTS.md updated in the same release
 const LOOK_LOCKS = [
@@ -814,6 +837,8 @@ function validateDesignContract(){
   if(LOOSE_DRAIN_FIRST_WAVE < 2 || !String(Enemy.prototype.updateEscaped).includes('LOOSE_DRAIN_FIRST_WAVE')) problems.push('LOOSE-DRAIN-GRACE-01: loose enemies drain no lives before wave 4');
   const loadedScriptOrder = [...document.scripts].map(script => (script.getAttribute('src') || '').match(/^js\/([a-z]+)\.js/)).filter(Boolean).map(match => match[1]);
   if(loadedScriptOrder.join() !== GAME_SCRIPT_ORDER.join()) problems.push('FILE-SPLIT-01: index.html loads ' + GAME_SCRIPT_ORDER.join(', ') + ' in that order, as the file map in js/config.js lists them');
+  const driftedContentsFiles = GAME_SCRIPT_ORDER.filter(fileName => gameScriptSources[fileName] !== undefined && !contentsListMatchesBanners(gameScriptSources[fileName]));
+  if(driftedContentsFiles.length) problems.push('FILE-CONTENTS-01: the Contents list at the top of js/' + driftedContentsFiles.join('.js, js/') + '.js does not match its section banners');
   const assistNote = document.getElementById('aboutAssistNote');
   if(!assistNote || assistNote.textContent !== AI_ASSIST_NOTE || !getReadmeText().includes(AI_ASSIST_NOTE)) problems.push('AI-DISCLOSURE-01: Settings > About and the in-game README say coding was assisted by Claude and the design is human');
   if(WAVE_ONE_HP_SCALE >= 1) problems.push('FIRST-KILLS-01: wave-1 units have reduced hit points');

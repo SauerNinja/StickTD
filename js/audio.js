@@ -1,12 +1,12 @@
 "use strict";
 
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   SOUND ENGINE AND ADAPTIVE MUSIC
+//   SOUND EFFECT DISPATCH AND AUDIO UNLOCK
 // StickTD audio: the Web Audio sound engine, synthesized sound effects and the adaptive music score (AUDIO-SPLIT-01, 1.8.43).
 // Loaded before js/config.js; everything here is classic-script global scope, shared with the other files.
 /* =========================================================
-   AUDIO: SOUND ENGINE AND MUSIC
-   ========================================================= */
-/* =========================================================
-   AUDIO AND MUSIC
+   SOUND ENGINE AND ADAPTIVE MUSIC
    ========================================================= */
 // MUSIC-MIX-01 — see HISTORY.md § [1.6.163] Audio mix and adaptive score, MUSIC-MIX-01.
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
@@ -1583,6 +1583,9 @@ class SoundEngine{
   }
 }
 const audioEngine = new SoundEngine();
+/* =========================================================
+   SOUND EFFECT DISPATCH AND AUDIO UNLOCK
+   ========================================================= */
 function playSound(name, worldX, intensity, worldY){ audioEngine.play(name, worldX, intensity, worldY); }
 // CA202 — see HISTORY.md § [1.5.7] Code Archaeology, CA202
 function isImportantAudioEvent(eventType, context){

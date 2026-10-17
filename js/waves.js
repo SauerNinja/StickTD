@@ -1,5 +1,19 @@
 "use strict";
-
+// Enemy definitions, bosses, huts, trolls, the wave plan, the Enemy class and the boot sequence. Loaded after js/towers.js; the end of this file starts the game.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   ENEMY DEFINITIONS (CONFIG.ENEMIES)
+//   ENEMY BALANCE
+//   BOSSES
+//   WAVE START
+//   HUTS, CASTLES AND GRAVES
+//   TUTORIAL TIPS, WAVE-CLEAR EVENTS AND LIFE LOSS
+//   TROLLS AND CIRCUS
+//   SIZE AND FAMILY TIERS
+//   WAVE PLAN AND DISPATCH
+//   ENEMY CLASS
+//   ENEMY COLLISION MASKS AND POOL
+//   BOOT
+//   START THE GAME (runs last, after every file has loaded)
 /* =========================================================
    ENEMY DEFINITIONS (CONFIG.ENEMIES)
    ========================================================= */
@@ -319,6 +333,9 @@ function countLooseEnemies(){
   for(const enemy of enemyPool) if(enemy.active && enemy.escaped) looseCount++;
   return looseCount;
 }
+/* =========================================================
+   WAVE START
+   ========================================================= */
 function startNextWave(){
   if(waveState !== 'IDLE') return;
   if(waveIndex === 0){ stealthRun=window.analyticsConsentChoice==='denied'; markFirstWaveStarted(); }
@@ -370,6 +387,9 @@ function startNextWave(){
   playSound('roundStart');
   updateHUD();
 }
+/* =========================================================
+   HUTS, CASTLES AND GRAVES
+   ========================================================= */
 // CA639 — see HISTORY.md § [1.5.7] Code Archaeology, CA639
 function findHutPlacementTile(oldRegion, newRegion){
   if(!activeRegion) return null;
@@ -517,6 +537,9 @@ function spawnGrave(x, y){
   spawnGraveGuardian(grave);
   return grave;
 }
+/* =========================================================
+   TUTORIAL TIPS, WAVE-CLEAR EVENTS AND LIFE LOSS
+   ========================================================= */
 // CA646 — see HISTORY.md § [1.5.7] Code Archaeology, CA646
 const SEEN_TIPS_KEY = 'sticktd:seenTips:v1';
 let seenTutorialTips = new Set();
@@ -2623,6 +2646,9 @@ class Enemy{
     ctx.restore();
   }
 }
+/* =========================================================
+   ENEMY COLLISION MASKS AND POOL
+   ========================================================= */
 // CA456 — see HISTORY.md § [1.5.7] Code Archaeology, CA456
 const ENEMY_MASK_REF_SIZE = 40; // arbitrary but fixed reference font-size (px) for every cached mask; real instances are rescaled to this at test time
 let enemyMaskCanvas = null, enemyMaskCtx = null;

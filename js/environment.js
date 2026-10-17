@@ -1,7 +1,28 @@
 "use strict";
-
+// Map and path, expansion, livestock, scenery, flora, food, campfire, chance structures, telemetry, depth sorting and map painting. Loaded after js/screens.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   SCENERY CONFIG (CONFIG.SCENERY)
+//   MAP / PATH
+//   EXPANSION, ROUTE GROWTH AND RING REVEAL
+//   GROUND ITEM DRIFT AND SHOVEL
+//   LIVESTOCK, RANDOM EVENTS, BEES, TROLLS AND CIRCUS
+//   SCENERY: ROCKS, TREES AND FLORA
+//   ROUTE LENGTH AND BARRICADE PILE-UP
+//   SCENERY PLACEMENT AND ROAD-END GUARD
+//   FOOD, ITEM USE FEEDBACK AND STAT GAINS
+//   TREATS, STIMS, MEALS AND THE CONSUMABLE REGISTRY
+//   CAMPFIRE AND COOKING
+//   CHANCE STRUCTURES
+//   BIOMES AND SCENERY DRAWING
+//   LOOSE ENEMIES
+//   TELEMETRY AND ANALYTICS
+//   DEPTH SORT AND ACTOR DRAWING
+//   GROUND AND PATH PAINTING
+//   SPAWN AND FINISH FLAGS
+//   MAP BAKE AND BUILD PREVIEW
+//   ACTIVE BARRICADES
 /* =========================================================
-   ENVIRONMENT: SCENERY, FLORA AND CHANCE STRUCTURES
+   SCENERY CONFIG (CONFIG.SCENERY)
    ========================================================= */
 CONFIG.SCENERY = {
   coverage: 0.22,          // fraction of buildable (non-path) tiles scattered with scenery at game start
@@ -58,6 +79,9 @@ let ringRevealTimer = 0;
 let ringRevealTotalTiles = 0; // size of the CURRENT ring's queue at the moment it began — see driveRingReveal()
 const RING_REVEAL_INTERVAL_MS = 60;   // tick cadence for the reveal animation — how often another chunk unveils
 const RING_REVEAL_TARGET_MS = 1900;   // target total time to fully reveal a ring, whatever its size
+/* =========================================================
+   EXPANSION, ROUTE GROWTH AND RING REVEAL
+   ========================================================= */
 function expansionCost(){
   return Math.round(80 * Math.pow(1.6, paidExpansions));
 }
@@ -714,6 +738,9 @@ function useFreeExpansionPickup(groundItem, color){
     playSound('evolution');
   }, () => showToast('There is no room left to expand.'));
 }
+/* =========================================================
+   GROUND ITEM DRIFT AND SHOVEL
+   ========================================================= */
 function shovelDigPoint(tower){
   const range = Math.max(TILE_SIZE, tower.targetingRange || tower.range || TILE_SIZE);
   for(let attempt = 0; attempt < 12; attempt++){
@@ -861,6 +888,9 @@ function isInActiveRegion(gx, gy){
   if(bonusGrassTiles.has(key)) return true;
   return nearPathTileSet.has(key) && !pendingRevealTileKeys.has(key);
 }
+/* =========================================================
+   LIVESTOCK, RANDOM EVENTS, BEES, TROLLS AND CIRCUS
+   ========================================================= */
 const CLOWN_ATTACK_RADIUS = 40, CLOWN_ATTACK_INTERVAL_MS = 1100, CLOWN_ATTACK_DAMAGE = 4, CLOWN_AGGRO_RADIUS = 260, CLOWN_HUNT_SPEED_MULT = 1.5;
 const LIVESTOCK_ADULT_ROUNDS = 7, LIVESTOCK_BABY_SIZE_FRACTION = 0.3; // ANIMAL-GROWTH-01 (1.7.137)
 function livestockAdultRounds(animal){ return animal.type === 'CHICKEN' ? 6 : LIVESTOCK_ADULT_ROUNDS; }
@@ -1215,7 +1245,7 @@ function drawPendingRingReveal(ctx){
   ctx.restore();
 }
 /* =========================================================
-   SCENERY (rocks & trees
+   SCENERY: ROCKS, TREES AND FLORA
    ========================================================= */
 const sceneryMap = new Map(); // "gx,gy" -> scenery object
 // CA107 — see HISTORY.md § [1.5.7] Code Archaeology, CA107
@@ -1262,6 +1292,9 @@ function findTouchingBarricade(e){
   }
   return null;
 }
+/* =========================================================
+   ROUTE LENGTH AND BARRICADE PILE-UP
+   ========================================================= */
 // CA111 — see HISTORY.md § [1.5.7] Code Archaeology, CA111
 let routeCumulativeLengths = [], routeCacheWaypointsRef = null;
 function ensureRouteLengthCache(){
@@ -1492,6 +1525,9 @@ function spawnDebrisNear(x, y){
   });
   invalidateSpawnFlags();
 }
+/* =========================================================
+   SCENERY PLACEMENT AND ROAD-END GUARD
+   ========================================================= */
 // END-SCENERY-01 (1.6.85) — see HISTORY.md § [1.6.85]. Trees and rocks spawn more often, and
 // larger, near the spawn flags and the finish line, tapering to normal over END_SCENERY_RADIUS_TILES
 // route tiles. The goal is to visually nudge building toward the middle of the road, leaving both
@@ -2176,6 +2212,9 @@ function updateScenery(dt){
     }
   }
 }
+/* =========================================================
+   FOOD, ITEM USE FEEDBACK AND STAT GAINS
+   ========================================================= */
 // FOOD-DROPS-01 (1.6.82) — see HISTORY.md § [1.6.82]. Food items are a second, independent drop
 // pool alongside equipment items (see Items and drops). They never sit in an inventory slot: touching
 // or dragging one onto anything applies its effect immediately and removes it. Fruit grants tower XP,
@@ -2377,6 +2416,9 @@ function applyFoodItem(foodDef, nearTower){
   const parts = [foodStatText,foodXp > 0 ? 'XP +' + foodXp : ''].filter(Boolean);
   showItemUseFeedback(foodDef,nearTower,'HEAL',0,parts); // no numeric healing/lives readout
 }
+/* =========================================================
+   TREATS, STIMS, MEALS AND THE CONSUMABLE REGISTRY
+   ========================================================= */
 // ---------------- Boss Treats: guaranteed combo drop on every boss/Santa kill ----------------
 const TREAT_ROWS = [
   ['COOKIE', 'Holiday Cookie', '🍪', 10, 40, 15], ['CUPCAKE', 'Gourmet Cupcake', '🧁', 8, 50, 0],
@@ -2778,7 +2820,7 @@ function drawCampfire(ctx, item, size){
   ctx.fillText(fuelLabel, item.x, item.y + size*0.5 + 10);
 }
 /* =========================================================
-   SCENERY (continued): chance structures
+   CHANCE STRUCTURES
    ========================================================= */
 // Returns true when the structure is used up (and should disappear), false when it stays.
 function useChanceStructure(item){
@@ -2822,6 +2864,9 @@ function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the
 function sceneryVisualSize(item){
   return TILE_SIZE*0.72*(item.type==='MUSHROOMS' ? Math.min(CONFIG.SCENERY.maxScale,item.scale || CONFIG.SCENERY.minScale) : item.type==='BIRD_NEST' ? Math.min(0.22,item.scale || 0.22) : item.type==='PICNIC' ? FIXED_SCENERY_SCALE.PICNIC : item.type==='CHEST' ? FIXED_SCENERY_SCALE.CHEST : item.type==='SUPPLY_CRATE' ? Math.min(0.68,item.scale) : (item.type==='BRANCH' || item.type==='STUMP') ? Math.min(LOG_MAX_SCALE,item.scale) : item.scale); // LOG-SIZE-01
 }
+/* =========================================================
+   BIOMES AND SCENERY DRAWING
+   ========================================================= */
 // Tree kinds: a leafy tree (58%), an evergreen (30%) and a palm (12%). Saved scenery keeps its kind because it is stored with the item.
 const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
 // BIOMES-01 (1.7.66): owner rule — the other tree kinds and grass colours only appear after a very long road. Near the start every tile is meadow with leafy trees; from
@@ -3037,6 +3082,9 @@ function drawClearingHourglass(ctx, item, size){
   drawEmojiSprite(ctx, '⌛', Math.max(20, Math.min(26, size*0.4)));
   ctx.restore();
 }
+/* =========================================================
+   LOOSE ENEMIES
+   ========================================================= */
 // LOOSE-DRAIN-01 / LOOSE-CONFINE-01 (1.6.77) — see HISTORY.md § [1.6.77]
 const DOWNED_TOWER_SKIN_MAIN = '#9b9b9b';
 const DOWNED_TOWER_SKIN_SHADE = '#7a7a7a';
@@ -3093,6 +3141,9 @@ function confineLooseEnemyToRoute(enemy, previousX, previousY){
   enemy.wanderVx = -enemy.wanderVx; enemy.wanderVy = -enemy.wanderVy;
   return true;
 }
+/* =========================================================
+   TELEMETRY AND ANALYTICS
+   ========================================================= */
 // TELEMETRY-01 (1.6.79) — see HISTORY.md § [1.6.79]
 const TELEMETRY_EVENTS = {
   game_started: ['device', 'viewport', 'first_visit', 'loaded_save'],
@@ -3325,6 +3376,9 @@ function reportSessionSummary(reason = 'game_over', snapshot = null){
   sessionTelemetry.activeSince = null;
   sessionTelemetry.startedAtMs = 0;
 }
+/* =========================================================
+   DEPTH SORT AND ACTOR DRAWING
+   ========================================================= */
 // CA145 — see HISTORY.md § [1.5.7] Code Archaeology, CA145
 const depthSortPool = [];
 const depthSortItems = [];
@@ -3489,6 +3543,9 @@ function computeFinishLine(){
   const upperPolePoint = pA.y >= pB.y ? pB : pA;
   return { edgeX, edgeY, ux, uy, lowerPolePoint, upperPolePoint };
 }
+/* =========================================================
+   GROUND AND PATH PAINTING
+   ========================================================= */
 // GROUND-DETAIL-01 (1.6.72) — see HISTORY.md § [1.6.72]
 const PATH_PEBBLE_TILE_CHANCE = 0.55;
 const PATH_PEBBLE_MIN_COUNT = 1;
@@ -3685,6 +3742,9 @@ function paintNewRingTiles(ctx, oldRegion, newRegion){
     }
   }
 }
+/* =========================================================
+   SPAWN AND FINISH FLAGS
+   ========================================================= */
 // CA156 — see HISTORY.md § [1.5.7] Code Archaeology, CA156
 let spawnFlagsCache = null;
 let spawnFlagsDirty = true;
@@ -3888,6 +3948,9 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   ctx.stroke();
   ctx.restore();
 }
+/* =========================================================
+   MAP BAKE AND BUILD PREVIEW
+   ========================================================= */
 function drawOuterWastelandTrees(ctx){
   // A few fixed, low-contrast dead-tree silhouettes give the dirt margins an intentional RPG-world frame.
   // Their tile hash keeps placement stable across map rebakes and they are painted into the cached map layer.
@@ -4021,7 +4084,7 @@ function drawBuildPreview(ctx){
   ctx.restore();
 }
 /* =========================================================
-   ENTITY CLASSES: PROJECTILE
+   ACTIVE BARRICADES
    ========================================================= */
 // CA473 — see HISTORY.md § [1.5.7] Code Archaeology, CA473
 const activeBarricades = new Set();

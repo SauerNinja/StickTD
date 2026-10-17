@@ -1,5 +1,12 @@
 "use strict";
 // Blood, decals, forensic spatter, particles and gibs. Loaded after js/config.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   BLOOD, DECALS AND FORENSIC SPATTER
+//   PARTICLES, MIST AND GIBS
+//   FLOATING TEXT
+//   COINS AND AMBIENT LOGS
+//   HUD FLIGHTS (hearts and gold)
+//   COIN COLLECTION, GOLD BAGS AND PICKUP DRAWING
 /* =========================================================
    BLOOD, DECALS AND FORENSIC SPATTER
    ========================================================= */
@@ -1537,7 +1544,7 @@ function drawForensicDroplets(ctx){
   }
 }
 /* =========================================================
-   ENTITY CLASSES (continued): particles and gibs
+   PARTICLES, MIST AND GIBS
    ========================================================= */
 function spawnExpiratedMist(x, y){
   // CA555 — see HISTORY.md § [1.5.7] Code Archaeology, CA555
@@ -1631,6 +1638,9 @@ function drawParticles(ctx){
   }
   ctx.globalAlpha = 1;
 }
+/* =========================================================
+   FLOATING TEXT
+   ========================================================= */
 const PARTICLE_COUNT = 300, TEXT_COUNT = 100;
 const floatingTexts = Array.from({length: TEXT_COUNT}, () => ({active:false,x:0,y:0,text:'',color:'#fff',life:0,maxLife:0}));
 let textIndex = 0;
@@ -1668,6 +1678,9 @@ function updateFloatingTexts(frameMs){
     if(!t.isIcon) t.y -= 22*frameMs/1000; // plain combat text drifts upward; icons stay put and animate in place instead
   }
 }
+/* =========================================================
+   COINS AND AMBIENT LOGS
+   ========================================================= */
 // CA561 — see HISTORY.md § [1.5.7] Code Archaeology, CA561
 const COIN_COUNT = 96;
 const coinPickups = Array.from({length: COIN_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,value:0,age:0,lifespan:0,z:0,vz:0,airborne:false,flightMs:0}));
@@ -1760,6 +1773,9 @@ function restoreLooseCoins(savedCoins){
     c.lifespan=saved.lifespan; c.vx=0; c.vy=0; c.active=true;
   }
 }
+/* =========================================================
+   HUD FLIGHTS (hearts and gold)
+   ========================================================= */
 // HEART-FLIGHT-01 (1.7.36): hearts rise from a Healing Fountain and fly up to the lives counter so the heal is obvious.
 const heartHudFlights = Array.from({length:12},()=>({active:false}));
 let heartHudFlightCount = 0;
@@ -1850,6 +1866,9 @@ function drawGoldHudFlights(ctx){
   }
   ctx.restore();
 }
+/* =========================================================
+   COIN COLLECTION, GOLD BAGS AND PICKUP DRAWING
+   ========================================================= */
 // GOLD-FLIGHT-CLICK-01 (1.7.36): coins fly up to the gold counter only when the player clicks a coin or opens a bag.
 function creditCoin(c, textColor, withFlight){
   if(c.isDiamond){

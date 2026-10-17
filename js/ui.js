@@ -1,8 +1,12 @@
 "use strict";
 // Canvas and input setup, HUD, menus, shop, the inspect panel and the pause, speed and zoom controls. Loaded after js/loop.js.
-/* =========================================================
-   UI: INPUT, HUD, MENUS AND SHOP
-   ========================================================= */
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   CANVAS / INPUT SETUP
+//   UI WIRING
+//   BUILD MENU, HACK MENU AND SHOP
+//   INVENTORY SLOT DRAG AND GESTURES
+//   SETTINGS PANEL, RESET AND README
+//   INSPECT PANEL, PAUSE, SPEED AND ZOOM CONTROLS
 /* =========================================================
    CANVAS / INPUT SETUP
    ========================================================= */
@@ -765,6 +769,9 @@ function updateHUDImmediate(){
   if(towerModalEl && !towerModalEl.classList.contains('hidden')) buildTowerModal();
   fitHudTopToOneLine(); // guarded internally — only re-measures when the available layout changes
 }
+/* =========================================================
+   BUILD MENU, HACK MENU AND SHOP
+   ========================================================= */
 function refreshTrayUI(){
   const buildBtn = document.getElementById('buildBtn');
   buildBtn.classList.toggle('selected', !!selectedBuildType);
@@ -1386,6 +1393,9 @@ document.getElementById('shopModalClose').addEventListener('pointerdown', (e) =>
 document.getElementById('shop-modal').addEventListener('pointerdown', (e) => {
   if(e.target.id === 'shop-modal') closeShopModal();
 });
+/* =========================================================
+   INVENTORY SLOT DRAG AND GESTURES
+   ========================================================= */
 let pendingSlotPress = null;
 const SLOT_DRAG_THRESHOLD_PX = 8;
 function beginSlotItemDrag(sourceTower, idx, e, expectedItem){
@@ -1491,6 +1501,9 @@ document.getElementById('barricade-help-modal-close').addEventListener('pointerd
 document.getElementById('barricade-help-modal').addEventListener('pointerdown', (e) => {
   if(e.target.id === 'barricade-help-modal'){ document.getElementById('barricade-help-modal').classList.add('hidden'); playSound('ui_close'); }
 });
+/* =========================================================
+   SETTINGS PANEL, RESET AND README
+   ========================================================= */
 // CA768 — see HISTORY.md § [1.5.7] Code Archaeology, CA768
 function renderTowerTelemetry(){
   const host = document.getElementById('towerTelemetry');

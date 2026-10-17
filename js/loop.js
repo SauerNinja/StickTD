@@ -1,5 +1,17 @@
 "use strict";
 // Spatial hash, enemy collisions, the fixed-timestep main loop, update and render, diagnostics frames, the attract screen and the merchant caravan. Loaded after js/stickman.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   SPATIAL HASH
+//   MAIN LOOP: FIXED TIMESTEP AND UPDATE
+//   TARGET FRAME, RANGE RING AND GROUND GLOW
+//   RENDER
+//   DEBUG OVERLAY, FPS COUNTER, COUNTDOWN AND BOSS COMPASS
+//   PERFORMANCE DIAGNOSTICS
+//   ATTRACT SCREEN
+//   FIELD MUSIC SCAN AND MERCHANT CARAVAN
+//   PRESENTATION EFFECTS AND THE FRAME LOOP
+//   GEOMETRY HELPERS
+//   PARTICLE POOL
 /* =========================================================
    SPATIAL HASH
    ========================================================= */
@@ -340,7 +352,7 @@ function randomActiveEnemy(nearby){
   return null;
 }
 /* =========================================================
-   MAIN LOOP (fixed timestep)
+   MAIN LOOP: FIXED TIMESTEP AND UPDATE
    ========================================================= */
 const FIXED_DT = 1000/60;
 function renderLeftoverMs(){ return gameState === 'PLAYING' ? Math.min(accumulator, FIXED_DT) : 0; } // SMOOTH-ANIM-01: the part of the next tick that has already elapsed
@@ -566,6 +578,9 @@ function update(dt){
   }
   phaseTime.waveLogic += performance.now() - __pt;
 }
+/* =========================================================
+   TARGET FRAME, RANGE RING AND GROUND GLOW
+   ========================================================= */
 const inspTargetFrame = document.getElementById('inspTargetFrame');
 const targetPortraitFace = document.getElementById('targetPortraitFace');
 const targetName = document.getElementById('targetName');
@@ -738,6 +753,9 @@ function groundItemGlowSprite(hue, radius, saturation = 100){
   groundItemGlowSprites.set(key, sprite);
   return sprite;
 }
+/* =========================================================
+   RENDER
+   ========================================================= */
 function render(ctx){
   updateTargetFrame();
   updateCameraFollow();
@@ -884,6 +902,9 @@ function render(ctx){
   if(debugOverlay) drawDebugOverlay(ctx);
   renderPhaseTime.overlays += performance.now() - __rpt;
 }
+/* =========================================================
+   DEBUG OVERLAY, FPS COUNTER, COUNTDOWN AND BOSS COMPASS
+   ========================================================= */
 // Debug mode readout — everything worth seeing in a screenshot or a recorded clip.
 function countActive(pool){ let n = 0; for(const item of pool) if(item.active) n++; return n; }
 const debugOverlayCanvasElement = document.getElementById('gameCanvas');
@@ -1155,6 +1176,9 @@ function drawBossCompass(ctx){
   ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText('👔', arrowX - Math.cos(angle)*18, arrowY - Math.sin(angle)*18);
 }
+/* =========================================================
+   PERFORMANCE DIAGNOSTICS
+   ========================================================= */
 // CA676 — see HISTORY.md § [1.5.7] Code Archaeology, CA676
 const speedWindow = { simMs: 0, wallMs: 0 };
 // DOWNING-CAPTURE-01 (1.7.51): the death spike is only visible in the frames just before and after a stickman goes down, and the normal history holds about two seconds. A ring of the last 600
@@ -1613,6 +1637,9 @@ window.addEventListener('unhandledrejection', event => {
   const message = reason && reason.message ? reason.name ? reason.name + ': ' + reason.message : reason.message : String(reason || 'unhandled promise rejection');
   recordRuntimeError('unhandled-rejection', message, '', 0, 0, reason && reason.stack);
 });
+/* =========================================================
+   ATTRACT SCREEN
+   ========================================================= */
 // CA688 — see HISTORY.md § [1.5.7] Code Archaeology, CA688
 const ATTRACT_FORMATION = [
   { xf: 0.50, yf: 0.32, element: 'FIRE' },     // top-center archer
@@ -2088,6 +2115,9 @@ function renderAttractMode(ctx, now){
   ctx.restore();
   ctx.restore();
 }
+/* =========================================================
+   FIELD MUSIC SCAN AND MERCHANT CARAVAN
+   ========================================================= */
 function scanFieldForMusic(){
   let boss = false, enemies = 0;
   for(const enemy of enemyPool){
@@ -2258,6 +2288,9 @@ function sellToCaravan(resource, requestedAmount){
   updateHUD();
   return true;
 }
+/* =========================================================
+   PRESENTATION EFFECTS AND THE FRAME LOOP
+   ========================================================= */
 function updatePresentationEffects(frameMs){
   updateCampfireCooking(frameMs);
   updateCaravan(frameMs);
@@ -2476,7 +2509,7 @@ function loop(now){
   recordPerfTrendFrame(now, rawWallGapMs);
 }
 /* =========================================================
-   ENTITY CLASSES: TOWER
+   GEOMETRY HELPERS
    ========================================================= */
 // CA455 — see HISTORY.md § [1.5.7] Code Archaeology, CA455
 function pointSegmentDist2(px,py, ax,ay, bx,by){
@@ -2490,7 +2523,7 @@ function pointSegmentDist2(px,py, ax,ay, bx,by){
   return dx*dx+dy*dy;
 }
 /* =========================================================
-   ENTITY CLASSES: PROJECTILE
+   PARTICLE POOL
    ========================================================= */
 /* Lightweight pooled particles & floating text (rolling-index reuse, no allocation in loop) */
 const particles = Array.from({length: PARTICLE_COUNT}, () => ({active:false,x:0,y:0,vx:0,vy:0,life:0,maxLife:0,color:'#fff',size:2,friction:0.93,pooled:false}));

@@ -1,5 +1,21 @@
 "use strict";
-
+// Settings and balance numbers, object pools, game state, toasts, medals, saves and the camera. Loaded after js/audio.js.
+// Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
+//   CONFIG
+//   OBJECT POOLS
+//   ECONOMY: GOLD, WOOD, MARKET AND BUILD COSTS
+//   SETTINGS, CLOCKS, WIND AND PREFERENCES
+//   RUN STATE, GROUND ITEMS AND LOOT
+//   ITEM DRAG, SELECTION AND MARKED TARGET
+//   NOTIFICATIONS, ACTS AND MEDALS
+//   TOWER UNLOCKS, MOVES AND TOASTS
+//   CLERIC HEALING AND KILLSTREAKS
+//   ELEMENTS, ATTUNEMENT AND CHAIN LIGHTNING
+//   STAT NOTES, DPS BREAKDOWN AND CHANGELOG NOTICE
+//   EXPERIENCE, LEVELS AND PROMOTIONS
+//   STICKMAN BARKS
+//   AUTO-SPEND AND SAVE FILES
+//   CAMERA (zoom + pan)
 /* =========================================================
    FILE MAP — index.html loads these files in this order (MODULE-FILES-01, AUDIO-SPLIT-01, FILE-SPLIT-01)
      audio        the Web Audio sound engine, synthesized sound effects and the adaptive music score
@@ -25,7 +41,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.47'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.48'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 const GAME_SCRIPT_ORDER = ['audio', 'config', 'effects', 'stickman', 'loop', 'ui', 'diagnostics', 'screens', 'environment', 'towers', 'waves']; // FILE-SPLIT-01: the file map above, as data for the design contract
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
@@ -1323,7 +1339,7 @@ function acquireActive(pool){
   return null;
 }
 /* =========================================================
-   GAME STATE
+   ECONOMY: GOLD, WOOD, MARKET AND BUILD COSTS
    ========================================================= */
 let gold = 150, lives = 100;
 // GOLD-SINKS-01 (1.7.49): owner asked for more places to sink gold. Three new Shop sections: a Market of rations (+2 STR, INT or DEX for the selected stickman, eaten at once, the price
@@ -1420,6 +1436,9 @@ function canAffordTower(type){
   }
   return gold >= currentBuildCost(type);
 }
+/* =========================================================
+   SETTINGS, CLOCKS, WIND AND PREFERENCES
+   ========================================================= */
 function initialGraphicsQuality(environment){
   if(environment.softwareRendering !== false) return 'low';
   return /nvidia|geforce|quadro|radeon|\bamd\b|\bintel\b|apple|adreno|mali|powervr|vivante|tegra/i.test(environment.gpuRenderer) ? 'high' : 'low';
@@ -1640,6 +1659,9 @@ function syncPrefsToDOM(){
   sel.addEventListener('change', applyFromControls);
   customInput.addEventListener('input', applyFromControls);
 })();
+/* =========================================================
+   RUN STATE, GROUND ITEMS AND LOOT
+   ========================================================= */
 let waveIndex = 0;          // number of waves started
 let freeExpansionOwed = 0; // CLEAN-WAVE-EXPAND-01 (1.7.135): earned only when no escaped enemies remain at wave end; missed bonuses are never queued
 // EXPAND-PER-WAVE-01 (1.7.75): owner decision, replacing EXPAND-AFTER-CLEAR-01 (every enemy defeated first) and UNLIMITED-EXPANSION-01. EXPAND-MID-WAVE-01 (1.7.126): owner decision, expanding is also allowed while a wave is in progress (the route extension already shifts every live enemy's path index); it never needs an empty field, so a loose enemy no longer blocks it. The player may buy ONE expansion per wave (PAID_EXPANSIONS_PER_WAVE), and a wave ending with no escaped enemies still alive gives its own free one.
@@ -1909,6 +1931,9 @@ function closeItemGuide(){
   if(itemGuidePausedGame){ itemGuidePausedGame = false; resumeGame(); }
   playSound('ui_close');
 }
+/* =========================================================
+   ITEM DRAG, SELECTION AND MARKED TARGET
+   ========================================================= */
 let draggingGroundItem = null; // the ground item currently being dragged, or null
 let dragItemPos = { x:0, y:0 }; // current world-space position of the item while dragging, for rendering it under the cursor
 // ITEM-MOVE-01 (1.6.104) — see HISTORY.md § [1.6.104]. A dragged ground item can be set down anywhere on the map,
@@ -2021,6 +2046,9 @@ function drawMarkedTargetIcon(ctx){
   ctx.drawImage(sprite,enemy.pinCenterDeviceX-tipX,Math.floor(enemy.pinTopDeviceY)+dprValue*PIN_TIP_SINK_CSS_PX-tipY,sprite.side*scale,sprite.side*scale);
   ctx.restore();
 }
+/* =========================================================
+   NOTIFICATIONS, ACTS AND MEDALS
+   ========================================================= */
 let hoverCell = null; // {gx,gy} - for build-placement snap preview and move-mode snap preview
 let hoveredSceneryKey = null; // "gx,gy" of scenery currently hovered/touched — shows its clear price
 let wavesCompleted = 0;
@@ -2265,6 +2293,9 @@ document.getElementById('notification-list').addEventListener('click', e => {
   if(!entry) return;
   openNotificationEntry(entry.id);
 });
+/* =========================================================
+   TOWER UNLOCKS, MOVES AND TOASTS
+   ========================================================= */
 // MOVE-PER-STICKMAN-01 (1.7.127): free relocations belong to each stickman (`tower.moveCharges`), not to the whole team. Each starts with one and gains one per promotion, per boss kill it lands and per pair of Running Shoes at the start of every round, up to MAX_MOVE_CHARGES.
 const MAX_MOVE_CHARGES = 3;
 function grantTowerMove(tower, reason){
@@ -2381,6 +2412,9 @@ function showWaveSummary(waveNum, goldGained, towerReports){
     if(pendingToastMessages.length){ const next = pendingToastMessages.shift(); showToast(next.message, null, null, next.notificationId); }
   }, 4500);
 }
+/* =========================================================
+   CLERIC HEALING AND KILLSTREAKS
+   ========================================================= */
 // CA227 — see HISTORY.md § [1.5.7] Code Archaeology, CA227
 function processClericHealing(){
   const clerics = towerPool.filter(t => t.active && (t.type === 'CLERIC' || t.type === 'POPE'));
@@ -2441,6 +2475,9 @@ function showKillstreakBanner(label){
   showKillstreakBanner._t = setTimeout(() => el.classList.remove('show'), 2200);
   playSound('wave');
 }
+/* =========================================================
+   ELEMENTS, ATTUNEMENT AND CHAIN LIGHTNING
+   ========================================================= */
 // CA229 — see HISTORY.md § [1.5.7] Code Archaeology, CA229
 const NAMING_HINT_FROM = 450, MASTERY_HINT_FROM = 900;
 // CA230 — see HISTORY.md § [1.5.7] Code Archaeology, CA230
@@ -2569,6 +2606,9 @@ function applyAttunementStatus(tower, enemy){
   const parts = ELEMENT_COMPONENTS[element] || [element];
   for(let i = 0; i < parts.length; i++) applyElementComponent(tower, enemy, parts[i], labelY - i*12);
 }
+/* =========================================================
+   STAT NOTES, DPS BREAKDOWN AND CHANGELOG NOTICE
+   ========================================================= */
 function statTierNote(tower){
   // CA232 — see HISTORY.md § [1.5.7] Code Archaeology, CA232
   return '';
@@ -2723,6 +2763,9 @@ function renderSettingsChangelog(){
     appendChangelogLink(root);
   });
 }
+/* =========================================================
+   EXPERIENCE, LEVELS AND PROMOTIONS
+   ========================================================= */
 // CA238 — see HISTORY.md § [1.5.7] Code Archaeology, CA238
 const STAT_TIER_STEP = 100;
 // CA239 — see HISTORY.md § [1.5.7] Code Archaeology, CA239
@@ -2904,6 +2947,9 @@ function generateSaveSeed(){
   for(let i=0; i<6; i++) s += chars[Math.floor(Math.random()*chars.length)];
   return s;
 }
+/* =========================================================
+   STICKMAN BARKS
+   ========================================================= */
 // CA248 — see HISTORY.md § [1.5.7] Code Archaeology, CA248
 // STICKMAN-BARKS-01 (1.6.110) — see HISTORY.md § [1.6.110]
 const BARK_MAX_ACTIVE = 2, BARK_COOLDOWN_MS = 6000, BARK_LIFE_MS = 2200, BARK_FADE_MS = 400, BARK_CLUSTER_RADIUS = 160, BARK_OPTIONAL_QUIET_MS = 3000;
@@ -2995,6 +3041,9 @@ function barkFromRandomTower(tier, emoji, lines, chance){
   }
   if(pick) requestStickmanBark(pick, tier, emoji, lines, 0, chance);
 }
+/* =========================================================
+   AUTO-SPEND AND SAVE FILES
+   ========================================================= */
 // AUTO-SPEND-01 (1.6.110) — see HISTORY.md § [1.6.110]
 const AUTO_SPEND_ORDER = { WARRIOR: ['str','dex','int'], ARCHER: ['dex','str','int'], MAGE: ['int','dex','str'] };
 function autoSpendStatPoints(tower){
