@@ -98,7 +98,12 @@ const ENEMY_SPAWN_GAP_MS = 5000;
 const OPENING_SPAWN_GAP_MS = 2500, OPENING_PACE_LAST_WAVE = 2, WAVE_ONE_MAX_ON_ROUTE = 2;
 const SAVE_TIP_WAVE = 3;
 const WAVE_ONE_HP_SCALE = 0.6; // FIRST-KILLS-01 (1.8.44): wave-1 units fall in two or three hits, as the genre's first enemies do
-function spawnGapForWave(waveNumber){ return waveNumber <= OPENING_PACE_LAST_WAVE ? OPENING_SPAWN_GAP_MS : ENEMY_SPAWN_GAP_MS; }
+// OPENING-FLOW-01 (1.8.64): waves 3-10 send units 1.5 s apart so a new player's first 15 minutes reach about wave 5 instead of wave 3; walk speed is unchanged (ENEMY-PACE-01)
+const OPENING_FLOW_SPAWN_GAP_MS = 1500, OPENING_FLOW_LAST_WAVE = 10;
+function spawnGapForWave(waveNumber){
+  if(waveNumber <= OPENING_PACE_LAST_WAVE) return OPENING_SPAWN_GAP_MS;
+  return waveNumber <= OPENING_FLOW_LAST_WAVE ? OPENING_FLOW_SPAWN_GAP_MS : ENEMY_SPAWN_GAP_MS;
+}
 const ENEMY_SIGNATURE_DROPS = { GRUNT: 'GRUNT_HEADBAND', SWARM: 'ANT_JAW', TANK: 'GRANITE_HEART', RUNNER: 'SHADOW_SASH', BOSS: 'FIEND_HORN', SANTA: 'HOLIDAY_STOCKING', COOKIE: 'FORTUNE_SLIP', CHESS: 'KNIGHT_PAWN', TROLL: 'BRIDGE_TOLL', FIRE: 'EMBER_CORE', ICE: 'FROST_SHARD', SPLITTER: 'SPORE_FLASK', HEALER: 'MENDERS_PIN', SHIELDED: 'FIELD_HELMET', ZOMBIE: 'GRAVE_CHARM', WRAITH: 'SPECTRAL_VEIL', SKELETON: 'BONE_WHISTLE', WOLF: 'WOLF_FANG', REAPER: 'MIDNIGHT_CHARM', BOULDER: 'GEODE', MONARCH: 'BUTTERFLY_WING' };
 function enemyDropTier(enemy){
   if(enemy.type === 'BOSS' || enemy.type === 'SANTA') return 'BOSS';
@@ -193,7 +198,7 @@ const enemyDeathTiming = { count:0, totalMs:0, maxMs:0, over8ms:0 };
 function tinyGruntEvasion(enemy){ return enemy && enemy.type === 'GRUNT' && enemy.sizeTier === 'TINY' ? 0.15 : 0; }
 function attackMissChance(base, enemy){ return clampNum((base || 0) + tinyGruntEvasion(enemy), 0, 1); }
 function rollDirectAttackMiss(tower, enemy){
-  if(Math.random() >= attackMissChance(tower ? tower.missChance : 0, enemy)) return false;
+  if(!prdRollFires(attackMissChance(tower ? tower.missChance : 0, enemy), tower, 'missLuckBalance')) return false;
   spawnFloatingText(enemy.x, enemy.y - enemy.radius - 6, 'MISS', '#aaaaaa');
   if(tower && tower.telemetry) tower.telemetry.misses++;
   return true;
@@ -237,8 +242,11 @@ function bossCountForWave(waveNumber){
 function expectedRouteLengthForWave(waveNumber){ return 4 + 2*waveNumber; }
 function routeLengthFactor(waveNumber){
   const length = (typeof pathWaypointTiles !== 'undefined' && pathWaypointTiles) ? pathWaypointTiles.length : 0;
-  return Math.max(1, Math.min(2.5, length / expectedRouteLengthForWave(waveNumber)));
+  return Math.max(1, Math.min(routeLengthFactorCap(waveNumber), length / expectedRouteLengthForWave(waveNumber)));
 }
+// OPENING-CROWD-CAP-01 (1.8.65): the long-road crowd bonus ramps in over the first ten waves (1.5 at wave 2 up to the usual 2.5 at wave 10), so early waves on an expanded map last minutes, not a quarter hour
+const ROUTE_FACTOR_MAX = 2.5, OPENING_ROUTE_FACTOR_BASE = 1.25, OPENING_ROUTE_FACTOR_PER_WAVE = 0.125;
+function routeLengthFactorCap(waveNumber){ return Math.min(ROUTE_FACTOR_MAX, OPENING_ROUTE_FACTOR_BASE + OPENING_ROUTE_FACTOR_PER_WAVE * waveNumber); }
 function scaledPopulation(population, waveNumber){
   const factor = routeLengthFactor(waveNumber);
   if(factor <= 1.0001) return population;
@@ -306,10 +314,12 @@ function advanceWaveDispatch(dt){
     if(waveDispatch.unitGapRemainingMs > 0){ waveDispatch.unitGapRemainingMs -= dt; return; }
   } else if(isLastBatchOfPhase){
     if(waveRouteObligationsOutstanding()) return;
-  } else if(!currentBatchReleased()){
+  } else if(!currentBatchReleased() && waveDispatch.releaseHoldMs < BATCH_RELEASE_MAX_HOLD_MS){
+    waveDispatch.releaseHoldMs += dt;
     return;
   }
   if(waveDispatch.gapRemainingMs > 0){ waveDispatch.gapRemainingMs -= dt; return; }
+  waveDispatch.releaseHoldMs = 0;
   waveDispatch.resolvedUnits += batch.units.length;
   waveDispatch.unitIndex = 0;
   waveDispatch.batchEnemies.length = 0; waveDispatch.batchSerials.length = 0;
@@ -336,8 +346,26 @@ function countLooseEnemies(){
 /* =========================================================
    WAVE START
    ========================================================= */
+// EARLY-CALL-01 (1.8.62): calling the next wave soon after clearing one pays bonus gold, falling to nothing over EARLY_CALL_WINDOW_MS of game time
+// (paused time does not count), after Kingdom Rush's early call. Waiting is never punished; calling early is rewarded. Not paid before the first wave.
+const EARLY_CALL_WINDOW_MS = 20000, EARLY_CALL_BASE_GOLD = 8, EARLY_CALL_GOLD_PER_WAVE = 1.5;
+let waveClearedAtGameTime = -Infinity;
+function earlyCallBonusNow(){
+  if(wavesCompleted <= 0 || !Number.isFinite(waveClearedAtGameTime)) return 0;
+  const remaining = Math.max(0, EARLY_CALL_WINDOW_MS - (gameTime - waveClearedAtGameTime));
+  return Math.round((EARLY_CALL_BASE_GOLD + EARLY_CALL_GOLD_PER_WAVE * wavesCompleted) * remaining / EARLY_CALL_WINDOW_MS);
+}
 function startNextWave(){
   if(waveState !== 'IDLE') return;
+  const earlyCallGold = earlyCallBonusNow();
+  waveClearedAtGameTime = -Infinity;
+  if(earlyCallGold > 0){
+    gold += earlyCallGold;
+    if(waypointsPx.length) spawnFloatingText(waypointsPx[0].x, waypointsPx[0].y - 46, '+💰' + earlyCallGold + ' early call', '#ffd54f', 1400);
+    playSound('coin');
+    trackGameEvent('early_call_bonus', { wave: waveIndex + 1, gold: earlyCallGold });
+    showFirstTimeNotice('first_early_call', '💰 Calling the next wave quickly after a clear pays bonus gold. The bonus shrinks to nothing over 20 seconds.');
+  }
   if(waveIndex === 0){ stealthRun=window.analyticsConsentChoice==='denied'; markFirstWaveStarted(); }
   // CA635 — see HISTORY.md § [1.5.7] Code Archaeology, CA635
   if(Math.random() < 0.02){
@@ -685,7 +713,8 @@ function spawnWanderingTroll(){
   troll.x = spot.x; troll.y = spot.y;
   troll.retargetTimer = 0; troll.livestockWalking = false; troll.trollAttackTimer = TROLL_ATTACK_INTERVAL_MS;
   troll.trollRoute = buildTrollEntranceRoute(spot);
-  startTrollCameraPan(troll);
+  if(trollArrivalsThisRun++ === 0) startTrollCameraPan(troll);
+  awardMedal('TROLL_SPOTTER'); // DISCOVERY-MEDALS-01 (1.8.55)
   playSound('troll_arrive', troll.x, undefined, troll.y);
   spawnFloatingText(troll.x, troll.y - troll.radius - 22, '🧌 Troll!', '#ffb74d');
   showFirstTimeNotice('first_troll', '🧌 A Wandering Troll has arrived. It hunts nearby stickmen, so keep it inside the range of your strongest towers. One arrives every fifth round.');
@@ -743,7 +772,7 @@ const EARLY_PREVIEW_BY_WAVE = Object.freeze({ 2: ['SWARM', 0.15], 3: ['SWARM', 0
 const EARLY_NO_RUSH_LAST_WAVE = 2;
 function earlyPreviewFamily(waveNumber){ return EARLY_PREVIEW_BY_WAVE[waveNumber] ? EARLY_PREVIEW_BY_WAVE[waveNumber][0] : null; }
 // ENEMY-EMOJI-VARIETY-01 (1.8.41): Grunts and Swarm pick one of several faces per unit from the wave seed, so a wave reads as a crowd, not clones.
-const ENEMY_EMOJI_VARIANTS = Object.freeze({ GRUNT: ['😡', '🤬'], SWARM: ['🐜', '🪲'] }); // GRUNT-RED-01 (1.8.43): Grunts stay red faces; yellow faces read as a different enemy
+const ENEMY_EMOJI_VARIANTS = Object.freeze({ SWARM: ['🐜', '🪲'] }); // GRUNT-ONE-FACE-01 (1.8.53): a Grunt is always 😡, like every other enemy keeps its one emoji
 const EARLY_WAVE_POPULATION = [
   null,
   { TINY:10 }, { TINY:18, SMALL:6 }, { TINY:36, SMALL:4 }, { TINY:45, SMALL:9, STANDARD:1 }, { TINY:54, SMALL:12, LARGE:8 },
@@ -776,9 +805,9 @@ let waveRunSeed = runSeedFor(0xA3);
 const ESCAPE_WALKBACK_MAX_TILES = 4, LOOSE_SETTLE_MIN_MS = 20000, LOOSE_SETTLE_SPREAD_MS = 10000; // LOOSE-SETTLE-01 (1.8.37)
 const LIVESTOCK_AVOID_MARGIN_PX = 26, LIVESTOCK_AVOID_STRENGTH = 2.2;
 let activeWavePlan = null;
-const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[] };
+const waveDispatch = { phaseIndex:0, batchIndex:0, unitIndex:0, unitGapRemainingMs:0, gapRemainingMs:0, resolvedUnits:0, batchEnemies:[], batchSerials:[], releaseHoldMs:0 };
 // CA626 — see HISTORY.md § [1.5.7] Code Archaeology, CA626
-const BATCH_RELEASE_SPACING_PX = 240;
+const BATCH_RELEASE_SPACING_PX = 240, BATCH_RELEASE_MAX_HOLD_MS = 6000; // RELEASE-HOLD-CAP-01 (1.8.64): a batch fighting a stickman at the entrance holds the next batch at most 6 s of game time, so a melee stickman near the spawn no longer freezes the wave
 // CA627 — see HISTORY.md § [1.5.7] Code Archaeology, CA627
 // A size phase clears before the next size phase enters.
 function routeLengthPx(){ return routeTotalLength(); }
@@ -932,7 +961,7 @@ function validateWavePlan(plan){
   if(Math.abs(plan.xpBudget - expectedXpBudget(plan.waveNumber)) > expectedXpBudget(plan.waveNumber) * 0.05) problems.push(where + ': XP budget outside ±5%');
   if(plan.waveNumber === 1){
     const tinyPhase = plan.phases[0];
-    if(!tinyPhase || tinyPhase.sizeTier !== 'TINY' || tinyPhase.totalUnits !== tierPopulationForWave(1).TINY || tinyPhase.batches.some(b => b.units.length !== 1)) problems.push('wave 1: must be sequential single Tiny batches, ten on a starting road and more on a longer one');
+    if(!tinyPhase || tinyPhase.sizeTier !== 'TINY' || tinyPhase.totalUnits !== tierPopulationForWave(1).TINY || tinyPhase.batches.some(b => b.units.length !== 1)) problems.push('wave 1: must be sequential single Tiny batches, 15 on a starting road (10 times ENEMY_COUNT_MULTIPLIER) and more on a longer one');
   }
   return problems;
 }
@@ -964,7 +993,7 @@ function routeObligationCount(){
 function resetWaveDispatch(){
   activeWavePlan = null;
   waveDispatch.phaseIndex = 0; waveDispatch.batchIndex = 0; waveDispatch.unitIndex = 0;
-  waveDispatch.gapRemainingMs = 0; waveDispatch.unitGapRemainingMs = 0; waveDispatch.resolvedUnits = 0;
+  waveDispatch.gapRemainingMs = 0; waveDispatch.unitGapRemainingMs = 0; waveDispatch.resolvedUnits = 0; waveDispatch.releaseHoldMs = 0;
   waveDispatch.batchEnemies.length = 0; waveDispatch.batchSerials.length = 0;
 }
 // CA630 — see HISTORY.md § [1.5.7] Code Archaeology, CA630
@@ -992,13 +1021,55 @@ function spawnWaveUnit(spec){
     roundEnemyFollow.enemy = e; roundEnemyFollow.serial = e.spawnSerial; roundEnemyFollow.lastClock = cameraPanClock;
   }
   if(e.type==='TROLL'){e.radius*=1.1;startTrollCameraPan(e);}
+  maybeMakeElite(e, spec);
   lastSpawnedEnemy = e;
   lastSpawnedSerial = e.spawnSerial;
   return true;
 }
+// ELITE-ENEMIES-01 (1.8.62): from wave 8 a few Small, Standard and Large enemies spawn as elites with one modifier, shown by a coloured patch on the ground
+// under them, the same colour everywhere so the colour teaches the counter (Diablo's palette-swapped monsters): blue Swift moves faster, gold Tough has double
+// health, red Fierce hits stickmen harder. Elites pay double bounty. The chance starts at 3% and grows a little each wave, up to 8%.
+const ELITE_FIRST_WAVE = 8, ELITE_BASE_CHANCE = 0.03, ELITE_CHANCE_PER_WAVE = 0.0005, ELITE_MAX_CHANCE = 0.08;
+const ELITE_KINDS = Object.freeze({
+  SWIFT: { label: 'Swift', color: '#4fc3f7' },
+  TOUGH: { label: 'Tough', color: '#ffca28' },
+  FIERCE: { label: 'Fierce', color: '#ff7043' }
+});
+const ELITE_KIND_IDS = Object.keys(ELITE_KINDS);
+function maybeMakeElite(enemy, spec){
+  if(waveIndex < ELITE_FIRST_WAVE || !['SMALL','STANDARD','LARGE'].includes(spec.sizeTier) || spec.family === 'SANTA' || spec.family === 'BOSS') return;
+  if(Math.random() >= Math.min(ELITE_MAX_CHANCE, ELITE_BASE_CHANCE + ELITE_CHANCE_PER_WAVE * (waveIndex - ELITE_FIRST_WAVE))) return;
+  const kind = ELITE_KIND_IDS[Math.floor(Math.random() * ELITE_KIND_IDS.length)];
+  enemy.eliteKind = kind;
+  if(kind === 'SWIFT') enemy.speed *= 1.35;
+  else if(kind === 'TOUGH'){ enemy.maxHp = Math.round(enemy.maxHp * 2); enemy.hp = enemy.maxHp; }
+  else enemy.breakDamage = Math.round((enemy.breakDamage || 0) * 1.6);
+  enemy.bounty = Math.round(enemy.bounty * 2);
+  spawnFloatingText(enemy.x, enemy.y - enemy.radius - 14, 'Elite: ' + ELITE_KINDS[kind].label, ELITE_KINDS[kind].color);
+  showFirstTimeNotice('first_elite', '⭐ Elite enemies stand on a coloured patch: blue is Swift, gold is Tough, red is Fierce. They pay double gold.');
+}
+function drawEliteGroundPatch(ctx, enemy){
+  ctx.save();
+  ctx.globalAlpha = 0.38;
+  ctx.fillStyle = ELITE_KINDS[enemy.eliteKind].color;
+  ctx.beginPath(); ctx.ellipse(enemy.x, enemy.y + enemy.radius * 0.72, enemy.radius * 1.15, enemy.radius * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+// ENEMY-STARTLE-01 (1.8.55): small enemies near an ally that dies give a short startled hop, a group reaction that reads as awareness (Diablo's Fallen, Isbister's enemy moments). Drawing only; movement and timing are unchanged.
+const ENEMY_STARTLE_MS = 320, ENEMY_STARTLE_RADIUS_PX = 46;
+function startleNearbyAllies(fallen){
+  for(const ally of enemyPool){
+    if(!ally.active || ally === fallen || ally.isLivestock || ally.isHutBuilding || (ally.sizeTier !== 'TINY' && ally.sizeTier !== 'SMALL')) continue;
+    if(Math.abs(ally.x - fallen.x) > ENEMY_STARTLE_RADIUS_PX || Math.abs(ally.y - fallen.y) > ENEMY_STARTLE_RADIUS_PX) continue;
+    if(Math.hypot(ally.x - fallen.x, ally.y - fallen.y) <= ENEMY_STARTLE_RADIUS_PX) ally.startledUntil = presentationTime + ENEMY_STARTLE_MS;
+  }
+}
+// OPENING-SPAWN-GAP-01 (1.8.69): slow walkers left the entrance only every ~3.3 s, the real limit on early wave length; waves up to OPENING_FLOW_LAST_WAVE keep an 8 px gap instead of 24
+const SPAWN_GAP_PX = 24, OPENING_SPAWN_GAP_PX = 8;
 function enemySpawnClearance(previousRadius, incomingRadius){
-  // +24px leaves a visible body-width gap after accounting for both enemy radii.
-  return previousRadius + incomingRadius + 24;
+  // The gap is a visible space between bodies after accounting for both enemy radii.
+  const gapPx = waveIndex <= OPENING_FLOW_LAST_WAVE ? OPENING_SPAWN_GAP_PX : SPAWN_GAP_PX;
+  return previousRadius + incomingRadius + gapPx;
 }
 /* =========================================================
    ENEMY CLASS
@@ -1062,6 +1133,8 @@ class Enemy{
     this.pinPaintedId=-1;this.pinTopDeviceY=undefined;
     this.type = type;
     this.emoji = def.emoji;
+    this.startledUntil = 0;
+    this.eliteKind = null;
     this.armor = def.armor;
     this.maxHp = Math.round(def.baseHp * hpMultiplier);
     this.hp = this.maxHp;
@@ -1997,7 +2070,7 @@ class Enemy{
     const damageVariance = (1 - effectiveVarianceHalfWidth) + Math.random()*(effectiveVarianceHalfWidth*2);
     let dmg = Math.max(1, Math.round(amount * damageVariance));
     // CA316 — see HISTORY.md § [1.5.7] Code Archaeology, CA316
-    const isCritical = Math.random() < (sourceTower ? sourceTower.critChance : 0.025);
+    const isCritical = sourceTower ? prdRollFires(sourceTower.critChance, sourceTower, 'critLuckBalance') : Math.random() < 0.025;
     if(isCritical) dmg = Math.round(dmg * (sourceTower ? sourceTower.critMult : 1.2));
     // CA797 — see HISTORY.md § [1.6.61] Cleric smite.
     // Cleric's direct smite opts into armor bypass. Keep it explicit so Paladin's holy swings
@@ -2204,6 +2277,7 @@ class Enemy{
   die(sourceTower, forStreak, bloodImpactAngle, bloodProfileKey){
     if(!this.active || this.deathResolved) return; // already fully dead — see the matching guard in applyDamage() for the main reason this matters
     recordUnitDeath('enemy',this.type,this.escaped ? 'escaped enemy defeated' : 'defeated');
+    if(!this.isLivestock && !this.isHutBuilding && !underHeavyVisualLoad) startleNearbyAllies(this);
     if(this.isLivestock && !LIVESTOCK_TYPES[this.type]) this.isLivestock = false; // LIVESTOCK-RECYCLE-01 safety net: a real enemy can never be treated as livestock
     if(this.isLivestock){
       this.active = false;
@@ -2517,6 +2591,7 @@ class Enemy{
       ctx.fillText('💀', this.x, markerY);
     }
     if(!enemyShadowsBatched) drawEmojiGroundShadow(ctx,this.emoji,this.x,this.y,this.radius*2,'serif',1); // ENEMY-SHADOW-BATCH-01
+    if(this.eliteKind) drawEliteGroundPatch(ctx, this);
     const speed = Math.hypot(this.vx, this.vy);
     let bumpDx = 0, bumpDy = 0, attackAnimating = false, attackPhaseNow = 0, attackLungeNow = 0, attackLeanSign = 1;
     const attackTarget = this.touchingBarricade ? findTouchingBarricade(this) : this.attackBumpTarget;
@@ -2553,7 +2628,9 @@ class Enemy{
     const strideDistance=Number.isFinite(this.renderPrevTraveled) && gameState==='PLAYING' ? this.renderPrevTraveled+(this.traveled-this.renderPrevTraveled)*Math.min(1,accumulator/FIXED_DT) : this.traveled;
     const strideAngle = strideDistance / Math.max(4, this.radius*ENEMY_STRIDE_LENGTH_PER_RADIUS) + this.id*1.3; // ENEMY-STRIDE-01 (1.6.124) — distance-driven, so a slower enemy steps slower but always visibly steps
     const strideLift = isStriding ? Math.abs(Math.sin(strideAngle)) : 0;
-    const walkBob = this.isLivestock ? 0 : -strideLift * this.radius * ENEMY_HOP_PER_RADIUS;
+    const startleLeft = this.startledUntil - presentationTime;
+    const startleHop = startleLeft > 0 ? Math.sin((1 - startleLeft / ENEMY_STARTLE_MS) * Math.PI) * this.radius * 0.35 : 0;
+    const walkBob = this.isLivestock ? 0 : -strideLift * this.radius * ENEMY_HOP_PER_RADIUS - startleHop;
     ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
     if(isStriding){
       const strideStretch = 1 + (strideLift - 0.5) * ENEMY_STRIDE_SQUASH; // taller at the top of the hop, wider on landing
@@ -2595,8 +2672,7 @@ class Enemy{
       const popScale = attackAngerPopScale(attackPhaseNow);
       if(popScale > 0.02){
         const headX = this.x + bumpDx, headY = this.y + bumpDy;
-        if(graphicsQuality !== 'low') drawAngerSteam(ctx, headX, headY, this.radius, attackPhaseNow);
-        drawAngerMark(ctx, headX + this.radius*0.85, headY - this.radius*1.05, Math.max(4, this.radius*0.34), popScale, Math.sin(presentationTime/70) * 0.12);
+        if(graphicsQuality !== 'low') drawAngerSteam(ctx, headX, headY, this.radius, attackPhaseNow); // NO-ATTACK-RING-01 (1.8.54): the red anger mark over attacking enemies is removed; the lunge and steam carry the attack
       }
     }
     if(this.embeddedArrows && this.embeddedArrows.length){
@@ -2742,6 +2818,7 @@ settledDecalCanvasReady = true;
 generateScenery();
 seedStartingBarricades();
 for(const startingProblem of validateStartingBarricade()){ designContractProblems.push(startingProblem); console.warn(startingProblem); }
+for(const selfTestFailure of runBootSelfTests()){ designContractProblems.push(selfTestFailure); console.warn(selfTestFailure); }
 centerCameraOnActiveRegion();
 document.getElementById('versionText').textContent = GAME_VERSION;
 document.getElementById('aboutVersionText').textContent = GAME_VERSION;

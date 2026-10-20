@@ -796,7 +796,7 @@ function validateDesignContract(){
   if(typeof advanceCountdownMusic !== 'function' || waveMusicLeadMs() < 1500 || waveMusicLeadMs() > 2600 || String(startWaveStartCameraPan).includes('SPAWN_MARKER_RISE_PX')) problems.push('the wave theme starts during the 3-2-1 so its bass drop lands on GO, and the wave-start camera centres on the spawn tile (MUSIC-COUNTDOWN-01, CAMERA-SPAWN-01)');
   if(typeof attractEasedLevel !== 'function' || attractEasedLevel(1, 4, 0) !== MUSIC_ATTRACT_SECTION_LEVEL[0] || attractEasedLevel(1, 7, 7) <= attractEasedLevel(1, 5, 0) || Math.abs(attractEasedLevel(2, 11, 7) - MUSIC_ATTRACT_SECTION_LEVEL[2]) > 0.001) problems.push('start-screen sections glide from the previous level to their own instead of stepping (MUSIC-ATTRACT-EASE-01)');
   if(!String(SoundEngine.prototype.scheduleAttractStep).includes("section >= 1 && section < 3") || !String(SoundEngine.prototype.scheduleAttractStep).includes('section >= 2 && section !== 3')) problems.push('the start-screen intro has no held drone chords or reed line; the pads join in the first verse and the oboe in the second (MUSIC-ATTRACT-EASE-01)');
-  if(MUSIC_TEMPO_BPM !== MUSIC_ATTRACT_TEMPO_BPM || MUSIC_COMBAT_TEMPO_BPM !== MUSIC_TEMPO_BPM * 1.5 || MUSIC_BOSS_TEMPO_BPM !== MUSIC_COMBAT_TEMPO_BPM || MUSIC_ATTRACT_TONIC !== 50 || MUSIC_ATTRACT_CHORDS.map(chord => chord.root).join() !== MUSIC_BASS_ROOTS.slice(0, 4).join()) problems.push('every theme shares one key (D minor, i VI VII V) and one pulse: start screen and field 88 BPM, wave and boss 1.5 times that (MUSIC-COHESION-01)');
+  if(MUSIC_TEMPO_BPM !== MUSIC_ATTRACT_TEMPO_BPM || MUSIC_COMBAT_TEMPO_BPM !== 144 || MUSIC_BOSS_TEMPO_BPM !== 152 || MUSIC_ATTRACT_TONIC !== 50 || MUSIC_ATTRACT_CHORDS.map(chord => chord.root).join() !== MUSIC_BASS_ROOTS.slice(0, 4).join()) problems.push('every theme shares one key (D minor, i VI VII V) and one pulse: start screen and field 88 BPM, wave 144 and boss 152 (MUSIC-COHESION-01, MUSIC-DRIVE-01)');
   if(!String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'opening'") || !String(SoundEngine.prototype.scheduleMusicStep).includes("musicBarRole === 'landing'")) problems.push('the wave and boss opening bar plays only the sting and the bar after the drop states the leitmotif alone over the groove (MUSIC-OPENING-01)');
   if(MUSIC_STING_PICKUPS.length !== 3 || MUSIC_STING_DROP_STEP !== MUSIC_STEPS_PER_BAR || !String(SoundEngine.prototype.scheduleMusicSting).includes('musicBassDrop')) problems.push('the wave and boss opening is three rising brass pickups, a short riser and a bass drop on the next downbeat (MUSIC-STING-02)');
   if(typeof paintSceneryGroundShadows !== 'function' || SCENERY_SHADOW_STRENGTH !== 0.24 || !String(repaintSceneryShadowLayer).includes('drawSceneryGroundShadow(layer')) problems.push('scenery silhouette shadows are one union layer at strength 0.24 (SCENERY-SHADOW-UNION-01)');
@@ -810,7 +810,7 @@ function validateDesignContract(){
   if(pathTurnFirstChance < 0.7) problems.push('the road prefers turning when it grows so it never becomes a long straight line (PATH-WINDY-01)');
   if(HEAVY_VISUAL_LOAD_HOLD_MS < 300 || HEAVY_VISUAL_LOAD_HOLD_MS > 2000 || typeof heavyVisualLoadHoldUntil !== 'number') problems.push('adaptive detail holds for a real-time interval, not a frame count (ADAPTIVE-HOLD-REALTIME-01)');
   if(!String(spawnDecal).includes('bloodDecalBlocked') || !String(generateScenery).includes('spawnWastelandStumps')) problems.push('blood pools respect intervening bodies and new runs include two harvestable wasteland branches (POOL-VOID-01, WASTELAND-STUMPS-01)');
-  if(typeof caravanEdgePoint !== 'function' || !String(updateCaravan).includes("'approach'") || !String(maybeSpawnCaravan).includes('caravanEdgePoint') || !document.getElementById('caravanWag')) problems.push('CARAVAN-JOURNEY-01: the merchant must enter from beyond the map edge, cross the road and leave off the far edge, with his wag icon under Shop');
+  if(typeof caravanEdgePoint !== 'function' || !String(updateCaravan).includes("'approach'") || !String(spawnCaravan).includes('caravanEdgePoint') || !document.getElementById('caravanWag')) problems.push('CARAVAN-JOURNEY-01: the merchant must enter from beyond the map edge, cross the road and leave off the far edge, with his wag icon under Shop');
   if(SPEARMAN_SWEEP_ARC_FRACTION <= 1.1 || !String(Tower.prototype.draw).includes("this.type === 'LANCER' ? this.baseAngle")) problems.push('SPEARMAN-SWEEP-01: the Spearman sweeps the widest melee arc (wider than the Berserker) and the Lancer keeps its thrust');
   if(!String(Tower.prototype.update).includes('POST_KILL_READY_MS') || !String(Tower.prototype.draw).includes('holdingAfterKill')) problems.push('KILL-READY-01: a stickman keeps the weapon raised for a few seconds after a kill before the idle pose');
   if(MUSIC_WAVE_THEME.length !== 24 || MUSIC_WAVE_THEME.some(row => row.length !== MUSIC_STEPS_PER_BAR)) problems.push('MUSIC-THEME-01: the wave theme must be a 24-bar tune of eight steps per bar');
@@ -825,7 +825,7 @@ function validateDesignContract(){
   if(earlyPreviewFamily(3) !== 'SWARM' || !String(rushDispatchIfFieldClear).includes('EARLY_NO_RUSH_LAST_WAVE') || tierPopulationForWave(4).STANDARD < 1 || typeof grantEarlyGift !== 'function') problems.push('EARLY-HOOK-01: wave 3 previews Swarm, wave 4 has a champion and wave 1 leaves a gift');
   if(typeof sceneryShadowSignatureFor !== 'function' || !String(paintSceneryGroundShadows).includes('sceneryShadowSignature') || typeof SCENERY_SHADOW_MARGIN_PX !== 'number') problems.push('SCENERY-SHADOW-CACHE-01: the scenery shadow layer is repainted only when the camera or scenery changes');
   if(!(WAVE_CHEER_MS > 0) || !(CLOSE_CALL_FREEZE_MS > 0)) problems.push('WAVE-CHEER-01 / CLOSE-CALL-01: fighters cheer after a cleared wave and a finish-line kill freezes for a beat');
-  if(ENEMY_EMOJI_VARIANTS.GRUNT.some(face => face !== '😡' && face !== '🤬')) problems.push('GRUNT-RED-01: Grunt faces stay red');
+  if(ENEMY_EMOJI_VARIANTS.GRUNT || CONFIG.ENEMIES.GRUNT.emoji !== '😡') problems.push('GRUNT-ONE-FACE-01: a Grunt is always 😡, never a second face');
   if(String(SoundEngine.prototype.scheduleCombatLayers).includes('bar % 8 === 6) this.popRiser')) problems.push('COMBAT-RISER-01: the battle music sweeps once per cycle, not every 8 bars');
   { const classIcons = new Set(Object.values(CONFIG.TOWERS).map(tower => tower.icon)); const clashes = [...ITEM_BY_ID.values(), DEFIBRILLATOR_ITEM].filter(item => item && item.id !== 'BARRICADE_ITEM' && classIcons.has(item.icon)).map(item => item.id); if(clashes.length) problems.push('ITEM-ICON-UNIQUE-01: items never share an emoji with a class: ' + clashes.join(', ')); }
   if(String(emojiSpriteFor).includes('emojiSpriteRows.clear()')) problems.push('EMOJI-SPRITE-LRU-01: a full emoji sprite cache drops its least recently used sprites, never all at once');
@@ -837,12 +837,14 @@ function validateDesignContract(){
   if(LOOSE_DRAIN_FIRST_WAVE < 2 || !String(Enemy.prototype.updateEscaped).includes('LOOSE_DRAIN_FIRST_WAVE')) problems.push('LOOSE-DRAIN-GRACE-01: loose enemies drain no lives before wave 4');
   const loadedScriptOrder = [...document.scripts].map(script => (script.getAttribute('src') || '').match(/^js\/([a-z]+)\.js/)).filter(Boolean).map(match => match[1]);
   if(loadedScriptOrder.join() !== GAME_SCRIPT_ORDER.join()) problems.push('FILE-SPLIT-01: index.html loads ' + GAME_SCRIPT_ORDER.join(', ') + ' in that order, as the file map in js/config.js lists them');
+  if(document.querySelector('script[src^="js/stickman.js"]') || (gameScriptSources.towers !== undefined && !gameScriptSources.towers.includes('function drawStickman('))) problems.push('STICKMEN-ARE-TOWERS-01: the stickmen are the towers, so the stickman figure, weapons and poses live in js/towers.js, not a separate file');
   const driftedContentsFiles = GAME_SCRIPT_ORDER.filter(fileName => gameScriptSources[fileName] !== undefined && !contentsListMatchesBanners(gameScriptSources[fileName]));
   if(driftedContentsFiles.length) problems.push('FILE-CONTENTS-01: the Contents list at the top of js/' + driftedContentsFiles.join('.js, js/') + '.js does not match its section banners');
   const assistNote = document.getElementById('aboutAssistNote');
   if(!assistNote || assistNote.textContent !== AI_ASSIST_NOTE || !getReadmeText().includes(AI_ASSIST_NOTE)) problems.push('AI-DISCLOSURE-01: Settings > About and the in-game README say coding was assisted by Claude and the design is human');
   if(WAVE_ONE_HP_SCALE >= 1) problems.push('FIRST-KILLS-01: wave-1 units have reduced hit points');
-  if(spawnGapForWave(1) > 3000 || spawnGapForWave(OPENING_PACE_LAST_WAVE + 1) !== ENEMY_SPAWN_GAP_MS || WAVE_ONE_MAX_ON_ROUTE < 2) problems.push('OPENING-PACE-01: waves 1 and 2 space units at most 3 s apart and wave 1 allows two enemies on the route; later waves keep ENEMY_SPAWN_GAP_MS');
+  if(spawnGapForWave(1) > 3000 || spawnGapForWave(OPENING_PACE_LAST_WAVE + 1) !== OPENING_FLOW_SPAWN_GAP_MS || spawnGapForWave(OPENING_FLOW_LAST_WAVE + 1) !== ENEMY_SPAWN_GAP_MS || WAVE_ONE_MAX_ON_ROUTE < 2) problems.push('OPENING-PACE-01 / OPENING-FLOW-01: waves 1 and 2 space units at most 3 s apart, wave 1 allows two enemies on the route, waves 3-10 use OPENING_FLOW_SPAWN_GAP_MS and later waves keep ENEMY_SPAWN_GAP_MS');
+  if(typeof BATCH_RELEASE_MAX_HOLD_MS === 'undefined' || BATCH_RELEASE_MAX_HOLD_MS > 6000 || !String(advanceWaveDispatch).includes('releaseHoldMs')) problems.push('a batch fighting at the entrance holds the next batch at most 6 seconds (RELEASE-HOLD-CAP-01)');
   if(!String(tileBiome).includes('biomeNoise')) problems.push('BIOME-GRADIENT-01: biomes must follow one smooth field so Pinewood and Dunes never touch');
   if(BLOOD_STAIN_MAX < 48 || !String(stainEntity).includes('shift()') || String(stainEntity).includes('bloodStainNext') || BLOOD_SATURATION_MAX_HIGH <= BLOOD_SATURATION_MAX) problems.push('BLOOD-LAYER-01: blood marks on scenery and stickmen must stack newest-on-top without ring overwrite');
   if(!String(updateQuickSlots).includes('dataset.count')) problems.push('SLOT-COUNT-01: item stack counts must render as a corner badge');
@@ -986,11 +988,21 @@ function validateDesignContract(){
   waveState = 'IDLE'; flagWindStrength = 0; updateFlagWind(FLAG_WIND_RISE_MS*2);
   if(flagWindStrength !== 1) problems.push('flag wind must blow while no wave is in progress (IDLE) (FLAG-WIND-GATE-01)');
   waveState = savedWaveState; flagWindStrength = savedWindStrength;
+  problems.push(...bootSelfTestFailures);
   return problems;
+}
+// SELF-TESTS-AT-BOOT-01 (1.8.50): the boot sequence runs the self-tests once, so a failing test is listed with the design-contract problems in every debug log instead of waiting for a manual run.
+let bootSelfTestFailures = [];
+function runBootSelfTests(){
+  const savedIdCounter = idCounter, savedEnemySpawnSerial = enemySpawnSerial;
+  const failures = runDebugSelfTests(false).filter(result => !result.pass);
+  idCounter = savedIdCounter; enemySpawnSerial = savedEnemySpawnSerial;
+  bootSelfTestFailures = failures.map(result => 'SELF-TESTS-AT-BOOT-01: self-test failed: ' + result.name + (result.detail ? ' (' + result.detail + ')' : ''));
+  return bootSelfTestFailures;
 }
 let designContractProblems = [];
 // CA081 — see HISTORY.md § [1.5.7] Code Archaeology, CA081
-function runDebugSelfTests(){
+function runDebugSelfTests(logResults = true){
   const results = [];
   const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail: detail || '' });
 
@@ -1079,7 +1091,7 @@ function runDebugSelfTests(){
     const planA = buildWavePlan(37), planB = buildWavePlan(37);
     const flatten = plan => plan.phases.map(ph => ph.batches.map(b => b.units.map(u => u.family + u.sizeTier).join(',')).join('|')).join('/');
     check('same seed and wave number rebuild an identical plan', flatten(planA) === flatten(planB));
-    check('wave 1 is ten sequential single Tiny batches', validateWavePlan(buildWavePlan(1)).length === 0 && buildWavePlan(1).phases[0].batches.length === 10);
+    check('wave 1 is one Tiny per batch, as many batches as its Tiny count', validateWavePlan(buildWavePlan(1)).length === 0 && buildWavePlan(1).phases[0].batches.length === tierPopulationForWave(1).TINY); // WAVE-ONE-COUNT-01 (1.8.49): the count follows ENEMY_COUNT_MULTIPLIER and the road length, 15 on a starting road since 1.7.38
   }
 
   // 11. Escaped kills never award last-hit XP; normal kills award full tier XP to the killer.
@@ -1116,6 +1128,21 @@ function runDebugSelfTests(){
     check('calculateLeadIntercept leads a perpendicular-moving target', leadOk, leadAngle.toFixed(4));
   }
 
+  // PRD-ROLLS-01: luck-balanced rolls keep the stated average, even when the chance varies per roll, and make back-to-back misses rare.
+  {
+    const holder = {};
+    let fired = 0, expected = 0, backToBack = 0, previous = false;
+    for(let i = 0; i < 40000; i++){
+      const chance = i % 2 ? 0.02 : 0.17;
+      expected += chance;
+      const fires = prdRollFires(chance, holder, 'balance');
+      if(fires){ fired++; if(previous) backToBack++; }
+      previous = fires;
+    }
+    check('luck-balanced rolls average their stated chance and rarely repeat', Math.abs(fired - expected) <= 2 && backToBack / fired < 0.05, fired + ' fired, ' + Math.round(expected) + ' expected, ' + backToBack + ' back to back');
+  }
+
+  if(!logResults) return results;
   const passed = results.filter(r => r.pass).length;
   console.log('runDebugSelfTests(): ' + passed + '/' + results.length + ' passed');
   for(const r of results) console.log((r.pass ? '  PASS  ' : '  FAIL  ') + r.name + (r.detail ? ' (' + r.detail + ')' : ''));

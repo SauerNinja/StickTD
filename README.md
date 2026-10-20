@@ -63,6 +63,8 @@ Elements belong to the fighters who earn them. They are never bought from the Bu
 - New enemy families arrive one chapter at a time.
 - Some enemies break away from the road to fight a defender on their own.
 - A longer road draws larger groups.
+- From the eighth wave, some enemies arrive as elites standing on a coloured patch: blue ones are swift, gold ones are tough and red ones hit hard. Elites are worth double gold.
+- Calling the next wave soon after clearing one pays bonus gold, shown on the Next Wave button while it lasts.
 
 ## Resources and structures
 
@@ -77,7 +79,9 @@ In the Build list, a defender you have not unlocked yet shows as a dark silhouet
 
 ## Items, food and the Shop
 
-Defeated enemies, chests and presents leave gear and food beside the road. Drag gear onto a defender to equip it; food is eaten on the spot and raises a stat. Each defender begins with a free item for its class, and the Shop sells better gear plus upgrades that help every defender you own. Now and then a merchant caravan crosses the map with goods to trade.
+Defeated enemies, chests and presents leave gear and food beside the road. Drag gear onto a defender to equip it; food is eaten on the spot and raises a stat. Each defender begins with a free item for its class, and the Shop sells better gear plus upgrades that help every defender you own. Now and then a merchant caravan crosses the map with goods to trade. Rare finds such as a Merchant's Bell, a Circus Ticket or Troll Bait call a visitor to the road when used.
+
+While placing a defender, a gold outline suggests the spot that covers the most road, and each stat button shows what the next point will change.
 
 ## Life beside the road
 
@@ -87,7 +91,7 @@ Blood shows the story of each hit. A blade leaves a curved fan of cast-off, a ha
 
 ## Settings
 
-- **Video**: graphics quality and automatic render resolution.
+- **Video**: graphics quality, including a Performance mode with lighter effects, and automatic render resolution.
 - **Audio**: music and sound effects, with separate volume controls.
 - **Game**: blood and gore, saving and loading, first-time tips and reset options.
 - **Items, Medals and Stats**: an item guide, earned medals and run records.
@@ -115,13 +119,12 @@ Serve the folder with any static server and open `index.html`, for example `pyth
 | `js/audio.js` | Sound engine, sound effects and music |
 | `js/config.js` | Settings, balance numbers, game state, medals, saves and the camera |
 | `js/effects.js` | Blood, decals, particles and gibs |
-| `js/stickman.js` | Stickman figures, weapons and poses |
 | `js/loop.js` | Main loop, collisions, rendering and the attract screen |
 | `js/ui.js` | Input, HUD, menus, the Shop and the inspect panel |
 | `js/diagnostics.js` | Debug log and the design contract |
 | `js/screens.js` | Start and end screens |
 | `js/environment.js` | Map, road growth, biomes, scenery and items |
-| `js/towers.js` | Stickman classes, targeting, projectiles and combat |
+| `js/towers.js` | The stickmen, who are the towers: classes, figures, weapons, targeting, projectiles and combat |
 | `js/waves.js` | Enemies, wave plans, random events and livestock |
 | `CHANGELOG.md` | Current-version release notes; older entries in `HISTORY.md` |
 | `AGENTS.md` | Project rules and the rule-ID ledger |

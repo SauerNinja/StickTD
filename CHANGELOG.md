@@ -4,6 +4,156 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.69] — 2026-10-20 (UTC)
+### Final pass: wave stall fix, faster opening spawns, search snippet
+- RELEASE-HOLD-CAP-01 fix: the 1.8.64 cap reset `waveDispatch.releaseHoldMs` before the inter-batch `gapRemainingMs` was used up, so each frame of the gap restarted the 6 s hold. A batch held at the entrance could wait about 100 s instead of 6. `advanceWaveDispatch` in `js/waves.js` now clears the hold only when the batch advances. A trace of wave 3 showed the stall, and a new-player playthrough confirmed the fix.
+- OPENING-SPAWN-GAP-01: `enemySpawnClearance` used a 24 px gap between bodies, so slow walkers left the entrance only every ~3.3 s, the real limit on early wave length. Waves up to `OPENING_FLOW_LAST_WAVE` (10) now use `OPENING_SPAWN_GAP_PX` 8; later waves keep `SPAWN_GAP_PX` 24.
+- New-player playthrough (game time, building as gold arrives, using the map, buying expansions):
+  - wave durations: 161, 388, 618, 633 and 841 s for waves 1-5;
+  - lives at wave 5: 91;
+  - no console errors.
+  The remaining length tracks enemy count (55, 98, 148 and 191 enemies in waves 2-5), set by `ENEMY_COUNT_MULTIPLIER` 1.5 (owner's "more small enemies to farm") and road length.
+- Search: the meta description is cut to 146 characters, under Google's ~155 cut-off, in `index.html` (description, Open Graph, Twitter, JSON-LD) and `manifest.json`.
+- Checked: design contract clean, all self-tests pass, desktop and phone audits clean.
+
+## [1.8.68] — 2026-10-20 (UTC)
+### Search: real text for crawlers inside index.html
+- SEO-NO-EXTRA-PAGES-01: search engines read little game text because the game draws on a canvas. Added, all inside `index.html` with no new files:
+  - three About-panel paragraphs (`aboutSearchSummary` and the two after it) naming the classes, enemies, elements, structures, visitors and supported devices, all taken from the game data;
+  - a fuller `gameCanvas` fallback text;
+  - a clearer `titleWordmark` accessible name, "StickTD: Free Stickman Tower Defense Game".
+- Nothing visible changes outside the About panel, which scrolls as before (checked at 390 px).
+- `sitemap.xml` lastmod set to 2026-10-20.
+- Checked: design contract clean, all self-tests pass.
+
+## [1.8.67] — 2026-10-20 (UTC)
+### Guide pages removed
+- SEO-NO-EXTRA-PAGES-01: the owner did not authorize extra pages, and the README already covers the guide material. `how-to-play.html`, `stickmen.html`, `enemies.html` and `faq.html` from 1.8.66 are deleted, along with every link to them: the VideoGame `hasPart` list, the About panel guide line, the `noscript` guide line, the `sitemap.xml` entries and the README links. The search improvements to `index.html` (title, description, keywords, structured data, WebSite node), `manifest.json` and the sitemap image entry stay. AGENTS.md records the rule.
+- Checked: no remaining links to the removed pages, every JSON-LD block parses, design contract clean, all self-tests pass.
+
+## [1.8.66] — 2026-10-19 (UTC)
+### Search: guide pages, sharper title and richer structured data
+- SEO-GUIDES-01: four crawlable guide pages built from the game's own data (`CONFIG.TOWERS` blurbs and costs, `CONFIG.ENEMIES` stats, `FAMILY_INTRODUCTION_WAVE`): `how-to-play.html` (with HowTo structured data), `stickmen.html` (every class with cost and unlock path, ItemList), `enemies.html` (every family with first wave, base health, armor, speed and ability, plus elites) and `faq.html` (FAQPage). Each page has its own title, description, canonical URL, Open Graph and Twitter tags, BreadcrumbList and WebPage data, shared navigation, a Play button, and the AI disclosure line. They are plain static pages with no game code and no image files, and they adapt to light and dark mode. Checked at 390 and 1280 px with no sideways scrolling.
+- SEO-TITLE-01: the title is now "StickTD — Free Stickman Tower Defense Game, No Download" (55 characters, under Google's cut-off). Page, Open Graph, Twitter and `manifest.json` share it. The meta description names the search terms players use: free, stickman tower defense, browser, no download, phone, tablet and PC.
+- Structured data in `index.html`: VideoGame gains alternate names, keywords, `numberOfPlayers`, `gameItem` and `hasPart` links to the guides; a WebSite node is added.
+- Crawl paths: the About panel (`aboutGuideLinks`) and the `noscript` block link to all four guides. `sitemap.xml` lists all five URLs with an image entry for `og-image.png`.
+- Checked: every JSON-LD block parses, every internal link resolves, design contract clean, all self-tests pass.
+
+## [1.8.65] — 2026-10-19 (UTC)
+### First 15 minutes: early crowds sized to the opening
+- OPENING-CROWD-CAP-01: the long-road crowd bonus (`routeLengthFactor` in `js/waves.js`, GROUP-SIZE-ROUTE-01) now ramps in over the first ten waves through `routeLengthFactorCap` (`OPENING_ROUTE_FACTOR_BASE` 1.25 + `OPENING_ROUTE_FACTOR_PER_WAVE` 0.125 per wave, up to `ROUTE_FACTOR_MAX` 2.5 by wave 10). An expanded map no longer makes wave 2 or 3 two and a half times bigger. Later waves are unchanged, as are walk speed (ENEMY-PACE-01) and the farm count multiplier.
+- Measured over three new-player playthroughs (game time): wave 2 now takes 220-320 s (was 470), and waves 3 and 4 take 180-310 s (was 560-890). Lives at wave 4 were 90, 98 and 51; the 51 run lost its lives on one map's layout, so the next balance pass should look at map variance.
+- Checked: design contract clean, all self-tests pass, no console errors.
+
+## [1.8.64] — 2026-10-19 (UTC)
+### First 15 minutes: waves no longer stall
+- RELEASE-HOLD-CAP-01: a playthrough built like a new player's (stickmen bought as gold arrives, the free map used, expansions bought) showed wave 2 spending up to 553 of 790 s waiting in `currentBatchReleased`, because a melee stickman near the entrance held the batch inside `BATCH_RELEASE_SPACING_PX`. `advanceWaveDispatch` in `js/waves.js` now waits at most `BATCH_RELEASE_MAX_HOLD_MS` (6000 ms of game time) per batch (`waveDispatch.releaseHoldMs`, cleared in `resetWaveDispatch`).
+- OPENING-FLOW-01: waves 3-10 space units `OPENING_FLOW_SPAWN_GAP_MS` (1500 ms) apart instead of `ENEMY_SPAWN_GAP_MS` (5000 ms) (`spawnGapForWave`, `OPENING_FLOW_LAST_WAVE` in `js/waves.js`). Walk speed (ENEMY-PACE-01, `ENEMY_WALK_SPEED_SCALE`) and waves 11 on are unchanged.
+- Measured with the same scripted squad (game time): wave 2 went from 480-972 s to about 470 s, and wave 3 from 838-887 s to 559 s, with no lives lost by wave 3. The remaining length comes from enemy count growing with road length and slow walkers queuing at the entrance (about 2-3.5 s per enemy). Both are owner rules, so they were left alone.
+- Not a bug: tips seemed to show twice, but the playthrough was logging queued tips when they were replayed. Elites already start at wave 8 (`ELITE_FIRST_WAVE`).
+- Checked: design contract clean, all self-tests pass, no console errors.
+
+## [1.8.63] — 2026-10-19 (UTC)
+### Early-call bonus on the button, elite names on the enemy card, README
+- EARLY-CALL-01: the Next Wave button now shows the early-call gold while it lasts, for example "Next Wave +💰26" (`nextWaveActionLabel` in `js/ui.js`), and counts it down: `update` in `js/loop.js` refreshes the HUD only when the whole-gold amount changes (`shownEarlyCallBonus`). Checked at 1280x800 (the button grows from "Next Wave" to fit) and 390x780 (the top bar shrinks to fit on one line as before; nothing wraps or is cut off).
+- ELITE-ENEMIES-01: the enemy card puts the elite kind in front of the name, for example "Tough Grunt" (`updateTargetFrame` in `js/loop.js`).
+- README: Enemies and waves mention elites and the early-call bonus; Items mentions the Merchant's Bell, Circus Ticket and Troll Bait, the build-spot outline and the stat-point preview; Settings mentions Performance mode.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.62] — 2026-10-19 (UTC)
+### Elite enemies, early-call gold, summon items, build hint, stat preview, Performance mode
+- ELITE-ENEMIES-01: from wave 8 a few Small, Standard and Large enemies spawn as elites (`maybeMakeElite` in `js/waves.js`, called from `spawnWaveUnit`): 3% at wave 8, growing 0.05% a wave to at most 8%. Each gets one modifier, shown by a static coloured patch on the ground under it (`drawEliteGroundPatch`) and a one-time "Elite" label: blue Swift moves 35% faster, gold Tough has double health, red Fierce hits stickmen 60% harder. Elites pay double bounty. The same colour always means the same thing, so the colour teaches the counter (Diablo's palette-swapped monsters, Stay Awhile and Listen). Bosses, Santa and Tiny enemies are never elite. Measured over 2,000 test spawns at wave 30: 3.8% elite, split evenly between the three kinds.
+- EARLY-CALL-01: starting the next wave soon after a clear pays bonus gold (`earlyCallBonusNow` and `startNextWave` in `js/waves.js`, the clear time recorded in `update` in `js/loop.js`): 8 gold plus 1.5 per wave cleared, shrinking to nothing over 20 seconds of game time, so paused time does not count. Waiting is never punished. A floating "+💰 early call" shows the payment and a one-time notice explains it. Adapted from Kingdom Rush's early call.
+- SUMMON-ITEMS-01: three new finds call a visitor when used from a stickman's inventory (`SUMMON_ITEMS`, `summonVisitor`, `useStoredConsumable` in `js/environment.js`): Merchant's Bell 🛎️ calls the caravan, Circus Ticket 🎟️ a circus, Troll Bait 🪤 a wandering troll. Supply crates give one instead of a stim 20% of the time. If that visitor is already on the field, or there is no room, the item is kept and a short message says why (VISITOR-LIMIT-01). A summoned circus may now stand up to two tiles from the road (`findFreeTileBesideRoad`).
+- BUILD-SPOT-HINT-01: with a class chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a static gold dashed outline (`bestBuildSpotFor`, `drawBuildSpotHint`), a "good spot" suggestion after Buckland's support-spot scoring. It is cached until the map, the road, the stickmen or the scenery change.
+- STAT-PREVIEW-01: each Strength, Dexterity and Intelligence button's tooltip now ends with what the next point would change, for example "miss 34.0% → 33.5%, critical 2.5% → 3.3%" (`statPointPreview` in `js/ui.js`). The preview adds the point, recomputes and restores the stickman exactly, including health and the Veteran flag; `statPreviewRunning` keeps the one-time Veteran moment from firing during a preview. The panel layout is unchanged.
+- PERFORMANCE-MODE-01: the Low graphics option is now called Performance mode in Settings and on the quality buttons. It behaves exactly as before.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone; each feature was exercised in the browser (all three summons placed one visitor each and a second use kept the item, the early bonus was 9 gold at 5 seconds and 0 at 25, the preview left health, stats and points unchanged), and a screenshot shows the build hint and the three elite patches.
+
+## [1.8.61] — 2026-10-18 (UTC)
+### Fast-mover collisions on flat arrays, Lucky Branch priced fairly
+- COLLISION-ARRAYS-01 (continued): `resolveSweptEnemyCollisions` in `js/loop.js`, the pass that catches fast enemies crossing each other within one tick, now runs on the same flat arrays as the relaxation passes, using the speed arrays to hold each enemy's previous position. From the same starting state the old and new pass produced bit-identical positions in six snapshots with 220 enemies, at about 0.4 to 0.85 ms per call instead of 1.15 to 4.55 ms.
+- SHOP-VALUE-01: the 1.8.59 audit found the shop's Lucky Branch gave 180 total stats for 70 gold and 15 wood, more than any Rare drop, so it made drops pointless. Its shop price is now 180 gold and 15 wood (`LUCKY_BRANCH` in `js/config.js`), in line with Swift Feather's roughly one gold per stat point. Its stats, its scenery and wave drops, and the other shop items are unchanged.
+- Kept: the Tiny Grunt's extra 15% dodge (TINY-GRUNT-EVASION-01), which the owner asked for in 1.7.136.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.60] — 2026-10-18 (UTC)
+### Less lag when enemies pile up at a barricade
+- COLLISION-ARRAYS-01: a CPU profile with 220 enemies piled at the barricade (wave 30, fully expanded map, eight fighters) put about 60% of all script time in enemy-to-enemy collision and the pile-up queue. The arithmetic was cheap; the time went on reading fields from enemy objects that carry dozens of dynamically added properties (Albrecht, Pitfalls of Object Oriented Programming). `resolveEnemyCollisions` in `js/loop.js` now copies each enemy's position, radius, speed and flags into flat typed arrays once per call (`loadCollisionArrays`), runs its three relaxation passes on those, and writes the positions back. `findQueueCatchmentLeader` in `js/environment.js` reads the queue's pre-snap positions from flat arrays (`snapshotCatchmentArrays`) and tests distance before eligibility.
+- Same results: from the same starting state, the old and new collision code produced bit-identical positions for every enemy in six separate snapshots, and the old and new catchment search chose the same leader for all 216 to 217 queued enemies in four snapshots.
+- Measured in a headless browser without a graphics card, 220 enemies piled up: the collision function fell from about 4 to 8 ms to about 1.1 to 1.5 ms per call, the pile-up step from about 6 to 7.5 ms to 2.5 to 3 ms per tick, the frame rate rose from 23 to 27 fps to 28 to 30 fps, and the worst frame fell from 80 to 96 ms to 38 to 56 ms. A normal desktop with a graphics card will start from a higher frame rate; the saving per tick is the same.
+- Not changed yet: the swept collision pass, the catch-up that runs up to 8 simulation ticks after a slow frame, and enemy drawing (about 3 ms with 220 enemies).
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.59] — 2026-10-18 (UTC)
+### Quieter repeat visitors, shop and loot audit
+- REPEAT-FANFARE-01: every wandering troll pulled the camera across the map and every circus played the full wave fanfare, however many had come before. Now only the first troll of a run pans the camera (`spawnWanderingTroll` in `js/waves.js`) and only the first circus plays the fanfare; later circuses honk where they set up (`setUpCircusAt` in `js/environment.js`). The troll's own arrival sound, labels, notices and medal checks are unchanged. The counters (`trollArrivalsThisRun`, `circusArrivalsThisRun`) reset with each new run in `initRegionAndPath`. Diablo kept its biggest surprises one-time because repeating them would have been tedious (Stay Awhile and Listen).
+- Shop, drops and cooking audited against each other (`BACKLOG.md` § 1.8.50): the shop's Lucky Branch gives 180 total stats for 70 gold and 15 wood, more than any Rare drop and the weakest Epic, so it is the obvious buy and makes lower drops pointless. Left for an owner decision. Meals and stims, and the drop tiers, are in line.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.58] — 2026-10-18 (UTC)
+### Fuller start-screen intro, battle music back to full tempo
+- MUSIC-INTRO-BED-01: the first four bars of the start-screen song (`scheduleAttractStep` in `js/audio.js`) played only the low melody, so the song opened thin, and the loud chorus at the end of the 24-bar cycle stopped dead before the quiet intro began again. A new `scheduleAttractIntroBed` adds a soft chord pad on bars 0 and 2 (root, third and fifth, the first swell a little quieter) and, from bar 1, a harp-like arpeggio rising through the chord and climbing a little in level each bar, resting with the existing breath at the end of bar 3. On the last bar it lays a quiet tonic chord (root, fifth, octave) under the final beats that rings into the next cycle. All new notes are optional voices, so they give way under the start screen's voice limit, and they follow the key shift of each cycle. Diablo's composer gave each new environment at least 20 seconds to establish itself (Stay Awhile and Listen). The battle and idle music are unchanged.
+- MUSIC-DRIVE-01: the wave music was reported as weaker than it used to be. Comparing every music change since 1.8.19, the largest loss of drive is MUSIC-COHESION-01 (1.8.35), which slowed the wave theme from 144 to 132 BPM and the boss theme from 152 to 132 to share the start screen's 88 BPM pulse. `MUSIC_COMBAT_TEMPO_BPM` returns to 144 and `MUSIC_BOSS_TEMPO_BPM` to 152 in `js/audio.js`, so the boss is again faster than a normal wave. The MUSIC-COHESION-01 contract check now requires 144 and 152 instead of 1.5 times the field tempo; the shared key check is unchanged. The shared key, the melody (MUSIC-THEME-01), the opening sting and everything else stay as they are. If the wave music still falls short, the next suspects are the 1.8.41 melody rewrite and the 1.8.43 cut to one riser per cycle.
+- Checked: design contract clean, all self-tests pass, no console errors, the start screen runs a full music cycle without errors. Neither change has been heard; both need a listen.
+
+## [1.8.57] — 2026-10-17 (UTC)
+### Rare drops chime, inspect panel timed
+- LOOT-RARITY-SOUND-01: Rare, Epic and Legendary gear now play a rising chime when they drop: 2, 3 or 4 bell notes of a major arpeggio in the score's current key, panned to where the item lands (`LOOT_DROP_SOUND_TIERS` and `spawnGroundItem` in `js/config.js`, `loot_drop` in `js/audio.js`). Common and Uncommon drops, food and items restored from a save stay silent. Diablo gave its ring drop a distinctive sound so players heard treasure before they saw it (Stay Awhile and Listen).
+- HUD-DOM-PHASE-01: `updateInspectPanel` (`js/ui.js`) now times its DOM work into a new `inspectDom` render phase beside `hudDom`, so the debug log shows the whole cost of the page interface. The panel's code moved unchanged into `updateInspectPanelNow`.
+- Checked: design contract clean, all self-tests pass, no console errors, the chime plays for each tier without error, waves play on desktop and phone.
+
+## [1.8.56] — 2026-10-17 (UTC)
+### The Hacker can summon the caravan, a circus and a troll
+- HACK-SUMMON-01: the Hacker's menu (`openHackMenu`, `runHackAction` in `js/ui.js`) gains a Summon row: Summon the caravan, Summon a circus, Summon a troll. To share code with the random arrivals, `maybeSpawnCaravan` (`js/loop.js`) now calls a new `spawnCaravan`, and `maybeSpawnCircus` (`js/environment.js`) calls a new `setUpCircusAt`; the troll uses the existing `spawnWanderingTroll`. A summoned circus may stand on any free tile beside the road (`findFreeTileBesideRoad`), not only on freshly opened expansion tiles, so it works on any map. The CARAVAN-JOURNEY-01 contract check now reads `spawnCaravan`.
+- VISITOR-LIMIT-01: at most one caravan, one circus and one troll can be on the field at a time, whether random or summoned. A summon that would make a second one shows a short toast instead ("The caravan is already here."). All three can be present together. At random this stays rare: the caravan has its own schedule, and the troll and circus share the two random-event slots per expansion. Checked: after six expansions, summoning all three gave one of each, and summoning them again changed nothing.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.55] — 2026-10-17 (UTC)
+### Enemies react to a fallen ally, discovery medals, HUD timing in the debug log
+- ENEMY-STARTLE-01: when an enemy dies, Tiny and Small enemies within 46 px give a short startled hop (`startleNearbyAllies` and `ENEMY_STARTLE_MS` 320 in `js/waves.js`, drawn through `walkBob` in the `Enemy` draw). Diablo's Fallen reacted to dying allies and Isbister lists awareness as a key enemy moment. Drawing only: movement, speed and timing are unchanged, and it is skipped under heavy visual load. It loops over `enemyPool` rather than `queryNearby` because a death can happen inside a loop that is reading the shared query results.
+- DISCOVERY-MEDALS-01: three medals reward discovery rather than skill (Sid Meier's Memoir!, Civilization's discovery badges): Troll Spotter 🧌 when a wandering troll arrives (`spawnWanderingTroll`), Ringmaster 🎪 when a circus sets up (`maybeSpawnCircus`), Trader 🐪 on the first purchase from a merchant (`buyMerchantItem`) or sale to the caravan (`sellToCaravan`).
+- HUD-DOM-PHASE-01: the debug log's render phases now include `hudDom`, the time `flushHUDIfDirty` spends writing the HUD to the page, which the canvas phases never counted (The WoW Diary: its interface cost ten times its frame budget before anyone measured it). The inspect panel is not yet timed.
+- Not changed: splash damage still loops over every enemy (`Projectile.onImpact`). Switching it to the spatial grid could miss enemies spawned in the same frame and share the query results with chain lightning, so it stays as is.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.54] — 2026-10-17 (UTC)
+### No red ring on enemy attacks, scattered walking blood trails
+- NO-ATTACK-RING-01: an enemy attacking a stickman drew a red four-arc anger mark (`drawAngerMark` in `js/config.js`, called from the `Enemy` draw in `js/waves.js`) that read as a red circle popping up. The mark and its function are removed; the attack still shows through the lunge (`attackLungeAmount`) and the steam puffs (`drawAngerSteam`).
+- BLOOD-TRAIL-SCATTER-01: a wounded enemy's walking trail (`updateBloodTrails` in `js/effects.js`) launched every drop from the body centre along the heading with only ±3° of drift at fixed spacing, so the trail formed straight lines. Drops now leave from alternating gait offsets across the line of travel (12 to 42% of the body radius plus jitter), drift up to ±16°, vary their carried speed ±15%, and fall at irregular spacing (45 to 155% of the base, with occasional close pairs). Each drop still lands through the forensic droplet physics, so its elongation still points the direction of travel.
+- Checked: design contract clean, all self-tests pass, no console errors, waves play on desktop and phone.
+
+## [1.8.53] — 2026-10-17 (UTC)
+### Grunts keep one face
+- GRUNT-ONE-FACE-01: about half of all Grunts spawned as 🤬 (the cursing face with the covered mouth) instead of 😡, picked from `ENEMY_EMOJI_VARIANTS.GRUNT` in `js/waves.js` since GRUNT-RED-01 (1.8.43). No other enemy changes face, so Grunts no longer do: the GRUNT entry is removed and every Grunt is 😡. The design contract in `js/diagnostics.js` now fails if a Grunt variant list returns or the Grunt emoji is not 😡.
+- Correction to 1.8.52: the six-wave desktop and phone playthroughs were run after that release was built and passed.
+- Checked: design contract clean, all 19 self-tests pass, no console errors, waves spawn on desktop and phone.
+
+## [1.8.52] — 2026-10-17 (UTC)
+### The stickmen are the towers: stickman code moves into js/towers.js
+- STICKMEN-ARE-TOWERS-01: the stickmen are the towers, so the stickman figure, weapons and poses (`drawStickman` and its helpers, formerly `js/stickman.js`, split out in 1.8.47) now live in `js/towers.js` as the section STICKMAN FIGURES, WEAPONS AND POSES, just before the Tower class. The code moved unchanged. `js/stickman.js` is removed from `GAME_SCRIPT_ORDER`, the file map in `js/config.js`, the script tags in `index.html`, the README project layout and `AGENTS.md`. A parse of all ten files confirms no load-time statement uses a name from a later file (MODULE-FILES-01). The design contract fails if `js/stickman.js` is loaded again or `drawStickman` is not declared in `js/towers.js`.
+- Checked: `release.py check` passes and the page boots with a clean design contract and all self-tests passing. The longer six-wave and phone runs were not repeated for this release.
+
+## [1.8.51] — 2026-10-17 (UTC)
+### Fairer crits and misses, a melody for building
+- PRD-ROLLS-01: critical hits (`Enemy` damage path in `js/waves.js`) and every attack-miss roll (ranged and melee in `Tower`, splash in `Projectile.onImpact`, `rollDirectAttackMiss`) used a fresh `Math.random()` each time, so a 10% miss chance produced back-to-back misses 10% of the time and gaps of over 100 rolls between crits. They now go through `prdRollFires` in `js/config.js`: each stickman keeps a luck balance (`critLuckBalance`, `missLuckBalance`) that adds the stated chance on every roll and subtracts one when the event fires, and the chance used is nudged toward evening it (`PRD_LUCK_PULL` 0.5). Measured over 400,000 rolls: the average equals the stated chance to four decimals, including when it varies per roll (wind, the Tiny Grunt evasion bonus); back-to-back misses at 10% fall from 10.2% to 0.6%; the longest gap at 10% falls from 111 to 23. A first attempt with a per-roll step table (classic PRD) was measured drifting from 9.5% to 11.9% when the chance changed per roll and was replaced before release. Sid Meier's Memoir! (Civilization Revolution) and Game Balance Ch19-20. Self-test added (19 total).
+- BUILD-MELODY-01: placing a stickman played the same `click` every time (`handleTap` in `js/ui.js`). It now plays `build_note`, the next note of a 12-note phrase (`BUILD_MELODY_STEPS`) in the score's current key (`musicShift`), so repeated building forms a tune, as SimGolf did (Sid Meier's Memoir!). Same length and level as the click.
+- Arrival cues: the 1.8.50 backlog note said champions and the circus arrived with no cue; the code already shows "🛡️ STANDARD GUARD" for the champion phase and a sound, notice and clown honk for the circus. The backlog item is corrected and nothing was added.
+- Checked at 1280x800 and at 390x780 with touch: design contract clean, all 19 self-tests pass at boot, no console errors or warnings, towers fight through two waves at 5x, the build melody cycles through all 12 notes, and a save round-trip loads without error. Miss rates in play match 1.8.47 (stated chance plus the Tiny Grunt evasion). Not compared: before/after renders; nothing visual changed.
+
+## [1.8.50] — 2026-10-17 (UTC)
+### Self-tests run at every boot, second reference-book review
+- SELF-TESTS-AT-BOOT-01: the 18 self-tests in `runDebugSelfTests` (`js/diagnostics.js`) only ran when called by hand, which is how the wave-1 test stayed red from 1.7.38 to 1.8.49 unnoticed. The boot sequence at the end of `js/waves.js` now runs them once through `runBootSelfTests`, which restores `idCounter` and `enemySpawnSerial` afterwards so the run leaves no trace in game state, and `validateDesignContract` appends any failure (`bootSelfTestFailures`), so a failure appears in the console, in the design-contract line of every debug log and after the source scan re-runs the contract. `runDebugSelfTests(logResults)` skips its 18 console lines when called from boot. The run takes about 4 ms. Checked by forcing `calculateLeadIntercept` to return NaN: both lead-intercept tests were reported through the contract, and nothing was reported once it was restored.
+- RELEASE-CHECKLIST-01 in `AGENTS.md`: the comment item now follows the existing comment-reference rule (short code comments, long rationale in the changelog) instead of forbidding new reference comments, and the rule names SELF-TESTS-AT-BOOT-01.
+- `BACKLOG.md` gains a second reference-book section (Sid Meier's Memoir!, Stay Awhile and Listen, The WoW Diary, Better Game Characters by Design, Pitfalls of Object Oriented Programming), each item checked against the code: critical hits and misses use plain random rolls with no streak control, fighter placement repeats one click, champions and the circus arrive without a cue, build-menu help is hand-written text beside data in `CONFIG.TOWERS`, and DOM update cost is not in the render phases.
+- Checked: design contract clean, all 18 self-tests pass at boot, no console errors, three waves start and spawn.
+
+## [1.8.49] — 2026-10-17 (UTC)
+### Wave-1 self-test matches the real wave, release checklist
+- WAVE-ONE-COUNT-01: the self-test "wave 1 is ten sequential single Tiny batches" in `runDebugSelfTests` (`js/diagnostics.js`) had failed since 1.7.38, which gave every wave 1.5 times as many enemies (`ENEMY_COUNT_MULTIPLIER` in `js/waves.js`); HISTORY.md § [1.7.38] records wave 1 as 15 single Tiny batches by design. The test now compares the batch count with `tierPopulationForWave(1).TINY`, so it follows the multiplier and the road-length scaling (`scaledPopulation`) instead of a hard-coded 10. The wave itself is unchanged. The wave-1 problem text in `validateWavePlan` now says 15 instead of ten.
+- RELEASE-CHECKLIST-01: `AGENTS.md` gains the per-release checklist (read before changing, reuse helpers, short why-comments only, contract and self-tests and console and a spawning wave checked over http, honest reporting, specific changelog, no unrequested pushes or deletes, failing self-tests fixed in the next release).
+- Checked: design contract clean, all 18 self-tests pass for the first time since 1.7.38, no console errors, three waves start and spawn.
+
 ## [1.8.48] — 2026-10-17 (UTC)
 ### Every script file gets accurate section banners and a Contents list
 - FILE-CONTENTS-01: each file in `js/` now opens with a one-line description and a Contents list of its section banners in order. `js/config.js`, `js/environment.js`, `js/towers.js` and `js/waves.js` gained the description line the other seven files already had.

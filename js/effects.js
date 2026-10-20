@@ -1404,11 +1404,17 @@ function updateBloodTrails(dt){
     if(stepPx > 0.12){
       enemy.trailStillMs = 0; enemy.trailAccumPx += stepPx;
       const spacing = BLOOD_TRAIL_BASE_SPACING_PX/(flow*weightScale)*(lowDetail ? 1.8 : 1);
-      if(enemy.trailAccumPx >= spacing){
-        enemy.trailAccumPx -= spacing; enemy.trailDropCount++;
+      if(enemy.trailSpacingRoll === undefined) enemy.trailSpacingRoll = 0.45 + Math.random()*1.1;
+      if(enemy.trailAccumPx >= spacing*enemy.trailSpacingRoll){
+        enemy.trailAccumPx -= spacing*enemy.trailSpacingRoll; enemy.trailDropCount++;
+        enemy.trailSpacingRoll = Math.random() < 0.15 ? 0.2 + Math.random()*0.3 : 0.45 + Math.random()*1.1;
         const speedPx = Math.hypot(enemy.vx || 0, enemy.vy || 0), heading = speedPx > 1 ? Math.atan2(enemy.vy, enemy.vx) : Math.atan2(stepY, stepX);
         const woundHeightPx = (0.45 + Math.random()*0.5)*FORENSIC_PX_PER_METER*weightScale, dropDiameter = (1.3 + Math.min(1.6, flow*0.5) + Math.random()*0.8)*dropScale;
-        launchForensicDroplet(enemy.x, enemy.y, woundHeightPx, speedPx/FORENSIC_PX_PER_METER, heading + (Math.random() - 0.5)*0.12, 0, dropDiameter, dropColor, enemy);
+        // BLOOD-TRAIL-SCATTER-01 (1.8.54): a walking wound swings with the gait, so drops leave the body at alternating offsets across the line of travel, at irregular spacing and with a few degrees of drift, rather than along one ruler-straight line.
+        enemy.trailGaitSide = enemy.trailGaitSide === 1 ? -1 : 1;
+        const lateralPx = (enemy.trailGaitSide*(0.12 + Math.random()*0.3) + (Math.random() - 0.5)*0.25)*enemy.radius;
+        const dropX = enemy.x - Math.sin(heading)*lateralPx, dropY = enemy.y + Math.cos(heading)*lateralPx;
+        launchForensicDroplet(dropX, dropY, woundHeightPx, speedPx/FORENSIC_PX_PER_METER*(0.85 + Math.random()*0.3), heading + (Math.random() - 0.5)*0.55, 0, dropDiameter, dropColor, enemy);
         if(enemy.trailDropCount % 4 === 0 && !lowDetail) for(let satellite = 0; satellite < 2; satellite++) launchForensicDroplet(enemy.x, enemy.y, woundHeightPx, speedPx/FORENSIC_PX_PER_METER*(0.8 + Math.random()*0.4), heading + (Math.random() - 0.5)*0.9, 0.05 + Math.random()*0.2, (0.7 + Math.random()*0.5)*dropScale, dropColor, enemy);
       }
     } else {

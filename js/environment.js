@@ -446,6 +446,8 @@ const HUT_MIN_EXPANSION_LEVEL = 3;
 // CA098 — see HISTORY.md § [1.5.7] Code Archaeology, CA098
 const GUARDIAN_COMBAT_LEASH = 260;
 let hutsSpawnedThisGame = false;
+// REPEAT-FANFARE-01 (1.8.59): the first troll and the first circus of a run get the full arrival (camera pan, fanfare); later ones arrive quietly, as Diablo kept its big surprises one-time.
+let trollArrivalsThisRun = 0, circusArrivalsThisRun = 0;
 let latestExpansionTiles = [];
 function initRegionAndPath(){
   for(const flight of goldHudFlights) flight.active=false;goldHudFlightCount=0;lastGoldHudFlightAt=-1e9;
@@ -457,6 +459,7 @@ function initRegionAndPath(){
   paidExpansions = 0;
   paidExpansionWaveIndex = -1;
   hutsSpawnedThisGame = false;
+  trollArrivalsThisRun = 0; circusArrivalsThisRun = 0;
   resetCaravan();
   latestExpansionTiles = [];
   dirtTileKeys.clear();
@@ -1211,10 +1214,33 @@ function maybeSpawnCircus(){
   if(Math.random() >= CIRCUS_CHANCE_PER_WAVE) return;
   const tile = findHutPlacementTile();
   if(!tile || !tryClaimRandomEventSlot()) return;
-  if(!spawnCircus(tile.x, tile.y)) return;
+  setUpCircusAt(tile);
+}
+// HACK-SUMMON-01: a summoned circus may stand on any free tile beside the road, not only on freshly opened expansion tiles.
+function findFreeTileBesideRoad(){
+  if(!activeRegion) return null;
+  const finishTile = pathWaypointTiles[pathWaypointTiles.length-1], candidates = [];
+  const occupied = new Set([...towerPool].filter(t => t.active).map(t => t.gridX+','+t.gridY));
+  for(const e of enemyPool) if(e.active && e.isHutBuilding) occupied.add(Math.floor(e.x/TILE_SIZE)+','+Math.floor(e.y/TILE_SIZE));
+  for(let gx = activeRegion.x0; gx <= activeRegion.x1; gx++) for(let gy = activeRegion.y0; gy <= activeRegion.y1; gy++){
+    const key = gx+','+gy;
+    if(pathCells.has(key) || sceneryMap.has(key) || occupied.has(key)) continue;
+    if(finishTile && Math.abs(gx-finishTile.x)+Math.abs(gy-finishTile.y) < 3) continue;
+    let besideRoad = false; for(let ox = -2; ox <= 2 && !besideRoad; ox++) for(let oy = -2; oy <= 2; oy++) if(Math.abs(ox) + Math.abs(oy) <= 2 && pathCells.has((gx+ox)+','+(gy+oy))){ besideRoad = true; break; }
+    if(!besideRoad) continue;
+    candidates.push([gx, gy]);
+  }
+  if(!candidates.length) return null;
+  const [gx, gy] = candidates[Math.floor(Math.random()*candidates.length)];
+  return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
+}
+function setUpCircusAt(tile){
+  if(!tile || liveCircuses().length > 0 || !spawnCircus(tile.x, tile.y)) return false;
   logGameEvent('random event: circus');
-  playSound('wave');
+  awardMedal('RINGMASTER');
+  playSound(circusArrivalsThisRun++ === 0 ? 'wave' : 'clown_honk', tile.x, undefined, tile.y);
   showFirstTimeNotice('first_circus', '🎪 A circus has set up beside the road. It sends out a new animal at the end of every round, and it never spawns enemies of its own. Watch for clowns.');
+  return true;
 }
 function maybeAddBonusGrassTile(revealedBorderKeys){
   if(expansionLevel % EXTRA_GRASS_EVERY_N_EXPANSIONS !== 0) return;
@@ -1345,21 +1371,31 @@ const QUEUE_PACK_GAP_PER_RADIUS = 1.6, QUEUE_PACK_MIN_GAP = 16; // PILE-PACK-01 
 // CA115 — see HISTORY.md § [1.5.7] Code Archaeology, CA115
 const BARRICADE_CHIP_MS = 260; // how long a barricade shakes/flashes after losing a point
 const BARRICADE_HIT_INTERVAL_MS = 10000; // max 1 HP lost per 10s from ANY source — pile-up attackers and direct takeDamage() hits share this one limiter
-function findQueueCatchmentLeader(active, endExclusive, behind, maxTraveledGap, catchmentRadius){
-  // `active` is sorted by traveled descending and preSnapTraveled is snapshotted in that order below.
+// COLLISION-ARRAYS-01 (1.8.60): the pre-snap positions and progress of the sorted queue are also copied to flat arrays, and the distance test runs before
+// the eligibility test, so a pile of enemies with nearly equal progress (where the binary search cannot narrow the range) reads plain numbers in its inner loop.
+// The nearest eligible leader inside the catchment is the same one as before.
+let catchmentArrayLength = 0, catchmentPreX, catchmentPreY, catchmentPreTraveled;
+function snapshotCatchmentArrays(active){
+  if(active.length > catchmentArrayLength){ catchmentArrayLength = Math.max(active.length, catchmentArrayLength * 2, 64); catchmentPreX = new Float64Array(catchmentArrayLength); catchmentPreY = new Float64Array(catchmentArrayLength); catchmentPreTraveled = new Float64Array(catchmentArrayLength); }
+  for(let i = 0; i < active.length; i++){ catchmentPreX[i] = active[i].preSnapX; catchmentPreY[i] = active[i].preSnapY; catchmentPreTraveled[i] = active[i].preSnapTraveled; }
+}
+function findQueueCatchmentLeader(active, endExclusive, behindIndex, maxTraveledGap, catchmentRadius){
+  // `active` is sorted by traveled descending and the catchment arrays hold its pre-snap values in that order.
   // Binary-search the first plausible ahead unit; farther-ahead units cannot be catchment leaders.
+  const behindX = catchmentPreX[behindIndex], behindY = catchmentPreY[behindIndex], behindTraveled = catchmentPreTraveled[behindIndex];
   let low = 0, high = endExclusive;
   while(low < high){
     const mid = (low + high) >> 1;
-    if(active[mid].preSnapTraveled - behind.preSnapTraveled > maxTraveledGap) low = mid + 1;
+    if(catchmentPreTraveled[mid] - behindTraveled > maxTraveledGap) low = mid + 1;
     else high = mid;
   }
   let bestAhead = null, bestDist = Infinity;
   for(let j = low; j < endExclusive; j++){
+    const d = Math.hypot(catchmentPreX[j]-behindX, catchmentPreY[j]-behindY);
+    if(d >= catchmentRadius || d >= bestDist) continue;
     const ahead = active[j];
     if(!ahead.pileBlocked && ahead.queueSlotDist === undefined && !isEnemyHeldInPlace(ahead)) continue; // reserve approaching queue members too (QUEUE-BODY-GAP-01)
-    const d = Math.hypot(ahead.preSnapX-behind.preSnapX, ahead.preSnapY-behind.preSnapY);
-    if(d < catchmentRadius && d < bestDist){ bestDist = d; bestAhead = ahead; }
+    bestDist = d; bestAhead = ahead;
   }
   return bestAhead;
 }
@@ -1423,12 +1459,13 @@ function updateBarricadesAndPileup(){
     if(e.pileBlocked || isEnemyHeldInPlace(e)){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
   }
   // CA121 — see HISTORY.md § [1.5.7] Code Archaeology, CA121
+  if(anyBlockedSeed) snapshotCatchmentArrays(active);
   if(anyBlockedSeed){
   for(let i=0; i<active.length; i++){
     const behind = active[i];
     if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
     if(claimedSlots.size > MAX_QUEUE_DEPTH) continue;
-    const bestAhead = findQueueCatchmentLeader(active, i, behind, MAX_TRAVELED_GAP_FOR_CATCHMENT, QUEUE_CATCHMENT);
+    const bestAhead = findQueueCatchmentLeader(active, i, i, MAX_TRAVELED_GAP_FOR_CATCHMENT, QUEUE_CATCHMENT);
     if(bestAhead){
       const spacing = queueGap(behind,bestAhead);
       const aheadSlot = bestAhead.queueSlotDist !== undefined ? bestAhead.queueSlotDist : bestAhead.traveled;
@@ -2133,7 +2170,7 @@ function updateScenery(dt){
       } else if(EVENT_PROP_EMOJI[item.type]){
         grantEventProp(item); // EVENT-VARIETY-01 (1.7.44)
       } else if(item.type === 'SUPPLY_CRATE'){
-        const stim = rollStimItem();
+        const stim = Math.random() < SUMMON_FROM_CRATE_CHANCE ? rollSummonItem() : rollStimItem();
         spawnGroundItem(item.x, item.y - 4, stim, 'scenery');
         spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS);
         spawnParticles(item.x, item.y, '#b0895a', 8);
@@ -2501,6 +2538,25 @@ const STIM_ITEMS = [
   Object.freeze({ id:'FIELD_MEDKIT', name:'Field Medkit', icon:'🩹', isStim:true, stat:'heal', value:0.4, weight:15 }),
   Object.freeze({ id:'HYPER_SERUM', name:'Hyper-Serum', icon:'🧪', isStim:true, stat:'all', value:1.15, weight:5 })
 ];
+// SUMMON-ITEMS-01 (1.8.62): three rare finds call a visitor when used: the Merchant's Bell the caravan, the Circus Ticket a circus, the Troll Bait a wandering troll.
+// A use that would make a second visitor of the same kind keeps the item and says so (VISITOR-LIMIT-01). Supply crates give one instead of a stim one time in five.
+const SUMMON_ITEMS = [
+  Object.freeze({ id:'MERCHANT_BELL', name:"Merchant's Bell", icon:'🛎️', isSummon:true, summons:'caravan', weight:40 }),
+  Object.freeze({ id:'CIRCUS_TICKET', name:'Circus Ticket', icon:'🎟️', isSummon:true, summons:'circus', weight:30 }),
+  Object.freeze({ id:'TROLL_BAIT', name:'Troll Bait', icon:'🪤', isSummon:true, summons:'troll', weight:30 })
+];
+const SUMMON_FROM_CRATE_CHANCE = 0.2;
+function rollSummonItem(){
+  let roll = Math.random() * SUMMON_ITEMS.reduce((sum, d) => sum + d.weight, 0);
+  for(const d of SUMMON_ITEMS){ roll -= d.weight; if(roll <= 0) return d; }
+  return SUMMON_ITEMS[0];
+}
+function summonVisitor(kind){
+  if(kind === 'caravan') return spawnCaravan() ? 'ok' : '🐪 The caravan is already here.';
+  if(kind === 'circus'){ if(liveCircuses().length > 0) return '🎪 A circus is already set up.'; return setUpCircusAt(findFreeTileBesideRoad()) ? 'ok' : '🎪 No room beside the road for a circus.'; }
+  if(kind === 'troll'){ if(trollIsOnBoard()) return '🧌 A troll is already here.'; return spawnWanderingTroll() ? 'ok' : '🧌 No room for a troll to enter.'; }
+  return 'Nothing answered.';
+}
 function rollStimItem(){
   let total = 0; for(const d of STIM_ITEMS) total += d.weight;
   let roll = Math.random()*total;
@@ -2567,6 +2623,7 @@ function lookupItemDef(itemId){ return ITEM_BY_ID.get(itemId) || CONSUMABLE_BY_I
 const CONSUMABLE_BY_ID = new Map();
 for(const consumableDef of MEAL_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 for(const consumableDef of STIM_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
+for(const consumableDef of SUMMON_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 for(const consumableDef of FOOD_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 for(const consumableDef of TREAT_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
 for(const consumableDef of HUT_LOOT_ITEMS) CONSUMABLE_BY_ID.set(consumableDef.id, consumableDef);
@@ -2683,7 +2740,7 @@ function placeCampfire(gx,gy){
   const fire={gx,gy,x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE,type:'CAMPFIRE',scale:0.85,isChanceStructure:true,fuel:0,healPool:0,isClearing:false,clearCost:0,clearMs:0,tallStretch:1,widthStretch:1};
   sceneryMap.set(gx+','+gy,fire);placingCampfire=false;invalidateSpawnFlags();updateHUD();playSound('click');openCookingDialog(fire);return true;
 }
-function isConsumableDef(def){ return !!(def && (def.isFood || def.isTreat || def.isStim || def.isHutLoot || def.isDiggingTool)); } // CONSUMABLE-STORED-01 (1.6.132) — see HISTORY.md § [1.6.132]
+function isConsumableDef(def){ return !!(def && (def.isFood || def.isTreat || def.isStim || def.isHutLoot || def.isDiggingTool || def.isSummon)); } // CONSUMABLE-STORED-01 (1.6.132) — see HISTORY.md § [1.6.132]
 function useStoredConsumable(tower, slotIndex){
   if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return false;
   const def = tower.equippedItems[slotIndex];
@@ -2693,6 +2750,16 @@ function useStoredConsumable(tower, slotIndex){
     refreshQuickUse(tower);
     recordFirstItemUse(def);
     trackGameEvent('shovel_used', { item: def.id, tower_type: tower.type });
+    return true;
+  }
+  if(def.isSummon){
+    const outcome = summonVisitor(def.summons);
+    if(outcome !== 'ok'){ showToast(outcome); playSound('ui_deny'); return false; }
+    if(takeOneFromHeld(tower, def)) itemLogUsed(def, tower);
+    refreshQuickUse(tower); recordFirstItemUse(def);
+    spawnFloatingText(tower.x, tower.y - 40, def.icon + ' ' + def.name, '#ffe082', ITEM_POPUP_LIFE_MS);
+    trackGameEvent('summon_used', { item: def.id, tower_type: tower.type });
+    if(selectedTower === tower) updateInspectPanel();
     return true;
   }
   if(takeOneFromHeld(tower, def)) itemLogUsed(def, tower);
@@ -3157,7 +3224,9 @@ const TELEMETRY_EVENTS = {
   tower_downed: ['tower_type', 'tower_level', 'cause', 'towers_standing'],
   item_purchased: ['item', 'payment_type', 'cost', 'wood_cost', 'stone_cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
-  item_drifted: ['item', 'tower_type'], // TELEMETRY-CATALOG-01 (1.8.46): every event the code sends is declared
+  item_drifted: ['item', 'tower_type'],
+  summon_used: ['item', 'tower_type'], // SUMMON-ITEMS-01 (1.8.62)
+  early_call_bonus: ['wave', 'gold'], // EARLY-CALL-01 (1.8.62) // TELEMETRY-CATALOG-01 (1.8.46): every event the code sends is declared
   item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01 (1.6.149) — see HISTORY.md § [1.6.149]: never name a parameter source, medium, campaign, value or currency; GA4 reads those as traffic source or revenue
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
   item_guide_shown: [],
@@ -4051,7 +4120,36 @@ function resizeMapCanvasForDpr(){
   }
 }
 const buildPreviewAppearance={preview:true,lowGfx:true,hasTarget:false,weaponScale:1,weaponThickness:1,drawProgress:0,castProgress:0,chargeProgress:0,swingProgress:0,throwProgress:0,str:0,int:0};
+// BUILD-SPOT-HINT-01 (1.8.62): while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a gold
+// dashed outline, a "good spot" hint from Buckland's support-spot scoring. It is a suggestion only; any buildable tile can still be used.
+let buildSpotHintCache = { key: '', tile: null };
+function bestBuildSpotFor(type){
+  const def = CONFIG.TOWERS[type];
+  if(!def || !def.tiers || !def.tiers[0] || !activeRegion || isProducerType(type) || type === 'BARRICADE') return null;
+  const range = def.tiers[0].range, key = type + '|' + mapBakeRevision + '|' + pathCells.size + '|' + towerPool.reduce((count, t) => count + (t.active ? 1 : 0), 0) + '|' + sceneryMap.size;
+  if(buildSpotHintCache.key === key) return buildSpotHintCache.tile;
+  const roadCenters = []; for(const cellKey of pathCells){ const [rx, ry] = cellKey.split(',').map(Number); roadCenters.push(rx*TILE_SIZE + TILE_SIZE/2, ry*TILE_SIZE + TILE_SIZE/2); }
+  let best = null, bestScore = 0;
+  for(let gx = activeRegion.x0; gx <= activeRegion.x1; gx++) for(let gy = activeRegion.y0; gy <= activeRegion.y1; gy++){
+    if(!isTileBuildable(gx, gy, null, type)) continue;
+    const cx = gx*TILE_SIZE + TILE_SIZE/2, cy = gy*TILE_SIZE + TILE_SIZE/2, rangeSq = range*range;
+    let score = 0; for(let i = 0; i < roadCenters.length; i += 2){ const dx = roadCenters[i] - cx, dy = roadCenters[i+1] - cy; if(dx*dx + dy*dy <= rangeSq) score++; }
+    if(score > bestScore){ bestScore = score; best = { gx, gy }; }
+  }
+  buildSpotHintCache = { key, tile: best };
+  return best;
+}
+function drawBuildSpotHint(ctx){
+  if(!selectedBuildType || moveModeTower) return;
+  const spot = bestBuildSpotFor(selectedBuildType);
+  if(!spot) return;
+  ctx.save();
+  ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+  ctx.strokeRect(spot.gx*TILE_SIZE + 4, spot.gy*TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  ctx.restore();
+}
 function drawBuildPreview(ctx){
+  drawBuildSpotHint(ctx);
   if(!hoverCell) return;
   if(!selectedBuildType && !moveModeTower) return;
   const { gx, gy } = hoverCell;

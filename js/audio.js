@@ -13,7 +13,7 @@ let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
 const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX burst over boss music peaked at 0.37 of full scale with the old 0.5 gain, so +3.5 dB still leaves about 4 dB of headroom before the compressor
 const AUDIO_UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']; // AUDIO-GESTURE-01 (1.7.107); declared here, before the design contract runs
 const MUSIC_TEMPO_BPM = 88; // MUSIC-COHESION-01 (1.8.35): one 88 BPM pulse, field and start screen at 1x, wave and boss at 1.5x
-const MUSIC_COMBAT_TEMPO_BPM = 132;
+const MUSIC_COMBAT_TEMPO_BPM = 144; // MUSIC-DRIVE-01 (1.8.58): back to the pre-1.8.35 battle tempo; 132 BPM took the drive out of the wave music
 const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 10, 2, 0, 7, 5, 8, 3, 10]; // MUSIC-JOURNEY-01 (1.8.20): twelve cycles before the key path repeats, up from eight // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
 const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
 function mulberry32(seed){ let a = seed|0; return function(){ a = (a + 0x6D2B79F5)|0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -37,7 +37,7 @@ function fieldVariedBar(notes, rng){
   let kept = 0; for(let i = 0; i < 8; i++) if(out[i] !== null && kept++ % 2 === 1) out[i] = null; // thinned: every other note rests
   return out;
 }
-const MUSIC_BOSS_TEMPO_BPM = 132; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
+const MUSIC_BOSS_TEMPO_BPM = 152; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
 const MUSIC_COMBAT_ROOTS = [38,38,41,36,38,43,41,38,38,36,43,38];
 const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
 const MUSIC_COMBAT_INTERVALS = [0,2,3,5,7,8,11,12,14,17];
@@ -143,7 +143,10 @@ function midiToFrequency(note){ return 440 * Math.pow(2, (note - 69) / 12); }
 // Five variants, never the same twice in a row: pitch ratios are whole semitones (0, +1, -1, +2, -2) and the noise colour moves with them.
 const SFX_VARIANT_PITCH = [1, 1.0595, 0.9439, 1.1225, 0.8909], SFX_VARIANT_NOISE = [1, 1.12, 0.89, 1.25, 0.8];
 // Sounds whose pitch is part of their meaning (melodic stingers, countdown, level ups, UI confirms) always play unchanged.
-const SFX_VARIANT_EXEMPT = new Set(['heart_break','item_scroll','item_inject','wave_clear','levelup','evolution','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
+// BUILD-MELODY-01 (1.8.51): each placement plays the next note of a short phrase in the score's current key instead of the same click (SimGolf's placement tune, Sid Meier's Memoir!).
+const BUILD_MELODY_STEPS = [0, 3, 7, 5, 3, 7, 10, 12, 10, 7, 5, 3];
+const BUILD_MELODY_BASE_NOTE = 72;
+const SFX_VARIANT_EXEMPT = new Set(['loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','evolution','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
 const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
@@ -804,6 +807,7 @@ class SoundEngine{
     // Leave one eighth-note of space before the main landing.
     if(bar === 15 && beatStep === 7) return;
     const restBar = (bar === 3 || bar === 11) && beatStep >= 5;
+    this.scheduleAttractIntroBed(time, bar, beatStep, stepSeconds, chord, chordRoot, shift);
     if(beatStep === 0 && bar % 4 === 0 && section >= 1 && section < 3){
       this.popTone(midiToFrequency(chordRoot), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.02 * level, true);
       this.popTone(midiToFrequency(chordRoot + 7), time, stepSeconds * MUSIC_STEPS_PER_BAR * 3.96, 'pad', 0.014 * level, true);
@@ -872,6 +876,24 @@ class SoundEngine{
         this.popTone(midiToFrequency(pitch - 12), time, held, 'lead', (isChorus ? 0.058 : 0.04) * level);
         if(isChorus) this.popTone(midiToFrequency(fitToChord(tonic + 12 + MUSIC_COMBAT_INTERVALS[Math.min(9, degree + 2)])), time, held, 'harmony', 0.03, true);
       }
+    }
+  }
+  // MUSIC-INTRO-BED-01 (1.8.58): the first four bars of the start screen had only the low melody, so the song opened thin. They now open on a soft
+  // swelling chord pad (bars 0 and 2) with a harp-like rising arpeggio from bar 1, which sets the place before the drums arrive (Diablo's composer gave
+  // every new environment at least 20 seconds to establish itself). The last bar of the cycle lays a quiet tonic chord under the final beats so the loud
+  // chorus hands over to the quiet intro instead of stopping dead.
+  scheduleAttractIntroBed(time, bar, beatStep, stepSeconds, chord, chordRoot, shift){
+    const barSeconds = stepSeconds * MUSIC_STEPS_PER_BAR;
+    if(bar < 4){
+      if(beatStep === 0 && bar % 2 === 0) chord.triad.forEach((interval, index) => this.popTone(midiToFrequency(chordRoot + 12 + interval), time, barSeconds * 1.96, 'pad', (index === 0 ? 0.022 : 0.015) * (bar === 0 ? 0.75 : 1), true));
+      if(bar >= 1 && beatStep % 2 === 0 && !(bar === 3 && beatStep >= 4)){
+        const rise = [0, 1, 2, 1][beatStep >> 1], octave = beatStep === 4 ? 12 : 0;
+        this.popTone(midiToFrequency(chordRoot + 24 + chord.triad[rise] + octave), time, stepSeconds * 1.6, 'pluck', 0.012 + 0.003 * bar, true);
+      }
+    }
+    if(bar === 23 && beatStep === 4){
+      const homeRoot = MUSIC_ATTRACT_CHORDS[0].root + shift;
+      [0, 7, 12].forEach(interval => this.popTone(midiToFrequency(homeRoot + 12 + interval), time, barSeconds * 1.5, 'pad', 0.016, true));
     }
   }
   // MUSIC-LAYERS-01 (1.7.105) — see HISTORY.md § [1.7.105]: the wave and boss themes gain a chord pad from the second section, a layered snare on the backbeat, and a noise riser through the last two bars of each section, so the 24 bars build instead of staying level
@@ -1214,7 +1236,7 @@ class SoundEngine{
     try { this.playEvent(name,worldX,intensity); }
     finally { this.currentEventImportant=previousPriority; this.currentEventGain=previousGain; }
   }
-  lastSfxVariant = {}; sfxVariantPitch = 1; sfxVariantNoise = 1;
+  lastSfxVariant = {}; sfxVariantPitch = 1; sfxVariantNoise = 1; buildMelodyIndex = 0;
   playEvent(name, worldX, intensity){
     if(!this.unlocked || isMuted || audioSfxVolume <= 0) return;
     const gap = AUDIO_EVENT_GAPS[name];
@@ -1521,6 +1543,17 @@ class SoundEngine{
         break;
       }
       // CA198 — see HISTORY.md § [1.5.7] Code Archaeology, CA198
+      case 'loot_drop': {
+        const noteCount = Math.max(2, Math.min(4, intensity || 2)), rootPitch = 79 + (this.musicShift || 0);
+        for(let note = 0; note < noteCount; note++){ const noteFrequency = midiToFrequency(rootPitch + [0, 4, 7, 12][note]); this.tone(noteFrequency,0.16,'sine',undefined,eventPan,true,note*0.07,true,true,0.07); this.tone(noteFrequency*2,0.12,'triangle',undefined,eventPan,false,note*0.07+0.01,true,true,0.025); }
+        break;
+      }
+      case 'build_note': {
+        const notePitch = BUILD_MELODY_BASE_NOTE + (this.musicShift || 0) + BUILD_MELODY_STEPS[this.buildMelodyIndex % BUILD_MELODY_STEPS.length];
+        this.buildMelodyIndex = (this.buildMelodyIndex + 1) % BUILD_MELODY_STEPS.length;
+        const noteFrequency = midiToFrequency(notePitch);
+        this.tone(noteFrequency,0.07,'triangle',undefined,0,false,0,false,true,0.06); this.tone(noteFrequency*2,0.09,'sine',undefined,0,false,0.014,false,true,0.028); break;
+      }
       case 'click': this.tone(1174.66,0.032,'triangle',undefined,0,false,0,false,true,0.055); this.tone(1567.98,0.040,'sine',undefined,0,false,0.018,false,true,0.035); break;
       case 'ui_open': this.tone(783.99,0.045,'triangle',undefined,0,false,0,true,true,0.07); this.tone(1174.66,0.075,'sine',undefined,0,false,0.035,true,true,0.055); break;
       case 'ui_close': this.tone(1174.66,0.040,'triangle',undefined,0,false,0,true,true,0.055); this.tone(783.99,0.055,'sine',undefined,0,false,0.025,true,true,0.04); break;

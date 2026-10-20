@@ -1,5 +1,5 @@
 "use strict";
-// Spatial hash, enemy collisions, the fixed-timestep main loop, update and render, diagnostics frames, the attract screen and the merchant caravan. Loaded after js/stickman.js.
+// Spatial hash, enemy collisions, the fixed-timestep main loop, update and render, diagnostics frames, the attract screen and the merchant caravan. Loaded after js/effects.js.
 // Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
 //   SPATIAL HASH
 //   MAIN LOOP: FIXED TIMESTEP AND UPDATE
@@ -152,22 +152,44 @@ function checkStallWatchdog(dt){
 // in one; same tradeoff already accepted for melee cleave's own MELEE_SWEEP_MAX_TARGETS cap.
 const COLLISION_QUERY_CAP = 48;
 function largestActiveEnemyRadius(){ let largest = 0; for(const e of enemyPool) if(e.active && e.radius > largest) largest = e.radius; return largest; }
+// COLLISION-ARRAYS-01 (1.8.60): the relaxation passes read and write each enemy's position, radius, speed and flags from flat typed arrays filled once per
+// call, then write the positions back. A profile with 220 enemies piled at the barricade showed this function and its caller at about 60% of all script
+// time; the enemy objects carry dozens of dynamically added properties, so every field read in the pair loop was slow (Albrecht, Pitfalls of Object
+// Oriented Programming). The arithmetic, the pair order and the neighbour selection are unchanged, so the results are identical.
+let collisionArrayLength = 0;
+let collisionX, collisionY, collisionRadius, collisionId, collisionVX, collisionVY, collisionFrozen, collisionHut, collisionCamp, collisionEscaped;
+function ensureCollisionArrays(length){
+  if(length <= collisionArrayLength) return;
+  collisionArrayLength = length;
+  collisionX = new Float64Array(length); collisionY = new Float64Array(length); collisionRadius = new Float64Array(length); collisionId = new Float64Array(length);
+  collisionVX = new Float64Array(length); collisionVY = new Float64Array(length);
+  collisionFrozen = new Uint8Array(length); collisionHut = new Uint8Array(length); collisionCamp = new Uint8Array(length); collisionEscaped = new Uint8Array(length);
+}
 function resolveSweptEnemyCollisions(){
   const hash = buildEnemyHash(), largestRadius = largestActiveEnemyRadius();
-  for(const e of enemyPool){
-    if(!e.active || e.prevX === undefined || e.isLivestock || e.isBreakaway) continue; // BREAKAWAY-PHASE-01 (1.6.157): an enemy breaking off to attack a stickman is on its own phase and touches neither barricades nor other enemies // WANDERER-PHASE-01 (1.6.137) — see HISTORY.md § [1.6.137]: livestock and the troll pass through everything
-    const nearby = queryNearby(hash, e.x, e.y, Math.max(e.radius*3, e.radius + largestRadius + 2) + 40, COLLISION_QUERY_CAP, true);
+  ensureCollisionArrays(enemyPool.length);
+  const X = collisionX, Y = collisionY, R = collisionRadius, PX = collisionVX, PY = collisionVY; // COLLISION-ARRAYS-01 (1.8.60): the velocity arrays hold the previous position during this pass
+  for(let slot = 0; slot < enemyPool.length; slot++){
+    const e = enemyPool[slot];
+    if(!e.active || e.prevX === undefined || e.isLivestock || e.isBreakaway){ e.collisionSlot = -1; continue; } // BREAKAWAY-PHASE-01 (1.6.157): an enemy breaking off to attack a stickman is on its own phase
+    e.collisionSlot = slot;
+    X[slot] = e.x; Y[slot] = e.y; R[slot] = e.radius; collisionId[slot] = e.id; PX[slot] = e.prevX; PY[slot] = e.prevY;
+    collisionFrozen[slot] = (isEnemyFrozen(e) || e.isHutBuilding) ? 1 : 0;
+    collisionCamp[slot] = (e.isGuardian || e.isHutBuilding) ? 1 : 0; collisionEscaped[slot] = e.escaped ? 1 : 0;
+  }
+  for(let i = 0; i < enemyPool.length; i++){
+    if(enemyPool[i].collisionSlot < 0) continue;
+    const nearby = queryNearby(hash, X[i], Y[i], Math.max(R[i]*3, R[i] + largestRadius + 2) + 40, COLLISION_QUERY_CAP, true);
     const collisionCap = Math.min(nearby.length, COLLISION_QUERY_CAP);
-    for(let __ci=0; __ci<collisionCap; __ci++){ const other = nearby[__ci];
-      if(e.id >= other.id) continue; // each pair once, same reasoning as resolveEnemyCollisions; checked first because it rejects half the candidates (COLLISION-ORDER-01)
-      if(!other.active || other.prevX === undefined || other.isLivestock || other.isBreakaway) continue;
-      if(isCampRouteCrossing(e, other)) continue;
-      const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
-      const otherFrozen = isEnemyFrozen(other) || other.isHutBuilding;
-      if(eFrozen && otherFrozen) continue; // both stationary this frame — nothing to tunnel through, and the regular pass already covers this pair
-      const minDist = e.radius + other.radius + 2;
-      const px = e.prevX - other.prevX, py = e.prevY - other.prevY;
-      const vx = (e.x - e.prevX) - (other.x - other.prevX), vy = (e.y - e.prevY) - (other.y - other.prevY);
+    for(let __ci=0; __ci<collisionCap; __ci++){
+      const j = nearby[__ci].collisionSlot;
+      if(j === undefined || j < 0 || collisionId[i] >= collisionId[j]) continue; // each pair once, checked first because it rejects half the candidates (COLLISION-ORDER-01)
+      if((collisionCamp[i] && !collisionCamp[j] && !collisionEscaped[j]) || (collisionCamp[j] && !collisionCamp[i] && !collisionEscaped[i])) continue; // isCampRouteCrossing
+      const eFrozen = collisionFrozen[i], otherFrozen = collisionFrozen[j];
+      if(eFrozen && otherFrozen) continue; // both stationary this frame — nothing to tunnel through
+      const minDist = R[i] + R[j] + 2;
+      const px = PX[i] - PX[j], py = PY[i] - PY[j];
+      const vx = (X[i] - PX[i]) - (X[j] - PX[j]), vy = (Y[i] - PY[i]) - (Y[j] - PY[j]);
       const vSq = vx*vx + vy*vy;
       if(vSq < 0.01) continue; // negligible relative motion this frame — nothing could have tunneled
       let t = -(px*vx + py*vy) / vSq;
@@ -175,16 +197,31 @@ function resolveSweptEnemyCollisions(){
       const closeX = px + vx*t, closeY = py + vy*t;
       const closeDist = Math.hypot(closeX, closeY);
       if(closeDist >= minDist) continue; // paths never actually came within collision range this frame
-      const dx = e.x - other.x, dy = e.y - other.y;
+      const dx = X[i] - X[j], dy = Y[i] - Y[j];
       const dist = Math.hypot(dx,dy) || 0.0001;
       if(dist >= minDist){
         // CA612 — see HISTORY.md § [1.5.7] Code Archaeology, CA612
         const normX = closeDist > 0.0001 ? closeX/closeDist : 1, normY = closeDist > 0.0001 ? closeY/closeDist : 0;
         const corr = (minDist - closeDist) * 0.5;
-        if(!eFrozen){ e.x += normX*corr; e.y += normY*corr; }
-        if(!otherFrozen){ other.x -= normX*corr; other.y -= normY*corr; }
+        if(!eFrozen){ X[i] += normX*corr; Y[i] += normY*corr; }
+        if(!otherFrozen){ X[j] -= normX*corr; Y[j] -= normY*corr; }
       }
     }
+  }
+  for(let i = 0; i < enemyPool.length; i++){ const e = enemyPool[i]; if(e.collisionSlot >= 0){ e.x = X[i]; e.y = Y[i]; } }
+}
+function loadCollisionArrays(){
+  ensureCollisionArrays(enemyPool.length);
+  for(let slot = 0; slot < enemyPool.length; slot++){
+    const e = enemyPool[slot];
+    if(!e.active || e.isLivestock || e.isBreakaway){ e.collisionSlot = -1; continue; }
+    e.collisionSlot = slot;
+    collisionX[slot] = e.x; collisionY[slot] = e.y; collisionRadius[slot] = e.radius; collisionId[slot] = e.id;
+    collisionVX[slot] = e.vx; collisionVY[slot] = e.vy;
+    collisionHut[slot] = e.isHutBuilding ? 1 : 0;
+    collisionFrozen[slot] = (isEnemyFrozen(e) || e.isHutBuilding) ? 1 : 0;
+    collisionCamp[slot] = (e.isGuardian || e.isHutBuilding) ? 1 : 0;
+    collisionEscaped[slot] = e.escaped ? 1 : 0;
   }
 }
 function resolveEnemyCollisions(){
@@ -193,25 +230,22 @@ function resolveEnemyCollisions(){
   // CA614 — see HISTORY.md § [1.5.7] Code Archaeology, CA614
   const COLLISION_RELAX_FACTOR = 0.7;
   const COLLISION_RELAX_SPLIT = COLLISION_RELAX_FACTOR * 0.5; // 0.35 — the per-body coefficient when both sides share the correction
-  // PERF-01 (1.6.8) — see HISTORY.md § [1.6.8]. Built once instead of once per pass (previously
-  // up to 3 full spatial-hash rebuilds in a single frame). Per-pass displacement is bounded by
-  // overlap*COLLISION_RELAX_SPLIT — a few pixels at most — which essentially never moves an enemy
-  // across a hash-cell boundary within one frame's worth of passes, so reusing the same hash across
-  // all 3 relaxation passes costs no real accuracy. The already-existing early-exit below (a pass
-  // that corrects nothing stops the loop) still applies on top of this.
+  // PERF-01 (1.6.8) — see HISTORY.md § [1.6.8]. One hash for all three passes; per-pass displacement is a few pixels at most.
   const hash = buildEnemyHash(), largestRadius = largestActiveEnemyRadius();
+  loadCollisionArrays();
+  const X = collisionX, Y = collisionY, R = collisionRadius;
   for(let pass = 0; pass < PASSES; pass++){
     let correctionsThisPass = 0; // a pass that corrected nothing means the field is already settled — further passes would repeat identical work
-    for(const e of enemyPool){
-      if(!e.active || e.isLivestock || e.isBreakaway) continue;
-      const nearby = queryNearby(hash, e.x, e.y, e.radius + largestRadius + 2, COLLISION_QUERY_CAP, true);
+    for(let i = 0; i < enemyPool.length; i++){
+      if(enemyPool[i].collisionSlot < 0) continue;
+      const nearby = queryNearby(hash, X[i], Y[i], R[i] + largestRadius + 2, COLLISION_QUERY_CAP, true);
       const collisionCap = Math.min(nearby.length, COLLISION_QUERY_CAP);
-      for(let __ci=0; __ci<collisionCap; __ci++){ const other = nearby[__ci];
-        if(e.id >= other.id) continue; // each pair resolved exactly once per pass — without this, A pushes B, then later in the same loop B independently re-detects A and pushes again, doubling the separation and shoving units off the path centerline near corners
-        if(!other.active || other.isLivestock || other.isBreakaway) continue;
-        if(isCampRouteCrossing(e, other)) continue;
-        const dx = e.x - other.x, dy = e.y - other.y;
-        const minDist = e.radius + other.radius + 2; // strict non-overlap (was 0.82x, deliberately allowing 18% visual overlap that read as sprite stacking/"invisible" units)
+      for(let __ci=0; __ci<collisionCap; __ci++){
+        const j = nearby[__ci].collisionSlot;
+        if(j === undefined || j < 0 || collisionId[i] >= collisionId[j]) continue; // each pair resolved exactly once per pass
+        if((collisionCamp[i] && !collisionCamp[j] && !collisionEscaped[j]) || (collisionCamp[j] && !collisionCamp[i] && !collisionEscaped[i])) continue; // isCampRouteCrossing
+        const dx = X[i] - X[j], dy = Y[i] - Y[j];
+        const minDist = R[i] + R[j] + 2; // strict non-overlap
         const distSq = dx*dx + dy*dy;
         if(distSq >= minDist*minDist) continue; // squared-distance rejection: the sqrt only runs for pairs that actually overlap
         const dist = Math.sqrt(distSq);
@@ -221,19 +255,18 @@ function resolveEnemyCollisions(){
           pushX = dx/dist; pushY = dy/dist;
         } else {
           // CA615 — see HISTORY.md § [1.5.7] Code Archaeology, CA615
-          const angle = ((e.id * 2654435761 + other.id * 40503) % 360) * Math.PI/180;
+          const angle = ((collisionId[i] * 2654435761 + collisionId[j] * 40503) % 360) * Math.PI/180;
           pushX = Math.cos(angle); pushY = Math.sin(angle);
         }
-        const eFrozen = isEnemyFrozen(e) || e.isHutBuilding;
-        const otherFrozen = isEnemyFrozen(other) || other.isHutBuilding;
+        const eFrozen = collisionFrozen[i], otherFrozen = collisionFrozen[j];
         // CA616 — see HISTORY.md § [1.5.7] Code Archaeology, CA616
         if(!eFrozen || !otherFrozen) correctionsThisPass++;
         if(!eFrozen && !otherFrozen){
           // CA617 — see HISTORY.md § [1.5.7] Code Archaeology, CA617
-          const speedE = Math.hypot(e.vx, e.vy), speedO = Math.hypot(other.vx, other.vy);
+          const speedE = Math.hypot(collisionVX[i], collisionVY[i]), speedO = Math.hypot(collisionVX[j], collisionVY[j]);
           if(speedE > 5 || speedO > 5){
-            const tanX = speedE > speedO ? e.vx/(speedE||1) : other.vx/(speedO||1);
-            const tanY = speedE > speedO ? e.vy/(speedE||1) : other.vy/(speedO||1);
+            const tanX = speedE > speedO ? collisionVX[i]/(speedE||1) : collisionVX[j]/(speedO||1);
+            const tanY = speedE > speedO ? collisionVY[i]/(speedE||1) : collisionVY[j]/(speedO||1);
             const along = pushX*tanX + pushY*tanY; // component of the push already aligned with travel direction
             const crossX = pushX - along*tanX, crossY = pushY - along*tanY; // perpendicular remainder
             // CA618 — see HISTORY.md § [1.5.7] Code Archaeology, CA618
@@ -242,23 +275,24 @@ function resolveEnemyCollisions(){
             const norm = Math.hypot(pushX, pushY) || 1;
             pushX /= norm; pushY /= norm;
           }
-          e.x += pushX*overlap*COLLISION_RELAX_SPLIT; e.y += pushY*overlap*COLLISION_RELAX_SPLIT;
-          other.x -= pushX*overlap*COLLISION_RELAX_SPLIT; other.y -= pushY*overlap*COLLISION_RELAX_SPLIT;
+          X[i] += pushX*overlap*COLLISION_RELAX_SPLIT; Y[i] += pushY*overlap*COLLISION_RELAX_SPLIT;
+          X[j] -= pushX*overlap*COLLISION_RELAX_SPLIT; Y[j] -= pushY*overlap*COLLISION_RELAX_SPLIT;
         } else if(!eFrozen){
-          e.x += pushX*overlap*COLLISION_RELAX_FACTOR; e.y += pushY*overlap*COLLISION_RELAX_FACTOR;
+          X[i] += pushX*overlap*COLLISION_RELAX_FACTOR; Y[i] += pushY*overlap*COLLISION_RELAX_FACTOR;
         } else if(!otherFrozen){
-          other.x -= pushX*overlap*COLLISION_RELAX_FACTOR; other.y -= pushY*overlap*COLLISION_RELAX_FACTOR;
+          X[j] -= pushX*overlap*COLLISION_RELAX_FACTOR; Y[j] -= pushY*overlap*COLLISION_RELAX_FACTOR;
         } else {
           // CA619 — see HISTORY.md § [1.5.7] Code Archaeology, CA619
           const lateralX = -pushY, lateralY = pushX;
           const nudge = Math.min(overlap, 1.5) * 0.5;
-          if(!e.isHutBuilding){ e.x += lateralX*nudge; e.y += lateralY*nudge; }
-          if(!other.isHutBuilding){ other.x -= lateralX*nudge; other.y -= lateralY*nudge; }
+          if(!collisionHut[i]){ X[i] += lateralX*nudge; Y[i] += lateralY*nudge; }
+          if(!collisionHut[j]){ X[j] -= lateralX*nudge; Y[j] -= lateralY*nudge; }
         }
       }
     }
-    if(correctionsThisPass === 0) break; // settled — skip the remaining relaxation passes (and their hash rebuilds)
+    if(correctionsThisPass === 0) break; // settled — skip the remaining relaxation passes
   }
+  for(let i = 0; i < enemyPool.length; i++){ const e = enemyPool[i]; if(e.collisionSlot >= 0){ e.x = X[i]; e.y = Y[i]; } }
 }
 // CA620 — see HISTORY.md § [1.5.7] Code Archaeology, CA620
 const EMPTY_ENEMY_HASH = Object.freeze({});
@@ -408,6 +442,7 @@ function checkAllFightersDown(){
   }
   return false;
 }
+let shownEarlyCallBonus = 0;
 function update(dt){
   if(stealthSantaDefeated && !stealthEncounterEnding && gameState==='PLAYING'){ endGame('Santa has fallen. Ninja is now yours.', 'stealth_victory'); return; }
   gameTime += dt;
@@ -455,6 +490,7 @@ function update(dt){
     }
     enemyPresenceDirty = false;
   }
+  if(waveState === 'IDLE'){ const earlyBonus = earlyCallBonusNow(); if(earlyBonus !== shownEarlyCallBonus){ shownEarlyCallBonus = earlyBonus; updateHUD(); } } // EARLY-CALL-01 (1.8.63): the Next Wave label counts the bonus down
   const anyActiveEnemies = laneEnemiesPresent, anyTargetableWanderer = targetableWandererPresent;
   if(anyActiveEnemies){
     let laneUpdated = 0;
@@ -495,6 +531,7 @@ function update(dt){
       audioEngine.setMusicPhase(countLooseEnemies() > 0 ? 'wave' : 'field');
       if(countLooseEnemies() === 0) playSound('wave_clear');
       wavesCompleted++;
+      waveClearedAtGameTime = gameTime; // EARLY-CALL-01 (1.8.62)
       sessionTelemetry.completedHere++;
       reportOnboardingStep('first_wave_completed');
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
@@ -616,6 +653,7 @@ function updateTargetFrame(){
     const info = ENEMY_INFO[target.type];
     // CA663 — see HISTORY.md § [1.5.7] Code Archaeology, CA663
     targetName.textContent = target.isHutBuilding ? (target.buildingKind === 'CIRCUS' ? 'Circus' : target.buildingKind === 'CASTLE' ? 'Castle' : target.buildingKind === 'GRAVE' ? 'Zombie Grave' : 'Hut') : target.isGuardian ? (target.hutRef && target.hutRef.buildingKind === 'CASTLE' ? 'Castle Guardian' : target.hutRef && target.hutRef.buildingKind === 'GRAVE' ? 'Grave Zombie' : 'Hut Guardian') : (info ? info.name : target.type);
+    if(target.eliteKind && ELITE_KINDS[target.eliteKind]) targetName.textContent = ELITE_KINDS[target.eliteKind].label + ' ' + targetName.textContent; // ELITE-ENEMIES-01 (1.8.63): the enemy card names the elite kind
     targetHpBarFill.style.width = hpPct + '%';
     targetHpBarText.textContent = Math.round(target.hp) + '/' + target.maxHp;
     targetDefVal.textContent = target.armor;
@@ -1239,9 +1277,9 @@ function resetPhaseTime(){
   for(const k in phaseTime) phaseTime[k] = 0;
 }
 // CA687 — see HISTORY.md § [1.5.7] Code Archaeology, CA687
-const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0 }; // WORLD-SUBPHASES-01 (1.7.36): depthSorted is the whole world pass; the world* keys split it
+const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0, hudDom: 0, inspectDom: 0 }; // HUD-DOM-PHASE-01 (1.8.55): hudDom times the HUD's DOM writes, which the canvas phases never counted. WORLD-SUBPHASES-01 (1.7.36): depthSorted is the whole world pass; the world* keys split it
 function phaseLabel(key){ return key === 'depthSorted' ? 'worldDrawing(whole pass, not only sorting)' : key; }
-const renderPhaseMaxSeen = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0 };
+const renderPhaseMaxSeen = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0, hudDom: 0, inspectDom: 0 };
 function resetRenderPhaseTime(){
   for(const k in renderPhaseTime) renderPhaseTime[k] = 0;
 }
@@ -2150,6 +2188,10 @@ function maybeSpawnCaravan(){
   if(caravan.active || wavesCompleted <= CARAVAN_FIRST_ROUND_AFTER || wavesCompleted - caravan.lastRound < CARAVAN_MIN_GAP_ROUNDS) return;
   if(wood <= 0 && stone <= 0 && caravan.lastRound > -99) return;
   if(waypointsPx.length < 2 || (caravan.lastRound > -99 && Math.random() >= CARAVAN_CHANCE)) return; // EARLY-HOOK-01: the first visit always comes
+  spawnCaravan();
+}
+function spawnCaravan(){
+  if(caravan.active || waypointsPx.length < 2) return false;
   const lead = Math.hypot(waypointsPx[1].x - waypointsPx[0].x, waypointsPx[1].y - waypointsPx[0].y) || 1;
   const unitX = (waypointsPx[1].x - waypointsPx[0].x)/lead, unitY = (waypointsPx[1].y - waypointsPx[0].y)/lead;
   const entry = caravanEdgePoint(waypointsPx[0].x, waypointsPx[0].y, -unitX, -unitY);
@@ -2161,6 +2203,7 @@ function maybeSpawnCaravan(){
   logGameEvent('caravan arrived after round ' + wavesCompleted);
   trackGameEvent('caravan_arrived', { round: wavesCompleted, wood, stone });
   updateHUD();
+  return true;
 }
 function retargetCaravanAfterPathChange(){
   let nearestIndex = 0, nearestDistance = Infinity;
@@ -2285,6 +2328,7 @@ function sellToCaravan(resource, requestedAmount){
   playSound('ui_buy');
   logGameEvent('sold ' + amount + ' ' + resource + ' to the caravan for ' + goldGained + ' gold');
   trackGameEvent('caravan_sale', { resource, amount, gold: goldGained });
+  awardMedal('TRADER');
   updateHUD();
   return true;
 }
@@ -2428,7 +2472,7 @@ function loop(now){
     accumulator = 0;
   }
   perfStats.updateMs = performance.now() - updateStart;
-  flushHUDIfDirty(); // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
+  const hudDomStart = performance.now(); flushHUDIfDirty(); renderPhaseTime.hudDom += performance.now() - hudDomStart; // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
   const renderStart = performance.now();
   // SMOOTH-ANIM-01 (1.7.75): the simulation advances in fixed 16.7 ms ticks, so on a display that is not locked to 60 Hz, or after any slow frame, a rendered frame holds 0, 1 or 2 ticks
   // and every animation timed by gameTime (swings, casts, axe flights, breathing) moves in uneven jumps even at 60 FPS. Drawing now happens at gameTime plus the unspent part of the

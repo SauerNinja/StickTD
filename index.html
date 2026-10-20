@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.48">
-<title>StickTD — Free Stick Tower Defense Game</title>
-<meta name="description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
-<meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, browser tower defense game, free strategy game">
+<meta name="application-version" content="1.8.69">
+<title>StickTD — Free Stickman Tower Defense Game, No Download</title>
+<meta name="description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
+<meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, stickman games, tower defense game, free tower defense, browser tower defense game, tower defense online, no download games, free strategy game">
 <meta name="author" content="SauerNinja">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://sauerninja.github.io/StickTD/">
 <!-- Open Graph / social share preview -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="StickTD — Free Stick Tower Defense Game">
-<meta property="og:description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
+<meta property="og:title" content="StickTD — Free Stickman Tower Defense Game, No Download">
+<meta property="og:description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
 <meta property="og:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,8 +22,8 @@
 <meta property="og:locale" content="en_US">
 <meta name="twitter:image:alt" content="StickTD artwork with stickman defenders overlooking a winding battlefield.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="StickTD — Free Stick Tower Defense Game">
-<meta name="twitter:description" content="A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.">
+<meta name="twitter:title" content="StickTD — Free Stickman Tower Defense Game, No Download">
+<meta name="twitter:description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
 <meta name="twitter:image" content="https://sauerninja.github.io/StickTD/og-image.png?v=4">
 <meta name="theme-color" content="#8a5a2a">
 <link rel="manifest" href="manifest.json">
@@ -40,8 +40,11 @@
     "WebApplication"
   ],
   "name": "StickTD",
-  "alternateName": "Stick Tower Defense",
-  "description": "A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.",
+  "alternateName": ["Stick Tower Defense", "Stickman Tower Defense", "Stick TD"],
+  "keywords": "stickman tower defense, stick tower defense, free tower defense game, browser game, no download",
+  "numberOfPlayers": {"@type": "QuantitativeValue", "value": 1},
+  "gameItem": ["Swordsman", "Archer", "Mage", "Sniper", "Paladin", "Necromancer", "Ninja"],
+  "description": "Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.",
   "url": "https://sauerninja.github.io/StickTD/",
   "image": "https://sauerninja.github.io/StickTD/og-image.png?v=4",
   "genre": [
@@ -78,9 +81,12 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.48",
+  "softwareVersion": "1.8.69",
   "playMode": "SinglePlayer"
 }
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","@id":"https://sauerninja.github.io/StickTD/#website","name":"StickTD","alternateName":"Stick Tower Defense","url":"https://sauerninja.github.io/StickTD/","inLanguage":"en","publisher":{"@type":"Person","name":"SauerNinja","url":"https://github.com/SauerNinja"}}
 </script>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
 <link rel="shortcut icon" type="image/png" sizes="32x32" href="favicon.png">
@@ -1068,7 +1074,7 @@
 </section>
 <div id="game-wrapper">
   <div id="canvas-frame">
-    <canvas id="gameCanvas">StickTD is a free browser tower defense game. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play. Enable JavaScript and a canvas-capable browser to play.</canvas>
+    <canvas id="gameCanvas">StickTD is a free browser stickman tower defense game. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play. Build Swordsmen, Archers and Mages, train them into more than 25 classes such as the Sniper, Paladin, Necromancer and Ninja, and attune them to fire, lightning or ice. Play online with no download on phone, tablet or computer. Enable JavaScript and a canvas-capable browser to play.</canvas>
 
     <header id="hud-top">
       <div id="notification-bell"><button id="runRewardBtn" type="button" hidden aria-label="Choose a milestone reward">🎁</button><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
@@ -1307,7 +1313,7 @@
         <div id="settings-body">
           <div class="settings-panel" data-panel="video">
             <label><input type="radio" name="gfxSetting" id="gfxHighRadio"> High graphics</label>
-            <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Low graphics — lighter effects</label>
+            <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Performance mode — lighter effects</label>
             <p class="settings-help" id="gfxHelpText">Low is a good starting point for phones and laptops with integrated graphics. High adds richer visual effects for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch profiles if play is not smooth.</p>
             <label><input type="checkbox" id="settingsFpsToggle"> 📊 Show FPS counter (default off)</label>
             <label><input type="checkbox" id="settingsFrameCapToggle"> ⏱️ Limit frame rate (default on) — 30 FPS on Low, 60 FPS on High; turn off to run at your screen's full speed</label>
@@ -1400,6 +1406,9 @@
             <p>Terramorphing extends both ends of the path. Enemies that pass the finish remain on the map and can attack defenders; clear them to earn the wave-end expansion. Fight through 100 waves, then continue into endless play.</p>
             <p>Choose a defender in Build, place it on grass, then select Start Wave. Save a run to a file to continue later.</p>
             <p>Created by SauerNinja. <a href="https://sauerninja.itch.io/sticktd" target="_blank" rel="noopener">StickTD on itch.io</a> · <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener">Source and MIT license</a>.</p>
+            <p id="aboutSearchSummary">StickTD is a free stickman tower defense game you play online in your browser, with no download and no account. Place stick-figure defenders beside a winding road, stop every wave before it reaches the finish, and grow the map as you go.</p>
+            <p>Start with the Swordsman, Archer and Mage, then train Strength, Dexterity and Intelligence to unlock more than 25 classes: the Axeman, Spearman, Hammerman, Paladin, Berserker, Lancer, Marksman, Sniper, Gatling, Blowdart, Bomber, Cowboy, Snap Caster, Cleric, Pope, Necromancer, Cat Snapper, Crazy Chef, Ninja and more. Attune fighters to fire, lightning or ice, or blend Proton, Dark Matter and Quasar.</p>
+            <p>Face Grunts, Swarms, Wolves, Runners, Splitters, Healers, Shielded troops, Skeletons, Wraiths, Zombies, Trolls, Reapers, elite enemies and a boss at the end of every chapter. Loot gear and food, build barricades, mills, quarries and vaults, and meet merchant caravans, a travelling circus and wandering trolls. It works with touch on phones and tablets and with mouse and keyboard on Windows, Mac, Linux and Chromebook.</p>
             <p id="aboutVersionLine">Version <span id="aboutVersionText"></span></p>
             <p id="aboutAssistNote">Coding assisted by Claude (Anthropic). Design is human.</p>
             <button id="downloadReadmeBtn">⬇️ Download README (.txt)</button>
@@ -1497,7 +1506,7 @@
 
     <div id="start-screen">
       <header id="titleBlock">
-      <h1 id="titleWordmark" aria-label="Stick TD: Stick Tower Defense">
+      <h1 id="titleWordmark" aria-label="StickTD: Free Stickman Tower Defense Game">
         <svg viewBox="0 0 1074 190" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="titleGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#e49b0f"/></linearGradient>
@@ -1533,7 +1542,7 @@
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
         <button class="quality-btn" id="qualityHigh" data-quality="high">High</button>
-        <button class="quality-btn selected" id="qualityLow" data-quality="low">Low</button>
+        <button class="quality-btn selected" id="qualityLow" data-quality="low">Performance</button>
       </div>
       </nav>
       <button id="startSettingsBtn" title="Options">⚙️ Options</button>
@@ -1588,16 +1597,15 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.48"></script>
-<script src="js/config.js?v=1.8.48"></script>
-<script src="js/effects.js?v=1.8.48"></script>
-<script src="js/stickman.js?v=1.8.48"></script>
-<script src="js/loop.js?v=1.8.48"></script>
-<script src="js/ui.js?v=1.8.48"></script>
-<script src="js/diagnostics.js?v=1.8.48"></script>
-<script src="js/screens.js?v=1.8.48"></script>
-<script src="js/environment.js?v=1.8.48"></script>
-<script src="js/towers.js?v=1.8.48"></script>
-<script src="js/waves.js?v=1.8.48"></script>
+<script src="js/audio.js?v=1.8.69"></script>
+<script src="js/config.js?v=1.8.69"></script>
+<script src="js/effects.js?v=1.8.69"></script>
+<script src="js/loop.js?v=1.8.69"></script>
+<script src="js/ui.js?v=1.8.69"></script>
+<script src="js/diagnostics.js?v=1.8.69"></script>
+<script src="js/screens.js?v=1.8.69"></script>
+<script src="js/environment.js?v=1.8.69"></script>
+<script src="js/towers.js?v=1.8.69"></script>
+<script src="js/waves.js?v=1.8.69"></script>
 </body>
 </html>

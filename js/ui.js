@@ -376,7 +376,7 @@ function handleTap(clientX, clientY, pointerType){
     if(isFighterTower(t)){ markFirstFighterBuilt(); hintIfFighterOutOfReach(t); }
     startCameraFollow(t);
   inspPanelExpanded = false;
-    playSound('click');
+    playSound('build_note');
     refreshTrayUI();
     updateInspectPanel();
     updateHUD();
@@ -718,7 +718,7 @@ function showLivesChange(delta){
 function merchantShopOpen(){
   return caravanShopAvailable() || towerPool.some(t => t.active && t.type === 'MERCHANT' && t.disabledWavesLeft <= 0);
 }
-function nextWaveActionLabel(wavesStarted){ return wavesStarted === 0 ? 'Start Wave' : 'Next Wave'; }
+function nextWaveActionLabel(wavesStarted){ const bonus = waveState === 'IDLE' ? earlyCallBonusNow() : 0; return (wavesStarted === 0 ? 'Start Wave' : 'Next Wave') + (bonus > 0 ? ' +💰' + bonus : ''); } // EARLY-CALL-01 (1.8.63): the button shows the early-call gold while it lasts
 function setHudText(element, value){
   const text = String(value);
   if(element.textContent !== text) element.textContent = text;
@@ -1081,6 +1081,7 @@ function openHackMenu(tower){
     '<h3>Stone</h3><div class="hack-row">' + ['+🪨100','+🪨1,000','+🪨10,000'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Stickmen</h3><div class="hack-row">' + ['Heal and revive all','+5 stat points to all','+25 stat points to all'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Field</h3><div class="hack-row">' + ['Defeat every enemy now','Expand the map now'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Summon</h3><div class="hack-row">' + ['Summon the caravan','Summon a circus','Summon a troll'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Rules</h3><div class="hack-row"><button type="button" data-hack="god" class="' + (hackGodMode ? 'on' : '') + '">Stickmen invulnerable: ' + (hackGodMode ? 'ON' : 'off') + '</button>' +
     '<button type="button" data-hack="free" class="' + (hackFreeBuild ? 'on' : '') + '">Free building: ' + (hackFreeBuild ? 'ON' : 'off') + '</button></div>' +
     '<p class="hack-note">Hacks are for testing and play-around. They are not saved and mark the debug log.</p>';
@@ -1119,6 +1120,17 @@ function runHackAction(action){
       for(const enemy of enemyPool){
         for(let pass = 0; pass < 4 && enemy.active && !enemy.deathResolved; pass++) enemy.applyDamage((enemy.maxHp + (enemy.shieldHp || 0)) * 3 + 100, null, false, false, false, false, true);
       }
+      break;
+    case 'Summon the caravan': // HACK-SUMMON-01 (1.8.56): summons respect the one-at-a-time limit of each visitor
+      if(!spawnCaravan()) showToast('🐪 The caravan is already here.');
+      break;
+    case 'Summon a circus':
+      if(liveCircuses().length > 0) showToast('🎪 A circus is already set up.');
+      else if(!setUpCircusAt(findFreeTileBesideRoad())) showToast('🎪 No room beside the road for a circus.');
+      break;
+    case 'Summon a troll':
+      if(trollIsOnBoard()) showToast('🧌 A troll is already here.');
+      else if(!spawnWanderingTroll()) showToast('🧌 No room for a troll to enter.');
       break;
     case 'god': hackGodMode = !hackGodMode; break;
     case 'free': hackFreeBuild = !hackFreeBuild; break;
@@ -2076,7 +2088,11 @@ function refreshAttackState(){
   frame.dataset.attack = state;
   frame.title = state === 'attacking' ? 'Attacking' : state === 'preparing' ? 'Preparing the next attack' : state === 'outside' ? 'Enemies are outside this fighter\'s range' : 'No enemies to target';
 }
-function updateInspectPanel(){
+function updateInspectPanel(){ // HUD-DOM-PHASE-01 (1.8.57): inspect-panel DOM time is counted in the debug log's render phases
+  const inspectDomStart = performance.now();
+  try { updateInspectPanelNow(); } finally { renderPhaseTime.inspectDom += performance.now() - inspectDomStart; }
+}
+function updateInspectPanelNow(){
   if(selectedTower && selectedTower.type === 'HACKER'){ inspectPanel.classList.add('hidden'); openHackMenu(selectedTower); return; }
   closeHackMenu();
   if(!selectedTower){ inspectPanel.classList.add('hidden'); return; }
@@ -2327,6 +2343,7 @@ function updateInspectPanel(){
     btn.classList.toggle('has-points', !noPoints && !statCapped);
     btn.classList.toggle('primary-stat', stat === primaryStatOfSelected);
     btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : stat === 'int' ? 'Intelligence — drives Mage damage and every stickman\'s accuracy' : 'Support stat';
+    if(!btn.disabled){ const preview = statPointPreview(t, stat); if(preview) btn.title += '\nNext point: ' + preview; } // STAT-PREVIEW-01 (1.8.62)
   }
 }
 // VAULT-01 (1.8.37): one renderer for a stickman's six slots and a vault's 18 to 30; slots past the holder's capacity stay hidden.
@@ -2443,6 +2460,27 @@ document.getElementById('cancelMoveBtn').addEventListener('pointerdown', (e) => 
 // CA784 — see HISTORY.md § [1.5.7] Code Archaeology, CA784
 const STAT_HOLD_DELAY_MS = 380, STAT_HOLD_REPEAT_MS = 65;
 let statHoldTimer = 0;
+// STAT-PREVIEW-01 (1.8.62): each stat button's tooltip says what the next point would change (Game Balance: let players see a choice's effect before
+// committing). The preview adds the point, recomputes, reads the results and restores the stickman exactly, including health and the Veteran flag.
+function statPointPreview(tower, stat){
+  if(!tower || isStructureType(tower.type) || tower[stat] >= STAT_EFFECT_CAP || getTrainedStatTotal(tower) >= STAT_TOTAL_CAP) return '';
+  const before = { damage: tower.damage, range: tower.range, cooldown: tower.cooldown, maxHp: tower.maxHp, miss: tower.missChance, crit: tower.critChance };
+  const savedHp = tower.hp, savedVeteran = tower.isVeteran;
+  statPreviewRunning = true;
+  try { tower[stat]++; tower.recomputeStats(); }
+  finally {
+    const after = { damage: tower.damage, range: tower.range, cooldown: tower.cooldown, maxHp: tower.maxHp, miss: tower.missChance, crit: tower.critChance };
+    tower[stat]--; tower.recomputeStats(); tower.hp = savedHp; tower.isVeteran = savedVeteran; statPreviewRunning = false;
+    const parts = [];
+    if(after.damage !== before.damage) parts.push('damage ' + before.damage + ' → ' + after.damage);
+    if(Math.round(after.range) !== Math.round(before.range)) parts.push('range ' + Math.round(before.range) + ' → ' + Math.round(after.range));
+    if(after.cooldown !== before.cooldown) parts.push('attack every ' + (before.cooldown/1000).toFixed(2) + 's → ' + (after.cooldown/1000).toFixed(2) + 's');
+    if(after.maxHp !== before.maxHp) parts.push('health ' + before.maxHp + ' → ' + after.maxHp);
+    if(Math.abs(after.miss - before.miss) >= 0.0005) parts.push('miss ' + (before.miss*100).toFixed(1) + '% → ' + (after.miss*100).toFixed(1) + '%');
+    if(Math.abs((after.crit || 0) - (before.crit || 0)) >= 0.0005) parts.push('critical ' + ((before.crit||0)*100).toFixed(1) + '% → ' + ((after.crit||0)*100).toFixed(1) + '%');
+    return parts.length ? parts.join(', ') : 'no visible change yet';
+  }
+}
 function spendStatPoint(stat){
   if(!selectedTower || !selectedTower.allocateStat(stat)) return false;
   playSound('stat_spend');

@@ -1,7 +1,7 @@
 {
-  "name": "StickTD \u2014 Free Stick Tower Defense Game",
+  "name": "StickTD — Free Stickman Tower Defense Game, No Download",
   "short_name": "StickTD",
-  "description": "A tower defense game about a band of stick-figure defenders and the road they hold. Train them, equip what the fallen leave behind, and push through 100 waves and beyond.",
+  "description": "Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.",
   "start_url": "https://sauerninja.github.io/StickTD/",
   "scope": "https://sauerninja.github.io/StickTD/",
   "display": "standalone",

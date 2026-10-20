@@ -21,7 +21,6 @@
      audio        the Web Audio sound engine, synthesized sound effects and the adaptive music score
      config       settings and balance numbers, object pools, game state, toasts, medals, saves and the camera
      effects      blood, decals, forensic spatter, particles and gibs
-     stickman     the stickman figure, weapons, poses and their drawing
      loop         spatial hash, enemy collisions, the fixed-timestep main loop (update and render),
                   diagnostics frames, the attract screen and the merchant caravan
      ui           canvas and input setup, HUD, menus, shop, the inspect panel, and the pause,
@@ -29,8 +28,9 @@
      diagnostics  the debug log, README export, the design contract and the self-tests
      screens      start and end screens and the first-play cues
      environment  map and path, scenery, flora, campfire, chance structures, huts and graves
-     towers       CONFIG.TOWERS (every class's numbers, icon and unlocks), elements, promotions,
-                  the Tower and Projectile classes
+     towers       the towers, which are the stickmen: CONFIG.TOWERS (every class's numbers, icon and
+                  unlocks), elements, promotions, the stickman figure, weapons and poses, the Tower
+                  and Projectile classes
      waves        CONFIG.ENEMIES (emoji, health, speed, bounty), size and family tiers, the wave
                   plan, bosses, trolls, circus, the Enemy class; the end of the file runs the
                   boot sequence and starts the game
@@ -41,8 +41,8 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.48'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
-const GAME_SCRIPT_ORDER = ['audio', 'config', 'effects', 'stickman', 'loop', 'ui', 'diagnostics', 'screens', 'environment', 'towers', 'waves']; // FILE-SPLIT-01: the file map above, as data for the design contract
+const GAME_VERSION = '1.8.69'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_SCRIPT_ORDER = ['audio', 'config', 'effects', 'loop', 'ui', 'diagnostics', 'screens', 'environment', 'towers', 'waves']; // FILE-SPLIT-01: the file map above, as data for the design contract
 // LONG-TASK-LOG-01 (1.7.97) — see HISTORY.md § [1.7.97]: records main-thread tasks of 50 ms or more, so a debug log can say whether something blocked the page or the browser simply delayed the frame
 const MAIN_THREAD_LONG_TASK_LIMIT = 200, mainThreadLongTasks = [];
 if(typeof PerformanceObserver === 'function' && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('longtask')){
@@ -184,23 +184,6 @@ function attackAngerPopScale(phase){
   if(phase >= 0.88) return 1 + 0.25 * Math.sin(((phase - 0.88) / 0.12) * Math.PI);
   if(phase < 0.3) return 1 - smoothStep01(phase / 0.3);
   return 0;
-}
-function drawAngerMark(ctx, x, y, size, popScale, wiggle){
-  ctx.save();
-  ctx.translate(x, y); ctx.rotate(wiggle); ctx.scale(popScale, popScale);
-  ctx.lineCap = 'round';
-  for(let pass = 0; pass < 2; pass++){
-    ctx.strokeStyle = pass === 0 ? '#7f1d1d' : '#ff4b4b';
-    ctx.lineWidth = pass === 0 ? size * 0.62 : size * 0.38;
-    ctx.beginPath();
-    for(let arm = 0; arm < 4; arm++){
-      const centreAngle = arm * Math.PI / 2 + Math.PI / 4;
-      ctx.moveTo(Math.cos(centreAngle - 0.5) * size, Math.sin(centreAngle - 0.5) * size);
-      ctx.arc(0, 0, size, centreAngle - 0.5, centreAngle + 0.5);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 function drawAngerSteam(ctx, x, y, radius, phase){
   if(phase < 0.6) return;
@@ -446,6 +429,7 @@ const STAT_TAIL_SOFTNESS = 50;
 function interpolateRangeByInt(startingRange, rangeCap, intRangeFraction){
   return Math.round(startingRange + (rangeCap - startingRange) * intRangeFraction);
 }
+let statPreviewRunning = false; // STAT-PREVIEW-01: true while statPointPreview tries a point, so no one-time Veteran moment fires
 const STAT_EFFECT_CAP = 500;        // a single stat's effects stop growing here (matches the trained-stat cap)
 const STAT_TOTAL_CAP = 1000;        // combined trained stats per stickman
 const NAMING_THRESHOLD = 500;       // combined trained stats that unlock naming
@@ -476,6 +460,16 @@ function computeMissChance(baseMissChance, dexEff){
     return ACCURACY_MIDPOINT_MISS * (1 - t);
   }
   return 0; // 500+ effective DEX — a genuinely guaranteed hit, a deliberate design choice per explicit request, superseding the old "never fully guaranteed to hit" 2% floor
+}
+// PRD-ROLLS-01 (1.8.51): critical hits and misses roll against a luck balance kept per stickman: the stated chance accrues on every roll and each event that fires pays one back, and the chance used is nudged toward evening the balance (PRD_LUCK_PULL). The long-run rate equals the stated chance exactly, even when it changes from roll to roll (wind, evasion), while miss streaks and crit droughts become rare.
+const PRD_LUCK_PULL = 0.5;
+function prdRollFires(chance, holder, balanceKey){
+  if(!(chance > 0)) return false;
+  if(chance >= 1 || !holder) return Math.random() < chance;
+  const balance = holder[balanceKey] || 0;
+  const fires = Math.random() < clampNum(chance + PRD_LUCK_PULL * balance, 0, 1);
+  holder[balanceKey] = balance + chance - (fires ? 1 : 0);
+  return fires;
 }
 const EARLY_HP_CAP_TYPES = ['ARCHER']; // stays fragile no matter how tough it gets
 const EARLY_STAT_CAP_POINTS = 15; // points beyond this stop contributing to the capped stat specifically
@@ -629,7 +623,7 @@ function unlockTowerTypeBuild(type){
   showUnlockToast([type]);
 }
 // CA055 — see HISTORY.md § [1.5.7] Code Archaeology, CA055
-const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, armor:1, cost:70, woodCost:15 };
+const LUCKY_BRANCH = { id:'LUCKY_BRANCH', name:'Lucky Branch', icon:'🌿', str:1, dex:1, int:1, armor:1, cost:180, woodCost:15 }; // SHOP-VALUE-01 (1.8.61): priced like the Rare gear it matches (180 total stats), so the shop no longer undercuts drops
 const IRON_CHARM = { id:'IRON_CHARM', name:'Iron Charm', icon:'🧿', armor:3, cost:90, stoneCost:20 };
 const SWIFT_FEATHER = { id:'SWIFT_FEATHER', name:'Swift Feather', icon:'🪶', str:1, dex:2, int:1, cost:85 };
 const BARRICADE_ITEM = { id:'BARRICADE_ITEM', name:'Barricade', icon:'🚧', cost:0, woodCost:600, stoneCost:300, isBarricade:true };
@@ -1393,7 +1387,7 @@ function buyMerchantItem(index){
   if(!offer || merchantBoughtIds.has(index) || gold < offer.cost) return false;
   const priced = Object.create(offer.def, { cost: { value: offer.cost, enumerable: true, writable: true } }); // the item definitions are frozen, so the price is set as an own property
   if(!tower.buyItem(priced)) return false;
-  merchantBoughtIds.add(index); playSound('click'); updateInspectPanel(); updateHUD();
+  merchantBoughtIds.add(index); awardMedal('TRADER'); playSound('click'); updateInspectPanel(); updateHUD();
   return true;
 }
 let livesBought = 0; // count of lives purchased this run — drives the exponential buy-life cost curve
@@ -1778,6 +1772,8 @@ function pickItemLandingPoint(x, y){
   }
   return { x, y }; // no grass spot found: the item stays where it dropped, never on an invalid tile
 }
+// LOOT-RARITY-SOUND-01 (1.8.57): Rare, Epic and Legendary gear announce themselves with a rising chime of 2, 3 or 4 notes, so the rarity is heard before it is read (Diablo's ring-drop sound).
+const LOOT_DROP_SOUND_TIERS = { RARE: 2, EPIC: 3, LEGENDARY: 4 };
 function spawnGroundItem(x, y, itemDef, source){
   if(groundItems.length >= MAX_GROUND_ITEMS){
     // CA225 — see HISTORY.md § [1.5.7] Code Archaeology, CA225
@@ -1795,6 +1791,8 @@ function spawnGroundItem(x, y, itemDef, source){
   if(!PREFERS_REDUCED_MOTION && (landing.x !== x || landing.y !== y)){ item.flyFromX = x; item.flyFromY = y; item.flyStart = presentationTime; item.flyDur = 520; }
   if(item.itemDef.isGoldBag) item.goldBagLifespanMs = GOLD_BAG_LIFESPAN_MS;
   groundItems.push(item);
+  const lootTier = LOOT_DROP_SOUND_TIERS[item.itemDef.rarity];
+  if(lootTier && !groundItemsRestoring) playSound('loot_drop', landing.x, lootTier, landing.y); // LOOT-RARITY-SOUND-01 (1.8.57)
   maybeShowItemGuide();
   return item;
 }
@@ -2124,7 +2122,10 @@ const MEDAL_DEFS = Object.freeze([
   { id:'HONEY_HOARDER', icon:'🍯', name:'Honey Hoarder', text:'Carry five honey at once.' },
   { id:'ENRAGED', icon:'😡', name:'Seeing Red', text:'Have a stickman fly into a rage.' },
   { id:'HOT_STREAK', icon:'🔥', name:'Hot Streak', text:'Trigger a killstreak.' },
-  { id:'CHEF', icon:'🍳', name:'Camp Chef', text:'Start a recipe at a campfire.' }
+  { id:'CHEF', icon:'🍳', name:'Camp Chef', text:'Start a recipe at a campfire.' },
+  { id:'TROLL_SPOTTER', icon:'🧌', name:'Troll Spotter', text:'Meet a wandering troll.' },
+  { id:'RINGMASTER', icon:'🎪', name:'Ringmaster', text:'Find a circus beside the road.' },
+  { id:'TRADER', icon:'🐪', name:'Trader', text:'Trade with a merchant.' }
 ]);
 let medalNotificationsEnabled = true;
 const earnedMedals = new Set();
