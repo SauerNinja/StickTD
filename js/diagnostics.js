@@ -9,7 +9,6 @@
 function generateDebugLog(){
   const now = new Date();
   const nowReal = Date.now();
-  // CA771 — see HISTORY.md § [1.5.7] Code Archaeology, CA771
   function formatAgo(ts){
     if(!ts) return 'never';
     const ms = nowReal - ts;
@@ -25,7 +24,6 @@ function generateDebugLog(){
   s += '==================\n';
   s += 'Generated: ' + now.toISOString() + ' (' + now.toString() + ')\n';
   s += 'Game version: ' + GAME_VERSION + '\n\n';
-
   s += 'SESSION TIMING\n';
   s += '---------------\n';
   s += 'Session started: ' + new Date(sessionStartRealTime).toString() + '\n';
@@ -43,7 +41,6 @@ function generateDebugLog(){
     Math.round((tabTotalHiddenMs + (tabLastHiddenAt > tabLastShownAt ? nowReal - tabLastHiddenAt : 0))/1000) + 's total' +
     (tabLastHiddenAt > tabLastShownAt ? ' (currently hidden)' : tabLastHiddenAt ? ', last hidden ' + formatAgo(tabLastHiddenAt) : '') +
     '  (a wall-clock gap lining up with one of these is a tab switch or compositor pause, not the game engine itself -- a gap that does NOT line up with one is worth investigating further)\n\n';
-
   s += 'PERFORMANCE (perfStats)\n';
   s += '------------------------\n';
   s += 'Frame: ' + perfStats.frameMs.toFixed(2) + 'ms  Update: ' + perfStats.updateMs.toFixed(2) +
@@ -53,7 +50,6 @@ function generateDebugLog(){
     '  p99: ' + perfPercentile(perfStats.frameMsHistory,0.99).toFixed(2) +
     '  max: ' + perfPercentile(perfStats.frameMsHistory,1).toFixed(2) +
     '  (last ' + perfStats.frameMsHistory.length + ' frames — an average can look healthy while intermittent stalls hide inside it, this is what actually reveals them)\n';
-  // CA772 — see HISTORY.md § [1.5.7] Code Archaeology, CA772
   const fpsFromMs = ms => ms > 0 ? (1000/ms) : 0;
   s += 'Rendered callback FPS — median: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,0.5)).toFixed(0) +
     '  p5: ' + fpsFromMs(perfPercentile(perfStats.wallGapMsHistory,0.95)).toFixed(0) +
@@ -122,14 +118,6 @@ function generateDebugLog(){
   }
   appendHistoricalPerfEvents('SESSION SLOW-FRAME SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', frame workload >=16.7ms)', perfStats.slowFrameEvents, 'frame');
   appendHistoricalPerfEvents('SESSION LONG-CALLBACK-GAP SNAPSHOTS (top ' + PERF_EVENT_HISTORY_LIMIT + ', callback gap >=33.3ms)', perfStats.longCallbackGapEvents, 'gap');
-  s += '\nMAIN-THREAD LONG TASKS (50 ms or more, reported by the browser)\n';
-  s += '--------------------------------------------------------------\n';
-  if(typeof PerformanceObserver !== 'function' || !PerformanceObserver.supportedEntryTypes || !PerformanceObserver.supportedEntryTypes.includes('longtask')) s += 'This browser does not report long tasks.\n';
-  else {
-    const longestTasks = mainThreadLongTasks.slice().sort((a, b) => b.ms - a.ms).slice(0, 10);
-    s += mainThreadLongTasks.length + ' retained (max ' + MAIN_THREAD_LONG_TASK_LIMIT + '), ' + mainThreadLongTasks.reduce((sum, task) => sum + task.ms, 0).toFixed(0) + ' ms in total. Compare these times with the callback-gap snapshots above: a long task at the same moment means something on the page blocked drawing; none means the browser or graphics card delayed the frame.\n';
-    for(const task of longestTasks) s += '  ' + task.atIso + '  ' + task.ms.toFixed(0) + ' ms  ' + task.source + '\n';
-  }
   s += '\nSIMULATION CATCH-UP AND TIME LOSS\n';
   s += '---------------------------------\n';
   s += 'Frame-time clamp: ' + perfStats.wallTimeClampHits + ' frame(s), ' + perfStats.wallTimeClampedMs.toFixed(2) +
@@ -150,9 +138,9 @@ function generateDebugLog(){
     s += '   load: enemies ' + e.activeEnemies + ', towers ' + e.activeTowers + ', particles ' + e.activeParticles +
       ', decals ' + e.decals + ', hashes/queries ' + e.hashBuilds + '/' + e.spatialQueries + '\n';
     s += '   decal rebuilds: ' + e.decalRebuildCount + ', last ms ' + e.decalRebuildLastMs + '\n';
-      s += '   recent deaths (last 5s, maximum 40): ' + JSON.stringify(e.recentDeaths) + '\n';
-      s += '   audio: ' + e.audioState + ', effects/music sources ' + e.audioVoices + '/' + e.musicVoices + '\n';
-      s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
+    s += '   recent deaths (last 5s, maximum 40): ' + JSON.stringify(e.recentDeaths) + '\n';
+    s += '   audio: ' + e.audioState + ', effects/music sources ' + e.audioVoices + '/' + e.musicVoices + '\n';
+    s += '   update phases ms: ' + Object.entries(e.updatePhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
     s += '   render phases ms: ' + Object.entries(e.renderPhases).map(([k,v]) => phaseLabel(k) + '=' + v.toFixed(3)).join(' ') + '\n';
   }
   s += '\nLONG-SESSION PERFORMANCE TREND (completed active-play minute windows)\n';
@@ -196,7 +184,7 @@ function generateDebugLog(){
   if(!perfStats.longTaskEvents.length){
     s += 'No browser long tasks were observed during this session. This API is browser-dependent and does not report GPU/compositor work.\n';
   } else {
-    s += 'These tasks ran on the main thread; observer timestamps are entry start times, while attribution details depend on browser support.\n';
+    s += 'These tasks ran on the main thread; timestamps are start times and attribution depends on browser support. Compare them with the callback-gap snapshots above: a long task at the same moment means something on the page blocked drawing; none means the browser or graphics card delayed the frame.\n';
     for(let i=0;i<perfStats.longTaskEvents.length;i++){
       const e = perfStats.longTaskEvents[i];
       s += '#' + (i+1) + '  ' + e.durationMs.toFixed(2) + 'ms  ' + e.time + '  start +' + e.startTimeMs.toFixed(2) + 'ms\n';
@@ -271,7 +259,6 @@ function generateDebugLog(){
   s += 'Enemy death handler: ' + enemyDeathTiming.count + ' kills; mean ' + (enemyDeathTiming.count ? enemyDeathTiming.totalMs/enemyDeathTiming.count : 0).toFixed(2) +
     'ms, max ' + enemyDeathTiming.maxMs.toFixed(2) + 'ms, >=8ms ' + enemyDeathTiming.over8ms +
     ' (synchronous death logic only; excludes later animation/render cost)\n';
-
   s += 'UPDATE() PHASE BREAKDOWN (ms spent this frame, across all ticks that ran)\n';
   s += '---------------------------------------------------------------------------\n';
   s += 'This is where perfStats.updateMs (' + perfStats.updateMs.toFixed(2) + 'ms) actually goes — ' +
@@ -289,7 +276,6 @@ function generateDebugLog(){
       '  (' + pct.toFixed(1) + '%,  worst frame ever: ' + phaseMaxSeen[k].toFixed(3) + 'ms)\n';
   }
   s += '\n';
-
   s += 'RENDER() PHASE BREAKDOWN (ms spent this frame, one pass — render() runs once per rendered frame, not once per tick)\n';
   s += '---------------------------------------------------------------------------\n';
   s += 'This is where perfStats.renderMs (' + perfStats.renderMs.toFixed(2) + 'ms) actually goes — ' +
@@ -308,7 +294,6 @@ function generateDebugLog(){
       '  (' + pct.toFixed(1) + '%,  worst frame ever: ' + renderPhaseMaxSeen[k].toFixed(3) + 'ms)\n';
   }
   s += '\n';
-
   s += 'SPATIAL QUERY / HASH ACTIVITY (this rendered frame, across all ticks)\n';
   s += '-------------------------------------------------------------------------\n';
   s += 'buildEnemyHash() calls: ' + perfStats.hashBuildsLastFrame + '   queryNearby() calls: ' + perfStats.spatialQueryCallsLastFrame + '\n';
@@ -316,7 +301,6 @@ function generateDebugLog(){
     '(a consistently huge number here would mean a range/cell-size mismatch, not a real crowd)\n';
   s += 'Reusable hash-bucket pool size: ' + enemyHashBucketPool.size + ' (buckets currently held in the pool — ' +
     'should stabilize, not grow without bound, once enemy positions have covered the map once)\n\n';
-
   s += 'MEMORY (Chrome only — performance.memory)\n';
   s += '-------------------------------------------\n';
   if(perfStats.memorySupported){
@@ -346,7 +330,6 @@ function generateDebugLog(){
     ((displayCanvasBytes+mapCanvasBytes+settledCanvasBytes)/1048576).toFixed(1) +
     'MiB. Estimate is width x height x 4 bytes and excludes browser/GPU copies and metadata.\n';
   s += '\n';
-
   s += 'GAME STATE\n';
   s += '----------\n';
   s += 'gameState: ' + gameState + '   waveState: ' + waveState + '\n';
@@ -355,7 +338,6 @@ function generateDebugLog(){
   s += 'Lives: ' + lives + ' (bought: ' + livesBought + ')\n';
   s += 'Free barricades: ' + freeBarricadesLeft + '/' + MAX_FREE_BARRICADES + '\n';
   s += 'Camera: x=' + camera.x.toFixed(1) + ' y=' + camera.y.toFixed(1) + ' zoom=' + camera.zoom.toFixed(3) + '\n\n';
-
   s += 'SETTINGS\n';
   s += '--------\n';
   s += 'Graphics quality: ' + graphicsQuality + '   Gore mode: ' + goreMode + '   Muted: ' + isMuted + '\n';
@@ -366,7 +348,6 @@ function generateDebugLog(){
   s += 'Last render scale decision: ' + lastGovernorDecision + '\n';
   s += 'Render scale history (' + renderScaleHistory.length + '): ' + (renderScaleHistory.length ? renderScaleHistory.map(h => 't+' + h.at + 's ' + Math.round(h.from*100) + '->' + Math.round(h.to*100) + '% ' + h.reason).join(' | ') : 'none') + '\n';
   s += 'DPR in use: ' + dprValue + '   Canvas: ' + CANVAS_W + 'x' + CANVAS_H + '\n\n';
-
   s += 'AUDIO ENGINE\n';
   s += '------------\n';
   s += 'Unlocked: ' + ac.unlocked + '   AudioContext state: ' + (ac.ctx ? ac.ctx.state : 'n/a') +
@@ -377,7 +358,6 @@ function generateDebugLog(){
   s += 'Peak voices seen: ' + ac.debugCounters.peakVoices + '\n';
   s += 'Mix master/music/effects: ' + Math.round(audioMasterVolume*100) + '/' + Math.round(audioMusicVolume*100) + '/' + Math.round(audioSfxVolume*100) + '%   Music phase/running: ' + ac.musicPhase + '/' + ac.musicStarted + '\n';
   s += 'Audio admitted sources / focus cues: ' + ac.debugCounters.voicesStarted + '/' + ac.debugCounters.priorityEvents + '\n\n';
-
   s += 'ENTITY POOLS (active/capacity)\n';
   s += '-------------------------------\n';
   s += 'Enemies: ' + activeCount(enemyPool) + '/' + enemyPool.length + '\n';
@@ -389,11 +369,8 @@ function generateDebugLog(){
   s += 'Ground decals: ' + decals.length + ' (cap ' + decalCapacity() + '); spray marks: ' + sprayDecals.length + ' (separate cap ' + sprayDecalCapacity() + ')\n';
   s += 'Scenery items: ' + sceneryMap.size + '\n';
   s += 'Flora items: ' + floraMap.size + '\n';
-  if(hacksUsed) s += 'Hack menu used this run: yes\n';
-  s += 'Design contract: ' + (designContractProblems.length ? designContractProblems.join(' | ') : 'OK') + '\n';
   s += 'Ground items: ' + groundItems.length + '/' + MAX_GROUND_ITEMS + (groundItems.length ?
     '  (oldest ' + Math.round((presentationTime - Math.min(...groundItems.map(gi => gi.spawnTime)))/1000) + 's old, ' + (GROUND_ITEM_LIFESPAN/60000) + 'm lifespan)' : '') + '\n\n';
-
   s += 'TOWER COMPOSITION\n';
   s += '------------------\n';
   const towerCounts = {};
@@ -401,7 +378,6 @@ function generateDebugLog(){
   const towerTypeList = Object.keys(towerCounts).sort();
   s += towerTypeList.length ? towerTypeList.map(type => type + ': ' + towerCounts[type]).join('   ') + '\n\n'
     : '(none placed)\n\n';
-
   s += 'HUT / CAMP STATE\n';
   s += '-----------------\n';
   const activeHuts = enemyPool.filter(e => e.active && e.isHutBuilding);
@@ -418,7 +394,6 @@ function generateDebugLog(){
     }
     s += '\n';
   }
-
   s += 'BROWSER / DEVICE\n';
   s += '----------------\n';
   s += 'User agent: ' + navigator.userAgent + '\n';
@@ -439,7 +414,6 @@ function generateDebugLog(){
   let contextAttributes = 'unavailable';
   try { if(ctx.getContextAttributes) contextAttributes = JSON.stringify(ctx.getContextAttributes()); } catch(error) {}
   s += 'Canvas 2D context attributes: ' + contextAttributes + '\n';
-
   s += extendedDiagnosticReport();
   s += '\nDEVICE DIAGNOSTICS (browser-reported; unavailable fields are not inferred)\n' + deviceDebugReport();
   s += '\nTELEMETRY (last ' + telemetryRecent.length + ' local events; queued does not confirm Google delivery)\n';
@@ -453,9 +427,7 @@ function generateDebugLog(){
 
   return s;
 }
-// GAMEOVER-LOG-01 (1.6.2) — see HISTORY.md § [1.6.2]. Factored out of the Settings download
-// button so the new end-screen button (below) can trigger the exact same file without duplicating
-// the blob/anchor boilerplate.
+// GAMEOVER-LOG-01: the Settings button and the end screen's button save the same debug log file.
 function downloadDebugLogFile(){
   const blob = new Blob([generateDebugLog()], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -468,19 +440,16 @@ document.getElementById('downloadDebugLogBtn').addEventListener('pointerdown', (
   e.stopPropagation();
   downloadDebugLogFile();
 });
+function readmeObjectUrl(){ return URL.createObjectURL(new Blob([getReadmeText()], { type: 'text/plain' })); }
 document.getElementById('downloadReadmeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  const blob = new Blob([getReadmeText()], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const url = readmeObjectUrl(), a = document.createElement('a');
   a.href = url; a.download = 'README.txt'; a.click();
   URL.revokeObjectURL(url);
 });
 document.getElementById('viewReadmeBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  const blob = new Blob([getReadmeText()], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  window.open(readmeObjectUrl(), '_blank');
 });
 document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -488,11 +457,10 @@ document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) =>
   const willShow = content.classList.contains('hidden');
   if(willShow){
     content.innerHTML = '<p>Train and unlock stickman classes with distinct bodies, weapons and combat roles. ' +
-      'The map starts as a tiny 2x2 area and extends both ends of its winding path — one expansion per round at most, extra ' +
-      'ones queue for the next. Enemies occasionally break off the path to attack a tower directly; ' +
-      'Barricades placed on the path can temporarily jam the whole line behind them, and enemies now ' +
-      'queue up single-file. Items are bought per-class from the Shop and equip ' +
-      'directly onto a tower — fully-geared towers awaken as Heroes.</p>';
+      'The map starts small and extends both ends of its winding path: you can buy one expansion per wave, and a wave cleared ' +
+      'with no escaped enemies left alive grants a free one. Enemies occasionally break off the path to attack a stickman directly; ' +
+      'Barricades placed on the path hold the line, and enemies queue single-file behind them. Gear drops from enemies ' +
+      'and is sold by a Merchant; a stickman with every slot filled with equipment awakens as a Hero.</p>';
     e.target.textContent = 'Less info ▴';
   } else {
     e.target.textContent = 'More info ▾';
@@ -502,7 +470,7 @@ document.getElementById('expandAboutBtn').addEventListener('pointerdown', (e) =>
 /* =========================================================
    DESIGN CONTRACT (load-time self-check, run by the boot sequence at the end of js/waves.js)
    ========================================================= */
-// SOURCE-SCAN-01 (1.8.5): the game is a set of script files, so rule-ID markers are looked up in the fetched source text. Pages that cannot fetch their own files (opened from disk) skip the scan instead of failing it.
+// SOURCE-SCAN-01: the game is a set of script files, so rule-ID markers are looked up in the fetched source text.
 let gameSourceText = null;
 function sourceMentions(...markers){ return gameSourceText === null || markers.every(marker => gameSourceText.includes(marker)); }
 function loadGameSourceText(){
@@ -512,7 +480,7 @@ function loadGameSourceText(){
     .then(parts => { gameScriptSources = sourcesByScriptFile(parts); gameSourceText = inlineText.concat(parts).join('\n'); })
     .catch(() => { gameScriptSources = {}; gameSourceText = null; });
 }
-// FILE-CONTENTS-01 (1.8.48): every js/ file opens with a Contents list naming its section banners in order, so a reader can find a topic without scrolling.
+// FILE-CONTENTS-01: every js/ file opens with a Contents list naming its section banners in order, so a reader can find a topic without scrolling.
 let gameScriptSources = {};
 function sourcesByScriptFile(parts){
   const sources = {};
@@ -532,7 +500,7 @@ function contentsListMatchesBanners(sourceText){
   const bannerTitles = [...sourceText.matchAll(SECTION_BANNER_PATTERN)].map(match => match[1].trim()).filter(title => !title.startsWith('FILE MAP'));
   return listedTitles.join('|') === bannerTitles.join('|');
 }
-// VISUAL-DRIFT-01 (1.8.10) — see CHANGELOG.md § [1.8.10]: the established look of the title, top bar and buttons; a change to any of these needs the table and AGENTS.md updated in the same release
+// VISUAL-DRIFT-01: the established look of the title, top bar and buttons; a change to any of these needs the table and AGENTS.md updated in the same release
 const LOOK_LOCKS = [
   ['titleWordmark', 'color', 'rgb(241, 196, 15)'], ['titleWordmark', 'fontFamily', 'Georgia, "Times New Roman", serif'],
   ['versionTag', 'color', 'rgb(245, 240, 230)'],
@@ -566,8 +534,8 @@ function validateDesignContract(){
     for(const key of nearPathTileSet){ const [borderX, borderY] = key.split(',').map(Number); if(isInActiveRegion(borderX, borderY)) startingGrassTiles++; }
     if(pathCells.size !== STARTING_PATH_TILE_COUNT || startingGrassTiles !== STARTING_GRASS_TILE_COUNT) problems.push('a new game must start with ' + STARTING_PATH_TILE_COUNT + ' path tiles and ' + STARTING_GRASS_TILE_COUNT + ' grass tiles, found ' + pathCells.size + ' and ' + startingGrassTiles + ' (STARTING-MAP-01)');
   }
-  if(!String(update).includes('if(countLooseEnemies() === 0) freeExpansionOwed++')) problems.push('escaped enemies at wave end forfeit the free expansion (CLEAN-WAVE-EXPAND-01)');
-  if(!String(forensicBlockerAlongPath).includes('sceneryMap.values()') || !String(drawDepthSortedLayer).includes('drawBloodStains(ctx, it.item)')) problems.push('scenery catches and displays blood (BLOOD-SURFACES-01)');
+  if(!String(update).includes('if(looseAtClear === 0) freeExpansionOwed++')) problems.push('escaped enemies at wave end forfeit the free expansion (CLEAN-WAVE-EXPAND-01)');
+  if(!String(forensicBlockerAlongPath).includes('sceneryMap.get(') || !String(drawDepthSortedLayer).includes('drawBloodStains(ctx, it.item)')) problems.push('scenery catches and displays blood (BLOOD-SURFACES-01)');
   if(bloodPoolSizeScale(7.5) !== 0.5 || bloodPoolSizeScale(15) !== 1 || bloodPoolSizeScale(30) !== 2) problems.push('blood scale follows enemy weight (BLOOD-WEIGHT-01)');
   // The border rule is checked with the starting lock lifted, so it still guards the rule at boot even though
   // a new game deliberately shows only 2 of its grass tiles until the first expansion (STARTING-MAP-01).
@@ -610,10 +578,6 @@ function validateDesignContract(){
   if(firstDrawSeedA === firstDrawSeedB) problems.push('ground details must depend on the per-run seed so every game is unique (GROUND-DETAIL-RUN-01)');
   if(!(Math.sin(IDLE_GRIP_ARM_ANGLE) > 0.5)) problems.push('IDLE_GRIP_ARM_ANGLE must point the idle weapon arm downward, not raise it (IDLE-GRIP-01)');
   if(advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS - 1).hearts !== 0 || advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS).hearts !== 1 || advanceLooseDrain(0, LOOSE_ENEMY_LIFE_DRAIN_MS*2).hearts !== 2 || LOOSE_ENEMY_LIFE_DRAIN_MS !== 6000) problems.push('each loose enemy must cost exactly 1 life per 6 seconds (LOOSE-DRAIN-01)');
-  {
-    const fighter={active:true,type:'SWORDSMAN',hp:95,maxHp:100,disabledWavesLeft:0};
-    if(runRecoveryHp(fighter)!==5 || runRecoveryHp({...fighter,hp:20})!==20 || runRecoveryHp({...fighter,disabledWavesLeft:1})!==0 || runRecoveryHp({...fighter,hp:0})!==0 || runRecoveryHp({...fighter,active:false})!==0 || runRecoveryHp({...fighter,type:'BARRICADE'})!==0) problems.push('milestone recovery must cap standing-fighter healing and exclude downed, zero-HP, inactive units and barricades (RUN-RECOVERY-01)');
-  }
   if(showLivesChange.length !== 1 || !document.getElementById('livesChangePop')) problems.push('lives changes must pop beside the health counter (LIVES-POP-01)');
   { const santaLine = document.getElementById('consentSantaLine');
     const santaFace = document.getElementById('consentSantaFace');
@@ -643,9 +607,9 @@ function validateDesignContract(){
     if(Object.values(TOWER_STRATEGY).some(entry => /\bevol|\bupgrad/i.test(entry.text)) || Object.values(CONFIG.TOWERS).some(def => /\bevol|\bupgrad/i.test(def.blurb || ''))) problems.push('classes are unlocks, never upgrades or evolutions, so player-facing class text must not say evolve or upgrade (NO-EVOLVE-IN-PLACE-01, CLASS-UNLOCK-WORDING-01)');
     if(typeof fetchChangelogText !== 'function' || !String(loadChangelogEntries).includes('first.partial') || !String(renderSettingsChangelog).includes('Loading release notes')) problems.push('the Changes tab fetches only the top of the changelog, shows a loading line and always ends with a message or the notes plus a link, never a blank box (CHANGES-TAB-01)');
     if(typeof meleeLungePx !== 'function' || typeof drawMeleeSmear !== 'function' || typeof Tower.prototype.visualSwingOffset !== 'function' || !String(drawStickman).includes('drawMeleeSmear')) problems.push('melee attacks wind up, strike and settle back onto the aim without snapping, with a smear behind the blade and a thrust for spears (MELEE-SWING-01)');
-    if(document.getElementById('training-overlay') || !firstBuildHint || firstBuildHint.textContent.trim() !== '👆' || firstBuildHint.parentElement.id !== 'buildBtnWrap' || !String(firstBuildHint.className).includes('hidden')) problems.push('first-time guidance is only a hidden-until-play hand beside Build, with no tower-choice or victory modal (FIRST-BUILD-CUE-01)');
+    if(document.getElementById('training-overlay') || !firstBuildHint || firstBuildHint.textContent.trim() !== '👆' || firstBuildHint.parentElement.id !== 'buildBtnWrap' || (gameState === 'START' && !String(firstBuildHint.className).includes('hidden'))) problems.push('first-time guidance is only a hidden-until-play hand beside Build, with no tower-choice or victory modal (FIRST-BUILD-CUE-01)');
     const firstNextWaveHint = document.getElementById('first-next-wave-hint');
-    if(!firstSpeedHint || firstSpeedHint.textContent.trim() !== '👆' || firstSpeedHint.parentElement.id !== 'speedBtnWrap' || !firstNextWaveHint || firstNextWaveHint.textContent.trim() !== '👆' || firstNextWaveHint.parentElement.id !== 'nextWaveBtnWrap' || !String(startNextWave).includes('markFirstWaveStarted') || !String(markFirstNextWaveCueAction).includes('markFirstNextWaveUsed') || !String(syncFirstPlayCues).includes('!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()') || !String(markFirstSpeedUpUsed).includes("classList.add('hidden')")) problems.push('first-use guidance must show Next Wave after the first fighter is built and before wave one, then Fast Forward after wave start, and stay dismissed after speed use (FIRST-PLAY-CUE-SEQUENCE-01)');
+    if(!firstSpeedHint || firstSpeedHint.textContent.trim() !== '👆' || firstSpeedHint.parentElement.id !== 'speedBtnWrap' || !firstNextWaveHint || firstNextWaveHint.textContent.trim() !== '👆' || firstNextWaveHint.parentElement.id !== 'nextWaveBtnWrap' || !String(startNextWave).includes('markFirstWaveStarted') || !String(markFirstNextWaveUsed).includes('syncFirstPlayCues') || !String(syncFirstPlayCues).includes('!sequenceStarted && !sequenceDismissed && firstFighterWasBuilt()') || !String(markFirstSpeedUpUsed).includes("classList.add('hidden')")) problems.push('first-use guidance must show Next Wave after the first fighter is built and before wave one, then Fast Forward after wave start, and stay dismissed after speed use (FIRST-PLAY-CUE-SEQUENCE-01)');
   }
   if(!window.trackEvent || !String(window.trackEvent).includes('sticktdAnalyticsReady') || !window.enableStickTDAnalytics || !String(window.enableStickTDAnalytics).includes('appendChild(script)') || !String(window.declineStickTDAnalyticsConsent).includes("'denied'") || !String(window.disableStickTDAnalytics).includes("'denied'") || !document.getElementById('analyticsConsentBtn') || !window.openStickTDAnalyticsChoice) problems.push('analytics stays fully gated before opt-in and players can decline or review their choice in Settings (ANALYTICS-CONSENT-01)');
   if(window.detectPlayPlatform('gamejolt.com','',false,'') !== 'gamejolt' || window.detectPlayPlatform('itch.io','',false,'') !== 'itch.io' || window.detectPlayPlatform('sauerninja.github.io','',false,'') !== 'github-pages' || window.detectPlayPlatform('example.org','',true,'') !== 'embedded') problems.push('analytics identifies its host platform, including an unknown embedded host (PLATFORM-DETECT-03)');
@@ -705,8 +669,8 @@ function validateDesignContract(){
   if(!isWithinEmojiSquare(10, -10, 0, 0, 20) || isWithinEmojiSquare(10.5, 0, 0, 0, 20) || isWithinEmojiSquare(0, -10.5, 0, 0, 20)) problems.push('the click area of an emoji is exactly its drawn square (EMOJI-HITBOX-01)');
   if(String(Tower.prototype.findTarget).includes('minimumTargetDistance') || String(Tower.prototype.update).includes('minimumTargetDistance')) problems.push('fighters must attack close targets without a minimum-range exclusion');
   if(!String(drawSelectedTowerRange).includes('tower.targetingRange') || !String(drawSelectedTowerRange).includes('RANGE_RING_DOT_PX') || !String(Enemy.prototype.spawn).includes('this.deathResolved = false') || !String(Enemy.prototype.die).includes('setMarkedTarget(null)')) problems.push('selected tactical reach and pooled pin/death lifecycle must remain protected');
-  { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || new Set([...TELEMETRY_SHARED_PARAMS, ...declared, 'send_to']).size > 25 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits: 40 characters per event or parameter name, 25 parameters per event
-    if(oversized.length) problems.push('analytics events over the Google Analytics limits (40-character names, 25 parameters): ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
+  { const oversized = Object.entries(TELEMETRY_EVENTS).filter(([name, declared]) => name.length > 40 || declared.some(param => param.length > 40)).map(([name]) => name); // Google Analytics limits names to 40 characters; the 25-parameter limit is ANALYTICS-PARAM-BUDGET-01 below
+    if(oversized.length) problems.push('analytics event or parameter names over the 40-character Google Analytics limit: ' + oversized.join(', ') + ' (ANALYTICS-PARAMS-01)');
   }
   if(ATTRACT_ENEMY_MOVE_SCALE !== 0.60) problems.push('attract movement must remain 40% slower without changing gameplay (ATTRACT-PACE-01)');
   if(Object.keys(CONFIG.TOWERS).some(type => !WEAPON_BLOOD_PROFILES[type]) || !Object.isFrozen(WEAPON_BLOOD_PROFILES) || Object.values(WEAPON_BLOOD_PROFILES).some(profile => !Object.isFrozen(profile))) problems.push('every class needs an immutable explicit weapon blood profile (WEAPON-FORENSICS-01)');
@@ -716,6 +680,10 @@ function validateDesignContract(){
   { const reservedAnalyticsParams = ['source', 'medium', 'campaign', 'term', 'content', 'value', 'currency'];
     const offending = Object.entries(TELEMETRY_EVENTS).filter(([, declared]) => declared.some(param => reservedAnalyticsParams.includes(param))).map(([name]) => name);
     if(offending.length) problems.push('analytics events must not use parameter names Google Analytics reads as traffic source or revenue (source, medium, campaign, term, content, value, currency): ' + offending.join(', ') + ' (ANALYTICS-PARAMS-01)');
+    const derivableLabels = ['telemetry_schema', 'play_label', 'event_group'];
+    const sharedParams = [...new Set([...TELEMETRY_SHARED_PARAMS, 'referrer_site'])].filter(param => !derivableLabels.includes(param)); // ANALYTICS-PARAM-BUDGET-01: what is left after the derivable labels go
+    const overBudget = Object.entries(TELEMETRY_EVENTS).filter(([, declared]) => new Set(sharedParams.concat(declared)).size > 24).map(([name]) => name);
+    if(overBudget.length) problems.push('analytics events must fit Google Analytics\' 25-parameter limit even after the derivable labels are dropped: ' + overBudget.join(', ') + ' (ANALYTICS-PARAM-BUDGET-01)');
   }
   { const scratchEnemy = new Enemy(); scratchEnemy.bleedUntil = 0; scratchEnemy.bleedStackDamages = [];
     scratchEnemy.applyBleed(7, 1000, null); const oneArrow = scratchEnemy.bleedDamagePerTick;
@@ -724,7 +692,8 @@ function validateDesignContract(){
   }
   { const probeTime = performance.now();
     const stale = lastCameraInteractionAt; lastCameraInteractionAt = -1e9;
-    const idleActive = isCameraMotionActive(probeTime);
+    const otherMotionActive = panInertia.active || !!waveStartCameraPan || !!(roundEnemyFollow && roundEnemyFollow.enemy) || !!(cameraFollow && cameraFollow.phase === 'panning') || (isDragging && activePointers.size > 0);
+    const idleActive = !otherMotionActive && isCameraMotionActive(probeTime);
     markCameraInteraction(); const movingActive = isCameraMotionActive(performance.now());
     lastCameraInteractionAt = stale;
     if(idleActive || !movingActive || !String(loop).includes('isCameraMotionActive')) problems.push('camera motion must render at the screen\'s full refresh rate, never at the frame-rate limit: isCameraMotionActive() must be true while the camera moves and the main loop must consult it (CAMERA-SMOOTH-01)');
@@ -743,7 +712,7 @@ function validateDesignContract(){
   }
   if(!isExpansionPickupItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || isExpansionPickupItem({ itemDef: GOLD_BAG_ITEM }) || canEvictGroundItem({ itemDef: FIRST_MAP_SCROLL_ITEM }) || !canEvictGroundItem({ itemDef: GOLD_BAG_ITEM })) problems.push('ground-item pressure must preserve free-expansion pickups without protecting ordinary gold bags (EARLY-REWARD-PRESERVE-01)');
   if(promotionRankLabel(1) !== 'Rank 1' || promotionRankLabel(7) !== 'Rank 7') problems.push('the promotion count must be labeled Rank, separate from Training XP (PROMOTION-RANK-LABEL-01)');
-  if(nextWaveActionLabel(0) !== 'Start Wave' || nextWaveActionLabel(1) !== 'Next Wave') problems.push('the first wave action must say Start Wave without a wave number, then return to Next Wave (FIRST-WAVE-ACTION-01)');
+  if(nextWaveActionLabel(0).replace(/ \+💰\d+$/, '') !== 'Start Wave' || nextWaveActionLabel(1).replace(/ \+💰\d+$/, '') !== 'Next Wave') problems.push('the first wave action must say Start Wave without a wave number, then return to Next Wave (FIRST-WAVE-ACTION-01)');
   { const freeFighters = Object.entries(CONFIG.TOWERS).filter(([type, def]) => !['BARRICADE','PROTON','DARK_MATTER','QUASAR'].includes(type) && !(def.baseCost > 0)).map(([type]) => type); if(freeFighters.length) problems.push('every buildable fighter must have a gold price above zero (Barricade is paid in wood and stone; Proton, Dark Matter and Quasar are elements, not towers): ' + freeFighters.join(', ') + ' (NO-FREE-FIGHTERS-01)'); }
   if(!PRODUCER_TYPES.every(type => CONFIG.TOWERS[type] && CONFIG.TOWERS[type].baseCost > 0 && CONFIG.TOWERS[type].tiers[0].damage === 0 && isStructureType(type) && !isFighterTower({ type }) && !/\bupgrad|\bevol/i.test(CONFIG.TOWERS[type].blurb))) problems.push('structures cost gold, never attack and are never counted as fighters (STRUCTURE-PRODUCERS-01)');
   if(!String(unlockAudioOnGesture).includes('state === \'running\'') || typeof AUDIO_UNLOCK_EVENTS === 'undefined' || !AUDIO_UNLOCK_EVENTS.includes('touchend') || !AUDIO_UNLOCK_EVENTS.includes('pointerup')) problems.push('audio unlock retries on touchend, pointerup and click until the context runs, so the start-screen music starts on a phone tap (AUDIO-GESTURE-01)');
@@ -762,20 +731,20 @@ function validateDesignContract(){
   if(CAMPFIRE_BUILD_WOOD !== 50 || !String(buildTowerModal).includes('campfireRow') || String(buildTowerModal).includes("createElement('button');fireRow") || !String(placeCampfire).includes('wood-=CAMPFIRE_BUILD_WOOD')) problems.push('the campfire is a normal row in the Structures list costing gold, 50 wood and stone (CAMPFIRE-STRUCTURE-01)');
   if(typeof spawnCastOffTrail !== 'function' || !String(spawnSwordsmanBloodArc).includes('spawnCastOffTrail') || String(spawnCastOffArc).includes('circular')) problems.push('blade cast-off lands as a curved row along the swing tangent beyond the wound, never a ring around the victim (CASTOFF-TANGENT-01)');
   if(Math.abs(FORENSIC_TERMINAL_PX/FORENSIC_PX_PER_METER - 7.65) > 1e-9 || !String(forensicTerminalPxFor).includes('FORENSIC_TERMINAL_PX') || !String(landForensicDroplet).includes('Math.asin')) problems.push('gore explosion droplets obey quadratic drag, a 7.65 m/s terminal velocity and an impact-angle stain (GORE-EXPLOSION-01)');
-  if(ELEMENT_INFUSE_THRESHOLD !== 250 || MIXED_PAIR_THRESHOLD !== 250 || !ELEMENT_COMPONENTS.PROTON || ELEMENT_COMPONENTS.PROTON.join() !== 'FIRE,ELECTRIC' || ELEMENT_COMPONENTS.DARK_MATTER.join() !== 'FIRE,ICE' || ELEMENT_COMPONENTS.QUASAR.join() !== 'ELECTRIC,ICE' || ['PROTON','DARK_MATTER','QUASAR'].some(type => STARTER_TOWER_TYPES.includes(type) || EVOLVED_TOWER_TYPES.includes(type)) || mixedElementFor({str:250,dex:250,int:250}) !== 'PROTON' || mixedElementFor({str:260,dex:300,int:280}) !== 'QUASAR' || mixedElementFor({str:300,dex:0,int:250}) !== 'DARK_MATTER' || mixedElementFor({str:300,dex:249,int:0}) !== null || !String(drawStickman).includes('drawWeaponEnchant')) problems.push('elements are earned, never built: 250 STR/DEX/INT infuses Fire/Electric/Ice, a second element at 250 mixes into Proton (Fire+Electric), Dark Matter (Fire+Ice) or Quasar (Electric+Ice), and an elemental stickman always shows an enchantment on the weapon (ELEMENT-INFUSION-01)');
-  if(!CONFIG.TOWERS.HACKER || !(CONFIG.TOWERS.HACKER.baseCost > 0) || CONFIG.TOWERS.HACKER.tiers[0].damage !== 0 || !MAX_ONE_PER_BOARD_TYPES.includes('HACKER') || !HACK_TOWER_TYPES.includes('HACKER') || STARTER_TOWER_TYPES.includes('HACKER') || EVOLVED_TOWER_TYPES.includes('HACKER') || HACKER_MAX_HP > 25 || typeof Tower.prototype.goStealth !== 'function' || !String(findNearestActiveTower).includes('stealthUntil')) problems.push('the Hacker is a hacks-only stickman: priced above zero, never attacks, tiny health, one per board even when downed, stealth hides him from enemy targeting, and he never appears in normal progression (HACKER-01)');
+  if(ELEMENT_INFUSE_THRESHOLD !== 250 || MIXED_PAIR_THRESHOLD !== 250 || !ELEMENT_COMPONENTS.PROTON || ELEMENT_COMPONENTS.PROTON.join() !== 'FIRE,ELECTRIC' || ELEMENT_COMPONENTS.DARK_MATTER.join() !== 'FIRE,ICE' || ELEMENT_COMPONENTS.QUASAR.join() !== 'ELECTRIC,ICE' || ['PROTON','DARK_MATTER','QUASAR'].some(type => STARTER_TOWER_TYPES.includes(type) || UNLOCKED_CLASS_TYPES.includes(type)) || mixedElementFor({str:250,dex:250,int:250}) !== 'PROTON' || mixedElementFor({str:260,dex:300,int:280}) !== 'QUASAR' || mixedElementFor({str:300,dex:0,int:250}) !== 'DARK_MATTER' || mixedElementFor({str:300,dex:249,int:0}) !== null || !String(drawStickman).includes('drawWeaponEnchant')) problems.push('elements are earned, never built: 250 STR/DEX/INT infuses Fire/Electric/Ice, a second element at 250 mixes into Proton (Fire+Electric), Dark Matter (Fire+Ice) or Quasar (Electric+Ice), and an elemental stickman always shows an enchantment on the weapon (ELEMENT-INFUSION-01)');
+  if(!CONFIG.TOWERS.HACKER || !(CONFIG.TOWERS.HACKER.baseCost > 0) || CONFIG.TOWERS.HACKER.tiers[0].damage !== 0 || !MAX_ONE_PER_BOARD_TYPES.includes('HACKER') || !HACK_TOWER_TYPES.includes('HACKER') || STARTER_TOWER_TYPES.includes('HACKER') || UNLOCKED_CLASS_TYPES.includes('HACKER') || HACKER_MAX_HP > 25 || typeof Tower.prototype.goStealth !== 'function' || !String(towerTauntScore).includes('stealthUntil')) problems.push('the Hacker is a hacks-only stickman: priced above zero, never attacks, tiny health, one per board even when downed, stealth hides him from enemy targeting, and he never appears in normal progression (HACKER-01)');
   if(String(creditGroundBagGold).includes('launchGoldHudFlight') || !String(openGoldBag).includes('launchGoldHudFlight') || !String(creditCoin).includes('withFlight') || String(Enemy.prototype.applyDamage).includes('launchGoldHudFlight')) problems.push('coins fly to the gold counter only when the player clicks a coin or opens a bag, never on a defeat, expiry or automatic payout (GOLD-FLIGHT-CLICK-01)');
   if(ICE_FREEZE_MIN_MS !== 2000 || ICE_FREEZE_MAX_MS !== 5000 || !(ICE_PROC_SHARE < 1) || !(FROZEN_DAMAGE_MULT > 1) || !String(Enemy.prototype.applyDamage).includes('frozenUntil') || !String(SoundEngine.prototype.playEvent).includes('WAVE-CLEAR-FANFARE-01') || !String(SoundEngine.prototype.scheduleMusicStep).includes('musicCycle') || !CONFIG.TOWERS.BLOW_GUNNER) problems.push('Ice is the rarest element to proc but the most effective: 2 to 5 second freeze that blocks the queue behind it and takes extra damage; Blow Gunner stays a buildable tower that can carry elements; the wave-clear fanfare and the cycle-by-cycle key changes stay in the score (ICE-BLOCK-01, WAVE-CLEAR-FANFARE-01, MUSIC-EVOLVE-01)');
-  if(String(offerRunReward).indexOf('RUN-REWARD-REMOVED-01') < 0 && !String(offerRunReward).includes('return;') || typeof SoundEngine.prototype.setWindLevel === 'function' || !String(Tower.prototype.update).length || typeof expansionBlockedReason !== 'function' || !String(canvas.onpointermove || '1') || !String(updatePresentationEffects).includes('freeExpansionOwed')) problems.push('no wave choice rewards, no wind sound, the free expansion arrives only after every enemy is cleared, and coins collect on hover or slide (RUN-REWARD-REMOVED-01, EXPAND-AFTER-CLEAR-01, HOVER-COIN-01)');
-  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-SETTLE-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || typeof GOLD_MAP_BAG_ITEM !== 'undefined') problems.push('escaped enemies settle, then head for the closest stickman, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-SETTLE-01, HEAD-SNAP-01, CHEST-ONLY-01)');
+  if(typeof offerRunReward === 'function' || document.getElementById('runRewardBtn') || typeof SoundEngine.prototype.setWindLevel === 'function' || typeof expansionBlockedReason !== 'function' || tryCollectCoinAt.length < 4 || !String(updatePresentationEffects).includes('freeExpansionOwed')) problems.push('no wave choice rewards, no wind sound, the free expansion arrives only after every enemy is cleared, and coins collect on hover or slide (RUN-REWARD-REMOVED-01, EXPAND-AFTER-CLEAR-01, HOVER-COIN-01)');
+  if(!String(Enemy.prototype.updateEscapedMovement).includes('LOOSE-PERIMETER-01') || !String(itemDropTargetAt).includes('HEAD-SNAP-01') || typeof GOLD_MAP_BAG_ITEM !== 'undefined') problems.push('escaped enemies patrol the grass rim at once and fight the first stickman they meet, a dragged item snaps to a stickman by head or body, and bags are only bags (LOOSE-PERIMETER-01, HEAD-SNAP-01, CHEST-ONLY-01)');
   if(Math.abs(projectileStickChance(0) - 0.12) > 0.001 || !(projectileStickChance(250) > 0.4 && projectileStickChance(250) < 0.65) || projectileStickChance(500) < 0.9 || projectileStickChance(500) > 0.95) problems.push('arrows stick in enemies sometimes at 0 STR and gradually more often up to very likely at 500 STR (STICK-CHANCE-01)');
-  if(!String(Enemy.prototype.draw).includes('LOOSE-GLOW-01') || typeof launchHeartHudFlights !== 'function' || !String(Tower.prototype.update).length) problems.push('loose enemies sit in a soft red glow with no ring and the fountain sends hearts to the lives counter (LOOSE-GLOW-01, HEART-FLIGHT-01)');
+  if(!String(Enemy.prototype.draw).includes('LOOSE-GLOW-01') || typeof launchHeartHudFlights !== 'function') problems.push('loose enemies sit in a soft red glow with no ring and the fountain sends hearts to the lives counter (LOOSE-GLOW-01, HEART-FLIGHT-01)');
   { let attractOffScreenTopBottom = false, attractGrunts = 0; for(let i = 0; i < 300; i++){ const point = attractSpawnPoint(); if(point.yf < 0 || point.yf > 1 || (point.xf >= 0 && point.xf <= 1)) attractOffScreenTopBottom = true; if(attractPickEnemyType() === 'GRUNT') attractGrunts++; } if(attractOffScreenTopBottom || attractGrunts < 180) problems.push('the attract screen is mostly the big angry red guy and enemies come in from the left or right horizon, never from the sky (ATTRACT-HORIZON-01)'); }
   if(!String(drawEmojiGroundShadow).includes('BOX-SHADOW-01') || !String(drawEmojiGroundShadow).includes("fillStyle='#000'")) problems.push('the cardboard box casts a footprint shadow swept back-right like every other shadow, drawn in black (BOX-SHADOW-01)');
   { const quickRow = document.getElementById('inspQuickSlots'), plate = document.getElementById('inspect-panel'); if(quickRow && plate && (plate.contains(quickRow) || getComputedStyle(quickRow).position !== 'absolute')) problems.push('the quick items are free floating buttons outside the faceplate; the faceplate never grows to hold them (QUICK-FLOAT-01)'); }
   if(/roll < 0\.0[4-9]\) type = '/.test(String(spawnScenery)) || typeof maybeSpawnRandomEventsOnExpansion !== 'function' || !String(finalizeRingExpansion).includes('maybeSpawnRandomEventsOnExpansion')) problems.push('each expansion makes one random event near the flags and one near the finish carpet, and chests, crates and bushes are never rolled on ordinary tiles (ONE-EVENT-PER-END-01)');
   if(!String(initAttractLoop).includes('SCENE-TIME-OF-DAY-01')) problems.push('each new attract scene changes the time of day (SCENE-TIME-OF-DAY-01)');
-  if(BONE_DROP_CHANCE >= 0.08 || typeof SHOVEL_CHARGES_PER_ROUND === 'undefined' || SHOVEL_CHARGES_PER_ROUND !== 3 || LOG_MAX_SCALE > 0.54 || !String(useStoredConsumable).includes('beginShovelDig') || !String(update).includes('resetShovelCharges(') || !String(digWithShovel).includes('dropGoldBag')) problems.push('bones stay rarer than skulls and blood, logs stay small, and the shovel has three digs per round that refill when a wave is cleared (GORE-RARITY-01, LOG-SIZE-01, SHOVEL-CHARGES-01)');
+  if(BONE_DROP_CHANCE >= 0.08 || typeof SHOVEL_CHARGES_PER_ROUND === 'undefined' || SHOVEL_CHARGES_PER_ROUND !== 3 || LOG_MAX_SCALE > 0.54 || !String(useStoredConsumable).includes('beginShovelDig') || !String(update).includes('resetShovelCharges(') || !String(digWithShovel).includes('dropTreasureBags') || !String(dropTreasureBags).includes('dropGoldBag')) problems.push('bones stay rarer than skulls and blood, logs stay small, and the shovel has three digs per round that refill when a wave is cleared (GORE-RARITY-01, LOG-SIZE-01, SHOVEL-CHARGES-01)');
   if(!STACKABLE_ITEM_IDS.has('HONEY') || typeof updateGroundItemDrift !== 'function' || !String(update).includes('updateGroundItemDrift(') || !/BEE'\) it\.e\.draw\(ctx\);[^\n]*\n\s*drawMarkedTargetIcon/.test(String(render))) problems.push('honey stacks in one slot, loose items drift to the nearest stickman whose range covers them and consumables are stored, and the pin is drawn after the bee (STACK-HONEY-01, ITEM-DRIFT-01, PIN-BEE-01)');
   if(typeof spawnBarricadeStrikeDebris !== 'function' || typeof spawnStickmanWound !== 'function' || !String(Tower.prototype.takeDamage).includes('maybeEnrage') || STICKMAN_RAGE_CHANCE > 0.1) problems.push('enemy strikes throw barricade debris away from the attacker, wound stickmen and rarely enrage them (BARRICADE-STRIKE-01, STICKMAN-WOUND-01, STICKMAN-RAGE-01)');
   { const engineSource = String(SoundEngine), voiceNames = kind => [...engineSource.matchAll(new RegExp(kind + "\\((?:[^()]|\\([^()]*\\))*?,\\s*'([a-z]+)'", 'g'))].map(match => match[1]);
@@ -792,7 +761,7 @@ function validateDesignContract(){
   if(!PRODUCER_DEFS.VAULT || PRODUCER_DEFS.VAULT.slots.join() !== '18,24,30' || PRODUCER_DEFS.VAULT.slots.length !== PRODUCER_MAX_LEVEL || PRODUCER_DEFS.VAULT.upgrades.length !== PRODUCER_MAX_LEVEL - 1 || PRODUCER_DEFS.VAULT.build.stone <= PRODUCER_DEFS.VAULT.build.wood * 2 || document.querySelectorAll('.item-slot').length !== PRODUCER_DEFS.VAULT.slots[PRODUCER_MAX_LEVEL - 1] || isFighterTower({ type: 'VAULT' })) problems.push('the vault is a Build structure with 18 slots in three rows of six and two upgrades of six more, costing a little gold and wood and a lot of stone (VAULT-01)');
   if(BEE_HONEY_MIN_MS !== 300000 || BEE_HONEY_SPREAD_MS !== 300000 || !String(updateBeeHoney).includes('honeyDueMs')) problems.push('a bee makes honey after a random 5 to 10 minutes, like a Minecraft chicken laying eggs (BEE-HONEY-02)');
   if(ITEM_DRIFT_DELAY_MIN_MS !== 20000 || ITEM_DRIFT_DELAY_SPREAD_MS !== 10000 || typeof towerCanTakeDriftItem !== 'function' || !String(updateGroundItemDrift).includes('driftAt') || !String(updateGroundItemDrift).includes('towerCanTakeDriftItem')) problems.push('loose items wait 20 to 30 seconds, then drift only to a stickman that can take them (ITEM-DRIFT-02)');
-  if(LOOSE_SETTLE_MIN_MS !== 20000 || LOOSE_SETTLE_SPREAD_MS !== 10000 || !String(Enemy.prototype.updateEscapedMovement).includes('escapeSettleMs') || !String(Enemy.prototype.reachEnd).includes('escapeSettleMs')) problems.push('an escaped enemy stands still for 20 to 30 seconds before it heads for the closest stickman (LOOSE-SETTLE-01)');
+  if(typeof pickLoosePerimeterGoal !== 'function' || !String(Enemy.prototype.updateEscapedMovement).includes('pickLoosePerimeterGoal')) problems.push('an escaped enemy patrols the grass rim at once and fights the first stickman it meets (LOOSE-PERIMETER-01)');
   if(typeof advanceCountdownMusic !== 'function' || waveMusicLeadMs() < 1500 || waveMusicLeadMs() > 2600 || String(startWaveStartCameraPan).includes('SPAWN_MARKER_RISE_PX')) problems.push('the wave theme starts during the 3-2-1 so its bass drop lands on GO, and the wave-start camera centres on the spawn tile (MUSIC-COUNTDOWN-01, CAMERA-SPAWN-01)');
   if(typeof attractEasedLevel !== 'function' || attractEasedLevel(1, 4, 0) !== MUSIC_ATTRACT_SECTION_LEVEL[0] || attractEasedLevel(1, 7, 7) <= attractEasedLevel(1, 5, 0) || Math.abs(attractEasedLevel(2, 11, 7) - MUSIC_ATTRACT_SECTION_LEVEL[2]) > 0.001) problems.push('start-screen sections glide from the previous level to their own instead of stepping (MUSIC-ATTRACT-EASE-01)');
   if(!String(SoundEngine.prototype.scheduleAttractStep).includes("section >= 1 && section < 3") || !String(SoundEngine.prototype.scheduleAttractStep).includes('section >= 2 && section !== 3')) problems.push('the start-screen intro has no held drone chords or reed line; the pads join in the first verse and the oboe in the second (MUSIC-ATTRACT-EASE-01)');
@@ -801,6 +770,7 @@ function validateDesignContract(){
   if(MUSIC_STING_PICKUPS.length !== 3 || MUSIC_STING_DROP_STEP !== MUSIC_STEPS_PER_BAR || !String(SoundEngine.prototype.scheduleMusicSting).includes('musicBassDrop')) problems.push('the wave and boss opening is three rising brass pickups, a short riser and a bass drop on the next downbeat (MUSIC-STING-02)');
   if(typeof paintSceneryGroundShadows !== 'function' || SCENERY_SHADOW_STRENGTH !== 0.24 || !String(repaintSceneryShadowLayer).includes('drawSceneryGroundShadow(layer')) problems.push('scenery silhouette shadows are one union layer at strength 0.24 (SCENERY-SHADOW-UNION-01)');
   if(typeof runSeedFor !== 'function' || typeof runSeedCode !== 'string' || !runSeedCode || waveRunSeed !== runSeedFor(0xA3) || groundDetailRunSeed !== runSeedFor(0x51)) problems.push('run seeds are not built from the run code (RUN-SEED-01)');
+  if(actTitleForWave(CAMPAIGN_WAVE_COUNT + 1) !== EXPEDITION_TITLE || !String(announceActStart).includes('wave > CAMPAIGN_WAVE_COUNT')) problems.push('after the campaign the Expedition is announced once and the last act is not repeated (ACT-ANNOUNCE-01)');
   if(ACT_NAMES.length !== 10 || actNumberForWave(1) !== 1 || actNumberForWave(11) !== 2 || actNumberForWave(999) !== 10 || MEDAL_DEFS.length < 10 || new Set(MEDAL_DEFS.map(m => m.id)).size !== MEDAL_DEFS.length || typeof awardMedal !== 'function') problems.push('acts or medals are malformed (RUN-PROGRESS-01)');
   if(!document.getElementById('endRunSummary') || !document.getElementById('settingsMedalToggle') || !document.getElementById('settingsRunSeed')) problems.push('run summary, medal toggle or seed input is missing (RUN-SUMMARY-01)');
   if(typeof HOSTILE_EVENT_BREATHER_WAVES === 'undefined' || HOSTILE_EVENT_BREATHER_WAVES < 2 || !String(runWaveClearRandomEvents).includes('lastHostileEventWave')) problems.push('a hostile random event is followed by a wave clear with only peaceful events (EVENT-PACING-01)');
@@ -875,15 +845,15 @@ function validateDesignContract(){
   if(typeof rollTreeVariant !== 'function' || TREE_VARIANT_EMOJI.length < 3 || RANDOM_EVENT_CHOICES[0][0] !== 'CHEST' || RANDOM_EVENT_CHOICES[0][1] > 0.1 || !String(spawnScenery).includes('SCENERY-VARIETY-01')) problems.push('trees and rocks come in varied kinds, shapes and facings, and presents are the rarest event (SCENERY-VARIETY-01, EVENT-VARIETY-01)');
   { const kinds = new Set(RANDOM_EVENT_CHOICES.map(c => c[0])); const total = RANDOM_EVENT_CHOICES.reduce((a, c) => a + c[1], 0); if(kinds.size < 9 || Math.abs(total - 1) > 0.001 || typeof grantEventProp !== 'function' ) problems.push('there are nine kinds of random event and their chances add up to one (EVENT-VARIETY-01)'); }
   if(typeof Tower.prototype.walkTo !== 'function' || typeof Tower.prototype.advanceWalk !== 'function' || !String(attemptMoveTower).includes('walkTo') || !String(creditCoin).includes('withFlight') || !String(spawnGroundItem).includes('ITEM-ARC-01') || !String(Tower.prototype.update).includes('MOVE-WALKS-01')) problems.push('moved stickmen walk to their new tile, dropped items fly out in an arc, and faded coins fly to the counter (MOVE-WALKS-01, ITEM-ARC-01, COIN-FADE-FLIGHT-01)');
-  { // OWNER-LEDGER-01 (1.7.44) — see HISTORY.md § [1.7.44]
+  { // OWNER-LEDGER-01
     const src = fn => String(fn);
     const ledger = [
       ['no wind sound', typeof SoundEngine.prototype.setWindLevel === 'undefined'],
-      ['no wave choice rewards', src(offerRunReward).includes('RUN-REWARD-REMOVED-01') || /^function offerRunReward\(wave\)\{\s*return;/.test('function ' + src(offerRunReward).replace(/^function\s*/, ''))],
+      ['no wave choice rewards', typeof offerRunReward === 'undefined' && !document.getElementById('runRewardBtn')],
       ['wave clear keeps its twang', src(SoundEngine.prototype.playEvent).includes('523.25')],
       ['countdown buzzer, eating, potion, scroll, injector and expand sounds', ['countdown_tick', 'countdown_go', 'item_eat', 'item_potion', 'item_scroll', 'item_inject', 'expand_build'].every(n => src(SoundEngine.prototype.playEvent).includes("'" + n + "'"))],
       ['hack cheat menu grants wood, stone and gold', ['+🪵1,000', '+🪨10,000', '+💰100,000'].every(a => src(runHackAction).includes(a))],
-      ['intelligence tooltip', sourceMentions('drives Mage damage and every stickman')],
+      ['stat tooltips: DEX gives accuracy', src(updateInspectPanelNow).includes('Dexterity: improves attack speed, accuracy') && !src(updateInspectPanelNow).includes('Intelligence —')],
       ['elements at 250', ELEMENT_INFUSE_THRESHOLD === 250],
       ['expansion allowed mid-wave, one bought per wave', typeof expansionBlockedReason === 'function' && src(expandRegion).includes('expansionBlockedReason') && !src(expansionBlockedReason).includes('waveState') && src(expansionBlockedReason).includes('one per wave') && sourceMentions('EXPAND-MID-WAVE-01')],
       ['moves belong to each stickman, gained on promotion, boss kill and shoes', typeof grantTowerMove === 'function' && typeof moveCharges === 'undefined' && src(Tower.prototype.upgrade).includes('grantTowerMove') && src(Enemy.prototype.die).includes('grantTowerMove') && !document.getElementById('moveVal')],
@@ -964,7 +934,7 @@ function validateDesignContract(){
   if(CONFIG.FLORA.coverage !== 0 || String(keepRoomToBuild).includes('sceneryMap.delete') || String(applyFoodItem).includes('lives +=') || typeof healFedStickman !== 'function') problems.push('decorative flora is disabled, older scenery is retained and food heals stickmen rather than player lives (PURPOSEFUL-PROPS-01, SCENERY-PRESERVE-01, FOOD-STICKMAN-HEALTH-01)');
   for(const [type, def] of Object.entries(LIVESTOCK_TYPES)) if(!FOOD_BY_ID.has(def.meatId)) problems.push('livestock ' + type + ' drops an unknown meat item (LIVESTOCK-01)');
   if(!BERRY_FOOD_IDS.every(id => FOOD_BY_ID.has(id))) problems.push('every berry id a Bush can drop must exist in the food catalog (BUSH-BERRIES-01)');
-  for(const [type, def] of Object.entries(LIVESTOCK_TYPES)) if(!CONFIG.ENEMIES[type] || !CONFIG.ENEMIES[type].bounty === undefined) problems.push('livestock ' + type + ' must have a matching CONFIG.ENEMIES entry (TARGET-MARK-01)');
+  for(const [type, def] of Object.entries(LIVESTOCK_TYPES)) if(!CONFIG.ENEMIES[type] || CONFIG.ENEMIES[type].bounty === undefined) problems.push('livestock ' + type + ' must have a matching CONFIG.ENEMIES entry (TARGET-MARK-01)');
   for(const recipe of CRAFTING_RECIPES){
     if(!lookupItemDef(recipe.result)) problems.push('craft recipe result "' + recipe.result + '" is not in the item catalog (ITEM-CRAFTING-01)');
     if(recipe.ingredients.length < 2) problems.push('craft recipe for "' + recipe.result + '" needs at least 2 ingredients (ITEM-CRAFTING-01)');
@@ -991,7 +961,7 @@ function validateDesignContract(){
   problems.push(...bootSelfTestFailures);
   return problems;
 }
-// SELF-TESTS-AT-BOOT-01 (1.8.50): the boot sequence runs the self-tests once, so a failing test is listed with the design-contract problems in every debug log instead of waiting for a manual run.
+// SELF-TESTS-AT-BOOT-01: the boot sequence runs the self-tests once, so a failing test is listed with the design-contract problems in every debug log instead of waiting for a manual run.
 let bootSelfTestFailures = [];
 function runBootSelfTests(){
   const savedIdCounter = idCounter, savedEnemySpawnSerial = enemySpawnSerial;
@@ -1001,20 +971,16 @@ function runBootSelfTests(){
   return bootSelfTestFailures;
 }
 let designContractProblems = [];
-// CA081 — see HISTORY.md § [1.5.7] Code Archaeology, CA081
 function runDebugSelfTests(logResults = true){
   const results = [];
   const check = (name, pass, detail) => results.push({ name, pass: !!pass, detail: detail || '' });
 
-  // CA082 — see HISTORY.md § [1.5.7] Code Archaeology, CA082
   {
     const e1 = new Enemy(); e1.spawn('GRUNT', 1, false); e1.active = true;
     const e2 = new Enemy(); e2.spawn('GRUNT', 1, false); e2.active = false;
-    const targetable = [e1, e2].filter(e => e.active);
-    check('dead enemy excluded from targeting query', !targetable.includes(e2) && targetable.includes(e1));
+    check('dead enemy excluded from targeting', isCombatTarget(e1) && !isCombatTarget(e2));
   }
 
-  // CA083 — see HISTORY.md § [1.5.7] Code Archaeology, CA083
   {
     const e = new Enemy();
     e.spawn('GRUNT', 1, false);
@@ -1024,38 +990,16 @@ function runDebugSelfTests(logResults = true){
     check('escaped/wander fields reset on pool reuse', e.escaped === false && e.wanderVx === 0 && e.wanderVy === 0 && e.wanderRepickTimer === 0 && e.escapedAttackTarget === null && e.escapedAttackTimer === 0 && e.escapedAttackCheckTimer === 0);
   }
 
-  // 3. Escaped enemies excluded from the wave-completion check, matching update()'s own filter.
   {
-    const e1 = new Enemy(); e1.spawn('GRUNT', 1, false); e1.active = true; e1.escaped = false;
-    const e2 = new Enemy(); e2.spawn('GRUNT', 1, false); e2.active = true; e2.escaped = true;
-    const anyAlive = [e1, e2].some(e => e.active && !e.escaped);
-    check('escaped enemy does not block wave completion', anyAlive === true && e2.escaped === true);
+    const wild = new Enemy(); wild.spawn('CHICKEN', 1, false); wild.active = true; wild.isLivestock = true;
+    const savedMark = markedTargetEnemy;
+    const passive = !isCombatTarget(wild);
+    markedTargetEnemy = wild; const markedIsTarget = isCombatTarget(wild); markedTargetEnemy = savedMark;
+    check('livestock is passive until the player marks it (TARGET-MARK-01)', passive && markedIsTarget);
   }
 
-  // CA084 — see HISTORY.md § [1.5.7] Code Archaeology, CA084
-  {
-    const savedStrength = windStrength, savedTarget = windTarget, savedTimer = windRetargetTimer, savedCeiling = windCeilingForWave;
-    windStrength = 0; windTarget = 0; windRetargetTimer = 0; windCeilingForWave = 0.15;
-    let maxSeen = 0;
-    for(let i=0;i<500;i++){ updateWind(50); maxSeen = Math.max(maxSeen, windStrength); }
-    const withinCeiling = maxSeen <= 0.15 + 1e-9;
-    windStrength = savedStrength; windTarget = savedTarget; windRetargetTimer = savedTimer; windCeilingForWave = savedCeiling;
-    check('wind never exceeds its wave ceiling', withinCeiling, 'max seen: ' + maxSeen.toFixed(3));
-  }
+  check('no wind affects accuracy (WIND-REMOVED-01)', typeof windMissPenalty === 'undefined' && typeof updateWind === 'undefined');
 
-  // CA085 — see HISTORY.md § [1.5.7] Code Archaeology, CA085
-  {
-    const savedStrength = windStrength;
-    windStrength = 1;
-    const warriorPenalty = windMissPenalty({ type: 'SWORDSMAN' });
-    const archerPenalty = windMissPenalty({ type: 'ARCHER' });
-    const magePenalty = windMissPenalty({ type: 'MAGE' });
-    windStrength = savedStrength;
-    check('wind never penalizes Warrior-archetype towers', warriorPenalty === 0);
-    check('Mage wind penalty exceeds Archer at high wind', magePenalty > archerPenalty);
-  }
-
-  // CA086 — see HISTORY.md § [1.5.7] Code Archaeology, CA086
   {
     let allTargetsExist = true;
     for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
@@ -1066,13 +1010,11 @@ function runDebugSelfTests(logResults = true){
     check('every HYBRID_SPECIALIZATIONS target exists in CONFIG.TOWERS', allTargetsExist);
   }
 
-  // CA087 — see HISTORY.md § [1.5.7] Code Archaeology, CA087
   {
-    const allReachable = EVOLVED_TOWER_TYPES.every(type => UNLOCKABLE_TOWER_TYPES.includes(type));
-    check('every evolved tower type is reachable via UNLOCKABLE_TOWER_TYPES', allReachable);
+    const allReachable = UNLOCKED_CLASS_TYPES.every(type => UNLOCKABLE_TOWER_TYPES.includes(type));
+    check('every unlockable class is reachable via UNLOCKABLE_TOWER_TYPES', allReachable);
   }
 
-  // CA088 — see HISTORY.md § [1.5.7] Code Archaeology, CA088
   {
     const eBoth = new Enemy(); eBoth.spawn('GRUNT', 1, true, true); // both flags requested at once
     const eMini = new Enemy(); eMini.spawn('GRUNT', 1, false, true);
@@ -1081,7 +1023,6 @@ function runDebugSelfTests(logResults = true){
     check('Mini variant has less HP, radius, and bounty than a normal spawn', eMini.maxHp < eNormal.maxHp && eMini.radius < eNormal.radius && eMini.bounty < eNormal.bounty);
   }
 
-  // CA089 — see HISTORY.md § [1.5.7] Code Archaeology, CA089
   {
     check('BLOOD_ON_HIT_CHANCE is a valid probability strictly less than 1 (a real reduction, not a no-op)', typeof BLOOD_ON_HIT_CHANCE === 'number' && BLOOD_ON_HIT_CHANCE > 0 && BLOOD_ON_HIT_CHANCE < 1);
   }
@@ -1091,7 +1032,7 @@ function runDebugSelfTests(logResults = true){
     const planA = buildWavePlan(37), planB = buildWavePlan(37);
     const flatten = plan => plan.phases.map(ph => ph.batches.map(b => b.units.map(u => u.family + u.sizeTier).join(',')).join('|')).join('/');
     check('same seed and wave number rebuild an identical plan', flatten(planA) === flatten(planB));
-    check('wave 1 is one Tiny per batch, as many batches as its Tiny count', validateWavePlan(buildWavePlan(1)).length === 0 && buildWavePlan(1).phases[0].batches.length === tierPopulationForWave(1).TINY); // WAVE-ONE-COUNT-01 (1.8.49): the count follows ENEMY_COUNT_MULTIPLIER and the road length, 15 on a starting road since 1.7.38
+    check('wave 1 is one Tiny per batch, as many batches as its Tiny count', validateWavePlan(buildWavePlan(1)).length === 0 && buildWavePlan(1).phases[0].batches.length === tierPopulationForWave(1).TINY); // WAVE-ONE-COUNT-01
   }
 
   // 11. Escaped kills never award last-hit XP; normal kills award full tier XP to the killer.
@@ -1118,7 +1059,6 @@ function runDebugSelfTests(logResults = true){
     check('50% weighted last hits across waves 1-15 yields at least 100 training bars', budget * 0.5 / TRAINING_BAR_XP >= 100, Math.round(budget) + ' XP');
   }
 
-  // CA090 — see HISTORY.md § [1.5.7] Code Archaeology, CA090
   {
     const straightAngle = calculateLeadIntercept(0, 0, 300, 100, 0, 0, 0);
     const stationaryOk = Math.abs(straightAngle) < 0.0001;

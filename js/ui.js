@@ -11,32 +11,27 @@
    CANVAS / INPUT SETUP
    ========================================================= */
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false }); // OPAQUE-CANVAS-01 (1.6.120) — see HISTORY.md § [1.6.120]
-const OPAQUE_CANVAS_BACKGROUND = '#8b5a2b'; // matches the --dirt page colour that used to show through the cleared canvas
+const ctx = canvas.getContext('2d', { alpha: false }); // OPAQUE-CANVAS-01
+const OPAQUE_CANVAS_BACKGROUND = '#8b5a2b'; // the --dirt page colour
 ctx.fillStyle = OPAQUE_CANVAS_BACKGROUND; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
 let dprValue = 1;
-// CA726 — see HISTORY.md § [1.5.7] Code Archaeology, CA726
 let cachedCanvasRect = null;
 function getCanvasRect(){
   if(!cachedCanvasRect) cachedCanvasRect = canvas.getBoundingClientRect();
   return cachedCanvasRect;
 }
-// CA727 — see HISTORY.md § [1.5.7] Code Archaeology, CA727
 let mapCanvasReady = false;
-// CA728 — see HISTORY.md § [1.5.7] Code Archaeology, CA728
 let settledDecalCanvasReady = false;
-// EMPTY-LAYER-SKIP-01 (1.7.36): measured at 2560 by 1305 with software drawing, blitting the empty settled-decal layer cost about 11 ms every frame
+// EMPTY-LAYER-SKIP-01: measured at 2560 by 1305 with software drawing, blitting the empty settled-decal layer cost about 11 ms every frame
 // (26.2 ms against 15.3 ms on an empty board). The layer is only drawn once something has actually been stamped into it.
 let settledDecalHasContent = false, settledDecalRevision = 0;
-// CA729 — see HISTORY.md § [1.5.7] Code Archaeology, CA729
 function updateCanvasDimensions(){
   CANVAS_W = window.innerWidth || 800;
   CANVAS_H = window.innerHeight || 600;
 }
-// RENDER-GOVERNOR-01 (1.6.114) — see HISTORY.md § [1.6.114]; reworked as opt-in in 1.6.116 — see HISTORY.md § [1.6.116]
+// RENDER-GOVERNOR-01: automatic render scaling, a setting the player can turn off
 const RENDER_SCALE_STEPS = [1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25];
-// RENDER-FLOOR-01 (1.6.118) — see HISTORY.md § [1.6.118]
+// RENDER-FLOOR-01
 function defaultRenderScaleFloorPercent(){ return graphicsQuality === 'high' ? 100 : 75; }
 function renderScaleMaxStep(){
   if(graphicsQuality === 'high') return 0;
@@ -116,20 +111,20 @@ function sampleRenderGovernor(rawGapMs){
     lastGovernorDecision = 'window ' + Math.round(1000/averageGapMs) + ' FPS: no change';
   }
 }
-// REPAINT-01 (1.7.109) — see HISTORY.md § [1.7.109]: any event that can leave the canvas blank (a resize, coming back from the background, a restored canvas context) asks for one immediate frame, which skips the 30 FPS limiter and also draws while the game is paused.
+// REPAINT-01: any event that can leave the canvas blank (a resize, coming back from the background, a restored canvas context) asks for one immediate frame, which skips the 30 FPS limiter and also draws while the game is paused.
 let repaintPending = false;
 function requestRepaint(){ repaintPending = true; }
 let resizeSnapshotCanvas = null;
 function setupCanvas(){
   if(graphicsQuality === 'high'){ renderScaleStep = 0; renderScaleFloorPercent = 100; }
   updateCanvasDimensions();
-  const dprCap = 2; // SHARP-CANVAS-01 (1.8.27)
+  const dprCap = 2; // SHARP-CANVAS-01
   const newDpr = Math.min(window.devicePixelRatio || 1, dprCap) * RENDER_SCALE_STEPS[renderScaleStep];
   const dprChanged = newDpr !== dprValue;
   dprValue = newDpr;
   const backingWidth = Math.round(CANVAS_W * dprValue), backingHeight = Math.round(CANVAS_H * dprValue);
   if(canvas.width === backingWidth && canvas.height === backingHeight && !dprChanged){ ctx.imageSmoothingQuality = graphicsQuality === 'low' ? 'low' : 'high'; cachedCanvasRect = null; return; }
-  // RESIZE-KEEP-01 (1.7.107) — see HISTORY.md § [1.7.107]: changing the canvas size clears it to opaque black, and on a phone the 30 FPS limiter skips every other frame, so a resize (browser bar, chat sheet) that landed on a skipped frame showed a black flash. The old picture is copied across, stretched to the new size, so the canvas is never presented blank.
+  // RESIZE-KEEP-01: changing the canvas size clears it to opaque black, and on a phone the 30 FPS limiter skips every other frame, so a resize (browser bar, chat sheet) that landed on a skipped frame showed a black flash.
   resizeSnapshotCanvas = resizeSnapshotCanvas || document.createElement('canvas');
   const hadPicture = canvas.width > 0 && canvas.height > 0;
   if(hadPicture){ resizeSnapshotCanvas.width = canvas.width; resizeSnapshotCanvas.height = canvas.height; resizeSnapshotCanvas.getContext('2d').drawImage(canvas, 0, 0); }
@@ -139,17 +134,15 @@ function setupCanvas(){
   ctx.setTransform(dprValue,0,0,dprValue,0,0);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = graphicsQuality === 'low' ? 'low' : 'high'; // resizing the canvas clears context state, so this must be reapplied
-  // CA730 — see HISTORY.md § [1.5.7] Code Archaeology, CA730
   if(mapCanvasReady && dprChanged) resizeMapCanvasForDpr();
   cachedCanvasRect = null; // canvas geometry may have changed — force a fresh read on next pointer event
 }
 setupCanvas();
 window.addEventListener('resize', () => { setupCanvas(); clampCamera(); requestRepaint(); }); // re-clamp (not re-center) so pan/zoom stays valid without jarringly resetting the view mid-game
 window.addEventListener('orientationchange', () => { cachedCanvasRect = null; requestRepaint(); }); // some mobile browsers fire this without a corresponding resize
-// CA731 — see HISTORY.md § [1.5.7] Code Archaeology, CA731
 let hudFitSignature = '';
 let notificationLayoutSignature='';
-// NOTIFICATION-BELL-LEFT-01 (1.7.86) — see HISTORY.md § [1.7.86]
+// NOTIFICATION-BELL-LEFT-01
 const NOTIFICATION_BELL_MARGIN_PX = 8, NOTIFICATION_BELL_CLEARANCE_PX = 14;
 function placeNotificationBell(hud){
   const frame = hud.parentElement, bell = document.getElementById('notification-bell');
@@ -166,7 +159,7 @@ function positionNotificationControls(force=false){
   const frame=document.getElementById('canvas-frame'),hud=document.getElementById('hud-top'),bell=document.getElementById('notification-bell');
   if(!frame || !hud || !bell) return;
   const hasCue=['first-build-hint','first-next-wave-hint','first-speed-hint'].some(id=>{const el=document.getElementById(id);return el && !el.classList.contains('hidden');});
-  const sig=[innerWidth,innerHeight,hud.style.display,hud.style.transform,document.getElementById('buildBtn')?.textContent,document.getElementById('runRewardBtn')?.hidden,hasCue].join('|');
+  const sig=[innerWidth,innerHeight,hud.style.display,hud.style.transform,document.getElementById('buildBtn')?.textContent,hasCue].join('|');
   if(!force && sig===notificationLayoutSignature) return;
   notificationLayoutSignature=sig;
   const frameRect=frame.getBoundingClientRect(),hudRect=hud.getBoundingClientRect();
@@ -174,24 +167,18 @@ function positionNotificationControls(force=false){
   const floatingBell=bell.parentElement!==hud;
   bell.hidden=floatingBell && getComputedStyle(hud).display==='none';
   const bellRect=bell.getBoundingClientRect();
-  const contentLeft=Math.max(8,Math.min(bellRect.left-frameRect.left,Math.max(8,frameRect.width-80)));
+  const contentLeft=Math.max(8,clampNum(frameRect.width-80, 8, bellRect.left-frameRect.left));
   frame.style.setProperty('--notification-content-left',contentLeft+'px');
   const top=Math.ceil((floatingBell ? Math.max(0,bellRect.bottom-frameRect.top) : hudBottom)+4);
   frame.style.setProperty('--notification-controls-top',top+'px');
-  const contentTop=top;
-  frame.style.setProperty('--notification-content-top',contentTop+'px');
+  frame.style.setProperty('--notification-content-top',top+'px');
 }
 function fitHudTopToOneLine(force){
   const hud = document.getElementById('hud-top');
   if(!hud) return;
   const buildLabel = document.getElementById('buildBtn')?.textContent || '';
-  // DOM-REFLOW-01 (1.6.57) — see HISTORY.md § [1.6.57]. hud.clientWidth used to be part of this
-  // signature, forcing a layout flush on every call — this function runs on every HUD update
-  // (every kill, gold change, wave change), not just on resize. #hud-top's CSS is `left:0;right:0`
-  // with no independent sizing trigger besides the viewport itself, and viewport resize is already
-  // handled separately by the dedicated resize/orientationchange listeners below, which force a
-  // re-fit directly. window.innerWidth alone is sufficient and reads no layout property at all.
-  const sig = String(window.innerWidth) + '|' + buildLabel + '|' + document.getElementById('runRewardBtn').hidden;
+  // DOM-REFLOW-01: the fit signature reads window.innerWidth only, never a layout property; resize listeners force a re-fit.
+  const sig = String(window.innerWidth) + '|' + buildLabel;
   if(!force && sig === hudFitSignature) return; // counter updates must not resize the full bar after every kill
   hudFitSignature = sig;
   hud.style.transform = 'scale(1)'; // reset before measuring, so scrollWidth reflects natural unscaled size
@@ -202,7 +189,6 @@ function fitHudTopToOneLine(force){
     + Math.max(0,hud.children.length-1)*(parseFloat(getComputedStyle(hud).columnGap)||0) + 16;
   const availableWidth = window.innerWidth - 12; // small side margin so it never touches the screen edges
   if(naturalWidth > availableWidth){
-    // CA732 — see HISTORY.md § [1.5.7] Code Archaeology, CA732
     const scale = Math.max(0.05, availableWidth / naturalWidth) * 0.94;
     hud.style.transform = 'scale(' + scale.toFixed(3) + ')';
   }
@@ -215,7 +201,6 @@ if(typeof ResizeObserver!=='undefined'){
   const notificationLayoutObserver=new ResizeObserver(()=>positionNotificationControls(true));
   for(const id of ['canvas-frame','hud-top','notification-bell'])notificationLayoutObserver.observe(document.getElementById(id));
 }
-// CA733 — see HISTORY.md § [1.5.7] Code Archaeology, CA733
 function fitStatRowToOneLine(){
   const row = document.getElementById('inspCombatRow');
   const panel = document.getElementById('inspect-panel');
@@ -230,7 +215,6 @@ function fitStatRowToOneLine(){
 }
 window.addEventListener('resize', fitStatRowToOneLine);
 window.addEventListener('orientationchange', fitStatRowToOneLine);
-// CA737 — see HISTORY.md § [1.5.7] Code Archaeology, CA737
 function fitNameplateToStatRow(){
   const panel = document.getElementById('inspect-panel');
   const mid = document.getElementById('inspNameplateMid');
@@ -245,7 +229,6 @@ function fitNameplateToStatRow(){
 }
 window.addEventListener('resize', fitNameplateToStatRow);
 window.addEventListener('orientationchange', fitNameplateToStatRow);
-// CA738 — see HISTORY.md § [1.5.7] Code Archaeology, CA738
 function positionZoomControls(){
   const hud = document.getElementById('hud-top');
   const zoom = document.getElementById('zoom-controls');
@@ -256,16 +239,8 @@ function positionZoomControls(){
 positionZoomControls();
 window.addEventListener('resize', positionZoomControls);
 window.addEventListener('orientationchange', positionZoomControls);
-// CA739 — see HISTORY.md § [1.5.7] Code Archaeology, CA739
-function resizeGameFrame(){
-  const canvasEl = document.getElementById('gameCanvas');
-  if(!canvasEl) return;
-  canvasEl.style.width = '100%';
-  canvasEl.style.height = '100%';
-}
-resizeGameFrame();
-window.addEventListener('resize', resizeGameFrame);
-window.addEventListener('orientationchange', resizeGameFrame);
+canvas.style.width = '100%';
+canvas.style.height = '100%';
 // Screen (CSS px) -> pre-camera canvas space (post letterbox scaling, pre dpr)
 function toRawCanvasCoords(clientX, clientY){
   const rect = getCanvasRect();
@@ -293,31 +268,23 @@ function pinchInfo(){
   return { dist, mid };
 }
 function handleTap(clientX, clientY, pointerType){
-  // CA740 — see HISTORY.md § [1.5.7] Code Archaeology, CA740
   if(gameState === 'PAUSED'){ resumeGame(); return; }
   if(gameState !== 'PLAYING') return;
   const {x,y} = toRawCanvasCoords(clientX, clientY);
   const worldX = (x - camera.x)/camera.zoom, worldY = (y - camera.y)/camera.zoom;
   const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
   if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return;
-
   if(placingCampfire){ placeCampfire(gx,gy); return; }
-  if(moveModeTower){
-    attemptMoveTower(gx, gy);
-    return;
-  }
-
+  if(moveModeTower){ attemptMoveTower(gx, gy); return; }
   if(tryOpenCaravan(worldX, worldY)) return;
   if(tryCollectAmbientLog(worldX, worldY, pointerType)) return;
-  if(!tryMarkTargetAt(worldX, worldY)) setMarkedTarget(null); // PIN-TAP-ONLY-01 (1.6.121) — see HISTORY.md § [1.6.121]
-
+  if(!tryMarkTargetAt(worldX, worldY)) setMarkedTarget(null); // PIN-TAP-ONLY-01
   const sceneryHit = sceneryAtPoint(worldX, worldY);
   if(sceneryHit){
     if(selectedBuildType){playSound('ui_deny');return;}
     startClearingScenery(sceneryHit.item);
     return;
   }
-
   const existing = towerPool.find(t => t.active && t.gridX===gx && t.gridY===gy);
   if(existing){
     if(selectedBuildType){ playSound('ui_deny'); return; }
@@ -331,7 +298,6 @@ function handleTap(clientX, clientY, pointerType){
     updateInspectPanel();
     return;
   }
-
   if(selectedBuildType){
     if(!isTowerBuildableNow(selectedBuildType)){ selectedBuildType = null; refreshTrayUI(); return; }
     if(!isInActiveRegion(gx, gy)){
@@ -350,7 +316,6 @@ function handleTap(clientX, clientY, pointerType){
     const buildGoldBefore = gold, buildWoodBefore = wood, buildStoneBefore = stone;
     let paidProducerGold = 0;
     if(selectedBuildType === 'BARRICADE'){
-      // CA741 — see HISTORY.md § [1.5.7] Code Archaeology, CA741
       if(freeBarricadesLeft > 0) freeBarricadesLeft--;
       else { const bc = currentBarricadeCost(); wood -= bc.wood; stone -= bc.stone; }
     } else if(isProducerType(selectedBuildType)){
@@ -362,7 +327,6 @@ function handleTap(clientX, clientY, pointerType){
     }
     t.create(selectedBuildType, gx, gy); // snapped to tile center by construction
     if(isProducerType(t.type)) t.totalSpent = paidProducerGold;
-    // CA742 — see HISTORY.md § [1.5.7] Code Archaeology, CA742
     sessionTelemetry.towersBuilt++;
     {
       const isFirstOfType = !builtTowerTypesThisSession.has(selectedBuildType);
@@ -375,14 +339,13 @@ function handleTap(clientX, clientY, pointerType){
     selectedTower = t;
     if(isFighterTower(t)){ markFirstFighterBuilt(); hintIfFighterOutOfReach(t); }
     startCameraFollow(t);
-  inspPanelExpanded = false;
+    inspPanelExpanded = false;
     playSound('build_note');
     refreshTrayUI();
     updateInspectPanel();
     updateHUD();
     return;
   }
-
   selectedTower = null; cancelCameraFollow();
   inspPanelExpanded = false;
   updateInspectPanel();
@@ -421,7 +384,6 @@ canvas.addEventListener('pointerdown', (e) => {
   unlockAudio();
   canvas.setPointerCapture(e.pointerId);
   activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-
   if(activePointers.size === 2){
     if(draggingGroundItem || collectedPickupPointers.size) return;
     isDragging = true; // cancel any single-finger tap in progress
@@ -430,7 +392,6 @@ canvas.addEventListener('pointerdown', (e) => {
     dragPointerId = e.pointerId;
     dragStartClient = {x:e.clientX, y:e.clientY};
     isDragging = false;
-    // CA743 — see HISTORY.md § [1.5.7] Code Archaeology, CA743
     if(gameState === 'PLAYING'){
       const { x: worldX, y: worldY } = toCanvasCoords(e);
       if(tryCollectCoinAt(worldX, worldY, e.pointerType)){
@@ -450,23 +411,21 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 });
 canvas.addEventListener('pointermove', (e) => {
-  if(gameState === 'PLAYING' && !draggingGroundItem && coinPickups.length){ const hoverPoint = toCanvasCoords(e); tryCollectCoinAt(hoverPoint.x, hoverPoint.y, e.pointerType, true); } // HOVER-COIN-01 (1.7.36): a mouse hover or a finger sliding over a coin collects it
+  if(gameState === 'PLAYING' && !draggingGroundItem && coinPickups.length){ const hoverPoint = toCanvasCoords(e); tryCollectCoinAt(hoverPoint.x, hoverPoint.y, e.pointerType, true); } // HOVER-COIN-01: a mouse hover or a finger sliding over a coin collects it
   if(collectedPickupPointers.has(e.pointerId)) return;
   if(activePointers.size === 2 && (draggingGroundItem || collectedPickupPointers.size)) return;
   const prev = activePointers.get(e.pointerId);
   if(prev) activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-
   if(activePointers.size === 2){
     const { dist, mid } = pinchInfo();
     if(pinchStartDist){
       const raw = toRawCanvasCoords(mid.x, mid.y);
       zoomAt(raw.x, raw.y, camera.zoom * (dist/pinchStartDist));
-      if(gameState !== 'PLAYING') requestPausedRender(); // paused — same reasoning as the wheel handler's own fix: nudge one frame through now or the zoom change stays invisible until unpausing
+      if(gameState !== 'PLAYING') requestPausedRender();
     }
     pinchStartDist = dist;
     return;
   }
-
   if(activePointers.size === 1 && e.pointerId === dragPointerId && dragStartClient && prev){
     const dx = e.clientX - dragStartClient.x, dy = e.clientY - dragStartClient.y;
     if(!isDragging && Math.hypot(dx,dy) > DRAG_THRESHOLD) isDragging = true;
@@ -483,10 +442,9 @@ canvas.addEventListener('pointermove', (e) => {
       trackPanVelocity(panDx, panDy, e.timeStamp);
       clampCamera();
       cancelCameraFollow();
-      if(gameState !== 'PLAYING') requestPausedRender(); // paused — same reasoning as the wheel/pinch fixes: nudge one frame through now or the pan stays invisible until unpausing
+      if(gameState !== 'PLAYING') requestPausedRender();
     }
   }
-
   if(!isDragging && gameState === 'PLAYING'){
     const { x: worldX, y: worldY } = toCanvasCoords(e);
     if((selectedBuildType || moveModeTower) && e.pointerType !== 'touch'){
@@ -512,22 +470,21 @@ function onPointerEnd(e){
   if(wasSinglePointer && isDragging && !isCancel && !collectedPickup && !draggingGroundItem && gameState === 'PLAYING') startPanInertia(e.timeStamp);
   activePointers.delete(e.pointerId);
   if(activePointers.size < 2) pinchStartDist = null;
-
   if(wasSinglePointer || e.pointerId === dragPointerId){
     if(!isCancel && draggingGroundItem){
       if(isDragging) dragItemPos=draggedItemPositionAt(toCanvasCoords(e),draggingGroundItem);
       const target = itemDropTargetAt(dragItemPos);
       if(draggingGroundItem.itemDef.isMapScroll){
         if(!isDragging) useFreeExpansionPickup(draggingGroundItem, '#7dd3fc');
-      } else if(draggingGroundItem.itemDef.isGoldBag){ // GOLD-BAG-ITEM-01: dropped on a stickman it opens there; tapped without moving it opens where it lies; dragged elsewhere it is simply moved (below)
+      } else if(draggingGroundItem.itemDef.isGoldBag){ // GOLD-BAG-ITEM-01
         if(target) openGoldBag(draggingGroundItem, target.x, target.y - 4);
         else if(!isDragging) openGoldBag(draggingGroundItem, draggingGroundItem.x, draggingGroundItem.y);
-      } else if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01 (1.6.132) — a consumable dropped on a stickman is stored in its slots, never used on the spot
+      } else if(isConsumableDef(draggingGroundItem.itemDef)){ // CONSUMABLE-STORED-01
         const def = draggingGroundItem.itemDef;
         if(def.isFood && target && !isVaultType(target.type)){ eatDroppedFood(draggingGroundItem, target); // FOOD-STATS-01: food is eaten on the spot
         } else if(target && target.receiveItem(def)){
           groundItems = groundItems.filter(gi => gi !== draggingGroundItem);
-          spawnFloatingText(target.x, target.y - 40, def.icon, '#ffffff', ITEM_POPUP_LIFE_MS); // ITEM-DROP-EMOJI-01 (1.6.116) — see HISTORY.md § [1.6.116]
+          spawnFloatingText(target.x, target.y - 40, def.icon, '#ffffff', ITEM_POPUP_LIFE_MS); // ITEM-DROP-EMOJI-01
           trackGameEvent(def.isDiggingTool ? 'item_equipped' : def.isHutLoot ? 'hut_loot_collected' : def.isStim ? 'stim_collected' : def.isFood ? 'food_collected' : 'treat_collected', def.isDiggingTool ? { item: def.id, rarity: def.rarity, tower_type: target.type, items_carried: target.equippedItems.length } : { item: def.id, tower_type: target.type });
           playSound('click');
           if(selectedTower === target) updateInspectPanel();
@@ -544,7 +501,6 @@ function onPointerEnd(e){
       } else if(target && target.equippedItems.length >= itemCapacityOf(target)){
         rejectFullInventoryDrop(draggingGroundItem,target);
       } else if(draggingGroundItem.itemDef.isBarricade){
-        // CA747 — see HISTORY.md § [1.5.7] Code Archaeology, CA747
         const gx = Math.floor(dragItemPos.x / TILE_SIZE), gy = Math.floor(dragItemPos.y / TILE_SIZE);
         if(isTileBuildable(gx, gy, null, 'BARRICADE')){
           const newBarricade = acquireActive(towerPool);
@@ -555,7 +511,6 @@ function onPointerEnd(e){
             playSound('click');
           }
         }
-        // CA748 — see HISTORY.md § [1.5.7] Code Archaeology, CA748
       }
       if(!target && isDragging && groundItems.includes(draggingGroundItem)){
         draggingGroundItem.x = dragItemPos.x; draggingGroundItem.y = dragItemPos.y;
@@ -565,7 +520,6 @@ function onPointerEnd(e){
     } else if(!isCancel && !collectedPickup && !draggingGroundItem && !isDragging){
       handleTap(e.clientX, e.clientY, e.pointerType);
     }
-    // CA749 — see HISTORY.md § [1.5.7] Code Archaeology, CA749
     draggingGroundItem = null;
     dragPointerId = null; dragStartClient = null; isDragging = false;
     if(gameState==='PAUSED') requestPausedRender();
@@ -579,7 +533,7 @@ canvas.addEventListener('wheel', (e) => {
   const raw = toRawCanvasCoords(e.clientX, e.clientY);
   const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
   zoomAt(raw.x, raw.y, camera.zoom*factor);
-  if(gameState !== 'PLAYING') requestPausedRender(); // paused — the main loop won't render on its own, so nudge one frame through now or the zoom change stays invisible until unpausing
+  if(gameState !== 'PLAYING') requestPausedRender();
 }, { passive:false });
 /* =========================================================
    UI WIRING
@@ -587,7 +541,6 @@ canvas.addEventListener('wheel', (e) => {
 const livesVal = document.getElementById('livesVal');
 const goldVal = document.getElementById('goldVal');
 const waveVal = document.getElementById('waveVal');
-// CA750 — see HISTORY.md § [1.5.7] Code Archaeology, CA750
 const shopLivesVal = document.getElementById('shopLivesVal');
 const shopBuyLifeCost = document.getElementById('shopBuyLifeCost');
 const woodVal = document.getElementById('woodVal');
@@ -597,7 +550,6 @@ const nextWaveBtn = document.getElementById('nextWaveBtn');
 const inspectPanel = document.getElementById('inspect-panel');
 const inspName = document.getElementById('inspName');
 const inspLevel = document.getElementById('inspLevel');
-// CA751 — see HISTORY.md § [1.5.7] Code Archaeology, CA751
 const auraTooltip = document.getElementById('auraTooltip');
 const barricadeInfoBtn = document.getElementById('barricadeInfoBtn');
 const inspAtkRange = document.getElementById('inspAtkRange');
@@ -654,13 +606,12 @@ const inspSellBtn = document.getElementById('inspSellBtn');
 const inspSellValue = document.getElementById('inspSellValue');
 const inspTargetMode = document.getElementById('inspTargetMode');
 const inspClose = document.getElementById('inspClose');
-// CA752 — see HISTORY.md § [1.5.7] Code Archaeology, CA752
 let hudDirty = false;
 function updateHUD(){ hudDirty = true; }
 function flushHUDIfDirty(){
   if(!hudDirty) return;
   hudDirty = false;
-  // HUD-TIMING-01 (1.7.50): the HUD flush ran outside both the update and the render timers, so its cost was invisible in the debug overlay; it is now measured and shown (smoothed).
+  // HUD-TIMING-01: the HUD flush runs outside the update and render timers, so it is timed on its own (smoothed) for the debug overlay.
   const hudStart = performance.now();
   updateHUDImmediate();
   perfStats.hudMs = (perfStats.hudMs || 0)*0.9 + (performance.now() - hudStart)*0.1;
@@ -686,7 +637,6 @@ function restartHudPop(pop){
   }
 }
 let lastShownGold = null, goldGainHideTimer = 0;
-// CA753 — see HISTORY.md § [1.5.7] Code Archaeology, CA753
 function showGoldGain(amount){
   const pop = document.getElementById('goldGainPop');
   if(!pop) return;
@@ -699,7 +649,7 @@ function showGoldGain(amount){
   clearTimeout(goldGainHideTimer);
   goldGainHideTimer = setTimeout(() => { goldGainHideTimer = 0; pop.dataset.pending = 0; pop.classList.remove('pop'); }, 900);
 }
-// LIVES-POP-01 (1.6.78) — see HISTORY.md § [1.6.78]
+// LIVES-POP-01
 let lastShownLives = null, livesChangeHideTimer = 0;
 function showLivesChange(delta){
   const pop = document.getElementById('livesChangePop');
@@ -714,11 +664,10 @@ function showLivesChange(delta){
   clearTimeout(livesChangeHideTimer);
   livesChangeHideTimer = setTimeout(() => { livesChangeHideTimer = 0; pop.dataset.pending = 0; pop.classList.remove('pop'); }, 900);
 }
-// CA754 — see HISTORY.md § [1.5.7] Code Archaeology, CA754
 function merchantShopOpen(){
   return caravanShopAvailable() || towerPool.some(t => t.active && t.type === 'MERCHANT' && t.disabledWavesLeft <= 0);
 }
-function nextWaveActionLabel(wavesStarted){ const bonus = waveState === 'IDLE' ? earlyCallBonusNow() : 0; return (wavesStarted === 0 ? 'Start Wave' : 'Next Wave') + (bonus > 0 ? ' +💰' + bonus : ''); } // EARLY-CALL-01 (1.8.63): the button shows the early-call gold while it lasts
+function nextWaveActionLabel(wavesStarted){ const bonus = waveState === 'IDLE' ? earlyCallBonusNow() : 0; return (wavesStarted === 0 ? 'Start Wave' : 'Next Wave') + (bonus > 0 ? ' +💰' + bonus : ''); } // EARLY-CALL-01: the button shows the early-call gold while it lasts
 function setHudText(element, value){
   const text = String(value);
   if(element.textContent !== text) element.textContent = text;
@@ -739,7 +688,6 @@ function updateHUDImmediate(){
   }
   setHudText(woodVal, wood);
   setHudText(stoneVal, stone);
-  // CA755 — see HISTORY.md § [1.5.7] Code Archaeology, CA755
   const shopBtnEl = document.getElementById('shopBtn');
   if(shopBtnEl){
     const shopOpen = merchantShopOpen();
@@ -753,19 +701,17 @@ function updateHUDImmediate(){
   setHudText(waveVal, waveIndex < CAMPAIGN_WAVE_COUNT
     ? waveIndex + '/' + CAMPAIGN_WAVE_COUNT
     : waveIndex + ' ∞');
-  setHudText(looseNotice, ''); looseNotice.hidden = true; // LOOSE-NOTICE-REMOVED-01 (1.7.75): owner: the 'loose · costing' line is not the obvious cue they wanted; the broken heart flying to the counter is (HEART-BREAK-01)
+  setHudText(looseNotice, ''); looseNotice.hidden = true; // LOOSE-NOTICE-REMOVED-01, HEART-BREAK-01
   const wavePhaseEl = document.getElementById('wavePhase');
   if(wavePhaseEl){
-    const phaseLabel = waveState === 'IDLE' ? 'STANDBY' : waveState === 'SPAWNING' ? 'INCOMING' : 'FIGHTING'; // WAVE-PHASE-TEXT-01 (1.7.129): the bar beside the wave number said nothing the number did not; it now names the phase
+    const phaseLabel = waveState === 'IDLE' ? 'STANDBY' : waveState === 'SPAWNING' ? 'INCOMING' : 'FIGHTING'; // WAVE-PHASE-TEXT-01
     if(wavePhaseEl.dataset.phase !== phaseLabel){ wavePhaseEl.dataset.phase = phaseLabel; wavePhaseEl.textContent = phaseLabel; }
   }
   const waveActionText = nextWaveActionLabel(waveIndex) + ' ';
   if(nextWaveBtn.firstChild && nextWaveBtn.firstChild.textContent !== waveActionText) nextWaveBtn.firstChild.textContent = waveActionText;
   nextWaveBtn.disabled = waveState !== 'IDLE';
   syncFirstPlayCues();
-
   refreshTrayUI();
-  // CA756 — see HISTORY.md § [1.5.7] Code Archaeology, CA756
   if(towerModalEl && !towerModalEl.classList.contains('hidden')) buildTowerModal();
   fitHudTopToOneLine(); // guarded internally — only re-measures when the available layout changes
 }
@@ -786,7 +732,7 @@ function refreshBuildMenuAvailability(grid){
     const cost = expansionCost();
     const blocked = expansionBlockedReason();
     expandRow.classList.toggle('disabled', full || !!blocked || gold < cost);
-    expandRow.classList.toggle('unaffordable', gold < cost); // EXPAND-COST-CUE-01 (1.7.138)
+    expandRow.classList.toggle('unaffordable', gold < cost); // EXPAND-COST-CUE-01
     const label = full ? 'Max Size' : blocked ? 'Expand — ' + blocked : 'Expand';
     const costEl = expandRow.querySelector('.cost');
     if(costEl){ costEl.hidden = full || !!blocked; if(costEl.textContent !== '💰'+cost) costEl.textContent = '💰'+cost; }
@@ -821,6 +767,16 @@ function refreshBuildMenuAvailability(grid){
   }
 }
 let buildMenuSignature = null;
+function chooseBuildType(type){
+  selectedBuildType = type;
+  selectedTower = null; cancelCameraFollow();
+  inspPanelExpanded = false;
+  playSound('click');
+  closeTowerModal();
+  updateInspectPanel();
+  refreshTrayUI();
+}
+// BUILD-HELP-01: every row's ? button opens the shared help popup (see openBuildHelp); the row's hidden blurb is the popup's text.
 function buildTowerModal(){
   placingCampfire=false;
   const grid = document.getElementById('tower-modal-grid');
@@ -832,7 +788,6 @@ function buildTowerModal(){
   buildMenuSignature = signature;
   grid.innerHTML = '';
   const addBuildSection = label => { const heading = document.createElement('div'); heading.className = 'build-section-title'; heading.textContent = label; grid.appendChild(heading); };
-
   const fullyExpanded = regionFullyExpanded();
   const cost = expansionCost();
   const canExpand = !fullyExpanded && !expansionBlockedReason() && gold >= cost;
@@ -845,30 +800,18 @@ function buildTowerModal(){
     '<div class="cost"' + (fullyExpanded || expansionBlockedReason() ? ' hidden' : '') + '>💰' + cost + '</div>' +
     '<button class="help-btn" type="button">?</button>' +
     '<div class="build-row-blurb">Grows the map, during a wave or between waves: you can buy one expansion per wave. A wave gives one free expansion when it ends with no escaped enemies still alive. Otherwise that bonus is lost. A red cost means more gold is needed; other limits appear in the label.</div>';
-  {
-    expandRow.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
-      e.stopPropagation();
-      unlockAudio();
-      if(regionFullyExpanded() || expansionBlockedReason() || gold < expansionCost()) return;
-      if(expandRegion()){ updateHUD(); closeTowerModal(); }
-    });
-  }
-  const expandHelpBtn = expandRow.querySelector('.help-btn');
-  const expandBlurb = expandRow.querySelector('.build-row-blurb');
-  expandHelpBtn.addEventListener('pointerdown', (e) => {
+  expandRow.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
-    expandBlurb.classList.toggle('show');
+    unlockAudio();
+    if(regionFullyExpanded() || expansionBlockedReason() || gold < expansionCost()) return;
+    if(expandRegion()){ updateHUD(); closeTowerModal(); }
   });
   addBuildSection('Stickmen Defenders');
-
   for(const type of STARTER_TOWER_TYPES){
     if(type === 'BARRICADE') continue;
     const def = CONFIG.TOWERS[type];
     const unlocked = isTowerBuildableNow(type);
-    const liveCost = currentBuildCost(type);
-    const affordable = gold >= liveCost;
-    const costLabel = '💰' + liveCost;
+    const costLabel = '💰' + currentBuildCost(type);
     const row = document.createElement('div');
     row.dataset.buildType = type;
     row.className = 'build-row' + (unlocked ? '' : ' locked') + (selectedBuildType===type ? ' selected' : '');
@@ -882,48 +825,26 @@ function buildTowerModal(){
         : '<div class="build-row-lock">🔒 Unlocks after Wave ' + def.unlocksAfterWave + '</div>');
     if(unlocked){
       row.addEventListener('pointerdown', (e) => {
-        if(e.target.classList.contains('help-btn')) return; // handled separately below
         e.stopPropagation();
-        // CA759 — see HISTORY.md § [1.5.7] Code Archaeology, CA759
-        const stillAffordable = gold >= currentBuildCost(type);
-        if(!stillAffordable) return;
-        selectedBuildType = type;
-        selectedTower = null; cancelCameraFollow();
-  inspPanelExpanded = false;
-        playSound('click');
-        closeTowerModal();
-        updateInspectPanel();
-        refreshTrayUI();
+        if(gold >= currentBuildCost(type)) chooseBuildType(type);
       });
     }
-    const helpBtn = row.querySelector('.help-btn');
-    const blurb = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
-    helpBtn.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      blurb.classList.toggle('show');
-    });
     grid.appendChild(row);
   }
-  // CA760 — see HISTORY.md § [1.5.7] Code Archaeology, CA760
-  // UNLOCK-HELP-01 (1.7.111) — see HISTORY.md § [1.7.111]: a locked class shows its full description, which says what it does and exactly how it is unlocked
-  const TOWER_UNLOCK_RIDDLE = Object.fromEntries(UNLOCKABLE_TOWER_TYPES.filter(type => CONFIG.TOWERS[type]).map(type => [type, '🔒 ' + CONFIG.TOWERS[type].blurb]));
-  // BUILD-ORDER-01 (1.6.4) — see HISTORY.md § [1.6.4]. Unlocked towers sort to the top, locked
-  // ones stay below — direct request ("unlocked units should be higher in the build menu once
-  // they're unlocked... harder unlocks feel like mystery achievements"). Stable sort keeps each
-  // group's own relative order (the fixed unlock-path order UNLOCKABLE_TOWER_TYPES was already in).
+  // UNLOCK-HELP-01: a locked class shows its full description, which says what it does and every way it is unlocked: its training route and, when it has one, the wave that also unlocks it.
+  const unlockWaveNote = def => def.unlocksAfterWave > 0 && !/Wave \d/.test(def.blurb) ? ' It also unlocks on its own once Wave ' + def.unlocksAfterWave + ' is cleared.' : '';
+  const TOWER_UNLOCK_RIDDLE = Object.fromEntries(UNLOCKABLE_TOWER_TYPES.filter(type => CONFIG.TOWERS[type]).map(type => [type, '🔒 ' + CONFIG.TOWERS[type].blurb + unlockWaveNote(CONFIG.TOWERS[type])]));
+  // BUILD-ORDER-01: unlocked classes sort above locked ones; the stable sort keeps the unlock-path order within each group.
   const sortedUnlockableTowerTypes = [...UNLOCKABLE_TOWER_TYPES].sort((a, b) => {
     const aLocked = unlockedTowerTypes.has(a) ? 0 : 1;
     const bLocked = unlockedTowerTypes.has(b) ? 0 : 1;
     return aLocked - bLocked;
   });
   const appendUnlockableRow = (type) => {
-    // CA762 — see HISTORY.md § [1.5.7] Code Archaeology, CA762
     const def = CONFIG.TOWERS[type];
     const unlocked = unlockedTowerTypes.has(type);
-    const affordable = gold >= def.baseCost;
     const costLabel = '💰' + def.baseCost;
     const lockMsg = TOWER_UNLOCK_RIDDLE[type] || '🔒 Locked — a secret combination unlocks this';
-    // CA763 — see HISTORY.md § [1.5.7] Code Archaeology, CA763
     const atCapacity = unlocked && !isTowerTypeAvailable(type);
     const row = document.createElement('div');
     row.dataset.buildType = type;
@@ -937,34 +858,17 @@ function buildTowerModal(){
       (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') +
       '<button class="help-btn" type="button">?</button>' +
       (unlocked
-        ? '<div class="build-row-blurb">' + def.blurb + (def.blurb.includes('Only one') ? '' : ' Only one can be active.') + '</div>'
+        ? '<div class="build-row-blurb">' + def.blurb + (MAX_ONE_PER_BOARD_TYPES.includes(type) && !/only one/i.test(def.blurb) ? ' Only one can be active.' : '') + '</div>'
         : '<div class="build-row-lock">' + lockMsg + '</div>');
     if(unlocked){
       row.addEventListener('pointerdown', (e) => {
-        if(e.target.classList.contains('help-btn')) return;
         e.stopPropagation();
-        // CA764 — see HISTORY.md § [1.5.7] Code Archaeology, CA764
-        const stillAffordable = gold >= def.baseCost;
-        const stillAtCapacity = unlocked && !isTowerTypeAvailable(type);
-        if(!stillAffordable || stillAtCapacity) return;
-        selectedBuildType = type;
-        selectedTower = null; cancelCameraFollow();
-        inspPanelExpanded = false;
-        playSound('click');
-        closeTowerModal();
-        updateInspectPanel();
-        refreshTrayUI();
+        if(gold >= def.baseCost && isTowerTypeAvailable(type)) chooseBuildType(type);
       });
     }
-    const helpBtn2 = row.querySelector('.help-btn');
-    const blurb2 = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
-    helpBtn2.addEventListener('pointerdown', (e) => {
-      e.stopPropagation();
-      blurb2.classList.toggle('show');
-    });
     grid.appendChild(row);
   };
-  let lastUnlockGroup = null;
+  let lockedSectionAdded = false;
   let fortificationSectionAdded = false;
   const appendBarricadeSection = () => {
     if(fortificationSectionAdded) return;
@@ -974,7 +878,6 @@ function buildTowerModal(){
     const unlocked = isTowerBuildableNow('BARRICADE');
     const isFreeBarricade = freeBarricadesLeft > 0;
     const liveBarricadeCost = currentBarricadeCost();
-    const affordable = isFreeBarricade || (wood >= liveBarricadeCost.wood && stone >= liveBarricadeCost.stone);
     const costLabel = isFreeBarricade ? '🎁 FREE!' : '🪵' + liveBarricadeCost.wood + ' 🪨' + liveBarricadeCost.stone;
     const row = document.createElement('div');
     row.dataset.buildType = 'BARRICADE';
@@ -983,18 +886,12 @@ function buildTowerModal(){
       (unlocked ? '<div class="cost">' + costLabel + '</div>' : '') + '<button class="help-btn" type="button">?</button>' +
       (unlocked ? '<div class="build-row-blurb">' + def.blurb + '</div>' : '<div class="build-row-lock">🔒 Unlocks through play</div>');
     if(unlocked) row.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
       e.stopPropagation();
-      if(!canAffordTower('BARRICADE')) return;
-      selectedBuildType = 'BARRICADE'; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
-      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+      if(canAffordTower('BARRICADE')) chooseBuildType('BARRICADE');
     });
-    const barricadeHelp = row.querySelector('.help-btn');
-    const barricadeBlurb = row.querySelector(unlocked ? '.build-row-blurb' : '.build-row-lock');
-    barricadeHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); barricadeBlurb.classList.toggle('show'); });
     grid.appendChild(row);
   };
-  for(const type of sortedUnlockableTowerTypes) if(unlockedTowerTypes.has(type)) appendUnlockableRow(type); // BUILD-MENU-GROUPS-03 (1.8.40): every unlocked stickman stands in Stickmen Defenders
+  for(const type of sortedUnlockableTowerTypes) if(unlockedTowerTypes.has(type)) appendUnlockableRow(type); // BUILD-MENU-GROUPS-03: every unlocked stickman stands in Stickmen Defenders
   addBuildSection('Structures');
   grid.appendChild(expandRow);
   for(const producerType of PRODUCER_TYPES){
@@ -1004,31 +901,23 @@ function buildTowerModal(){
     row.className = 'build-row' + (selectedBuildType === producerType ? ' selected' : '') + (affordable ? '' : ' unaffordable');
     row.innerHTML = '<div class="icon">' + producerConfig.icon + '</div><div class="name">' + producerConfig.name + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + producerConfig.blurb + '</div>';
     row.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
       e.stopPropagation();
-      if(!canAffordTower(producerType)) return;
-      selectedBuildType = producerType; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
-      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+      if(canAffordTower(producerType)) chooseBuildType(producerType);
     });
-    const producerHelp = row.querySelector('.help-btn'), producerBlurb = row.querySelector('.build-row-blurb');
-    producerHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); producerBlurb.classList.toggle('show'); });
     grid.appendChild(row);
   }
   const campfireRow = document.createElement('div');
   campfireRow.className = 'build-row campfire-build-row' + (canAffordCampfire() ? '' : ' unaffordable');
   campfireRow.innerHTML = '<div class="icon">🔥</div><div class="name">Campfire</div><div class="cost">' + producerCostLabel({ gold: CAMPFIRE_BUILD_GOLD, wood: CAMPFIRE_BUILD_WOOD, stone: CAMPFIRE_BUILD_STONE }) + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">Built on empty grass. Cooks ingredients gathered from the ground and every stickman\'s inventory, burning stored wood as fuel.</div>';
   campfireRow.addEventListener('pointerdown', (e) => {
-    if(e.target.classList.contains('help-btn')) return;
     e.stopPropagation();
     if(!canAffordCampfire()){ playSound('ui_deny'); return; }
     selectedBuildType = null; selectedTower = null; moveModeTower = null; cancelCameraFollow(); placingCampfire = true; closeTowerModal(); refreshTrayUI(); showToast('🔥 Place campfire on empty grass');
   });
-  const campfireHelp = campfireRow.querySelector('.help-btn'), campfireBlurb = campfireRow.querySelector('.build-row-blurb');
-  campfireHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); campfireBlurb.classList.toggle('show'); });
   grid.appendChild(campfireRow);
   for(const type of sortedUnlockableTowerTypes){
     if(unlockedTowerTypes.has(type)) continue;
-    if(lastUnlockGroup === null){ appendBarricadeSection(); addBuildSection('Locked'); lastUnlockGroup = true; }
+    if(!lockedSectionAdded){ appendBarricadeSection(); addBuildSection('Locked'); lockedSectionAdded = true; }
     appendUnlockableRow(type);
   }
   appendBarricadeSection();
@@ -1036,21 +925,15 @@ function buildTowerModal(){
     addBuildSection('Hacks');
     const def = CONFIG.TOWERS.HACKER;
     const atCapacity = !isTowerTypeAvailable('HACKER');
-    const affordable = gold >= def.baseCost;
     const costLabel = '💰' + def.baseCost;
     const row = document.createElement('div');
     row.dataset.buildType = 'HACKER';
     row.className = 'build-row' + (selectedBuildType === 'HACKER' ? ' selected' : '');
     row.innerHTML = '<div class="icon">' + def.icon + '</div><div class="name">' + def.name + (atCapacity ? ' <span style="color:#e63946">(already active)</span>' : '') + '</div><div class="cost">' + costLabel + '</div><button class="help-btn" type="button">?</button><div class="build-row-blurb">' + def.blurb + '</div>';
     row.addEventListener('pointerdown', (e) => {
-      if(e.target.classList.contains('help-btn')) return;
       e.stopPropagation();
-      if(gold < def.baseCost || !isTowerTypeAvailable('HACKER')) return;
-      selectedBuildType = 'HACKER'; selectedTower = null; cancelCameraFollow(); inspPanelExpanded = false;
-      playSound('click'); closeTowerModal(); updateInspectPanel(); refreshTrayUI();
+      if(gold >= def.baseCost && isTowerTypeAvailable('HACKER')) chooseBuildType('HACKER');
     });
-    const hackerHelp = row.querySelector('.help-btn'), hackerBlurb = row.querySelector('.build-row-blurb');
-    hackerHelp.addEventListener('pointerdown', (e) => { e.stopPropagation(); hackerBlurb.classList.toggle('show'); });
     grid.appendChild(row);
   }
   refreshBuildMenuAvailability(grid);
@@ -1063,7 +946,7 @@ function openTowerModal(){
   refreshTrayUI();
   playSound('ui_open');
 }
-// HACKER-01 (1.7.36): the Hacker's developer menu. Every action is a plain game-state edit and marks the run as hacked
+// HACKER-01: the Hacker's developer menu. Every action is a plain game-state edit and marks the run as hacked
 // so the debug log shows it. Not saved with the game; the toggles reset on reload.
 let hackMenuOpenFor = null;
 function openHackMenu(tower){
@@ -1073,7 +956,7 @@ function openHackMenu(tower){
   hackMenuOpenFor = tower;
   modal.classList.remove('hidden');
   const body = document.getElementById('hack-modal-body');
-  const grant = (label, apply) => '<button type="button" data-hack="' + label + '">' + label + '</button>';
+  const grant = label => '<button type="button" data-hack="' + label + '">' + label + '</button>';
   body.innerHTML =
     '<p class="hack-note">💰 ' + Math.floor(gold) + ' &nbsp; 🪵 ' + Math.floor(wood) + ' &nbsp; 🪨 ' + Math.floor(stone) + '</p>' +
     '<h3>Gold</h3><div class="hack-row">' + ['+💰100','+💰1,000','+💰10,000','+💰100,000'].map(l => grant(l)).join('') + '</div>' +
@@ -1121,7 +1004,7 @@ function runHackAction(action){
         for(let pass = 0; pass < 4 && enemy.active && !enemy.deathResolved; pass++) enemy.applyDamage((enemy.maxHp + (enemy.shieldHp || 0)) * 3 + 100, null, false, false, false, false, true);
       }
       break;
-    case 'Summon the caravan': // HACK-SUMMON-01 (1.8.56): summons respect the one-at-a-time limit of each visitor
+    case 'Summon the caravan': // HACK-SUMMON-01: summons respect the one-at-a-time limit of each visitor
       if(!spawnCaravan()) showToast('🐪 The caravan is already here.');
       break;
     case 'Summon a circus':
@@ -1169,7 +1052,7 @@ function closeTowerModal(){
   towerModalEl.classList.add('hidden');
   playSound('ui_close');
 }
-// MENU-EXCLUSIVE-01 (1.8.41): opening the shop, settings, a stickman's panel, the hack menu or the cooking dialog closes the build menu so two panels never stack.
+// MENU-EXCLUSIVE-01: opening the shop, settings, a stickman's panel, the hack menu or the cooking dialog closes the build menu so two panels never stack.
 function closeBuildMenuIfOpen(){
   if(towerModalEl.classList.contains('hidden')) return;
   closeBuildHelp();
@@ -1202,15 +1085,13 @@ function buildShopGrid(){
   const grid = document.getElementById('shop-grid');
   const note = document.getElementById('shop-selected-note');
   grid.innerHTML = '';
-
-  // CA765 — see HISTORY.md § [1.5.7] Code Archaeology, CA765
+  const addDivider = text => { const divider = document.createElement('div'); divider.className = 'shop-section-divider'; divider.style.gridColumn = '1/-1'; divider.textContent = text; grid.appendChild(divider); };
   const shopTower=selectedTower;
   const towerSelected = !!(shopTower && shopTower.active);
   note.innerHTML = (towerSelected
     ? 'Buying for your selected ' + selectedTower.def.name + '.'
     : 'Select any tower on the map to buy or manage its items.') +
     ' &nbsp; 🪵' + wood + ' &nbsp; 🪨' + stone;
-
   if(towerSelected && selectedTower.equippedItems.length){
     selectedTower.equippedItems.forEach((it, idx) => {
       const row = document.createElement('div');
@@ -1229,26 +1110,19 @@ function buildShopGrid(){
       grid.appendChild(row);
     });
   }
-
-  for(const def of UNIVERSAL_ITEMS.filter(d => !d.isBarricade)){ // Barricade is bought from Build now, not Shop — see buildTowerModal()'s existing wood/stone/free-charge logic
+  for(const def of UNIVERSAL_ITEMS.filter(d => !d.isBarricade)){ // barricades are built from the Build menu
     const alreadyOwned = towerSelected && selectedTower.equippedItems.some(i => i.id === def.id);
     const full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
-    const useFreeCharge = def.isBarricade && freeBarricadesLeft > 0;
-    const hasGold = gold >= def.cost;
-    const hasWood = useFreeCharge || !def.woodCost || wood >= def.woodCost;
-    const hasStone = useFreeCharge || !def.stoneCost || stone >= def.stoneCost;
-    const canBuy = towerSelected && !full && hasGold && hasWood && hasStone;
+    const canBuy = towerSelected && !full && gold >= def.cost && (!def.woodCost || wood >= def.woodCost) && (!def.stoneCost || stone >= def.stoneCost);
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (canBuy ? '' : ' disabled') + (alreadyOwned ? ' owned' : '');
-    let costLine = useFreeCharge ? '🎁 FREE!' : '💰' + def.cost;
-    if(!useFreeCharge){
-      if(def.woodCost) costLine += ' 🪵' + def.woodCost;
-      if(def.stoneCost) costLine += ' 🪨' + def.stoneCost;
-    }
+    let costLine = '💰' + def.cost;
+    if(def.woodCost) costLine += ' 🪵' + def.woodCost;
+    if(def.stoneCost) costLine += ' 🪨' + def.stoneCost;
     card.innerHTML =
       '<div class="icon">' + def.icon + '</div>' +
       '<div class="name">' + def.name + '</div>' +
-      '<div class="stat-line">' + itemStatLine(def) + '</div>' +
+      '<div class="stat-line">' + itemStatSummary(def) + '</div>' +
       '<div class="cost">' + costLine + '</div>';
     if(canBuy){
       card.addEventListener('pointerdown', (e) => {
@@ -1265,18 +1139,13 @@ function buildShopGrid(){
     }
     grid.appendChild(card);
   }
-
-  const medicalDivider = document.createElement('div');
-  medicalDivider.className = 'shop-section-divider';
-  medicalDivider.style.gridColumn = '1/-1';
-  medicalDivider.textContent = '🩹 Medical Supplies — used from your inventory, never equipped to a tower';
-  grid.appendChild(medicalDivider);
+  addDivider('🩹 Medical Supplies — used from your inventory, never equipped to a tower');
   for(const def of MEDICAL_ITEMS){
     const alreadyHeld = def.isRevive && hasDefibrillator;
     const canBuy = !alreadyHeld && gold >= def.cost;
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (canBuy ? '' : ' disabled') + (alreadyHeld ? ' owned' : '');
-    const desc = def.isRevive ? 'Auto-revives once at 25% lives' : def.healFraction ? 'Restores 50% of missing lives' : 'Restores ' + def.healLives + ' lives';
+    const desc = def.isRevive ? 'When lives run out, restores ' + Math.round(DEFIBRILLATOR_REVIVE_LIVES_FRACTION*100) + '% of max lives once' : def.healFraction ? 'Restores 50% of missing lives' : 'Restores ' + def.healLives + ' lives';
     card.innerHTML =
       '<div class="icon">' + def.icon + '</div>' +
       '<div class="name">' + def.name + (alreadyHeld ? ' (held)' : '') + '</div>' +
@@ -1291,12 +1160,7 @@ function buildShopGrid(){
     }
     grid.appendChild(card);
   }
-
-  const potionDivider = document.createElement('div');
-  potionDivider.className = 'shop-section-divider';
-  potionDivider.style.gridColumn = '1/-1';
-  potionDivider.textContent = '🧪 Potions, Tonics and Revival — potions go into the selected stickman\u2019s pack; Revive brings a downed stickman back';
-  grid.appendChild(potionDivider);
+  addDivider('🧪 Potions, Tonics and Revival — potions go into the selected stickman\u2019s pack; Revive brings a downed stickman back');
   const packHasRoom = towerSelected && isFighterTower(selectedTower) && selectedTower.type !== 'HACKER' && selectedTower.equippedItems.length < MAX_ITEM_SLOTS;
   for(const def of merchantPotionDefs()){
     const price = MERCHANT_POTION_PRICES[def.id], canBuy = packHasRoom && gold >= price;
@@ -1314,13 +1178,7 @@ function buildShopGrid(){
     if(canRevive) reviveCard.addEventListener('pointerdown', (e) => { e.stopPropagation(); if(!requireShopAccess()) return; if(reviveSelectedStickman()){ updateHUD(); updateInspectPanel(); buildShopGrid(); } });
     grid.appendChild(reviveCard);
   }
-
-  const passiveDivider = document.createElement('div');
-  passiveDivider.className = 'shop-section-divider';
-  passiveDivider.style.gridColumn = '1/-1';
-  passiveDivider.textContent = '✨ Passive Bonuses — applies permanently to every tower you own, current and future';
-  grid.appendChild(passiveDivider);
-
+  addDivider('✨ Passive Bonuses — applies permanently to every tower you own, current and future');
   for(const def of PASSIVE_UPGRADES){
     const cost = passiveCost(def);
     const count = globalPassiveCounts[def.id] || 0;
@@ -1338,9 +1196,7 @@ function buildShopGrid(){
     });
     grid.appendChild(card);
   }
-
-  // GOLD-SINKS-01 (1.7.49)
-  const addDivider = text => { const divider = document.createElement('div'); divider.className = 'shop-section-divider'; divider.style.gridColumn = '1/-1'; divider.textContent = text; grid.appendChild(divider); };
+  // GOLD-SINKS-01
   const addCard = (icon, name, line, cost, enabled, onBuy, owned) => {
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (enabled ? '' : ' disabled') + (owned ? ' owned' : '');
@@ -1374,7 +1230,7 @@ function buildShopGrid(){
   if(merchantBoughtWave !== waveIndex){ merchantBoughtWave = waveIndex; merchantBoughtIds = new Set(); }
   merchantStock().forEach((offer, index) => {
     const sold = merchantBoughtIds.has(index), full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
-    addCard(offer.def.icon, offer.def.name + (sold ? ' (sold)' : ''), (ITEM_RARITIES[offer.def.rarity] ? ITEM_RARITIES[offer.def.rarity].label + ' · ' : '') + itemStatLine(offer.def), offer.cost, towerSelected && !sold && !full && gold >= offer.cost, () => buyMerchantItem(index), sold);
+    addCard(offer.def.icon, offer.def.name + (sold ? ' (sold)' : ''), (ITEM_RARITIES[offer.def.rarity] ? ITEM_RARITIES[offer.def.rarity].label + ' · ' : '') + itemStatSummary(offer.def), offer.cost, towerSelected && !sold && !full && gold >= offer.cost, () => buyMerchantItem(index), sold);
   });
 }
 document.getElementById('buildBtn').addEventListener('pointerdown', (e) => {
@@ -1475,10 +1331,15 @@ window.addEventListener('pointercancel', () => { pendingSlotPress = null; });
 window.addEventListener('blur',cancelPointerGesture);
 canvas.addEventListener('lostpointercapture',e=>{if(activePointers.has(e.pointerId))cancelPointerGesture();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelPointerGesture();});
+// KEYBOARD-FOCUS-01: game shortcuts stay quiet while a dialog is open or the player is typing or focused on a control.
+function keyboardFocusIsElsewhere(){
+  const focused = document.activeElement;
+  return !!(document.querySelector('dialog[open]') || focused?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(focused?.tagName) || focused?.closest?.('[role="button"]'));
+}
 document.addEventListener('keydown', (e) => {
   if(e.key==='Escape') placingCampfire=false;
   if(gameState !== 'PLAYING' || e.ctrlKey || e.metaKey || e.altKey) return;
-  if(document.querySelector('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(document.activeElement?.tagName) || document.activeElement?.closest?.('[role="button"]')) return;
+  if(keyboardFocusIsElsewhere()) return;
   if(e.key < '1' || e.key > '6' || e.key.length !== 1) return;
   if(!selectedTower || !selectedTower.active) return;
   activateInventorySlot(selectedTower, +e.key - 1);
@@ -1516,7 +1377,6 @@ document.getElementById('barricade-help-modal').addEventListener('pointerdown', 
 /* =========================================================
    SETTINGS PANEL, RESET AND README
    ========================================================= */
-// CA768 — see HISTORY.md § [1.5.7] Code Archaeology, CA768
 function renderTowerTelemetry(){
   const host = document.getElementById('towerTelemetry');
   host.replaceChildren();
@@ -1592,7 +1452,7 @@ function syncSettingsUI(){
   document.getElementById('settingsMedalToggle').checked = medalNotificationsEnabled;
   document.getElementById('runSeedNote').textContent = 'This run: ' + runSeedCode;
   renderMedalList();
-    document.getElementById('settingsIntroTextToggle').checked = introTextEnabled;
+  document.getElementById('settingsIntroTextToggle').checked = introTextEnabled;
   document.getElementById('settingsFrameCapToggle').checked = frameCapEnabled;
   document.getElementById('settingsFrameCapSlider').value = String(frameCapFps());
   document.getElementById('settingsFrameCapSlider').disabled = !frameCapEnabled;
@@ -1604,21 +1464,21 @@ function syncSettingsUI(){
   document.getElementById('settingsRenderScale').value = String(Math.min(renderScaleStep,3));
   document.getElementById('settingsRenderScale').disabled = graphicsQuality === 'high';
 }
-// CA769 — see HISTORY.md § [1.5.7] Code Archaeology, CA769
 document.getElementById('inspDpsBetween').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   if(!selectedTower || isStructureType(selectedTower.type)) return;
   showDpsBreakdownModal(selectedTower);
   playSound('ui_open');
 });
-document.getElementById('settingsBtn').addEventListener('pointerdown', (e) => {
+function openSettingsModal(e){
   e.stopPropagation();
   unlockAudio();
   syncSettingsUI();
   closeBuildMenuIfOpen();
   document.getElementById('settings-modal').classList.remove('hidden');
   playSound('ui_open');
-});
+}
+document.getElementById('settingsBtn').addEventListener('pointerdown', openSettingsModal);
 document.getElementById('dpsBreakdownClose').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   document.getElementById('dps-breakdown-modal').classList.add('hidden');
@@ -1736,14 +1596,7 @@ document.getElementById('settingsIntroTextToggle').addEventListener('change', (e
   savePrefs();
   trackGameEvent('settings_changed', { setting: 'intro_text', setting_value: e.target.checked });
 });
-document.getElementById('startSettingsBtn').addEventListener('pointerdown', (e) => {
-  e.stopPropagation();
-  unlockAudio();
-  syncSettingsUI();
-  closeBuildMenuIfOpen();
-  document.getElementById('settings-modal').classList.remove('hidden');
-  playSound('ui_open');
-});
+document.getElementById('startSettingsBtn').addEventListener('pointerdown', openSettingsModal);
 document.getElementById('startChangesBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
@@ -1829,7 +1682,7 @@ document.getElementById('loadSaveInput').addEventListener('change', (e) => {
   reader.readAsText(file);
   e.target.value = ''; // allow re-selecting the same file later
 });
-// RESET-OPTIONS-01 (1.6.69) — see HISTORY.md § [1.6.69]
+// RESET-OPTIONS-01
 const STICKTD_STORAGE_PREFIXES = ['stickTD_', 'sticktd:'];
 const RESET_CONFIRM_MESSAGES = {
   unlocks: 'This removes every tower you have unlocked and restarts your run, so you must earn them all again. A save file you load later brings its own unlocks back. Continue?',
@@ -1913,11 +1766,11 @@ function getReadmeText(){
 'Version ' + GAME_VERSION + '\n\n' +
 'By SauerNinja — github.com/SauerNinja\n' +
 AI_ASSIST_NOTE + '\n\n' +
-'A free browser tower defense game in development. Build a squad of stickmen, train their stats, ' +
+'A tower defense game about a squad of stickmen. Build the squad, train their stats, ' +
 'equip loot and extend the path. Fight through 100 waves, then continue into endless play.\n\n' +
 'HOW TO PLAY\n' +
 '-----------\n' +
-'Tap Build, pick a tower, then tap a hedge tile to place it. Tap a placed tower to upgrade, ' +
+'Tap Build, pick a tower, then tap a grass tile to place it. Tap a placed tower to promote, ' +
 'sell, move, buy it gear from the Shop, or change its targeting priority. The map starts tiny ' +
 '(2x2 tiles) and extends both ends of its winding path — some expansions are free milestones, ' +
 'others you buy with gold. You can buy one expansion per wave, during or between waves. The wave-end free expansion is lost if escaped enemies are still alive.\n\n' +
@@ -1933,9 +1786,9 @@ AI_ASSIST_NOTE + '\n\n' +
 'Mage - slows enemies it hits.\n' +
 'Bomber - splash damage against groups.\n' +
 'Gatling - very fast, low damage per shot, shreds swarms.\n' +
-'More classes unlock as stickmen train: Marksman, Sniper, Blowdart, Gatling, Cowboy, Glaive, Ninja, Paladin, Berserker, Necromancer, Pope, Cat Snapper, Merchant and more, plus Log Mill and Stone Quarry for wood and stone.\n' +
+'More classes unlock as stickmen train, and many also unlock once enough waves are cleared: Marksman, Sniper, Blowdart, Cowboy, Glaive, Ninja, Paladin, Berserker, Necromancer, Pope, Cat Snapper, Merchant and more, plus Log Mill and Stone Quarry for wood and stone.\n' +
 'Barricade - does not attack. Extremely tough, can be placed directly on the enemy path, and ' +
-'holds back enemies while they chip its 10 HP, at most one point per 10 seconds across all attackers.\n\n' +
+'holds back enemies while they chip its 10 HP, at most one point per ' + Math.round(BARRICADE_HIT_INTERVAL_MS/1000) + ' seconds across all attackers.\n\n' +
 'MOVES\n' +
 '-----\n' +
 'Every stickman has its own free moves. You start with one; a stickman gains one on every promotion, every boss it kills, and each round for every pair of Running Shoes it carries.\n\n' +
@@ -1948,42 +1801,41 @@ AI_ASSIST_NOTE + '\n\n' +
 'every fifth wave the Large enemies and Bosses at the very end. The next group waits until everything ' +
 'ahead of it has died or crossed the finish. Bigger always means slower, tougher, and worth more XP. ' +
 'Each new enemy family gets a five-wave chapter; the 100-wave campaign continues as a seeded infinite ' +
-'Expedition. Fire and Ice enemies can break off the path to 1v1 a tower, inflicting burn or a slow.\n\n' +
+'Expedition. Any enemy has a small chance to break off the path and fight a nearby stickman.\n\n' +
 'TRAINING XP\n' +
 '-----------\n' +
-'The killing blow earns full XP (Tiny 17, Small 20, Standard 25, Large 40, Boss 50); every 100 XP rolls ' +
-'2 x (1-3) stat points, capped at 500 per stat and 1000 total per stickman. At 500 total you can name ' +
-'the unit; at 1000 it is fully trained, earns a trophy, and its XP share becomes gold (25 XP = 1 gold). ' +
-'Promote grants automatic stat rolls and extra spendable points. The resulting stats improve combat; promotion adds no separate damage bonus. STR also increases stickman weight and rendered size; enemy weight follows body size (15px radius = 1.0).\n\n' +
+'The killing blow earns full XP (' + Object.values(SIZE_TIER_BANDS).map(band => band.label + ' ' + band.xp).join(', ') + '); every ' + TRAINING_BAR_XP + ' XP rolls ' +
+TRAINING_BAR_ROLLS + ' x (' + TRAINING_ROLL_MIN + '-' + TRAINING_ROLL_MAX + ') stat points, capped at ' + STAT_EFFECT_CAP + ' per stat and ' + STAT_TOTAL_CAP + ' total per stickman. At ' + NAMING_THRESHOLD + ' total you can name ' +
+'the unit; at ' + MASTERY_THRESHOLD + ' it is fully trained, earns a trophy, and its XP share becomes gold (' + MASTERY_XP_PER_GOLD + ' XP = 1 gold). ' +
+'Promote grants automatic stat rolls, a large pool of spendable points and a random talent roll into one stat, and costs far less than another copy of the same class. The resulting stats improve combat; promotion adds no separate damage bonus. STR also increases stickman weight and rendered size; enemy weight follows body size (15px radius = 1.0).\n\n' +
 'ELEMENTS\n' +
 '--------\n' +
-'At 100 in a stat a stickman attunes: STR=Fire (burn), DEX=Electric (shock), INT=Ice (chill). ' +
-'Training TWO stats to 500 mixes an advanced element: Fire+Electric=Proton (melts), ' +
-'Fire+Ice=Dark Matter (stuns), Electric+Ice=Quasar (blinds). Proton, Quasar and Dark Matter are ' +
+'At ' + ELEMENT_INFUSE_THRESHOLD + ' in a stat a stickman attunes: STR=Fire (burn), DEX=Electric (chain lightning), INT=Ice (freeze). ' +
+'Training TWO stats to ' + MIXED_PAIR_THRESHOLD + ' mixes an advanced element that applies both effects at once: Fire+Electric=Proton, ' +
+'Fire+Ice=Dark Matter, Electric+Ice=Quasar. Proton, Quasar and Dark Matter are ' +
 'elements, not towers. Every attack carries your element — projectiles and melee swings take its ' +
-'colour, and the proc chance rises with the attuned stat, from 8% up to 32% at 500.\n\n' +
-'An Archer that trains 100 STR unlocks the Crazy Chef: a knife-thrower whose direct damage scales on DEX, ' +
+'colour, and the proc chance rises with the attuned stat, from ' + Math.round(ATTUNEMENT_PROC_MIN*100) + '% up to ' + Math.round(ATTUNEMENT_PROC_MAX*100) + '% at ' + STAT_EFFECT_CAP + '.\n\n' +
+'An Archer that trains ' + CRAZY_CHEF_STR_THRESHOLD + ' STR unlocks the Crazy Chef: a knife-thrower whose damage scales with Strength, ' +
 'hurling five kitchen knives then restocking for ten seconds.\n\n' +
 'Tap the DPS number on a selected unit to see exactly how its damage is calculated. Tap a stat to spend one, hold to keep spending. Towers that only helped split a small ' +
 'assist share. Enemies that crossed the finish only pay a reduced cleanup share. FARM targeting chases ' +
 'last hits, LAST picks the enemy furthest from the finish, ASSIST leaves last hits to others, UNCLAIMED avoids enemies already doomed by shots in flight.\n\n' +
 'ITEMS AND HEROES\n' +
 '----------------\n' +
-'Every tower starts with a free class-specific item. Buy better gear per class from the Shop, plus ' +
-'global passive upgrades that apply to every tower you own. A tower with all 6 inventory slots filled with equipment ' +
+'Stickmen start with empty packs. Gear drops from enemies and is sold in the Shop, alongside ' +
+'passive bonuses that apply to every tower you own. A tower with all ' + MAX_ITEM_SLOTS + ' inventory slots filled with equipment ' +
 'awakens into a Hero, with a permanent stat bonus and a visible crown.\n\n' +
 'RESOURCES\n' +
 '---------\n' +
 'Gold from kills and wave clears. Wood and stone from clearing scattered trees and rocks (and rare ' +
-'treasure chests/relics) — spent on the priciest tier of shop gear alongside gold.\n\n' +
+'treasure chests/relics), plus the Log Mill and Stone Quarry — spent on barricades, structures and the priciest shop gear alongside gold.\n\n' +
 'SETTINGS\n' +
 '--------\n' +
-'Video (graphics quality and automatic render resolution), Audio (volume and mute), Game (blood-and-gore toggle, save/load), and About (this file).\n\n' +
+'Video (graphics quality and automatic render resolution), Audio (volume and mute), Game (blood-and-gore toggle, save/load), Items (the item guide), Medals, Stats, About (this file) and Changes (release notes).\n\n' +
 'LICENSE\n' +
 '-------\n' +
 'MIT.\n';
 }
-// CA770 — see HISTORY.md § [1.5.7] Code Archaeology, CA770
 function tickDistributionLine(){
   const hist = perfStats.ticksThisFrameHistory;
   if(!hist.length) return 'Tick distribution: no samples yet';
@@ -2011,7 +1863,6 @@ document.getElementById('inspAxeModeBtn').addEventListener('pointerdown', (e) =>
   if(!selectedTower || selectedTower.type !== 'AXEMAN') return;
   if(selectedTower.toggleAxeMode()){ playSound('click'); updateInspectPanel(); }
 });
-// CA773 — see HISTORY.md § [1.5.7] Code Archaeology, CA773
 
 const inspQuickSlots = document.getElementById('inspQuickSlots');
 function positionQuickSlots(){
@@ -2048,7 +1899,7 @@ function updateBuffPips(tower){
   }
   inspBuffPips.classList.toggle('hidden', inspBuffPips.childElementCount === 0);
 }
-function refreshQuickUse(tower){ // QUICK-USE-EVENTS-01 (1.6.144) — see HISTORY.md § [1.6.144]: the row changes only when an item is used or enters or leaves the inventory
+function refreshQuickUse(tower){ // QUICK-USE-EVENTS-01
   if(tower === selectedTower) updateQuickSlots(tower, isStructureType(tower.type));
 }
 function updateQuickSlots(tower, isBarricade){
@@ -2072,8 +1923,8 @@ function updateQuickSlots(tower, isBarricade){
   positionQuickSlots();
 }
 let hpBarShowPercent = false; // toggled by clicking the HP bar — see the click handler near the other inspect-panel button wiring
-// ATTACK-STATE-01 (1.7.36): the portrait ring shows why a fighter is or is not hitting, in colour and tooltip only so the nameplate never changes size:
-// green = attacking, amber = preparing the next attack, blue = a target exists but is outside its range, grey = nothing to target. It updates only when the state changes.
+// ATTACK-STATE-01: the portrait ring shows why a fighter is or is not hitting, in colour and tooltip only so the nameplate never changes size:
+// green = attacking, amber = preparing the next attack, blue = a target exists but is outside its range, grey = nothing to target.
 let lastAttackStateKey = '';
 function refreshAttackState(){
   const frame = document.getElementById('inspPortraitFrame');
@@ -2088,7 +1939,7 @@ function refreshAttackState(){
   frame.dataset.attack = state;
   frame.title = state === 'attacking' ? 'Attacking' : state === 'preparing' ? 'Preparing the next attack' : state === 'outside' ? 'Enemies are outside this fighter\'s range' : 'No enemies to target';
 }
-function updateInspectPanel(){ // HUD-DOM-PHASE-01 (1.8.57): inspect-panel DOM time is counted in the debug log's render phases
+function updateInspectPanel(){ // HUD-DOM-PHASE-01: inspect-panel DOM time is counted in the debug log's render phases
   const inspectDomStart = performance.now();
   try { updateInspectPanelNow(); } finally { renderPhaseTime.inspectDom += performance.now() - inspectDomStart; }
 }
@@ -2126,7 +1977,6 @@ function updateInspectPanelNow(){
   inspPortraitFace.textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   inspHpBarFill.style.width = hpPct + '%';
-  // CA774 — see HISTORY.md § [1.5.7] Code Archaeology, CA774
   const disabledSuffix = (!isBarricade && t.disabledWavesLeft > 0) ? (' (DOWNED · ' + t.disabledWavesLeft + ' rounds)') : '';
   inspHpBarText.textContent = (hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp)) + disabledSuffix;
   if(isProducer){
@@ -2143,7 +1993,6 @@ function updateInspectPanelNow(){
     return;
   }
   if(isBarricade){
-    // CA775 — see HISTORY.md § [1.5.7] Code Archaeology, CA775
     inspSellValue.textContent = '(💰' + t.sellValue() + ')';
     inspStoreBtn.classList.toggle('hidden', false);
     const moveBtn = inspMoveBtn;
@@ -2156,8 +2005,7 @@ function updateInspectPanelNow(){
     inspAuraBox.classList.add('hidden');
     return;
   }
-  const evoTrack = inspEvoBarTrack;
-  evoTrack.classList.remove('hidden'); // every tower has an XP level, so this bar is always shown now
+  inspEvoBarTrack.classList.remove('hidden'); // every fighter has a training level
   if(t.expLevel >= MAX_TOWER_LEVEL){
     inspEvoBarFill.style.width = '100%';
     inspEvoBarText.textContent = 'MAX TRAINING'; // the Training XP bar tracks expLevel, separately from the promotion rank shown in inspLevel
@@ -2169,7 +2017,7 @@ function updateInspectPanelNow(){
   const evoHint = inspEvoHint;
   if(BASE_ATTUNABLE_TYPES.includes(t.type)){
     if(!t.attunement){
-      const stats = ['str','dex','int'];
+      const stats = TRAINED_STATS;
       const bestValue = Math.max(...stats.map(k => t[k] || 0));
       const readyStat = stats.find(k => (t[k] || 0) >= ELEMENT_INFUSE_THRESHOLD);
       if(readyStat){
@@ -2188,7 +2036,6 @@ function updateInspectPanelNow(){
     } else {
       const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[t.attunement];
       const target = SPECIALIZATIONS[t.type] && SPECIALIZATIONS[t.type][t.attunement];
-      // CA776 — see HISTORY.md § [1.5.7] Code Archaeology, CA776
       let nearest = null;
       if(target){
         const remaining = Math.max(0, specializationThresholdFor(target) - (t[attunedStat]||0));
@@ -2209,29 +2056,21 @@ function updateInspectPanelNow(){
       if(nearest){
         evoHint.textContent = nearest.text;
       } else {
-        // CA777 — see HISTORY.md § [1.5.7] Code Archaeology, CA777
         const elementLabel = t.attunement.charAt(0) + t.attunement.slice(1).toLowerCase();
         evoHint.textContent = ATTUNEMENT_ICON[t.attunement] + ' ' + elementLabel + ' Attuned';
       }
-      const tierNote = statTierNote(t);
-      if(tierNote) evoHint.textContent += '  ·  ' + tierNote;
       const milestoneNote = progressionMilestoneNote(t);
       if(milestoneNote) evoHint.textContent += '  ·  ' + milestoneNote;
       evoHint.classList.remove('hidden');
     }
   } else {
-    const evo = EVOLUTIONS[t.type];
-    if(evo){
-    // CA778 — see HISTORY.md § [1.5.7] Code Archaeology, CA778
-    const branchStats = Object.keys(evo);
-    const values = branchStats.map(k => t[k] || 0);
-    const maxVal = Math.max(...values);
-    const leaders = branchStats.filter(k => (t[k]||0) === maxVal);
+    const evo = CLASS_STAT_UNLOCKS[t.type];
+    const branchStats = evo ? Object.keys(evo) : [];
+    const maxVal = branchStats.length ? Math.max(...branchStats.map(k => t[k] || 0)) : 0;
+    const leaders = branchStats.filter(k => (t[k] || 0) === maxVal);
     if(maxVal > 0 && leaders.length === 1){
       const statKey = leaders[0];
-      const cur = t[statKey] || 0;
-      const need = evo[statKey].threshold;
-      const remaining = Math.max(0, need - cur);
+      const remaining = Math.max(0, evo[statKey].threshold - (t[statKey] || 0));
       const targetDef = CONFIG.TOWERS[evo[statKey].target];
       evoHint.textContent = remaining > 0
         ? (targetDef.icon + ' ' + targetDef.name + ' unlock — ' + remaining + ' more ' + statKey.toUpperCase())
@@ -2240,45 +2079,39 @@ function updateInspectPanelNow(){
     } else {
       evoHint.classList.add('hidden');
     }
-    } else {
-      evoHint.classList.add('hidden');
-    }
   }
-
   const isMeleeMode = t.type === 'AXEMAN' ? t.axeMode === 'MELEE' : !!t.baseMeleeDamage;
   const atk = isMeleeMode ? (t.meleeDamage || t.damage) : t.damage;
   const rng = isMeleeMode ? (t.meleeRange || t.range) : t.range;
   const cd = isMeleeMode ? (t.meleeCooldown || t.cooldown) : t.cooldown;
-  // CA779 — see HISTORY.md § [1.5.7] Code Archaeology, CA779
   inspAtkVal.textContent = '';
-  const dmgHalf = Math.min(0.6, (t.type === 'MAGE' ? 0.4 : 0.2) + (t.primaryStatEff ? diminishingStatValue(t.primaryStatEff, 0.0003) : 0)); // must match applyDamage()'s effectiveVarianceHalfWidth exactly — base half-width per archetype (Snap Caster stays at the default ±20%, only base Mage gets the wider ±40% band) plus the same primary-stat spread bonus applyDamage() adds
+  const dmgHalf = damageSpreadHalfWidth(t);
   const dmgMinEl = inspAtkRange;
-  // CA798 — see HISTORY.md § [1.6.61] Cleric damage display.
-  const damageDisplayMultiplier = t.type === 'CLERIC' ? 5 : 1;
+  const damageDisplayMultiplier = t.type === 'CLERIC' ? CLERIC_SMITE_MULT : 1;
   const displayedAtk = atk * damageDisplayMultiplier;
   const dmgRangeText = Math.round(displayedAtk*(1-dmgHalf)) + '-' + Math.round(displayedAtk*(1+dmgHalf));
   if(dmgMinEl) dmgMinEl.textContent = dmgRangeText;
-  if(inspDpsRangeVal) inspDpsRangeVal.textContent = dmgRangeText; // same computed range, shown again under DPS per direct request — one source of truth, two display spots
+  if(inspDpsRangeVal) inspDpsRangeVal.textContent = dmgRangeText; // the same computed range, shown again under DPS
   inspHpStatVal.textContent = Math.round((t.hpStat||0)*1000)/1000;
   inspDefVal.textContent = Math.round((t.shieldPct||0)*100);
   inspRangeVal.textContent = rng;
   inspSpeedVal.textContent = cd ? (cd/1000).toFixed(2) : '0';
   inspCritVal.textContent = Math.round((t.critChance||0)*1000)/10 + '% 🗡️' + (Math.round((t.critMult||1.2)*100)/100);
-  // CA780 — see HISTORY.md § [1.5.7] Code Archaeology, CA780
   const dpsShotsPerCycle = (t.burstCount && t.burstCount > 1) ? t.burstCount : 1;
   const dpsCycleMs = dpsShotsPerCycle > 1 ? (dpsShotsPerCycle-1)*(t.burstDelay||0) + cd : cd;
   const critExpectedMult = 1 + (t.critChance||0) * ((t.critMult||1.2) - 1);
-  const dpsDamageMultiplier = t.type === 'CLERIC' ? 5 : 1;
+  const dpsDamageMultiplier = damageDisplayMultiplier;
   const dpsAccuracy = 1 - (t.missChance||0);
   const dps = dpsCycleMs > 0 ? (dpsShotsPerCycle * atk * dpsDamageMultiplier * critExpectedMult * dpsAccuracy) / (dpsCycleMs/1000) : 0;
   inspDpsVal.textContent = dps >= 100 ? Math.round(dps) : dps.toFixed(1);
   fitStatRowToOneLine();
   fitNameplateToStatRow();
   const arch = CLASS_ARCHETYPE[t.type];
-  inspStrBtn.title = 'Strength: grows health, weight and body size' + (arch==='WARRIOR' ? '; also increases this class’s direct damage.' : '.');
-  inspIntBtn.title = 'Intelligence: grows reach toward this class’s range cap and increases critical damage' + (arch==='MAGE' ? '; also increases direct damage.' : '.');
-  inspDexBtn.title = 'Dexterity: improves attack speed, accuracy and critical chance' + (arch==='ARCHER' ? '; also increases this class’s direct damage.' : '.');
-  // CA781 — see HISTORY.md § [1.5.7] Code Archaeology, CA781
+  const damageStat = arch==='WARRIOR' || t.type==='CRAZY_CHEF' ? 'str' : arch==='ARCHER' ? 'dex' : arch==='MAGE' ? 'int' : null; // matches primaryDamageMult in Tower.recomputeStats
+  const damageNote = stat => damageStat === stat ? '; also increases this class’s direct damage.' : '.';
+  inspStrBtn.title = 'Strength: grows health, weight and body size' + damageNote('str');
+  inspIntBtn.title = 'Intelligence: grows reach toward this class’s range cap and increases critical damage' + damageNote('int');
+  inspDexBtn.title = 'Dexterity: improves attack speed, accuracy and critical chance' + damageNote('dex');
   const auraBox = inspAuraBox;
   const strategy = TOWER_STRATEGY[t.type];
   auraBox.classList.toggle('hidden', !strategy);
@@ -2299,7 +2132,6 @@ function updateInspectPanelNow(){
   const moveCost = inspMoveCost;
   moveBtn.disabled = t.moveCharges <= 0;
   moveCost.textContent = '(' + t.moveCharges + ')';
-
   const axeBtn = inspAxeModeBtn;
   if(t.type === 'AXEMAN'){
     axeBtn.classList.remove('hidden');
@@ -2309,27 +2141,23 @@ function updateInspectPanelNow(){
   } else {
     axeBtn.classList.add('hidden');
   }
-
   statsInfoBtn.classList.remove('hidden');
   barricadeInfoBtn.classList.add('hidden');
-
   renderInventorySlots(t);
   updateQuickSlots(t, isBarricade);
   updateBuffPips(t);
-  const craftRecipe = findCraftableRecipeFor(t.equippedItems, t);
+  const craftRecipe = findCraftableRecipeFor(t.equippedItems);
   const inspCraftBtn = document.getElementById('inspCraftBtn');
   if(craftRecipe){
     const resultDef = lookupItemDef(craftRecipe.result);
     inspCraftBtn.classList.remove('hidden');
-    inspCraftBtn.textContent=(craftRecipe.fuelCost?'Cook ':'Combine ')+resultDef.icon;
-    inspCraftBtn.title = (craftRecipe.fuelCost ? 'Cook ' : 'Combine into ') + resultDef.icon + ' ' + resultDef.name + '\n'+itemStatSummary(resultDef)+'\nConsumes: '+craftRecipe.ingredients.map(id=>lookupItemDef(id)?.name||id).join(', ')+(craftRecipe.fuelCost ? ' (uses ' + craftRecipe.fuelCost + ' campfire fuel)' : '');
+    inspCraftBtn.textContent='Combine '+resultDef.icon;
+    inspCraftBtn.title = 'Combine into ' + resultDef.icon + ' ' + resultDef.name + '\n'+itemStatSummary(resultDef)+'\nConsumes: '+craftRecipe.ingredients.map(id=>lookupItemDef(id)?.name||id).join(', ');
   } else {
     inspCraftBtn.classList.add('hidden');
   }
-
   inspStatPointsVal.textContent = t.statPoints;
   inspAutoSpend.checked = !!t.autoSpend;
-  // CA782 — see HISTORY.md § [1.5.7] Code Archaeology, CA782
   inspStrVal.textContent = t.str + (t.str > STAT_EFFECT_CAP ? ' (capped)' : '');
   inspDexVal.textContent = t.dex + (t.dex > STAT_EFFECT_CAP ? ' (capped)' : '');
   inspIntVal.textContent = t.int + (t.int > STAT_EFFECT_CAP ? ' (capped)' : '');
@@ -2342,11 +2170,10 @@ function updateInspectPanelNow(){
     btn.disabled = noPoints || statCapped;
     btn.classList.toggle('has-points', !noPoints && !statCapped);
     btn.classList.toggle('primary-stat', stat === primaryStatOfSelected);
-    btn.title = stat === 'str' ? 'Strength — drives Warrior damage and stickman weight/size' : stat === primaryStatOfSelected ? 'Primary stat — drives this class\'s damage' : stat === 'int' ? 'Intelligence — drives Mage damage and every stickman\'s accuracy' : 'Support stat';
-    if(!btn.disabled){ const preview = statPointPreview(t, stat); if(preview) btn.title += '\nNext point: ' + preview; } // STAT-PREVIEW-01 (1.8.62)
+    if(!btn.disabled){ const preview = statPointPreview(t, stat); if(preview) btn.title += '\nNext point: ' + preview; } // STAT-PREVIEW-01: appended to the stat tooltips set above
   }
 }
-// VAULT-01 (1.8.37): one renderer for a stickman's six slots and a vault's 18 to 30; slots past the holder's capacity stay hidden.
+// VAULT-01: one renderer for a stickman's six slots and a vault's 18 to 30; slots past the holder's capacity stay hidden.
 function renderInventorySlots(t){
   const capacity = itemCapacityOf(t), vault = isVaultType(t.type);
   document.getElementById('inspItemsLabel').textContent = vault ? 'VAULT · ' + t.equippedItems.length + '/' + capacity : 'INVENTORY';
@@ -2379,7 +2206,6 @@ inspUpgradeBtn.addEventListener('pointerdown', (e) => {
   if(selectedTower.upgrade()){
     updateHUD(); updateInspectPanel();
     playSound('ui_buy');
-    // CA783 — see HISTORY.md § [1.5.7] Code Archaeology, CA783
   }
 });
 inspSellBtn.addEventListener('pointerdown', (e) => {
@@ -2421,7 +2247,7 @@ document.getElementById('inspStoreBtn').addEventListener('pointerdown', (e) => {
   selectedTower.active = false;
   invalidateSpawnFlags();
   activeBarricades.delete(selectedTower);
-  spawnGroundItem(x, y, BARRICADE_ITEM, 'shop purchase');
+  spawnGroundItem(x, y, BARRICADE_ITEM, 'barricade picked up');
   spawnFloatingText(x, y - 20, '📦 Ready to carry', '#7dd3fc');
   playSound('click');
   selectedTower = null; cancelCameraFollow();
@@ -2457,10 +2283,9 @@ document.getElementById('cancelMoveBtn').addEventListener('pointerdown', (e) => 
   e.stopPropagation();
   exitMoveMode();
 });
-// CA784 — see HISTORY.md § [1.5.7] Code Archaeology, CA784
 const STAT_HOLD_DELAY_MS = 380, STAT_HOLD_REPEAT_MS = 65;
 let statHoldTimer = 0;
-// STAT-PREVIEW-01 (1.8.62): each stat button's tooltip says what the next point would change (Game Balance: let players see a choice's effect before
+// STAT-PREVIEW-01: each stat button's tooltip says what the next point would change (Game Balance: let players see a choice's effect before
 // committing). The preview adds the point, recomputes, reads the results and restores the stickman exactly, including health and the Veteran flag.
 function statPointPreview(tower, stat){
   if(!tower || isStructureType(tower.type) || tower[stat] >= STAT_EFFECT_CAP || getTrainedStatTotal(tower) >= STAT_TOTAL_CAP) return '';
@@ -2484,7 +2309,7 @@ function statPointPreview(tower, stat){
 function spendStatPoint(stat){
   if(!selectedTower || !selectedTower.allocateStat(stat)) return false;
   playSound('stat_spend');
-  checkLegendaryStatus(selectedTower);
+  refreshProgressionMilestones(selectedTower);
   updateInspectPanel();
   return true;
 }
@@ -2495,7 +2320,7 @@ function repeatStatHold(stat){
   if(!spendStatPoint(stat)){ stopStatHold(); return; }
   statHoldTimer = setTimeout(() => repeatStatHold(stat), STAT_HOLD_REPEAT_MS);
 }
-['str','dex','int'].forEach(stat => {
+TRAINED_STATS.forEach(stat => {
   const button = document.getElementById('insp' + stat[0].toUpperCase() + stat.slice(1) + 'Btn');
   button.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
@@ -2522,10 +2347,18 @@ document.getElementById('inspAuraBox').addEventListener('pointerdown', (e) => {
 nextWaveBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
-  markFirstNextWaveCueAction();
+  markFirstNextWaveUsed();
   startNextWave();
 });
 const pauseBtn = document.getElementById('pauseBtn');
+function pauseGame(){
+  recordStateTransition('PAUSED'); gameState = 'PAUSED';
+  audioEngine.setMusicPaused(true);
+  pauseStartedAtReal = Date.now(); // debug-log use only, see totalPausedMs
+  pauseBtn.textContent = '▶';
+  pauseBtn.classList.add('active');
+  document.getElementById('pause-overlay').classList.remove('hidden');
+}
 function resumeGame(){
   recordStateTransition('PLAYING'); gameState = 'PLAYING';
   audioEngine.setMusicPaused(false);
@@ -2539,40 +2372,27 @@ pauseBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   unlockAudio();
   if(gameState === 'PLAYING'){
-    recordStateTransition('PAUSED'); gameState = 'PAUSED';
-    audioEngine.setMusicPaused(true);
-    pauseStartedAtReal = Date.now(); // see totalPausedMs' own declaration — debug-log use only
-    pauseBtn.textContent = '▶';
-    pauseBtn.classList.add('active');
-    document.getElementById('pause-overlay').classList.remove('hidden');
-    render(ctx); // main loop won't render while paused — nudge one frame through now so the overlay actually appears immediately instead of waiting for the next pan/zoom to trigger a paint
+    pauseGame();
+    render(ctx);
   } else if(gameState === 'PAUSED'){
     resumeGame();
   }
 });
-// CA785 — see HISTORY.md § [1.5.7] Code Archaeology, CA785
 document.addEventListener('keydown', (e) => {
   if(e.code !== 'Space' || e.repeat) return;
-  if(document.querySelector('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(document.activeElement?.tagName) || document.activeElement?.closest?.('[role="button"]')) return;
+  if(keyboardFocusIsElsewhere()) return;
   if(gameState === 'PLAYING'){
     e.preventDefault();
     unlockAudio();
-    recordStateTransition('PAUSED'); gameState = 'PAUSED';
-    audioEngine.setMusicPaused(true);
-    pauseStartedAtReal = Date.now();
-    pauseBtn.textContent = '▶';
-    pauseBtn.classList.add('active');
-    document.getElementById('pause-overlay').classList.remove('hidden');
+    pauseGame();
     render(ctx);
   }
 });
-// CA786 — see HISTORY.md § [1.5.7] Code Archaeology, CA786
 document.addEventListener('keydown', (e) => {
   if(gameState !== 'PAUSED' || e.defaultPrevented || e.repeat) return;
-  if(document.querySelector('dialog[open]') || document.activeElement?.isContentEditable || ['INPUT','TEXTAREA','SELECT','BUTTON','A'].includes(document.activeElement?.tagName) || document.activeElement?.closest?.('[role="button"]')) return;
+  if(keyboardFocusIsElsewhere()) return;
   resumeGame();
 });
-// CA787 — see HISTORY.md § [1.5.7] Code Archaeology, CA787
 document.addEventListener('visibilitychange', () => {
   if(document.hidden){
     stopStatHold();
@@ -2582,13 +2402,7 @@ document.addEventListener('visibilitychange', () => {
     tabTotalHiddenMs += Date.now() - tabLastHiddenAt;
     tabLastShownAt = Date.now();
   }
-  if(document.hidden && gameState === 'PLAYING'){
-    recordStateTransition('PAUSED'); gameState = 'PAUSED';
-    pauseStartedAtReal = Date.now();
-    pauseBtn.textContent = '▶';
-    pauseBtn.classList.add('active');
-    document.getElementById('pause-overlay').classList.remove('hidden');
-  }
+  if(document.hidden && gameState === 'PLAYING') pauseGame();
 });
 const shopBuyLifeBtn = document.getElementById('shopBuyLifeBtn');
 shopBuyLifeBtn.addEventListener('pointerdown', (e) => {

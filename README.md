@@ -26,7 +26,7 @@ Raise a squad from humble beginnings, send it out to meet every wave, and watch 
 
 Open **Build**, choose a defender and place it on the grass beside the road. Press a placed defender to see its stats, spend its training points, move it, give it gear or change which enemy it targets. When the squad is ready, press **Start Wave**.
 
-The map begins as a small patch with a short road, and a lone barricade stands watch on the finish tile when the first wave rolls in. Expanding the map lengthens both ends of the road and opens new ground to build on. Enemies walk from the spawn flags to the finish. One that gets through stays on the map and goes looking for your defenders, so clear it before the next wave. Lose every life and the run ends.
+The map begins as a small patch with a short road, and a lone barricade stands watch on the finish tile when the first wave rolls in. Expanding the map lengthens both ends of the road and opens new ground to build on. Enemies walk from the spawn flags to the finish. One that gets through stays on the map and goes looking for your defenders, so clear it before the next wave. The run ends when every life is lost or every defender is down at once.
 
 Every defender has its own free moves for changing position. It earns more by rising in rank, by finishing off a boss and by carrying Running Shoes.
 
@@ -79,7 +79,7 @@ In the Build list, a defender you have not unlocked yet shows as a dark silhouet
 
 ## Items, food and the Shop
 
-Defeated enemies, chests and presents leave gear and food beside the road. Drag gear onto a defender to equip it; food is eaten on the spot and raises a stat. Each defender begins with a free item for its class, and the Shop sells better gear plus upgrades that help every defender you own. Now and then a merchant caravan crosses the map with goods to trade. Rare finds such as a Merchant's Bell, a Circus Ticket or Troll Bait call a visitor to the road when used.
+Defeated enemies, chests and presents leave gear and food beside the road. Drag gear onto a defender to equip it; food is eaten on the spot and raises a stat. Defenders start with empty packs, and the Shop sells gear, supplies and upgrades that help every defender you own. Now and then a merchant caravan crosses the map with goods to trade. Rare finds such as a Merchant's Bell, a Circus Ticket or Troll Bait call a visitor to the road when used.
 
 While placing a defender, a gold outline suggests the spot that covers the most road, and each stat button shows what the next point will change.
 

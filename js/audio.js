@@ -1,20 +1,19 @@
 "use strict";
-
 // Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
 //   SOUND ENGINE AND ADAPTIVE MUSIC
 //   SOUND EFFECT DISPATCH AND AUDIO UNLOCK
-// StickTD audio: the Web Audio sound engine, synthesized sound effects and the adaptive music score (AUDIO-SPLIT-01, 1.8.43).
+// StickTD audio: the Web Audio sound engine, synthesized sound effects and the adaptive music score (AUDIO-SPLIT-01).
 // Loaded before js/config.js; everything here is classic-script global scope, shared with the other files.
 /* =========================================================
    SOUND ENGINE AND ADAPTIVE MUSIC
    ========================================================= */
-// MUSIC-MIX-01 — see HISTORY.md § [1.6.163] Audio mix and adaptive score, MUSIC-MIX-01.
+// MUSIC-MIX-01: audio mix and adaptive score.
 let audioMasterVolume = 1, audioMusicVolume = 1, audioSfxVolume = 1;
-const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01 (1.7.36): measured loudest SFX burst over boss music peaked at 0.37 of full scale with the old 0.5 gain, so +3.5 dB still leaves about 4 dB of headroom before the compressor
-const AUDIO_UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']; // AUDIO-GESTURE-01 (1.7.107); declared here, before the design contract runs
-const MUSIC_TEMPO_BPM = 88; // MUSIC-COHESION-01 (1.8.35): one 88 BPM pulse, field and start screen at 1x, wave and boss at 1.5x
-const MUSIC_COMBAT_TEMPO_BPM = 144; // MUSIC-DRIVE-01 (1.8.58): back to the pre-1.8.35 battle tempo; 132 BPM took the drive out of the wave music
-const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 10, 2, 0, 7, 5, 8, 3, 10]; // MUSIC-JOURNEY-01 (1.8.20): twelve cycles before the key path repeats, up from eight // MUSIC-EVOLVE-01 (1.7.36): each 24-bar cycle moves the whole score to a new key
+const MASTER_OUTPUT_GAIN = 0.75; // MIX-LEVEL-01
+const AUDIO_UNLOCK_EVENTS = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']; // AUDIO-GESTURE-01; declared here, before the design contract runs
+const MUSIC_TEMPO_BPM = 88; // MUSIC-COHESION-01: one 88 BPM pulse, field and start screen at 1x, wave and boss at 1.5x
+const MUSIC_COMBAT_TEMPO_BPM = 144; // MUSIC-DRIVE-01: the battle tempo; slower settings take the drive out of the wave music
+const MUSIC_CYCLE_SHIFTS = [0, 5, 7, 3, 10, 2, 0, 7, 5, 8, 3, 10]; // MUSIC-JOURNEY-01, MUSIC-EVOLVE-01
 const MUSIC_SEASON_SHIFTS = [0, 2, 3, 5, 7, 2, 3, 5, 7, 10]; // and every ten completed waves shifts it again, so progress is audible
 function mulberry32(seed){ let a = seed|0; return function(){ a = (a + 0x6D2B79F5)|0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const FIELD_MELODY_B = [ // the contrasting second theme: slower, stepwise, higher, leaning on the relative major
@@ -37,16 +36,15 @@ function fieldVariedBar(notes, rng){
   let kept = 0; for(let i = 0; i < 8; i++) if(out[i] !== null && kept++ % 2 === 1) out[i] = null; // thinned: every other note rests
   return out;
 }
-const MUSIC_BOSS_TEMPO_BPM = 152; // MUSIC-BOSS-01 (1.7.36): a boss on the field switches combat music to a faster, darker Phrygian arrangement
+const MUSIC_BOSS_TEMPO_BPM = 152; // MUSIC-BOSS-01: a boss on the field switches combat music to a faster, darker Phrygian arrangement
 const MUSIC_COMBAT_ROOTS = [38,38,41,36,38,43,41,38,38,36,43,38];
-const MUSIC_PHRYGIAN_INTERVALS = [0,1,3,5,7,8,10,12,13,17];
 const MUSIC_COMBAT_INTERVALS = [0,2,3,5,7,8,11,12,14,17];
 const MUSIC_STEPS_PER_BAR = 8;
 const MUSIC_BARS = 24;
-const MUSIC_OPTIONAL_VOICE_HEADROOM = 4; // MUSIC-PRIORITY-01 (1.7.98) — see HISTORY.md § [1.7.98]
+const MUSIC_OPTIONAL_VOICE_HEADROOM = 4; // MUSIC-PRIORITY-01
 const MUSIC_VOICE_LIMIT = 10;
-// MUSIC-BUDGET-01 (1.7.105) — see HISTORY.md § [1.7.105]: the in-game themes were losing about 170 optional notes and 10 required ones per 24 bars to the fixed 10-voice limit. The limit now follows the smoothed frame work time, so a light scene plays the full arrangement and a heavy one falls back to 10.
-const MUSIC_VOICE_LIMIT_LIGHT = 24, MUSIC_VOICE_LIMIT_MEDIUM = 14, MUSIC_LOAD_LIGHT_MS = 4, MUSIC_LOAD_MEDIUM_MS = 8; // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+// MUSIC-BUDGET-01: the music voice budget scales with frame load, so the themes keep their notes on light frames instead of a fixed 10-voice limit.
+const MUSIC_VOICE_LIMIT_LIGHT = 24, MUSIC_VOICE_LIMIT_MEDIUM = 14, MUSIC_LOAD_LIGHT_MS = 4, MUSIC_LOAD_MEDIUM_MS = 8; // MUSIC-DRIVE-01
 const MUSIC_MINOR_CHORD_ROOTS = new Set([38, 43]);
 const MUSIC_ARPEGGIO_SHAPE = [0, 1, 2, 3, 2, 1];
 const MUSIC_TURNAROUND_RUN = [-17, -14, -12, -9, -7, -5, -3, -1];
@@ -58,16 +56,16 @@ const MUSIC_VIBRATO_CENTS = 16;
 const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
 const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
 const MUSIC_TEMPO_CREEP = 0.06;
-const MUSIC_STING_PICKUPS = Object.freeze([[0, 0, 7, 0.05], [2, 3, 10, 0.062], [4, 5, 12, 0.076]]), MUSIC_STING_DROP_STEP = MUSIC_STEPS_PER_BAR; // MUSIC-STING-02 (1.8.33): [step, root offset, fifth-or-above offset, gain]
-// MUSIC-ATTRACT-01 (1.7.100) — see HISTORY.md § [1.7.100]: the start screen plays its own arrangement of the battle melody
-// MUSIC-ATTRACT-03 (1.8.12) — see CHANGELOG.md § [1.8.12]: the start screen is a dark minor-key march (i, VI, VII, V), slower, in a lower register, without the sparkling arpeggio octave, open hats and claps
-// MUSIC-REFERENCE-01 (1.8.15) — see CHANGELOG.md § [1.8.15]: the start screen slows to 88 BPM, holds each verse chord as a four-bar bass pedal under a quiet low fifth, answers the lead with an oboe line, rests twice per cycle and develops its motif; wave and field music gain a timpani downbeat and a fill every fourth bar
+const MUSIC_STING_PICKUPS = Object.freeze([[0, 0, 7, 0.05], [2, 3, 10, 0.062], [4, 5, 12, 0.076]]), MUSIC_STING_DROP_STEP = MUSIC_STEPS_PER_BAR; // MUSIC-STING-02: [step, root offset, fifth-or-above offset, gain]
+// MUSIC-ATTRACT-01: the start screen plays its own arrangement of the battle melody
+// MUSIC-ATTRACT-03: the start screen is a dark minor-key march (i, VI, VII, V), slower, in a lower register, without the sparkling arpeggio octave, open hats and claps
+// MUSIC-REFERENCE-01: the start screen slows to 88 BPM, holds each verse chord as a four-bar bass pedal under a quiet low fifth, answers the lead with an oboe line, rests twice per cycle and develops its motif; wave and field music gain a timpani downbeat and a fill every fourth bar
 const MUSIC_ATTRACT_TEMPO_BPM = 88, MUSIC_ATTRACT_TONIC = 50;
 const MUSIC_ATTRACT_CHORDS = [{ root: 38, triad: [0, 3, 7] }, { root: 34, triad: [0, 4, 7] }, { root: 36, triad: [0, 4, 7] }, { root: 45, triad: [0, 4, 7] }];
 const MUSIC_ATTRACT_BASS = { 0: 0, 1: 0, 3: 12, 4: 7, 6: 12, 7: 7 };
-// MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]: the 24-bar start-screen cycle is now a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
+// MUSIC-ATTRACT-02: the 24-bar start-screen cycle is a song (intro, two verses, a build, a chorus) played with its own brighter voices and a larger voice budget
 const MUSIC_ATTRACT_VOICE_LIMIT = 24, MUSIC_ATTRACT_OPTIONAL_HEADROOM = 3, MUSIC_ATTRACT_SECTION_LEVEL = [0.38, 0.56, 0.68, 0.76, 0.9], MUSIC_ATTRACT_BUILD_CHORDS = [3, 3, 1, 1], MUSIC_ATTRACT_ARP = [0, 1, 2, 1, 2, 1, 2, 1];
-// MUSIC-ATTRACT-EASE-01 (1.8.36): each start-screen section glides from the previous section's level to its own over its first half instead of stepping, so drums, snare and hats grow in rather than arriving at full strength.
+// MUSIC-ATTRACT-EASE-01: each start-screen section glides from the previous section's level to its own over its first half instead of stepping, so drums, snare and hats grow in rather than arriving at full strength.
 function attractEasedLevel(section, bar, beatStep){
   const sectionBars = section === 4 ? 8 : 4, progress = ((bar - section * 4) * MUSIC_STEPS_PER_BAR + beatStep) / (sectionBars * MUSIC_STEPS_PER_BAR), amount = Math.min(1, progress * 2), smooth = amount * amount * (3 - 2 * amount);
   const previous = MUSIC_ATTRACT_SECTION_LEVEL[Math.max(0, section - 1)], target = MUSIC_ATTRACT_SECTION_LEVEL[section];
@@ -83,19 +81,18 @@ const POP_VOICES = {
   oboe:  { vibrato: { rate: 5.2, cents: 11, delay: 0.22 }, wave: 'sawtooth', detunes: [-4, 4], attack: 0.05, sustain: 0.7, decay: 0.4, release: 0.12, cutoffStart: 2000, cutoffEnd: 1300, cutoffTime: 0.6, q: 1.4, echo: true },
   bell:  { wave: 'sine', detunes: [0], fmRatio: 3.5, fmIndex: 3.2, attack: 0.002, sustain: 0.1, decay: 0.5, release: 0.05, cutoffStart: 9000, cutoffEnd: 5000, cutoffTime: 0.6, q: 0.3, echo: true }
 };
-// MUSIC-SPACE-01 (1.7.116): tonal voices are spread across the stereo field by pitch, alternating sides note by note (leads stay near the centre), and sent to a short stereo hall; the music bus gets a gentle low-mid cut so the bass and chords stop masking the melody, and the idle theme opens its lowpass from 3200 to 4200 Hz for air.
-const MUSIC_PAN_FLOOR_HZ = 240, MUSIC_PAN_SPAN_HZ = 1500, MUSIC_PAN_MAX = 0.6, MUSIC_PAN_LEAD_SHARE = 0.3, MUSIC_REVERB_SEND = 0.2, MUSIC_REVERB_SECONDS = 1.9, MUSIC_MUD_CUT_HZ = 280, MUSIC_MUD_CUT_DB = -2.5, MUSIC_FIELD_FILTER_HZ = 4200, MUSIC_MAKEUP_GAIN = 1.75, MUSIC_SECTION_LEVEL = [0.92, 1.02, 1.16], MUSIC_AIR_HZ = 3500, MUSIC_AIR_DB = 3.2; // MUSIC-LOUD-01 (1.8.19)
+// MUSIC-SPACE-01: tonal voices are spread across the stereo field by pitch, alternating sides note by note (leads stay near the centre), and sent to a short stereo hall; the music bus gets a gentle low-mid cut so the bass and chords stop masking the melody, and the idle theme opens its lowpass from 3200 to 4200 Hz for air.
+const MUSIC_PAN_FLOOR_HZ = 240, MUSIC_PAN_SPAN_HZ = 1500, MUSIC_PAN_MAX = 0.6, MUSIC_PAN_LEAD_SHARE = 0.3, MUSIC_REVERB_SEND = 0.2, MUSIC_REVERB_SECONDS = 1.9, MUSIC_MUD_CUT_HZ = 280, MUSIC_MUD_CUT_DB = -2.5, MUSIC_FIELD_FILTER_HZ = 4200, MUSIC_MAKEUP_GAIN = 1.75, MUSIC_SECTION_LEVEL = [0.92, 1.02, 1.16], MUSIC_AIR_HZ = 3500, MUSIC_AIR_DB = 3.2; // MUSIC-LOUD-01
 const MUSIC_ECHO_SEND = 0.2, MUSIC_ECHO_FEEDBACK = 0.34, MUSIC_ECHO_DAMPING_HZ = 2600;
 const MUSIC_CYCLE_STEPS = MUSIC_STEPS_PER_BAR * MUSIC_BARS;
 const MUSIC_MINOR_INTERVALS = [0,2,3,5,7,9,10,12,14,17];
-const MUSIC_MAJOR_INTERVALS = [0,2,4,5,7,9,11,12,14,17];
-const MUSIC_BASS_ROOTS = [38, 34, 36, 45, 38, 34, 36, 45, 34, 36, 45, 38]; // MUSIC-FIELD-THEME-01 (1.7.36): i, bVI, bVII, V — a brooding war-march progression in D minor
-const MUSIC_FIELD_MELODY = [ // FIELD-THEME-02 (1.7.98) — see HISTORY.md § [1.7.98]
+const MUSIC_BASS_ROOTS = [38, 34, 36, 45, 38, 34, 36, 45, 34, 36, 45, 38]; // MUSIC-FIELD-THEME-01: i, bVI, bVII, V — a brooding war-march progression in D minor
+const MUSIC_FIELD_MELODY = [ // FIELD-THEME-02
   [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,7,null], [0,null,null,7, 5,null,3,5], [10,null,8,null, 7,null,null,null],
   [0,null,null,7, 5,null,3,null], [2,null,3,null, 5,null,8,null], [7,null,null,5, 3,null,2,3], [2,null,-1,null, 0,null,null,null],
   [7,null,null,12, 10,null,8,null], [7,null,10,null, 12,null,14,null], [12,null,10,null, 8,null,7,5], [5,null,2,null, -1,null,0,null]
 ];
-// MUSIC-THEME-01 (1.8.40): the wave theme is a real 24-bar tune in absolute semitones above the key's D3, over Dm Dm F C / Dm Gm F Dm / Dm C Gm Dm. Section A states a heroic rising call and answers it higher, section B climbs and sequences through Gm and F, section C soars to the top of the range and lands home. The old table was degrees of whichever chord was sounding, so the tune only ever shuffled around the same five notes.
+// MUSIC-THEME-01: the wave theme is a real 24-bar tune in absolute semitones above the key's D3, over Dm Dm F C / Dm Gm F Dm / Dm C Gm Dm.
 const MUSIC_WAVE_THEME = [
   [12,null,null,7,8,null,7,null], [5,null,7,null,12,null,null,null], [12,null,14,15,14,null,12,null], [10,null,7,null,8,null,7,5],
   [15,null,12,null,10,null,12,15], [17,null,15,null,12,null,10,null], [14,null,17,19,17,null,14,null], [12,null,14,null,10,null,null,null],
@@ -139,14 +136,30 @@ function musicKeyShift(cycleIndex){
   const shift = (MUSIC_CYCLE_SHIFTS[cycleIndex % MUSIC_CYCLE_SHIFTS.length] + MUSIC_SEASON_SHIFTS[Math.min(9, Math.floor(wavesCompleted / 10))]) % 12;
   return shift > 6 ? shift - 12 : shift;
 }
+// REVERB-IMPULSE-01: one decaying-noise impulse builder for the music and effects rooms; the one-pole smoothing darkens the tail so it never hisses.
+const SFX_DISTANCE_DARKEN_FLOOR = 0.45; // SFX-DISTANCE-01: off-screen noise is darker as well as quieter, the way air absorbs highs
+const SFX_REVERB_SECONDS = 0.9, SFX_REVERB_PREDELAY_S = 0.012, SFX_REVERB_SMOOTHING = 0.45;
+function buildDecayImpulse(audioCtx, seconds, preDelaySeconds, smoothing, decayPower){
+  const rate = audioCtx.sampleRate, length = Math.floor(rate * seconds), preDelay = Math.floor(rate * preDelaySeconds);
+  const impulse = audioCtx.createBuffer(2, length, rate);
+  for(let channel = 0; channel < 2; channel++){
+    const data = impulse.getChannelData(channel);
+    let smoothed = 0;
+    for(let i = preDelay; i < length; i++){
+      smoothed += (Math.random() * 2 - 1 - smoothed) * smoothing;
+      data[i] = smoothed * Math.pow(1 - (i - preDelay) / (length - preDelay), decayPower);
+    }
+  }
+  return impulse;
+}
 function midiToFrequency(note){ return 440 * Math.pow(2, (note - 69) / 12); }
 // Five variants, never the same twice in a row: pitch ratios are whole semitones (0, +1, -1, +2, -2) and the noise colour moves with them.
 const SFX_VARIANT_PITCH = [1, 1.0595, 0.9439, 1.1225, 0.8909], SFX_VARIANT_NOISE = [1, 1.12, 0.89, 1.25, 0.8];
 // Sounds whose pitch is part of their meaning (melodic stingers, countdown, level ups, UI confirms) always play unchanged.
-// BUILD-MELODY-01 (1.8.51): each placement plays the next note of a short phrase in the score's current key instead of the same click (SimGolf's placement tune, Sid Meier's Memoir!).
+// BUILD-MELODY-01: each placement plays the next note of a short phrase in the score's current key instead of the same click (SimGolf's placement tune, Sid Meier's Memoir!).
 const BUILD_MELODY_STEPS = [0, 3, 7, 5, 3, 7, 10, 12, 10, 7, 5, 3];
 const BUILD_MELODY_BASE_NOTE = 72;
-const SFX_VARIANT_EXEMPT = new Set(['loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','evolution','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
+const SFX_VARIANT_EXEMPT = new Set(['loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','class_unlock','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
 const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
@@ -155,23 +168,23 @@ const AUDIO_EVENT_GAPS = Object.freeze({
   cast_mage:0.075, cast_cleric:0.10, gore_death:0.065, foot_squelch:0.10,
   coin:0.045, bag:0.10, levelup:0.18, chatter_short:0.15,
   click:0.035, ui_open:0.08, ui_close:0.08, ui_buy:0.08, stat_spend:0.055, spawn_chatter:0.25,
-  caravan_arrive:1.5, troll_arrive:1.5, clown_honk:0.3, caravan_clop:0.14, heart_break:0.3, threat:1.5, wave_clear:0.5, evolution:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
+  caravan_arrive:1.5, troll_arrive:1.5, clown_honk:0.3, caravan_clop:0.14, heart_break:0.3, threat:1.5, wave_clear:0.5, class_unlock:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
 });
-const AUDIO_PRIORITY_EVENTS = new Set(['caravan_arrive','troll_arrive','clown_honk','heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','evolution','hero','legendary','levelup']);
-const AUDIO_FOCUS_EVENTS = new Set(['ui_buy','roundStart','wave_clear','threat','lose','evolution','hero','legendary','levelup']);
+const AUDIO_PRIORITY_EVENTS = new Set(['caravan_arrive','troll_arrive','clown_honk','heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
+const AUDIO_FOCUS_EVENTS = new Set(['ui_buy','roundStart','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
+// CHATTER-VOICES-01: [lowest start pitch Hz, random spread Hz] per archetype; Mages speak lowest and slowest, Archers highest.
+const CHATTER_REGISTERS = { MAGE: [280, 130], WARRIOR: [460, 160], ARCHER: [640, 220] }, CHATTER_NEUTRAL_REGISTER = [460, 220];
+const CHATTER_TEMPO = { MAGE: 1.6, WARRIOR: 1, ARCHER: 1 };
 class SoundEngine{
   constructor(){
     this.unlocked=false;
-    // CA171 — see HISTORY.md § [1.5.7] Code Archaeology, CA171
     this.activeVoiceExpiry = [];
     this.currentEventImportant = false;
     this.currentEventGain = 1;
     this.combatDuckUntil = 0;
     this.MAX_VOICES = 28;
-    // CA172 — see HISTORY.md § [1.5.7] Code Archaeology, CA172
     this.lastFamilyPlayAt = {};
     this.lastEventPlayAt = Object.create(null);
-    // CA173 — see HISTORY.md § [1.5.7] Code Archaeology, CA173
     this.debugCounters = { impactRequested: 0, impactPlayed: 0, impactSuppressed: 0, peakVoices: 0, voicesStarted: 0, priorityEvents: 0, musicLateRecoveries:0, musicSkippedSteps:0, musicWorstLatenessMs:0 };
     this.musicVoiceExpiry = [];
     this.musicStarted = false;
@@ -185,18 +198,8 @@ class SoundEngine{
     this.musicPanSide = 1;
   }
   buildMusicReverb(){
-    const rate = this.ctx.sampleRate, length = Math.floor(rate * MUSIC_REVERB_SECONDS), preDelay = Math.floor(rate * 0.018);
-    const impulse = this.ctx.createBuffer(2, length, rate);
-    for(let channel = 0; channel < 2; channel++){
-      const data = impulse.getChannelData(channel);
-      let smoothed = 0;
-      for(let i = preDelay; i < length; i++){
-        smoothed += (Math.random() * 2 - 1 - smoothed) * 0.3;
-        data[i] = smoothed * Math.pow(1 - (i - preDelay) / (length - preDelay), 2.6);
-      }
-    }
     this.musicReverb = this.ctx.createConvolver();
-    this.musicReverb.buffer = impulse;
+    this.musicReverb.buffer = buildDecayImpulse(this.ctx, MUSIC_REVERB_SECONDS, 0.018, 0.3, 2.6);
     this.musicReverbSend = this.ctx.createGain();
     this.musicReverbSend.gain.value = MUSIC_REVERB_SEND;
     this.musicReverbSend.connect(this.musicReverb);
@@ -219,10 +222,8 @@ class SoundEngine{
     if(wet && this.musicReverbSend) tail.connect(this.musicReverbSend);
     return tail;
   }
-  // CA174 — see HISTORY.md § [1.5.7] Code Archaeology, CA174
   reserveVoiceSlot(duration, delay, important=false){
     const now = this.ctx.currentTime;
-    // CA175 — see HISTORY.md § [1.5.7] Code Archaeology, CA175
     let voiceWriteIdx = 0;
     for(let i=0; i<this.activeVoiceExpiry.length; i++){
       if(this.activeVoiceExpiry[i] > now) this.activeVoiceExpiry[voiceWriteIdx++] = this.activeVoiceExpiry[i];
@@ -235,7 +236,6 @@ class SoundEngine{
     return true;
   }
   unlock(){
-    // CA176 — see HISTORY.md § [1.5.7] Code Archaeology, CA176
     if(this.unlocked){
       if(this.ctx && this.ctx.state !== 'running' && this.ctx.resume){
         this.ctx.resume().catch(function(){ /* resume failures are non-fatal — game stays playable without audio */ });
@@ -248,7 +248,7 @@ class SoundEngine{
     if(this.ctx.state !== 'running') this.ctx.resume().catch(function(){ /* resume failures are non-fatal — game stays playable without audio */ });
     this.applyMix();
   }
-  // AUDIO-PREWARM-01 (1.7.102) — see HISTORY.md § [1.7.102]: the audio graph, noise buffer and brass wave are built while the loading screen is up, so the first click only has to resume the context and start the music
+  // AUDIO-PREWARM-01: the audio graph, noise buffer and brass wave are built while the loading screen is up, so the first click only has to resume the context and start the music
   prewarm(){
     if(this.ctx || !(window.AudioContext || window.webkitAudioContext)) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -258,8 +258,17 @@ class SoundEngine{
     this.compressor.threshold.setValueAtTime(-15, this.ctx.currentTime);
     this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
     this.compressor.ratio.setValueAtTime(5, this.ctx.currentTime);
-    this.compressor.connect(this.ctx.destination);
-    // CA177 — see HISTORY.md § [1.5.7] Code Archaeology, CA177
+    this.compressor.attack.setValueAtTime(0.006, this.ctx.currentTime);
+    this.compressor.release.setValueAtTime(0.16, this.ctx.currentTime);
+    // MASTER-LIMITER-01: a fast brickwall after the glue compressor keeps dense waves from clipping the output.
+    this.limiter = this.ctx.createDynamicsCompressor();
+    this.limiter.threshold.setValueAtTime(-1.5, this.ctx.currentTime);
+    this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
+    this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+    this.limiter.attack.setValueAtTime(0.001, this.ctx.currentTime);
+    this.limiter.release.setValueAtTime(0.08, this.ctx.currentTime);
+    this.compressor.connect(this.limiter);
+    this.limiter.connect(this.ctx.destination);
     this.saturation = this.ctx.createWaveShaper();
     const curveLen = 1024, k = 1.5;
     const curve = new Float32Array(curveLen);
@@ -270,7 +279,6 @@ class SoundEngine{
     this.saturation.curve = curve;
     this.saturation.oversample = '2x';
     this.saturation.connect(this.compressor);
-    // CA178 — see HISTORY.md § [1.5.7] Code Archaeology, CA178
     this.masterEQ = this.ctx.createBiquadFilter();
     this.masterEQ.type = 'peaking';
     this.masterEQ.frequency.value = 350;
@@ -374,7 +382,7 @@ class SoundEngine{
     const tick = () => {
       if(!this.musicStarted) return;
       this.musicFrameLoadMs = (this.musicFrameLoadMs === undefined ? perfStats.frameMs : this.musicFrameLoadMs*0.9 + perfStats.frameMs*0.1);
-      const schedulerStart = performance.now(); // SCHEDULER-TIMING-01 (1.7.51): the music timer runs outside the game frame, so its cost was invisible; it is now measured
+      const schedulerStart = performance.now(); // SCHEDULER-TIMING-01
       const now = this.ctx.currentTime;
       const stepSeconds = this.musicStepSeconds();
       this.syncMusicEcho(stepSeconds, now);
@@ -434,14 +442,14 @@ class SoundEngine{
   musicStepSeconds(){
     return 60 / (this.musicPhase === 'attract' ? MUSIC_ATTRACT_TEMPO_BPM : this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2 / (1 + MUSIC_TEMPO_CREEP * (this.musicTempoCreep || 0));
   }
-  // MUSIC-LURCH-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-LURCH-01
   musicSkippedSteps(step){
     const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
     const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
     const shortBar = combat && bar % 8 === 5 && (this.musicPhase === 'boss' || bar >= 8);
     return shortBar && step % MUSIC_STEPS_PER_BAR === 5 ? 2 : 0;
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   syncMusicEcho(stepSeconds, now){
     if(!this.musicEcho || this.musicEchoStepSeconds === stepSeconds) return;
     this.musicEchoStepSeconds = stepSeconds;
@@ -474,7 +482,7 @@ class SoundEngine{
     const data = this.noiseBuffer.getChannelData(0);
     for(let i=0; i<len; i++) data[i] = Math.random()*2-1;
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   musicPercussion(time, accent, level=1){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
     const duration = accent ? 0.13 : 0.04;
@@ -576,7 +584,7 @@ class SoundEngine{
     }
     gain.gain.setValueAtTime(0.0001, startTime);
     gain.gain.linearRampToValueAtTime(peak, startTime + Math.min(duration * 0.25, type === 'reed' ? 0.028 : type === 'pluck' || type === 'fmbass' ? 0.004 : type === 'fmkeys' ? 0.008 : 0.012));
-    const sustainTime = type === 'reed' ? duration * 0.70 : Math.min(duration * 0.85, Math.max(0.04, duration * 0.42));
+    const sustainTime = type === 'reed' ? duration * 0.70 : clampNum(duration * 0.42, 0.04, duration * 0.85);
     gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak * (type === 'reed' ? 0.65 : 0.22)), startTime + sustainTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, endTime);
     osc.frequency.setValueAtTime(freq, startTime);
@@ -663,32 +671,31 @@ class SoundEngine{
     if(combat || bar >= 8) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
     this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
-    const cadence=false;
-    const degree = !combat || this.musicBarRole === 'landing' ? null : MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep];
+    // MUSIC-THEME-01: the wave theme's lead plays only in combat; the field theme is scheduled by scheduleFieldStep().
+    const degree = combat && this.musicBarRole !== 'landing' ? MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep] : null;
     if(degree !== null && !breath){
-      const keysFirst = (section === 0 || phraseBar === 2) !== (cycleIndex % 2 === 1);
-      const voice = combat ? (section === 2 && phraseBar === 2 ? 'fm' : 'brass') : (cadence ? 'reed' : keysFirst ? 'fmkeys' : 'pluck');
-      const duration=combat ? (beatStep===0 ? 0.25 : beatStep%2 ? 0.11 : 0.15) : cadence ? this.musicStepSeconds()*1.65 : voice==='reed' ? 0.28 : voice==='fmkeys' ? 0.24 : beatStep%2 ? 0.13 : 0.20;
-      const accent=beatStep===0 ? 1 : beatStep%2 ? 0.78 : 0.90;
-      const phraseGain=phraseBar===3 ? 0.82 : section===1 ? 0.94 : 1;
+      const voice = section === 2 && phraseBar === 2 ? 'fm' : 'brass';
+      const duration = beatStep === 0 ? 0.25 : beatStep % 2 ? 0.11 : 0.15;
+      const accent = beatStep === 0 ? 1 : beatStep % 2 ? 0.78 : 0.90;
+      const phraseGain = phraseBar === 3 ? 0.82 : section === 1 ? 0.94 : 1;
       const leadPitch = 38 + shift + 12 + (boss && degree % 12 === 2 ? degree - 1 : degree);
-      this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, (combat ? 0.11 : 0.095)*accent*phraseGain*(0.92 + Math.random()*0.16));
-      if(combat && (boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
-      if(combat && (boss || section > 0)) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
-      if(combat && (boss || section === 2)){
+      this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, 0.11*accent*phraseGain*(0.92 + Math.random()*0.16));
+      if((boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
+      if(boss || section > 0) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
+      if(boss || section === 2){
         this.popTone(midiToFrequency(leadPitch), time, duration, 'harmony', 0.026 * accent, true);
         this.popTone(midiToFrequency(leadPitch + 12), time + 0.002, duration * 0.8, 'bell', 0.03 * accent, true);
       }
     }
-    // MUSIC-BIP-01 (1.8.41): a very quiet high pluck answers the lead in its rests, an octave above the note it follows, on alternating rests only, so the theme keeps its breaths and gains small bips between phrases.
+    // MUSIC-BIP-01: a very quiet high pluck answers the lead in its rests, an octave above the note it follows, on alternating rests only, so the theme keeps its breaths and gains small bips between phrases.
     const echoedDegree = combat && !breath && degree === null && this.musicBarRole !== 'landing' && beatStep > 0 && (bar + beatStep) % 2 === 1 ? MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep - 1] : null;
     if(echoedDegree !== null) this.musicTone(midiToFrequency(38 + shift + 24 + echoedDegree), time + 0.004, 0.07, 'pluck', 0.02 * (0.6 + 0.4 * intensity), true);
   }
-  // MUSIC-ATTRACT-02 (1.7.104) — see HISTORY.md § [1.7.104]
+  // MUSIC-ATTRACT-02
   popTone(freq, time, duration, kind, peak, optional=false){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0 || !freq) return;
     const spec = POP_VOICES[kind], expressive = spec.vibrato && duration >= 0.3, oscillatorCount = spec.detunes.length + (spec.sub || spec.fmRatio ? 1 : 0) + (expressive ? 2 : 0), endTime = time + duration, releaseEnd = endTime + spec.release;
-    // MUSIC-LEAD-02 (1.8.22): accompaniment steps back a fifth under a sounding lead note so the melody always cuts through.
+    // MUSIC-LEAD-02: accompaniment steps back a fifth under a sounding lead note so the melody always cuts through.
     if(expressive) this.leadSoundingUntil = Math.max(this.leadSoundingUntil || 0, endTime);
     else if(MUSIC_DUCKED_KINDS.has(kind) && time < (this.leadSoundingUntil || 0)) peak *= MUSIC_LEAD_DUCK;
     if(!this.reserveMusicVoice(time, duration + spec.release, oscillatorCount, optional)) return;
@@ -704,7 +711,7 @@ class SoundEngine{
     gain.gain.setValueAtTime(Math.max(0.0001, peak * spec.sustain), swells ? sustainTime : Math.max(sustainTime, endTime));
     if(swells) gain.gain.linearRampToValueAtTime(peak * spec.sustain * MUSIC_LEAD_SWELL, endTime); // held notes bloom toward their end like a sung phrase
     gain.gain.exponentialRampToValueAtTime(0.0001, releaseEnd);
-    // MUSIC-LEAD-01 (1.8.22): sustained lead notes enter with a quick scoop from slightly flat and gain a vibrato that arrives after a short delay, the way a console lead is played.
+    // MUSIC-LEAD-01: sustained lead notes enter with a quick scoop from slightly flat and gain a vibrato that arrives after a short delay, the way a console lead is played.
     const vibratoLfo = expressive ? this.ctx.createOscillator() : null, vibratoDepth = expressive ? this.ctx.createGain() : null;
     if(expressive){
       vibratoLfo.type = 'sine'; vibratoLfo.frequency.setValueAtTime(spec.vibrato.rate, time);
@@ -780,7 +787,7 @@ class SoundEngine{
     source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
     source.start(time, 0); source.stop(time + duration + 0.02);
   }
-  // MUSIC-BUILD-DROP-01 (1.7.171): reserve the landing before optional layers; no reverb on sub-bass.
+  // MUSIC-BUILD-DROP-01: reserve the landing before optional layers; no reverb on sub-bass.
   musicBassDrop(time, root, stepSeconds, level){
     if(!this.unlocked || isMuted || audioMusicVolume <= 0) return;
     const duration = Math.min(1.2, stepSeconds * 4), frequency = midiToFrequency(root);
@@ -836,8 +843,7 @@ class SoundEngine{
     if(beatStep === 0 && bar === 3) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR, 0.32);
     if(bar === 7 || bar === 23) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, 0.8);
     let bassOffset = null;
-    if(isIntro) bassOffset = null;
-    else if(isChorus) bassOffset = beatStep % 2 ? 12 : (beatStep === 4 ? 7 : 0);
+    if(isChorus) bassOffset = beatStep % 2 ? 12 : (beatStep === 4 ? 7 : 0);
     else if(isBuild) bassOffset = 0;
     else if(MUSIC_ATTRACT_BASS[beatStep] !== undefined) bassOffset = MUSIC_ATTRACT_BASS[beatStep];
     if(bassOffset !== null && !drop && !kickOut) this.popTone(midiToFrequency(chordRoot + 12 + bassOffset), time, stepSeconds * (beatStep % 2 ? 0.55 : 0.85), 'bass', 0.062 * level);
@@ -878,10 +884,8 @@ class SoundEngine{
       }
     }
   }
-  // MUSIC-INTRO-BED-01 (1.8.58): the first four bars of the start screen had only the low melody, so the song opened thin. They now open on a soft
-  // swelling chord pad (bars 0 and 2) with a harp-like rising arpeggio from bar 1, which sets the place before the drums arrive (Diablo's composer gave
-  // every new environment at least 20 seconds to establish itself). The last bar of the cycle lays a quiet tonic chord under the final beats so the loud
-  // chorus hands over to the quiet intro instead of stopping dead.
+  // MUSIC-INTRO-BED-01: the first four bars of the start screen open on a soft swelling chord pad (bars 0 and 2) with a harp-like rising arpeggio
+  // from bar 1, which sets the place before the drums arrive (Diablo's composer gave every new environment at least 20 seconds to establish itself).
   scheduleAttractIntroBed(time, bar, beatStep, stepSeconds, chord, chordRoot, shift){
     const barSeconds = stepSeconds * MUSIC_STEPS_PER_BAR;
     if(bar < 4){
@@ -896,7 +900,7 @@ class SoundEngine{
       [0, 7, 12].forEach(interval => this.popTone(midiToFrequency(homeRoot + 12 + interval), time, barSeconds * 1.5, 'pad', 0.016, true));
     }
   }
-  // MUSIC-LAYERS-01 (1.7.105) — see HISTORY.md § [1.7.105]: the wave and boss themes gain a chord pad from the second section, a layered snare on the backbeat, and a noise riser through the last two bars of each section, so the 24 bars build instead of staying level
+  // MUSIC-LAYERS-01: the wave and boss themes gain a chord pad from the second section, a layered snare on the backbeat, and a noise riser through the last two bars of each section, so the 24 bars build instead of staying level
   scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath){
     if(beatStep === 0 && bar % 2 === 0 && bar > 0 && (section > 0 || boss)){
       const tones = musicChordTones(baseChord), padGain = (section === 2 || boss ? 0.032 : 0.024);
@@ -905,12 +909,12 @@ class SoundEngine{
       this.popTone(midiToFrequency(chord + 12 + 7), time, stepSeconds * 15.5, 'pad', padGain * 0.6, true);
     }
     if(beatStep === 4 && !breath && (section > 0 || boss)) this.popSnare(time, boss ? 0.7 : 0.5);
-    if(beatStep === 0 && bar === MUSIC_BARS - 2) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, boss ? 0.6 : 0.35); // COMBAT-RISER-01 (1.8.43): one quieter sweep per 24-bar cycle, into the key change, instead of one every 8 bars
+    if(beatStep === 0 && bar === MUSIC_BARS - 2) this.popRiser(time, stepSeconds * MUSIC_STEPS_PER_BAR * 2, boss ? 0.6 : 0.35); // COMBAT-RISER-01: one quieter sweep per 24-bar cycle, into the key change, instead of one every 8 bars
     if(beatStep === 0 && bar > 0 && bar % 8 === 0 && (section > 0 || boss)) this.scheduleHeroicPhraseHit(time, chord, boss, stepSeconds);
     if(bar % 8 === 4 && (section > 0 || boss) && !breath) this.scheduleLeitmotif(time, beatStep, chord, stepSeconds, 'brass', boss ? 0.052 : 0.044);
     this.scheduleCombatDrive(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
   }
-  // MUSIC-LEITMOTIF-01 (1.8.20): one rising call (root, fifth, octave, ninth, octave) returns in the idle score as an oboe and in the wave and boss scores as brass, so the two scores share a theme.
+  // MUSIC-LEITMOTIF-01: one rising call (root, fifth, octave, ninth, octave) returns in the idle score as an oboe and in the wave and boss scores as brass, so the two scores share a theme.
   scheduleLeitmotif(time, beatStep, root, stepSeconds, voice, gain){
     for(const [step, interval, length] of MUSIC_LEITMOTIF){
       if(step !== beatStep) continue;
@@ -919,14 +923,14 @@ class SoundEngine{
       this.popTone(midiToFrequency(root + 24 + interval), time + 0.004, stepSeconds * length, 'bell', gain * 0.35, true);
     }
   }
-  // MUSIC-HEROIC-01 (1.8.19): every eighth bar of the wave and boss themes lands as a full orchestral hit, a crash, a timpani stroke and a held brass power chord (root, fifth, octave) that rings for two bars.
+  // MUSIC-HEROIC-01: every eighth bar of the wave and boss themes lands as a full orchestral hit, a crash, a timpani stroke and a held brass power chord (root, fifth, octave) that rings for two bars.
   scheduleHeroicPhraseHit(time, chord, boss, stepSeconds){
     this.musicCrash(time, boss ? 1 : 0.75);
     this.musicTone(MUSIC_TIMPANI_HZ, time, 0.42, 'kick', boss ? 0.16 : 0.13);
     const hold = stepSeconds * MUSIC_STEPS_PER_BAR * 2;
     for(const [interval, gain] of [[12, 0.055], [19, 0.048], [24, 0.042]]) this.musicTone(midiToFrequency(chord + interval), time, hold, 'brass', gain * (boss ? 1.15 : 1), true);
   }
-  // COMBAT-DRIVE-01 (1.7.116): the wave and boss themes gain the engines of the late-era action scores: a galloping sixteenth bass with octave jumps and a chromatic lift (Ys, Soldier Blade), a high pedal ostinato alternating fifth and tonic (Monster Hunter), power-chord stabs on each second bar, a crescendo snare roll into every eighth bar, and a flat-fifth stab on boss off-beats.
+  // COMBAT-DRIVE-01: the wave and boss themes gain the engines of the late-era action scores: a galloping sixteenth bass with octave jumps and a chromatic lift (Ys, Soldier Blade), a high pedal ostinato alternating fifth and tonic (Monster Hunter), power-chord stabs on each second bar, a crescendo snare roll into every eighth bar, and a flat-fifth stab on boss off-beats.
   scheduleCombatDrive(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath){
     const half = stepSeconds / 2, intensity = this.musicIntensity || 0, driving = boss || section > 0;
     if(driving && !breath){
@@ -954,13 +958,13 @@ class SoundEngine{
       this.musicTone(midiToFrequency(chord + 18), time + half, stepSeconds * 0.8, 'brass', 0.05, true);
     }
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   scheduleCombatHats(time, beatStep, stepSeconds, level){
     if(beatStep % 2 === 0){ this.musicOpenHat(time, level); return; }
     this.musicPercussion(time, false, level * 0.6);
     this.musicPercussion(time + stepSeconds / 2, false, level * 0.8);
   }
-  // MUSIC-STING-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-STING-01
   scheduleMusicSting(time, shift, stepSeconds, boss){
     const tonic = 38 + shift + 24, level = boss ? 1.25 : 1, dropTime = time + MUSIC_STING_DROP_STEP * stepSeconds;
     for(const [step, lowerOffset, upperOffset, gain] of MUSIC_STING_PICKUPS){
@@ -975,7 +979,7 @@ class SoundEngine{
     this.musicCrash(dropTime, level);
     for(const interval of [0, 7, 12]) this.musicTone(midiToFrequency(tonic + interval), dropTime, stepSeconds * 6, 'brass', 0.075 * level);
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   scheduleMusicArpeggio(time, baseRoot, shiftedRoot, beatStep, stepSeconds, level){
     const tones = musicChordTones(baseRoot);
     for(let half = 0; half < 2; half++){
@@ -984,12 +988,12 @@ class SoundEngine{
       this.musicTone(midiToFrequency(pitch), time + half * stepSeconds / 2, stepSeconds * 0.42, 'pluck', 0.03 * level * (half ? 0.8 : 1), true);
     }
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat){
     if(beatStep !== 0 || bar % 8 !== 0 || (bar === 0 && cycleIndex === 0)) return;
     this.musicCrash(time, combat ? 1 : 0.6);
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   scheduleDrumFill(time, bar, beatStep, stepSeconds, level){
     const majorFill = bar % 8 === 7;
     if(!(majorFill || level >= 1 && bar % 4 === 3) || beatStep < (majorFill ? 4 : 6)) return;
@@ -998,7 +1002,7 @@ class SoundEngine{
       this.musicTone(MUSIC_TOM_PITCHES[Math.min(MUSIC_TOM_PITCHES.length - 1, Math.floor(hitIndex / 2))], time + half * stepSeconds / 2, 0.11, 'kick', (majorFill ? 0.1 : 0.07) * level);
     }
   }
-  // MUSIC-DRIVE-01 (1.7.98) — see HISTORY.md § [1.7.98]
+  // MUSIC-DRIVE-01
   scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat){
     if(bar !== MUSIC_BARS - 1 || beatStep < 4) return;
     const incomingTonic = 38 + musicKeyShift(cycleIndex + 1) + 24;
@@ -1008,7 +1012,7 @@ class SoundEngine{
       this.musicTone(midiToFrequency(incomingTonic + MUSIC_TURNAROUND_RUN[runIndex]), time + half * stepSeconds / 2, stepSeconds * 0.45, combat ? 'brass' : 'reed', (combat ? 0.1 : 0.075) * lift);
     }
   }
-  // IDLE-LAYERS-01, MUSIC-BUILD-DROP-01 (1.7.171): later sections add chord arpeggios, 3+3+2 stabs and phrase answers. Decorative bells are removed; risers resolve into pitched bass at bars 8 and 16, leaving the last eighth-note clear.
+  // IDLE-LAYERS-01, MUSIC-BUILD-DROP-01: later sections add chord arpeggios, 3+3+2 stabs and phrase answers.
   scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath){
     const tones = musicChordTones(baseRoot), half = stepSeconds / 2, tonic = root - baseRoot + 38;
     if(section >= 1 && !breath){
@@ -1037,7 +1041,7 @@ class SoundEngine{
     }
     if(beatStep === 0 && (bar === 6 || bar === 14)) this.popRiser(time, stepSeconds * (MUSIC_STEPS_PER_BAR * 2 - 1), 0.4);
   }
-  // FIELD-VARIATION-01 (1.7.36): the idle theme never plays the same 24 bars twice. Four arrangements rotate cycle by cycle (theme, answer,
+  // FIELD-VARIATION-01: the idle theme never plays the same 24 bars twice. Four arrangements rotate cycle by cycle (theme, answer,
   // contrast, development), each with its own melody treatment, bass pattern, drums and harmony, and every bar draws its small decisions from a
   // seeded generator, so it varies but is exactly repeatable.
   scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath){
@@ -1108,24 +1112,15 @@ class SoundEngine{
     if(arrangement === 2 && beatStep % 2 === 0) this.musicTone(midiToFrequency(pitch - 12), time + stepSeconds, 0.2, 'fmkeys', 0.03);
     if(arrangement === 3 && beatStep === 5 && (phraseBar === 1 || phraseBar === 2)) this.musicTone(midiToFrequency(root + 24 + [0, 3, 7][bar % 3]), time + 0.004, 0.14, 'pluck', 0.03);
   }
-  // CA179 — see HISTORY.md § [1.5.7] Code Archaeology, CA179
   initReverb(){
     if(this.reverbNode) return;
-    const len = Math.floor(this.ctx.sampleRate * 0.9);
-    const buf = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
-    for(let ch=0; ch<2; ch++){
-      const data = buf.getChannelData(ch);
-      for(let i=0; i<len; i++) data[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.2);
-    }
     this.reverbNode = this.ctx.createConvolver();
-    this.reverbNode.buffer = buf;
+    this.reverbNode.buffer = buildDecayImpulse(this.ctx, SFX_REVERB_SECONDS, SFX_REVERB_PREDELAY_S, SFX_REVERB_SMOOTHING, 2.2);
     this.reverbGain = this.ctx.createGain();
     this.reverbGain.gain.value = 0.35;
     this.reverbNode.connect(this.reverbGain);
-    // CA180 — see HISTORY.md § [1.5.7] Code Archaeology, CA180
     this.reverbGain.connect(this.sfxBus || this.master);
   }
-  // CA181 — see HISTORY.md § [1.5.7] Code Archaeology, CA181
   panFor(worldX){
     if(worldX === undefined || typeof camera === 'undefined') return 0;
     const screenX = worldX*camera.zoom + camera.x;
@@ -1150,7 +1145,6 @@ class SoundEngine{
     gain.linearRampToValueAtTime(0.55,now+0.16);
     gain.linearRampToValueAtTime(1,now+0.30);
   }
-  // CA182 — see HISTORY.md § [1.5.7] Code Archaeology, CA182
   duck(amountDb, durationSec){
     if(!this.unlocked || isMuted || this.musicPaused || this.musicBaseGain <= 0) return;
     const now = this.ctx.currentTime;
@@ -1169,9 +1163,7 @@ class SoundEngine{
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type || 'sine';
-    // CA183 — see HISTORY.md § [1.5.7] Code Archaeology, CA183
     const detune = stablePitch ? 1 : this.sfxVariantPitch * Math.pow(2, ((Math.random()-0.5)*80) / 1200);
-    // CA184 — see HISTORY.md § [1.5.7] Code Archaeology, CA184
     const t0 = this.ctx.currentTime + (delay || 0);
     osc.frequency.setValueAtTime(freq*detune, t0);
     if(freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd*detune), t0+duration);
@@ -1198,21 +1190,19 @@ class SoundEngine{
     if(!this.unlocked) return;
     if(isMuted || audioSfxVolume <= 0) return;
     if(!this.reserveVoiceSlot(duration, delay, this.currentEventImportant)) return;
-    // CA185 — see HISTORY.md § [1.5.7] Code Archaeology, CA185
     this.ensureNoiseBuffer();
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuffer;
     const maxOffset = Math.max(0, this.noiseBuffer.duration - duration - 0.01);
     const offset = Math.random() * maxOffset;
     const envelope = this.ctx.createGain();
-    // CA186 — see HISTORY.md § [1.5.7] Code Archaeology, CA186
     const peak = (gainMult !== undefined ? gainMult : 0.35) * this.currentEventGain * (0.92+Math.random()*0.16);
     const t0 = this.ctx.currentTime + (delay || 0);
     envelope.gain.setValueAtTime(0, t0);
     envelope.gain.linearRampToValueAtTime(peak,t0+Math.min(0.002,duration*0.1));
     envelope.gain.linearRampToValueAtTime(0, t0 + duration);
     const filter = this.ctx.createBiquadFilter();
-    filter.type = filterType || 'lowpass'; filter.frequency.value = Math.min(this.ctx.sampleRate*0.45,(filterFreq || 1200)*this.sfxVariantNoise*(0.95+Math.random()*0.10));
+    filter.type = filterType || 'lowpass'; filter.frequency.value = Math.min(this.ctx.sampleRate*0.45,(filterFreq || 1200)*this.sfxVariantNoise*(0.95+Math.random()*0.10)*(filter.type === 'lowpass' ? SFX_DISTANCE_DARKEN_FLOOR + (1 - SFX_DISTANCE_DARKEN_FLOOR)*this.currentEventGain : 1));
     let node = filter;
     if(pan){
       const panner = this.ctx.createStereoPanner();
@@ -1247,7 +1237,7 @@ class SoundEngine{
       this.lastEventPlayAt[name] = now;
     }
     if(AUDIO_FOCUS_EVENTS.has(name)) this.focusCue();
-    // SFX-VARIANT-01 (1.7.36): the same event never plays the same variant twice in a row. Each variant shifts the pitch of the unpinned tones by whole
+    // SFX-VARIANT-01: the same event never plays the same variant twice in a row. Each variant shifts the pitch of the unpinned tones by whole
     // semitones and the colour of the noise layers, so repeated hits, shots and deaths stop sounding like one recording on loop.
     if(!SFX_VARIANT_EXEMPT.has(name)){
       const used = this.lastSfxVariant[name];
@@ -1258,12 +1248,11 @@ class SoundEngine{
     } else { this.sfxVariantPitch = 1; this.sfxVariantNoise = 1; }
     const eventPan = this.panFor(worldX);
     switch(name){
-      // ---- generic / legacy (still used for hit-flash, kills, waves, etc.) ----
+      // ---- shared cues: hits, kills, waves and milestones ----
       case 'bow':   this.tone(900,0.10,'sawtooth',150); break;
       case 'hit':   this.tone(300,0.06,'square',100); break;
       case 'death': this.noise(0.15); break;
       case 'gore_death': {
-        // CA187 — see HISTORY.md § [1.5.7] Code Archaeology, CA187
         const panD = this.panFor(worldX);
         const wetness = 1 + Math.min(1.2, (intensity||1) - 1)*0.4;
         this.noise(0.13*wetness, 650, 'lowpass', panD);
@@ -1272,7 +1261,6 @@ class SoundEngine{
         break;
       }
       case 'foot_squelch': {
-        // CA188 — see HISTORY.md § [1.5.7] Code Archaeology, CA188
         const panF = this.panFor(worldX);
         const wet = 1 + (intensity||0)*0.35;
         this.noise(0.055*wet, 850, 'lowpass', panF);
@@ -1307,7 +1295,7 @@ class SoundEngine{
       }
       case 'chop':  this.tone(150,0.08,'square',80); break;
       case 'heart_break':
-        // HEART-BREAK-01 (1.7.74): a broken heart reaches the lives counter: a dry little crack, then two soft falling notes (a sinking minor second), clear but not loud.
+        // HEART-BREAK-01: a broken heart reaches the lives counter: a dry little crack, then two soft falling notes (a sinking minor second), clear but not loud.
         this.duck(-1.5, 0.3);
         this.noise(0.035, 2600, 'bandpass', 0, false, 0, 0.09);
         this.tone(466, 0.22, 'triangle', 440, 0, true, 0.02, true, true, 0.11);
@@ -1316,22 +1304,19 @@ class SoundEngine{
         break;
       case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
       case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
-      case 'evolution': // unlocking a new tower type — one of the rarest, most exciting events in
-        // CA190 — see HISTORY.md § [1.5.7] Code Archaeology, CA190
+      case 'class_unlock': // unlocking a new tower type, one of the rarest moments in a run
         this.duck(-4, 0.4);
         this.tone(440, 0.10, 'sine', 660, undefined, true, undefined, true, true);
         this.tone(660, 0.12, 'sine', 880, 0, true, 0.08, true, true);
         this.tone(880, 0.20, 'sine', 1320, 0, true, 0.16, true, true);
         this.tone(1320, 0.16, 'sine', 1760, 0, true, 0.18, true, true); // sparkle harmonic, slightly overlapping the third note
         break;
-      case 'hero': // a tower's 6th item slot fills, awakening it into a Hero — previously reused
-        // CA191 — see HISTORY.md § [1.5.7] Code Archaeology, CA191
+      case 'hero': // a tower's 6th item slot fills, awakening it into a Hero
         this.duck(-2.5, 0.25);
         this.tone(440, 0.08, 'sine', 660, undefined, true, undefined, true, true);
         this.tone(660, 0.16, 'sine', 990, 0, true, 0.06, true, true);
         break;
-      case 'legendary': // reaching 100 total stats — permanent, named by the player, and the
-        // CA192 — see HISTORY.md § [1.5.7] Code Archaeology, CA192
+      case 'legendary': // a stickman becomes fully trained, or mixes a new element
         this.duck(-5, 0.6);
         this.tone(440, 0.10, 'sine', 660, undefined, true, undefined, true, true);
         this.tone(660, 0.10, 'sine', 880, 0, true, 0.07, true, true);
@@ -1340,7 +1325,6 @@ class SoundEngine{
         this.tone(1760, 0.55, 'sine', undefined, 0, true, 0.28, true, true); // sustained double-stop, note 1
         this.tone(2200, 0.55, 'sine', undefined, 0, true, 0.30, true, true); // sustained double-stop, note 2 — held together with the note above for the conclusive chord
         break;
-
       // ---- per-class melee attacks ----
       case 'swing_blade':
         this.noise(0.065, 1800, 'bandpass', eventPan, false, 0, 0.18);
@@ -1409,8 +1393,8 @@ class SoundEngine{
         this.tone(277, 0.10, 'triangle', 247, eventPan, false, 0.10, true, true, 0.12);
         break;
       case 'countdown_tick': {
-        // COUNTDOWN-MUSICAL-01 (1.7.69): each number of the 3-2-1 is a soft, rising pluck in D minor (D, F, A, the same key the combat score sits in), with a quiet shimmer an
-        // octave up, a gentle low pulse and a tiny clock tick. It gets a little louder with each number and all of it stays well under the music, then GO resolves it.
+        // COUNTDOWN-MUSICAL-01: each number of the 3-2-1 is a soft, rising pluck in D minor (D, F, A, the same key the combat score sits in), with a quiet shimmer an
+        // octave up, a gentle low pulse and a tiny clock tick.
         const countdownStep = Math.max(0, Math.min(2, Math.round(intensity || 0)));
         const pluckHz = [587.33, 698.46, 880][countdownStep], pluckAmp = 0.05 + 0.012 * countdownStep;
         this.tone(pluckHz, 0.34, 'triangle', undefined, 0, true, 0, true, true, pluckAmp);
@@ -1420,7 +1404,7 @@ class SoundEngine{
         break;
       }
       case 'countdown_go':
-        // COUNTDOWN-MUSICAL-01 (1.7.69): the resolution: the D minor figure opens into a bright D major chord (D, A, D, F sharp) over a low D, softly swelled.
+        // COUNTDOWN-MUSICAL-01: the resolution: the D minor figure opens into a bright D major chord (D, A, D, F sharp) over a low D, softly swelled.
         this.tone(293.66, 0.7, 'triangle', undefined, 0, true, 0, true, true, 0.065);
         this.tone(440, 0.7, 'triangle', undefined, 0, true, 0.02, true, true, 0.055);
         this.tone(587.33, 0.6, 'sine', undefined, 0, true, 0.04, true, true, 0.05);
@@ -1471,12 +1455,11 @@ class SoundEngine{
         this.tone(659.25, 0.2, 'triangle', undefined, 0, true, 0.72, true, true, 0.08);
         break;
       case 'wave_clear': {
-        // WAVE-CLEAR-FANFARE-01 (1.7.36): a layered victory fanfare — rising brass arpeggio, a held major chord with octave bass,
+        // WAVE-CLEAR-FANFARE-01: a layered victory fanfare — rising brass arpeggio, a held major chord with octave bass,
         // timpani hits and a cymbal swell, transposed to the key the music is currently in.
         this.duck(-4, 1.8);
         const ratio = Math.pow(2, (this.musicShift || 0) / 12);
-        // The owner likes the original wave-clear twang (a soft sine and triangle C, E, G arpeggio, the Animal Crossing meets DOS flavour),
-        // so it stays as the opening of the new fanfare rather than being replaced (add-only).
+        // The fanfare opens on the wave-clear twang: a soft sine and triangle C, E, G arpeggio.
         this.tone(523.25*ratio, 0.08, 'sine', undefined, 0, false, 0, true, true, 0.14);
         this.tone(659.25*ratio, 0.10, 'sine', undefined, 0, false, 0.075, true, true, 0.12);
         this.tone(784*ratio, 0.16, 'triangle', undefined, 0, false, 0.15, true, true, 0.10);
@@ -1494,8 +1477,6 @@ class SoundEngine{
         this.noise(0.18, 260, 'lowpass', 0, false, 0, 0.2);
         break;
       }
-
-      // CA196 — see HISTORY.md § [1.5.7] Code Archaeology, CA196
       case 'footstep': {
         const nowFS = this.ctx.currentTime;
         if(this.lastFootstepAt !== undefined && nowFS - this.lastFootstepAt < 0.07) break; // another step already played too recently — skip, don't queue
@@ -1506,13 +1487,11 @@ class SoundEngine{
         this.noise(0.03 + w*0.02, 550 - w*160, 'lowpass', panFS, undefined, undefined, gainByWeight);
         break;
       }
-      case 'enrage': // a tough enemy (Boss/Troll) crossing a low-HP threshold — a low, snarling
-        // CA197 — see HISTORY.md § [1.5.7] Code Archaeology, CA197
+      case 'enrage': // a tough enemy (Boss or Troll) crossing a low-health threshold: a low snarl
         this.tone(180, 0.35, 'sawtooth', 55, this.panFor(worldX), true);
         this.noise(0.3, 220, 'lowpass', this.panFor(worldX), true);
         break;
-
-      // CARAVAN-SOUND-01 (1.7.100): the merchant's arrival is a run of bright sleigh bells, a two-note horn and a hoof clatter; each step on the road is a woody double clop
+      // CARAVAN-SOUND-01: the merchant's arrival is a run of bright sleigh bells, a two-note horn and a hoof clatter; each step on the road is a woody double clop
       case 'caravan_arrive': {
         const arrivalPan = this.panFor(worldX);
         [1568, 1976, 2349, 1976, 2637, 3136, 2637, 3136].forEach((bell, index) => this.tone(bell, 0.16, 'triangle', undefined, arrivalPan, true, index*0.075, true, true, 0.05));
@@ -1542,9 +1521,8 @@ class SoundEngine{
         this.noise(0.03, 800, 'bandpass', clopPan, false, 0.13, 0.09);
         break;
       }
-      // CA198 — see HISTORY.md § [1.5.7] Code Archaeology, CA198
       case 'loot_drop': {
-        const noteCount = Math.max(2, Math.min(4, intensity || 2)), rootPitch = 79 + (this.musicShift || 0);
+        const noteCount = clampNum(intensity || 2, 2, 4), rootPitch = 79 + (this.musicShift || 0);
         for(let note = 0; note < noteCount; note++){ const noteFrequency = midiToFrequency(rootPitch + [0, 4, 7, 12][note]); this.tone(noteFrequency,0.16,'sine',undefined,eventPan,true,note*0.07,true,true,0.07); this.tone(noteFrequency*2,0.12,'triangle',undefined,eventPan,false,note*0.07+0.01,true,true,0.025); }
         break;
       }
@@ -1559,22 +1537,14 @@ class SoundEngine{
       case 'ui_close': this.tone(1174.66,0.040,'triangle',undefined,0,false,0,true,true,0.055); this.tone(783.99,0.055,'sine',undefined,0,false,0.025,true,true,0.04); break;
       case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true, true); break; // purchase — cheerful two-note chime
       case 'ui_deny':   this.tone(220, 0.075, 'triangle', 140, 0, false, 0, true, true, 0.14); break; // blocked/disabled action — low buzz
-      case 'stat_spend': // allocating a stat point — deliberately warmer and more lingering than
-        // CA199 — see HISTORY.md § [1.5.7] Code Archaeology, CA199
+      case 'stat_spend': // allocating a stat point: warmer and longer than a click
         this.tone(440, 0.18, 'sine', 550, undefined, true, undefined, true);
         this.tone(660, 0.22, 'sine', 720, 0, true, 0.03, true);
         break;
-      case 'spawn_chatter': { // a tower's spoken moment — spawn quip, taking a hit, leveling up —
-        // CA200 — see HISTORY.md § [1.5.7] Code Archaeology, CA200
+      case 'spawn_chatter': { // a stickman's spoken moment when built or selected: two short gibberish words
         const panCh = this.panFor(worldX);
-        const registers = {
-          MAGE:    [280, 130], // lowest register
-          WARRIOR: [460, 160], // medium
-          ARCHER:  [640, 220]  // highest, quickest
-        };
-        const tempoMults = { MAGE: 1.6, WARRIOR: 1.0, ARCHER: 1.0 }; // Mage alone talks noticeably slower
-        const register = registers[intensity] || [460, 220]; // unrecognized/no archetype — a neutral middle register
-        const tempoMult = tempoMults[intensity] || 1.0;
+        const register = CHATTER_REGISTERS[intensity] || CHATTER_NEUTRAL_REGISTER;
+        const tempoMult = CHATTER_TEMPO[intensity] || 1;
         const basePitch = register[0] + Math.random()*register[1];
         const partDirection = Math.random() < 0.5 ? 1 : -1; // which part is the higher one
         const partShift = 70 + Math.random()*90; // how far apart the two parts' registers sit
@@ -1592,17 +1562,14 @@ class SoundEngine{
         }
         break;
       }
-      case 'chatter_short': { // a quick reactive "word" — taking a hit or leveling up — distinct
-        // CA201 — see HISTORY.md § [1.5.7] Code Archaeology, CA201
+      case 'chatter_short': { // a quick reactive word when hit or levelling up, shorter than spawn_chatter
         const panSh = this.panFor(worldX);
-        const registersSh = { MAGE: [280, 130], WARRIOR: [460, 160], ARCHER: [640, 220] };
-        const tempoMultsSh = { MAGE: 1.6, WARRIOR: 1.0, ARCHER: 1.0 };
         const archS = (intensity && intensity.archetype) || null;
-        const registerSh = registersSh[archS] || [460, 220];
-        const tempoMultSh = tempoMultsSh[archS] || 1.0;
+        const registerSh = CHATTER_REGISTERS[archS] || CHATTER_NEUTRAL_REGISTER;
+        const tempoMultSh = CHATTER_TEMPO[archS] || 1;
         const pitchBias = (intensity && intensity.pitchBias) || 0; // e.g. -40 for a hit reaction, +40 for a level-up
         const basePitchSh = registerSh[0] + Math.random()*registerSh[1] + pitchBias;
-        const syllables = 1 + Math.floor(Math.random()*2); // 1-2 — noticeably shorter than spawn_chatter's 4-6
+        const syllables = 1 + Math.floor(Math.random()*2); // 1-2 syllables against spawn_chatter's 4-6
         let tSh = 0;
         for(let i = 0; i < syllables; i++){
           const startFreq = basePitchSh + (Math.random()-0.5)*80;
@@ -1620,12 +1587,7 @@ const audioEngine = new SoundEngine();
    SOUND EFFECT DISPATCH AND AUDIO UNLOCK
    ========================================================= */
 function playSound(name, worldX, intensity, worldY){ audioEngine.play(name, worldX, intensity, worldY); }
-// CA202 — see HISTORY.md § [1.5.7] Code Archaeology, CA202
-function isImportantAudioEvent(eventType, context){
-  if(context && (context.isBoss || context.isSelectedTower || context.isCritical)) return true;
-  if(AUDIO_PRIORITY_EVENTS.has(eventType)) return true;
-  return false;
-}
+function isImportantAudioEvent(eventType){ return AUDIO_PRIORITY_EVENTS.has(eventType); }
 function towerAudioBias(towerId){
   if(towerId === undefined) return 1;
   const h = ((towerId * 2654435761) >>> 0) % 1000;
@@ -1649,7 +1611,6 @@ function synthesizeImpactSound(archOrWeapon, worldX, hitPower, isCritical, tower
   audioEngine.debugCounters.impactRequested++;
   const hp = clampNum(hitPower || 1, 0.3, 2.2);
   const bigMoment = !!isCritical || hp > 1.4; // routes a reverb send for real weight only on genuinely big hits, not every routine tick
-  // CA203 — see HISTORY.md § [1.5.7] Code Archaeology, CA203
   const nowIS = audioEngine.ctx.currentTime;
   const lastPlay = audioEngine.lastFamilyPlayAt[archOrWeapon];
   if(lastPlay !== undefined && nowIS - lastPlay < (audioEngine.currentEventImportant ? 0.018 : 0.035)){
@@ -1657,13 +1618,10 @@ function synthesizeImpactSound(archOrWeapon, worldX, hitPower, isCritical, tower
     return;
   }
   audioEngine.lastFamilyPlayAt[archOrWeapon] = nowIS;
-
   const pan = audioEngine.panFor(worldX);
   const bias = towerAudioBias(towerId);
-  // CA204 — see HISTORY.md § [1.5.7] Code Archaeology, CA204
   const thinSecondary = gameSpeed >= 5 && !bigMoment;
   if(archOrWeapon === 'BLADE'){
-    // CA205 — see HISTORY.md § [1.5.7] Code Archaeology, CA205
     if(!thinSecondary) audioEngine.noise(0.05 + hp*0.02, (3200 + hp*800)*bias, 'highpass', pan, bigMoment);
     audioEngine.tone((500 + hp*80)*bias, 0.05, 'triangle', 180*bias, pan);
   } else if(archOrWeapon === 'BLUNT'){
@@ -1671,15 +1629,12 @@ function synthesizeImpactSound(archOrWeapon, worldX, hitPower, isCritical, tower
     if(!thinSecondary) audioEngine.noise(0.09 + hp*0.03, (300 + hp*100)*bias, 'lowpass', pan, bigMoment);
     audioEngine.tone((110 + hp*20)*bias, 0.1 + hp*0.03, 'sine', 45*bias, pan);
   } else if(archOrWeapon === 'PIERCE'){
-    // CA206 — see HISTORY.md § [1.5.7] Code Archaeology, CA206
     if(!thinSecondary) audioEngine.noise(0.04, 4200*bias, 'highpass', pan, bigMoment);
     audioEngine.tone((700 + hp*100)*bias, 0.04, 'triangle', 300*bias, pan);
   } else if(archOrWeapon === 'ARCHER'){
-    // CA207 — see HISTORY.md § [1.5.7] Code Archaeology, CA207
     if(!thinSecondary) audioEngine.noise(0.04, 2200*bias, 'bandpass', pan);
     audioEngine.tone((340 + hp*40)*bias, 0.04, 'triangle', 200*bias, pan);
   } else if(archOrWeapon === 'MAGE'){
-    // CA208 — see HISTORY.md § [1.5.7] Code Archaeology, CA208
     audioEngine.tone((1400 + hp*200)*bias, 0.09, 'sine', 500*bias, pan, bigMoment);
     if(!thinSecondary) audioEngine.noise(0.08 + hp*0.04, (500 + hp*150)*bias, 'bandpass', pan, bigMoment);
     audioEngine.tone((80 + hp*15)*bias, 0.12 + hp*0.04, 'sine', 45*bias, pan, bigMoment);
@@ -1688,7 +1643,7 @@ function synthesizeImpactSound(archOrWeapon, worldX, hitPower, isCritical, tower
     audioEngine.tone(70 + hp*10, 0.14, 'sine', 35, pan, true);
   }
 }
-function tryAutoplayAudio(){ // AUTOPLAY-APP-01 (1.8.11) — see CHANGELOG.md § [1.8.11]: installed apps allow sound without a click, so their music starts with the loading screen
+function tryAutoplayAudio(){ // AUTOPLAY-APP-01
   audioEngine.prewarm();
   const installedApp = window.STICKTD_PLATFORM === 'desktop-app' || window.STICKTD_PLATFORM === 'android-app';
   if(!audioEngine.ctx || !(installedApp || (navigator.userActivation && navigator.userActivation.hasBeenActive))) return;
@@ -1700,5 +1655,5 @@ function tryAutoplayAudio(){ // AUTOPLAY-APP-01 (1.8.11) — see CHANGELOG.md §
 }
 function unlockAudio(){
   audioEngine.unlock();
-  if(gameState === 'START'){ audioEngine.setMusicPhase('attract'); audioEngine.startMusic(); } // MUSIC-ATTRACT-01 (1.7.100): the start screen plays from the first click, so the music is what draws a visitor in
+  if(gameState === 'START'){ audioEngine.setMusicPhase('attract'); audioEngine.startMusic(); } // MUSIC-ATTRACT-01
 }

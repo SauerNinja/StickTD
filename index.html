@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.69">
+<meta name="application-version" content="1.8.90">
 <title>StickTD — Free Stickman Tower Defense Game, No Download</title>
 <meta name="description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, stickman games, tower defense game, free tower defense, browser tower defense game, tower defense online, no download games, free strategy game">
@@ -81,7 +81,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.69",
+  "softwareVersion": "1.8.90",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -95,14 +95,13 @@
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){window.dataLayer.push(arguments);}
-  // CA001 — see HISTORY.md § [1.5.7] Code Archaeology, CA001
   gtag('consent', 'default', {
     'analytics_storage': 'denied',
     'ad_storage': 'denied',
     'ad_user_data': 'denied',
     'ad_personalization': 'denied'
   });
-  // PLATFORM-DETECT-02 (1.6.162) — see HISTORY.md § [1.6.162] Analytics source labels, PLATFORM-DETECT-02.
+  // PLATFORM-DETECT-02
   // One Analytics stream records the host or known platform referral on each game event.
   window.detectPlayPlatform = function(hostname, referrer, isEmbedded, search){
     function platformForHost(host){
@@ -126,7 +125,7 @@
     return 'other';
   };
   window.STICKTD_PLATFORM = window.detectPlayPlatform(location.hostname, document.referrer, window.top !== window, location.search);
-  // ANALYTICS-BUILD-01 (1.8.14): names the exact build, e.g. windows-x64, macos-arm64, linux-arm64, android or web. The desktop shell passes os and arch in the page address.
+  // ANALYTICS-BUILD-01: names the exact build, e.g. windows-x64, macos-arm64, linux-arm64, android or web. The desktop shell passes os and arch in the page address.
   window.STICKTD_BUILD = (function(){
     var query = new URLSearchParams(location.search);
     if(window.STICKTD_PLATFORM === 'desktop-app'){
@@ -136,7 +135,7 @@
     }
     return window.STICKTD_PLATFORM === 'android-app' ? 'android' : 'web';
   })();
-  // ANALYTICS-LABEL-01 (1.8.27): every report names where and what is being played in one pattern, <platform>/<build> (github-pages/web, itch.io/web, desktop-app/windows-x64). The page title and page address in Analytics are built from it, and referrer_site names the site that sent the player in the same short form.
+  // ANALYTICS-LABEL-01: every report names where and what is being played in one pattern, <platform>/<build> (github-pages/web, itch.io/web, desktop-app/windows-x64). The page title and page address in Analytics are built from it, and referrer_site names the site that sent the player in the same short form.
   window.STICKTD_PLAY_LABEL = window.STICKTD_PLATFORM + '/' + window.STICKTD_BUILD;
   window.STICKTD_REFERRER_SITE = (function(){
     var host = '';
@@ -146,7 +145,7 @@
     for(var i = 0; i < sites.length; i++) if(sites[i][1].test(host)) return sites[i][0];
     return 'other';
   })();
-  // ANALYTICS-ACCURACY-01 (1.7.168): one destination; no pre-consent event replay.
+  // ANALYTICS-ACCURACY-01: one destination; no pre-consent event replay.
   var STICKTD_MEASUREMENT_ID = 'G-B6H58BQ50N';
   var analyticsVersion = document.querySelector('meta[name="application-version"]').content;
   window['ga-disable-' + STICKTD_MEASUREMENT_ID] = true;
@@ -226,9 +225,13 @@
         if(typeof value === 'boolean') value = value ? 1 : 0;
         if(typeof value === 'number' && !Number.isFinite(value)) return;
         if(typeof value !== 'string' && typeof value !== 'number') return;
-        if(!(key in clean) && Object.keys(clean).length >= 24) return;
         clean[key] = typeof value === 'string' ? value.slice(0, key === 'page_location' || key === 'page_referrer' ? 1000 : 100) : value;
       });
+      // ANALYTICS-PARAM-BUDGET-01: GA4 keeps 25 parameters per event (24 plus send_to). Over budget, the labels that can be derived go first
+      // (play_label is platform/build, telemetry_schema is constant, event_group follows from the event name), so measured values are never dropped.
+      var derivable = ['telemetry_schema', 'play_label', 'event_group'];
+      for(var d = 0; d < derivable.length && Object.keys(clean).length > 24; d++) delete clean[derivable[d]];
+      Object.keys(clean).slice(24).forEach(function(key){ delete clean[key]; });
       clean.send_to = STICKTD_MEASUREMENT_ID;
       if(window.sticktdAnalyticsStatus === 'loading') analyticsPendingEvents++;
       gtag('event', name, clean);
@@ -245,10 +248,9 @@
     window.trackEvent('game_error', { error_kind:kind, error_type:category, line:line || 0, event_group:'diagnostics' });
   };
   window.addEventListener('unhandledrejection', function(e){ window.reportAnalyticsError('promise', 0, e.reason && e.reason.name); });
-
 </script>
 <script>
-  // SCRIPT-LOAD-01 (1.8.6): a game script that fails to load stops the game, so say which file.
+  // SCRIPT-LOAD-01: a game script that fails to load stops the game, so say which file.
   window.addEventListener('error', function(e){
     var target = e.target;
     var gameScripts = location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '') + 'js/';
@@ -258,8 +260,9 @@
     note.textContent = 'StickTD could not load ' + target.src.split('/').slice(-2).join('/').split('?')[0] + '.\nCheck the connection and reload the page.';
     (document.body || document.documentElement).appendChild(note);
   }, true);
-  // CA003 — see HISTORY.md § [1.5.7] Code Archaeology, CA003
   window.addEventListener('error', function(e){
+    // ERROR-OVERLAY-SCOPE-01: a cross-origin script (the Analytics tag) reports only "Script error." with no file or error object; it cannot stop the game, so it never covers it.
+    if(!e.error && !e.filename && /^Script error\.?$/.test(e.message || '')) return;
     var box = document.createElement('div');
     box.style.cssText = 'position:fixed;inset:0;background:#1a0000;color:#fff;font-family:monospace;' +
       'font-size:14px;padding:16px;z-index:99999;overflow:auto;white-space:pre-wrap;';
@@ -268,13 +271,12 @@
       'at ' + (e.filename || '?') + ':' + (e.lineno || '?') + ':' + (e.colno || '?') + '\n\n' +
       (e.error && e.error.stack ? e.error.stack : '(no stack available)');
     if(window.reportAnalyticsError) window.reportAnalyticsError('runtime', e.lineno, e.error && e.error.name);
-    // CA004 — see HISTORY.md § [1.5.7] Code Archaeology, CA004
     (document.body || document.documentElement).appendChild(box);
   });
 </script>
 <style>
   :root{
-    --safe-top:env(safe-area-inset-top,0px); --safe-right:env(safe-area-inset-right,0px); --safe-bottom:env(safe-area-inset-bottom,0px); --safe-left:env(safe-area-inset-left,0px); /* SAFE-AREA-01 (1.7.96): the viewport covers the notch and home indicator, so edge controls add these */
+    --safe-top:env(safe-area-inset-top,0px); --safe-right:env(safe-area-inset-right,0px); --safe-bottom:env(safe-area-inset-bottom,0px); --safe-left:env(safe-area-inset-left,0px); /* SAFE-AREA-01: the viewport covers the notch and home indicator, so edge controls add these */
     --dirt:#8b5a2b; --hedge-dark:#1e3b1a; --hedge:#2d5a27; --hedge-light:#3a7533;
     --wood:#4a2f1d; --wood-light:#6b4530; --gold:#f1c40f; --danger:#e63946; --paper:#f5f0e6;
   }
@@ -284,7 +286,7 @@
     -webkit-touch-callout:none;-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-text-size-adjust:none;
     font-family:'Trebuchet MS',Verdana,sans-serif;}
   #game-wrapper{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-    opacity:0;} /* BOOT-FADE-01 (1.7.102) — see HISTORY.md § [1.7.102]: the game now appears at full opacity beneath the loading screen, which fades out over it, so no dark gap shows between the two. Starts invisible over the black page background; .loaded fades it in once boot has actually run one real frame — fixes a flash where the HUD/canvas used to pop in instantly, sometimes for a moment before JS had even hidden hud-top */
+    opacity:0;} /* BOOT-FADE-01: the game stays invisible until boot has drawn one real frame (.loaded), then sits at full opacity beneath the loading screen, which fades out over it, so neither a dark gap nor a half-built HUD ever shows */
   #game-wrapper.loaded{opacity:1;}
   #loading-screen{position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,3vh,28px);background:#000;color:var(--gold);text-align:center;}
   #loading-screen[hidden]{display:none;}
@@ -301,9 +303,8 @@
   #loadingProgress::-webkit-progress-bar{background:transparent;}
   #loadingProgress::-webkit-progress-value{background:radial-gradient(circle at 50% 50%,var(--gold) 0 55%,transparent 60%) 0 0/1.6em 100% repeat-x;transition:width 0.12s linear;}
   #loadingProgress::-moz-progress-bar{background:radial-gradient(circle at 50% 50%,var(--gold) 0 55%,transparent 60%) 0 0/1.6em 100% repeat-x;}
-  #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;background:#8b5a2b;} /* REPAINT-01 (1.7.109): the dirt colour, so a compositor gap never shows the near-black page behind */
+  #canvas-frame{position:relative;overflow:hidden;width:100%;height:100%;background:#8b5a2b;} /* REPAINT-01: the dirt colour, so a compositor gap never shows the near-black page behind */
   canvas{width:100%;height:100%;display:block;background:var(--dirt);touch-action:none;}
-
   #pause-overlay{position:absolute;inset:0;z-index:15;pointer-events:none;
     background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;}
   #pause-overlay.hidden{display:none;}
@@ -320,19 +321,15 @@
     column-gap:3px;justify-content:center;padding:calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
     max-width:900px;margin:0 auto;transform-origin:top center;
     color:var(--paper);font-weight:bold;pointer-events:none;z-index:5;}
-  /* Every direct child now keeps its natural content size and never wraps its own text — the sole
-     job of fitting everything to the screen belongs to fitHudTopToOneLine()'s single transform:
-     scale() on the whole bar. Previously these buttons had default flexbox flex-shrink:1 and
-     white-space:normal, so the browser ALSO independently squeezed individual buttons narrower
-     than their content — fighting the outer scale and causing exactly the "Next Wave wraps to two
-     lines while shorter buttons just look slightly squished" inconsistency. */
+  /* Every direct child keeps its natural size and never wraps; fitting the bar to the screen is the job of fitHudTopToOneLine()'s
+     single transform:scale() on the whole bar, so the browser never squeezes one button narrower than its label. */
   #hud-top > *{flex-shrink:0;white-space:nowrap;}
   @media (min-width:640px){
     #hud-top{column-gap:clamp(6px,1.2vw,12px);}
   }
   .hud-stat{display:flex;align-items:center;gap:5px;font-size:clamp(12px,2vw,18px);
     text-shadow:1px 1px 2px #000;pointer-events:auto;}
-  #hud-stats-stack{display:flex;flex-direction:column;align-items:stretch;gap:2px;} /* HUD-FLUSH-01 (1.7.132): the rows stretch to the width of the widest one, so the lives and gold sit at the two edges and the wave phase label fills the rest of its row up to the pause button */
+  #hud-stats-stack{display:flex;flex-direction:column;align-items:stretch;gap:2px;} /* HUD-FLUSH-01: the rows stretch to the width of the widest one, so the lives and gold sit at the two edges and the wave phase label fills the rest of its row up to the pause button */
   .hud-stat-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .hud-stat-row .hud-stat{font-size:clamp(11px,1.6vw,15px);}
   /* The two numbers a player actually watches constantly to make decisions get a color-coded
@@ -373,7 +370,6 @@
   .build-row.expand-row{background:rgba(58,117,51,0.35);box-shadow:inset 0 0 0 2px #7dd3fc;}
   .build-row.expand-row:active{background:rgba(58,117,51,0.55);}
   .build-row.expand-row.disabled{cursor:default;opacity:0.55;filter:grayscale(1);}
-
   .hud-action-btn{background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;border:none;border-radius:6px;
     padding:7px 10px;font-weight:bold;font-size:clamp(12px,2vw,15px);cursor:pointer;min-height:38px;
     pointer-events:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
@@ -390,7 +386,6 @@
   .hud-action-btn.has-unlock{position:relative;}
   .hud-action-btn.has-unlock::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
     border-radius:50%;background:var(--danger);box-shadow:0 0 4px var(--danger);}
-
   #notification-popups{position:absolute;top:var(--notification-content-top,100px);left:var(--notification-content-left,8px);box-sizing:border-box;width:min(350px,calc(100% - var(--notification-content-left,8px) - 8px));max-height:max(0px,min(52vh,440px,calc(100% - var(--notification-content-top,100px) - 8px)));display:flex;flex-direction:column;gap:6px;overflow:auto;z-index:9;pointer-events:none;}
   #unlock-toast{display:none;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid var(--gold);border-radius:8px;
     padding:8px 12px;color:var(--paper);font-weight:bold;font-size:clamp(11px,1.8vw,14px);text-align:left;}
@@ -409,7 +404,6 @@
   .notification-message{display:block;width:100%;flex:1;min-width:0;text-align:left;background:transparent;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;}
   .notification-dismiss{flex:none;background:transparent;border:1px solid rgba(255,255,255,0.35);border-radius:4px;color:var(--paper);padding:1px 6px;cursor:pointer;font:inherit;line-height:1.3;}
   #notification-close,#notification-read-all{background:#4a3525;border:1px solid #a9874d;border-radius:5px;color:var(--paper);padding:4px 7px;cursor:pointer;}
-
   #killstreak-banner{display:none;max-width:100%;text-align:left;font-size:clamp(12px,2vw,18px);font-weight:900;letter-spacing:0.5px;color:#ffd700;
     text-shadow:0 0 8px rgba(255,140,0,0.8),2px 2px 0 #000;pointer-events:none;cursor:pointer;}
   #killstreak-banner.show{display:block;pointer-events:auto;animation:killstreakPop 2.2s ease-out forwards;}
@@ -417,8 +411,6 @@
     padding:10px 12px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:left;cursor:pointer;}
   #wave-summary-toast.show{display:block;pointer-events:auto;}
   #waveSummaryTitle{font-weight:bold;color:var(--gold);margin-bottom:4px;}
-  #waveSummaryGold{color:#ffe066;font-weight:bold;margin-bottom:4px;}
-  #waveSummaryXpList{display:flex;flex-direction:column;gap:2px;}
   #new-enemy-toast{position:relative;display:none;max-width:100%;max-height:min(34vh,270px);overflow:auto;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);border:2px solid #e63946;border-radius:8px;
     padding:10px 12px;color:var(--paper);font-size:clamp(11px,1.8vw,14px);text-align:left;cursor:pointer;}
   #new-enemy-toast.show{display:block;pointer-events:auto;}
@@ -427,24 +419,18 @@
     background:rgba(230,57,70,0.3);border:1px solid #e63946;border-radius:50%;color:var(--paper);
     font-size:0.7em;line-height:20px;cursor:pointer;}
   #newEnemyTitle{font-weight:bold;color:#ff8a80;margin-bottom:4px;}
-  @keyframes newEnemyWaddle{
-    0%,100%{transform:rotate(-8deg) translateY(0);}
-    50%{transform:rotate(8deg) translateY(-3px);}
-  }
   @keyframes killstreakPop{
     0%{opacity:0;transform:translateY(-5px);}
     12%,80%{opacity:1;transform:translateY(0);}
     100%{opacity:0;transform:translateY(-3px);}
   }
-
-
   /* Build dropdown — condensed rows anchored under the top-left Build button, not a full-screen modal */
   #tower-modal{position:absolute;inset:0;background:transparent;z-index:20;pointer-events:none;}
   #tower-modal.hidden{display:none;}
   #tower-modal-inner{position:absolute;top:52px;left:8px;pointer-events:auto;
-    background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
-    width:min(300px,92vw);max-height:75vh;display:flex;flex-direction:column;overflow:hidden;
-    box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+    background:linear-gradient(165deg, var(--wood-light) 0%, var(--wood) 55%, #3a2415 100%);border:2px solid var(--gold);border-radius:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.5);
+    width:min(300px,92vw);max-height:75vh;display:flex;flex-direction:column;overflow:hidden;}
   #tower-modal-header{display:flex;align-items:center;justify-content:space-between;
     padding:10px 12px;border-bottom:2px solid var(--wood-light);}
   #tower-modal-header h2{margin:0;color:var(--gold);font-size:clamp(15px,2.4vw,19px);}
@@ -481,7 +467,6 @@
   #buildHelpText{margin:0 0 12px;font-size:14px;line-height:1.5;}
   #buildHelpClose{display:block;margin-left:auto;background:var(--gold);color:#2a1a0a;border:0;border-radius:6px;padding:8px 16px;font-weight:bold;font-size:14px;cursor:pointer;}
   .build-row-lock{display:none;} /* shown in the help popup instead of squeezed into the row */
-
   #settings-modal, #hack-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:24;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #settings-modal.hidden, #hack-modal.hidden{display:none;}
@@ -507,15 +492,13 @@
   .settings-tab{flex:0 0 auto;white-space:nowrap;background:var(--wood-light);color:var(--paper);border:1px solid var(--wood);
     border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;min-height:44px;}
   .settings-tab.active{border-color:var(--gold);background:rgba(241,196,15,0.2);}
-  /* fixed max-height: this is what guarantees expanding About content scrolls internally
-     instead of resizing/reflowing the modal or anything behind it */
   #hack-modal-body{padding:14px;overflow-y:auto;max-height:340px;color:var(--paper);}
   #hack-modal-body h3{margin:12px 0 6px;color:var(--gold);font-size:14px;}
   #hack-modal-body .hack-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
   #hack-modal-body button{background:#1f3a1a;color:var(--paper);border:1px solid var(--gold);border-radius:6px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:13px;}
   #hack-modal-body button.on{background:#2e7d32;}
   #hack-modal-body .hack-note{font-size:12px;opacity:0.8;margin:4px 0;}
-  #settings-body{padding:14px;overflow-y:auto;max-height:320px;color:var(--paper);}
+  #settings-body{padding:14px;overflow-y:auto;max-height:320px;color:var(--paper);} /* a fixed max-height so expanding About content scrolls inside instead of resizing the modal */
   .settings-panel.hidden{display:none;}
   #settingsDecalBudgetCustom.hidden{display:none;}
   .audio-mix-control{margin:2px 0 14px;}
@@ -527,6 +510,7 @@
   .settings-panel p{font-size:12.5px;line-height:1.5;margin-top:0;}
   .settings-panel button{background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);
     border-radius:6px;padding:8px 12px;font-size:12.5px;cursor:pointer;margin-right:8px;margin-bottom:8px;}
+  .settings-select{margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;}
   .settings-panel details{margin-top:14px;border:1px solid var(--gold);border-radius:6px;padding:8px 12px;}
   .settings-panel summary{cursor:pointer;font-size:13px;font-weight:bold;margin-bottom:8px;}
   .settings-file-label{display:inline-flex !important;background:var(--wood-light);color:var(--paper);
@@ -534,8 +518,6 @@
     margin-bottom:8px;width:auto !important;}
   #about-expand-content{margin-top:10px;font-size:12px;line-height:1.6;opacity:0.9;}
   #about-expand-content.hidden{display:none;}
-
-
   .settings-help{margin:2px 0 6px;font-size:0.85em;opacity:0.85;line-height:1.45;}
   #item-guide-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:26;display:flex;align-items:center;justify-content:center;padding:16px;}
   #item-guide-modal.hidden{display:none;}
@@ -544,7 +526,6 @@
   #item-guide-modal-inner h2{margin:0 0 4px;color:var(--gold);font-size:clamp(17px,2.8vw,23px);text-align:center;}
   #item-guide-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
     border:none;border-radius:8px;padding:10px 22px;font-weight:bold;font-size:clamp(13px,2.2vw,16px);cursor:pointer;min-height:40px;}
-
   #help-modal{position:absolute;inset:0;background:rgba(10,15,8,0.92);z-index:25;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #help-modal.hidden{display:none;}
@@ -568,9 +549,7 @@
   #barricade-help-modal-close{display:block;margin:14px auto 0;background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;
     border:none;padding:10px 24px;border-radius:8px;font-weight:bold;cursor:pointer;min-height:44px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 4px rgba(0,0,0,0.15);}
-
-
-  /* Shop — tabbed, one tab per tower type plus a global Passives tab */
+  /* Shop: one scrolling grid of item cards grouped under section dividers */
   #shop-modal{position:absolute;inset:0;background:rgba(10,15,8,0.9);z-index:22;
     display:flex;align-items:center;justify-content:center;padding:16px;}
   #shop-modal.hidden{display:none;}
@@ -604,7 +583,6 @@
     border-radius:6px;padding:6px 10px;margin-bottom:6px;font-size:12px;}
   .shop-equipped-row button{background:var(--danger);color:var(--paper);border:none;border-radius:5px;
     padding:4px 8px;font-size:11px;cursor:pointer;margin-left:auto;}
-
   #zoom-controls{position:absolute;right:10px;top:70px;
     display:none;flex-direction:column;gap:8px;z-index:6;}
   #zoom-controls.show{display:flex;}
@@ -612,7 +590,6 @@
     background:rgba(74,47,29,0.85);color:var(--paper);border:2px solid var(--gold);
     font-size:20px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.4);}
   #zoom-controls button:active{background:rgba(107,69,48,0.95);}
-
   #inspect-panel{position:absolute;bottom:calc(8px + var(--safe-bottom));left:calc(8px + var(--safe-left));right:auto;max-width:min(320px,calc(100% - 16px - var(--safe-left) - var(--safe-right)));
     background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);
     border:2px solid var(--gold);border-radius:8px;padding:8px;color:var(--paper);z-index:6;
@@ -637,7 +614,7 @@
   #targetStatsRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;font-size:0.95em;color:#bdeaff;font-weight:bold;}
   #targetStatsRow>span{overflow-wrap:anywhere;}
   #targetEffects{grid-column:1/-1;color:#ffcc80;font-size:0.9em;}
-  /* PHONE-TARGET-CARD-01 (1.8.43): on a phone the target card keeps every stat but packs them three to a row with a smaller portrait, so it covers less of the board. */
+  /* PHONE-TARGET-CARD-01: on a phone the target card keeps every stat but packs them three to a row with a smaller portrait, so it covers less of the board. */
   @media (max-width:640px){
     #inspTargetFrame{padding:6px 8px;gap:8px;}
     #targetPortraitFrame{width:40px;height:40px;font-size:1.5em;}
@@ -651,25 +628,25 @@
   @media(min-width:2400px) and (min-height:1100px){#inspect-panel,#inspQuickSlots{--inspect-scale:1.8;}}
   #inspect-panel.hidden{display:none;}
   #inspFullOptions{flex-basis:100%;display:flex;flex-direction:column;gap:8px;}
-  /* INSPECT-WRAP-01 (1.6.108): option rows wrap onto a second line at full text size instead of shrinking labels to fit one line.
+  /* INSPECT-WRAP-01: option rows wrap onto a second line at full text size instead of shrinking labels to fit one line.
      Every button keeps its natural width (min-width:max-content) and grows to share the line, so a wrapped line reads as
      proportionate as the first. */
   .insp-opt-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:stretch;width:100%;box-sizing:border-box;}
   .insp-opt-row > button:not(.info-btn){flex:1 1 auto;min-width:max-content;white-space:nowrap;}
   .insp-opt-row > .info-btn{flex:0 0 auto;align-self:center;}
   #inspDpsBetween{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;}
+    justify-content:center;padding:0 6px;white-space:nowrap;line-height:1.1;cursor:pointer;}
   .dps-label{font-size:0.6em;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;
     font-weight:bold;}
-  /* One accessible gear icon beside High and Low, without an Options label. */
+  /* The start screen's Options button, bottom-right. */
   #startSettingsBtn{position:absolute;right:calc(14px + var(--safe-right));bottom:calc(14px + var(--safe-bottom));background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
     border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
   #startSettingsBtn:hover{border-color:var(--gold);}
-  /* START-CHANGES-BTN-01 (1.7.54): bottom-left of the attract screen, opens Settings on the Changes tab. */
+  /* START-CHANGES-BTN-01: bottom-left of the attract screen, opens the release-notes dialog. */
   #startChangesBtn{position:absolute;left:calc(14px + var(--safe-left));bottom:calc(14px + var(--safe-bottom));background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 100%);color:var(--paper);
     border:1px solid rgba(241,196,15,0.35);border-radius:8px;min-height:36px;padding:6px 12px;font-size:0.85em;cursor:pointer;}
   #startChangesBtn:hover{border-color:var(--gold);}
-  /* CHANGES-SILVER-MODAL-01 (1.7.57): the silver version dialog from 1.6.161, restored and opened on demand by the See changes button. */
+  /* CHANGES-SILVER-MODAL-01: the silver release-notes dialog, opened on demand from the start screen. */
   #update-modal{position:absolute;inset:0;background:rgba(6,10,6,0.94);z-index:30;display:flex;align-items:center;justify-content:center;padding:18px;}
   #update-modal.hidden{display:none;}
   #update-modal-inner{background:linear-gradient(165deg,#2b2b30 0%,#17171b 60%,#0d0d10 100%);
@@ -695,12 +672,10 @@
     border:2px solid var(--gold);border-radius:10px;padding:14px 16px;max-width:520px;width:100%;max-height:80%;overflow:auto;}
   #dpsBreakdownTitle{color:var(--gold);margin:0 0 8px;font-size:1.05em;}
   #dpsBreakdownBody{color:var(--paper);font:12px/1.5 monospace;white-space:pre-wrap;margin:0 0 12px;}
-  #inspDpsBetween{cursor:pointer;}
   #inspDpsBetween:hover #inspDpsVal{text-shadow:0 0 8px rgba(241,196,15,0.9);}
   #inspDpsVal{font-size:1.05em;font-weight:bold;color:var(--paper);text-shadow:0 0 4px rgba(241,196,15,0.5);}
   #inspDpsRangeVal{font-size:0.68em;color:var(--paper);opacity:0.75;}
-  .insp-opt-row button:not(.info-btn){flex:1 1 auto;min-width:max-content;white-space:nowrap;}
-  /* INSPECT-HIDDEN-01 (1.6.121) — see HISTORY.md § [1.6.121] */
+  /* INSPECT-HIDDEN-01 */
   #inspCombatRow.hidden, #inspStatsRow.hidden, #inspItemsRow.hidden, #inspEvoBarTrack.hidden, #inspDpsBetween.hidden, #inspEvoHint.hidden, #inspAuraBox.hidden{display:none !important;}
   #inspRepairBtn, #inspUpgradeBtn{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;}
   #inspRepairCost, #inspUpgradeCost{display:block;font-size:0.82em;opacity:0.92;}
@@ -732,7 +707,6 @@
   #inspEvoBarFill{height:100%;background:linear-gradient(180deg,#ffe066,#d4a017);transition:width 0.2s ease;}
   #inspEvoBarText{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:0.58em;font-weight:bold;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,0.9);}
-  #inspEvoBarTrack.hidden{display:none;}
   #inspExpandChevron{flex:0 0 auto;width:26px;height:26px;border-radius:6px;
     background:rgba(241,196,15,0.18);border:2px solid var(--gold);color:var(--gold);
     font-size:1.2em;font-weight:bold;line-height:1;cursor:pointer;display:flex;
@@ -762,7 +736,6 @@
   #inspStatButtons button.stat-btn{width:100%;max-width:96px;min-height:34px;max-height:48px;white-space:nowrap;overflow:hidden;}
   #inspEvoHint{flex:1 1 100%;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.85em;color:#bdeaff;background:rgba(125,211,252,0.12);
     border:1px solid rgba(125,211,252,0.4);border-radius:6px;padding:3px 8px;}
-  #inspEvoHint.hidden{display:none;}
   .gold-stat{position:relative;}
   .lives-stat{position:relative;margin-right:16px;}
   #livesChangePop{position:absolute;left:100%;top:-2px;margin-left:4px;font-weight:bold;font-size:0.85em;
@@ -806,8 +779,8 @@
     padding-top:6px;border-top:1px solid rgba(241,196,15,0.2);}
   #inspItemSlots{display:flex;flex-wrap:wrap;gap:6px;}
   .item-slot[hidden]{display:none;}
-  /* QUICK-USE-01 (1.6.134) — see HISTORY.md § [1.6.134]. Usable items sit inside the compact panel; only the slots that hold a consumable are shown, packed from the left. */
-  /* QUICK-FLOAT-01 (1.7.36): the quick items are free floating buttons above the faceplate, never part of it. They live outside the panel
+  /* QUICK-USE-01: usable items sit inside the compact panel; only the slots that hold a consumable are shown, packed from the left. */
+  /* QUICK-FLOAT-01: the quick items are free floating buttons above the faceplate, never part of it. They live outside the panel
      (which scrolls and would clip them) and are positioned by script just above its top edge, so the nameplate never grows to hold them. */
   #inspQuickSlots{position:absolute;left:8px;bottom:var(--quick-bottom,120px);z-index:6;display:flex;flex-wrap:wrap;gap:6px;padding:5px;box-sizing:border-box;
     max-width:min(320px,calc(100% - 16px));transform-origin:bottom left;transform:scale(var(--inspect-scale,1));
@@ -826,7 +799,7 @@
   .item-slot.filled,.quick-slot.filled{background:rgba(74,47,29,0.6);border-color:var(--gold);
     box-shadow:inset 0 1px 2px rgba(0,0,0,0.4), 0 0 6px rgba(241,196,15,0.35);}
   .quick-slot{width:38px;height:38px;}
-  /* ITEM-GLOW-01 (1.7.113): one fixed glow colour per kind; the rainbow is reserved for Legendary items */
+  /* ITEM-GLOW-01: one fixed glow colour per kind; the rainbow is reserved for Legendary items */
   .item-slot.glow-green,.quick-slot.glow-green{border-color:#4caf50;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4),0 0 9px 1px rgba(76,175,80,0.85);}
   .item-slot.glow-blue,.quick-slot.glow-blue{border-color:#42a5f5;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4),0 0 9px 1px rgba(66,165,245,0.85);}
   .item-slot.glow-orange,.quick-slot.glow-orange{border-color:#ff8a2a;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4),0 0 9px 1px rgba(255,138,42,0.85);}
@@ -846,16 +819,12 @@
     100%{border-color:#ff4d4d;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4),0 0 11px 2px #ff4d4d;}
   }
   @media (prefers-reduced-motion:reduce){.item-slot.glow-rainbow,.quick-slot.glow-rainbow{animation:none;border-color:#ffb84d;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4),0 0 11px 2px #4dd2ff;}}
-  /* WC3-style "aura box" — a distinct round glowing icon frame (vs. the square item slots), icon
-     only, no text, per the requested WC3 ability-icon aesthetic. Hidden entirely for Swordsman/
-     Archer/Mage/Barricade — see updateInspectPanel(), only evolved/specialist towers have a
-     strategy niche to show here. */
+  /* WC3-style aura box: a round glowing icon frame (unlike the square item slots), shown only for classes with a TOWER_STRATEGY entry. */
   #inspAuraBox{flex:0 0 auto;width:34px;height:34px;border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #3a2a10, #1a1206);
     border:2px solid var(--gold); box-shadow:0 0 8px rgba(241,196,15,0.55), inset 0 1px 3px rgba(0,0,0,0.6);
     display:flex;align-items:center;justify-content:center;font-size:1.15em;cursor:pointer;
     padding:0; margin-left:4px;}
-  #inspAuraBox.hidden{display:none;}
   #inspCraftBtn{background:linear-gradient(180deg, #ffe066 0%, var(--gold) 55%, #c9960b 100%);color:#3a2a00;border:none;border-radius:6px;
     padding:4px 8px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:4px;}
   #inspCraftBtn.hidden{display:none;}
@@ -865,7 +834,6 @@
     padding:8px 10px;margin-top:2px;font-size:0.85em;line-height:1.35;color:var(--paper);}
   #auraTooltip.hidden{display:none;}
   #auraTooltipIcon{font-size:1.3em;flex:0 0 auto;}
-
   #move-mode-banner{position:absolute;bottom:8px;left:8px;right:8px;background:linear-gradient(165deg, rgba(58,42,26,0.97) 0%, rgba(30,20,10,0.97) 60%, rgba(20,13,7,0.97) 100%);
     border:2px solid #7dd3fc;border-radius:8px;padding:10px 14px;color:var(--paper);z-index:6;
     display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -873,7 +841,6 @@
   #move-mode-banner.hidden{display:none;}
   #cancelMoveBtn{background:var(--danger);color:var(--paper);border:none;border-radius:6px;
     padding:8px 14px;min-height:40px;cursor:pointer;font-weight:bold;}
-
   #start-screen,#end-screen{position:absolute;inset:0;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     color:var(--paper);text-align:center;z-index:10;padding:20px;
@@ -939,25 +906,14 @@
     cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;}
   .link-btn:hover{background:linear-gradient(180deg, rgba(105,72,46,0.95) 0%, rgba(74,47,29,0.95) 100%);}
   #end-screen #endDownloadLogBtn{margin-top:14px;}
-
-
   #inspTargetMoveRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px;gap:6px;}
   #inspTargetMoveRow > button{box-sizing:border-box;min-width:0;font-size:11px;padding:6px 3px;white-space:nowrap;}
   #inspSellBtn{grid-column:1;grid-row:1;}
   #inspMoveBtn{grid-column:2;grid-row:1;}
   #inspTargetMoveRow > .info-btn{grid-column:3;grid-row:1;width:34px;align-self:stretch;}
   #inspAxeModeBtn{grid-column:1 / -1;grid-row:2;}
-
-  #waveSummaryGold,#waveSummaryXpList,#newEnemyList{display:none;}
   #notification-detail-popup{
   position:fixed;margin:0;left:12px;top:64px;width:min(420px,calc(100vw - 32px));max-height:75vh;box-sizing:border-box;overflow:auto;background:#241b12;border:2px solid var(--detail-accent,var(--gold));border-radius:8px;color:var(--paper);padding:20px;}
-  #runRewardBtn{padding:7px 10px;border:1px solid var(--gold);border-radius:6px;background:var(--wood);color:var(--paper);font:inherit;cursor:pointer;margin-right:6px;}
-  #runRewardBtn[hidden]{display:none;}
-  .run-reward-choice{display:block;width:100%;text-align:left;background:#342719;color:var(--paper);border:1px solid #8c713f;border-radius:6px;padding:12px;margin-top:10px;font:inherit;cursor:pointer;}
-  .run-reward-choice:hover,.run-reward-choice:focus-visible{border-color:var(--gold);outline:2px solid var(--gold);outline-offset:2px;}
-  .run-reward-choice strong{display:block;color:var(--gold);margin-bottom:5px;}
-  .run-reward-choice span{display:block;font-size:13px;line-height:1.4;}
-  .run-reward-choice .run-reward-preview{margin-top:6px;color:#e8ca87;}
   #notification-detail-popup::backdrop{background:rgba(0,0,0,0.6);}
   .notification-detail-heading{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
   #notification-detail-icon{font-size:44px;line-height:1.2;flex-shrink:0;max-width:112px;overflow-wrap:anywhere;}
@@ -972,17 +928,12 @@
   .enemy-detail-card h3{margin:0 0 8px;font-size:16px;}
   #notification-detail-copy{white-space:pre-line;line-height:1.5;margin-bottom:16px;}
   #notification-detail-close{padding:8px 20px;background:var(--detail-accent,var(--gold));color:#241b12;border:0;border-radius:6px;cursor:pointer;font-weight:bold;}
-</style>
-</head>
-<body>
-<noscript><p>StickTD is a free browser tower defense game. JavaScript is required to play. Enable JavaScript and reload, or visit <a href="https://sauerninja.itch.io/sticktd">StickTD on itch.io</a> for game information.</p></noscript>
-<style>
-  /* SANTA-CONSENT-VOICE-01 — see HISTORY.md § [1.6.167] Restore Santa's cookie notice, SANTA-CONSENT-VOICE-01. */
-  /* SANTA-CONSENT-BAR-01 (1.8.43): the notice is a slim bar along the bottom, so the title, the logo and Play are the first thing a player sees. */
+  /* SANTA-CONSENT-BAR-01: the notice is a slim bar along the bottom, so the title, the logo and Play are the first thing a player sees. */
   #consent-banner{position:fixed;left:0;right:0;bottom:0;z-index:999;
     color:#f5f0e6;display:flex;justify-content:center;padding:10px;pointer-events:none;
     font-family:inherit;font-size:15px;}
   #consent-banner.hidden{display:none;}
+  body:has([id$="-modal"]:not(.hidden)) #consent-banner,body:has(#inspect-panel:not(.hidden)) #consent-banner{display:none;} /* CONSENT-UNDER-MODAL-01: an open window or a selected stickman's panel owns the bottom of the screen; the bar returns when it closes */
   #consent-inner{pointer-events:auto;display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:14px;row-gap:4px;
     max-width:min(820px,100%);text-align:left;background:rgba(30,20,10,0.97);
     border:2px solid #f1c40f;border-radius:12px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,0.55);}
@@ -1004,6 +955,9 @@
   #consentAccept{border:2px solid #f1c40f;background:#f1c40f;color:#3a2a00;}
   #consentDecline{border:2px solid #b9a98e;background:transparent;color:#f5f0e6;}
 </style>
+</head>
+<body>
+<noscript><p>StickTD is a free browser tower defense game. JavaScript is required to play. Enable JavaScript and reload, or visit <a href="https://sauerninja.itch.io/sticktd">StickTD on itch.io</a> for game information.</p></noscript>
 <dialog id="notification-detail-popup" aria-labelledby="notification-detail-title">
   <div class="notification-detail-heading"><span id="notification-detail-icon" aria-hidden="true" hidden></span><h2 id="notification-detail-title"></h2></div>
   <div id="notification-detail-copy"></div>
@@ -1022,13 +976,11 @@
   </div>
 </div>
 <script>
-  // CA005 — see HISTORY.md § [1.5.7] Code Archaeology, CA005
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('gesturechange', (e) => e.preventDefault());
   document.addEventListener('touchmove', (e) => { if(e.touches.length > 1) e.preventDefault(); }, { passive: false });
 </script>
 <script>
-  // CA006 — see HISTORY.md § [1.5.7] Code Archaeology, CA006
   (function(){
     var STORAGE_KEY = 'stickTD_consentChoice';
     var banner = document.getElementById('consent-banner');
@@ -1077,7 +1029,7 @@
     <canvas id="gameCanvas">StickTD is a free browser stickman tower defense game. Train stickmen, equip loot, extend the path, and fight through 100 waves before endless play. Build Swordsmen, Archers and Mages, train them into more than 25 classes such as the Sniper, Paladin, Necromancer and Ninja, and attune them to fire, lightning or ice. Play online with no download on phone, tablet or computer. Enable JavaScript and a canvas-capable browser to play.</canvas>
 
     <header id="hud-top">
-      <div id="notification-bell"><button id="runRewardBtn" type="button" hidden aria-label="Choose a milestone reward">🎁</button><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
+      <div id="notification-bell"><button id="notificationBellOpen" aria-label="Open notifications">🔔<span id="notification-badge"></span></button></div>
       <span id="buildBtnWrap"><button id="buildBtn" class="hud-action-btn">🏗️ Build</button><span id="first-build-hint" class="hidden" aria-hidden="true">👆</span></span>
       <button id="shopBtn" class="hud-action-btn">🛒 Shop<span id="shopLockBadge" class="shop-lock-badge hidden">🔒</span><span id="caravanWag" class="caravan-wag" aria-hidden="true" hidden>👳</span></button>
       <button id="settingsBtn" class="hud-action-btn" aria-label="Settings">⚙️</button>
@@ -1233,13 +1185,10 @@
       <div id="unlock-toast" role="button" tabindex="0" aria-label="Open notification details"><span id="unlockToastText"></span></div>
       <div id="wave-summary-toast" role="button" tabindex="0" aria-label="Open wave summary details">
         <div id="waveSummaryTitle">Wave <span id="waveSummaryNum">1</span> Complete!</div>
-        <div id="waveSummaryGold">💰 +<span id="waveSummaryGoldVal">0</span> Gold</div>
-        <div id="waveSummaryXpList"></div>
       </div>
       <div id="new-enemy-toast">
         <button id="new-enemy-details" class="notification-details-button" type="button" aria-label="Open new enemy details">
           <div id="newEnemyTitle">🆕 New Enemy!</div>
-          <div id="newEnemyList"></div>
         </button>
         <button id="newEnemyCloseBtn" aria-label="Dismiss">✕</button>
       </div>
@@ -1316,19 +1265,19 @@
             <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Performance mode — lighter effects</label>
             <p class="settings-help" id="gfxHelpText">Low is a good starting point for phones and laptops with integrated graphics. High adds richer visual effects for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch profiles if play is not smooth.</p>
             <label><input type="checkbox" id="settingsFpsToggle"> 📊 Show FPS counter (default off)</label>
-            <label><input type="checkbox" id="settingsFrameCapToggle"> ⏱️ Limit frame rate (default on) — 30 FPS on Low, 60 FPS on High; turn off to run at your screen's full speed</label>
+            <label><input type="checkbox" id="settingsFrameCapToggle"> ⏱️ Limit frame rate (default on) — 30 FPS on Low and on phones, 60 FPS on High; turn off to run at your screen's full speed</label>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
               <span>Frame rate limit: <output id="settingsFrameCapValue"></output> FPS</span>
               <input type="range" id="settingsFrameCapSlider" min="30" max="250" step="10" style="width:100%;">
             </label>
             <label><input type="checkbox" id="settingsScreenShakeToggle"> 💥 Screen shake on kills — heavier enemies shake harder (default on for High, off for Low)</label>
             <label>Render scale
-              <select id="settingsRenderScale"><option value="0">100% — native</option><option value="1">87.5%</option><option value="2">75%</option><option value="3">62.5%</option></select>
+              <select id="settingsRenderScale" class="settings-select"><option value="0">100% — native</option><option value="1">87.5%</option><option value="2">75%</option><option value="3">62.5%</option></select>
             </label>
             <label><input type="checkbox" id="settingsAutoRenderScaleToggle"> 🖼️ Automatic render resolution (default on for Low) — after sustained slow frames it can lower picture sharpness to help performance; turn it off any time</label>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
               <span>🔽 Lowest render resolution automatic scaling may reach (default 75% on Low, 100% on High — 100% means it never lowers)</span>
-              <select id="settingsRenderScaleFloor" style="margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
+              <select id="settingsRenderScaleFloor" class="settings-select">
                 <option value="100">100% — never lower</option>
                 <option value="75">75% — gentle</option>
                 <option value="50">50% — noticeably soft</option>
@@ -1338,12 +1287,12 @@
             <button type="button" id="settingsRenderScaleResetBtn" class="settings-inline-btn">Restore full resolution</button>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
               <span>🩸 Max ground decals — puddles, streaks and debris; optional spray marks use a separate short-lived limit</span>
-              <select id="settingsDecalBudget" style="margin-top:4px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
+              <select id="settingsDecalBudget" class="settings-select">
                 <option value="700">Low — 700</option>
-                <option value="4200">High — 4200</option>
-                <option value="2100">Classic — 2100</option>
                 <option value="1500">Royal — 1500</option>
+                <option value="2100">Classic — 2100</option>
                 <option value="2500">Insane — 2500</option>
+                <option value="4200">High — 4200</option>
                 <option value="custom">Custom…</option>
               </select>
               <input type="number" id="settingsDecalBudgetCustom" min="0" max="20000" step="50" class="hidden" style="width:100px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;">
@@ -1365,7 +1314,7 @@
             <div class="audio-mix-control"><label for="audioMasterVolume">Overall <output id="audioMasterValue">100%</output></label><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Overall volume"></div>
             <div class="audio-mix-control"><label for="audioMusicVolume">Music <output id="audioMusicValue">100%</output></label><input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Music volume"></div>
             <div class="audio-mix-control"><label for="audioSfxVolume">Sound effects <output id="audioSfxValue">100%</output></label><input id="audioSfxVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound effects volume"></div>
-            <p class="stats-hint">The field arrangement is calm; the same theme gains a light pulse during waves, and the wave theme is titled Path to Victory. Music stays at the same tempo when you fast-forward.</p>
+            <p class="stats-hint">A calm field theme plays between waves; each wave switches to a faster battle theme, and a boss brings a darker one. Music keeps its tempo when you fast-forward.</p>
             <label><input type="checkbox" id="settingsMuteToggle"> Mute all sound</label>
           </div>
           <div class="settings-panel hidden" data-panel="game">
@@ -1431,11 +1380,11 @@
     <div id="item-guide-modal" class="hidden">
       <div id="item-guide-modal-inner">
         <h2>🎁 Item Guide</h2>
-        <p>Defeated enemies sometimes leave an item on the road. Equipment shines with a rarity-based glow; coins and gold bags shine gold. Click a landed coin to collect its player gold, or click a Gold Bag to collect its listed amount.</p>
-        <p><b>Equip an item</b> by dragging it onto any stickman. Each item adds to Strength, Dexterity, Intelligence or Armor.</p>
-        <p>Every stickman carries up to <b>six items</b>. A stickman with all six slots filled is promoted to <b>Hero</b>.</p>
+        <p>Defeated enemies sometimes drop an item, which lands on the grass beside the road. Gear glows by rarity. A Gold Bag looks like any other item: click it to open it where it lies, or drop it on a stickman, and coins spill out. Sweep over the coins to collect them.</p>
+        <p><b>Equip gear</b> by dragging it onto any stickman. Gear adds Strength, Dexterity, Intelligence or Armor, and a few rare pieces add range or an extra move each round. Food dropped on a stickman is eaten at once: meat raises its maximum health, vegetables Dexterity and fruit Intelligence.</p>
+        <p>Every stickman carries up to <b>six items</b>. A stickman whose six slots all hold gear becomes a <b>Hero</b>.</p>
         <p>Select a stickman and open its nameplate to see the items it carries. Drag an item out to hand it to another stickman.</p>
-        <p>Some enemies leave a signature item of their own, and bosses always leave something special.</p>
+        <p>Some enemies carry a signature item of their own. Bosses always drop supplies and often a rarer piece.</p>
         <button id="item-guide-modal-close">Got it!</button>
       </div>
     </div>
@@ -1445,7 +1394,7 @@
         <h2>❓ How Everything Works</h2>
 
         <h3>⭐ Training and Promotion</h3>
-        <p>Each tower has a promotion Rank and a separate Training level. Gold promotions raise Rank; they do not replace the Training XP bar. Kills, killstreaks, promotions, and surviving a round can grant Training XP. Each completed 100 XP bar rolls two lots of 1–3 spendable stat points, limited by remaining capacity. Promotions grant both automatic stat rolls and extra points for you to spend.</p>
+        <p>Each tower has a promotion Rank and a separate Training level. Gold promotions raise Rank; they do not replace the Training XP bar. Last hits, assists (a share for damage dealt) and every cleared wave grant Training XP. Each completed 100 XP bar rolls two lots of 1–3 spendable stat points, limited by remaining capacity. Promotions grant both automatic stat rolls and extra points for you to spend.</p>
 
         <h3>💪 Stats</h3>
         <p><b>STR:</b> grows health, weight and body size. Warrior classes also use it for direct damage.<br>
@@ -1455,7 +1404,7 @@
         <p>Train up to 500 points in one stat and 1,000 combined. Equipment and passive bonuses are separate from those trained-point limits.</p>
 
         <h3>⚔️ Archetypes</h3>
-        <p>Every fighting class favors one stat 25% more effective than the others: <b>Warriors</b> (Swordsman and the classes it unlocks) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
+        <p>Every fighting class favors one stat, which counts 60% more than the others: <b>Warriors</b> (Swordsman and the classes it unlocks) favor STR, <b>Archer-style</b> classes favor DEX, <b>Mages</b> favor INT.</p>
 
         <h3>🔓 Unlocking new towers</h3>
         <p>A tower never transforms into a new class — it stays exactly what it is forever and just
@@ -1463,14 +1412,11 @@
         about that tower, permanently, and pushing far enough again unlocks a <i>different</i>,
         better tower as directly buildable from the Build menu from then on, for the rest of the
         current game. The tower that earned the unlock stays exactly what it was.</p>
-        <p>Exactly which stat leads where, and how far it takes, isn't spelled out here on purpose —
-        part of the game is noticing the pattern yourself as towers change and new things unlock.
-        Every locked slot in the Build menu shows the tower waiting to be found, with a hint at
-        what to try next rather than an exact formula. Tap the <b>?</b> on any locked row to see
-        its hint.</p>
+        <p>Every locked row in the Build menu shows the class waiting to be found. Tap its <b>?</b> to see
+        what it does, which stat on which class unlocks it, and the wave that unlocks it on its own when it has one.</p>
 
         <h3>🎒 Items & Heroes</h3>
-        <p>Buy class-specific gear from the Shop and equip it from a tower's inspect panel. 6 inventory slots per tower. Fill all 6 with equipment to awaken a Hero with a permanent bonus to every stat; consumables do not count toward that equipment requirement.</p>
+        <p>Gear drops from enemies, and a living Merchant (or a passing caravan) opens the Shop for more. Drag an item onto a stickman to equip it. Each stickman has 6 inventory slots; fill all 6 with equipment to awaken a Hero with a permanent +5 to every stat. Consumables do not count toward that requirement.</p>
 
         <h3>✒️ Naming &amp; Mastery</h3>
         <p>At 500 combined trained stats, you can name your stickman. At 1,000, it earns a trophy and further XP converts to gold at 25 XP per coin.</p>
@@ -1495,11 +1441,11 @@
         tough obstacle, not a fighter. Bought directly from Build (costs wood + stone, not gold,
         or free using a banked free-barricade charge) — tap Barricade in the Build menu, then tap
         a valid path tile to place it. Once placed, it physically blocks enemies from passing. It
-        can still be picked back up (📦 Store) and re-placed or moved for free afterward, since
+        can still be picked back up (📦 Pick up) and re-placed or moved for free afterward, since
         it's already paid for.</p>
         <p>A Barricade's HP is its literal block-strength (shown as a fraction, e.g. 7/10) — it
         loses at most 1 HP every 10 seconds, with the first point requiring a full contact interval. All attackers share that limit, so a Barricade can hold a chokepoint before breaking.</p>
-        <p>Each accepted expansion extends both ends of the existing path and reveals surrounding grass. Existing towers stay in place; blocked expansion does not spend your expansion payment. Extra expansions wait for the next round.</p>
+        <p>Each accepted expansion extends both ends of the existing path and reveals surrounding grass. Existing towers stay in place; a blocked expansion does not spend your payment. You can buy one expansion per wave.</p>
         <button id="barricade-help-modal-close">Got it</button>
       </div>
     </div>
@@ -1597,15 +1543,15 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.69"></script>
-<script src="js/config.js?v=1.8.69"></script>
-<script src="js/effects.js?v=1.8.69"></script>
-<script src="js/loop.js?v=1.8.69"></script>
-<script src="js/ui.js?v=1.8.69"></script>
-<script src="js/diagnostics.js?v=1.8.69"></script>
-<script src="js/screens.js?v=1.8.69"></script>
-<script src="js/environment.js?v=1.8.69"></script>
-<script src="js/towers.js?v=1.8.69"></script>
-<script src="js/waves.js?v=1.8.69"></script>
+<script src="js/audio.js?v=1.8.90"></script>
+<script src="js/config.js?v=1.8.90"></script>
+<script src="js/effects.js?v=1.8.90"></script>
+<script src="js/loop.js?v=1.8.90"></script>
+<script src="js/ui.js?v=1.8.90"></script>
+<script src="js/diagnostics.js?v=1.8.90"></script>
+<script src="js/screens.js?v=1.8.90"></script>
+<script src="js/environment.js?v=1.8.90"></script>
+<script src="js/towers.js?v=1.8.90"></script>
+<script src="js/waves.js?v=1.8.90"></script>
 </body>
 </html>

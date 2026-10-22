@@ -1,5 +1,5 @@
 "use strict";
-// Map and path, expansion, livestock, scenery, flora, food, campfire, chance structures, telemetry, depth sorting and map painting. Loaded after js/screens.js.
+// Map and path, expansion, livestock, scenery, flora, food, campfire, chance structures, telemetry, depth sorting and map painting.
 // Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
 //   SCENERY CONFIG (CONFIG.SCENERY)
 //   MAP / PATH
@@ -26,25 +26,24 @@
    ========================================================= */
 CONFIG.SCENERY = {
   coverage: 0.22,          // fraction of buildable (non-path) tiles scattered with scenery at game start
-  minScale: 0.6, maxScale: 1.6,   // 60%-160% size — widened from 100-130%, which left no room for genuinely small saplings/pebbles and barely any for large ones
+  minScale: 0.6, maxScale: 1.6,
   minClearCost: 25, maxClearCost: 250, // gold cost interpolated across the scale range
-  rockClearCostMult: 1.6, // stone costs more to remove than wood — applied on top of the size-based cost above, so rocks are always pricier than an equivalently-sized tree
-  minClearMs: 15000, maxClearMs: 40000,  // GAME-SPEED-SCOPE-01 (1.6.93): 10x the old 1500-4000ms — clearing scenery is real-world work, not sped up by the enemy-speed control
+  rockClearCostMult: 1.6,
+  minClearMs: 15000, maxClearMs: 40000, // GAME-SPEED-SCOPE-01
   baseResourceYield: 10,   // wood/stone granted at scale 1.0, scales up with size
   superChance: 0.0001,     // 0.01% per scenery spawn
   superYieldMultiplier: 8,
-  superClearMs: 80000, // GAME-SPEED-SCOPE-01 (1.6.93): 10x, matching the regular clear-time increase
+  superClearMs: 80000, // GAME-SPEED-SCOPE-01: 10x, matching the regular clear-time increase
   superBonusGold: 50,
   respawnChancePerWave: 0.4, // chance, each wave cleared, that 1-2 new scenery pieces appear on empty tiles
 };
-// CA072 — see HISTORY.md § [1.5.7] Code Archaeology, CA072
 CONFIG.FLORA = {
-  coverage: 0,         // PURPOSEFUL-PROPS-01 (1.7.141): no non-interactable decorative emoji ground cover
-  accentShare: 0.12,   // of the tiles that do get flora, only this fraction get an ACCENT glyph instead of a COMMON one — keeps color genuinely rare, not just "less common"
+  coverage: 0, // PURPOSEFUL-PROPS-01: no non-interactable decorative emoji ground cover
+  accentShare: 0.12,
   COMMON: ['🌿','🍀','🍂'],
   ACCENT: ['🍁','🍄','🌺','🌻']
 };
-// CHANCE-STRUCTURES-01 (1.6.77) — see HISTORY.md § [1.6.77]
+// CHANCE-STRUCTURES-01
 CONFIG.CHANCE_STRUCTURES = {
   FOUNTAIN: {
     emoji: '⛲', name: 'Healing Fountain', color: '#7dd3fc', scale: 1.05, useMs: 600,
@@ -63,17 +62,16 @@ CONFIG.CHANCE_STRUCTURES = {
    MAP / PATH
    ========================================================= */
 let activeRegion = null;      // {x0,y0,x1,y1} inclusive tile bounds of the currently unlocked square
-let paidExpansionWaveIndex = -1; // EXPAND-PER-WAVE-01 (1.7.75): the wave number at the last bought expansion; one bought expansion per wave
-let paidExpansions = 0;       // EXPANSION-PRICE-01 (1.6.157) — see HISTORY.md § [1.6.157]: the price of the next bought expansion grows only with expansions the player has bought, never with free ones from clearing waves
+let paidExpansionWaveIndex = -1; // EXPAND-PER-WAVE-01: the wave number at the last bought expansion; one bought expansion per wave
+let paidExpansions = 0; // EXPANSION-PRICE-01
 let expansionLevel = 0;       // number of FULLY-completed rings so far (a ring mid-spiral-reveal doesn't count yet — see ringRevealQueue)
 let pathWaypointTiles = [];   // ordered [{x,y}] grid coords the path follows
 let pathCells = new Set();    // Set of "gx,gy" strings for quick lookup
 let waypointsPx = [];         // pixel-space version of pathWaypointTiles, what Enemy movement reads
-// CA091 — see HISTORY.md § [1.5.7] Code Archaeology, CA091
 let ringRevealed = new Set();       // "gx,gy" tiles of the in-progress ring already revealed
 let ringRevealQueue = [];           // remaining {x,y} tiles of the in-progress ring, in perimeter order
 let ringCandidateRegion = null;     // the full next-ring rectangle ringRevealQueue is walking the boundary of
-// PATHING-MASTER-01 (1.5.9) — see HISTORY.md § [1.5.9]. Drives the spiral reveal by real elapsed
+// PATHING-MASTER-01: Drives the spiral reveal by real elapsed
 // time (see driveRingReveal() in update()) instead of only at wave-trigger/wave-complete moments.
 let ringRevealTimer = 0;
 let ringRevealTotalTiles = 0; // size of the CURRENT ring's queue at the moment it began — see driveRingReveal()
@@ -88,22 +86,12 @@ function expansionCost(){
 function regionFullyExpanded(){
   return activeRegion.x0 <= 0 && activeRegion.y0 <= 0 && activeRegion.x1 >= COLS-1 && activeRegion.y1 >= ROWS-1;
 }
-// MAP-CORRIDOR-01 (1.6.11) — see HISTORY.md § [1.6.11]. Direct report, with a screenshot: "that
-// entire bottom green line isn't needed... the green blocks should be like bordering the path."
-// Root cause: activeRegion is a plain rectangle, and isInActiveRegion() below used to treat EVERY
-// tile inside it as buildable — so once the path zigzagged around within that rectangle over
-// several expansions, the rectangle's full interior filled in as grass, including wide areas the
-// path never actually goes near. nearPathTileSet is the actual fix: a corridor of tiles within
-// PATH_BUILDABLE_MARGIN of any path tile, rebuilt every time the path changes (same hook point as
-// pathCells/waypointsPx below), and required by isInActiveRegion() as a hard filter on top of the
-// rectangle check — a tile only counts as buildable if it's both inside the region AND near the
-// path, so the visible shape is a corridor hugging the path's zigs and zags, not the full rectangle.
-// CA795 — see HISTORY.md § [1.6.62] Green route buffer. Keep two full green tiles around each route tile so the
-// forest/building corridor visually frames the road instead of letting brown road dominate.
-const PATH_BUILDABLE_MARGIN = 1; // PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
+// MAP-CORRIDOR-01: a tile is buildable only inside the active region AND within PATH_BUILDABLE_MARGIN of the path (nearPathTileSet),
+// so the grass forms a corridor that frames the road rather than filling the whole region rectangle.
+const PATH_BUILDABLE_MARGIN = 1; // PATH-BORDER-01
 let nearPathTileSet = new Set();
-// GRASS-NEVER-SHRINKS-01 (1.7.41): owner decision, replacing the grass-matches-route trimming of 1.7.37 to 1.7.40 — the road is always surrounded by grass and the green area is only ever
-// added to. dirtTileKeys stays empty (kept so old code paths and saves that mention it still load); a saved list from 1.7.37 to 1.7.40 is ignored on load.
+// GRASS-NEVER-SHRINKS-01: the road is always surrounded by grass and the green area only ever grows. dirtTileKeys stays empty so saves
+// that still carry a dirt list load; such a list is ignored.
 const dirtTileKeys = new Set();
 function rebuildNearPathTileSet(){
   const next = new Set();
@@ -126,78 +114,9 @@ function rebuildPathCellsAndPx(){
     x: p.x*TILE_SIZE + TILE_SIZE/2, y: p.y*TILE_SIZE + TILE_SIZE/2
   }));
   invalidateSpawnFlags();
-  rebuildNearPathTileSet(); // MAP-CORRIDOR-01 (1.6.11) — see HISTORY.md § [1.6.11]
+  rebuildNearPathTileSet(); // MAP-CORRIDOR-01
 }
-// CA092 — see HISTORY.md § [1.5.7] Code Archaeology, CA092
-function buildSpiralPathTiles(region){
-  const width = region.x1-region.x0+1, height = region.y1-region.y0+1;
-  const horizontal = width >= height; // walk along the longer axis for maximum length
-  const tiles = [];
-  const jag = () => (Math.random() < 0.3 ? (Math.random()<0.5?-1:1) : 0); // occasional small organic bump
-
-  if(horizontal){
-    let dir = 1;
-    for(let y=region.y0; y<=region.y1; y+=2){
-      const jy = Math.max(region.y0, Math.min(region.y1, y + jag()));
-      if(dir === 1){ for(let x=region.x0; x<=region.x1; x++) tiles.push({x, y:jy}); }
-      else { for(let x=region.x1; x>=region.x0; x--) tiles.push({x, y:jy}); }
-      if(y+2 <= region.y1){
-        const lastX = dir === 1 ? region.x1 : region.x0;
-        for(let by=jy; by!==y+1; by += Math.sign(y+1-jy)) tiles.push({x:lastX, y:by});
-        tiles.push({x:lastX, y:y+1});
-      }
-      dir *= -1;
-    }
-  } else {
-    let dir = 1;
-    for(let x=region.x0; x<=region.x1; x+=2){
-      const jx = Math.max(region.x0, Math.min(region.x1, x + jag()));
-      if(dir === 1){ for(let y=region.y0; y<=region.y1; y++) tiles.push({x:jx, y}); }
-      else { for(let y=region.y1; y>=region.y0; y--) tiles.push({x:jx, y}); }
-      if(x+2 <= region.x1){
-        const lastY = dir === 1 ? region.y1 : region.y0;
-        for(let bx=jx; bx!==x+1; bx += Math.sign(x+1-jx)) tiles.push({x:bx, y:lastY});
-        tiles.push({x:x+1, y:lastY});
-      }
-      dir *= -1;
-    }
-  }
-
-  // CA093 — see HISTORY.md § [1.5.7] Code Archaeology, CA093
-  const bridged = [tiles[0]];
-  for(let i=1; i<tiles.length; i++){
-    let cur = bridged[bridged.length-1];
-    const target = tiles[i];
-    let guard = 0;
-    while((cur.x !== target.x || cur.y !== target.y) && guard < 20){
-      guard++;
-      const dx = target.x-cur.x, dy = target.y-cur.y;
-      let next;
-      if(Math.abs(dx) >= Math.abs(dy) && dx !== 0) next = {x:cur.x+Math.sign(dx), y:cur.y};
-      else if(dy !== 0) next = {x:cur.x, y:cur.y+Math.sign(dy)};
-      else break;
-      cur = next;
-      bridged.push(cur);
-    }
-  }
-  const deduped = [bridged[0]];
-  for(let i=1; i<bridged.length; i++){
-    const p = bridged[i], last = deduped[deduped.length-1];
-    if(p.x !== last.x || p.y !== last.y) deduped.push(p);
-  }
-  return deduped;
-}
-// Regenerates the spiral, retrying a few times if it happens to land on an existing tower's tile
-function countDistinctTiles(tiles){
-  return new Set(tiles.map(t => t.x+','+t.y)).size;
-}
-// CA095 — see HISTORY.md § [1.5.7] Code Archaeology, CA095. PATH-SPIRAL-01 (1.6.0) — see HISTORY.md §
-// [1.6.0]: extends the path by only a short arc of the new ring (arcLength tiles, ending at the
-// point closest to the current spawn) instead of committing the ring's ENTIRE boundary as path in
-// one shot. The arc is taken walking BACKWARD from that closest point in the ring's own fixed
-// traversal order (the ring's fixed boundary order) — the same order the old full-ring version rotated
-// around — so a short arc winds the same direction a full ring would have, just truncated.
-// ROUTE-SPACING-01 (1.6.79) — see HISTORY.md § [1.6.79]
+// ROUTE-SPACING-01: two route tiles that touch (diagonals included) must be at least ROUTE_SPACING_MIN_STEP_GAP steps apart along the route.
 const ROUTE_SPACING_MIN_STEP_GAP = 3;
 let routeSpacingRelaxedExpansions = 0;
 function routeSpacingViolationCount(tiles){
@@ -267,17 +186,14 @@ function reservedPathExitTile(gx,gy){
   }
   return pathExitReservedKeys.has(gx+','+gy);
 }
-// PATH-WINDY-01 (1.7.36): half of all expansions used to prefer continuing straight, so the road often grew long straight runs. Most expansions now
-// prefer turning (the spacing and exit-room rules still decide what is possible), so the road keeps winding.
+// PATH-WINDY-01: most expansions prefer turning (spacing and exit-room rules still decide what is possible), so the road keeps winding.
 let pathTurnFirstChance = 0.85;
-// ROAD-VARIETY-01 (1.7.36): owner decision — roads should have vast possibilities, mostly normal but sometimes wild. Each expansion draws a growth style:
-// TURN (the normal winding), ZIGZAG, STRAIGHT, HOOK (keep curling the same way, making loops and coils) or DRIFT (random). Normal growth favours open space so the road
-// does not coil itself shut; wild growth (the HOOK and DRIFT styles, plus one in eight expansions) mostly ignores open space and takes tight, surprising shapes.
+// ROAD-VARIETY-01: roads should have vast possibilities, mostly normal but sometimes wild. Each expansion draws a growth style:
+// TURN (the normal winding), ZIGZAG, STRAIGHT, HOOK (keep curling the same way, making loops and coils) or DRIFT (random).
 // Whatever the style, the spacing and exit rules still decide what is possible, so a road can be wild but never cuts itself off.
 const ROAD_GROWTH_STYLE_WEIGHTS = [['TURN', 0.47], ['ZIGZAG', 0.17], ['STRAIGHT', 0.12], ['HOOK', 0.14], ['DRIFT', 0.10]];
 const ROAD_WILD_STYLES = new Set(['HOOK', 'DRIFT']), ROAD_WILD_CHANCE = 0.12;
-// ROAD-CHARACTER-01 (1.8.39): every run draws one road character from its seed, so one run winds, another coils, another runs long, another wanders. Turning styles now
-// need a straight stretch between turns (a lone TURN no longer chains into a diagonal staircase), and the coil style is common enough to actually produce spirals.
+// ROAD-CHARACTER-01: every run draws one road character from its seed, so one run winds, another coils, another runs long, another wanders.
 const ROAD_CHARACTERS = [
   { name: 'MEANDER', chance: 0.40, weights: [['TURN', 0.52], ['ZIGZAG', 0.05], ['STRAIGHT', 0.15], ['HOOK', 0.18], ['DRIFT', 0.10]] },
   { name: 'COILING', chance: 0.25, weights: [['TURN', 0.20], ['ZIGZAG', 0.03], ['STRAIGHT', 0.07], ['HOOK', 0.60], ['DRIFT', 0.10]] },
@@ -319,7 +235,7 @@ function orderRoadDirections(chain, occupied, region, style, wild, rng = Math.ra
       else if(style === 'HOOK') stylePull = lastTurn !== 0 ? (isStraight ? 1.2 : 0) : (turn && Math.sign(turn) === roadCurlDirection() ? 1.2 : 0);
       else if(style === 'ZIGZAG') stylePull = turn && (!lastTurn || Math.sign(turn) !== Math.sign(lastTurn)) ? 1.2 : 0;
     }
-    // ROAD-PATTERN-PREFERENCE-01 (1.7.135) — see HISTORY.md § [1.7.135]
+    // ROAD-PATTERN-PREFERENCE-01
     const openWeight = wild ? 0.4 : 2.2, styleWeight = style === 'DRIFT' ? 0.2 : 3.5, randomWeight = wild ? 1.8 : 0.7;
     return { dir, score: roadOpenness(tile, occupied, region)*openWeight + stylePull*styleWeight + rng()*randomWeight };
   });
@@ -327,7 +243,11 @@ function orderRoadDirections(chain, occupied, region, style, wild, rng = Math.ra
   return scored.map(entry => entry.dir);
 }
 // Towers that sit where the road now runs are moved to the nearest free buildable tile (an expansion can happen mid-wave; the road only grows, so live enemies keep their place).
-function activeTowerTileKeys(){ const keys = []; for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') keys.push(tower.gridX+','+tower.gridY); return keys; }
+function activeTowerTileKeys(){
+  const keys = [];
+  for(const tower of towerPool) if(tower.active && tower.type !== 'BARRICADE') keys.push(tower.gridX + ',' + tower.gridY);
+  return keys;
+}
 function relocateTowersOffRoute(){
   for(const tower of towerPool){
     if(!tower.active || tower.type === 'BARRICADE') continue;
@@ -349,17 +269,20 @@ function relocateTowersOffRoute(){
       }
       if(best) break;
     }
-    if(best){ tower.walkTo(best.gx, best.gy); spawnFloatingText(tower.x, tower.y - 20, 'Moved onto the grass', '#ffe082'); logGameEvent(itemHolderLabel(tower) + ' moved onto the grass at tile ' + best.gx + ',' + best.gy + ' because the road grew'); }
+    if(!best) continue;
+    tower.walkTo(best.gx, best.gy);
+    spawnFloatingText(tower.x, tower.y - 20, 'Moved onto the grass', '#ffe082');
+    logGameEvent(itemHolderLabel(tower) + ' moved onto the grass at tile ' + best.gx + ',' + best.gy + ' because the road grew');
   }
 }
 function extendPathWithNewRing(oldPath, newRegion, arcLength){
-  // ROAD-FREEDOM-01 (1.7.36): towers never block road growth, because they can move; any tower the road grows over is relocated after the growth is committed.
+  // ROAD-FREEDOM-01: towers never block road growth, because they can move; any tower the road grows over is relocated after the growth is committed.
   const occupied = new Set(oldPath.map(p => p.x+','+p.y));
   const towerTileKeys = activeTowerTileKeys().filter(key => !occupied.has(key));
-  const growthRng = createSeededRandom(waveSeedFor(waveRunSeed ^ 0x6a09e667,oldPath.length)); // ROAD-SEEDED-PLAN-01 (1.7.141): future styles/ties derive from the run's saved seed.
+  const growthRng = createSeededRandom(waveSeedFor(waveRunSeed ^ 0x6a09e667,oldPath.length)); // ROAD-SEEDED-PLAN-01: future styles/ties derive from the run's saved seed.
   const growthStyle = pickRoadGrowthStyle(growthRng, roadCharacterForRun().weights);
   const wildGrowth = ROAD_WILD_STYLES.has(growthStyle) || growthRng() < ROAD_WILD_CHANCE;
-  const perEndGrowth = Math.max(1, Math.min(PATH_GROWTH_TILES_MAX, arcLength || 2)); // EXPAND-BOTH-ENDS-01 (1.7.62): both ends grow by the same 1 to 3 tiles
+  const perEndGrowth = clampNum(arcLength || 2, 1, PATH_GROWTH_TILES_MAX); // EXPAND-BOTH-ENDS-01: both ends grow by the same 1 to 3 tiles
   const existingSpacingViolations=routeSpacingViolationCount(oldPath);
   let spacingAllowance = 0; // ROAD-ESCAPE-01: only raised when a strict growth is impossible
   function grow(point, length){
@@ -387,70 +310,42 @@ function extendPathWithNewRing(oldPath, newRegion, arcLength){
     return addition;
   }
   const last = oldPath[oldPath.length-1];
-  // ROAD-ESCAPE-01 (1.7.36): owner report — the road can cut itself off from expansion. Measured cause: a tip can have a clear way to the map edge and still be unable to
-  // grow, because every neighbouring tile touches a distant stretch of its own road (the spacing rule), and the old code insisted on growing both ends by their
-  // planned share. Growth now falls back in stages instead of giving up: the planned split, then all the growth at the first end, then all at the other end, and only
-  // if all of those fail does the spacing rule bend a little (two, then five touching tiles), so the road keeps growing as long as there is any room.
+  // ROAD-ESCAPE-01: the road can cut itself off from expansion.
   let start = [], finish = [];
-  // EXPAND-BOTH-ENDS-01 (1.7.62): owner rule — every expansion grows the spawn end and the finish end by the SAME number of tiles, 1 to 3 each. Equal growth is tried first at the
-  // planned size, then at smaller equal sizes, while the spacing rule bends a little more at each stage. Only when no equal growth fits at all does the road add one tile at a
-  // single end, so it never cuts itself off (ROAD-ESCAPE-01).
+  // EXPAND-BOTH-ENDS-01: every expansion grows the spawn end and the finish end by the SAME number of tiles, 1 to 3 each.
   const plans = [];
   for(const spacingAllowanceStage of [0, 2, 5, 12]){
     for(let equalGrowth = perEndGrowth; equalGrowth >= 1; equalGrowth--) plans.push([equalGrowth, equalGrowth, spacingAllowanceStage, equalGrowth === perEndGrowth ? 8 : 4]);
   }
   plans.push([1, 0, 30, 6], [0, 1, 30, 6]);
-  // TOWERS-STAY-PUT-01 (1.7.41): growth first avoids every tile a stickman stands on, so an expansion normally never touches a fighter; only if no growth is possible that way
+  // TOWERS-STAY-PUT-01: growth first avoids every tile a stickman stands on, so an expansion normally never touches a fighter; only if no growth is possible that way
   // are fighters treated as movable (and then moved to the nearest grass by relocateTowersOffRoute, clearing scenery for them if they must).
   for(const avoidTowers of [true, false]){
-  if(avoidTowers){ for(const key of towerTileKeys) occupied.add(key); } else { for(const key of towerTileKeys) occupied.delete(key); }
-  for(const [planStart, planFinish, allowance, tries] of plans){
-    spacingAllowance = allowance;
-    for(let attempt=0; attempt<tries; attempt++){
-      start = grow(oldPath[0], planStart); finish = grow(last, planFinish);
-      const okay = (!planStart || start.length === planStart) && (!planFinish || finish.length === planFinish)
-        && pathTipExit(start.length ? start[start.length-1] : oldPath[0], occupied) && pathTipExit(finish.length ? finish[finish.length-1] : last, occupied);
-      if(okay) return [...start.reverse(),...oldPath,...finish];
-      for(const tile of [...start,...finish]) occupied.delete(tile.x+','+tile.y);
-      start = []; finish = [];
+    if(avoidTowers){ for(const key of towerTileKeys) occupied.add(key); } else { for(const key of towerTileKeys) occupied.delete(key); }
+    for(const [planStart, planFinish, allowance, tries] of plans){
+      spacingAllowance = allowance;
+      for(let attempt=0; attempt<tries; attempt++){
+        start = grow(oldPath[0], planStart); finish = grow(last, planFinish);
+        const okay = (!planStart || start.length === planStart) && (!planFinish || finish.length === planFinish)
+          && pathTipExit(start.length ? start[start.length-1] : oldPath[0], occupied) && pathTipExit(finish.length ? finish[finish.length-1] : last, occupied);
+        if(okay) return [...start.reverse(),...oldPath,...finish];
+        for(const tile of [...start,...finish]) occupied.delete(tile.x+','+tile.y);
+        start = []; finish = [];
+      }
     }
-  }
   }
   return oldPath;
 }
-// CA096 — see HISTORY.md § [1.5.7] Code Archaeology, CA096
-function buildFallbackPath(region){
-  const midY = Math.floor((region.y0+region.y1)/2);
-  const tiles = [];
-  for(let x=region.x0; x<=region.x1; x++) tiles.push({x, y:midY});
-  return tiles;
-}
-function generateConflictFreePath(region, maxAttempts){
-  const regionArea = (region.x1-region.x0+1) * (region.y1-region.y0+1);
-  const minOpenTiles = Math.min(2, Math.max(0, regionArea-2)); // always leave room to build at least 2 towers
-  for(let attempt=0; attempt<(maxAttempts||8); attempt++){
-    const tiles = buildSpiralPathTiles(region);
-    const conflict = towerPool.some(t => t.active && tiles.some(p => p.x===t.gridX && p.y===t.gridY));
-    const openTiles = regionArea - countDistinctTiles(tiles);
-    if(!conflict && openTiles >= minOpenTiles) return tiles;
-  }
-  return buildFallbackPath(region); // spiral couldn't leave enough room — guaranteed-safe straight path instead
-}
-// PATH-SPIRAL-01 (1.6.0) — see HISTORY.md § [1.6.0]. How many new path tiles a single expansion
-// adds — direct request ("2-3 squares added to the path each expansion"). Every expansion now
-// extends the path a little, not just every other one.
-// EXPAND-SIZE-01 (1.7.36) superseded by EXPAND-BOTH-ENDS-01 (1.7.62): an expansion adds 1 to 3 route tiles at EACH end, the same number at both (2 to 6 in total).
+// PATH-SPIRAL-01, EXPAND-BOTH-ENDS-01: every expansion adds 1 to 3 route tiles at each end, the same number at both (2 to 6 in total).
 const PATH_GROWTH_TILES_MIN = 1, PATH_GROWTH_TILES_MAX = 3;
-// CA097 — see HISTORY.md § [1.5.7] Code Archaeology, CA097
 const HUT_MIN_EXPANSION_LEVEL = 3;
-// CA098 — see HISTORY.md § [1.5.7] Code Archaeology, CA098
 const GUARDIAN_COMBAT_LEASH = 260;
 let hutsSpawnedThisGame = false;
-// REPEAT-FANFARE-01 (1.8.59): the first troll and the first circus of a run get the full arrival (camera pan, fanfare); later ones arrive quietly, as Diablo kept its big surprises one-time.
+// REPEAT-FANFARE-01: the first troll and the first circus of a run get the full arrival (camera pan, fanfare); later ones arrive quietly, as Diablo kept its big surprises one-time.
 let trollArrivalsThisRun = 0, circusArrivalsThisRun = 0;
 let latestExpansionTiles = [];
 function initRegionAndPath(){
-  for(const flight of goldHudFlights) flight.active=false;goldHudFlightCount=0;lastGoldHudFlightAt=-1e9;
+  resetGoldHudFlights();
   const w = 2, h = 2;
   const x0 = Math.floor(COLS/2) - Math.floor(w/2);
   const y0 = Math.floor(ROWS/2) - Math.floor(h/2);
@@ -470,29 +365,25 @@ function initRegionAndPath(){
     ? [{x:x0+(farSideStart ? 1 : 0),y:y0},{x:x0+(farSideStart ? 1 : 0),y:y0+1}]
     : [{x:x0,y:y0+(farSideStart ? 1 : 0)},{x:x0+1,y:y0+(farSideStart ? 1 : 0)}];
   rebuildPathCellsAndPx();
-  lockStartingBorderOutsideRegion(); // STARTING-MAP-01 (1.6.79) — see HISTORY.md § [1.6.79]
-  pickStarterGroundDetails(); // GROUND-DETAIL-RUN-01 (1.6.75) — see HISTORY.md § [1.6.75]
+  lockStartingBorderOutsideRegion(); // STARTING-MAP-01
+  pickStarterGroundDetails(); // GROUND-DETAIL-RUN-01
 }
 function performExpansion(label, labelColor){
   playSound('expand_build');
   if(ringCandidateRegion){ advanceRingReveal(ringRevealQueue.length); if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); }
-  // CA099 — see HISTORY.md § [1.5.7] Code Archaeology, CA099
   if(!ringCandidateRegion){
     if(!beginNextRingReveal()) return false;
     openRandomEventSlot();
     pendingRingLabel = label; pendingRingLabelColor = labelColor; // shown once the ring actually closes, not on each partial reveal
   }
-  // CA100 — see HISTORY.md § [1.5.7] Code Archaeology, CA100
   advanceRingReveal(1 + Math.floor(Math.random()*3));
-  if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
+  if(ringCandidateRegion && !ringRevealQueue.length) finalizeRingExpansion(); // PATH-BORDER-01
   updateHUD();
   return true;
 }
 let pendingRingLabel = '🗺️ Map Expanded!', pendingRingLabelColor = '#ffd700';
-// CA796 — see HISTORY.md § [1.6.62] Cached corridor repaint. Expansion commits the new
-// route before its grass animation finishes. Repaint the new route plus its bounded neighborhood
-// immediately, including old-region tiles whose buildable status changed with the wider corridor.
-// This keeps the cached map coherent without rebaking the whole world on each expansion.
+// Enemies can walk the committed route before its grass animation finishes, so the new route and its neighbourhood are repainted into
+// the cached map at once, including old tiles whose buildable status changed with the wider corridor, without rebaking the whole world.
 function paintCommittedExpansionPath(oldPath){
   const oldKeys = new Set(oldPath.map(p => p.x+','+p.y));
   const changed = pathWaypointTiles.filter(p => !oldKeys.has(p.x+','+p.y));
@@ -531,10 +422,10 @@ function beginNextRingReveal(){
   if(candidate===oldPath || candidate.length===oldPath.length) return false;
   const newRegion={...activeRegion};
   for(const tile of candidate){
-    newRegion.x0=Math.max(0,Math.min(newRegion.x0,tile.x-PATH_BUILDABLE_MARGIN));
-    newRegion.y0=Math.max(0,Math.min(newRegion.y0,tile.y-PATH_BUILDABLE_MARGIN));
-    newRegion.x1=Math.min(COLS-1,Math.max(newRegion.x1,tile.x+PATH_BUILDABLE_MARGIN));
-    newRegion.y1=Math.min(ROWS-1,Math.max(newRegion.y1,tile.y+PATH_BUILDABLE_MARGIN));
+    newRegion.x0=clampNum(tile.x-PATH_BUILDABLE_MARGIN, 0, newRegion.x0);
+    newRegion.y0=clampNum(tile.y-PATH_BUILDABLE_MARGIN, 0, newRegion.y0);
+    newRegion.x1=clampNum(tile.x+PATH_BUILDABLE_MARGIN, newRegion.x1, COLS-1);
+    newRegion.y1=clampNum(tile.y+PATH_BUILDABLE_MARGIN, newRegion.y1, ROWS-1);
   }
   ringCandidateRegion=newRegion;
   const previouslyBorderingKeys=nearPathTileSet;
@@ -545,8 +436,8 @@ function beginNextRingReveal(){
   }
   rebuildPathCellsAndPx();
   relocateTowersOffRoute(); // ROAD-FREEDOM-01
-  // GRASS-NEVER-SHRINKS-01 (1.7.41): the road is always framed by grass, and grass is only ever added to; no border tile is trimmed or turned to dirt.
-  // PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
+  // GRASS-NEVER-SHRINKS-01: the road is always framed by grass, and grass is only ever added to; no border tile is trimmed or turned to dirt.
+  // PATH-BORDER-01
   const oldTip = oldPath[oldPath.length-1];
   const oldPathKeys = new Set(oldPath.map(p => p.x+','+p.y));
   const revealTiles = [];
@@ -572,14 +463,12 @@ function beginNextRingReveal(){
   finishCtx.setTransform(dprValue,0,0,dprValue,0,0);
   repaintFinishCarpetFootprint(finishCtx,previousFinishLine);
   drawFinishCarpet(finishCtx,computeFinishLine());
-  // CA102 — see HISTORY.md § [1.5.7] Code Archaeology, CA102
   ringRevealQueue = revealTiles;
-  ringRevealTotalTiles = ringRevealQueue.length; // PATHING-MASTER-01 (1.5.9) — see HISTORY.md § [1.5.9]
+  ringRevealTotalTiles = ringRevealQueue.length; // PATHING-MASTER-01
   ringRevealTimer = 0;
   return true;
 }
-// CA103 — see HISTORY.md § [1.5.7] Code Archaeology, CA103
-// EXPANSION-GLORY-01 (1.8.21): each tile glitters as it opens, and the finished map ends in a golden burst, a rising chime and a gentle shake.
+// EXPANSION-GLORY-01: each tile glitters as it opens, and the finished map ends in a golden burst, a rising chime and a gentle shake.
 function spawnExpansionSparkles(x, y){
   const lowDetail = graphicsQuality === 'low' || underHeavyVisualLoad;
   spawnParticles(x, y, '#ffe08a', lowDetail ? 2 : 6, 70, 0.92, false);
@@ -593,6 +482,19 @@ function spawnExpansionFinale(region){
   playSound('levelup');
   if(screenShakeEnabled){ screenShakeUntil = presentationTime + 220; screenShakeMag = Math.max(screenShakeMag, 3); }
 }
+function countSceneryOfType(type){
+  let count = 0;
+  for(const item of sceneryMap.values()) if(item.type === type) count++;
+  return count;
+}
+function spawnRevealedScenery(tileX, tileY, key, type){
+  const level = expansionLevel;
+  expansionLevel++;
+  spawnScenery(tileX, tileY, type);
+  expansionLevel = level;
+  const item = sceneryMap.get(key);
+  if(item) item.revealBornAt = presentationTime;
+}
 function advanceRingReveal(n){
   if(!ringRevealQueue.length) return;
   for(let i=0; i<n && ringRevealQueue.length; i++){
@@ -602,37 +504,23 @@ function advanceRingReveal(n){
     spawnExpansionSparkles((t.x+0.5)*TILE_SIZE, (t.y+0.5)*TILE_SIZE);
     // Reveal useful scenery with its own tile, rather than the final batch.
     const key=t.x+','+t.y;
-    if(!pathCells.has(key) && !sceneryMap.has(key) && sceneryPlanRandom(t.x,t.y,32+expansionLevel+1)() < CONFIG.SCENERY.coverage){
-      const level=expansionLevel;expansionLevel++;
-      spawnScenery(t.x,t.y);expansionLevel=level;
-      const item=sceneryMap.get(key);if(item) item.revealBornAt=presentationTime;
+    if(!pathCells.has(key) && !sceneryMap.has(key) && sceneryPlanRandom(t.x, t.y, 32 + expansionLevel + 1)() < CONFIG.SCENERY.coverage){
+      spawnRevealedScenery(t.x, t.y, key);
     }
-    if(!pathCells.has(key) && isEndRingTile(t.x,t.y) && !sceneryMap.has(key) && keepRoomToBuild(1)){const level=expansionLevel;expansionLevel++;spawnScenery(t.x,t.y,sceneryPlanRandom(t.x,t.y,74)()<0.6 ? 'TREE' : 'ROCK');expansionLevel=level;const item=sceneryMap.get(key);if(item) item.revealBornAt=presentationTime;}
+    if(!pathCells.has(key) && isEndRingTile(t.x, t.y) && !sceneryMap.has(key) && keepRoomToBuild(1)){
+      spawnRevealedScenery(t.x, t.y, key, sceneryPlanRandom(t.x, t.y, 74)() < 0.6 ? 'TREE' : 'ROCK');
+    }
     maybeSpawnRandomEventsOnExpansion([key],true);
     invalidateSpawnFlags();
   }
   if(!ringRevealQueue.length) finalizeRingExpansion();
 }
-// PATHING-MASTER-01 (1.5.9) — see HISTORY.md § [1.5.9]. Real root cause of "the path doesn't
-// actually grow" / "enemies spawning outside the path": advanceRingReveal() used to only ever be
-// called once per expandRegion()/grantFreeExpansion() (revealing 1-3 tiles) and once more per
-// wave-complete transition — so a ring with dozens of boundary tiles (any region past the first
-// few expansions) could take many WAVES to finish revealing, even though pathWaypointTiles/
-// waypointsPx (what enemies actually walk) already commits the new path instantly at the ring's
-// start (see beginNextRingReveal()) — real, correct, and necessary so a tower can never be built
-// on a tile that's about to become path, but it means enemies could already be spawning and
-// walking on a path segment the map hadn't visually caught up to for several waves running,
-// reading exactly as "spawning outside the path." Called every frame from update() below, this
-// finishes a ring in well under two seconds of real time regardless of wave pacing, so the visual
-// reveal is always done long before any enemy could reach that stretch of path — while remaining
-// throttled (RING_REVEAL_INTERVAL_MS) rather than instant, so the spiral is still SEEN growing
-// outward, not snapping into place. The wave-trigger/wave-complete calls to advanceRingReveal()
-// elsewhere are left in place as a harmless immediate kick and a catch-up safety net; this is now
-// the primary driver.
+// PATHING-MASTER-01: the route commits instantly when a ring starts, so the visible reveal is driven every frame and finishes
+// within about two seconds, throttled by RING_REVEAL_INTERVAL_MS so the spiral is seen growing. Wave-start and wave-end calls are a catch-up net.
 function driveRingReveal(dt){
   if(!ringRevealQueue.length){
     ringRevealTimer = 0;
-    if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
+    if(ringCandidateRegion) finalizeRingExpansion(); // PATH-BORDER-01
     return;
   }
   ringRevealTimer += dt;
@@ -643,14 +531,11 @@ function driveRingReveal(dt){
     advanceRingReveal(tilesPerTick);
   }
 }
-// CA104 — see HISTORY.md § [1.5.7] Code Archaeology, CA104
-// ROOM-TO-BUILD-01 (1.7.37): with grass matched to the route there are only a handful of grass tiles per expansion, and every new tile lies beside a road end, where the
-// guard scenery goes; once the road moves on, those old guard trees and rocks stayed behind (measured: 24 to 28 grass tiles after twelve expansions, only 1 clear, so
-// nowhere to put a tower without harvesting first). After each expansion at least 45% of all grass tiles, rounded up, are now kept clear; the surplus trees and rocks
-// are removed at random, never from the tiles beside the current road ends, which keep their guard scenery as designed.
+// ROOM-TO-BUILD-01: new scenery is placed only while at least MIN_CLEAR_GRASS_FRACTION of the grass stays clear, so old road-end guard trees and rocks
+// never leave the player with nowhere to build.
 const MIN_CLEAR_GRASS_FRACTION = 0.45;
 function keepRoomToBuild(reserveSlots = 0){
-  // SCENERY-PRESERVE-01 (1.7.141): preserve old scenery; enforce room when placing new props instead of deleting old ones.
+  // SCENERY-PRESERVE-01: preserve old scenery; enforce room when placing new props instead of deleting old ones.
   const grass = [...nearPathTileSet].filter(key => !pathCells.has(key));
   return !grass.length || grass.filter(key => !sceneryMap.has(key)).length-reserveSlots >= Math.ceil(grass.length*MIN_CLEAR_GRASS_FRACTION);
 }
@@ -660,7 +545,7 @@ function animateNewExpansionScenery(previousScenery){
 function finalizeRingExpansion(){
   const previousScenery = new Map(sceneryMap); // one snapshot per expansion, never in the render loop
   const oldRegion = { ...activeRegion };
-  const oldFinishLine = computeFinishLine(); // captured BEFORE the path terminus moves — this is exactly the carpet footprint the incremental patch below needs to erase
+  const oldFinishLine = computeFinishLine();
   const newRegion = ringCandidateRegion;
   latestExpansionTiles = [...ringRevealed].map(key=>{ const [x,y]=key.split(',').map(Number); return {x,y}; });
   activeRegion = newRegion;
@@ -689,7 +574,6 @@ function finalizeRingExpansion(){
   maybeSpawnRandomEventsOnExpansion(revealedBorderKeys);
   maybeDropExpansionShovel(revealedBorderKeys);
   animateNewExpansionScenery(previousScenery); // entrance for endpoint top-ups and fallback props, preserving old objects
-  // CA105 — see HISTORY.md § [1.5.7] Code Archaeology, CA105
   mapBakeRevision++;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
@@ -709,7 +593,7 @@ function finalizeRingExpansion(){
   trackGameEvent('map_expanded', { expansion_level: expansionLevel, route_tiles: pathWaypointTiles.length, spacing_relaxed: routeSpacingRelaxedExpansions });
   updateHUD();
 }
-// UNLIMITED-EXPANSION-01 (1.6.98) is superseded by EXPAND-PER-WAVE-01 (1.7.75): one bought expansion per wave. The other limits are gold, the idle gap between waves, and the fixed world bounds (regionFullyExpanded()).
+// EXPAND-PER-WAVE-01: one bought expansion per wave.
 function expandRegion(){
   if(regionFullyExpanded() || expansionBlockedReason()) return false;
   const cost = expansionCost();
@@ -725,7 +609,7 @@ function grantFreeExpansion(){
   if(regionFullyExpanded()) return false;
   return performExpansion('🎁 Free Map Expansion!', '#7dd3fc');
 }
-// EARLY-REWARD-USE-01 — see HISTORY.md § [1.6.166] Expansion pickup use, EARLY-REWARD-USE-01.
+// EARLY-REWARD-USE-01: a map-expansion pickup is consumed only when the expansion actually happens.
 function resolveExpansionPickupUse(expand, consume, blocked){
   if(!expand()){ blocked(); return false; }
   consume();
@@ -738,7 +622,7 @@ function useFreeExpansionPickup(groundItem, color){
     groundItems = groundItems.filter(gi => gi !== groundItem);
     itemLogReleased(groundItem.itemDef, 'used');
     spawnParticles(groundItem.x, groundItem.y, color, 12);
-    playSound('evolution');
+    playSound('class_unlock');
   }, () => showToast('There is no room left to expand.'));
 }
 /* =========================================================
@@ -754,8 +638,8 @@ function shovelDigPoint(tower){
   }
   return null;
 }
-const ITEM_DRIFT_SPEED_PX_PER_S = 9, ITEM_DRIFT_STOP_PX = 13, ITEM_DRIFT_STORE_PX = 15; // ITEM-DRIFT-01 (1.8.18)
-const ITEM_DRIFT_DELAY_MIN_MS = 20000, ITEM_DRIFT_DELAY_SPREAD_MS = 10000; // ITEM-DRIFT-02 (1.8.37)
+const ITEM_DRIFT_SPEED_PX_PER_S = 9, ITEM_DRIFT_STOP_PX = 13, ITEM_DRIFT_STORE_PX = 15; // ITEM-DRIFT-01
+const ITEM_DRIFT_DELAY_MIN_MS = 20000, ITEM_DRIFT_DELAY_SPREAD_MS = 10000; // ITEM-DRIFT-02
 function towerCanTakeDriftItem(tower, def){ return tower.equippedItems.length < MAX_ITEM_SLOTS || (STACKABLE_ITEM_IDS.has(def.id) && tower.equippedItems.some(item => item.id === def.id)); }
 function itemDriftsToTowers(def){ return !def.isGoldBag && !def.isMapScroll && !def.isBarricade; }
 function updateGroundItemDrift(dt){
@@ -787,7 +671,7 @@ function updateGroundItemDrift(dt){
   }
 }
 function shovelChargesLeft(tower){ return tower.shovelCharges === undefined ? SHOVEL_CHARGES_PER_ROUND : tower.shovelCharges; }
-function resetShovelCharges(){ // SHOVEL-CHARGES-01 (1.8.18): clearing a wave refills every stickman's digs
+function resetShovelCharges(){ // SHOVEL-CHARGES-01: clearing a wave refills every stickman's digs
   for(const t of towerPool){ if(t.active && t.shovelCharges !== undefined){ t.shovelCharges = SHOVEL_CHARGES_PER_ROUND; refreshQuickUse(t); } }
 }
 function beginShovelDig(tower){
@@ -824,14 +708,10 @@ function digWithShovel(tower, site){
   const roll = Math.random();
   if(roll < 0.02){
     const gear = pickGenericDropItem(rollDropRarity(false));
-    if(gear){ spawnGroundItem(site.x, site.y, gear, 'dug up'); showToast('A buried ' + gear.name + '!'); trackGameEvent('item_dropped', { item: gear.id, rarity: gear.rarity, enemy_type: 'shovel' }); playSound('evolution'); return true; }
+    if(gear){ spawnGroundItem(site.x, site.y, gear, 'dug up'); showToast('A buried ' + gear.name + '!'); trackGameEvent('item_dropped', { item: gear.id, rarity: gear.rarity, enemy_type: 'shovel' }); playSound('class_unlock'); return true; }
   }
   if(roll < 0.02 + SHOVEL_CHEST_CHANCE){
-    const bagCount = 2 + Math.floor(Math.random()*3);
-    for(let bagIndex = 0; bagIndex < bagCount; bagIndex++){
-      const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
-      dropGoldBag(site.x + (bagIndex - (bagCount-1)/2)*16, site.y, bagGold);
-    }
+    dropTreasureBags(site.x, site.y, 2 + Math.floor(Math.random()*3));
     spawnParticles(site.x, site.y, '#ffd700', 14);
     spawnFloatingText(site.x, site.y - 14, '🧰 Treasure chest!', '#ffd700', ITEM_POPUP_LIFE_MS);
     awardMedal('TREASURE');
@@ -864,10 +744,10 @@ function maybeDropExpansionShovel(revealedKeys){
     }
   }
 }
-// PATH-BORDER-01 (1.6.76) — see HISTORY.md § [1.6.76]
+// PATH-BORDER-01
 const pendingRevealTileKeys = new Set();
 let mapBakeRevision = 0; // CRISP-MAP-01: bumps whenever the baked map bitmap changes
-// STARTING-MAP-01 (1.6.79) — see HISTORY.md § [1.6.79]
+// STARTING-MAP-01
 const STARTING_PATH_TILE_COUNT = 2;
 const STARTING_GRASS_TILE_COUNT = 2;
 function lockStartingBorderOutsideRegion(){
@@ -879,7 +759,7 @@ function lockStartingBorderOutsideRegion(){
     if(!insideStartingRegion) pendingRevealTileKeys.add(key);
   }
 }
-// GRASS-RATIO-01 (1.6.90) — see HISTORY.md § [1.6.90]. The route border stays a strict 1-tile ring
+// GRASS-RATIO-01: The route border stays a strict 1-tile ring
 // (PATH_BUILDABLE_MARGIN), but every EXTRA_GRASS_EVERY_N_EXPANSIONS-th expansion adds one bonus grass
 // tile just outside that ring, nudging the long-run dirt:grass ratio from 1:1 toward roughly 1:1.25
 // without touching the border rule itself. Bonus tiles are tracked separately (bonusGrassTiles) so the
@@ -895,20 +775,22 @@ function isInActiveRegion(gx, gy){
    LIVESTOCK, RANDOM EVENTS, BEES, TROLLS AND CIRCUS
    ========================================================= */
 const CLOWN_ATTACK_RADIUS = 40, CLOWN_ATTACK_INTERVAL_MS = 1100, CLOWN_ATTACK_DAMAGE = 4, CLOWN_AGGRO_RADIUS = 260, CLOWN_HUNT_SPEED_MULT = 1.5;
-const LIVESTOCK_ADULT_ROUNDS = 7, LIVESTOCK_BABY_SIZE_FRACTION = 0.3; // ANIMAL-GROWTH-01 (1.7.137)
+const LIVESTOCK_ADULT_ROUNDS = 7, LIVESTOCK_BABY_SIZE_FRACTION = 0.3; // ANIMAL-GROWTH-01
 function livestockAdultRounds(animal){ return animal.type === 'CHICKEN' ? 6 : LIVESTOCK_ADULT_ROUNDS; }
-function livestockOnGrass(animal){ const key = Math.floor(animal.x/TILE_SIZE)+','+Math.floor(animal.y/TILE_SIZE); return isInActiveRegion(Math.floor(animal.x/TILE_SIZE), Math.floor(animal.y/TILE_SIZE)) && !pathCells.has(key); } // EGG-ALL-GRASS-01 (1.7.138)
+function livestockOnGrass(animal){ // EGG-ALL-GRASS-01
+  const tileX = Math.floor(animal.x/TILE_SIZE), tileY = Math.floor(animal.y/TILE_SIZE);
+  return isInActiveRegion(tileX, tileY) && !pathCells.has(tileX + ',' + tileY);
+}
 function livestockIsEgg(animal){ return animal.type === 'CHICKEN' && animal.growthRounds < 3; }
 const LIVESTOCK_MAX_ON_BOARD = 8;
-const LIVESTOCK_BREED_CHANCE=0.25,LIVESTOCK_BIRTHS_PER_EXPANSION=2;
 const LIVESTOCK_WALK_MS_MIN = 900, LIVESTOCK_WALK_MS_MAX = 2200;
 const LIVESTOCK_IDLE_MS_MIN = 700, LIVESTOCK_IDLE_MS_MAX = 2400;
 const LIVESTOCK_WALK_SPEED_MULT = 2.4; // the base speeds are for a slow amble; walking bursts are shorter so they need a bit more
-// TARGET-MARK-01 (1.6.94): livestock are now real Enemy instances (see CONFIG.ENEMIES CHICKEN/PIG/COW
+// TARGET-MARK-01: livestock are Enemy instances (see CONFIG.ENEMIES CHICKEN/PIG/COW
 // and Enemy.updateLivestockWander()), so drawing and update reuse the normal enemy render/update paths
 // automatically; only spawning needs its own entry point.
 function countLivestockOnBoard(){ return enemyPool.filter(e => e.active && e.isLivestock).length; }
-// NPC-SAFE-SPAWN-01 (1.6.116) — see HISTORY.md § [1.6.116]
+// NPC-SAFE-SPAWN-01
 const NPC_EDGE_LOOKAHEAD_PX = 28;
 const NPC_SPAWN_SAFETY_BUFFER_PX = 45, NPC_SPAWN_ATTEMPTS = 30;
 function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
@@ -933,14 +815,13 @@ function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
   }
   return null;
 }
-// ONE-EVENT-PER-END-01 (1.7.36): every expansion makes exactly one positive random event within 3 to 5 route squares of the spawn flags and one within
+// ONE-EVENT-PER-END-01: every expansion makes exactly one positive random event within 3 to 5 route squares of the spawn flags and one within
 // 3 to 5 squares of the finish carpet (fewer only if a hostile event already took a slot or no tile is free): a treasure chest, a supply crate, a potted
 // berry bush or a wandering farm animal. Nothing else spawns as a random extra.
-// EVENT-VARIETY-01 (1.7.44): owner says there were too many presents. Chests are now the rarest event (8%), and when a farm animal or fountain event is not possible the fallback is a berry bush, not a chest.
 const EVENT_PROP_EMOJI = { PICNIC: '🧺', WOODPILE: '🪵', BIRD_NEST: '🪺', MUSHROOMS: '🍄' };
 const EVENT_PROP_TYPES = new Set(['CHEST', 'SUPPLY_CRATE', 'BUSH', ...Object.keys(EVENT_PROP_EMOJI)]);
-// EVENT-VARIETY-01 (1.7.44, nine kinds since the stone cairn was removed in 1.7.60): random events are all positive and easy: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (food and sometimes
-// a stim), a wood pile (wood), a bird nest (a few coins) and a mushroom patch (food). Presents stay rare; nests are rarer (2% since 1.7.137).
+// EVENT-VARIETY-01: random events are all positive and easy: a present, a supply crate, a berry bush, a farm animal, a fountain or campfire, a picnic basket (food and sometimes
+// a stim), a wood pile (wood), a bird nest (a few coins) and a mushroom patch (food). Presents stay rare and nests rarer still.
 const RANDOM_EVENT_CHOICES = [['CHEST', 0.06], ['SUPPLY_CRATE', 0.09], ['BUSH', 0.20], ['LIVESTOCK', 0.22], ['CHANCE', 0.18], ['PICNIC', 0.08], ['WOODPILE', 0.07], ['BIRD_NEST', 0.02], ['MUSHROOMS', 0.08]]; // CHANCE is a fountain or campfire when one is currently due
 function pickRandomEventChoice(){
   let roll = Math.random();
@@ -980,16 +861,13 @@ function maybeSpawnRandomEventsOnExpansion(revealedBorderKeys, tileOnly){
       choice = due.length ? due[Math.floor(Math.random()*due.length)] : 'BUSH';
       if(due.length) chanceStructureDrySpells[choice] = 0;
     }
-    // PROP-CAP-01 (1.7.40): found by the regression review. With only one to three grass tiles per expansion, two event props per expansion (chests, crates, bushes)
-    // filled most of the grass (about 20 props on 24 tiles after ten expansions), leaving only 25% of it free to build on. A new prop is now skipped while the board already
-    // holds as many unharvested props as 30% of the grass (never fewer than two); harvesting them, or a bigger map, brings events back.
-    if(choice === 'CHEST'){ let chests = 0; for(const item of sceneryMap.values()) if(item.type === 'CHEST') chests++; if(chests >= 2) choice = 'SUPPLY_CRATE'; } // never more than two unopened presents on the board
+    if(choice === 'CHEST' && countSceneryOfType('CHEST') >= 2) choice = 'SUPPLY_CRATE'; // PROP-CAP-01: never more than two unopened presents on the board
     if(EVENT_PROP_TYPES.has(choice)){
       let props = 0; for(const item of sceneryMap.values()) if(EVENT_PROP_TYPES.has(item.type)) props++;
       const propLimit = Math.max(2, Math.floor(nearPathTileSet.size * 0.3));
       if(props >= propLimit) continue;
     }
-    if(choice === 'BIRD_NEST'){ // NEST-NEAR-TREE-01 (1.7.137)
+    if(choice === 'BIRD_NEST'){ // NEST-NEAR-TREE-01
       const nearTree = candidates.filter(key => { const [gx,gy] = key.split(',').map(Number); return [...sceneryMap.values()].some(item => item.type === 'TREE' && Math.abs(item.gx-gx) <= 1 && Math.abs(item.gy-gy) <= 1); });
       if(nearTree.length) candidates = nearTree; else choice = 'BUSH';
     }
@@ -1082,7 +960,7 @@ function restoreLivestock(savedAnimals, growthVersion){
   }
   for(const {animal} of restored.values()) if(!livestockPairValid(animal)) clearLivestockPair(animal);
 }
-// RANDOM-EVENT-SLOT-01 (1.6.171): at most two random events can claim slots per expansion.
+// RANDOM-EVENT-SLOT-01: at most two random events can claim slots per expansion.
 let randomEventSlotsUsed = 0;
 function openRandomEventSlot(){ randomEventSlotsUsed = 0; }
 function tryClaimRandomEventSlot(){
@@ -1101,7 +979,7 @@ function pickEndTileSpawnPoint(){
   return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
 }
 // Bees wander on the playable ground; production uses real play time, never fast-forward.
-const BEE_HONEY_MIN_MS=300000, BEE_HONEY_SPREAD_MS=300000, BEE_HONEY_MAX_MS=BEE_HONEY_MIN_MS+BEE_HONEY_SPREAD_MS, BEE_MAX_ON_BOARD=2; // BEE-HONEY-02 (1.8.37): each honey comes after a random 5 to 10 minutes, the way a Minecraft chicken lays eggs
+const BEE_HONEY_MIN_MS=300000, BEE_HONEY_SPREAD_MS=300000, BEE_HONEY_MAX_MS=BEE_HONEY_MIN_MS+BEE_HONEY_SPREAD_MS, BEE_MAX_ON_BOARD=2; // BEE-HONEY-02: each honey comes after a random 5 to 10 minutes, the way a Minecraft chicken lays eggs
 function rollBeeHoneyDueMs(){ return BEE_HONEY_MIN_MS+Math.random()*BEE_HONEY_SPREAD_MS; }
 function maybeSpawnBee(){
   if(enemyPool.filter(e=>e.active && e.type==='BEE').length>=BEE_MAX_ON_BOARD) return;
@@ -1109,12 +987,13 @@ function maybeSpawnBee(){
   const bee=placeLivestock('BEE',{...spot,radius:0},LIVESTOCK_ADULT_ROUNDS);
   if(bee){bee.honeyElapsedMs=0;bee.honeyDueMs=rollBeeHoneyDueMs();spawnFloatingText(bee.x,bee.y-20,'🐝 Bee','#ffe082');}
 }
+const HONEY_GROUND_CAP = 20; // bees stop dropping honey while this many jars lie on the ground
 function updateBeeHoney(bee,dt){
   if(gameState!=='PLAYING' || !bee.active || bee.type!=='BEE') return;
   if(!Number.isFinite(bee.honeyDueMs)) bee.honeyDueMs=rollBeeHoneyDueMs();
-  bee.honeyElapsedMs=Math.min(BEE_HONEY_MAX_MS,(bee.honeyElapsedMs||0)+Math.min(100,Math.max(0,dt)));
+  bee.honeyElapsedMs=Math.min(BEE_HONEY_MAX_MS,(bee.honeyElapsedMs||0)+clampNum(dt, 0, 100));
   if(bee.honeyElapsedMs<bee.honeyDueMs || !isLooseWalkableAt(bee.x,bee.y)) return;
-  if(groundItems.filter(gi=>gi.itemDef.id==='HONEY').length>=20) return;
+  if(groundItems.filter(gi=>gi.itemDef.id==='HONEY').length>=HONEY_GROUND_CAP) return;
   bee.honeyElapsedMs=0; bee.honeyDueMs=rollBeeHoneyDueMs();
   spawnGroundItem(bee.x,bee.y,lookupItemDef('HONEY'),'bee honey');
 }
@@ -1144,7 +1023,6 @@ function applyLivestockGrowthSize(animal){
   animal.maxHp = Math.max(4, Math.round(base.baseHp * sizeScale));
   animal.hp = Math.max(1, Math.round(animal.maxHp * healthFraction));
 }
-function isGrownRoundBreeder(animal){ return animal.active && animal.isLivestock && animal.hp > 0 && LIVESTOCK_TYPES[animal.type] && LIVESTOCK_TYPES[animal.type].roundBreeder && animal.growthRounds >= LIVESTOCK_ADULT_ROUNDS; }
 function growLivestockOneRound(){
   for(const animal of enemyPool){
     if(!animal.active || !animal.isLivestock || !LIVESTOCK_TYPES[animal.type] || LIVESTOCK_TYPES[animal.type].hunter || animal.growthRounds >= livestockAdultRounds(animal)) continue;
@@ -1187,7 +1065,6 @@ function pickCircusPerformerType(){
   for(const [type, weight] of options){ if(roll < weight) return type; roll -= weight; }
   return options[0][0];
 }
-function breedCircusAnimals(circus){ for(const a of enemyPool) prepareLivestockPair(a); }
 function sendCircusPerformer(circus){
   const type = pickCircusPerformerType();
   const performer = placeLivestock(type, circus, LIVESTOCK_ADULT_ROUNDS);
@@ -1196,7 +1073,7 @@ function sendCircusPerformer(circus){
   if(type === 'CLOWN'){
     playSound('clown_honk', performer.x, undefined, performer.y);
     spawnFloatingText(performer.x, performer.y - performer.radius - 14, '🤡 Clown!', '#ff8a80');
-    showFirstTimeNotice('first_clown', '🤡 Clowns from the circus hunt nearby stickmen. Monkeys and elephants are harmless and can be harvested for food.');
+    showTutorialTipOnce('first_clown', '🤡 Clowns from the circus hunt nearby stickmen. Monkeys and elephants are harmless and can be harvested for food.');
   } else {
     playSound('coin', performer.x, undefined, performer.y);
   }
@@ -1235,11 +1112,11 @@ function findFreeTileBesideRoad(){
   return { x: gx*TILE_SIZE + TILE_SIZE/2, y: gy*TILE_SIZE + TILE_SIZE/2 };
 }
 function setUpCircusAt(tile){
-  if(!tile || liveCircuses().length > 0 || !spawnCircus(tile.x, tile.y)) return false;
+  if(!tile || liveCircuses().length > 0 || !spawnCampBuilding('CIRCUS', tile.x, tile.y)) return false;
   logGameEvent('random event: circus');
   awardMedal('RINGMASTER');
   playSound(circusArrivalsThisRun++ === 0 ? 'wave' : 'clown_honk', tile.x, undefined, tile.y);
-  showFirstTimeNotice('first_circus', '🎪 A circus has set up beside the road. It sends out a new animal at the end of every round, and it never spawns enemies of its own. Watch for clowns.');
+  showTutorialTipOnce('first_circus', '🎪 A circus has set up beside the road. It sends out a performer at the end of every round, usually an animal and sometimes a clown that hunts stickmen. It never adds enemies to the waves.');
   return true;
 }
 function maybeAddBonusGrassTile(revealedBorderKeys){
@@ -1259,13 +1136,12 @@ function maybeAddBonusGrassTile(revealedBorderKeys){
   if(!candidates.length) return;
   bonusGrassTiles.add(candidates[Math.floor(Math.random()*candidates.length)]);
 }
-// CA106 — see HISTORY.md § [1.5.7] Code Archaeology, CA106
 function drawPendingRingReveal(ctx){
   if(!ringRevealed.size) return;
   ctx.save();
   for(const key of ringRevealed){
     const [gx, gy] = key.split(',').map(Number);
-    if(pathCells.has(key)) continue; // already committed to pathCells at beginNextRingReveal() — the world's plain dirt background (drawMap()'s base fill) already matches a real path tile's base color, it just won't have the decorative pebble/shading texture until rebakeMap() actually runs at this ring's close
+    if(pathCells.has(key)) continue;
     paintBuildableTileBase(ctx, gx, gy);
   }
   ctx.restore();
@@ -1274,7 +1150,6 @@ function drawPendingRingReveal(ctx){
    SCENERY: ROCKS, TREES AND FLORA
    ========================================================= */
 const sceneryMap = new Map(); // "gx,gy" -> scenery object
-// CA107 — see HISTORY.md § [1.5.7] Code Archaeology, CA107
 const clearingScenery = [];
 function rebuildClearingScenery(){
   clearingScenery.length = 0;
@@ -1288,29 +1163,31 @@ function shuffleArray(arr, rng = Math.random){
   }
   return arr;
 }
+// TAUNT-PICK-01: an enemy picks a stickman in reach at random, weighted toward closer ones and toward high Strength (taunt).
+function towerTauntScore(tower, x, y, maxDist){
+  if(!tower.active || tower.disabledWavesLeft > 0 || tower.type === 'BARRICADE' || (tower.type === 'HACKER' && tower.stealthUntil > gameTime)) return 0;
+  const distance = Math.hypot(tower.x - x, tower.y - y);
+  if(distance > (maxDist || Infinity)) return 0;
+  return (1 + diminishingStatValue(tower.str || 0, 0.08)) / (distance + 40);
+}
 function findNearestActiveTower(x, y, maxDist){
-  // CA108 — see HISTORY.md § [1.5.7] Code Archaeology, CA108
-  const candidates = [];
-  for(const t of towerPool){
-    if(!t.active || t.disabledWavesLeft > 0 || t.type === 'BARRICADE' || (t.type === 'HACKER' && t.stealthUntil > gameTime)) continue; // Barricades are obstacles, not attackable "real towers" — breakaway/troll-swing/escaped-wander targeting must never pick one as its destination. A live barricade can still physically block a breakaway enemy's path (see updateBreakaway()'s own blocker check), just never be the thing it deliberately walks toward.
-    const d = Math.hypot(t.x-x, t.y-y);
-    if(d > (maxDist || Infinity)) continue;
-    const tauntWeight = 1 + diminishingStatValue(t.str || 0, 0.08);
-    const proximityWeight = 1 / (d + 40);
-    candidates.push({ tower: t, score: tauntWeight * proximityWeight });
+  let total = 0, lastCandidate = null;
+  for(const tower of towerPool){
+    const score = towerTauntScore(tower, x, y, maxDist);
+    if(score > 0){ total += score; lastCandidate = tower; }
   }
-  if(!candidates.length) return null;
-  const total = candidates.reduce((sum, c) => sum + c.score, 0);
+  if(!lastCandidate) return null;
   let roll = Math.random() * total;
-  for(const c of candidates){ roll -= c.score; if(roll <= 0) return c.tower; }
-  return candidates[candidates.length - 1].tower;
+  for(const tower of towerPool){
+    roll -= towerTauntScore(tower, x, y, maxDist);
+    if(roll <= 0) return tower;
+  }
+  return lastCandidate;
 }
 function findTouchingBarricade(e){
   if(e.isLivestock || e.isBreakaway) return null; // WANDERER-PHASE-01 and BREAKAWAY-PHASE-01 — livestock and the troll never touch a barricade
-  // CA109 — see HISTORY.md § [1.5.7] Code Archaeology, CA109
   const touchDist = e.radius + 14;
   const touchDistSq = touchDist * touchDist;
-  // CA110 — see HISTORY.md § [1.5.7] Code Archaeology, CA110
   for(const t of activeBarricades){
     if(!t.active) continue;
     const dx = t.x - e.x, dy = t.y - e.y;
@@ -1321,7 +1198,6 @@ function findTouchingBarricade(e){
 /* =========================================================
    ROUTE LENGTH AND BARRICADE PILE-UP
    ========================================================= */
-// CA111 — see HISTORY.md § [1.5.7] Code Archaeology, CA111
 let routeCumulativeLengths = [], routeCacheWaypointsRef = null;
 function ensureRouteLengthCache(){
   if(routeCacheWaypointsRef === waypointsPx) return;
@@ -1333,7 +1209,6 @@ function ensureRouteLengthCache(){
   }
   routeCacheWaypointsRef = waypointsPx;
 }
-// CA112 — see HISTORY.md § [1.5.7] Code Archaeology, CA112
 function routeSegmentIndexAt(dist){
   ensureRouteLengthCache();
   let lo = 0, hi = routeCumulativeLengths.length - 2;
@@ -1359,25 +1234,29 @@ function getPositionAtTraveled(dist){
   const t = segLen > 0 ? (dist - routeCumulativeLengths[i]) / segLen : 0;
   return { x: a.x+(b.x-a.x)*t, y: a.y+(b.y-a.y)*t };
 }
-// CA113 — see HISTORY.md § [1.5.7] Code Archaeology, CA113
 const barricadeActiveScratch = [];
 const barricadeAttackerScratch = new Map();
 const barricadeClaimedSlotsScratch = new Set();
-// CA114 — see HISTORY.md § [1.5.7] Code Archaeology, CA114
-const MAX_QUEUE_DEPTH = 40;
+const MAX_QUEUE_DEPTH = 40, QUEUE_CATCHMENT_PX = 70, QUEUE_MAX_TRAVELED_GAP_PX = 110, BARRICADE_QUEUE_TIMEOUT_MS = 15000;
 const DOT_TEXT_BLEED = 0, DOT_TEXT_BURN = 1, DOT_TEXT_POISON = 2, DOT_TEXT_INTERVAL_MS = 1000;
-const FOLLOW_BRAKE_ZONE_PX = 36, FOLLOW_STOP_GAP_PX = 2, FOLLOW_BRAKE_PER_S = 3; // QUEUE-HOLD-01 (1.7.87): an enemy closing on a slowed, arrow-pinned or frozen one brakes smoothly to its speed instead of stopping at contact
-const QUEUE_PACK_GAP_PER_RADIUS = 1.6, QUEUE_PACK_MIN_GAP = 16; // PILE-PACK-01 (1.6.126) — was about 88 px between queued standard enemies, now about 24 px
-// CA115 — see HISTORY.md § [1.5.7] Code Archaeology, CA115
+const FOLLOW_BRAKE_ZONE_PX = 36, FOLLOW_STOP_GAP_PX = 2, FOLLOW_BRAKE_PER_S = 3; // QUEUE-HOLD-01
+const QUEUE_PACK_MIN_GAP = 16; // PILE-PACK-01: queued standard enemies stand about 24 px apart
 const BARRICADE_CHIP_MS = 260; // how long a barricade shakes/flashes after losing a point
 const BARRICADE_HIT_INTERVAL_MS = 10000; // max 1 HP lost per 10s from ANY source — pile-up attackers and direct takeDamage() hits share this one limiter
-// COLLISION-ARRAYS-01 (1.8.60): the pre-snap positions and progress of the sorted queue are also copied to flat arrays, and the distance test runs before
+// COLLISION-ARRAYS-01: the pre-snap positions and progress of the sorted queue are also copied to flat arrays, and the distance test runs before
 // the eligibility test, so a pile of enemies with nearly equal progress (where the binary search cannot narrow the range) reads plain numbers in its inner loop.
 // The nearest eligible leader inside the catchment is the same one as before.
 let catchmentArrayLength = 0, catchmentPreX, catchmentPreY, catchmentPreTraveled;
 function snapshotCatchmentArrays(active){
-  if(active.length > catchmentArrayLength){ catchmentArrayLength = Math.max(active.length, catchmentArrayLength * 2, 64); catchmentPreX = new Float64Array(catchmentArrayLength); catchmentPreY = new Float64Array(catchmentArrayLength); catchmentPreTraveled = new Float64Array(catchmentArrayLength); }
-  for(let i = 0; i < active.length; i++){ catchmentPreX[i] = active[i].preSnapX; catchmentPreY[i] = active[i].preSnapY; catchmentPreTraveled[i] = active[i].preSnapTraveled; }
+  if(active.length > catchmentArrayLength){
+    catchmentArrayLength = Math.max(active.length, catchmentArrayLength * 2, 64);
+    catchmentPreX = new Float64Array(catchmentArrayLength);
+    catchmentPreY = new Float64Array(catchmentArrayLength);
+    catchmentPreTraveled = new Float64Array(catchmentArrayLength);
+  }
+  for(let i = 0; i < active.length; i++){
+    catchmentPreX[i] = active[i].preSnapX; catchmentPreY[i] = active[i].preSnapY; catchmentPreTraveled[i] = active[i].preSnapTraveled;
+  }
 }
 function findQueueCatchmentLeader(active, endExclusive, behindIndex, maxTraveledGap, catchmentRadius){
   // `active` is sorted by traveled descending and the catchment arrays hold its pre-snap values in that order.
@@ -1410,7 +1289,6 @@ function updateBarricadesAndPileup(){
     e.candidateBarricade = e.stunnedUntil > gameTime ? undefined : findTouchingBarricade(e); // independent per-enemy — merged into this same pass rather than a separate loop over `active` right after, since neither depends on the other having run first
     active.push(e);
   }
-  // CA116 — see HISTORY.md § [1.5.7] Code Archaeology, CA116
   const attackerByBarricade = barricadeAttackerScratch;
   attackerByBarricade.clear();
   for(const e of active){
@@ -1423,13 +1301,12 @@ function updateBarricadesAndPileup(){
     const barricade = e.candidateBarricade;
     e.candidateBarricade = undefined;
     if(!barricade || barricade.hp <= 0) continue;
-    if(attackerByBarricade.get(barricade) !== e) continue; // not the attacker — leave pileBlocked false here so the queue-catchment pass below finds this enemy and gives it a real, non-overlapping slot behind the attacker, instead of marking it blocked in-place and leaving it physically overlapping the attacker forever (the catchment pass skips anything already pileBlocked, assuming it already has a valid resting position)
+    if(attackerByBarricade.get(barricade) !== e) continue;
     e.pileBlocked = true;
     e.touchingBarricade = true;
     if(barricade.barricadeContactSince === undefined || barricade.barricadeContactSince === null) barricade.barricadeContactSince = gameTime;
     if(barricadeAttackReady(barricade)){
       chipBarricade(barricade);
-      // CA117 — see HISTORY.md § [1.5.7] Code Archaeology, CA117
       if(goreMode && e.hp < e.maxHp){
         const bio = e.bloodProfile || getBloodProfile(e.type);
         if(!bio.isDust){
@@ -1440,56 +1317,43 @@ function updateBarricadesAndPileup(){
     }
   }
   active.sort((a,b) => b.traveled - a.traveled); // front of the line first
-  // CA118 — see HISTORY.md § [1.5.7] Code Archaeology, CA118. BALANCE-01 (1.6.1) — see HISTORY.md § [1.6.1]:
-  // +40% queued-lane spacing, direct request ("too close... makes it too laggy and unenjoyable").
-  // BALANCE-02 (1.6.7) — see HISTORY.md § [1.6.7]: direct follow-up ("that will help a lot,
-  // slower and more space please") — raised further to 2.2x.
-  // PILE-PACK-01 (1.6.126) — see HISTORY.md § [1.6.126]. Enemies arrive spaced out (spawn gap plus follow speed cap),
+  // PILE-PACK-01: Enemies arrive spaced out (spawn gap plus follow speed cap),
   // but once stacked behind a barricade they pack tightly so area attacks can catch many at once.
-  const queueGap = (e,ahead) => Math.max(e.radius + ahead.radius + 2 + (ahead.touchingBarricade ? ahead.radius*0.75 : 0), QUEUE_PACK_MIN_GAP); // QUEUE-BODY-GAP-01 (1.7.140)
-  const QUEUE_CATCHMENT = 70; // physical radius around an already-blocked enemy that pulls others into the same queue — handles multiple lanes converging on one chokepoint, which the old strict-adjacency check missed
-  // CA119 — see HISTORY.md § [1.5.7] Code Archaeology, CA119
-  const MAX_TRAVELED_GAP_FOR_CATCHMENT = 110;
+  const queueGap = (e,ahead) => Math.max(e.radius + ahead.radius + 2 + (ahead.touchingBarricade ? ahead.radius*0.75 : 0), QUEUE_PACK_MIN_GAP); // QUEUE-BODY-GAP-01
   const claimedSlots = barricadeClaimedSlotsScratch;
   claimedSlots.clear();
   let anyBlockedSeed = false;
   for(const e of active){
-    // CA120 — see HISTORY.md § [1.5.7] Code Archaeology, CA120
-    e.queueSlotDist = undefined; e.preSnapX = e.x; e.preSnapY = e.y; e.preSnapTraveled = e.traveled; // fixed pre-snap position/progress — catchment checks always use this, never the post-snap teleported values, or the chain breaks beyond one hop
+    e.queueSlotDist = undefined; e.preSnapX = e.x; e.preSnapY = e.y; e.preSnapTraveled = e.traveled;
     if(e.pileBlocked || isEnemyHeldInPlace(e)){ claimedSlots.add(Math.round(e.traveled)); anyBlockedSeed = true; } // enemies already directly touching a barricade occupy their own traveled position
   }
-  // CA121 — see HISTORY.md § [1.5.7] Code Archaeology, CA121
-  if(anyBlockedSeed) snapshotCatchmentArrays(active);
   if(anyBlockedSeed){
-  for(let i=0; i<active.length; i++){
-    const behind = active[i];
-    if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
-    if(claimedSlots.size > MAX_QUEUE_DEPTH) continue;
-    const bestAhead = findQueueCatchmentLeader(active, i, i, MAX_TRAVELED_GAP_FOR_CATCHMENT, QUEUE_CATCHMENT);
-    if(bestAhead){
-      const spacing = queueGap(behind,bestAhead);
-      const aheadSlot = bestAhead.queueSlotDist !== undefined ? bestAhead.queueSlotDist : bestAhead.traveled;
-      let slotDist = Math.max(0, Math.round(aheadSlot) - spacing);
-      // CA123 — see HISTORY.md § [1.5.7] Code Archaeology, CA123
-      while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= spacing;
-      // Arc distance compresses across a corner; reserve enough physical room as well.
-      const aheadPoint = getPositionAtTraveled(aheadSlot);
-      while(slotDist > 0){
-        const point = getPositionAtTraveled(slotDist);
-        if(!point || !aheadPoint || Math.hypot(point.x-aheadPoint.x,point.y-aheadPoint.y) >= spacing) break;
-        slotDist = Math.max(0,slotDist-2);
+    snapshotCatchmentArrays(active);
+    for(let i=0; i<active.length; i++){
+      const behind = active[i];
+      if(behind.pileBlocked) continue; // already blocked directly (touching a barricade)
+      if(claimedSlots.size > MAX_QUEUE_DEPTH) continue;
+      const bestAhead = findQueueCatchmentLeader(active, i, i, QUEUE_MAX_TRAVELED_GAP_PX, QUEUE_CATCHMENT_PX);
+      if(bestAhead){
+        const spacing = queueGap(behind,bestAhead);
+        const aheadSlot = bestAhead.queueSlotDist !== undefined ? bestAhead.queueSlotDist : bestAhead.traveled;
+        let slotDist = Math.max(0, Math.round(aheadSlot) - spacing);
+        while(claimedSlots.has(slotDist) && slotDist > 0) slotDist -= spacing;
+        // Arc distance compresses across a corner; reserve enough physical room as well.
+        const aheadPoint = getPositionAtTraveled(aheadSlot);
+        while(slotDist > 0){
+          const point = getPositionAtTraveled(slotDist);
+          if(!point || !aheadPoint || Math.hypot(point.x-aheadPoint.x,point.y-aheadPoint.y) >= spacing) break;
+          slotDist = Math.max(0,slotDist-2);
+        }
+        claimedSlots.add(slotDist);
+        behind.queueSlotDist = slotDist;
+        behind.pileBlocked = behind.traveled >= slotDist;
+        if(behind.pileBlocked) settleEnemyTowardSlot(behind, slotDist);
+        perfStats.barricadeSnapCount++;
       }
-      claimedSlots.add(slotDist);
-      behind.queueSlotDist = slotDist;
-      behind.pileBlocked = behind.traveled >= slotDist;
-      if(behind.pileBlocked) settleEnemyTowardSlot(behind, slotDist);
-      perfStats.barricadeSnapCount++;
     }
   }
-  } // end if(anyBlockedSeed)
-  // CA124 — see HISTORY.md § [1.5.7] Code Archaeology, CA124
-
-  // CA125 — see HISTORY.md § [1.5.7] Code Archaeology, CA125
   for(const e of active) e.followSpeedCap = undefined;
   for(let i=1; i<active.length; i++){
     const ahead = active[i-1], behind = active[i];
@@ -1497,29 +1361,28 @@ function updateBarricadesAndPileup(){
     const contactPx = ahead.radius + behind.radius, gapPx = d - contactPx;
     if(gapPx <= FOLLOW_BRAKE_ZONE_PX){
       const aheadHeld = isEnemyFrozen(ahead);
-      const aheadOwnSpeed = ahead.packedSpeed() * enemyMoveMultiplier(ahead);
+      const aheadOwnSpeed = ahead.tierWalkSpeed() * enemyMoveMultiplier(ahead);
       const aheadEffectiveSpeed = aheadHeld ? 0 : Math.min(ahead.followSpeedCap !== undefined ? ahead.followSpeedCap : Infinity, aheadOwnSpeed);
       behind.followSpeedCap = aheadEffectiveSpeed + Math.max(0, gapPx - FOLLOW_STOP_GAP_PX) * FOLLOW_BRAKE_PER_S;
     }
   }
-  const nowQueued = active.some(e => e.pileBlocked);
+  let queuedCount = 0;
+  for(const e of active) if(e.pileBlocked) queuedCount++;
+  const nowQueued = queuedCount > 0;
   perfStats.barricadeActiveScanned = active.length;
-  perfStats.barricadeQueuedCount = active.reduce((n,e) => n + (e.pileBlocked ? 1 : 0), 0);
+  perfStats.barricadeQueuedCount = queuedCount;
   if(perfStats.barricadeQueuedCount > perfStats.barricadeMaxQueueLenSeen) perfStats.barricadeMaxQueueLenSeen = perfStats.barricadeQueuedCount;
-  // CA128 — see HISTORY.md § [1.5.7] Code Archaeology, CA128
   if(nowQueued){
     if(!barricadeQueueStartedAt) barricadeQueueStartedAt = gameTime;
   } else {
     barricadeQueueStartedAt = 0;
   }
-  const BARRICADE_QUEUE_TIMEOUT = 15000;
-  anyBarricadeQueued = nowQueued && (gameTime - barricadeQueueStartedAt < BARRICADE_QUEUE_TIMEOUT);
+  anyBarricadeQueued = nowQueued && (gameTime - barricadeQueueStartedAt < BARRICADE_QUEUE_TIMEOUT_MS);
 }
-// CA129 — see HISTORY.md § [1.5.7] Code Archaeology, CA129
 const QUEUE_SETTLE_PX_PER_TICK = 6;
 function settleEnemyTowardSlot(e, slotDist){
   const offsetPx = slotDist - e.traveled;
-  if(offsetPx > 0) return; // QUEUE-NO-PULL-01 (1.7.136) — see HISTORY.md § [1.7.136]
+  if(offsetPx > 0) return; // QUEUE-NO-PULL-01
   snapEnemyToTraveled(e, Math.abs(offsetPx) <= QUEUE_SETTLE_PX_PER_TICK ? slotDist : e.traveled + Math.sign(offsetPx) * QUEUE_SETTLE_PX_PER_TICK);
 }
 function snapEnemyToTraveled(e, slotDist){
@@ -1565,15 +1428,14 @@ function spawnDebrisNear(x, y){
 /* =========================================================
    SCENERY PLACEMENT AND ROAD-END GUARD
    ========================================================= */
-// END-SCENERY-01 (1.6.85) — see HISTORY.md § [1.6.85]. Trees and rocks spawn more often, and
+// END-SCENERY-01: Trees and rocks spawn more often, and
 // larger, near the spawn flags and the finish line, tapering to normal over END_SCENERY_RADIUS_TILES
 // route tiles. The goal is to visually nudge building toward the middle of the road, leaving both
 // ends open for the road to keep expanding without a stickman sitting in the way. Distance is measured
 // along the route (path-tile index), not straight-line, so it tracks the winding road, not the map edge.
 const END_SCENERY_RADIUS_TILES = 10;
 const END_SCENERY_MAX_COVERAGE_BONUS = 0.7;
-const MID_ROAD_SCENERY_KEEP_CHANCE = 0.06; // SCENERY-ENDS-01 (1.6.110) — see HISTORY.md § [1.6.110]; tightened in 1.6.116 — see HISTORY.md § [1.6.116]
-// LAG-SCENERY-01 (1.6.109): pathEndProximity() scanned every route tile per call, and scenery placement calls it per cell (and per sort
+// LAG-SCENERY-01: pathEndProximity() scanned every route tile per call, and scenery placement calls it per cell (and per sort
 // comparison), which grows quadratically as the road lengthens. Results are memoized per tile and thrown away whenever the route changes.
 const pathEndProximityCache = new Map();
 let pathEndProximityCacheSignature = '';
@@ -1613,22 +1475,23 @@ function spawnExtraEndScenery(cells, spawnedKeys){
   }
 }
 const SCENERY_FIRST_WAVE_INDEX = 1;
-// HUT-CLEAR-01 (1.6.121) — see HISTORY.md § [1.6.121]
+// HUT-CLEAR-01
 function tileHasHut(gx, gy){
   for(const e of enemyPool){
     if(e.active && e.isHutBuilding && Math.floor(e.x/TILE_SIZE) === gx && Math.floor(e.y/TILE_SIZE) === gy) return true;
   }
   return false;
 }
-// END-RING-01 (1.6.133) — see HISTORY.md § [1.6.133]. Size tiers for trees and rocks: the tiles touching a road end are the prime spots for the biggest pieces,
+// END-RING-01: Size tiers for trees and rocks: the tiles touching a road end are the prime spots for the biggest pieces,
 // other tiles near an end get medium pieces, and the middle of the road gets rare, small ones.
-// SCENERY-GRADIENT-01 (1.6.135) — see HISTORY.md § [1.6.135]. Trees and rocks shrink and thin out with distance from the road ends, and tiles the player has cleared rarely grow them again.
+// SCENERY-GRADIENT-01: Trees and rocks shrink and thin out with distance from the road ends, and tiles the player has cleared rarely grow them again.
 const END_RING_MIN_SIZE_FRAC = 0.85;
 const TREE_ROCK_SIZE_FRAC_AT_MIDDLE = 0.08, TREE_ROCK_SIZE_FRAC_SLOPE = 0.55, TREE_ROCK_SIZE_FRAC_SPREAD = 0.25;
 const TREE_ROCK_TREE_SHARE_ON_EXPANSION = 0.60, TREE_ROCK_MIN_KEEP_CHANCE = 0.10, HARVESTED_TILE_KEEP_FACTOR = 0.12;
+const SCENERY_TREE_SHARE = 0.15 + 0.85*TREE_ROCK_TREE_SHARE_ON_EXPANSION; // about two thirds of ordinary scenery are trees, the rest rocks
 const harvestedTileKeys = new Set();
 const ROCK_SIZE_CLASS_FRAC = [0.2, 0.55, 0.9]; // small, medium, large — a rock is one of three even sizes and is never stretched
-const ROCK_SIZE_FRAC_SPREAD = 0.6; // ROCK-VARIETY-01 (1.7.90): rocks vary more in size than trees
+const ROCK_SIZE_FRAC_SPREAD = 0.6; // ROCK-VARIETY-01: rocks vary more in size than trees
 function treeRockSizeFrac(proximity, type, rng = Math.random){
   const spread = type === 'ROCK' ? ROCK_SIZE_FRAC_SPREAD : TREE_ROCK_SIZE_FRAC_SPREAD;
   let sizeFrac = TREE_ROCK_SIZE_FRAC_AT_MIDDLE + TREE_ROCK_SIZE_FRAC_SLOPE * proximity + (rng() - 0.5) * spread;
@@ -1639,7 +1502,7 @@ function treeRockKeepChance(proximity, tileKey){
   const gradient = TREE_ROCK_MIN_KEEP_CHANCE + (1 - TREE_ROCK_MIN_KEEP_CHANCE) * proximity * proximity;
   return harvestedTileKeys.has(tileKey) ? gradient * HARVESTED_TILE_KEEP_FACTOR : gradient;
 }
-const LOG_MAX_SCALE = 0.54; // LOG-SIZE-01 (1.8.18): branches and logs never draw larger than a regular small log
+const LOG_MAX_SCALE = 0.54; // LOG-SIZE-01: branches and logs never draw larger than a regular small log
 const FIXED_SCENERY_SCALE = { CHEST: 0.48, COIN_POUCH: 0.95, BUSH: 0.68, BIRD_NEST: 0.22, PICNIC: 0.68 }; // the potted berry bush stays compact beside trees, rocks and chests
 const SMALL_SCENERY_SIZE_MULTIPLIER = 0.5, SMALL_SCENERY_COST_MULTIPLIER = 0.5, SMALL_SCENERY_BUDDY_CHANCE = 0.5;
 function smallSceneryHarvestCost(fullSizeCost){ return Math.max(1, Math.round(fullSizeCost * SMALL_SCENERY_COST_MULTIPLIER)); }
@@ -1661,8 +1524,8 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
   if(sceneryMap.has(gx+','+gy)) return; // never replace an existing prop during ordinary expansion
   if(!forceType && !keepRoomToBuild(1)) return;
   if(!sceneryGrowthAllowed()) return;
-  if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01 (1.6.97): the opening wave is played on a clean map
-  if(!forceType && isEndRingTile(gx, gy)) return; // RING-ONLY-BIG-01 (1.6.142) — see HISTORY.md § [1.6.142]: the tiles touching a road end hold only big trees and rocks
+  if(tileHasHut(gx, gy)) return; // FIRST-LEVEL-CLEAR-01: the opening wave is played on a clean map
+  if(!forceType && isEndRingTile(gx, gy)) return; // RING-ONLY-BIG-01
   const rng = !forceType || forceType === 'TREE' || forceType === 'ROCK' ? sceneryPlanRandom(gx,gy) : Math.random;
   const S = CONFIG.SCENERY;
   const isSmallScenery = !!(smallOptions && smallOptions.small);
@@ -1671,21 +1534,16 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
   if(forceType){
     type = forceType;
   } else {
-    const roll = rng();
-    const treeRockSplit = 0.15 + 0.85 * TREE_ROCK_TREE_SHARE_ON_EXPANSION;
-    // ONE-EVENT-PER-END-01 (1.7.36): chests, supply crates and berry bushes are random events, placed one near each road end per expansion
+    // ONE-EVENT-PER-END-01: chests, supply crates and berry bushes are random events, placed one near each road end per expansion
     // by maybeSpawnRandomEventsOnExpansion(); the ordinary tile roll only grows trees and rocks.
-    type = roll < 0.67 ? 'TREE' : 'ROCK';
-    if(type === 'TREE' || type === 'ROCK'){
-      if(rng() >= treeRockKeepChance(endProximity, gx + ',' + gy)) return;
-    } else if(endProximity <= 0 && rng() >= MID_ROAD_SCENERY_KEEP_CHANCE) return;
+    type = rng() < SCENERY_TREE_SHARE ? 'TREE' : 'ROCK'; // EXPANSION-SCENERY-BALANCE-01
+    if(rng() >= treeRockKeepChance(endProximity, gx + ',' + gy)) return;
   }
-
   if(type==='BUSH'){ for(const item of sceneryMap.values()) if(item.type==='BUSH') return; }
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[type];
   const isTreeOrRock = type === 'TREE' || type === 'ROCK';
   if(isTreeOrRock && forcedSizeFrac === undefined) forcedSizeFrac = treeRockSizeFrac(endProximity, type, rng);
-  if(type === 'ROCK' && forcedSizeFrac !== undefined) forcedSizeFrac = ROCK_SIZE_CLASS_FRAC[Math.min(ROCK_SIZE_CLASS_FRAC.length - 1, Math.floor(forcedSizeFrac * ROCK_SIZE_CLASS_FRAC.length))]; // ROCK-SIZES-01 (1.7.112) — see HISTORY.md § [1.7.112]
+  if(type === 'ROCK' && forcedSizeFrac !== undefined) forcedSizeFrac = ROCK_SIZE_CLASS_FRAC[Math.min(ROCK_SIZE_CLASS_FRAC.length - 1, Math.floor(forcedSizeFrac * ROCK_SIZE_CLASS_FRAC.length))]; // ROCK-SIZES-01
   const isSuper = !chanceDefinition && !isTreeOrRock && FIXED_SCENERY_SCALE[type] === undefined && rng() < S.superChance;
   const baseScaleRoll = S.minScale + rng()*(S.maxScale-S.minScale);
   const endBiasedScale = baseScaleRoll + (S.maxScale - baseScaleRoll) * endProximity;
@@ -1697,14 +1555,13 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
   const baseYield = Math.round(S.baseResourceYield * scale) * (isSuper ? S.superYieldMultiplier : 1);
 
   let clearCost = Math.round(S.minClearCost + priceSizeFrac*(S.maxClearCost-S.minClearCost));
-  // CA130 — see HISTORY.md § [1.5.7] Code Archaeology, CA130
   if(type === 'ROCK') clearCost = Math.round(clearCost * S.rockClearCostMult);
   if(isSmallScenery) clearCost = smallSceneryHarvestCost(clearCost);
   let clearMs = isSuper ? S.superClearMs : Math.round(S.minClearMs + sizeFrac*(S.maxClearMs-S.minClearMs));
   let goldYield = 0;
-  if(type === 'BUSH'){ clearCost = 0; clearMs = 0; } // see HISTORY.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, POTTED-BUSH-FREE-01
+  if(type === 'BUSH'){ clearCost = 0; clearMs = 0; } // POTTED-BUSH-FREE-01
   if(EVENT_PROP_EMOJI[type]){ clearCost = 0; clearMs = 500; }
-  if(type === 'SUPPLY_CRATE'){ clearCost = 0; clearMs = 0; } // CLICK-OPEN-FREE-01 (1.7.145): cardboard boxes open free on the click.
+  if(type === 'SUPPLY_CRATE'){ clearCost = 0; clearMs = 0; } // CLICK-OPEN-FREE-01: cardboard boxes open free on the click.
   if(type === 'CHEST'){ clearCost = 0; clearMs = 500; goldYield = 40 + Math.floor(rng()*90); }
   if(type === 'ITEM'){ clearCost = 0; clearMs = 500; }
   if(type === 'COIN_POUCH'){ clearCost = 0; clearMs = 500; }
@@ -1714,9 +1571,8 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     isChanceStructure: !!chanceDefinition, healPool: chanceDefinition ? chanceDefinition.healLives : 0, fuel: type === 'CAMPFIRE' ? CAMPFIRE_START_FUEL : 0,
     gx, gy, x: gx*TILE_SIZE+TILE_SIZE/2, y: gy*TILE_SIZE+TILE_SIZE/2,
     type, isSuper, isSmallScenery, scale, clearCost, clearMs, goldYield, mushroomSizeVersion: type === 'MUSHROOMS' ? 1 : undefined,
-    // CA131 — see HISTORY.md § [1.5.7] Code Archaeology, CA131
     tallStretch: type === 'TREE' && rng() < 0.25 ? 1.15 + rng()*0.4 : 1,
-    // SCENERY-VARIETY-01 (1.7.44): owner says trees and stones were too alike. Trees come in three kinds, and trees and rocks are randomly mirrored and drawn a little wider or narrower.
+    // SCENERY-VARIETY-01: trees vary in variant, height and width; trees and rocks may be mirrored.
     variant: type === 'TREE' ? rollTreeVariant(gx, gy, rng) : 0, flip: (type === 'TREE' || type === 'ROCK') && rng() < 0.5,
     widthStretch: type === 'TREE' ? 0.9 + rng()*0.28 : 1,
     woodYield: type === 'TREE' ? baseYield : 0,
@@ -1739,7 +1595,7 @@ function spawnScenery(gx, gy, forceType, forcedSizeFrac, smallOptions){
     }
   }
 }
-// END-GUARD-01 (1.6.102) — see HISTORY.md § [1.6.102]. Both ends of the road (the spawn flags and the finish line)
+// END-GUARD-01: Both ends of the road (the spawn flags and the finish line)
 // are guarded by large, expensive rocks and trees so the player is discouraged from building beside them and
 // walling off the lane; paying to clear one is the player's option for expanding into that space. Idempotent:
 // it tops each road end up to END_GUARD_MIN_PIECES nearby pieces, nearest tiles first, once per distinct end tile
@@ -1783,7 +1639,7 @@ function guardRoadEnd(endTile){
     if(sceneryMap.has(spot.gx + ',' + spot.gy)) existing++;
   }
 }
-// END-CLOSE-GUARD-01 (1.6.121) — see HISTORY.md § [1.6.121]. Every wave, each road end keeps at least this many big pieces within two tiles
+// END-CLOSE-GUARD-01: Every wave, each road end keeps at least this many big pieces within two tiles
 // so a tower can never wall off the flags or the finish line.
 const END_CLOSE_GUARD_RADIUS_TILES = 2, END_CLOSE_GUARD_MIN_PIECES = 3;
 function topUpCloseGuard(endTile){
@@ -1806,13 +1662,11 @@ function topUpCloseGuard(endTile){
     if(sceneryMap.has(spot.gx + ',' + spot.gy)) near++;
   }
 }
+// A tile is in an end ring when it touches a road end on a side and is not route itself.
 function isEndRingTile(gx, gy){
-  if(!pathWaypointTiles || pathWaypointTiles.length < 2) return false;
-  const key = gx + ',' + gy;
-  for(const endTile of [pathWaypointTiles[0], pathWaypointTiles[pathWaypointTiles.length - 1]]){
-    for(const tile of endRingTiles(endTile)) if(tile.gx + ',' + tile.gy === key) return true;
-  }
-  return false;
+  if(!pathWaypointTiles || pathWaypointTiles.length < 2 || pathCells.has(gx + ',' + gy)) return false;
+  const startTile = pathWaypointTiles[0], finishTile = pathWaypointTiles[pathWaypointTiles.length - 1];
+  return Math.abs(gx - startTile.x) + Math.abs(gy - startTile.y) === 1 || Math.abs(gx - finishTile.x) + Math.abs(gy - finishTile.y) === 1;
 }
 function endRingTiles(endTile){
   const tiles = [];
@@ -1844,7 +1698,7 @@ function ensureEndGuardScenery(){
   topUpCloseGuard(startTile);
   topUpCloseGuard(finishTile);
 }
-// BRANCH-EMOJI-01 (1.8.12) — see CHANGELOG.md § [1.8.12]: a branch is one to three small leafless-tree glyphs lying at random angles. Count, size, angle and offset come from a hash of the piece's tile, so every pile differs and stays identical across frames, saves and loads
+// BRANCH-EMOJI-01: a branch is one to three small leafless-tree glyphs lying at random angles.
 const BRANCH_GLYPH = '🪾';
 function branchRandomFor(piece, variant){
   const tileHash = piece ? (Number.isFinite(piece.gx) ? (piece.gx*73856093) ^ (piece.gy*19349663) : (Math.round(piece.x)*73856093) ^ (Math.round(piece.y)*19349663)) : 0;
@@ -1866,12 +1720,21 @@ function drawBranchSprite(ctx, size, color, piece, variant = 0){
     ctx.restore();
   }
 }
+// A free, click-to-collect branch lying off the grass: 5 to 10 wood.
+function makeBranchPiece(gx, gy, rng){
+  const scale = 0.42 + rng()*0.12;
+  return { gx, gy, x: (gx + 0.5)*TILE_SIZE, y: (gy + 0.5)*TILE_SIZE, type: 'BRANCH', scale, tallStretch: 1, widthStretch: 1, flip: false, isSuper: false,
+    clearCost: 0, clearMs: 0, woodYield: 5 + Math.floor(rng()*6), stoneYield: 0, isClearing: false, clearStart: 0 };
+}
 function spawnOutsideBranches(count){
   const ends=[pathWaypointTiles[0],pathWaypointTiles[pathWaypointTiles.length-1]];
   for(let n=0;n<count;n++) for(let attempt=0;attempt<30;attempt++){
     const end=ends[n%2],gx=end.x+Math.floor(Math.random()*9)-4,gy=end.y+Math.floor(Math.random()*9)-4,key=gx+','+gy;
     if(gx<1 || gy<1 || gx>=COLS-1 || gy>=ROWS-1 || pathCells.has(key) || nearPathTileSet.has(key) || bonusGrassTiles.has(key) || sceneryMap.has(key) || towerPool.some(t=>t.active && t.gridX===gx && t.gridY===gy)) continue;
-    sceneryMap.set(key,{gx,gy,x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE,type:'BRANCH',scale:0.42+Math.random()*0.12,tallStretch:1,widthStretch:1,flip:false,isSuper:false,clearCost:0,clearMs:0,woodYield:5+Math.floor(Math.random()*6),stoneYield:0,isClearing:false,clearStart:0,revealBornAt:presentationTime});break;
+    const branch = makeBranchPiece(gx, gy, Math.random);
+    branch.revealBornAt = presentationTime;
+    sceneryMap.set(key, branch);
+    break;
   }
 }
 function spawnWastelandStumps(){
@@ -1889,8 +1752,7 @@ function spawnWastelandStumps(){
   let placed=0,first=null;
   for(const {gx,gy} of candidates){
     if(first && Math.hypot(gx-first[0],gy-first[1])<2) continue;
-    const rng=sceneryPlanRandom(gx,gy,72),scale=0.42+rng()*0.12;
-    sceneryMap.set(gx+','+gy,{gx,gy,x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE,type:'BRANCH',scale,tallStretch:1,widthStretch:1,flip:false,isSuper:false,clearCost:0,clearMs:0,woodYield:5+Math.floor(rng()*6),stoneYield:0,isClearing:false,clearStart:0});
+    sceneryMap.set(gx + ',' + gy, makeBranchPiece(gx, gy, sceneryPlanRandom(gx, gy, 72)));
     if(!first) first=[gx,gy];
     if(++placed===2) break;
   }
@@ -1911,6 +1773,15 @@ function drawStumpShape(ctx,size){
   ctx.beginPath();ctx.ellipse(0,-size*0.12,size*0.16,size*0.09,0,0,Math.PI*2);ctx.stroke();
   ctx.beginPath();ctx.ellipse(0,-size*0.12,size*0.07,size*0.04,0,0,Math.PI*2);ctx.stroke();
 }
+// SCENERY-CORRIDOR-01: the active region's bounding rectangle includes plain dirt outside the near-path corridor, so scenery and flora only take
+// tiles that are in the active region proper and off the road.
+function activeGrassCells(){
+  const cells = [];
+  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
+    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++) if(!pathCells.has(gx+','+gy) && isInActiveRegion(gx, gy)) cells.push([gx,gy]);
+  }
+  return cells;
+}
 function generateScenery(){
   placingCampfire=false; if(cookingDialog && cookingDialog.open) cookingDialog.close();
   sceneryMap.clear();
@@ -1918,18 +1789,7 @@ function generateScenery(){
   harvestedTileKeys.clear();
   invalidateSpawnFlags();
   clearingScenery.length = 0;
-  const cells = [];
-  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
-    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(pathCells.has(gx+','+gy)) continue;
-      // SCENERY-CORRIDOR-01 (1.6.51) — see HISTORY.md § [1.6.51]. The region's bounding
-      // rectangle can include tiles outside the near-path corridor — those paint as plain brown
-      // dirt (see paintNewRingTiles()/drawMap()), not buildable green. Scenery must never land on
-      // one of those tiles regardless of which rectangle it falls inside.
-      if(!isInActiveRegion(gx, gy)) continue;
-      cells.push([gx,gy]);
-    }
-  }
+  const cells = activeGrassCells();
   shuffleArray(cells, sceneryPlanRandom(activeRegion.x0,activeRegion.y0,31 + expansionLevel));
   const count = Math.floor(cells.length * CONFIG.SCENERY.coverage);
   const spawnedKeys = new Set();
@@ -1938,7 +1798,7 @@ function generateScenery(){
   spawnWastelandStumps();
   for(let n=0;n<4;n++) maybeSpawnAmbientLog();
 }
-// FLORA-GROWTH-01 (1.6.108) — see HISTORY.md § [1.6.108]. HIGH graphics only: flora is drawn live instead of being baked into the
+// FLORA-GROWTH-01: HIGH graphics only: flora is drawn live instead of being baked into the
 // static map, so seedlings can bounce up and grow into their flower. Low graphics keeps the baked, static flora (drawMap()).
 // Flora present at game start is fully grown; flora added by a map expansion grows in over FLORA_GROW_MS.
 const FLORA_GROW_MS = 5000;
@@ -1968,7 +1828,6 @@ function drawAnimatedFlora(ctx, bounds){
     ctx.restore();
   }
 }
-// CA132 — see HISTORY.md § [1.5.7] Code Archaeology, CA132
 function spawnFlora(gx, gy, animateGrowth){
   if(CONFIG.FLORA.coverage <= 0) return;
   const F = CONFIG.FLORA;
@@ -1981,61 +1840,25 @@ function spawnFlora(gx, gy, animateGrowth){
     offX: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
     offY: Math.round((Math.random()*2-1) * TILE_SIZE*0.22),
     growStartAt: animateGrowth ? presentationTime + Math.random()*FLORA_GROW_STAGGER_MS : -Infinity, swayPhase: Math.random()*Math.PI*2,
-    sizeFrac: 0.45 + Math.random()*0.3 // 45%-75% of the base glyph size — shrunk from 75%-125% per
-    // CA133 — see HISTORY.md § [1.5.7] Code Archaeology, CA133
+    sizeFrac: 0.45 + Math.random()*0.3 // 45% to 75% of the base glyph size
   });
 }
 function generateFlora(){
   floraMap.clear();
-  const cells = [];
-  for(let gx=activeRegion.x0; gx<=activeRegion.x1; gx++){
-    for(let gy=activeRegion.y0; gy<=activeRegion.y1; gy++){
-      if(pathCells.has(gx+','+gy)) continue;
-      // SCENERY-CORRIDOR-01 (1.6.51) — see HISTORY.md § [1.6.51]. Same corridor guard as
-      // generateScenery() — the region's bounding rectangle can include non-buildable dirt tiles.
-      if(!isInActiveRegion(gx, gy)) continue;
-      cells.push([gx,gy]);
-    }
-  }
+  const cells = activeGrassCells();
   shuffleArray(cells);
   const count = Math.floor(cells.length * CONFIG.FLORA.coverage);
   for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1]);
 }
-// CA134 — see HISTORY.md § [1.5.7] Code Archaeology, CA134
 function seedStartingBarricades(){
-  // CA135 — see HISTORY.md § [1.5.7] Code Archaeology, CA135
-  // STARTING-BARRICADE-01 (1.6.79) — see HISTORY.md § [1.6.79]
+  // STARTING-BARRICADE-01
   const pathTiles = pathWaypointTiles;
   if(pathTiles.length < 2) return;
-  const spot = pathTiles[pathTiles.length - 1]; // the finish tile itself — a screenshot confirmed the previous "-2" (one tile before it) left a visible empty-tile gap, not actually "by" the carpet as asked
+  const spot = pathTiles[pathTiles.length - 1];
   const t = acquireActive(towerPool);
   if(!t) return;
   t.create('BARRICADE', spot.x, spot.y); // full 10 HP, same as any player-built barricade
 }
-// CA136 — see HISTORY.md § [1.5.7] Code Archaeology, CA136
-function scatterSceneryInRing(oldRegion, newRegion, newlyRevealedKeys){
-  const cells = [];
-  for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
-    for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
-      const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
-      if(newlyRevealedKeys ? !newlyRevealedKeys.has(gx+','+gy) : wasActive) continue;
-      if(pathCells.has(gx+','+gy)) continue;
-      // SCENERY-CORRIDOR-01 (1.6.51) — see HISTORY.md § [1.6.51]. newRegion is a bounding
-      // rectangle, not the actual near-path corridor — a cell inside it can still paint as plain
-      // brown dirt (see paintNewRingTiles()). Scenery must respect the real corridor, not the box.
-      if(!isInActiveRegion(gx, gy)) continue;
-      // CA137 — see HISTORY.md § [1.5.7] Code Archaeology, CA137
-      if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue;
-      cells.push([gx,gy]);
-    }
-  }
-  shuffleArray(cells, sceneryPlanRandom(activeRegion.x0,activeRegion.y0,32 + expansionLevel));
-  const count = Math.floor(cells.length * CONFIG.SCENERY.coverage);
-  const spawnedKeys = new Set();
-  for(let i=0; i<count; i++){ spawnScenery(cells[i][0], cells[i][1]); spawnedKeys.add(cells[i][0]+','+cells[i][1]); }
-  spawnExtraEndScenery(cells, spawnedKeys);
-}
-// CA138 — see HISTORY.md § [1.5.7] Code Archaeology, CA138
 function scatterFloraInRing(oldRegion, newRegion, newlyRevealedKeys){
   const cells = [];
   for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
@@ -2043,11 +1866,8 @@ function scatterFloraInRing(oldRegion, newRegion, newlyRevealedKeys){
       const wasActive = gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
       if(newlyRevealedKeys ? !newlyRevealedKeys.has(gx+','+gy) : wasActive) continue;
       if(pathCells.has(gx+','+gy)) continue;
-      // SCENERY-CORRIDOR-01 (1.6.51) — see HISTORY.md § [1.6.51]. Same corridor guard as
-      // scatterSceneryInRing() above — this is the direct fix for flora (trees) appearing outside
-      // the buildable green area after an expansion.
-      if(!isInActiveRegion(gx, gy)) continue;
-      if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue; // same reveal-gap reasoning as scatterSceneryInRing() above
+      if(!isInActiveRegion(gx, gy)) continue; // SCENERY-CORRIDOR-01: flora never lands outside the green corridor
+      if(towerPool.some(t => t.active && t.gridX===gx && t.gridY===gy)) continue;
       cells.push([gx,gy]);
     }
   }
@@ -2055,7 +1875,6 @@ function scatterFloraInRing(oldRegion, newRegion, newlyRevealedKeys){
   const count = Math.floor(cells.length * CONFIG.FLORA.coverage);
   for(let i=0; i<count; i++) spawnFlora(cells[i][0], cells[i][1], true);
 }
-// CA139 — see HISTORY.md § [1.5.7] Code Archaeology, CA139
 const TREE_SURGE_WAVES = [3, 4, 5];
 const ROCK_SURGE_WAVES = [2, 3, 4];
 function maybeSpawnMoreScenery(){
@@ -2073,7 +1892,6 @@ function maybeSpawnMoreScenery(){
   if(!empties.length) return;
   shuffleArray(empties);
   empties.sort((a, b) => pathEndProximity(b[0], b[1]) - pathEndProximity(a[0], a[1]));
-  // CA140 — see HISTORY.md § [1.5.7] Code Archaeology, CA140
   const n = (isTreeSurge || isRockSurge)
     ? Math.max(0, Math.min(empties.length - 1, 4 + Math.floor(Math.random()*4))) // 4-7, capped to leave >=1 tile open
     : Math.min(empties.length, 1 + Math.floor(Math.random()*2));
@@ -2083,9 +1901,8 @@ function maybeSpawnMoreScenery(){
     spawnScenery(empties[i][0], empties[i][1], forceType, smallRock, isRockSurge ? { small:true } : undefined);
   }
 }
-// CA141 — see HISTORY.md § [1.5.7] Code Archaeology, CA141
 function isInstantOpenProp(item){
-  return ['SUPPLY_CRATE','CHEST','PICNIC','COIN_POUCH','ITEM','STUMP','BRANCH','BUSH','MUSHROOMS'].includes(item.type); // MUSHROOM-INSTANT-01 (1.8.21)
+  return ['SUPPLY_CRATE','CHEST','PICNIC','COIN_POUCH','ITEM','STUMP','BRANCH','BUSH','MUSHROOMS'].includes(item.type); // MUSHROOM-INSTANT-01
 }
 function rollMushroomScale(rng = Math.random){
   const tier = rng(), size = rng();
@@ -2122,10 +1939,23 @@ function startClearingScenery(item){
   }
   gold -= cost;
   item.isClearing = true;
-  item.clearStart = presentationTime; // GAME-SPEED-SCOPE-01 (1.6.93): real time, so 1x/2x/3x/5x/10x never shortens how long clearing actually takes
+  item.clearStart = presentationTime; // GAME-SPEED-SCOPE-01: real time, so 1x/2x/3x/5x/10x never shortens how long clearing actually takes
   rebuildClearingScenery();
   if(isInstantOpenProp(item)) updateScenery(0); else playSound('chop');
   updateHUD();
+}
+// Bags of gold sized to the wave: 15 + 4 per wave, give or take 20%, laid out side by side.
+function dropTreasureBags(x, y, count){
+  for(let bagIndex = 0; bagIndex < count; bagIndex++){
+    const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
+    dropGoldBag(x + (bagIndex - (count - 1)/2)*16, y, bagGold);
+  }
+}
+function dropBerries(x, y, count){
+  for(let berry = 0; berry < count; berry++){
+    const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)], angle = berry / count * Math.PI * 2;
+    spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery');
+  }
 }
 function grantEventProp(item){
   const x = item.x, y = item.y;
@@ -2141,7 +1971,7 @@ function grantEventProp(item){
     spawnChestCoinFountain(x, y - 6, 18 + Math.floor(Math.random()*26));
     if(Math.random() < 0.2) dropFood(1, berries);
   } else if(item.type === 'MUSHROOMS'){
-    dropFood(mushroomHarvestCount(item), [FOOD_BY_ID.get('MUSHROOM')]); // MUSHROOM-PATCH-01 (1.7.63): a mushroom patch drops mushrooms (a vegetable, so DEX), never broccoli or garlic
+    dropFood(mushroomHarvestCount(item), [FOOD_BY_ID.get('MUSHROOM')]); // MUSHROOM-PATCH-01: a mushroom patch drops mushrooms (a vegetable, so DEX), never broccoli or garlic
   }
   spawnParticles(x, y, '#ffe082', 10);
   playSound('wave');
@@ -2150,114 +1980,90 @@ function updateScenery(dt){
   for(let i = 0; i < clearingScenery.length;){
     const [key, item] = clearingScenery[i];
     let keepItemAfterUse = false;
-    // CA142 — see HISTORY.md § [1.5.7] Code Archaeology, CA142
     if(sceneryMap.get(key) !== item || !item.isClearing){
       clearingScenery.splice(i, 1);
       continue;
     }
-    if(!(presentationTime - item.clearStart >= item.clearMs)){ i++; continue; }
-    if(presentationTime - item.clearStart >= item.clearMs){
-      if(!item.isChanceStructure){ harvestedTileKeys.add(key); trackGameEvent('scenery_cleared', { scenery_type: item.type }); }
-      if(item.isChanceStructure){
-        keepItemAfterUse = !useChanceStructure(item);
-      } else if(item.type === 'BUSH'){
-        const berryCount = 2 + Math.floor(Math.random()*2);
-        for(let berry = 0; berry < berryCount; berry++){
-          const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)];
-          const angle = berry / berryCount * Math.PI * 2;
-          spawnGroundItem(item.x + Math.cos(angle)*12, item.y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery');
-        }
-      } else if(EVENT_PROP_EMOJI[item.type]){
-        grantEventProp(item); // EVENT-VARIETY-01 (1.7.44)
-      } else if(item.type === 'SUPPLY_CRATE'){
-        const stim = Math.random() < SUMMON_FROM_CRATE_CHANCE ? rollSummonItem() : rollStimItem();
-        spawnGroundItem(item.x, item.y - 4, stim, 'scenery');
-        spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS);
-        spawnParticles(item.x, item.y, '#b0895a', 8);
-        playSound('wave');
-      } else if(item.type === 'CHEST'){
-        { // CHEST-LOOT-01 (1.7.44): owner says gold bags from presents spawned too easily and every chest was alike. A chest is now a loot roll: coins alone (45%), coins and one
-          // gold bag (25%), two gold bags (5%), a stim (12%) or a handful of berries (13%), so a bag comes out of only 30% of chests and no two chests feel the same.
-          const lootRoll = Math.random();
-          const dropBags = count => { for(let bagIndex = 0; bagIndex < count; bagIndex++){ const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4)); dropGoldBag(item.x + (bagIndex - (count-1)/2)*16, item.y, bagGold); } };
-          if(lootRoll < 0.45){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); }
-          else if(lootRoll < 0.70){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); dropBags(1); }
-          else if(lootRoll < 0.75){ dropBags(2); }
-          else if(lootRoll < 0.87){ const stim = rollStimItem(); spawnGroundItem(item.x, item.y - 4, stim, 'scenery'); spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS); }
-          else {
-            const berryCount = 2 + Math.floor(Math.random()*2);
-            for(let berry = 0; berry < berryCount; berry++){ const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)]; const angle = berry / berryCount * Math.PI * 2; spawnGroundItem(item.x + Math.cos(angle)*12, item.y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery'); }
-          }
-        }
-        if(Math.random() < 0.25){
-          const dessert=TREAT_ITEMS[Math.floor(Math.random()*TREAT_ITEMS.length)];
-          spawnGroundItem(item.x,item.y-4,dessert,'chest dessert');
-          spawnFloatingText(item.x,item.y-24,dessert.icon+' '+dessert.name,'#7dd3fc',ITEM_POPUP_LIFE_MS);
-        }
-        spawnParticles(item.x, item.y, '#ffd700', 12);
-        playSound('wave');
-        if(Math.random() < 0.08){
-          spawnGroundItem(item.x, item.y - 4, LUCKY_BRANCH, 'scenery');
-          spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');
-        }
-      } else if(item.type === 'COIN_POUCH'){ // legacy saves only; never generated any more
-        // CA143 — see HISTORY.md § [1.5.7] Code Archaeology, CA143
-        { // TREASURE-CHEST-BAGS-01 (1.6.157): always one to three cash bags
-          const treasureBagCount = 1 + Math.floor(Math.random()*3);
-          for(let bagIndex = 0; bagIndex < treasureBagCount; bagIndex++){
-            const bagGold = Math.floor((15 + waveIndex*4) * (0.8 + Math.random()*0.4));
-            dropGoldBag(item.x + (bagIndex - (treasureBagCount-1)/2)*16, item.y, bagGold);
-          }
-        }
-        spawnParticles(item.x, item.y, '#ffd700', 10);
-        playSound('wave');
-      } else if(item.type === 'ITEM'){
-        const p = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
-        globalPassiveCounts[p.id] = (globalPassiveCounts[p.id]||0) + 1;
-        for(const t of towerPool) if(t.active) t.recomputeStats();
-        spawnFloatingText(item.x, item.y - 20, '✨ ' + p.name, '#a78bfa');
-        spawnParticles(item.x, item.y, '#a78bfa', 12);
-        playSound('wave');
-      } else if(item.type === 'STICKS'){
-        spawnFloatingText(item.x, item.y - 20, 'Cleared!', '#c9a86a');
-        spawnParticles(item.x, item.y, '#8a5a2b', 8);
-        playSound('death');
-      } else {
-        wood += item.woodYield;
-        if(item.woodYield) launchGoldHudFlight(item.x,item.y,'🪵');
-        stone += item.stoneYield;
-        let msg = '';
-        if(item.woodYield) msg += '+' + item.woodYield + '🪵 ';
-        if(item.stoneYield) msg += '+' + item.stoneYield + '🪨';
-        spawnFloatingText(item.x, item.y - 20, msg.trim(), '#c9a86a');
-        if(item.isSuper){
-          gold += CONFIG.SCENERY.superBonusGold;
-
-          spawnFloatingText(item.x, item.y - 36, '+' + CONFIG.SCENERY.superBonusGold + '💰 SUPER!', '#ffd700');
-        }
-        spawnParticles(item.x, item.y, item.type === 'TREE' ? '#4caf50' : '#9aa0a6', item.isSuper ? 16 : 8);
-        playSound('death');
+    if(presentationTime - item.clearStart < item.clearMs){ i++; continue; }
+    if(!item.isChanceStructure){ harvestedTileKeys.add(key); trackGameEvent('scenery_cleared', { scenery_type: item.type }); }
+    if(item.isChanceStructure){
+      keepItemAfterUse = !useChanceStructure(item);
+    } else if(item.type === 'BUSH'){
+      dropBerries(item.x, item.y, 2 + Math.floor(Math.random()*2));
+    } else if(EVENT_PROP_EMOJI[item.type]){
+      grantEventProp(item); // EVENT-VARIETY-01
+    } else if(item.type === 'SUPPLY_CRATE'){
+      const stim = Math.random() < SUMMON_FROM_CRATE_CHANCE ? rollSummonItem() : rollStimItem();
+      spawnGroundItem(item.x, item.y - 4, stim, 'scenery');
+      spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS);
+      spawnParticles(item.x, item.y, '#b0895a', 8);
+      playSound('wave');
+    } else if(item.type === 'CHEST'){
+      { // CHEST-LOOT-01
+        // gold bag (25%), two gold bags (5%), a stim (12%) or a handful of berries (13%), so a bag comes out of only 30% of chests and no two chests feel the same.
+        const lootRoll = Math.random();
+        if(lootRoll < 0.45){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); }
+        else if(lootRoll < 0.70){ spawnChestCoinFountain(item.x, item.y - 6, item.goldYield); dropTreasureBags(item.x, item.y, 1); }
+        else if(lootRoll < 0.75){ dropTreasureBags(item.x, item.y, 2); }
+        else if(lootRoll < 0.87){ const stim = rollStimItem(); spawnGroundItem(item.x, item.y - 4, stim, 'scenery'); spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS); }
+        else dropBerries(item.x, item.y, 2 + Math.floor(Math.random()*2));
       }
-      if(keepItemAfterUse){
-        item.isClearing = false; // a fountain with healing left, or one used at full health, stays for later
-      } else {
-        sceneryMap.delete(key);
-        invalidateSpawnFlags();
+      if(Math.random() < 0.25){
+        const dessert=TREAT_ITEMS[Math.floor(Math.random()*TREAT_ITEMS.length)];
+        spawnGroundItem(item.x,item.y-4,dessert,'chest dessert');
+        spawnFloatingText(item.x,item.y-24,dessert.icon+' '+dessert.name,'#7dd3fc',ITEM_POPUP_LIFE_MS);
       }
-      clearingScenery.splice(i, 1);
-      updateHUD();
+      spawnParticles(item.x, item.y, '#ffd700', 12);
+      playSound('wave');
+      if(Math.random() < 0.08){
+        spawnGroundItem(item.x, item.y - 4, LUCKY_BRANCH, 'scenery');
+        spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');
+      }
+    } else if(item.type === 'COIN_POUCH'){ // legacy saves only; never generated any more
+      dropTreasureBags(item.x, item.y, 1 + Math.floor(Math.random()*3)); // TREASURE-CHEST-BAGS-01: always one to three cash bags
+      spawnParticles(item.x, item.y, '#ffd700', 10);
+      playSound('wave');
+    } else if(item.type === 'ITEM'){
+      const p = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
+      globalPassiveCounts[p.id] = (globalPassiveCounts[p.id]||0) + 1;
+      for(const t of towerPool) if(t.active) t.recomputeStats();
+      spawnFloatingText(item.x, item.y - 20, '✨ ' + p.name, '#a78bfa');
+      spawnParticles(item.x, item.y, '#a78bfa', 12);
+      playSound('wave');
+    } else if(item.type === 'STICKS'){
+      spawnFloatingText(item.x, item.y - 20, 'Cleared!', '#c9a86a');
+      spawnParticles(item.x, item.y, '#8a5a2b', 8);
+      playSound('death');
+    } else {
+      wood += item.woodYield;
+      if(item.woodYield) launchGoldHudFlight(item.x,item.y,'🪵');
+      stone += item.stoneYield;
+      let msg = '';
+      if(item.woodYield) msg += '+' + item.woodYield + '🪵 ';
+      if(item.stoneYield) msg += '+' + item.stoneYield + '🪨';
+      spawnFloatingText(item.x, item.y - 20, msg.trim(), '#c9a86a');
+      if(item.isSuper){
+        gold += CONFIG.SCENERY.superBonusGold;
+        spawnFloatingText(item.x, item.y - 36, '+' + CONFIG.SCENERY.superBonusGold + '💰 SUPER!', '#ffd700');
+      }
+      spawnParticles(item.x, item.y, item.type === 'TREE' ? '#4caf50' : '#9aa0a6', item.isSuper ? 16 : 8);
+      playSound('death');
     }
+    if(keepItemAfterUse){
+      item.isClearing = false; // a fountain with healing left, or one used at full health, stays for later
+    } else {
+      sceneryMap.delete(key);
+      invalidateSpawnFlags();
+    }
+    clearingScenery.splice(i, 1);
+    updateHUD();
   }
 }
 /* =========================================================
    FOOD, ITEM USE FEEDBACK AND STAT GAINS
    ========================================================= */
-// FOOD-DROPS-01 (1.6.82) — see HISTORY.md § [1.6.82]. Food items are a second, independent drop
-// pool alongside equipment items (see Items and drops). They never sit in an inventory slot: touching
-// or dragging one onto anything applies its effect immediately and removes it. Fruit grants tower XP,
-// Vegetables grant a small permanent stat point (rare), Meat restores lives (kept deliberately small —
-// no maximum-life growth from food, to protect the Shop's extra-life pricing and the loose-enemy
-// pressure). Boss kills always drop exactly one Treat, a stronger bundled reward.
+// FOOD-DROPS-01: food is a drop pool of its own beside equipment. It never takes an inventory slot: dropping it on a stickman applies it at once
+// (see FOOD-STATS-01 below for what each kind raises). Boss kills always drop exactly one Treat, a stronger bundled reward.
 const FOOD_ITEM_ROWS = [
   ['APPLE', 'Apple', '🍎', 'FRUIT'], ['BANANA', 'Banana', '🍌', 'FRUIT'], ['GRAPES', 'Grapes', '🍇', 'FRUIT'],
   ['TANGERINE', 'Tangerine', '🍊', 'FRUIT'], ['STRAWBERRY', 'Strawberry', '🍓', 'FRUIT'], ['WATERMELON', 'Watermelon', '🍉', 'FRUIT'],
@@ -2268,23 +2074,16 @@ const FOOD_ITEM_ROWS = [
   ['BACON', 'Bacon', '🥓', 'MEAT'], ['DRUMSTICK', 'Drumstick', '🍗', 'MEAT'], ['STEAK', 'Steak', '🥩', 'MEAT'], ['MEAT_BONE', 'Meat on the Bone', '🍖', 'MEAT']
 ];
 const FOOD_ITEMS = FOOD_ITEM_ROWS.map(([id, name, icon, kind]) => Object.freeze({ id, name, icon, kind, isFood: true }));
-// BUSH-BERRIES-01 (1.6.93): the fruit ids a Bush can drop — every real berry-shaped fruit in the catalog.
+// BUSH-BERRIES-01: the fruit ids a Bush can drop — every real berry-shaped fruit in the catalog.
 const BERRY_FOOD_IDS = ['STRAWBERRY', 'CHERRIES', 'BLUEBERRY', 'GRAPES'];
 const FOOD_BY_ID = new Map(FOOD_ITEMS.map(item => [item.id, item]));
-// Food heals the receiving stickman; meat adds Constitution, fruit INT, vegetables DEX (1.7.141).
+// Food heals the receiving stickman; meat adds Constitution, fruit INT, vegetables DEX.
 const MEAT_HEAL_BY_ID = { BACON: 6, DRUMSTICK: 10, STEAK: 16, MEAT_BONE: 24 };
-// Legacy player-life constants/state retained for old saves only; food grants no new player lives (1.7.141).
-const MEAT_MAXHP_BY_ID = { BACON: 0, DRUMSTICK: 1, STEAK: 2, MEAT_BONE: 5 };
-const MEAT_MAXHP_CAP_PER_WAVE = 5;
-const MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT = 10;
+// Kept only so old saves that carry it still load; food grants no player lives.
 let bonusMaxLivesFromMeat = 0;
-let waveMaxHpGainedFromMeat = 0;
 function foodFruitXp(){ return Math.round(15 + Math.min(35, waveIndex)); }
-// Applies a food item's effect to the nearest tower within pickup range, or as a life restore if none is
-// close enough (Meat and the token/small heals on Fruit and Vegetable always work this way).
-// ITEM-USE-FEEDBACK-01 (1.6.136) — see HISTORY.md § [1.6.136]. One deliberate moment per consumable use: the item's icon rises above the stickman, an exact readout
-// sits under it, a single ring in the item class colour expands once (tier 1 and 2), and a short motif per class plays. Timed on real time, so game speed never changes it,
-// and every part only fades out once.
+// ITEM-USE-FEEDBACK-01: One deliberate moment per consumable use: the item's icon rises above the stickman, an exact readout
+// sits under it, a single ring in the item class colour expands once (tier 1 and 2), and a short motif per class plays.
 const ITEM_USE_CLASSES = {
   HEAL:  { color: '#7be07b', wave: 'sine',     notes: [[523, 0.16], [659, 0.26]] },
   POWER: { color: '#ffb347', wave: 'triangle', notes: [[330, 0.09], [440, 0.09], [587, 0.2]] },
@@ -2298,7 +2097,7 @@ const ITEM_USE_EFFECT_LIMIT = 16;
 const itemUseEffects = Array.from({ length: ITEM_USE_EFFECT_LIMIT }, () => ({ active: false }));
 let itemUseEffectIndex = 0;
 const itemTypesUsed = new Set();
-function renderItemCodex(){ // ITEM-CODEX-01 (1.6.145) — built when the Items tab opens, never per frame
+function renderItemCodex(){ // ITEM-CODEX-01 — built when the Items tab opens, never per frame
   const list = document.getElementById('itemCodexList');
   list.textContent = '';
   let used = 0;
@@ -2352,7 +2151,7 @@ function showItemUseFeedback(def, tower, itemClass, tier, parts){
 function drawItemUseEffects(ctx){
   let anyEffect = false;
   for(const effect of itemUseEffects) if(effect.active){ anyEffect = true; break; }
-  if(!anyEffect) return; // LAG-PASS-01 (1.6.143): nothing to draw on almost every frame
+  if(!anyEffect) return; // LAG-PASS-01: nothing to draw on almost every frame
   const fxBounds = fxViewBounds();
   for(const effect of itemUseEffects){
     if(!effect.active) continue;
@@ -2384,48 +2183,44 @@ function drawItemUseEffects(ctx){
     ctx.restore();
   }
 }
-// FOOD-STATS-01 (1.7.47): owner decision — food is eaten instantly when dropped on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon:
-// meat raises STR, fruit raises INT and vegetables (potatoes and the rest) raise DEX. Most foods give +1; the richer ones give more. The older small effects (healing, experience) stay as extras.
+// FOOD-STATS-01: food is eaten instantly when dropped on a stickman and is mainly there to raise stats, like the vitamins and berries in Pokemon:
+// meat raises CON (maximum health), fruit raises INT and vegetables (potatoes and the rest) raise DEX.
 const FOOD_STAT_BY_KIND = { MEAT: 'con', FRUIT: 'int', VEGETABLE: 'dex' };
-// FOOD-ROLL-01 (1.7.64): owner rule — every food gives 1 to 3 points of its stat (meat STR, fruit INT, vegetables DEX) and 1 to 10 experience, rolled when it is eaten. Any food, any kind.
+// FOOD-ROLL-01: every food gives 1 to 3 points of its stat (meat CON, fruit INT, vegetables DEX) and 1 to 10 experience, rolled when it is eaten.
 const FOOD_STAT_GAIN_MIN = 1, FOOD_STAT_GAIN_MAX = 3, FOOD_XP_MIN = 1, FOOD_XP_MAX = 10;
 function rollFoodRange(minimum, maximum){ return minimum + Math.floor(Math.random() * (maximum - minimum + 1)); }
-// STAT-GRANT-01 (1.7.50): found by an outside review of the uploaded 1.7.49. Food and rations added stat points directly, skipping the per-stat cap (500), the combined cap (1000) and the
-// progression milestones (naming, mastery) that spending a point enforces; the review reproduced STR 499 to 501 and a total of 998 to 1000 without mastery. All stat grants that are
-// not spent from the point pool now go through this one function: it clamps to both caps, recomputes, checks evolution and infusion, and refreshes the milestones, and reports what was really granted.
+// STAT-GRANT-01: a stat grant respects both the per-stat cap and the combined trained cap.
 function grantStatPoints(tower, stat, amount){
-  if(!tower || isStructureType(tower.type) || !['str', 'dex', 'int'].includes(stat)) return 0;
+  if(!tower || isStructureType(tower.type) || !TRAINED_STATS.includes(stat)) return 0;
   const room = Math.min(STAT_EFFECT_CAP - (tower[stat] || 0), STAT_TOTAL_CAP - getTrainedStatTotal(tower));
-  const granted = Math.max(0, Math.min(amount, room));
+  const granted = clampNum(room, 0, amount);
   if(granted <= 0) return 0;
   tower[stat] = (tower[stat] || 0) + granted;
   logGameEvent(itemHolderLabel(tower) + ' gained ' + granted + ' ' + stat.toUpperCase() + ' (now ' + tower[stat] + ')');
   tower.recomputeStats();
-  if(typeof tower.checkEvolution === 'function') tower.checkEvolution();
+  if(typeof tower.checkClassUnlocks === 'function') tower.checkClassUnlocks();
   refreshProgressionMilestones(tower);
   if(tower === selectedTower) updateInspectPanel();
   return granted;
 }
+function grantFoodConstitution(tower, wanted){ // constitution from food is capped like a learned stat and raises maximum health through recomputeStats
+  const granted = Math.min(wanted, Math.max(0, Math.floor(STAT_EFFECT_CAP - (tower.hpStat || 0))));
+  tower.foodConstitution = (tower.foodConstitution || 0) + granted;
+  tower.recomputeStats();
+  return granted;
+}
+function grantFoodStatPoints(tower, stat, wanted){ return stat === 'con' ? grantFoodConstitution(tower, wanted) : grantStatPoints(tower, stat, wanted); }
 function grantFoodStat(foodDef, tower){
-  if(foodDef.cookedStats && tower){
-    const parts=[];
-    for(const [stat,wanted] of Object.entries(foodDef.cookedStats)){
-      let granted;
-      if(stat==='con'){granted=Math.min(wanted,Math.max(0,STAT_EFFECT_CAP-(tower.hpStat||0)));tower.foodConstitution=(tower.foodConstitution||0)+granted;tower.recomputeStats();}
-      else granted=grantStatPoints(tower,stat,wanted);
-      parts.push(stat.toUpperCase()+' +'+granted);
-    }
-    if(tower===selectedTower)updateInspectPanel();return parts.join(' · ');
-  }
-  const stat = FOOD_STAT_BY_KIND[foodDef.kind]; if(!stat || !tower) return '';
-  const wanted = rollFoodRange(FOOD_STAT_GAIN_MIN, FOOD_STAT_GAIN_MAX);
-  let granted;
-  if(stat === 'con'){
-    granted = Math.min(wanted,Math.max(0,Math.floor(STAT_EFFECT_CAP-(tower.hpStat || 0))));
-    tower.foodConstitution = (tower.foodConstitution || 0)+granted;
-    tower.recomputeStats();
+  if(!tower) return '';
+  if(foodDef.cookedStats){
+    const parts = [];
+    for(const [stat, wanted] of Object.entries(foodDef.cookedStats)) parts.push(stat.toUpperCase() + ' +' + grantFoodStatPoints(tower, stat, wanted));
     if(tower === selectedTower) updateInspectPanel();
-  } else granted = grantStatPoints(tower,stat,wanted);
+    return parts.join(' · ');
+  }
+  const stat = FOOD_STAT_BY_KIND[foodDef.kind]; if(!stat) return '';
+  const granted = grantFoodStatPoints(tower, stat, rollFoodRange(FOOD_STAT_GAIN_MIN, FOOD_STAT_GAIN_MAX));
+  if(tower === selectedTower) updateInspectPanel();
   return granted > 0 ? stat.toUpperCase() + ' +' + granted : stat.toUpperCase() + ' at its limit';
 }
 function eatDroppedFood(groundItem, tower){
@@ -2439,7 +2234,7 @@ function healFedStickman(tower,amount){
   tower.hp = Math.min(tower.maxHp,Math.max(0,tower.hp)+Math.max(0,amount || 0));
 }
 function applyFoodItem(foodDef, nearTower){
-  if(!nearTower) return; // FOOD-STICKMAN-HEALTH-01 (1.7.141): food is for a stickman, never player lives.
+  if(!nearTower) return; // FOOD-STICKMAN-HEALTH-01: food is for a stickman, never player lives.
   const foodStatText = grantFoodStat(foodDef, nearTower);
   if(foodDef.id==='WEDDING_CAKE') for(let i=0;i<3;i++){
     const angle=i*Math.PI*2/3;
@@ -2463,7 +2258,7 @@ const TREAT_ROWS = [
   ['DONUT', 'Glazed Donut', '🍩', 12, 55, 0], ['CHOCOLATE', 'Golden Chocolate', '🍫', 15, 80, 25], ['LOLLIPOP', 'Swirl Lollipop', '🍭', 10, 50, 0]
 ];
 const TREAT_ITEMS = TREAT_ROWS.map(([id, name, icon, heal, xp, gold]) => Object.freeze({ id, name, icon, heal, xp, gold, spendablePoints: Math.max(1, Math.round(xp/30)), isTreat: true }));
-// TREAT-TACTICS-01 (1.6.87) — see HISTORY.md § [1.6.87]. Three treats carry a secondary tactical
+// TREAT-TACTICS-01: Three treats carry a secondary tactical
 // effect on top of the shared heal/XP/gold bundle every treat already grants (see applyTreatItem()):
 //   DONUT: +3 shield charges (capped 5) that absorb the next leaks at 0 life cost each, expiring
 //   (unused charges burst for +1 gold each) the instant the current wave is cleared — never carried over.
@@ -2523,14 +2318,14 @@ function applyTreatItem(treatDef, nearTower, dropX, dropY){
     chocolateAtkSpeedBuffUntil = Math.max(chocolateAtkSpeedBuffUntil, gameTime) + CHOCOLATE_BUFF_DURATION_MS;
     treatParts.push('Attack speed +' + Math.round(CHOCOLATE_ATK_SPEED_BONUS*100) + '% for ' + Math.round(CHOCOLATE_BUFF_DURATION_MS/1000) + ' s');
   } else if(treatDef.id === 'LOLLIPOP'){
-    lollipopZones.push({ x: anchorX || dropX || 0, y: anchorY || dropY || 0, expiresAt: gameTime + LOLLIPOP_ZONE_DURATION_MS });
+    lollipopZones.push({ x: anchorX, y: anchorY, expiresAt: gameTime + LOLLIPOP_ZONE_DURATION_MS });
     treatParts.push('Slow zone');
   }
-  spawnParticles(anchorX || treatDef._x || 0, anchorY || treatDef._y || 0, '#ffd23f', 14);
+  spawnParticles(anchorX, anchorY, '#ffd23f', 14);
   showItemUseFeedback(treatDef, nearTower, 'GAIN', 2, treatParts);
 }
-// INVENTORY-CONSUMABLES-01 (1.6.110) — see HISTORY.md § [1.6.110]
-// SUPPLY-CRATE-01 (1.6.110) — see HISTORY.md § [1.6.110]
+// INVENTORY-CONSUMABLES-01
+// SUPPLY-CRATE-01
 const STIM_ITEMS = [
   Object.freeze({ id:'ADRENALINE', name:'Adrenaline Shot', icon:'💉', isStim:true, stat:'speed', value:1.2, weight:30 }),
   Object.freeze({ id:'COMBAT_STIM', name:'Combat Stim', icon:'💊', isStim:true, stat:'damage', value:1.2, weight:30 }),
@@ -2538,31 +2333,22 @@ const STIM_ITEMS = [
   Object.freeze({ id:'FIELD_MEDKIT', name:'Field Medkit', icon:'🩹', isStim:true, stat:'heal', value:0.4, weight:15 }),
   Object.freeze({ id:'HYPER_SERUM', name:'Hyper-Serum', icon:'🧪', isStim:true, stat:'all', value:1.15, weight:5 })
 ];
-// SUMMON-ITEMS-01 (1.8.62): three rare finds call a visitor when used: the Merchant's Bell the caravan, the Circus Ticket a circus, the Troll Bait a wandering troll.
-// A use that would make a second visitor of the same kind keeps the item and says so (VISITOR-LIMIT-01). Supply crates give one instead of a stim one time in five.
+// SUMMON-ITEMS-01: three rare finds call a visitor when used: the Merchant's Bell the caravan, the Circus Ticket a circus, the Troll Bait a wandering troll.
+// A use that would make a second visitor of the same kind keeps the item and says so (VISITOR-LIMIT-01).
 const SUMMON_ITEMS = [
   Object.freeze({ id:'MERCHANT_BELL', name:"Merchant's Bell", icon:'🛎️', isSummon:true, summons:'caravan', weight:40 }),
   Object.freeze({ id:'CIRCUS_TICKET', name:'Circus Ticket', icon:'🎟️', isSummon:true, summons:'circus', weight:30 }),
   Object.freeze({ id:'TROLL_BAIT', name:'Troll Bait', icon:'🪤', isSummon:true, summons:'troll', weight:30 })
 ];
 const SUMMON_FROM_CRATE_CHANCE = 0.2;
-function rollSummonItem(){
-  let roll = Math.random() * SUMMON_ITEMS.reduce((sum, d) => sum + d.weight, 0);
-  for(const d of SUMMON_ITEMS){ roll -= d.weight; if(roll <= 0) return d; }
-  return SUMMON_ITEMS[0];
-}
+function rollSummonItem(){ return pickWeighted(SUMMON_ITEMS); }
 function summonVisitor(kind){
   if(kind === 'caravan') return spawnCaravan() ? 'ok' : '🐪 The caravan is already here.';
   if(kind === 'circus'){ if(liveCircuses().length > 0) return '🎪 A circus is already set up.'; return setUpCircusAt(findFreeTileBesideRoad()) ? 'ok' : '🎪 No room beside the road for a circus.'; }
   if(kind === 'troll'){ if(trollIsOnBoard()) return '🧌 A troll is already here.'; return spawnWanderingTroll() ? 'ok' : '🧌 No room for a troll to enter.'; }
   return 'Nothing answered.';
 }
-function rollStimItem(){
-  let total = 0; for(const d of STIM_ITEMS) total += d.weight;
-  let roll = Math.random()*total;
-  for(const d of STIM_ITEMS){ roll -= d.weight; if(roll <= 0) return d; }
-  return STIM_ITEMS[0];
-}
+function rollStimItem(){ return pickWeighted(STIM_ITEMS); }
 function applyStimItem(def, tower){
   if(!def || !tower || !tower.active) return false;
   const effects = def.effects || [{ stat: def.stat, value: def.value }];
@@ -2596,7 +2382,7 @@ function clearRoundBuffs(){
   }
   if(selectedTower) updateInspectPanel();
 }
-// COOKING-01 (1.6.112) — see HISTORY.md § [1.6.112]
+// COOKING-01
 const MEAL_ITEMS = [
   Object.freeze({ id:'BREAKFAST_PLATE', name:'Breakfast Plate', icon:'🍳', isStim:true, isMeal:true, effects:[{ stat:'speed', value:1.25 }] }),
   Object.freeze({ id:'HEARTY_STEW', name:'Hearty Stew', icon:'🍲', isStim:true, isMeal:true, effects:[{ stat:'heal', value:0.6 }] }),
@@ -2687,7 +2473,7 @@ function updateCampfireCooking(frameMs){
     if(fire.type!=='CAMPFIRE') continue;
     const job=fire.cookingJob; fire.fuel=0; if(!job) continue;
     const recipe=FIRE_RECIPES.find(r=>r.id===job.recipeId); if(!recipe){ delete fire.cookingJob; continue; }
-    let remaining=Math.min(100,Math.max(0,frameMs));
+    let remaining=clampNum(frameMs, 0, 100);
     while(remaining>0 && job.progressMs<recipe.woodCost*CAMPFIRE_WOOD_STEP_MS){
       if(job.segmentRemainingMs<=0){
         if(wood<1 || job.woodUsed>=recipe.woodCost) break;
@@ -2740,12 +2526,12 @@ function placeCampfire(gx,gy){
   const fire={gx,gy,x:(gx+0.5)*TILE_SIZE,y:(gy+0.5)*TILE_SIZE,type:'CAMPFIRE',scale:0.85,isChanceStructure:true,fuel:0,healPool:0,isClearing:false,clearCost:0,clearMs:0,tallStretch:1,widthStretch:1};
   sceneryMap.set(gx+','+gy,fire);placingCampfire=false;invalidateSpawnFlags();updateHUD();playSound('click');openCookingDialog(fire);return true;
 }
-function isConsumableDef(def){ return !!(def && (def.isFood || def.isTreat || def.isStim || def.isHutLoot || def.isDiggingTool || def.isSummon)); } // CONSUMABLE-STORED-01 (1.6.132) — see HISTORY.md § [1.6.132]
+function isConsumableDef(def){ return !!(def && (def.isFood || def.isTreat || def.isStim || def.isHutLoot || def.isDiggingTool || def.isSummon)); } // CONSUMABLE-STORED-01
 function useStoredConsumable(tower, slotIndex){
   if(!tower || !tower.active || !Array.isArray(tower.equippedItems) || !Number.isInteger(slotIndex)) return false;
   const def = tower.equippedItems[slotIndex];
   if(!isConsumableDef(def)) return false;
-  if(def.isDiggingTool){ // SHOVEL-REUSABLE-01 (1.7.139), SHOVEL-CHARGES-01 (1.8.18): the shovel is never consumed, it has three digs per round
+  if(def.isDiggingTool){ // SHOVEL-REUSABLE-01, SHOVEL-CHARGES-01
     if(!beginShovelDig(tower)) return false;
     refreshQuickUse(tower);
     recordFirstItemUse(def);
@@ -2779,20 +2565,15 @@ function activateInventorySlot(tower, slotIndex){
   spawnFloatingText(tower.x, tower.y - 40, def.icon + ' ' + def.name, '#ffe082', ITEM_POPUP_LIFE_MS);
   if(gameState==='PAUSED') requestPausedRender();
 }
-// CHANCE-STRUCTURES-01 (1.6.77) — see HISTORY.md § [1.6.77]
+// CHANCE-STRUCTURES-01
 const chanceStructureDrySpells = {};
 function maxLivesNow(){ return 100 + livesBought + bonusMaxLivesFromMeat; }
 function livesMissingNow(){ return Math.max(0, maxLivesNow() - lives); }
-function countChanceStructuresOnBoard(type){
-  let onBoard = 0;
-  for(const item of sceneryMap.values()) if(item.type === type) onBoard++;
-  return onBoard;
-}
 function chanceStructureSpawnChance(type){
   if(type === 'CAMPFIRE') return 0;
   const definition = CONFIG.CHANCE_STRUCTURES[type];
   if(wavesCompleted < definition.minWavesCompleted) return 0;
-  if(countChanceStructuresOnBoard(type) >= definition.maxOnBoard) return 0;
+  if(countSceneryOfType(type) >= definition.maxOnBoard) return 0;
   const livesShare = lives / maxLivesNow();
   let chance = definition.baseChance;
   if(livesShare <= definition.hurtShare) chance += definition.hurtBonusChance;
@@ -2846,22 +2627,8 @@ function maybeSpawnChanceStructures(){
     trackGameEvent('chance_structure_spawned', { structure: type, lives });
   }
 }
-// CAMPFIRE-01 (1.6.115) — see HISTORY.md § [1.6.115]
-const CAMPFIRE_START_FUEL = 3, CAMPFIRE_MAX_FUEL = 8, CAMPFIRE_WOOD_PER_LOG = 15, CAMPFIRE_FUEL_PER_LOG = 2, CAMPFIRE_COOK_REACH_PX = 170;
-function findLitCampfireNear(tower, fuelNeeded){
-  for(const item of sceneryMap.values()){
-    if(item.type !== 'CAMPFIRE' || item.fuel < fuelNeeded) continue;
-    if(Math.hypot(item.x - tower.x, item.y - tower.y) <= CAMPFIRE_COOK_REACH_PX) return item;
-  }
-  return null;
-}
-function burnCampfiresAtWaveEnd(){
-  for(const item of sceneryMap.values()){
-    if(item.type !== 'CAMPFIRE' || item.fuel <= 0) continue;
-    item.fuel--;
-    if(item.fuel === 0) spawnFloatingText(item.x, item.y - 22, '🪵 The fire died down', '#c9a86a', ITEM_POPUP_LIFE_MS);
-  }
-}
+// CAMPFIRE-01
+const CAMPFIRE_START_FUEL = 3;
 function drawCampfire(ctx, item, size){
   ctx.save();
   ctx.translate(item.x, item.y + 6);
@@ -2916,7 +2683,7 @@ function chanceStructureHoverLabel(item){
   if(item.type === 'CAMPFIRE') return '🔥 ' + cookingStatus(item) + ' — tap for recipes';
   return definition.emoji + ' ' + item.healPool + ' ❤️ left';
 }
-function sceneryAtPoint(worldX, worldY){ // the scenery whose emoji is under the point; big pieces reach into neighbouring tiles, so the tiles around are checked too
+function sceneryAtPoint(worldX, worldY){
   const tileX = Math.floor(worldX/TILE_SIZE), tileY = Math.floor(worldY/TILE_SIZE);
   let best = null, bestDistance = Infinity;
   for(let dx = -1; dx <= 1; dx++) for(let dy = -1; dy <= 1; dy++){
@@ -2936,11 +2703,11 @@ function sceneryVisualSize(item){
    ========================================================= */
 // Tree kinds: a leafy tree (58%), an evergreen (30%) and a palm (12%). Saved scenery keeps its kind because it is stored with the item.
 const TREE_VARIANT_EMOJI = ['🌳', '🌲', '🌴'];
-// BIOMES-01 (1.7.66): owner rule — the other tree kinds and grass colours only appear after a very long road. Near the start every tile is meadow with leafy trees; from
+// BIOMES-01: the other tree kinds and grass colours only appear after a very long road.
 // BIOME_MIN_DISTANCE_TILES away from the starting tile, wavy patches of land (about 5 tiles across, edges warped so they are not squares) become Pinewood (cool green grass, mostly
-// evergreens) or Dunes (sandy ground, mostly palms), with meadow in between, like Minecraft biomes. The biome is a fixed function of the tile and the run seed, so a tile never changes.
+// evergreens) or Dunes (sandy ground, mostly palms), with meadow in between, like Minecraft biomes.
 const BIOME_MIN_DISTANCE_TILES = 8, BIOME_PATCH_TILES = 11, BIOME_WARP_TILES = 1.6;
-// BIOME-GRADIENT-01 (1.8.41): biomes follow one smooth noise field ordered Pinewood, Meadow, Dunes, so Pinewood and Dunes never touch and every change passes through a wide meadow band.
+// BIOME-GRADIENT-01: biomes follow one smooth noise field ordered Pinewood, Meadow, Dunes, so Pinewood and Dunes never touch and every change passes through a wide meadow band.
 const BIOME_GRASS = Object.freeze({ MEADOW: ['#8fae6e', '#4f7a3f'], PINEWOOD: ['#7fa68f', '#3f6f5a'], DUNES: ['#c9b97a', '#a89b58'] });
 function biomeCellHash(cellX, cellY){
   let hash = (Math.imul(cellX + 7919, 374761393) ^ Math.imul(cellY + 104729, 668265263) ^ groundDetailRunSeed) >>> 0;
@@ -2968,7 +2735,7 @@ function rollTreeVariant(gx, gy, rng = Math.random){
   if(biome === 'DUNES') return roll < 0.85 ? 2 : 0;
   return 0;
 }
-// SCENERY-SPRITE-01 (1.7.99) — see HISTORY.md § [1.7.99]
+// SCENERY-SPRITE-01
 function drawSceneryEmoji(ctx, emoji, item, size){
   ctx.save();
   ctx.translate(item.x, item.y + 2);
@@ -2977,10 +2744,10 @@ function drawSceneryEmoji(ctx, emoji, item, size){
   if(item.type === 'BRANCH') drawBranchSprite(ctx,size,undefined,item); else if(item.type === 'STUMP') drawStumpSprite(ctx,size); else drawEmojiSprite(ctx, emoji, size);
   ctx.restore();
 }
-// SCENERY-SHADOW-PASS-01 (1.8.31): every scenery ground shadow is painted in one pass before any scenery, actor or tower sprite, so a shadow never lies across a tree, rock or stickman standing beside it.
 function sceneryEmojiFor(item, chanceDefinition){
   return chanceDefinition ? chanceDefinition.emoji : EVENT_PROP_EMOJI[item.type] ? EVENT_PROP_EMOJI[item.type] : item.type === 'TREE' ? (TREE_VARIANT_EMOJI[item.variant || 0] || '🌳') : item.type === 'ROCK' ? '🪨' : item.type === 'BUSH' ? '🪴' : item.type === 'SUPPLY_CRATE' ? '📦' : item.type === 'CHEST' ? '🎁' : item.type === 'STICKS' ? '🥢' : item.type === 'COIN_POUCH' ? '💰' : '💎';
 }
+// SCENERY-SHADOW-PASS-01: every scenery ground shadow is painted in one pass before any scenery, actor or tower sprite, so a shadow never lies across a tree, rock or stickman standing beside it.
 function drawSceneryGroundShadow(ctx, item, size, strength = SCENERY_SHADOW_STRENGTH){
   const emoji = sceneryEmojiFor(item, CONFIG.CHANCE_STRUCTURES[item.type]);
   if(item.type==='BRANCH'){
@@ -2989,13 +2756,11 @@ function drawSceneryGroundShadow(ctx, item, size, strength = SCENERY_SHADOW_STRE
     if(graphicsQuality==='high'){ctx.save();ctx.globalAlpha*=strength;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(item.x+size*0.1,item.y+2+size*0.30,size*0.37,size*0.12,0,0,Math.PI*2);ctx.fill();ctx.restore();}
   } else drawEmojiGroundShadow(ctx,emoji,item.x,item.y+2,Math.round(size),'serif',(item.flip ? -1 : 1)*(item.widthStretch || 1),item.tallStretch || 1,strength);
 }
-// SCENERY-SHADOW-UNION-01 (1.8.32): silhouette shadows are painted fully dark into one layer and the layer is laid on the ground once at the shadow strength, so where two shadows overlap the ground is no darker than under one. The box shadow and the branch shadow keep their own strengths and are painted directly.
+// SCENERY-SHADOW-UNION-01: silhouette shadows are painted fully dark into one layer and the layer is laid on the ground once at the shadow strength, so where two shadows overlap the ground is no darker than under one.
 const SCENERY_SHADOW_STRENGTH = 0.24;
 const sceneryShadowLayer = document.createElement('canvas'), sceneryShadowLayerContext = sceneryShadowLayer.getContext('2d');
-// SCENERY-SHADOW-CACHE-01 (1.8.42): painting the shadow layer and laying it on the ground in the same frame forces the browser to flush the layer every frame,
-// which measured 16 ms per frame against under 2 ms for the same work split up, and lines up with the scenery spikes in debug logs. The layer is repainted only
-// when the zoom, canvas size, graphics quality or a scenery item's position, size or kind changes. SCENERY-SHADOW-PAN-01 (1.8.43): the layer is painted with a
-// margin around the screen, so a pan only slides the painted layer and repaints after the camera has moved further than the margin.
+// SCENERY-SHADOW-CACHE-01: painting the shadow layer and laying it on the ground in the same frame forces the browser to flush the layer every frame,
+// which measured 16 ms per frame against under 2 ms for the same work split up, and lines up with the scenery spikes in debug logs.
 const SCENERY_SHADOW_MARGIN_PX = 256;
 let sceneryShadowSignature = 0, sceneryShadowPaintE = 0, sceneryShadowPaintF = 0, sceneryShadowBox = null;
 function sceneryShadowSignatureFor(ctx, sortedItems){
@@ -3052,7 +2817,6 @@ function drawOneSceneryItem(ctx, key, item, size){
   }
   if(item.isSuper){
     ctx.save();
-    ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 0;
     ctx.strokeStyle = 'rgba(255,215,0,0.7)';
     ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(item.x, item.y, size*0.62, 0, Math.PI*2); ctx.stroke();
@@ -3064,7 +2828,7 @@ function drawOneSceneryItem(ctx, key, item, size){
   const chanceDefinition = CONFIG.CHANCE_STRUCTURES[item.type];
   const emoji = sceneryEmojiFor(item, chanceDefinition);
   if(chanceDefinition){
-    // CHANCE-STRUCTURE-GLOW-01 (1.6.91) — see HISTORY.md § [1.6.91]. A soft radial glow behind the
+    // CHANCE-STRUCTURE-GLOW-01: A soft radial glow behind the
     // structure while it can actually help, replacing the earlier stroked ring outline. Steady, never
     // pulsing: nothing here fades in and out.
     if(item.type === 'CAMPFIRE'){
@@ -3095,7 +2859,7 @@ function drawOneSceneryItem(ctx, key, item, size){
     return;
   }
   if(item.isClearing){
-    // CLEAR-PIE-01 (1.7.46, restyled 1.7.67): the clearing progress is a clock-wipe wedge that sweeps clockwise from the top behind the emoji. Owner request (1.7.67): one yellow
+    // CLEAR-PIE-01: the clearing progress is a clock-wipe wedge that sweeps clockwise from the top behind the emoji: one yellow
     // gradient wedge by itself, with no dark disc behind it, no stripes and no outline.
     const clearProgress = Math.min(1, Math.max(0, (presentationTime - item.clearStart)/item.clearMs)), pieRadius = size*0.5, startAngle = -Math.PI/2;
     if(clearProgress > 0){
@@ -3108,10 +2872,9 @@ function drawOneSceneryItem(ctx, key, item, size){
     }
     ctx.font = Math.round(size) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
   }
-  // All timed harvest sprites fade inside drawSceneryEmoji. // CLEAR-HOURGLASS-01 (1.7.137)
+  // CLEAR-HOURGLASS-01: timed harvest sprites fade inside drawSceneryEmoji().
   const stretch = item.tallStretch || 1, wide = item.widthStretch || 1, mirrored = !!item.flip;
   if(stretch !== 1 || wide !== 1 || mirrored){
-    // CA144 — see HISTORY.md § [1.5.7] Code Archaeology, CA144
     const baseY = item.y + size*0.5;
     ctx.save();
     ctx.translate(item.x, baseY);
@@ -3122,19 +2885,14 @@ function drawOneSceneryItem(ctx, key, item, size){
   } else {
     drawSceneryEmoji(ctx, emoji, item, size);
   }
-
-  // Sprite fading restores its own canvas state. // CLEAR-OVERLAY-01 (1.7.139): hourglass is drawn after world scenery/actors below.
-  if(item.isClearing){
-    // progress is the clock-wipe pie drawn behind the emoji above (CLEAR-PIE-01)
-  } else if(key === hoveredSceneryKey && sceneryClearCost(item)>0){
-    // cost label only shown while hovered/tapped, not cluttering the map at all times
-    ctx.font = 'bold 10px Verdana';
-    ctx.textAlign = 'center';
-    const displayCost = sceneryClearCost(item); // reflects the Axeman/Hammerman discount, if any — see sceneryClearCost()
-    const costStr = '💰'+displayCost;
-    ctx.fillStyle = displayCost > 0 ? '#fff' : '#7dd3fc';
-    ctx.fillText(costStr, item.x, item.y + size*0.5 + 4);
-  }
+  // CLEAR-OVERLAY-01: the hourglass is drawn by drawClearingHourglass() after scenery and actors.
+  if(item.isClearing || key !== hoveredSceneryKey) return;
+  const displayCost = sceneryClearCost(item); // includes the Axeman/Hammerman discount; shown only while hovered or tapped
+  if(displayCost <= 0) return;
+  ctx.font = 'bold 10px Verdana';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('💰' + displayCost, item.x, item.y + size*0.5 + 4);
 }
 function drawClearingHourglass(ctx, item, size){
   if(!item.isClearing || item.clearMs <= 0) return;
@@ -3146,17 +2904,17 @@ function drawClearingHourglass(ctx, item, size){
     const t=(flipT-1200)/600;
     ctx.rotate(Math.PI*2*t*t*(3-2*t));
   }
-  drawEmojiSprite(ctx, '⌛', Math.max(20, Math.min(26, size*0.4)));
+  drawEmojiSprite(ctx, '⌛', clampNum(size*0.4, 20, 26));
   ctx.restore();
 }
 /* =========================================================
    LOOSE ENEMIES
    ========================================================= */
-// LOOSE-DRAIN-01 / LOOSE-CONFINE-01 (1.6.77) — see HISTORY.md § [1.6.77]
+// LOOSE-DRAIN-01 / LOOSE-CONFINE-01
 const DOWNED_TOWER_SKIN_MAIN = '#9b9b9b';
 const DOWNED_TOWER_SKIN_SHADE = '#7a7a7a';
 const LOOSE_ENEMY_LIFE_DRAIN_MS = 6000;
-const LOOSE_DRAIN_FIRST_WAVE = 4; // LOOSE-DRAIN-GRACE-01 (1.8.46): in waves 1 to 3 an escape costs its one life but a loose enemy does not keep draining, so one leaky early wave cannot end a new run
+const LOOSE_DRAIN_FIRST_WAVE = 4; // LOOSE-DRAIN-GRACE-01
 function advanceLooseDrain(drainMs, dtMs){
   const totalMs = drainMs + dtMs;
   const hearts = Math.floor(totalMs / LOOSE_ENEMY_LIFE_DRAIN_MS);
@@ -3175,9 +2933,9 @@ function nearestLooseWalkableTileCenter(worldX, worldY){
   }
   return null;
 }
-const LOOSE_WANDER_COMMIT_MIN_MS = 2200, LOOSE_WANDER_COMMIT_SPREAD_MS = 3000, LOOSE_WANDER_EXPLORE_SHARE = 0.6;
-const LOOSE_WANDER_TURN_MIN = 0.28, LOOSE_WANDER_TURN_SPREAD = 0.35, LOOSE_WANDER_STEER_RAD_PER_S = 2.4, LOOSE_WANDER_GOAL_REACHED_PX = 18;
-const LOOSE_WANDER_EXPLORE_SPEED = 0.55, LOOSE_WANDER_LOOP_SPEED = 0.45, LOOSE_WANDER_GOAL_SAMPLES = 8, LOOSE_WANDER_AVOID_FINISH_TILES = 2.5;
+const LOOSE_WANDER_COMMIT_MIN_MS = 2200, LOOSE_WANDER_COMMIT_SPREAD_MS = 3000;
+const LOOSE_WANDER_STEER_RAD_PER_S = 2.4, LOOSE_WANDER_GOAL_REACHED_PX = 18;
+const LOOSE_WANDER_EXPLORE_SPEED = 0.7, LOOSE_WANDER_GOAL_SAMPLES = 8, LOOSE_WANDER_AVOID_FINISH_TILES = 2.5;
 // Picks the farthest of a few random walkable tiles that are not right next to the finish line, so loose enemies spread out over the grass.
 function pickLooseExploreGoal(fromX, fromY){
   if(!activeRegion) return null;
@@ -3193,6 +2951,47 @@ function pickLooseExploreGoal(fromX, fromY){
     if(distance > bestDistance){ bestDistance = distance; best = { x: goalX, y: goalY }; }
   }
   return best;
+}
+const LOOSE_CONTACT_RADIUS_TILES = 1.1, LOOSE_PERIMETER_GOAL_MIN_TILES = 1, LOOSE_PERIMETER_GOAL_SAMPLES = 24;
+function isLoosePerimeterTile(tileX, tileY){
+  const centerX = tileX*TILE_SIZE + TILE_SIZE/2, centerY = tileY*TILE_SIZE + TILE_SIZE/2;
+  if(!isLooseWalkableAt(centerX, centerY) || isSceneryBlockedAt(centerX, centerY)) return false;
+  return !isLooseWalkableAt(centerX + TILE_SIZE, centerY) || !isLooseWalkableAt(centerX - TILE_SIZE, centerY) || !isLooseWalkableAt(centerX, centerY + TILE_SIZE) || !isLooseWalkableAt(centerX, centerY - TILE_SIZE);
+}
+function pickLoosePerimeterGoal(fromX, fromY, headingRad){ // LOOSE-PERIMETER-01: escaped enemies patrol the outer rim, preferring tiles ahead of their heading
+  if(!activeRegion) return null;
+  let best = null, bestScore = -Infinity;
+  for(let attempt = 0; attempt < LOOSE_PERIMETER_GOAL_SAMPLES; attempt++){
+    const tileX = activeRegion.x0 + Math.floor(Math.random() * (activeRegion.x1 - activeRegion.x0 + 1));
+    const tileY = activeRegion.y0 + Math.floor(Math.random() * (activeRegion.y1 - activeRegion.y0 + 1));
+    if(!isLoosePerimeterTile(tileX, tileY)) continue;
+    const goalX = tileX*TILE_SIZE + TILE_SIZE/2, goalY = tileY*TILE_SIZE + TILE_SIZE/2, distance = Math.hypot(goalX - fromX, goalY - fromY);
+    if(distance < LOOSE_PERIMETER_GOAL_MIN_TILES*TILE_SIZE) continue;
+    const ahead = Math.cos(Math.atan2(goalY - fromY, goalX - fromX) - headingRad);
+    const score = ahead*2 - distance/(TILE_SIZE*6) + Math.random()*1.5;
+    if(score > bestScore){ bestScore = score; best = { x: goalX, y: goalY }; }
+  }
+  return best || pickLooseExploreGoal(fromX, fromY);
+}
+const SCENERY_DETOUR_ANGLES = [0, 0.6, -0.6, 1.2, -1.2, 1.8, -1.8, 2.5, -2.5];
+function isSceneryBlockedAt(worldX, worldY){ // SCENERY-SOLID-01: trees and rocks are solid to anything walking off the road
+  const item = sceneryMap.get(Math.floor(worldX / TILE_SIZE) + ',' + Math.floor(worldY / TILE_SIZE));
+  return !!item && (item.type === 'TREE' || item.type === 'ROCK');
+}
+function moveAroundScenery(walker, dirX, dirY, speedPxPerS, dtMs){ // steps toward (dirX, dirY), turning to the walker's preferred side until the lookahead clears scenery
+  const baseAngle = Math.atan2(dirY, dirX), stepPx = speedPxPerS * dtMs / 1000, lookaheadPx = (walker.radius || 10) + 6;
+  const side = walker.detourSide || (walker.detourSide = Math.random() < 0.5 ? -1 : 1);
+  for(const offset of SCENERY_DETOUR_ANGLES){
+    const angle = baseAngle + offset * side, cosA = Math.cos(angle), sinA = Math.sin(angle);
+    if(isSceneryBlockedAt(walker.x + cosA*lookaheadPx, walker.y + sinA*lookaheadPx)) continue;
+    walker.vx = cosA * speedPxPerS; walker.vy = sinA * speedPxPerS;
+    walker.x += cosA * stepPx; walker.y += sinA * stepPx;
+    return angle;
+  }
+  if(!isSceneryBlockedAt(walker.x, walker.y)){ walker.vx = 0; walker.vy = 0; return baseAngle; }
+  walker.vx = Math.cos(baseAngle) * speedPxPerS; walker.vy = Math.sin(baseAngle) * speedPxPerS;
+  walker.x += walker.vx * dtMs / 1000; walker.y += walker.vy * dtMs / 1000;
+  return baseAngle;
 }
 function isLooseWalkableAt(worldX, worldY){
   const tileX = Math.floor(worldX / TILE_SIZE), tileY = Math.floor(worldY / TILE_SIZE);
@@ -3211,7 +3010,7 @@ function confineLooseEnemyToRoute(enemy, previousX, previousY){
 /* =========================================================
    TELEMETRY AND ANALYTICS
    ========================================================= */
-// TELEMETRY-01 (1.6.79) — see HISTORY.md § [1.6.79]
+// TELEMETRY-01
 const TELEMETRY_EVENTS = {
   game_started: ['device', 'viewport', 'first_visit', 'loaded_save'],
   wave_started: ['wave', 'lives', 'gold', 'towers', 'loose', 'unlocked_towers'],
@@ -3225,9 +3024,9 @@ const TELEMETRY_EVENTS = {
   item_purchased: ['item', 'payment_type', 'cost', 'wood_cost', 'stone_cost'],
   map_expanded: ['expansion_level', 'route_tiles', 'spacing_relaxed'],
   item_drifted: ['item', 'tower_type'],
-  summon_used: ['item', 'tower_type'], // SUMMON-ITEMS-01 (1.8.62)
-  early_call_bonus: ['wave', 'gold'], // EARLY-CALL-01 (1.8.62) // TELEMETRY-CATALOG-01 (1.8.46): every event the code sends is declared
-  item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01 (1.6.149) — see HISTORY.md § [1.6.149]: never name a parameter source, medium, campaign, value or currency; GA4 reads those as traffic source or revenue
+  summon_used: ['item', 'tower_type'], // SUMMON-ITEMS-01
+  early_call_bonus: ['wave', 'gold'], // EARLY-CALL-01 // TELEMETRY-CATALOG-01: every event the code sends is declared
+  item_dropped: ['item', 'rarity', 'enemy_type'], // ANALYTICS-PARAMS-01
   item_equipped: ['item', 'rarity', 'tower_type', 'items_carried'],
   item_guide_shown: [],
   item_crafted: ['result', 'tower_type'],
@@ -3271,7 +3070,7 @@ const LAG_MEDIAN_GAP_THRESHOLD_MS = 90;
 const LAG_MIN_SAMPLES = 60;
 const telemetryRecent = [];
 const sessionTelemetry = { startedAtMs: 0, activeMs: 0, activeSince: null, reportedActiveMs: 0, completedHere: 0, origin: 'fresh', runId:'none', onboarding: new Set(), towersBuilt: 0, towersDowned: 0, gameOverReported: false, engagedReported: false };
-const TELEMETRY_SHARED_PARAMS = ['game_version','wave','quality','platform','device','telemetry_schema','run_origin','event_group','run_id'];
+const TELEMETRY_SHARED_PARAMS = ['game_version','wave','quality','platform','build','device','telemetry_schema','run_origin','event_group','run_id'];
 function telemetryActiveMs(){
   return sessionTelemetry.activeMs + (sessionTelemetry.activeSince === null ? 0 : Math.max(0, performance.now() - sessionTelemetry.activeSince));
 }
@@ -3310,7 +3109,7 @@ function telemetryEventGroup(name){
   if(/^(settings_|save_|progress_|game_speed)/.test(name)) return 'settings';
   return 'economy';
 }
-const ENGAGED_PLAYER_WAVES = 5; // ENGAGED-PLAYER-01 (1.6.150) — see HISTORY.md § [1.6.150]: the single clearest 'this person really played' signal, sent at most once per session
+const ENGAGED_PLAYER_WAVES = 5; // ENGAGED-PLAYER-01
 function reportEngagedPlayerOnce(){
   if(sessionTelemetry.engagedReported || sessionTelemetry.completedHere < ENGAGED_PLAYER_WAVES) return;
   sessionTelemetry.engagedReported = true;
@@ -3409,6 +3208,19 @@ function countTowersDownedNow(){
   for(const tower of towerPool) if(tower.active && isFighterTower(tower) && tower.disabledWavesLeft > 0) downed++;
   return downed;
 }
+// SQUAD-WIPE-01: the run ends when every fighting stickman is down at once; the Hacker never fights, so he cannot keep a run alive.
+function squadWipedOut(){
+  let fighters = 0;
+  for(const tower of towerPool){
+    if(!tower.active || !isFighterTower(tower) || tower.type === 'HACKER') continue;
+    if(!(tower.disabledWavesLeft > 0)) return false;
+    fighters++;
+  }
+  return fighters > 0 || everBuiltFighter;
+}
+function endRunOnSquadWipe(){
+  endGame('Every stickman was overrun on wave ' + Math.max(1, waveIndex) + '.\nRebuild your squad and try again.', 'squad_down');
+}
 function countActiveTowers(){
   let active = 0;
   for(const tower of towerPool) if(tower.active && isFighterTower(tower)) active++;
@@ -3423,7 +3235,7 @@ function maybeReportLag(){
   waveTelemetry.lagReported = true;
   trackGameEvent('lag_detected', {
     median_gap_ms: Math.round(medianGapMs), p95_gap_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95)),
-    towers_downed: countTowersDownedNow(), enemies: enemyPool.filter(e => e.active).length, loose: countLooseEnemies(),
+    towers_downed: countTowersDownedNow(), enemies: perfStats.totalActiveEnemies, loose: countLooseEnemies(),
     decals: perfStats.totalDecals, particles: perfStats.totalParticles
   });
 }
@@ -3448,7 +3260,6 @@ function reportSessionSummary(reason = 'game_over', snapshot = null){
 /* =========================================================
    DEPTH SORT AND ACTOR DRAWING
    ========================================================= */
-// CA145 — see HISTORY.md § [1.5.7] Code Archaeology, CA145
 const depthSortPool = [];
 const depthSortItems = [];
 function getDepthSortItem(i){
@@ -3456,7 +3267,6 @@ function getDepthSortItem(i){
   if(!o){ o = {}; depthSortPool[i] = o; }
   return o;
 }
-// CA146 — see HISTORY.md § [1.5.7] Code Archaeology, CA146
 function towerScrollY(t){
   const buildY = t.buildScaleY || (JOB_BUILD[t.type] || {scaleY:1}).scaleY;
   let scrollY = t.y - 41*STICKMAN_SCALE*buildY;
@@ -3474,8 +3284,7 @@ function drawTowerScroll(ctx, t, scrollY){
   ctx.fillText('📜', t.x, scrollY);
   ctx.restore();
 }
-// ENEMY-SHADOW-BATCH-01 (1.7.50): each enemy shadow was a skewed bitmap blit, which cost about 0.06 ms of drawing per enemy in the 150-enemy benchmark. When 24 or more enemies are on screen
-// their shadows are drawn together as soft ellipses in one fill instead (the same ground shadow, flatter), which also never double-darkens where shadows overlap in a crowd.
+// ENEMY-SHADOW-BATCH-01: each enemy shadow was a skewed bitmap blit, which cost about 0.06 ms of drawing per enemy in the 150-enemy benchmark.
 let enemyShadowsBatched = false;
 const ENEMY_SHADOW_BATCH_MIN = 24;
 function drawBatchedEnemyShadows(ctx, actorLeft, actorRight, actorTop, actorBottom){
@@ -3505,7 +3314,7 @@ function drawDepthSortedLayer(ctx){
     const o = getDepthSortItem(poolIdx++); o.sortY = baseY; o.kind = 's'; o.key = key; o.item = item; o.size = size;
     depthSortItems.push(o);
   }
-  const actorViewLeft = viewLeft - 60, actorViewRight = viewRight + 60, actorViewTop = viewTop - 60, actorViewBottom = viewBottom + 60; // wider than scenery's own margin — floating text, HP bars, and legendary name labels can extend further above an enemy/tower than any scenery ever does
+  const actorViewLeft = viewLeft - 60, actorViewRight = viewRight + 60, actorViewTop = viewTop - 60, actorViewBottom = viewBottom + 60;
   let visibleEnemyCount = 0, totalActiveEnemyCount = 0;
   for(const e of enemyPool){
     if(!e.active) continue;
@@ -3519,10 +3328,9 @@ function drawDepthSortedLayer(ctx){
   for(const t of towerPool){
     if(!t.active) continue;
     totalActiveTowerCount++;
-    // CA147 — see HISTORY.md § [1.5.7] Code Archaeology, CA147
-    // SELECTED-CULL-01 (1.7.36): a selected fighter is still culled once it is well off screen (its inspector stays open); the margin covers its weapon and labels.
-    const cullMargin = t === selectedTower ? 160 : 0;
-    if(t.x < actorViewLeft - cullMargin || t.x > actorViewRight + cullMargin || t.y < actorViewTop - cullMargin || t.y > actorViewBottom + cullMargin) continue;
+    // SELECTED-CULL-01: a selected fighter is still culled once it is well off screen (its inspector stays open); the margin covers its weapon and labels.
+    const selectedMargin = t === selectedTower ? 160 : 0;
+    if(t.x < actorViewLeft - selectedMargin || t.x > actorViewRight + selectedMargin || t.y < actorViewTop - selectedMargin || t.y > actorViewBottom + selectedMargin) continue;
     visibleTowerCount++;
     const o = getDepthSortItem(poolIdx++); o.sortY = t.y; o.kind = 't'; o.t = t;
     depthSortItems.push(o);
@@ -3536,14 +3344,12 @@ function drawDepthSortedLayer(ctx){
   enemyShadowsBatched = visibleEnemyCount >= ENEMY_SHADOW_BATCH_MIN;
   if(enemyShadowsBatched) drawBatchedEnemyShadows(ctx, actorViewLeft, actorViewRight, actorViewTop, actorViewBottom);
   perfStats.visibleTowers = visibleTowerCount; perfStats.totalActiveTowers = totalActiveTowerCount;
-  // CA148 — see HISTORY.md § [1.5.7] Code Archaeology, CA148
   let worldMark = performance.now();
   for(const d of depthSortedDecalsThisFrame){
     perfStats.visibleDecals++;
     drawOneDecal(ctx, d);
   }
   renderPhaseTime.worldDebris += performance.now() - worldMark; worldMark = performance.now();
-  // CA149 — see HISTORY.md § [1.5.7] Code Archaeology, CA149
   const sf = computeSpawnFlags();
   if(sf){
     const o1 = getDepthSortItem(poolIdx++); o1.sortY = sf.flagLower.y + FLAG_SORT_BIAS; o1.kind = 'f'; o1.pos = sf.flagLower; o1.center = sf.center; o1.isBlack = true;
@@ -3568,14 +3374,9 @@ function drawDepthSortedLayer(ctx){
         e.draw(ctx);ctx.restore();renderPhaseTime.worldEnemies += performance.now() - worldMark;break;
       }
       case 't': it.t.draw(ctx, it.t === selectedTower); drawBloodStains(ctx, it.t); renderPhaseTime.worldTowers += performance.now() - worldMark; break;
-      case 'r': break; // SCROLL-OVERLAY-01 (1.7.137): drawn after the world below
+      case 'r': break; // SCROLL-OVERLAY-01: drawn after the world below
       case 'f': {
-        // FLAG-BROADSIDE-01 (1.6.45) — see HISTORY.md § [1.6.45]. awayX/awayY is now a fixed
-        // perpendicular-to-path direction stored on the flag by computeSpawnFlags(), not a
-        // per-frame vector recomputed from (flag position - spawn point). That recomputed vector
-        // could point along the path instead of across it depending on exactly which tile corner
-        // got picked, and could destabilize toward a near-zero length right next to the spawn
-        // point — both produce a thin, collapsed, edge-on banner instead of a broad readable one.
+        // FLAG-BROADSIDE-01: awayX/awayY is the fixed across-the-path direction stored by computeSpawnFlags(), so the banner always faces the viewer broadside.
         drawFinishFlagPole(ctx, it.pos.x, it.pos.y, it.pos.awayX, it.pos.awayY, it.isBlack);
         break;
       }
@@ -3583,7 +3384,6 @@ function drawDepthSortedLayer(ctx){
   }
   perfStats.visibleScenery = visibleSceneryCount;
   perfStats.totalScenery = sceneryMap.size;
-
 }
 function roundedRectPath(ctx,x,y,w,h,r){
   if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
@@ -3595,7 +3395,6 @@ function roundedRectPath(ctx,x,y,w,h,r){
   ctx.arcTo(x,y,x+w,y,r);
   ctx.closePath();
 }
-// CA150 — see HISTORY.md § [1.5.7] Code Archaeology, CA150
 function computeFinishLine(){
   if(!waypointsPx || waypointsPx.length < 2) return null;
   const end = waypointsPx[waypointsPx.length - 1];
@@ -3615,7 +3414,7 @@ function computeFinishLine(){
 /* =========================================================
    GROUND AND PATH PAINTING
    ========================================================= */
-// GROUND-DETAIL-01 (1.6.72) — see HISTORY.md § [1.6.72]
+// GROUND-DETAIL-01
 const PATH_PEBBLE_TILE_CHANCE = 0.55;
 const PATH_PEBBLE_MIN_COUNT = 1;
 const PATH_PEBBLE_MAX_COUNT = 3;
@@ -3626,7 +3425,7 @@ const GROUND_DETAIL_EDGE_MARGIN = 10;
 const PEBBLE_STONE_TONES = ['rgba(92,82,72,0.6)', 'rgba(140,130,118,0.6)', 'rgba(190,182,170,0.6)'];
 const GRASS_BLADE_TONES_ON_LIGHT_TILE = ['#5d8846', '#6c9a52'];
 const GRASS_BLADE_TONES_ON_DARK_TILE = ['#86b364', '#6f9c55'];
-// GROUND-DETAIL-RUN-01 (1.6.75) — see HISTORY.md § [1.6.75]
+// GROUND-DETAIL-RUN-01
 const STARTER_PEBBLE_TILES_MAX = 2;
 const STARTER_PEBBLES_PER_TILE_MAX = 2;
 const STARTER_TUFT_TILES_MAX = 2;
@@ -3721,7 +3520,6 @@ function paintGrassTufts(ctx, gx, gy, isLightTile){
     }
   }
 }
-// CA151 — see HISTORY.md § [1.5.7] Code Archaeology, CA151
 function paintBuildableTileBase(ctx, gx, gy){
   const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
   const light = isLightBuildableTile(gx, gy);
@@ -3732,7 +3530,7 @@ function paintBuildableTileBase(ctx, gx, gy){
   ctx.lineWidth = 1;
   ctx.strokeRect(tx+0.5, ty+0.5, TILE_SIZE-1, TILE_SIZE-1);
 }
-// PATH-CHESS-01 (1.6.68) — see HISTORY.md § [1.6.68]
+// PATH-CHESS-01
 const DIRT_BACKGROUND_COLOR = '#8b5a2b';
 const FLAG_POLE_COLOR = '#e8d9b0';
 const PATH_TILE_DARK = '#835528';
@@ -3740,19 +3538,21 @@ const PATH_TILE_LIGHT = '#926438';
 function isLightBuildableTile(gx, gy){ return (gx+gy) % 2 === 0; }
 function isDarkPathTile(gx, gy){ return !isLightBuildableTile(gx, gy); }
 function pathTileColor(gx, gy){ return isDarkPathTile(gx, gy) ? PATH_TILE_DARK : PATH_TILE_LIGHT; }
-// CA152 — see HISTORY.md § [1.5.7] Code Archaeology, CA152
 function paintPathTileBase(ctx, gx, gy){
-  const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
-  // PATH-CHESS-01 (1.6.68) — see HISTORY.md § [1.6.68]
   ctx.fillStyle = pathTileColor(gx, gy);
-  ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+  ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE);
   paintPathPebbles(ctx, gx, gy);
 }
-// CA153 — see HISTORY.md § [1.5.7] Code Archaeology, CA153
+function paintGroundTile(ctx, gx, gy){
+  if(pathCells.has(gx+','+gy)) paintPathTileBase(ctx, gx, gy);
+  else if(isInActiveRegion(gx, gy)) paintBuildableTileBase(ctx, gx, gy);
+  else { ctx.fillStyle = DIRT_BACKGROUND_COLOR; ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
+}
+const FINISH_CARPET_DEPTH_PX = 16;
 function drawFinishCarpet(ctx, fl){
   if(!fl) return;
   const { ux, uy, lowerPolePoint, upperPolePoint } = fl;
-  const stripThickness = 16;
+  const stripThickness = FINISH_CARPET_DEPTH_PX;
   const cols = 8, rows = 2; // 8x2 cells, each a true square (64px edge / 8 cols = 8px; 16px thickness / 2 rows = 8px)
   for(let row=0; row<rows; row++){
     const r0 = row/rows, r1 = (row+1)/rows;
@@ -3773,62 +3573,37 @@ function drawFinishCarpet(ctx, fl){
   ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(upperPolePoint.x, upperPolePoint.y); ctx.lineTo(lowerPolePoint.x, lowerPolePoint.y); ctx.stroke();
 }
-// CA154 — see HISTORY.md § [1.5.7] Code Archaeology, CA154
 function repaintFinishCarpetFootprint(ctx, fl){
   if(!fl) return;
   const { ux, uy, lowerPolePoint, upperPolePoint } = fl;
-  const stripThickness = 16;
+  const stripThickness = FINISH_CARPET_DEPTH_PX;
   const xs = [lowerPolePoint.x, upperPolePoint.x, lowerPolePoint.x - ux*stripThickness, upperPolePoint.x - ux*stripThickness];
   const ys = [lowerPolePoint.y, upperPolePoint.y, lowerPolePoint.y - uy*stripThickness, upperPolePoint.y - uy*stripThickness];
   const gx0 = Math.floor(Math.min(...xs)/TILE_SIZE) - 1, gx1 = Math.ceil(Math.max(...xs)/TILE_SIZE) + 1;
   const gy0 = Math.floor(Math.min(...ys)/TILE_SIZE) - 1, gy1 = Math.ceil(Math.max(...ys)/TILE_SIZE) + 1;
   for(let gx=gx0; gx<=gx1; gx++){
     for(let gy=gy0; gy<=gy1; gy++){
-      if(gx<0||gx>=COLS||gy<0||gy>=ROWS) continue;
-      const key = gx+','+gy;
-      if(pathCells.has(key)) paintPathTileBase(ctx, gx, gy);
-      else if(isInActiveRegion(gx, gy)) paintBuildableTileBase(ctx, gx, gy);
-      else { ctx.fillStyle = '#8b5a2b'; ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
+      if(gx >= 0 && gx < COLS && gy >= 0 && gy < ROWS) paintGroundTile(ctx, gx, gy);
     }
   }
 }
-// CA155 — see HISTORY.md § [1.5.7] Code Archaeology, CA155
-// MAP-CORRIDOR-01 (1.6.11) — see HISTORY.md § [1.6.11]. This used to paint EVERY non-path tile
-// in the new ring's rectangle as buildable grass unconditionally — the actual visual source of the
-// "huge green strip far from the path" bug. Now matches the pattern repaintFinishCarpetFootprint()
-// right above already used correctly: check isInActiveRegion() (which now itself requires
-// proximity to the path — see rebuildNearPathTileSet()) and paint plain dirt for anything outside
-// the corridor, instead of assuming every tile in the rectangle is buildable.
+// MAP-CORRIDOR-01: new ring tiles outside the path corridor are painted as plain dirt, never as buildable grass.
 function paintNewRingTiles(ctx, oldRegion, newRegion){
   for(let gx=newRegion.x0; gx<=newRegion.x1; gx++){
     for(let gy=newRegion.y0; gy<=newRegion.y1; gy++){
       const insideOld = oldRegion && gx>=oldRegion.x0 && gx<=oldRegion.x1 && gy>=oldRegion.y0 && gy<=oldRegion.y1;
-      if(insideOld) continue; // already baked by a prior expansion — untouched by this one
-      const key = gx+','+gy;
-      if(pathCells.has(key)) paintPathTileBase(ctx, gx, gy);
-      else if(isInActiveRegion(gx, gy)) paintBuildableTileBase(ctx, gx, gy);
-      else { ctx.fillStyle = '#8b5a2b'; ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
+      if(!insideOld) paintGroundTile(ctx, gx, gy); // tiles inside the old region were baked by an earlier expansion
     }
   }
 }
 /* =========================================================
    SPAWN AND FINISH FLAGS
    ========================================================= */
-// CA156 — see HISTORY.md § [1.5.7] Code Archaeology, CA156
 let spawnFlagsCache = null;
 let spawnFlagsDirty = true;
 function invalidateSpawnFlags(){ spawnFlagsDirty = true; }
-// SPAWN-FLAG-PLACEMENT-01 (1.6.46) — see HISTORY.md § [1.6.46]. Owner-specified placement rule —
-// stated explicitly once already and lost when this function was later reworked into a
-// nearby-buildable-tile search; restated here so it can't quietly drift again: both spawn flags
-// sit on the SAME EDGE of the spawn tile — one straight line, never a diagonal pair, never
-// searched or placed independently — specifically whichever edge is farthest from the finish
-// carpet, i.e. the tile's back edge, opposite the direction enemies first walk. This is the exact
-// mirror of computeFinishLine()'s own carpet geometry: that function anchors to the path's LAST
-// waypoint and puts the carpet on the tile's forward/exit edge; this one anchors to the FIRST
-// waypoint and puts both flags on the tile's backward/entrance edge. Do not replace this with a
-// search over nearby buildable tiles for "safety" or variety — that was tried, and losing this
-// exact rule in that rewrite is the regression this comment exists to prevent from repeating.
+// SPAWN-FLAG-PLACEMENT-01: both spawn flags sit in one line on the spawn tile's back edge, opposite the first walking direction,
+// mirroring computeFinishLine(), which puts the carpet on the last tile's exit edge. Never search nearby tiles for them.
 function computeSpawnFlags(){
   if(!spawnFlagsDirty) return spawnFlagsCache;
   spawnFlagsDirty = false;
@@ -3841,22 +3616,19 @@ function computeSpawnFlags(){
   const ux = dirX/dirLen, uy = dirY/dirLen;
   const perpX = -uy, perpY = ux;
   const halfSpan = TILE_SIZE * 0.5;
-  // The spawn tile's back edge — mirrored across the tile's own center from its forward/exit edge,
-  // same technique computeFinishLine() uses for the carpet, just subtracting the travel direction
-  // instead of adding it.
+  // The spawn tile's back edge: computeFinishLine()'s exit edge with the travel direction reversed.
   const edgeX = start.x - ux*halfSpan, edgeY = start.y - uy*halfSpan;
   const pA = { x: edgeX + perpX*halfSpan, y: edgeY + perpY*halfSpan };
   const pB = { x: edgeX - perpX*halfSpan, y: edgeY - perpY*halfSpan };
   const flagLower = pA.y >= pB.y ? pA : pB; // "lower" = further down/+Y = black flag, same convention as computeFinishLine()
   const flagUpper = pA.y >= pB.y ? pB : pA;
-  // Both flags flutter further backward, away from the tile — same "away from the tile's own
-  // center" convention the flag-pole draw function has always used.
+  // Both flags fly backward, away from the tile.
   flagLower.awayX = -ux; flagLower.awayY = -uy;
   flagUpper.awayX = -ux; flagUpper.awayY = -uy;
   spawnFlagsCache = { center: start, flagLower, flagUpper };
   return spawnFlagsCache;
 }
-// FLAG-PENNANT-01 (1.6.70) — see HISTORY.md § [1.6.70]
+// FLAG-PENNANT-01
 const FLAG_SEGMENTS = 24;
 const FLAG_PENNANT_LENGTH = 46;
 const FLAG_HOIST_HALF_HEIGHT = 7;
@@ -3874,7 +3646,7 @@ const FLAG_WIND_RISE_MS = 1200;
 const FLAG_WIND_FALL_MS = 2500;
 const FLAG_WIND_VISIBLE_THRESHOLD = 0.02;
 let flagWindStrength = 0;
-// FLAG-WIND-GATE-01 (1.6.76) — see HISTORY.md § [1.6.76]
+// FLAG-WIND-GATE-01
 function updateFlagWind(dtMs){
   const targetStrength = waveState === 'IDLE' ? 1 : 0;
   if(flagWindStrength === targetStrength) return;
@@ -3887,12 +3659,12 @@ const flagTopX = new Float32Array(FLAG_SEGMENTS + 1);
 const flagTopY = new Float32Array(FLAG_SEGMENTS + 1);
 const flagBottomX = new Float32Array(FLAG_SEGMENTS + 1);
 const flagBottomY = new Float32Array(FLAG_SEGMENTS + 1);
-// FLAG-REALISTIC-WIND-01 (1.6.77) — see HISTORY.md § [1.6.77]
+// FLAG-REALISTIC-WIND-01
 function flagGustLevel(gustClockSeconds, flagPhaseOffset){
   const slowSwell = Math.sin(gustClockSeconds*0.55 + flagPhaseOffset*0.6);
   const mediumSwell = Math.sin(gustClockSeconds*1.35 + flagPhaseOffset*1.3 + 1.7);
   const quickFlutter = Math.sin(gustClockSeconds*3.1 + flagPhaseOffset*2.1);
-  return Math.max(0, Math.min(1, 0.55 + 0.30*slowSwell + 0.15*mediumSwell + 0.06*quickFlutter));
+  return clampNum(0.55 + 0.30*slowSwell + 0.15*mediumSwell + 0.06*quickFlutter, 0, 1);
 }
 function computeFlagPennantShape(baseX, baseY, awayX, awayY, perpX, perpY, isBlack){
   const windAmount = flagWindStrength;
@@ -3959,10 +3731,9 @@ function drawPennantFoldShading(ctx, isBlack){
     ctx.fill();
   }
 }
-// CA158 — see HISTORY.md § [1.5.7] Code Archaeology, CA158
-// FLAG-POLE-CONTRAST-01 (1.6.67) — see HISTORY.md § [1.6.67]
-const FLAG_SORT_BIAS = 1e6; // FLAG-OVER-SCENERY-01 (1.6.110) — see HISTORY.md § [1.6.110]
-// FLAG-SHADOW-01 (1.8.14) — see CHANGELOG.md § [1.8.14]: pole, finial and pennant are painted opaque into one small canvas and cast as one shape at one opacity, so overlapping parts never double-darken
+// FLAG-POLE-CONTRAST-01
+const FLAG_SORT_BIAS = 1e6; // FLAG-OVER-SCENERY-01
+// FLAG-SHADOW-01: pole, finial and pennant are painted opaque into one small canvas and cast as one shape at one opacity, so overlapping parts never double-darken
 const FLAG_SHADOW_PAD_X = 90, FLAG_SHADOW_PAD_TOP = 70, FLAG_SHADOW_PAD_BOTTOM = 12;
 const flagShadowCanvas = document.createElement('canvas');
 flagShadowCanvas.width = FLAG_SHADOW_PAD_X*2; flagShadowCanvas.height = FLAG_SHADOW_PAD_TOP + FLAG_SHADOW_PAD_BOTTOM;
@@ -3982,9 +3753,9 @@ function drawFlagGroundShadow(ctx, x, y, poleH){
 }
 function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   const poleH = 34;
-  if(graphicsQuality==='high'){
-    const dir=awayX>=0?1:-1;
-    computeFlagPennantShape(x,y-poleH+FLAG_HOIST_HALF_HEIGHT,dir,0,0,dir,isBlack);
+  if(graphicsQuality === 'high'){
+    const shadowDirX = awayX >= 0 ? 1 : -1;
+    computeFlagPennantShape(x, y - poleH + FLAG_HOIST_HALF_HEIGHT, shadowDirX, 0, 0, shadowDirX, isBlack);
     drawFlagGroundShadow(ctx, x, y, poleH);
   }
   ctx.save();
@@ -3996,21 +3767,14 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
   ctx.fillStyle = FLAG_POLE_COLOR; ctx.strokeStyle = 'rgba(30,18,8,0.75)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(x, y-poleH-1.5, 2.4, 0, Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.restore();
-  // FLAG-HORIZONTAL-01 (1.6.53) — see HISTORY.md § [1.6.53]. The banner direction is snapped to
-  // pure left or right (never a diagonal), so the flag always reads as a clean, recognizable shape
-  // regardless of which way the path actually heads. Both flags are always called with the same
-  // input direction (see computeSpawnFlags()), so this keeps them pointing the same way as each
-  // other too, not just internally consistent on their own.
-  const snappedAwayX = awayX >= 0 ? 1 : -1;
-  awayX = snappedAwayX; awayY = 0;
-  const perpX = -awayY, perpY = awayX;
-  computeFlagPennantShape(x, y - poleH + FLAG_HOIST_HALF_HEIGHT, awayX, awayY, perpX, perpY, isBlack);
+  // FLAG-HORIZONTAL-01: the banner points straight left or right, never diagonally, and both flags share one direction.
+  const bannerDirX = awayX >= 0 ? 1 : -1;
+  computeFlagPennantShape(x, y - poleH + FLAG_HOIST_HALF_HEIGHT, bannerDirX, 0, 0, bannerDirX, isBlack);
   ctx.save();
   ctx.fillStyle = isBlack ? '#1a1a1a' : '#f5f5f5';
   tracePennantSilhouette(ctx);
   ctx.fill();
   drawPennantFoldShading(ctx, isBlack);
-  // CA162 — see HISTORY.md § [1.5.7] Code Archaeology, CA162
   ctx.strokeStyle = isBlack ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
   ctx.lineWidth = 1;
   tracePennantSilhouette(ctx);
@@ -4020,58 +3784,19 @@ function drawFinishFlagPole(ctx, x, y, awayX, awayY, isBlack){
 /* =========================================================
    MAP BAKE AND BUILD PREVIEW
    ========================================================= */
-function drawOuterWastelandTrees(ctx){
-  // A few fixed, low-contrast dead-tree silhouettes give the dirt margins an intentional RPG-world frame.
-  // Their tile hash keeps placement stable across map rebakes and they are painted into the cached map layer.
-  for(let gx=0; gx<COLS; gx++){
-    for(let gy=0; gy<ROWS; gy++){
-      if(isInActiveRegion(gx, gy) || pathCells.has(gx+','+gy)) continue;
-      let h = Math.imul(gx + 1, 374761393) ^ Math.imul(gy + 7, 668265263);
-      h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-      if((h % 1000) >= 52) continue;
-      const px = gx*TILE_SIZE + TILE_SIZE*(0.2 + ((h >>> 8) % 600)/1000);
-      const py = gy*TILE_SIZE + TILE_SIZE*(0.55 + ((h >>> 17) % 250)/1000);
-      const size = TILE_SIZE*(0.23 + ((h >>> 24) % 16)/100);
-      const sway = ((h >>> 5) & 1) ? 1 : -1;
-      ctx.save();
-      ctx.globalAlpha = 0.48;
-      ctx.strokeStyle = '#49321f';
-      ctx.lineWidth = Math.max(1.5, TILE_SIZE*0.035);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(px, py); ctx.lineTo(px + sway*size*0.08, py-size*0.62);
-      ctx.moveTo(px + sway*size*0.03, py-size*0.28); ctx.lineTo(px - sway*size*0.33, py-size*0.46);
-      ctx.moveTo(px + sway*size*0.04, py-size*0.4); ctx.lineTo(px + sway*size*0.32, py-size*0.58);
-      ctx.moveTo(px + sway*size*0.01, py-size*0.51); ctx.lineTo(px - sway*size*0.12, py-size*0.73);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-}
 function drawMap(ctx){
   ctx.fillStyle = DIRT_BACKGROUND_COLOR;
   ctx.fillRect(0,0,WORLD_MAX_W,WORLD_MAX_H);
-  // BRANCH-WASTELAND-02: only collectible branches populate unrevealed dirt.
-
-  // PATH-CHESS-01 (1.6.68) — see HISTORY.md § [1.6.68]
-  // GROUND-DETAIL-01 (1.6.72) — see HISTORY.md § [1.6.72]
+  // BRANCH-WASTELAND-02: unrevealed dirt stays plain; only collectible branches appear on it.
   for(let gx=0; gx<COLS; gx++){
-    for(let gy=0; gy<ROWS; gy++){
-      if(!pathCells.has(gx+','+gy)) continue;
-      ctx.fillStyle = pathTileColor(gx, gy);
-      ctx.fillRect(gx*TILE_SIZE, gy*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      paintPathPebbles(ctx, gx, gy);
-    }
+    for(let gy=0; gy<ROWS; gy++) if(pathCells.has(gx+','+gy)) paintPathTileBase(ctx, gx, gy);
   }
-
-  // CA164 — see HISTORY.md § [1.5.7] Code Archaeology, CA164
   const gridStrokes = [];
   for(let gx=0; gx<COLS; gx++){
     for(let gy=0; gy<ROWS; gy++){
       if(pathCells.has(gx+','+gy)) continue;
-      if(!isInActiveRegion(gx, gy)) continue; // leave as plain brown background — seamless, no grid clutter
+      if(!isInActiveRegion(gx, gy)) continue;
       const tx = gx*TILE_SIZE, ty = gy*TILE_SIZE;
-      // buildable tiles rendered as a crisp chess-style checkerboard
       const light = isLightBuildableTile(gx, gy);
       ctx.fillStyle = grassTileFill(gx, gy, light);
       ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
@@ -4084,13 +3809,7 @@ function drawMap(ctx){
   ctx.beginPath();
   for(const [x, y] of gridStrokes) ctx.rect(x, y, TILE_SIZE-1, TILE_SIZE-1);
   ctx.stroke();
-
-  // CA165 — see HISTORY.md § [1.5.7] Code Archaeology, CA165
   drawFinishCarpet(ctx, computeFinishLine());
-
-  // CA166 — see HISTORY.md § [1.5.7] Code Archaeology, CA166
-
-  // CA167 — see HISTORY.md § [1.5.7] Code Archaeology, CA167
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for(const item of graphicsQuality === 'high' || CONFIG.FLORA.coverage <= 0 ? [] : floraMap.values()){ // high graphics draws flora live, see drawAnimatedFlora()
     ctx.save();
@@ -4102,13 +3821,11 @@ function drawMap(ctx){
   }
 }
 function rebakeMap(){
-  // CA168 — see HISTORY.md § [1.5.7] Code Archaeology, CA168
   mapBakeRevision++;
   const mctx = mapCanvas.getContext('2d');
   mctx.setTransform(dprValue,0,0,dprValue,0,0);
   drawMap(mctx);
 }
-// CA169 — see HISTORY.md § [1.5.7] Code Archaeology, CA169
 function resizeMapCanvasForDpr(){
   mapCanvas.width = WORLD_MAX_W * dprValue;
   mapCanvas.height = WORLD_MAX_H * dprValue;
@@ -4120,7 +3837,7 @@ function resizeMapCanvasForDpr(){
   }
 }
 const buildPreviewAppearance={preview:true,lowGfx:true,hasTarget:false,weaponScale:1,weaponThickness:1,drawProgress:0,castProgress:0,chargeProgress:0,swingProgress:0,throwProgress:0,str:0,int:0};
-// BUILD-SPOT-HINT-01 (1.8.62): while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a gold
+// BUILD-SPOT-HINT-01: while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a gold
 // dashed outline, a "good spot" hint from Buckland's support-spot scoring. It is a suggestion only; any buildable tile can still be used.
 let buildSpotHintCache = { key: '', tile: null };
 function bestBuildSpotFor(type){
@@ -4130,9 +3847,10 @@ function bestBuildSpotFor(type){
   if(buildSpotHintCache.key === key) return buildSpotHintCache.tile;
   const roadCenters = []; for(const cellKey of pathCells){ const [rx, ry] = cellKey.split(',').map(Number); roadCenters.push(rx*TILE_SIZE + TILE_SIZE/2, ry*TILE_SIZE + TILE_SIZE/2); }
   let best = null, bestScore = 0;
+  const rangeSq = range*range;
   for(let gx = activeRegion.x0; gx <= activeRegion.x1; gx++) for(let gy = activeRegion.y0; gy <= activeRegion.y1; gy++){
     if(!isTileBuildable(gx, gy, null, type)) continue;
-    const cx = gx*TILE_SIZE + TILE_SIZE/2, cy = gy*TILE_SIZE + TILE_SIZE/2, rangeSq = range*range;
+    const cx = gx*TILE_SIZE + TILE_SIZE/2, cy = gy*TILE_SIZE + TILE_SIZE/2;
     let score = 0; for(let i = 0; i < roadCenters.length; i += 2){ const dx = roadCenters[i] - cx, dy = roadCenters[i+1] - cy; if(dx*dx + dy*dy <= rangeSq) score++; }
     if(score > bestScore){ bestScore = score; best = { gx, gy }; }
   }
@@ -4184,5 +3902,4 @@ function drawBuildPreview(ctx){
 /* =========================================================
    ACTIVE BARRICADES
    ========================================================= */
-// CA473 — see HISTORY.md § [1.5.7] Code Archaeology, CA473
 const activeBarricades = new Set();

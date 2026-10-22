@@ -22,7 +22,7 @@ document.querySelectorAll('.quality-btn').forEach(btn => {
 });
 let firstFighterBuiltInSession = false;
 let firstWaveStartedInSession = false, firstNextWaveUsedInSession = false, firstSpeedUpUsedInSession = false;
-// INTRO-EVERY-GAME-01 (1.7.42): owner decision — the build, next wave and speed-up arrows play on every new playthrough, so nothing about them is remembered between visits any more.
+// INTRO-EVERY-GAME-01: the build, next wave and speed-up arrows play on every new playthrough, so nothing about them is remembered between visits any more.
 function firstWaveWasStarted(){ return firstWaveStartedInSession; }
 function firstNextWaveWasUsed(){ return firstNextWaveUsedInSession; }
 function firstSpeedUpWasUsed(){ return firstSpeedUpUsedInSession; }
@@ -54,7 +54,6 @@ function markFirstNextWaveUsed(){
   firstNextWaveUsedInSession = true;
   syncFirstPlayCues();
 }
-function markFirstNextWaveCueAction(){ markFirstNextWaveUsed(); }
 function markFirstFighterBuilt(){
   reportOnboardingStep('first_defender');
   firstFighterBuiltInSession = true;
@@ -72,15 +71,12 @@ function markFirstSpeedUpUsed(){
 }
 document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  let isFirstVisit = true;
-  try{ isFirstVisit = !localStorage.getItem('stickTD_welcomeSeen'); }catch(err){ isFirstVisit = true; }
   unlockAudio();
   audioEngine.startMusic();
   audioEngine.setMusicPhase('field', true);
   startScreen.classList.add('hidden');
   document.getElementById('hud-top').style.display = 'flex';
   invalidateDebugOverlayLayout();
-  // CA788 — see HISTORY.md § [1.5.7] Code Archaeology, CA788
   fitHudTopToOneLine(true);
   positionZoomControls();
   recordStateTransition('PLAYING'); gameState = 'PLAYING';
@@ -94,7 +90,6 @@ document.getElementById('playBtn').addEventListener('pointerdown', (e) => {
   const firstBuildHint = document.getElementById('first-build-hint');
   if(firstBuildHint) firstBuildHint.classList.toggle('hidden', firstFighterWasBuilt());
   syncFirstPlayCues();
-  try{ if(isFirstVisit) localStorage.setItem('stickTD_welcomeSeen', '1'); }catch(err){}
 });
 window.addEventListener('pagehide', (event) => {
   telemetryStateChange('PAUSED');
@@ -105,18 +100,15 @@ window.addEventListener('pageshow', () => telemetryStateChange(gameState));
 document.addEventListener('visibilitychange', () => {
   telemetryStateChange(gameState);
   if(document.hidden) reportPlayActivity('hidden');
+  audioEngine.setMusicPaused(document.hidden || gameState === 'PAUSED');
 });
-document.addEventListener('visibilitychange', () => audioEngine.setMusicPaused(document.hidden || gameState === 'PAUSED'));
 document.getElementById('endDownloadLogBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  downloadDebugLogFile(); // GAMEOVER-LOG-01 (1.6.2) — see HISTORY.md § [1.6.2]
+  downloadDebugLogFile(); // GAMEOVER-LOG-01
 });
 document.getElementById('restartBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
-  // RESTART-RELOAD-01 (1.6.2) — see HISTORY.md § [1.6.2]. Was resetGame() (a long manual
-  // reset of dozens of in-memory variables) — replaced with a real browser reload so a restart is
-  // guaranteed clean, not dependent on resetGame() correctly zeroing every single piece of state
-  // this 16,000-line engine accumulates over a run.
+  // RESTART-RELOAD-01: a restart reloads the page, so no run state can survive into the next game.
   window.location.reload();
 });
 function endGame(message, cause){
@@ -125,7 +117,7 @@ function endGame(message, cause){
   audioEngine.stopMusic();
   sessionTelemetry.gameOverReported = true;
   endTitle.textContent = 'Game Over';
-  endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '.\nRebuild your squad and try again.'); // GAMEOVER-LAYOUT-01 (1.6.79) — see HISTORY.md § [1.6.79]
+  endMessage.textContent = message || ('The horde broke through on wave ' + waveIndex + '.\nRebuild your squad and try again.'); // GAMEOVER-LAYOUT-01
   playSound('lose');
   document.getElementById('endRunSummary').textContent = describeRunEnd();
   document.getElementById('endRateBtn').classList.toggle('hidden', !PLATFORM_RATING_PAGES[window.STICKTD_PLATFORM]);

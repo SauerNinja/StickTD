@@ -1,5 +1,5 @@
 "use strict";
-// The towers, which are the stickmen: class definitions, elements, promotions, the stickman figure, weapons and poses, the Tower class and projectiles. Loaded after js/environment.js.
+// The towers, which are the stickmen: class definitions, elements, promotions, the stickman figure, weapons and poses, the Tower class and projectiles.
 // Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
 //   TOWER DEFINITIONS (CONFIG.TOWERS)
 //   STRATEGY TIPS, ARCHETYPES AND UNLOCKS
@@ -26,7 +26,7 @@ CONFIG.TOWERS = {
     name: 'Swordsman', icon: '⚔️', baseCost: 50, unlocksAfterWave: 0,
     blurb: "A front-line fighter whose sweeping blade strikes every enemy in a cone ahead of him. Affordable and dependable, and the root of the melee branch: Strength, Dexterity or Intelligence trained to 250 attunes him to an element, and 500 in that stat unlocks a specialization.",
     tiers: [
-      { range: 90,  damage: 18, cooldown: 1700 }, // tier-1 cooldown raised 1350→1550 per direct feedback ("all stickmen probably have too fast hit speed starting off") — later tiers (earned through promotion) are untouched
+      { range: 90,  damage: 18, cooldown: 1700 },
       { range: 100, damage: 28, cooldown: 770, upgradeCost: 80 },
       { range: 115, damage: 42, cooldown: 680, upgradeCost: 120 },
       { range: 125, damage: 58, cooldown: 630, upgradeCost: 175 },
@@ -37,7 +37,7 @@ CONFIG.TOWERS = {
     name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
     blurb: "A patient marksman who draws the bow fully before each shot. Arrows land hard, and the ones that bite deep leave the target bleeding. He is the root of the ranged branch: training a stat to 250 attunes him to an element, and 500 unlocks a specialization.",
     tiers: [
-      { range: 140, damage: 20, cooldown: 1430, drawTime: 800, projectileSpeed: 480 }, // tier-1 cooldown raised 1150→1300, same "too fast starting off" feedback as Swordsman
+      { range: 140, damage: 20, cooldown: 1430, drawTime: 800, projectileSpeed: 480 },
       { range: 170, damage: 30, cooldown: 1350, drawTime: 650, projectileSpeed: 540, upgradeCost: 95 },
       { range: 200, damage: 44, cooldown: 1250, drawTime: 550, projectileSpeed: 600, upgradeCost: 135 }
     ]
@@ -71,14 +71,13 @@ CONFIG.TOWERS = {
   },
   PALADIN: {
     name: 'Paladin', icon: '⚜️', baseCost: 650, unlocksAfterWave: 0,
-    blurb: "Delivers holy damage that ignores armor, along with the Hammerman's stun. Only one can stand on the board. Unlocked by training a Hammerman's Intelligence to 40.",
+    blurb: "Swings a gilded hammer whose holy blows hit undead 50% harder and break graves, along with the Hammerman's stun. Only one can stand on the board. Unlocked by training a Hammerman's Intelligence to 40.",
     tiers: [
       { range: 100, damage: 24, cooldown: 1000, stunMs: 550 },
       { range: 110, damage: 36, cooldown: 900,  stunMs: 700, upgradeCost: 115 },
       { range: 125, damage: 54, cooldown: 800,  stunMs: 850, upgradeCost: 175 }
     ]
   },
-  // CA058 — see HISTORY.md § [1.5.7] Code Archaeology, CA058
   BERSERKER: {
     name: 'Berserker', icon: '👹', baseCost: 600, unlocksAfterWave: 0,
     blurb: "Gives up the Axeman's throw for a much wider, harder cleave that catches more of a crowd in each swing. Unlocked by training an Axeman's Strength to 40.",
@@ -88,7 +87,6 @@ CONFIG.TOWERS = {
       { range: 130, damage: 75, cooldown: 700, upgradeCost: 180 }
     ]
   },
-  // CA059 — see HISTORY.md § [1.5.7] Code Archaeology, CA059
   LANCER: {
     name: 'Lancer', icon: '🏇', baseCost: 550, unlocksAfterWave: 0,
     blurb: "A knight's lance whose impact grows with the weight of its target, so the biggest enemies suffer most. Unlocked by training a Spearman's Dexterity to 40.",
@@ -107,7 +105,6 @@ CONFIG.TOWERS = {
       { range: 220, damage: 1051, cooldown: 6200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
     ]
   },
-  // CA060 — see HISTORY.md § [1.5.7] Code Archaeology, CA060
   CAT_SNAPPER: {
     name: 'Cat Snapper', icon: '🐈‍⬛', baseCost: 450, unlocksAfterWave: 0,
     blurb: "Sends a shadow cat after its target. The cat latches on and scratches for a few seconds before slipping away; up to two are out at once. Unlocked by training an Archer's Dexterity to 500.",
@@ -135,7 +132,6 @@ CONFIG.TOWERS = {
       { range: 186, damage: 54, cooldown: 1200, projectileSpeed: 300, splashRadius: 78, upgradeCost: 155 }
     ]
   },
-  // CA061 — see HISTORY.md § [1.5.7] Code Archaeology, CA061
   MERCHANT: {
     name: 'Merchant', icon: '👳', baseCost: 140, unlocksAfterWave: 15,
     blurb: "Keeps the Shop open while he stands; if he is downed, the Shop stays closed until another Merchant is standing. A deliberately weak fighter whose Money Bag bursts into coins over a wide radius and reloads slowly. Unlocks at Wave 15.",
@@ -145,10 +141,9 @@ CONFIG.TOWERS = {
       { range: 200, damage: 75, cooldown: 29000, projectileSpeed: 220, splashRadius: 140, upgradeCost: 220 }
     ]
   },
-  // CA062 — see HISTORY.md § [1.5.7] Code Archaeology, CA062
   GLAIVE: {
     name: 'Glaive', icon: '⚙️', baseCost: 130, unlocksAfterWave: 20,
-    blurb: "A heavy gun built for fortifications: 5x damage against Huts and Castles, ordinary against everything else, with a very long reload. Unlocks at Wave 20.",
+    blurb: "A heavy gun built for fortifications: 5x damage against camp buildings (huts, castles, graves and the circus), ordinary against everything else, with a very long reload. Unlocks at Wave 20.",
     tiers: [
       { range: 170, damage: 60,  cooldown: 8000, projectileSpeed: 340 },
       { range: 185, damage: 85,  cooldown: 7200, projectileSpeed: 360, upgradeCost: 175 },
@@ -195,14 +190,13 @@ CONFIG.TOWERS = {
   },
   CLERIC: {
     name: 'Cleric', icon: '✝️', baseCost: 375, unlocksAfterWave: 5,
-    blurb: "Calls down holy light after the longest cooldown of any tower, dealing 5x damage to undead and ignoring their armor, enough to finish small undead in one strike (bosses can survive). Once per wave it also heals the weakest tower, and several Clerics each choose a different one. Unlocked by training a Mage's Intelligence to 500.",
+    blurb: "Calls down holy light after a very long cooldown, dealing 5x damage to undead and ignoring their armor, enough to finish small undead in one strike (bosses can survive). Once per wave it also heals the weakest tower, and several Clerics each choose a different one. Unlocked by training a Mage's Intelligence to 500.",
     tiers: [
       { range: 150, damage: 11, cooldown: 12500, healAmount: 25, curseDuration: 3000 },
       { range: 170, damage: 16, cooldown: 11000, healAmount: 40, curseDuration: 3400, upgradeCost: 95 },
       { range: 190, damage: 22, cooldown: 9500,  healAmount: 60, curseDuration: 3800, upgradeCost: 150 }
     ]
   },
-  // CA063 — see HISTORY.md § [1.5.7] Code Archaeology, CA063
   NECROMANCER: {
     name: 'Necromancer', icon: '💀', baseCost: 550, unlocksAfterWave: 0,
     blurb: "Fires dark bolts and, at the start of each round, raises a band of skeletons to hold the line; they crumble when the round ends and a fresh band rises with the next. Only one can stand on the board. Unlocked by training a Mage's Strength to 500.",
@@ -248,7 +242,6 @@ CONFIG.TOWERS = {
       { range: 160, damage: 5, cooldown: 260, projectileSpeed: 520, acidDamage: 5, acidDuration: 4200, acidSlow: 0.15, acidRadius: 46, upgradeCost: 135 }
     ]
   },
-  // CA064 — see HISTORY.md § [1.5.7] Code Archaeology, CA064
   BLOW_GUNNER: {
     name: 'Blow Gunner', icon: '♨️', baseCost: 700, unlocksAfterWave: 0,
     blurb: "Fires darts carrying scalding vapor: the Blowdart's poison and a brief chilling slow land together on every hit. Unlocked by training an Archer's Strength and Intelligence to 500 each.",
@@ -258,30 +251,27 @@ CONFIG.TOWERS = {
       { range: 155, damage: 19, cooldown: 205, projectileSpeed: 520, poisonDamage: 9, poisonDuration: 3800, slowFactor: 0.3,  slowDuration: 1100, upgradeCost: 150 }
     ]
   },
-  // CA065 — see HISTORY.md § [1.5.7] Code Archaeology, CA065
   PROTON: {
     name: 'Proton', icon: '☄️', baseCost: 0, unlocksAfterWave: 0,
-    blurb: "A mixed element rather than a tower, earned by any stickman who trains Strength and Dexterity to 250. Its bolts burn on contact and disrupt the target's nerves, slowing it.",
+    blurb: "A mixed element rather than a tower, earned by any stickman who trains Strength and Dexterity to 250. Every hit can burn its target and chain lightning to nearby enemies.",
     tiers: [
       { range: 190, damage: 26, cooldown: 1500, projectileSpeed: 1000, poisonDamage: 10, poisonDuration: 3000, slowFactor: 0.3,  slowDuration: 1200 },
       { range: 210, damage: 40, cooldown: 1300, projectileSpeed: 1100, poisonDamage: 15, poisonDuration: 3200, slowFactor: 0.38, slowDuration: 1400, upgradeCost: 140 },
       { range: 230, damage: 58, cooldown: 1100, projectileSpeed: 1200, poisonDamage: 22, poisonDuration: 3600, slowFactor: 0.45, slowDuration: 1600, upgradeCost: 200 }
     ]
   },
-  // CA066 — see HISTORY.md § [1.5.7] Code Archaeology, CA066
   DARK_MATTER: {
     name: 'Dark Matter', icon: '🕳️', baseCost: 0, unlocksAfterWave: 0,
-    blurb: "A mixed element rather than a tower, earned by any stickman who trains Strength and Intelligence to 250. Its void-black bolts sap the target's energy, hitting harder with the slow than with the burn.",
+    blurb: "A mixed element rather than a tower, earned by any stickman who trains Strength and Intelligence to 250. Every hit can burn its target and freeze it in place.",
     tiers: [
       { range: 195, damage: 22, cooldown: 1450, projectileSpeed: 950,  poisonDamage: 8,  poisonDuration: 3100, slowFactor: 0.4,  slowDuration: 1500 },
       { range: 215, damage: 34, cooldown: 1250, projectileSpeed: 1050, poisonDamage: 12, poisonDuration: 3300, slowFactor: 0.48, slowDuration: 1700, upgradeCost: 145 },
       { range: 235, damage: 50, cooldown: 1050, projectileSpeed: 1150, poisonDamage: 18, poisonDuration: 3700, slowFactor: 0.55, slowDuration: 1900, upgradeCost: 205 }
     ]
   },
-  // CA067 — see HISTORY.md § [1.5.7] Code Archaeology, CA067
   QUASAR: {
     name: 'Quasar', icon: '🌟', baseCost: 0, unlocksAfterWave: 0,
-    blurb: "A mixed element rather than a tower, earned by any stickman who trains Dexterity and Intelligence to 250. Its blinding bursts hit everything in a small radius, not only the direct target.",
+    blurb: "A mixed element rather than a tower, earned by any stickman who trains Dexterity and Intelligence to 250. Every hit can chain lightning and freeze its target, and splashes everything in a small radius around it.",
     tiers: [
       { range: 190, damage: 20, cooldown: 1700, projectileSpeed: 900,  splashRadius: 55, poisonDamage: 8,  poisonDuration: 2800, slowFactor: 0.3,  slowDuration: 1300 },
       { range: 210, damage: 31, cooldown: 1500, projectileSpeed: 1000, splashRadius: 65, poisonDamage: 12, poisonDuration: 3000, slowFactor: 0.36, slowDuration: 1500, upgradeCost: 180 },
@@ -319,84 +309,72 @@ CONFIG.TOWERS = {
 /* =========================================================
    STRATEGY TIPS, ARCHETYPES AND UNLOCKS
    ========================================================= */
-// CA012 — see HISTORY.md § [1.5.7] Code Archaeology, CA012
 const TOWER_STRATEGY = {
-  CRAZY_CHEF: { icon: '🔪', text: 'A ranged knife thrower whose damage scales with Strength. Invest in Strength to increase knife damage.' },
-  HAMMERMAN: { icon: '🔨', text: 'Front-line tank: highest HP of any tower and a chance to stun on breakaway. Place it where enemies hit first, and let squishier towers shoot over its shoulder.' },
-  PALADIN:   { icon: '✝️', text: 'Holy front-liner: Hammerman\'s tankiness plus bonus damage against undead. The answer to an Undead Uprising wave — put it where the coffins are heaviest.' },
-  AXEMAN:    { icon: '🪓', text: 'Switch-hitter: toggle between melee and thrown axes once per wave. Read the wave, then commit — it can\'t change its mind again until the next one.' },
-  SPEARMAN:  { icon: '🔱', text: 'Reach fighter: longer melee range than any other Warrior, so it can hit before enemies close in. Place it one tile back from the chokepoint, not right on it.' },
-  GATLING:   { icon: '🔫', text: 'Sustained rate of fire over raw per-hit power. Best against long, high-count waves (Swarm, The Grind) where uptime matters more than a single big hit.' },
-  NINJA: { icon:'🥷', text:'Rapid alternating stars reward focused fire. Light damage per hit, with no close-range blind spot.' },
-  BLOWDART:  { icon: '🧪', text: 'Poison DoT specialist: modest hit damage, but the poison keeps ticking after the shot lands. Strong against tanky single targets that will stay in range a while.' },
-  SQUIRTGUN: { icon: '💧', text: 'Dual-gun acid DoT, Blowdart\'s bigger sibling. Two independent damage-over-time stacks instead of one — thrives the same way, just harder.' },
-  BOMBER:    { icon: '💣', text: 'The only splash-damage tower — one shot hits every enemy in its blast radius. Built for dense clumps (Swarm, Elite Vanguard), wasted on a single isolated target.' },
-  MERCHANT:  { icon: '👳', text: 'Keeps the Shop open while alive — downed, and it locks until another one is standing. Deliberately the worst combat tower in the game; his real value is Shop access and passive gold from Money Bag coin bursts, not his damage.' },
-  GLAIVE:    { icon: '⚙️', text: 'Anti-structure specialist — 5x damage against Hut/Castle/Grave buildings specifically, unremarkable against ordinary enemies. Huge reload; save him for the buildings, not the horde.' },
-  GUNALINDER:{ icon: '🔄', text: 'Burst-fire revolver: several fast shots, then a longer reload. Real DPS is high but lumpy — check its 🥈 DPS stat, not just the per-shot number, to judge it fairly.' },
-  SNIPER:    { icon: '🔭', text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
-  MARKSMAN:  { icon: '🔫', text: "Ice Archer's specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Deep INT investment unlocks the Sniper." },
-  SNAPCASTER:{ icon: '⚡', text: 'Mage class unlocked through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
-  CLERIC:    { icon: '✨', text: 'A support tower that heals allies and directly smites undead. Its immediate holy hit deals 5x damage and ignores armor, making it especially dangerous to small undead while bosses can endure it.' },
-  POPE:      { icon: '⛪', text: "Unlocked for the Build menu when a Cleric reaches 500 INT, the per-stat cap. Hits every enemy in range at once instead of one target. Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
-  NECROMANCER:{ icon: '💀', text: "Mage class unlocked through STR instead of INT: a dark bolt attack, plus a small band of skeleton minions raised near it at the start of every round (gone again the instant the round ends). The skeletons aren't a one-time boost — budget for them fresh each round, and place this where its own raised band can actually reach the path." },
-  BLOW_GUNNER:{ icon: '♨️', text: "Archer class unlocked by pushing STR and INT both to 500, not just the one that locked the attunement first. Every hit carries both Blowdart's poison DoT and a Mage-style chilling slow at once, a genuinely different identity from either single-element sibling rather than a stronger version of one." },
-  CAT_SNAPPER:{ icon: '🐈‍⬛', text: "Unlocked by an Archer reaching 500 DEX — a raw stat threshold, not tied to which element that Archer ends up attuning to. Throws temporary shadow-cat companions instead of dealing damage directly; the real question when placing this is whether its cats can actually reach the path, not just this tower's own range." },
-  PROTON:{ icon: '☄️', text: "Fire and Electric combined. Any stickman earns it by training both STR and DEX to 250: every hit burns its target and chains lightning to nearby enemies." },
-  DARK_MATTER:{ icon: '🕳️', text: "Fire and Ice combined. Any stickman earns it by training both STR and INT to 250: every hit burns its target and can freeze it in place." },
-  QUASAR:{ icon: '🌟', text: "Electric and Ice combined. Any stickman earns it by training both DEX and INT to 250: every hit chains lightning to nearby enemies, can freeze its target and splashes everything in a small radius around it." },
-  BERSERKER:{ icon: '👹', text: "An Axeman pushed to STR 500 instead of a second element — trades the throw-toggle for a much wider, harder cleave. Bring it in close where its swing can actually catch a crowd; it's a brute-force AoE tool, not a precision one." },
-  LANCER:{ icon: '🎯', text: "A Spearman pushed to DEX 500 carries a knight lance and strikes harder against larger, heavier enemies. Damage scales with target size: half damage at tiny scale, normal damage at standard scale, and up to 1.75x against the heaviest foes." },
+  CRAZY_CHEF: { text: 'A ranged knife thrower whose damage scales with Strength. Invest in Strength to increase knife damage.' },
+  HAMMERMAN: { text: 'Front-line tank: a shield, extra health and a stun on every hit. Place it where enemies hit first, and let squishier towers shoot over its shoulder.' },
+  PALADIN:   { text: 'Holy front-liner: Hammerman\'s tankiness plus bonus damage against undead. The answer to an Undead Uprising wave — put it where the coffins are heaviest.' },
+  AXEMAN:    { text: 'Switch-hitter: toggle between melee and thrown axes once per wave. Read the wave, then commit — it can\'t change its mind again until the next one.' },
+  SPEARMAN:  { text: 'Reach fighter: longer melee range than any other Warrior, so it can hit before enemies close in. Place it one tile back from the chokepoint, not right on it.' },
+  GATLING:   { text: 'Sustained rate of fire over raw per-hit power. Best against long, high-count waves (Swarm, The Grind) where uptime matters more than a single big hit.' },
+  NINJA: { text:'Rapid alternating stars reward focused fire. Light damage per hit, with no close-range blind spot.' },
+  BLOWDART:  { text: 'Poison DoT specialist: modest hit damage, but the poison keeps ticking after the shot lands. Strong against tanky single targets that will stay in range a while.' },
+  SQUIRTGUN: { text: 'Dual-gun acid, Blowdart\'s bigger sibling: each splash adds a coat, up to three per enemy, and every coat slows and burns a little more. Keep it firing into the same crowd.' },
+  BOMBER:    { text: 'The dedicated splash-damage tower: one shot hits every enemy in its blast radius. Built for dense clumps (Swarm, Elite Vanguard), wasted on a single isolated target.' },
+  MERCHANT:  { text: 'Keeps the Shop open while alive — downed, and it locks until another one is standing. Deliberately the worst combat tower in the game; his real value is Shop access and passive gold from Money Bag coin bursts, not his damage.' },
+  GLAIVE:    { text: 'Anti-structure specialist — 5x damage against camp buildings (huts, castles, graves, the circus), unremarkable against ordinary enemies. Huge reload; save him for the buildings, not the horde.' },
+  GUNALINDER:{ text: 'Burst-fire revolver: several fast shots, then a longer reload. Real DPS is high but lumpy — check its DPS number, not just the per-shot damage, to judge it fairly.' },
+  SNIPER:    { text: 'Longest range and heaviest single-hit damage of any tower, but slow. Place it where it can see the most of the path at once rather than close to a chokepoint.' },
+  MARKSMAN:  { text: "The Archer's Intelligence specialization: one carefully aimed shot at a time, longer range and harder-hitting than base Archer but without Gatling's rate of fire or Blowdart's poison. Training it to 60 Intelligence unlocks the Sniper." },
+  SNAPCASTER:{ text: 'Mage class unlocked through DEX instead of INT: faster casts than base Mage, with a chance to chain lightning to a nearby second target. Rewards a DEX-heavy build over the usual INT one.' },
+  CLERIC:    { text: 'A support tower that heals allies and directly smites undead. Its immediate holy hit deals 5x damage and ignores armor, making it especially dangerous to small undead while bosses can endure it.' },
+  POPE:      { text: "Unlocked for the Build menu when a Cleric reaches 500 INT, the per-stat cap. Hits every enemy in range at once instead of one target. Placement matters more than ever: it wants to see as much of the path as possible, not just one chokepoint." },
+  NECROMANCER:{ text: "Unlocked by a Mage reaching 500 STR. Fires dark bolts and raises a fresh band of skeletons at the start of every round; they crumble when the round ends. Place it close enough for the skeletons to reach the path." },
+  BLOW_GUNNER:{ text: "Unlocked when one Archer has both STR and INT at 500. Every hit applies Blowdart poison and a Mage-style chilling slow together, so it suits tough enemies that stay in range." },
+  CAT_SNAPPER:{ text: "Unlocked by an Archer reaching 500 DEX, whatever its element. Its damage comes from shadow cats that chase and scratch, so place it where the cats can reach the path quickly." },
+  PROTON:{ text: "Fire and Electric combined. Any stickman earns it by training both STR and DEX to 250: every hit burns its target and chains lightning to nearby enemies." },
+  DARK_MATTER:{ text: "Fire and Ice combined. Any stickman earns it by training both STR and INT to 250: every hit burns its target and can freeze it in place." },
+  QUASAR:{ text: "Electric and Ice combined. Any stickman earns it by training both DEX and INT to 250: every hit chains lightning to nearby enemies, can freeze its target and splashes everything in a small radius around it." },
+  BERSERKER:{ text: "An Axeman trained to 40 Strength — trades the throw-toggle for a much wider, harder cleave. Bring it in close where its swing can actually catch a crowd; it's a brute-force AoE tool, not a precision one." },
+  LANCER:{ text: "A Spearman trained to 40 Dexterity carries a knight lance and strikes harder against larger, heavier enemies. Damage scales with target size: half damage at tiny scale, normal damage at standard scale, and up to 1.75x against the heaviest foes." },
 };
-// CA073 — see HISTORY.md § [1.5.7] Code Archaeology, CA073
-// CLASS-EMOJI-01 (1.7.111) — see HISTORY.md § [1.7.111]: no two classes share an emoji; the strategy tips use the class's own icon
+// CLASS-EMOJI-01: no two classes share an emoji; each strategy tip takes the class's own icon
 for(const strategyType of Object.keys(TOWER_STRATEGY)) if(CONFIG.TOWERS[strategyType]) TOWER_STRATEGY[strategyType].icon = CONFIG.TOWERS[strategyType].icon;
 const CLASS_ARCHETYPE = {
   SWORDSMAN:'WARRIOR', AXEMAN:'WARRIOR', SPEARMAN:'WARRIOR', HAMMERMAN:'WARRIOR', PALADIN:'WARRIOR',
   NINJA:'ARCHER', ARCHER:'ARCHER', BLOWDART:'ARCHER', GATLING:'ARCHER', BOMBER:'ARCHER', SQUIRTGUN:'ARCHER', MERCHANT:'ARCHER', GLAIVE:'ARCHER',
   GUNALINDER:'ARCHER', SNIPER:'ARCHER', SNAPCASTER:'ARCHER', MARKSMAN:'ARCHER', BLOW_GUNNER:'ARCHER',
   MAGE:'MAGE', CLERIC:'MAGE', POPE:'MAGE', NECROMANCER:'MAGE', HACKER:'MAGE',
-  // CA025 — see HISTORY.md § [1.5.7] Code Archaeology, CA025
   CAT_SNAPPER:'MAGE',
-  // CA026 — see HISTORY.md § [1.5.7] Code Archaeology, CA026
   PROTON:'MAGE', DARK_MATTER:'MAGE', QUASAR:'MAGE', CRAZY_CHEF:'ARCHER',
-  // CA027 — see HISTORY.md § [1.5.7] Code Archaeology, CA027
   BERSERKER:'WARRIOR', LANCER:'WARRIOR'
 };
-// CA048 — see HISTORY.md § [1.5.7] Code Archaeology, CA048
-const TOWER_UNLOCK_SOURCE_BY_TARGET = {}; // target type -> the REAL mechanical unlock source — internal only now (see TOWER_UNLOCK_RIDDLE in buildTowerModal() for what's actually shown to players), kept for deriving UNLOCKABLE_TOWER_TYPES and any future dev/debug tooling
+const TOWER_UNLOCK_SOURCE_BY_TARGET = {};
 for(const baseType of Object.keys(SPECIALIZATIONS)){
   for(const element of Object.keys(SPECIALIZATIONS[baseType])){
     TOWER_UNLOCK_SOURCE_BY_TARGET[SPECIALIZATIONS[baseType][element]] = { kind: 'element', baseType, element };
   }
 }
-for(const sourceType of Object.keys(EVOLUTIONS)){
-  for(const stat of Object.keys(EVOLUTIONS[sourceType])){
-    const branch = EVOLUTIONS[sourceType][stat];
+for(const sourceType of Object.keys(CLASS_STAT_UNLOCKS)){
+  for(const stat of Object.keys(CLASS_STAT_UNLOCKS[sourceType])){
+    const branch = CLASS_STAT_UNLOCKS[sourceType][stat];
     TOWER_UNLOCK_SOURCE_BY_TARGET[branch.target] = { kind: 'stat', baseType: sourceType, stat, threshold: branch.threshold };
   }
 }
-// CA049 — see HISTORY.md § [1.5.7] Code Archaeology, CA049
 for(const baseType of Object.keys(HYBRID_SPECIALIZATIONS)){
   for(const pairKey of Object.keys(HYBRID_SPECIALIZATIONS[baseType])){
     TOWER_UNLOCK_SOURCE_BY_TARGET[HYBRID_SPECIALIZATIONS[baseType][pairKey]] = { kind: 'hybrid', baseType, pairKey };
   }
 }
-// CA050 — see HISTORY.md § [1.5.7] Code Archaeology, CA050
 TOWER_UNLOCK_SOURCE_BY_TARGET.CAT_SNAPPER = { kind: 'stat', baseType: 'ARCHER', stat: 'dex', threshold: SPECIALIZATION_THRESHOLD };
-// CA051 — see HISTORY.md § [1.5.7] Code Archaeology, CA051
-TOWER_UNLOCK_SOURCE_BY_TARGET.CRAZY_CHEF = { kind: 'stat', baseType: 'ARCHER', stat: 'str', threshold: ATTUNEMENT_THRESHOLD };
-// CA052 — see HISTORY.md § [1.5.7] Code Archaeology, CA052
+TOWER_UNLOCK_SOURCE_BY_TARGET.CRAZY_CHEF = { kind: 'stat', baseType: 'ARCHER', stat: 'str', threshold: CRAZY_CHEF_STR_THRESHOLD };
 TOWER_UNLOCK_SOURCE_BY_TARGET.MERCHANT = { kind: 'wave', baseType: null };
 TOWER_UNLOCK_SOURCE_BY_TARGET.NINJA = { kind: 'challenge', baseType: null };
-// Same reasoning as Merchant directly above — a plain wave gate, no evolution/stat path.
 TOWER_UNLOCK_SOURCE_BY_TARGET.GLAIVE = { kind: 'wave', baseType: null };
-// CA053 — see HISTORY.md § [1.5.7] Code Archaeology, CA053
 const UNLOCKABLE_TOWER_TYPES = Object.keys(TOWER_UNLOCK_SOURCE_BY_TARGET);
 /* =========================================================
    ELEMENTS
    ========================================================= */
-// ELEMENT-TINT-01 (1.6.86) — see HISTORY.md § [1.6.86]. Once a tower has locked an elemental
+// ELEMENT-TINT-01: Once a tower has locked an elemental
 // attunement (or carries a mixed elementState — see towerElement()), its skin tints toward that
 // element's color on top of its own native skin tone, and its attack animation shows the element's
 // themed emoji at the muzzle. A downed tower's grey overrides this (drawn after, in Tower.draw()).
@@ -409,8 +387,7 @@ const ELEMENT_SKIN_TINTS = {
   QUASAR:      { skinMain: '#cfe6ff', skinShade: '#6aa0e0' }
 };
 const ELEMENT_ATTACK_EMOJI = { FIRE: '🔥', ELECTRIC: '⚡', ICE: '❄️', PROTON: '☄️', DARK_MATTER: '🌑', QUASAR: '🌟' };
-// CA039 — see HISTORY.md § [1.5.7] Code Archaeology, CA039
-// ELEMENT-INFUSION-01 (1.7.36) — see HISTORY.md § [1.7.36]. Elements are earned by a stickman, never built as towers.
+// ELEMENT-INFUSION-01: Elements are earned by a stickman, never built as towers.
 const ELEMENT_INFUSE_THRESHOLD = 250;
 const ELEMENT_COMPONENTS = { PROTON:['FIRE','ELECTRIC'], DARK_MATTER:['FIRE','ICE'], QUASAR:['ELECTRIC','ICE'] };
 // One palette for every elemental visual — projectile tint, flight trail and melee swing arc.
@@ -430,39 +407,37 @@ function towerElement(tower){ return tower ? (tower.elementState || tower.attune
 const MASTERY_THRESHOLD = STAT_TOTAL_CAP; // trophy + XP-to-gold conversion
 const MASTERY_XP_PER_GOLD = 25;
 const PROMOTION_ROLL_MAX = 3; // promotion buys stat ROLLS only (1-3 per stat, +1-3 into the primary) — never direct combat power
-const PROMOTION_COST_GROWTH = 1.5; // matches the authored tier costs (~80 → 120 → 175 → 245), then keeps compounding
+const PROMOTION_COST_GROWTH = 1.35; // PROMOTION-VALUE-01: stays well under SCALING_COST_GROWTH so promoting beats buying another copy
 function promotionRankLabel(rank){ return 'Rank ' + rank; }
 function promotionCostFor(firstPromotionCost, currentLevel){ return Math.round(firstPromotionCost * Math.pow(PROMOTION_COST_GROWTH, currentLevel - 1)); }
-// PROMOTION-SCALE-01 (1.6.145) — see HISTORY.md § [1.6.145]. A promotion is worth 5 training bars of dice applied automatically (passive) and another 5 handed over as spendable points (active).
+// PROMOTION-SCALE-01: A promotion is worth 5 training bars of dice applied automatically (passive) and another 5 handed over as spendable points (active).
 const PROMOTION_BAR_MULTIPLIER = 5;
-const PROMOTION_PASSIVE_ROLLS = PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS, PROMOTION_SPENDABLE_ROLLS = PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS;
-// LEVELUP-QUIET-01 (1.6.113) — see HISTORY.md § [1.6.113]
+const PROMOTION_PASSIVE_ROLLS = PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS, PROMOTION_SPENDABLE_ROLLS = 2 * PROMOTION_BAR_MULTIPLIER * TRAINING_BAR_ROLLS;
+const PROMOTION_TALENT_DICE_MIN = 2, PROMOTION_TALENT_DICE_MAX = 6; // PROMOTION-VALUE-01: a random stat gets a bonus talent roll each promotion
+const PROMOTION_TALENT_LABELS = { str:'💪 Strength', dex:'🏃 Dexterity', int:'🧠 Intelligence' };
+// LEVELUP-QUIET-01
 const LEVELUP_FANFARE_MIN_HP_FRACTION = 0.25;
-// CA558 — see HISTORY.md § [1.5.7] Code Archaeology, CA558
 const XP_TEXT_LIFE_MS = 1100;
 /* =========================================================
    CLASS BALANCE AND ANIMATION
    ========================================================= */
-const ARCHER_IDLE_ANGLE = 0; // Archer's bow is a two-handed rig tied to a fixed-position quiver on the back — a neutral forward-facing angle keeps the bow, arms, and quiver all reading as one coherent pose
-// MAGE-RECOIL-01 (1.7.61): casting kicks the staff back (equal and opposite to the bolt), flips the tip up, pushes the body back, and flashes the orb with a ring and sparks.
+const ARCHER_IDLE_ANGLE = 0;
+// MAGE-RECOIL-01: casting kicks the staff back (equal and opposite to the bolt), flips the tip up, pushes the body back, and flashes the orb with a ring and sparks.
 const MAGE_CAST_RECOIL_MS = 450;
 function mageRecoilKick(castProgress){ return castProgress * castProgress * (1 + 0.35 * Math.sin((1 - castProgress) * Math.PI * 3)); }
-const ARCHER_RATE_SHARE = 0.4; // Legacy balance reference; runtime cadence now uses attackRateFromDex.
 const SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER = 1.2;
 function applyClassCooldownBalance(type, cooldown){
   return Math.round(cooldown * (type === 'SWORDSMAN' ? SWORDSMAN_ATTACK_COOLDOWN_MULTIPLIER : type === 'MAGE' ? 1.4 : 1.15));
 }
 function towerVisualCenterY(t){
-  // CA261 — see HISTORY.md § [1.5.7] Code Archaeology, CA261
   const buildScaleY = t.buildScaleY || (JOB_BUILD[t.type] && JOB_BUILD[t.type].scaleY) || 1;
   return t.y + (-5.5) * STICKMAN_SCALE * buildScaleY;
 }
-// CA502 — see HISTORY.md § [1.5.7] Code Archaeology, CA502
 function towerSwingDir(tower){
   if(tower.swingHandedness === undefined) tower.swingHandedness = Math.random() < 0.5 ? 1 : -1;
   return tower.swingHandedness;
 }
-// ARCHER-NOCK-01 (1.7.114): one formula gives the arrowhead position of the nocked arrow in the archer's local drawing space, used by the renderer and by fireProjectile so the shot leaves exactly where the drawn arrow was.
+// ARCHER-NOCK-01: one formula gives the arrowhead position of the nocked arrow in the archer's local drawing space, used by the renderer and by fireProjectile so the shot leaves exactly where the drawn arrow was.
 const ARCHER_BASE_ARM_LEN = 13, ARCHER_BOW_ARM_EXTRA = 5, ARCHER_FRONT_SHOULDER_OFFSET = 1.8, ARCHER_ARROWHEAD_REACH = 4, ARCHER_DRAW_PUSH = 2;
 function archerNockedArrowTip(angle, drawAmount, headReach = ARCHER_ARROWHEAD_REACH){
   const bowArmLength = ARCHER_BASE_ARM_LEN + ARCHER_BOW_ARM_EXTRA + drawAmount*ARCHER_DRAW_PUSH, bend = -0.08 - drawAmount*0.10;
@@ -474,12 +449,11 @@ const ARCHER_ARROW_PIVOT_Y = -15, ARCHER_RENOCK_SHARE = 0.35;
 /* =========================================================
    STICKMAN FIGURES, WEAPONS AND POSES (STICKMEN-ARE-TOWERS-01: every tower is a stickman)
    ========================================================= */
-// CA565 — see HISTORY.md § [1.5.7] Code Archaeology, CA565
 function weaponLenFromScale(minLen, maxLen, weaponScale){
-  const t = Math.max(0, Math.min(1, (weaponScale - 1) / 0.6));
+  const t = clampNum((weaponScale - 1) / 0.6, 0, 1);
   return minLen + t * (maxLen - minLen);
 }
-// MELEE-SWING-01 (1.7.97) — see HISTORY.md § [1.7.97]
+// MELEE-SWING-01
 const MELEE_SMEAR_SPAN_T = 0.16, MELEE_SMEAR_SHOULDER_Y = -13;
 function easeInOutQuad(u){ return u < 0.5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2) / 2; }
 function meleeLungePx(swingT){
@@ -504,7 +478,7 @@ function drawMeleeSmear(ctx, extra){
   }
   ctx.restore();
 }
-// WEAPON-ENCHANT-SYNC-01 (1.7.92) — see HISTORY.md § [1.7.92]
+// WEAPON-ENCHANT-SYNC-01
 const weaponMarkSlots = [{ handX: 0, handY: 0, angle: 0, length: 0 }, { handX: 0, handY: 0, angle: 0, length: 0 }];
 const WEAPON_ENCHANT_FALLBACK_LEN = 14;
 let weaponMarkCount = 0, weaponHandLast = null;
@@ -537,7 +511,7 @@ function drawWeaponEnchant(ctx, element, fallbackAngle){
   }
   ctx.restore();
 }
-// BODY-BLOOD-ATTACH-01 (1.7.137): stains bind to real limb segments and interpolate with the current pose.
+// BODY-BLOOD-ATTACH-01: stains bind to real limb segments and interpolate with the current pose.
 let bloodPoseOwner = null;
 function recordBloodSegment(x1,y1,x2,y2){
   if(!bloodPoseOwner) return;
@@ -568,7 +542,7 @@ function bindStickmanStain(entity,stain){
 function bloodStainPaint(stain){
   const age=Math.max(0,presentationTime-stain.bornAt),step=Math.floor(age/500);
   if(stain.paintStep!==step){
-    const color=agedBloodRgb({rgb:stain.rgb,lifespan:stain.lifespan || DECAL_LIFESPAN},bloodStainLifeT(stain));
+    const color=agedBloodRgb(stain);
     stain.paint='rgb('+color.r+','+color.g+','+color.b+')';stain.paintStep=step;
   }
   return stain.paint;
@@ -604,7 +578,7 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
   if(!entity.bloodStains.some(stain=>bloodStainLifeT(stain)<1)){
     entity.bloodStains.length=0; entity.bloodStampKey=null; return; // expired marks never rerasterize an empty mask every 500ms
   }
-  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+(entity.bloodStains.some(stain=>stain.cleanupStarted) ? Math.floor(presentationTime/500) : 0)+':'+graphicsQuality+':'+underHeavyVisualLoad; // BLOOD-STAMP-CACHE-01: marks only change over time during the round-end fade, so a held stamp is never re-rasterized
+  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+(entity.bloodStains.some(stain=>stain.cleanupStarted) ? Math.floor(presentationTime/500) : 0)+':'+graphicsQuality+':'+underHeavyVisualLoad; // BLOOD-STAMP-CACHE-01
   let canvas=entity.bloodStampCanvas;
   if(!canvas || typeof canvas.getContext !== 'function'){
     canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
@@ -618,7 +592,7 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
     if(scenery && entity.bloodStains.some((stain,index)=>index>=entity.bloodStains.length-cap && bloodStainLifeT(stain)<1 && stain.surfaceKey!==surfaceKey)){
       const pixelKey=surfaceKey+':'+entity.type+(entity.type==='BRANCH' ? ':'+entity.x+','+entity.y : '');
       surfacePixels=surfacePixelCache.get(pixelKey);
-      if(!surfacePixels){ // BLOOD-STAMP-CACHE-01: the opaque-pixel map of a sprite is read back from the canvas once per sprite shape, never once per new mark
+      if(!surfacePixels){ // BLOOD-STAMP-CACHE-01
         m.globalAlpha=1;if(scenery && entity.type==='BRANCH') drawBranchSprite(m,size,undefined,entity); else if(scenery && entity.type==='STUMP') drawStumpSprite(m,size); else drawEmojiSprite(m,emoji,size);surfacePixels=m.getImageData(0,0,128,128).data;
         m.save();m.setTransform(1,0,0,1,0,0);m.clearRect(0,0,128,128);m.restore();
         if(surfacePixelCache.size>=SURFACE_PIXEL_CACHE_MAX) surfacePixelCache.delete(surfacePixelCache.keys().next().value);
@@ -631,7 +605,7 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
       m.globalAlpha=(stain.rgb.a===undefined ? 1 : stain.rgb.a)*0.88*bloodFadeAlpha(age);m.fillStyle=bloodStainPaint(stain);
       const sx=scenery ? (entity.widthStretch || 1)*(entity.flip ? -1 : 1) : 1,sy=scenery ? (entity.tallStretch || 1) : 1;
       let px=stain.offsetX/sx,py=scenery ? (stain.offsetY-size*0.5)/sy+size*0.5-2 : stain.offsetY;
-      if(scenery){ // SURFACE-BLOOD-VISIBLE-01 (1.7.140): intercepted drops bind to an opaque glyph pixel, never its empty bounding box.
+      if(scenery){ // SURFACE-BLOOD-VISIBLE-01
         if(stain.surfaceKey!==surfaceKey && surfacePixels){
           const targetX=64+px*scale,targetY=64+py*scale;let best=Infinity,bestX=64,bestY=64;
           for(let y=0;y<128;y++) for(let x=0;x<128;x++) if(surfacePixels[(y*128+x)*4+3]>128){
@@ -644,11 +618,17 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
       }
       m.beginPath();m.ellipse(px,py,Math.min(stain.size,size*0.06,2),Math.min(stain.size*0.7,size*0.045,1.4),stain.angle,0,Math.PI*2);m.fill();
     }
-    m.globalAlpha=1;m.globalCompositeOperation='destination-in';if(scenery && entity.type==='BRANCH') drawBranchSprite(m,size,undefined,entity); else if(scenery && entity.type==='STUMP') drawStumpSprite(m,size); else drawEmojiSprite(m,emoji,size);m.restore();entity.bloodStampKey=stampKey;
+    m.globalAlpha = 1;
+    m.globalCompositeOperation = 'destination-in';
+    if(scenery && entity.type === 'BRANCH') drawBranchSprite(m, size, undefined, entity);
+    else if(scenery && entity.type === 'STUMP') drawStumpSprite(m, size);
+    else drawEmojiSprite(m, emoji, size);
+    m.restore();
+    entity.bloodStampKey = stampKey;
   }
   ctx.drawImage(canvas,-size*0.9,-size*0.9,size*1.8,size*1.8);
 }
-// GUN-FACING-01 (1.8.40): the 🔫 glyph is drawn muzzle-left, so rotating it by the aim angle held the gun backwards. It is mirrored so the muzzle leads along the aim, and kept upright when aiming left.
+// GUN-FACING-01: the 🔫 glyph is drawn muzzle-left, so rotating it by the aim angle held the gun backwards.
 function drawGunEmoji(ctx, handX, handY, aimAngle){
   ctx.save();
   ctx.translate(handX, handY);
@@ -675,7 +655,6 @@ function drawArmAndHand(ctx, shoulderX, shoulderY, angle, armLen, color, bend){
   weaponHandLast = { handX, handY };
   return weaponHandLast;
 }
-// CA566 — see HISTORY.md § [1.5.7] Code Archaeology, CA566
 function drawCat(ctx, x, y, rotation, scale, options){
   options = options || {};
   const crouch = options.crouch ? 2 : 0; // active/attacking cats sit a bit lower and more alert than the upright idle pose
@@ -719,7 +698,6 @@ function drawCat(ctx, x, y, rotation, scale, options){
   ctx.beginPath(); ctx.arc(14, -6+crouch, 1, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
-// CA567 — see HISTORY.md § [1.5.7] Code Archaeology, CA567
 class CatCompanion{
   constructor(){ this.active = false; }
   spawn(sourceTower, targetEnemy, x, y){
@@ -739,7 +717,6 @@ class CatCompanion{
     this.age += dt;
     if(this.age >= this.lifetime || !this.sourceTower.active || this.sourceTower.id !== this.sourceTowerId){ this.active = false; return; } // GENERATION-CHECK-01: the owner is gone or its slot was reused
     if(!this.targetEnemy || !this.targetEnemy.active || this.targetEnemy.id !== this.targetId){
-      // CA568 — see HISTORY.md § [1.5.7] Code Archaeology, CA568
       this.targetEnemy = randomActiveEnemy(queryNearby(enemyHash, this.x, this.y, 160));
       if(!this.targetEnemy){ this.active = false; return; }
       this.targetId = this.targetEnemy.id;
@@ -752,7 +729,7 @@ class CatCompanion{
     this.y += (desiredY - this.y) * followStrength;
     this.attackProgress = Math.max(0, this.attackProgress - dt/220);
     this.attackTimer -= dt;
-    if(this.attackTimer <= 0 && this.targetEnemy.active){ // re-checked here too — update() above can null/deactivate it, and applyDamage() itself is not safe to call on an inactive enemy
+    if(this.attackTimer <= 0 && this.targetEnemy.active){
       if(!rollDirectAttackMiss(this.sourceTower, this.targetEnemy)) this.targetEnemy.applyDamage(this.sourceTower.damage, this.sourceTower, undefined, false, true, false, false, Math.atan2(this.targetEnemy.y-this.y,this.targetEnemy.x-this.x), 'CAT_SNAPPER');
       this.attackTimer += this.attackCooldown;
       this.attackProgress = 1;
@@ -763,10 +740,8 @@ class CatCompanion{
     drawCat(ctx, this.x, this.y, 0, 0.55, { crouch: true, attackProgress: this.attackProgress });
   }
 }
-// CA569 — see HISTORY.md § [1.5.7] Code Archaeology, CA569
 const MAX_ACTIVE_CATS = 24;
 const catPool = Array.from({length: MAX_ACTIVE_CATS}, () => new CatCompanion());
-// CA570 — see HISTORY.md § [1.5.7] Code Archaeology, CA570
 class SkeletonMinion{
   constructor(){ this.active = false; }
   spawn(sourceTower, x, y, damage, cooldown, range){
@@ -792,7 +767,7 @@ class SkeletonMinion{
   }
   draw(ctx){ drawCompanionGroundShadow(ctx,this.x,this.y,'skeleton',this.phase,this.attackProgress); drawSkeleton(ctx, this.x, this.y, this.phase, this.attackProgress); }
 }
-const MAX_ACTIVE_SKELETONS = 8; // headroom above what's actually reachable today — MAX_ONE_PER_BOARD_TYPES caps Necromancer itself at one active copy, so at most 4 (tier 3's skeletonCount) can ever exist at once right now — rather than sizing the pool exactly to today's numbers
+const MAX_ACTIVE_SKELETONS = 8;
 const skeletonPool = Array.from({length: MAX_ACTIVE_SKELETONS}, () => new SkeletonMinion());
 function raiseSkeletonsForTower(t){
   const count = t.skeletonCount || 0;
@@ -803,7 +778,6 @@ function raiseSkeletonsForTower(t){
     skel.spawn(t, t.x + Math.cos(ang)*18, t.y + Math.sin(ang)*18, t.skeletonDamage, t.skeletonCooldown, t.skeletonRange);
   }
 }
-// CA571 — see HISTORY.md § [1.5.7] Code Archaeology, CA571
 function drawSkeleton(ctx, x, y, phase, attackProgress){
   const bob = Math.sin(gameTime/260 + phase) * 1.5;
   ctx.save();
@@ -833,35 +807,36 @@ function drawSwordBlade(ctx, handX, handY, angle, level, big, lowGfx, bladeLen, 
   thickness = thickness || 1;
   const dirX = Math.cos(angle), dirY = Math.sin(angle), perpX = -dirY, perpY = dirX;
   const baseHalf = (big ? 2.7 : 2) * thickness, tipHalf = baseHalf * 0.45, shoulderAt = bladeLen * 0.82;
-  const at = (along, across) => [handX + dirX*along + perpX*across, handY + dirY*along + perpY*across];
-  const guardAt = Math.min(3,bladeLen*0.15), guardHalf = Math.min((big ? 4.2 : 3.1)*thickness,(bladeLen-guardAt)*0.22); // SWORD-PROPORTION-01 (1.7.140)
+  const moveAt = (along, across) => ctx.moveTo(handX + dirX*along + perpX*across, handY + dirY*along + perpY*across);
+  const lineAt = (along, across) => ctx.lineTo(handX + dirX*along + perpX*across, handY + dirY*along + perpY*across);
+  const guardAt = Math.min(3,bladeLen*0.15), guardHalf = Math.min((big ? 4.2 : 3.1)*thickness,(bladeLen-guardAt)*0.22); // SWORD-PROPORTION-01
   // Grip sits at the palm; avoid extending the sword butt toward the elbow.
   ctx.lineCap = 'round'; ctx.strokeStyle = '#6b4930'; ctx.lineWidth = 2.3 * thickness;
-  ctx.beginPath(); ctx.moveTo(...at(-Math.min(0.8,bladeLen*0.05), 0)); ctx.lineTo(...at(guardAt - 0.5, 0)); ctx.stroke();
+  ctx.beginPath(); moveAt(-Math.min(0.8,bladeLen*0.05), 0); lineAt(guardAt - 0.5, 0); ctx.stroke();
   // soft glow for high-tier blades (a wide translucent stroke, never shadowBlur)
   if(level >= 3 && !lowGfx){
     ctx.strokeStyle = 'rgba(125,211,252,0.3)'; ctx.lineWidth = baseHalf * 2 + 2.2;
-    ctx.beginPath(); ctx.moveTo(...at(guardAt, 0)); ctx.lineTo(...at(bladeLen, 0)); ctx.stroke();
+    ctx.beginPath(); moveAt(guardAt, 0); lineAt(bladeLen, 0); ctx.stroke();
   }
   // tapered blade ending in a point
   ctx.fillStyle = level >= 3 ? '#dfe9ee' : '#e6eaee';
   ctx.beginPath();
-  ctx.moveTo(...at(guardAt, baseHalf)); ctx.lineTo(...at(shoulderAt, tipHalf)); ctx.lineTo(...at(bladeLen, 0));
-  ctx.lineTo(...at(shoulderAt, -tipHalf)); ctx.lineTo(...at(guardAt, -baseHalf));
+  moveAt(guardAt, baseHalf); lineAt(shoulderAt, tipHalf); lineAt(bladeLen, 0);
+  lineAt(shoulderAt, -tipHalf); lineAt(guardAt, -baseHalf);
   ctx.closePath(); ctx.fill();
   if(!lowGfx){
     // bright edge on one side and a darker fuller down the middle give the steel some depth
     ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-    ctx.beginPath(); ctx.moveTo(...at(guardAt + 1, baseHalf * 0.8)); ctx.lineTo(...at(shoulderAt, tipHalf * 0.8)); ctx.stroke();
+    ctx.beginPath(); moveAt(guardAt + 1, baseHalf * 0.8); lineAt(shoulderAt, tipHalf * 0.8); ctx.stroke();
     ctx.strokeStyle = 'rgba(80,92,104,0.55)';
-    ctx.beginPath(); ctx.moveTo(...at(guardAt + 2, 0)); ctx.lineTo(...at(bladeLen * 0.78, 0)); ctx.stroke();
+    ctx.beginPath(); moveAt(guardAt + 2, 0); lineAt(bladeLen * 0.78, 0); ctx.stroke();
   }
   // straight crossguard
   ctx.strokeStyle = big ? '#e8b64a' : '#a9afb5'; ctx.lineWidth = Math.min((big ? 2.2 : 1.7)*thickness,(bladeLen-guardAt)*0.12);
-  ctx.beginPath(); ctx.moveTo(...at(guardAt, -guardHalf)); ctx.lineTo(...at(guardAt, guardHalf)); ctx.stroke();
+  ctx.beginPath(); moveAt(guardAt, -guardHalf); lineAt(guardAt, guardHalf); ctx.stroke();
   // pommel
   ctx.fillStyle = big ? '#e8b64a' : '#7a5230';
-  ctx.beginPath(); ctx.arc(...at(-Math.min(1.2,bladeLen*0.08), 0), Math.min((big ? 1.7 : 1.3)*thickness,bladeLen*0.09), 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(handX - dirX*Math.min(1.2, bladeLen*0.08), handY - dirY*Math.min(1.2, bladeLen*0.08), Math.min((big ? 1.7 : 1.3)*thickness,bladeLen*0.09), 0, Math.PI * 2); ctx.fill();
 }
 function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
   thickness = thickness || 1;
@@ -881,17 +856,26 @@ function drawAxeHead(ctx, handX, handY, angle, level, haftLen, thickness){
 }
 const stickmanShadowMask = document.createElement('canvas');
 stickmanShadowMask.width=256; stickmanShadowMask.height=256;
-
 const stickmanShadowCtx = stickmanShadowMask.getContext('2d');
-// SHADOW-CACHE-01 (1.7.50): found by benchmarking old versions against the current one on the same scene. The fighter shadow redrew the whole stickman into a 256 by 256 canvas, filled it
-// black and blitted it every frame for every fighter, which cost about 1.7 ms of drawing per fighter in the benchmark (8 fighters 13 ms; 1.6.159, with no such shadow, spent 4 ms on them).
-// Each fighter now keeps its own silhouette canvas, redrawn only when its pose actually changes (angle in 6 degree steps, swing, lunge, walk phase) and at most every 60 ms,
-// so an idle fighter costs one cheap blit per frame. A small least-recently-used set bounds the memory.
+// SHADOW-CACHE-01: each fighter keeps its own silhouette canvas, redrawn only when its pose changes (angle in 6 degree steps, swing, lunge, walk phase) and at most
+// every 60 ms, so an idle fighter costs one blit per frame. A small least-recently-used set bounds the memory.
 const stickmanShadowCache = new Map(), STICKMAN_SHADOW_CACHE_MAX = 48, STICKMAN_SHADOW_REFRESH_MS = 60;
+function evictLeastRecentStickmanShadow(){
+  let oldestId = null, oldestUse = Infinity;
+  for(const [id, candidate] of stickmanShadowCache) if(candidate.used < oldestUse){ oldestUse = candidate.used; oldestId = id; }
+  stickmanShadowCache.delete(oldestId);
+}
+function paintStickmanSilhouette(maskCtx, maskScale, angle, level, type, extra){
+  maskCtx.setTransform(1,0,0,1,0,0); maskCtx.globalAlpha = 1; maskCtx.globalCompositeOperation = 'source-over'; maskCtx.clearRect(0,0,256,256);
+  maskCtx.save(); maskCtx.translate(128,128); maskCtx.scale(maskScale, maskScale);
+  extra.shadowPass = true; drawStickman(maskCtx, 0, 0, angle, level, type, extra); extra.shadowPass = false;
+  maskCtx.restore();
+  maskCtx.globalCompositeOperation = 'source-in'; maskCtx.fillStyle = '#000'; maskCtx.fillRect(0,0,256,256); maskCtx.globalCompositeOperation = 'source-over';
+}
 function stickmanShadowEntry(owner){
   let entry = stickmanShadowCache.get(owner.id);
   if(!entry){
-    if(stickmanShadowCache.size >= STICKMAN_SHADOW_CACHE_MAX){ let oldestId = null, oldestUse = Infinity; for(const [id, candidate] of stickmanShadowCache) if(candidate.used < oldestUse){ oldestUse = candidate.used; oldestId = id; } stickmanShadowCache.delete(oldestId); }
+    if(stickmanShadowCache.size >= STICKMAN_SHADOW_CACHE_MAX) evictLeastRecentStickmanShadow();
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
     entry = { canvas, ctx: canvas.getContext('2d'), key: '', at: -1e9, used: 0 };
     stickmanShadowCache.set(owner.id, entry);
@@ -909,18 +893,12 @@ function drawStickmanGroundShadow(ctx,x,y,angle,level,type,extra,owner){
     const entry = stickmanShadowEntry(owner);
     const key = type + '|' + level + '|' + Math.round(angle*10) + '|' + Math.round((extra.swingProgress||0)*6) + '|' + Math.round(extra.lungeAmt||0) + '|' + Math.round((extra.castProgress||0)*4) + '|' + (extra.spec||'') + '|' + (extra.hasTarget ? 1 : 0) + '|' + (extra.walkPhase === undefined ? '' : Math.round(extra.walkPhase*2)) + '|' + (extra.headItem||'') + '|' + Math.round(bx*20) + '|' + Math.round(by*20);
     if(entry.key !== key && presentationTime - entry.at >= STICKMAN_SHADOW_REFRESH_MS){
-      const m = entry.ctx;
-      m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
-      m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
-      m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
+      paintStickmanSilhouette(entry.ctx, ms, angle, level, type, extra);
       entry.key = key; entry.at = presentationTime;
     }
     mask = entry.canvas;
   } else {
-    const m=stickmanShadowCtx;
-    m.setTransform(1,0,0,1,0,0); m.globalAlpha=1; m.globalCompositeOperation='source-over'; m.clearRect(0,0,256,256);
-    m.save(); m.translate(128,128); m.scale(ms,ms); extra.shadowPass=true; drawStickman(m,0,0,angle,level,type,extra); extra.shadowPass=false; m.restore();
-    m.globalCompositeOperation='source-in'; m.fillStyle='#000'; m.fillRect(0,0,256,256); m.globalCompositeOperation='source-over';
+    paintStickmanSilhouette(stickmanShadowCtx, ms, angle, level, type, extra);
   }
   const footY=20*by*STICKMAN_SCALE*ls;
   ctx.save(); ctx.shadowBlur=0; ctx.globalAlpha*=0.24; ctx.translate(x,y+footY); ctx.transform(1,0,-0.55,0.34,0,0);
@@ -939,7 +917,32 @@ function drawMageStaffLight(ctx,x,y,radius,shadowPass,glow){
   ctx.fillStyle=shadowPass ? '#000' : '#fff';
   ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
 }
-const WALK_SPEED_PX_PER_MS = 0.17;
+const WALK_SPEED_PX_PER_MS = 0.17, FOOT_SIDES = Object.freeze([-1, 1]);
+const MERCHANT_BAG_REACH = 6, CHEF_KNIFE_REACH = 13, GLAIVE_BARREL_MIN_LEN = 16, GLAIVE_BARREL_MAX_LEN = 24;
+const GATLING_BELT_STUDS = Object.freeze([0.2, 0.4, 0.6, 0.8]), BANDOLIER_STUDS = Object.freeze([0.25, 0.5, 0.75]);
+function drawHandSparks(ctx, handX, handY, tickSeed, angleOffsetDeg){
+  for(let k = 0; k < 2; k++){
+    const sparkAngle = ((tickSeed*37 + k*113 + angleOffsetDeg) % 360) * Math.PI/180;
+    const innerLength = 4 + ((tickSeed + k*5) % 4), outerLength = innerLength + 3 + k*2;
+    ctx.beginPath();
+    ctx.moveTo(handX, handY);
+    ctx.lineTo(handX + Math.cos(sparkAngle)*innerLength, handY + Math.sin(sparkAngle)*innerLength);
+    ctx.lineTo(handX + Math.cos(sparkAngle + 0.7)*outerLength, handY + Math.sin(sparkAngle + 0.7)*outerLength);
+    ctx.stroke();
+  }
+}
+// The pistol pivots at the grip and points along the aim; a green droplet sits at the muzzle.
+function drawSquirtPistol(ctx, handX, handY, gunAngle, gunLen, lowGfx){
+  drawGunEmoji(ctx, handX, handY, gunAngle);
+  markWeapon(handX, handY, gunAngle, gunLen);
+  if(lowGfx) return;
+  ctx.fillStyle = 'rgba(124,220,24,0.5)';
+  ctx.beginPath(); ctx.arc(handX + Math.cos(gunAngle)*gunLen, handY + Math.sin(gunAngle)*gunLen, 2.5, 0, Math.PI*2); ctx.fill();
+}
+function blendAngleShortest(from, to, t){
+  const diff = ((to - from + Math.PI*3) % (Math.PI*2)) - Math.PI;
+  return from + diff*t;
+}
 function drawStickman(ctx, x, y, angle, level, type, extra){
   const skinMain = (extra && extra.skinMain) || '#f5f0e6';
   const skinShade = (extra && extra.skinShade) || '#cfc8b8';
@@ -955,7 +958,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
   if(extra && extra.walkPhase !== undefined) ctx.translate(0, -Math.abs(Math.sin(extra.walkPhase))*1.6);
   if(extra && !extra.hasTarget){
-    // CA572 — see HISTORY.md § [1.5.7] Code Archaeology, CA572
     const breathPhase = (x*0.7 + y*0.3) % 1000;
     const breathY = Math.sin((gameTime + breathPhase) / 900) * 0.6;
     ctx.translate(0, breathY);
@@ -981,7 +983,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   ctx.lineWidth = 3;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  // CA573 — see HISTORY.md § [1.5.7] Code Archaeology, CA573
   ctx.strokeStyle = skinMain;
   ctx.fillStyle = faceColor;
   ctx.beginPath(); ctx.ellipse(0,-24, 7/build.scaleX, 7/build.scaleY, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
@@ -997,9 +998,8 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.moveTo(3,-35); ctx.quadraticCurveTo(10,-41,7,-30); ctx.stroke(); // feather
     ctx.restore();
   }
-  // WEARABLE-ITEMS-01 (1.7.113) — see HISTORY.md § [1.7.113]: the Fancy Hat sits on the head and the Running Shoes on the feet while they are in the pack
+  // WEARABLE-ITEMS-01: the Fancy Hat sits on the head and the Running Shoes on the feet while they are in the pack
   if(extra && extra.wearsFancyHat){ ctx.save(); ctx.translate(0, -31.5); drawEmojiSprite(ctx, '🎩', 15); ctx.restore(); }
-  // CA574 — see HISTORY.md § [1.5.7] Code Archaeology, CA574
   if(extra && extra.mustacheColor && (extra.str || 0) > 47){
     const mT = clampNum(((extra.str||0) - 47) / 50, 0, 1); // 0 right at the threshold, 1 at the cap
     const mReach = 2 + mT*5; // half-width each side: barely-there at threshold, a real handlebar at the cap
@@ -1027,7 +1027,13 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   recordBloodSegment(0,4,8+legSwing,20-Math.max(0,-legSwing)*0.25);
   if(extra && extra.wearsRunningShoes){
     const shoeFlip = Math.cos(angle) >= 0 ? -1 : 1; // the shoe emoji points left; mirror it to face the way the stickman faces
-    for(const [footX, footY] of [[-8 + legSwing, 20.5 - Math.max(0, legSwing)*0.25], [8 + legSwing, 20.5 - Math.max(0, -legSwing)*0.25]]){ ctx.save(); ctx.translate(footX, footY); ctx.scale(shoeFlip, 1); drawEmojiSprite(ctx, '👟', 9); ctx.restore(); }
+    for(const side of FOOT_SIDES){
+      ctx.save();
+      ctx.translate(side*8 + legSwing, 20.5 - Math.max(0, -side*legSwing)*0.25);
+      ctx.scale(shoeFlip, 1);
+      drawEmojiSprite(ctx, '👟', 9);
+      ctx.restore();
+    }
   }
 
   const isDual = type === 'SWORDSMAN' && extra && extra.spec === 'DUAL' && extra.angle2 != null;
@@ -1039,23 +1045,20 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const swingT = extra.swingProgress || 0;
     const dynamicBend = -0.3 + swingT*0.55; // cocked back at wind-up, extends through the strike
     const swordLen = weaponLenFromScale(isTwoHander ? 17 : 15, isTwoHander ? 24 : 23, extra.weaponScale);
-    // CA575 — see HISTORY.md § [1.5.7] Code Archaeology, CA575
     const charge = (isTwoHander && swingT === 0) ? (extra.chargeProgress || 0) : 0;
-    const chargeShake = charge > 0.5 ? Math.sin(performance.now()/40) * (charge-0.5)*2 * 0.09 : 0; // only trembles in the back half of the charge, amplitude ramping toward release
-    // CA576 — see HISTORY.md § [1.5.7] Code Archaeology, CA576
+    const chargeShake = charge > 0.5 ? Math.sin(presentationTime/40) * (charge-0.5)*2 * 0.09 : 0; // only trembles in the back half of the charge, amplitude ramping toward release
     const drawTwoHanderExtras = (handX, handY, bladeAngle) => {
       ctx.strokeStyle = skinMain; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(-8,-8); ctx.lineTo(handX,handY); ctx.stroke();
       recordBloodSegment(-8,-8,handX,handY);
       if(charge <= 0.5 || lowGfx) return;
       const tipX = handX + Math.cos(bladeAngle)*swordLen, tipY = handY + Math.sin(bladeAngle)*swordLen;
-      // CA577 — see HISTORY.md § [1.5.7] Code Archaeology, CA577
       ctx.strokeStyle = `rgba(255,220,180,${((charge-0.5)*0.7).toFixed(2)})`;
       ctx.lineWidth = 1.5 + charge*2;
       ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
       if(charge > 0.88){
         // final flicker right before release, same threshold-flash language as Mage's own
-        const flicker = 0.5 + 0.5*Math.sin(performance.now()/55);
+        const flicker = 0.5 + 0.5*Math.sin(presentationTime/55);
         ctx.fillStyle = `rgba(255,255,255,${(flicker*(charge-0.88)/0.12).toFixed(2)})`;
         ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
       }
@@ -1068,16 +1071,14 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       drawSwordBlade(ctx, hand2.handX, hand2.handY, extra.angle2, level, false, lowGfx, swordLen, extra.weaponThickness);
       markWeapon(hand2.handX, hand2.handY, extra.angle2, swordLen);
     } else if(!extra.hasTarget){
-      // CA578 — see HISTORY.md § [1.5.7] Code Archaeology, CA578
-      // IDLE-GRIP-01 (1.6.73) — see HISTORY.md § [1.6.73]
+      // IDLE-GRIP-01
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-      const restAngle = -Math.PI/2 + 0.96 + chargeShake;
+      const restAngle = IDLE_GUN_ANGLE + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, IDLE_GRIP_ARM_ANGLE, armLen, skinMain, 0.15);
       drawSwordBlade(ctx, hand.handX, hand.handY, restAngle, level, isTwoHander, lowGfx, swordLen, extra.weaponThickness);
       markWeapon(hand.handX, hand.handY, restAngle, swordLen);
       if(isTwoHander) drawTwoHanderExtras(hand.handX, hand.handY, restAngle);
     } else {
-      // CA579 — see HISTORY.md § [1.5.7] Code Archaeology, CA579
       drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
       const swingAngle = angle + chargeShake;
       const hand = drawArmAndHand(ctx, shoulderX, shoulderY, swingAngle, armLen, skinMain, dynamicBend);
@@ -1095,12 +1096,10 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   } else if(type === 'ARCHER'){
     const drawAmt = extra.drawProgress || 0; // 0 = relaxed, 1 = fully drawn and about to loose
-    // CA580 — see HISTORY.md § [1.5.7] Code Archaeology, CA580
     const perpX = -Math.sin(angle), perpY = Math.cos(angle);
     const shoulderOffset = 1.8;
     const frontShoulderX = shoulderX + perpX*shoulderOffset, frontShoulderY = shoulderY + perpY*shoulderOffset;
     const backShoulderX = shoulderX - perpX*shoulderOffset, backShoulderY = shoulderY - perpY*shoulderOffset;
-    // CA581 — see HISTORY.md § [1.5.7] Code Archaeology, CA581
     const quiverSide = Math.cos(angle) >= 0 ? -1 : 1;
     const quiverInnerX = quiverSide * 2.5, quiverOuterX = quiverSide * 7.5;
     const quiverTop = -11, quiverBottom = 0;
@@ -1118,7 +1117,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(fx-1.2, quiverTop-4.5); ctx.lineTo(fx+1.2, quiverTop-2.8); ctx.stroke();
     }
-    // CA582 — see HISTORY.md § [1.5.7] Code Archaeology, CA582
     const bowArmBend = -0.08 - drawAmt*0.10; // straightens slightly under tension
     const bowArmLen = armLen + 5 + drawAmt*2; // tiny forward push as it braces against the pull
     const hand = drawArmAndHand(ctx, frontShoulderX, frontShoulderY, angle, bowArmLen, skinMain, bowArmBend);
@@ -1144,7 +1142,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.moveTo(bowTopX,bowTopY);
     ctx.quadraticCurveTo(bowMidX,bowMidY,bowBotX,bowBotY);
     ctx.stroke();
-    // CA583 — see HISTORY.md § [1.5.7] Code Archaeology, CA583
     const pullBack = 6 + drawAmt*15;
     const drawX = handX - Math.cos(angle)*pullBack;
     const drawY = handY - Math.sin(angle)*pullBack;
@@ -1186,69 +1183,55 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const cast = extra.castProgress || 0;
     const castKick = mageRecoilKick(cast);
     const wandBend = -0.3 - castKick*0.9; // arm snaps back and up on the cast
-    // CA584 — see HISTORY.md § [1.5.7] Code Archaeology, CA584
     const restBlend = extra.restBlend || 0;
-    function shortestBlend(from, to, t){
-      const diff = ((to - from + Math.PI*3) % (Math.PI*2)) - Math.PI;
-      return from + diff*t;
-    }
-    const armAngle = shortestBlend(angle, Math.PI/2 - 0.7, restBlend); // matches Swordsman's actual resting sword-hand arm angle
+    const armAngle = blendAngleShortest(angle, Math.PI/2 - 0.7, restBlend); // matches Swordsman's actual resting sword-hand arm angle
     const staffClimbSign = Math.cos(angle) >= 0 ? -1 : 1; // the tip rises on both sides when facing left or right
-    const staffAngle = shortestBlend(angle, -Math.PI/2 + 0.96, restBlend) + staffClimbSign * castKick * 0.55; // matches Swordsman's actual resting blade direction, plus the muzzle climb
+    const staffAngle = blendAngleShortest(angle, IDLE_GUN_ANGLE, restBlend) + staffClimbSign * castKick * 0.55; // matches Swordsman's actual resting blade direction, plus the muzzle climb
     const offHand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, armAngle, armLen, skinMain, wandBend);
     const handX = hand.handX, handY = hand.handY;
     if(type === 'SNAPCASTER'){
-      // SNAPCASTER-HANDS-01 (1.6.110) — see HISTORY.md § [1.6.110]
+      // SNAPCASTER-HANDS-01
       const tickSeed = Math.floor(presentationTime/90);
       ctx.save();
       ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-      for(const h of [hand, offHand]){
-        for(let k=0; k<2; k++){
-          const a = ((tickSeed*37 + k*113 + (h === hand ? 0 : 61)) % 360) * Math.PI/180;
-          const l1 = 4 + ((tickSeed + k*5) % 4), l2 = l1 + 3 + (k*2);
-          ctx.beginPath();
-          ctx.moveTo(h.handX, h.handY);
-          ctx.lineTo(h.handX + Math.cos(a)*l1, h.handY + Math.sin(a)*l1);
-          ctx.lineTo(h.handX + Math.cos(a+0.7)*l2, h.handY + Math.sin(a+0.7)*l2);
-          ctx.stroke();
-        }
-      }
+      drawHandSparks(ctx, hand.handX, hand.handY, tickSeed, 0);
+      drawHandSparks(ctx, offHand.handX, offHand.handY, tickSeed, 61);
       ctx.restore();
     }
     if(type !== 'SNAPCASTER'){
-    // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
-    const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
-    const recoilSlide = castKick * 6, staffGripX = handX - Math.cos(angle)*recoilSlide, staffGripY = handY - Math.sin(angle)*recoilSlide;
-    const tipX = staffGripX + Math.cos(staffAngle)*staffLen, tipY = staffGripY + Math.sin(staffAngle)*staffLen;
-    const buttX = staffGripX - Math.cos(staffAngle)*7, buttY = staffGripY - Math.sin(staffAngle)*7;
-    markWeapon(staffGripX, staffGripY, staffAngle, staffLen);
-    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
-    ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
-    const charge = extra.chargeProgress || 0;
-    const pulse = 2.1 + charge*0.6 + cast*2.2;
-    drawMageStaffLight(ctx,tipX,tipY,pulse,!!extra.shadowPass,!lowGfx || graphicsQuality==='high' && !extra.preview);
-    if(cast > 0.04 && !extra.shadowPass){
-      ctx.save();
-      ctx.globalAlpha = cast * 0.85; ctx.strokeStyle = '#bfe8ff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(tipX, tipY, 3 + (1 - cast) * 14, 0, Math.PI*2); ctx.stroke();
-      const sparkLen = 3 + (1 - cast) * 9;
-      ctx.beginPath();
-      for(let spark = -1; spark <= 1; spark++){
-        const sparkAngle = angle + spark * 0.55, sparkStart = 4 + (1 - cast) * 8;
-        ctx.moveTo(tipX + Math.cos(sparkAngle)*sparkStart, tipY + Math.sin(sparkAngle)*sparkStart);
-        ctx.lineTo(tipX + Math.cos(sparkAngle)*(sparkStart + sparkLen), tipY + Math.sin(sparkAngle)*(sparkStart + sparkLen));
+      // staff extends both beyond the grip and a little behind it, like a real held staff, with a pulsing orb at the tip
+      const staffLen = weaponLenFromScale(14, 22, extra.weaponScale);
+      const recoilSlide = castKick * 6, staffGripX = handX - Math.cos(angle)*recoilSlide, staffGripY = handY - Math.sin(angle)*recoilSlide;
+      const tipX = staffGripX + Math.cos(staffAngle)*staffLen, tipY = staffGripY + Math.sin(staffAngle)*staffLen;
+      const buttX = staffGripX - Math.cos(staffAngle)*7, buttY = staffGripY - Math.sin(staffAngle)*7;
+      markWeapon(staffGripX, staffGripY, staffAngle, staffLen);
+      ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 2.5*extra.weaponThickness;
+      ctx.beginPath(); ctx.moveTo(buttX,buttY); ctx.lineTo(tipX,tipY); ctx.stroke();
+      const charge = extra.chargeProgress || 0;
+      const pulse = 2.1 + charge*0.6 + cast*2.2;
+      drawMageStaffLight(ctx,tipX,tipY,pulse,!!extra.shadowPass,!lowGfx || graphicsQuality==='high' && !extra.preview);
+      if(cast > 0.04 && !extra.shadowPass){
+        ctx.save();
+        ctx.globalAlpha = cast * 0.85; ctx.strokeStyle = '#bfe8ff'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(tipX, tipY, 3 + (1 - cast) * 14, 0, Math.PI*2); ctx.stroke();
+        const sparkLen = 3 + (1 - cast) * 9;
+        ctx.beginPath();
+        for(let spark = -1; spark <= 1; spark++){
+          const sparkAngle = angle + spark * 0.55, sparkStart = 4 + (1 - cast) * 8;
+          ctx.moveTo(tipX + Math.cos(sparkAngle)*sparkStart, tipY + Math.sin(sparkAngle)*sparkStart);
+          ctx.lineTo(tipX + Math.cos(sparkAngle)*(sparkStart + sparkLen), tipY + Math.sin(sparkAngle)*(sparkStart + sparkLen));
+        }
+        ctx.stroke();
+        ctx.restore();
       }
-      ctx.stroke();
-      ctx.restore();
-    }
     }
   } else if(type === 'BOMBER'){
-    // small pouch of spare shells on the hip — was the only class with zero distinguishing gear
+    // small pouch of spare shells on the hip
     ctx.fillStyle = '#3a2a1a';
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-3, -4, 6, 5, 1.2) : ctx.rect(-3, -4, 6, 5); ctx.fill();
     ctx.strokeStyle = '#241a10'; ctx.lineWidth = 1; ctx.stroke();
-    const bomberAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const bomberAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
@@ -1260,16 +1243,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     markWeapon(handX, handY, bomberAngle, tubeLen);
     ctx.lineCap = 'round';
   } else if(type === 'GATLING'){
-    // ammo belt across the chest — the other class with zero distinguishing gear
+    // ammo belt across the chest
     ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(-4,-15); ctx.lineTo(4,2); ctx.stroke();
     if(!lowGfx){
       ctx.fillStyle = '#c7ccd1';
-      for(const t of [0.2, 0.4, 0.6, 0.8]){
+      for(const t of GATLING_BELT_STUDS){
         ctx.beginPath(); ctx.arc(-4+8*t, -15+17*t, 0.9, 0, Math.PI*2); ctx.fill();
       }
     }
-    const gatlingAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gatlingAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen, skinMain);
     const handX = hand.handX, handY = hand.handY;
@@ -1277,7 +1260,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const perpX = -Math.sin(gatlingAngle), perpY = Math.cos(gatlingAngle);
     ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
     ctx.lineWidth = 2.5*extra.weaponThickness;
-    for(const side of [-1,1]){
+    for(const side of FOOT_SIDES){
       const bx = handX+perpX*3*side, by = handY+perpY*3*side;
       const barrelLen = weaponLenFromScale(14, 22, extra.weaponScale);
       const tx = bx+Math.cos(gatlingAngle)*barrelLen, ty = by+Math.sin(gatlingAngle)*barrelLen;
@@ -1286,10 +1269,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   } else if(type === 'AXEMAN' || type === 'BERSERKER'){
     const axeLen = weaponLenFromScale(15, 24, extra.weaponScale);
-    // AXEMAN-IDLE-01 (1.6.59) — see HISTORY.md § [1.6.59]. Unlike Spearman/Hammerman, this never
-    // had its own idle pose — it always used the raw attack-facing angle, even standing idle with
-    // no target, which held both axes out stiffly at whatever direction the tower last faced.
-    // Resting stance: axes held down at the sides.
+    // AXEMAN-IDLE-01: with no target both axes hang down at the sides instead of pointing the last attack direction.
     const axeAngle = extra.hasTarget ? angle : Math.PI/2 + 0.15;
     const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, axeAngle, armLen, skinMain, -0.4);
     drawAxeHead(ctx, hand1.handX, hand1.handY, axeAngle, level, axeLen, extra.weaponThickness);
@@ -1298,20 +1278,15 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     drawAxeHead(ctx, hand2.handX, hand2.handY, axeAngle, level, axeLen, extra.weaponThickness);
   } else if(type === 'SPEARMAN' || type === 'LANCER'){
     const spearBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const spearAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96; // idle: upright, tilted 55° for head clearance; engaged: thrusts at the target
-    if(!extra.hasTarget){
-      drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    } else {
-      // CA588 — see HISTORY.md § [1.5.7] Code Archaeology, CA588
-      drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    }
-    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : spearAngle, armLen + (extra.thrustPx || 0), skinMain, spearBend);
+    const spearAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE; // idle: upright, tilted 55° for head clearance; engaged: thrusts at the target
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, spearAngle, armLen + (extra.thrustPx || 0), skinMain, spearBend);
     const handX = hand.handX, handY = hand.handY;
     // long shaft, extending a little behind the hand too for a held-pole look
     const shaftLen = weaponLenFromScale(type === 'LANCER' ? 20 : 15, type === 'LANCER' ? 30 : 24, extra.weaponScale);
     const tipX = handX + Math.cos(spearAngle)*shaftLen, tipY = handY + Math.sin(spearAngle)*shaftLen;
     markWeapon(handX, handY, spearAngle, shaftLen);
-    // SPEARHEAD-01 (1.8.40): the shaft stops where the blade starts, and the leaf-shaped head is what reaches the tip of the weapon.
+    // SPEARHEAD-01: the shaft stops where the blade starts, and the leaf-shaped head is what reaches the tip of the weapon.
     const headLen = type === 'LANCER' ? 14 : 12, headHalfWidth = (type === 'LANCER' ? 5 : 4.4)*Math.min(1.3, extra.weaponThickness);
     const dirX = Math.cos(spearAngle), dirY = Math.sin(spearAngle), perpX = -dirY, perpY = dirX;
     const headBaseX = tipX - dirX*headLen, headBaseY = tipY - dirY*headLen;
@@ -1332,10 +1307,11 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.strokeStyle = '#c7ccd1'; ctx.lineWidth = 2.2*extra.weaponThickness;
       ctx.beginPath(); ctx.moveTo(guardX - perpX*5, guardY - perpY*5); ctx.lineTo(guardX + perpX*5, guardY + perpY*5); ctx.stroke();
     }
-  } else if(type === 'HAMMERMAN'){
+  } else if(type === 'HAMMERMAN' || type === 'PALADIN'){
+    const isPaladin = type === 'PALADIN'; // PALADIN-FIGURE-01: the Hammerman's hammer and shield, gilded, with a cross on the shield
     const hammerBend = -0.3 + (extra.swingProgress || 0)*0.55;
-    const hammerAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
-    // IDLE-GRIP-01 (1.6.73) — see HISTORY.md § [1.6.73]
+    const hammerAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
+    // IDLE-GRIP-01
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen, skinMain, hammerBend);
     const handX = hand.handX, handY = hand.handY;
     // hammer: haft + a rectangular head (not a wedge — reads as blunt, not bladed)
@@ -1346,7 +1322,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.moveTo(handX,handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     const perpX = -Math.sin(hammerAngle), perpY = Math.cos(hammerAngle);
     const headLen = 10 * extra.weaponThickness;
-    ctx.fillStyle = level >= 3 ? '#bdeaff' : '#8a8f98';
+    ctx.fillStyle = isPaladin ? '#e8c768' : level >= 3 ? '#bdeaff' : '#8a8f98';
     ctx.beginPath();
     ctx.moveTo(tipX + perpX*8 - Math.cos(hammerAngle)*headLen*0.3, tipY + perpY*8 - Math.sin(hammerAngle)*headLen*0.3);
     ctx.lineTo(tipX + perpX*8 + Math.cos(hammerAngle)*headLen*0.7, tipY + perpY*8 + Math.sin(hammerAngle)*headLen*0.7);
@@ -1357,12 +1333,16 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     // shield strapped to the off-hand — the tower's defining trait, shown explicitly rather than implied
     const shieldArm = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? IDLE_WEAPON_ANGLE : (Math.PI/2 + 0.7), armLen*0.6, skinMain, -0.2);
     const shieldX = shieldArm.handX, shieldY = shieldArm.handY - 3;
-    ctx.fillStyle = level >= 3 ? '#bdeaff' : '#9aa0a6';
+    ctx.fillStyle = isPaladin ? '#f5f0e6' : level >= 3 ? '#bdeaff' : '#9aa0a6';
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = isPaladin ? '#c9a84c' : '#7a5230'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(shieldX, shieldY, 7, 0, Math.PI*2); ctx.stroke();
+    if(isPaladin){
+      ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(shieldX, shieldY - 4.5); ctx.lineTo(shieldX, shieldY + 4.5); ctx.moveTo(shieldX - 3, shieldY - 1); ctx.lineTo(shieldX + 3, shieldY - 1); ctx.stroke();
+    }
   } else if(type === 'HACKER'){
-    // HACKER-01 (1.7.36): no weapon at all — both hands hold an open laptop in front of the chest.
+    // HACKER-01: no weapon at all — both hands hold an open laptop in front of the chest.
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
     const typingHand = drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 - 0.55, armLen, skinMain, -0.15);
     ctx.save();
@@ -1384,11 +1364,10 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const isCasting = !!(extra && extra.hasTarget);
     // off-hand: relaxed at the opposite side always
     drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
-    // CA589 — see HISTORY.md § [1.5.7] Code Archaeology, CA589
     const castAngle = isCasting ? angle : (Math.PI/2 - 0.7);
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, castAngle, armLen, skinMain, isCasting ? -0.3 : -0.15);
     {
-      // CLERIC-BIBLE-01 (1.6.110) — see HISTORY.md § [1.6.110]
+      // CLERIC-BIBLE-01
       const bookX = hand.handX, bookY = hand.handY;
       markWeapon(bookX, bookY, castAngle, 10);
       ctx.save();
@@ -1410,16 +1389,14 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.ellipse(0, -30, 7, 2.5, 0, 0, Math.PI*2); ctx.stroke();
     }
-    // CA590 — see HISTORY.md § [1.5.7] Code Archaeology, CA590
     {
-      const intProgress = clampNum(((extra.int||0) - ATTUNEMENT_THRESHOLD) / (STAT_EFFECT_CAP - ATTUNEMENT_THRESHOLD), 0, 1);
-      const hatR = 2.5 + intProgress*3.5; // 2.5px newly-Cleric -> 6px right before evolving into Pope
+      const intProgress = clampNum(((extra.int||0) - CLERIC_HAT_INT_START) / (STAT_EFFECT_CAP - CLERIC_HAT_INT_START), 0, 1);
+      const hatR = 2.5 + intProgress*3.5; // 2.5px at the start, 6px when the Cleric is about to unlock the Pope
       ctx.fillStyle = level >= 3 ? '#ffe9a8' : '#d8c9a0';
       ctx.strokeStyle = '#b89b5e'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(0, -29, hatR, Math.PI, 0); ctx.fill(); ctx.stroke();
     }
   } else if(type === 'POPE'){
-    // CA591 — see HISTORY.md § [1.5.7] Code Archaeology, CA591
     const isCasting = !!(extra && extra.hasTarget);
     const raiseAngle = isCasting ? -Math.PI/2 - 0.55 : -Math.PI/2 - 0.25;
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, raiseAngle, armLen, skinMain, -0.2);
@@ -1438,7 +1415,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(0, -31, 10, 3.5, 0, 0, Math.PI*2); ctx.stroke();
     }
-    // CA592 — see HISTORY.md § [1.5.7] Code Archaeology, CA592
     ctx.fillStyle = '#fdf6e3';
     ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -1454,7 +1430,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.moveTo(-4,-29); ctx.lineTo(-5,-20); ctx.stroke(); // back lappets
     ctx.beginPath(); ctx.moveTo(4,-29); ctx.lineTo(5,-20); ctx.stroke();
   } else if(type === 'BLOWDART'){
-    // CA593 — see HISTORY.md § [1.5.7] Code Archaeology, CA593
     const mouthAngle = extra.hasTarget ? angle : Math.PI/2 + 0.15; // relaxed: pipe held loosely down at the side; engaged: raised to the mouth and aimed at the target
     const faceSign = Math.cos(mouthAngle) >= 0 ? 1 : -1; // only used to mirror the decorative dart pouch
     // small dart pouch on the hip, opposite the blowing hand
@@ -1471,10 +1446,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     const pipeAngle = mouthAngle;
     const tipX = handX + Math.cos(pipeAngle)*14*extra.weaponScale, tipY = handY + Math.sin(pipeAngle)*14*extra.weaponScale;
     markWeapon(handX, handY, pipeAngle, 14*extra.weaponScale);
-    // BLOWDART-ARM-01 (1.6.7) — see HISTORY.md § [1.6.7]. Direct report ("where's his other
-    // arm?") — only the mouth-hand was ever drawn. A real blowgun grip uses both hands, the same
-    // way SQUIRTGUN/GUNALINDER right below already draw a main hand plus a supporting off-hand; the
-    // off-hand reaches from the shoulder to a point partway along the pipe, steadying it.
+    // BLOWDART-ARM-01: a blowgun is held in both hands; the off-hand reaches from the shoulder to a point partway along the pipe.
     if(extra.hasTarget){
       const offGripX = handX + Math.cos(pipeAngle)*7*extra.weaponScale, offGripY = handY + Math.sin(pipeAngle)*7*extra.weaponScale;
       const offAngle = Math.atan2(offGripY - shoulderY, offGripX - shoulderX);
@@ -1496,48 +1468,38 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.beginPath(); ctx.moveTo(4,-15); ctx.lineTo(-4,2); ctx.stroke();
     if(!lowGfx){
       ctx.fillStyle = '#c7ccd1';
-      for(const t of [0.25, 0.5, 0.75]){
+      for(const t of BANDOLIER_STUDS){
         ctx.beginPath(); ctx.arc(-4+8*t, -15+17*t, 1, 0, Math.PI*2); ctx.fill();
       }
     }
     // dual-wielded pistols, both hands actively aiming — no relaxed off-hand for a gunslinger stance
-    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gunAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     const hand1 = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : (Math.PI/2 + 0.7), armLen*0.9, skinMain, -0.2);
     const hand2 = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen*0.9, skinMain, 0.2);
     ctx.font = (14 * extra.weaponScale * (0.85 + extra.weaponThickness*0.15)) + 'px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    for(const hand of [hand1, hand2]){
-      // pivot at the hand (the grip), glyph extends outward from there toward the aim direction
-      drawGunEmoji(ctx, hand.handX, hand.handY, gunAngle);
-      markWeapon(hand.handX, hand.handY, gunAngle, weaponLenFromScale(11, 17, extra.weaponScale));
-      if(!lowGfx){
-        const gunLen = weaponLenFromScale(11, 17, extra.weaponScale);
-      const tipX = hand.handX + Math.cos(gunAngle)*gunLen, tipY = hand.handY + Math.sin(gunAngle)*gunLen;
-        ctx.fillStyle = 'rgba(124,220,24,0.5)';
-        ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
-      }
-    }
+    const gunLen = weaponLenFromScale(11, 17, extra.weaponScale);
+    drawSquirtPistol(ctx, hand1.handX, hand1.handY, gunAngle, gunLen, lowGfx);
+    drawSquirtPistol(ctx, hand2.handX, hand2.handY, gunAngle, gunLen, lowGfx);
   } else if(type === 'GUNALINDER'){
-    // CA594 — see HISTORY.md § [1.5.7] Code Archaeology, CA594
-    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gunAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     const mainHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.9, skinMain, -0.15);
     drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle + 0.35, armLen*0.75, skinMain, 0.1); // off-hand cupping underneath
     ctx.font = (15 * extra.weaponScale * (0.85 + extra.weaponThickness*0.15)) + 'px sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const gunLen = weaponLenFromScale(12, 18, extra.weaponScale);
     drawGunEmoji(ctx, mainHand.handX, mainHand.handY, gunAngle);
-    markWeapon(mainHand.handX, mainHand.handY, gunAngle, weaponLenFromScale(12, 18, extra.weaponScale));
+    markWeapon(mainHand.handX, mainHand.handY, gunAngle, gunLen);
     if(!lowGfx){
-      const gunLen = weaponLenFromScale(12, 18, extra.weaponScale);
       const tipX = mainHand.handX + Math.cos(gunAngle)*gunLen, tipY = mainHand.handY + Math.sin(gunAngle)*gunLen;
       ctx.fillStyle = 'rgba(200,160,60,0.5)';
       ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
     }
   } else if(type === 'MARKSMAN'){
-    // CA595 — see HISTORY.md § [1.5.7] Code Archaeology, CA595
-    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gunAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     const gripHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.85, skinMain, -0.1);
-    const supportHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.95, skinMain, 0.08); // support hand closer in than Sniper's — a shorter weapon
+    drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.95, skinMain, 0.08); // support hand closer in than the Sniper's, for a shorter weapon
     ctx.strokeStyle = '#4a5a68'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
     const barrelLen = weaponLenFromScale(15, 21, extra.weaponScale); // between Cowboy's short revolver and Sniper's notably long barrel
     const tipX = gripHand.handX + Math.cos(gunAngle)*barrelLen, tipY = gripHand.handY + Math.sin(gunAngle)*barrelLen;
@@ -1548,8 +1510,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.beginPath(); ctx.arc(tipX,tipY,2.2,0,Math.PI*2); ctx.fill();
     }
   } else if(type === 'SNIPER'){
-    // CA596 — see HISTORY.md § [1.5.7] Code Archaeology, CA596
-    const gunAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const gunAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     const gripHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.85, skinMain, -0.1);
     const supportHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*1.1, skinMain, 0.05); // extended support hand further along the barrel
     ctx.strokeStyle = '#5a6b52'; ctx.lineWidth = 2.5 * (0.8 + extra.weaponThickness*0.2);
@@ -1565,21 +1526,19 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.beginPath(); ctx.arc(tipX,tipY,2,0,Math.PI*2); ctx.fill();
     }
   } else if(type === 'CAT_SNAPPER'){
-    // CA597 — see HISTORY.md § [1.5.7] Code Archaeology, CA597
-    const throwAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const throwAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     drawArmAndHand(ctx, shoulderX, shoulderY, throwAngle, armLen, skinMain, -0.35); // relaxed supporting arm
     const raisedAngle = throwAngle - 0.55; // held higher than the throw line itself, so the cat reads as carried rather than mid-swing
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, raisedAngle, armLen, skinMain, 0.35);
     const tp = extra.throwProgress || 0;
     const releaseDist = tp * 16;
     const catX = hand.handX + Math.cos(throwAngle)*(4 + releaseDist);
-    const bobPhase = (extra.buildScaleX||1)*3 + (extra.buildScaleY||1); // cheap per-tower phase offset, same idea as the idle-breathing sway above, so a row of Cat Snappers doesn't bob in unison
+    const bobPhase = (extra.buildScaleX||1)*3 + (extra.buildScaleY||1);
     const bob = tp > 0 ? 0 : Math.abs(Math.sin(gameTime/280 + bobPhase)) * 5;
     const catY = hand.handY - 10 - bob - releaseDist*0.3;
     drawCat(ctx, catX, catY, tp > 0 ? throwAngle : 0, 0.62, { idle: tp <= 0, phase: bobPhase });
   } else if(type === 'NECROMANCER'){
-    // CA598 — see HISTORY.md § [1.5.7] Code Archaeology, CA598
-    const castAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const castAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     drawArmAndHand(ctx, shoulderX, shoulderY, castAngle + Math.PI*0.85, armLen*0.75, skinMain, -0.3); // relaxed off-hand, well clear of the casting arm
     const hand = drawArmAndHand(ctx, shoulderX, shoulderY, castAngle, armLen, skinMain, -0.2);
     ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2 * (0.8 + extra.weaponThickness*0.2);
@@ -1594,9 +1553,41 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
       ctx.fillStyle = 'rgba(90,45,130,0.5)';
       ctx.beginPath(); ctx.arc(tipX,tipY,2.5,0,Math.PI*2); ctx.fill();
     }
+  } else if(type === 'MERCHANT'){
+    // MERCHANT-FIGURE-01: a turbaned trader holding up the Money Bag he throws
+    const throwAngle = extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE;
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, throwAngle, armLen, skinMain, -0.25);
+    markWeapon(hand.handX, hand.handY, throwAngle, MERCHANT_BAG_REACH);
+    ctx.save(); ctx.translate(hand.handX, hand.handY - 3); drawEmojiSprite(ctx, '💰', 11*extra.weaponScale); ctx.restore();
+    ctx.fillStyle = '#f3e9d2';
+    ctx.beginPath(); ctx.ellipse(0, -29.5, 7.5, 3.6, 0, 0, Math.PI*2); ctx.fill();
+    if(!lowGfx){ ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(0, -31, 1.3, 0, Math.PI*2); ctx.fill(); }
+  } else if(type === 'GLAIVE'){
+    // GLAIVE-FIGURE-01: a heavy two-handed launcher with a curved blade loaded at the muzzle
+    const gunAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
+    const gripHand = drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*0.85, skinMain, -0.1);
+    drawArmAndHand(ctx, shoulderX, shoulderY, gunAngle, armLen*1.05, skinMain, 0.06);
+    const barrelLen = weaponLenFromScale(GLAIVE_BARREL_MIN_LEN, GLAIVE_BARREL_MAX_LEN, extra.weaponScale);
+    const dirX = Math.cos(gunAngle), dirY = Math.sin(gunAngle);
+    const tipX = gripHand.handX + dirX*barrelLen, tipY = gripHand.handY + dirY*barrelLen;
+    markWeapon(gripHand.handX, gripHand.handY, gunAngle, barrelLen);
+    ctx.strokeStyle = '#5d6168'; ctx.lineWidth = 4.2 * (0.8 + extra.weaponThickness*0.2); ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(gripHand.handX - dirX*3, gripHand.handY - dirY*3); ctx.lineTo(tipX, tipY); ctx.stroke();
+    ctx.strokeStyle = level >= 3 ? '#bdeaff' : '#c9ced6'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(tipX, tipY, 4.5, gunAngle - Math.PI*0.55, gunAngle + Math.PI*0.55); ctx.stroke();
+  } else if(type === 'CRAZY_CHEF'){
+    // CHEF-FIGURE-01: a chef's toque and a kitchen knife ready to throw
+    const knifeAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
+    drawArmAndHand(ctx, shoulderX, shoulderY, Math.PI/2 + 0.7, armLen, skinMain, -0.15);
+    const hand = drawArmAndHand(ctx, shoulderX, shoulderY, extra.hasTarget ? angle : IDLE_GRIP_ARM_ANGLE, armLen, skinMain, -0.2);
+    markWeapon(hand.handX, hand.handY, knifeAngle, CHEF_KNIFE_REACH);
+    ctx.save(); ctx.translate(hand.handX, hand.handY); ctx.rotate(knifeAngle); ctx.translate(5, 0); drawAmmoShape(ctx, 'KNIFE'); ctx.restore();
+    ctx.fillStyle = '#fafafa'; ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 0.8;
+    ctx.fillRect(-5, -34, 10, 4); ctx.strokeRect(-5, -34, 10, 4);
+    ctx.beginPath(); ctx.arc(-3, -36, 3.4, 0, Math.PI*2); ctx.arc(3, -36, 3.4, 0, Math.PI*2); ctx.arc(0, -38.5, 3.8, 0, Math.PI*2); ctx.fill();
   } else if(type === 'BLOW_GUNNER'){
-    // CA599 — see HISTORY.md § [1.5.7] Code Archaeology, CA599
-    const mouthAngle = extra.hasTarget ? angle : -Math.PI/2 + 0.96;
+    const mouthAngle = extra.hasTarget ? angle : IDLE_GUN_ANGLE;
     const mouthX = 0, mouthY = -21;
     const hand = drawArmAndHand(ctx, mouthX, mouthY, mouthAngle, armLen*0.7, skinMain, -0.3);
     const tipX = hand.handX + Math.cos(mouthAngle)*14*extra.weaponScale, tipY = hand.handY + Math.sin(mouthAngle)*14*extra.weaponScale;
@@ -1604,7 +1595,6 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     ctx.strokeStyle = '#8fa8b3'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(hand.handX,hand.handY); ctx.lineTo(tipX,tipY); ctx.stroke();
     if(!lowGfx){
-      // CA600 — see HISTORY.md § [1.5.7] Code Archaeology, CA600
       const wispT = (gameTime % 900) / 900;
       ctx.fillStyle = 'rgba(200,232,240,0.35)';
       ctx.beginPath(); ctx.arc(tipX, tipY - wispT*4, 2.2 + wispT*1.3, 0, Math.PI*2); ctx.fill();
@@ -1613,11 +1603,9 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     }
   }
 
-  // CA601 — see HISTORY.md § [1.5.7] Code Archaeology, CA601
   if(level >= 2){
     ctx.save();
     ctx.fillStyle = '#9aa0a6';
-    // CA602 — see HISTORY.md § [1.5.7] Code Archaeology, CA602
     ctx.beginPath();
     ctx.moveTo(-2, -10);
     ctx.lineTo(2, -10);
@@ -1635,13 +1623,48 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   bloodPoseOwner=priorBloodOwner;
   if(extra && extra.trailStrength > 0 && !extra.shadowPass && !lowGfx) drawMeleeSmear(ctx, extra);
   if(extra && extra.enchantElement && !extra.shadowPass) drawWeaponEnchant(ctx, extra.enchantElement, angle);
-
   ctx.restore();
 }
 /* =========================================================
    TOWER CLASS
    ========================================================= */
-// CA210 — see HISTORY.md § [1.5.7] Code Archaeology, CA210
+const MIN_ATTACK_COOLDOWN_MS = 80, NINJA_MIN_COOLDOWN_MS = 45;
+// The muzzle sits at the hand plus the drawn weapon length, so a shot leaves from the tip the renderer draws.
+const MUZZLE_WEAPON_REACH = Object.freeze({
+  MAGE: { armShare: 1, minLen: 14, maxLen: 22 }, SNAPCASTER: { armShare: 1, minLen: 14, maxLen: 22 }, GATLING: { armShare: 1, minLen: 14, maxLen: 22 },
+  BOMBER: { armShare: 1, minLen: 12, maxLen: 19 }, SQUIRTGUN: { armShare: 0.9, minLen: 11, maxLen: 17 }, BLOW_GUNNER: { armShare: 0.85, minLen: 9, maxLen: 14 },
+  CAT_SNAPPER: { armShare: 1, minLen: 10, maxLen: 16 }, NECROMANCER: { armShare: 1, minLen: 10, maxLen: 15 },
+  PROTON: { armShare: 1, minLen: 10, maxLen: 15 }, DARK_MATTER: { armShare: 1, minLen: 10, maxLen: 15 }, QUASAR: { armShare: 1, minLen: 10, maxLen: 15 },
+  GLAIVE: { armShare: 0.85, minLen: GLAIVE_BARREL_MIN_LEN, maxLen: GLAIVE_BARREL_MAX_LEN }, CRAZY_CHEF: { armShare: 1, minLen: CHEF_KNIFE_REACH, maxLen: CHEF_KNIFE_REACH },
+  MERCHANT: { armShare: 1, minLen: MERCHANT_BAG_REACH, maxLen: MERCHANT_BAG_REACH }
+});
+const MAGIC_MISSILE_TYPES = new Set(['MAGE', 'SNAPCASTER', 'NECROMANCER', 'PROTON', 'DARK_MATTER', 'QUASAR']);
+const PROJECTILE_COLOR_BY_TOWER = Object.freeze({
+  MAGE: '#7dd3fc', SNAPCASTER: '#7dd3fc', BOMBER: '#3a2a1a', BLOWDART: '#7cb518', CAT_SNAPPER: '#2a2a2a', NECROMANCER: '#5a2d82',
+  BLOW_GUNNER: '#c8e8f0', SQUIRTGUN: '#8bd62f', PROTON: '#a855f7', DARK_MATTER: '#1a1a2e', QUASAR: '#fdf6d8'
+});
+const RANGED_SHOT_SOUND = Object.freeze({
+  ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
+  BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
+  MARKSMAN: 'shot_gunalinder', CAT_SNAPPER: 'shot_cat', BLOW_GUNNER: 'shot_blowdart', NINJA: 'shot_blowdart',
+  CRAZY_CHEF: 'shot_archer', BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage', NECROMANCER: 'cast_mage', PROTON: 'cast_mage', DARK_MATTER: 'cast_mage', QUASAR: 'cast_mage'
+});
+const NINJA_SHOT_SOUND_GAP_MS = 140;
+// A shot rolled as a miss flies past the target by at least 20 px, to a random side.
+function deflectProjectileAsMiss(projectile, tower, aimAngle, targetRadius, distanceToTarget){
+  const missOffsetPx = Math.max(targetRadius*1.8, 20) * (Math.random() < 0.5 ? -1 : 1);
+  const missAngle = aimAngle + Math.atan2(missOffsetPx, distanceToTarget);
+  projectile.vx = Math.cos(missAngle)*tower.projectileSpeed;
+  projectile.vy = Math.sin(missAngle)*tower.projectileSpeed;
+  projectile.angle = missAngle;
+  projectile.isGuaranteedMiss = true;
+  projectile.missRevealAt = gameTime + (distanceToTarget/tower.projectileSpeed)*1000;
+  if(tower.telemetry) tower.telemetry.misses++;
+}
+const TOWER_OVERRUN_MS = 4000, TOWER_OVERRUN_WAVES = 3, TOWER_RECOVERY_HP_FRACTION = 0.3;
+const MELEE_SWING_TYPES = new Set(['SWORDSMAN', 'SPEARMAN', 'HAMMERMAN', 'PALADIN', 'BERSERKER', 'LANCER']);
+const EXACT_INTERCEPT_TYPES = new Set(['ARCHER', 'MARKSMAN', 'SNIPER', 'BLOWDART', 'SQUIRTGUN', 'BLOW_GUNNER']);
+const GLOBAL_ATTACK_SLOW_MULT = 1.2, TIER_DAMAGE_GROWTH = 0.45; // only 45% of the raw tier-to-tier damage jump carries through
 function towerCountOnBoard(type){
   let n = 0;
   for(const t of towerPool) if(t.active && t.type === type) n++;
@@ -1649,12 +1672,9 @@ function towerCountOnBoard(type){
 }
 function towerDisplayName(tower){ return (tower.legendaryName || tower.def.name) + ' ' + tower.def.icon; }
 function isPlainStuckArrow(a){ const kind = a.kind; return kind !== 'AXE' && kind !== 'DART' && kind !== 'BULLET' && kind !== 'PELLET' && kind !== 'KNIFE' && kind !== 'BLADE'; }
-// CA378 — see HISTORY.md § [1.5.7] Code Archaeology, CA378
 class Tower{
   constructor(){ this.active = false; }
-  // CA379 — see HISTORY.md § [1.5.7] Code Archaeology, CA379
-  // MOVE-WALKS-01 (1.7.44): owner decision — when a stickman is moved to another tile he walks there with the walking animation instead of teleporting. The tile is reserved
-  // at once (so nothing else can be placed on it), the body travels there at a steady pace, and he cannot act until he arrives.
+  // MOVE-WALKS-01: when a stickman is moved to another tile he walks there with the walking animation instead of teleporting.
   walkTo(gridX, gridY){
     this.gridX = gridX; this.gridY = gridY;
     this.walkTargetX = gridX*TILE_SIZE + TILE_SIZE/2; this.walkTargetY = gridY*TILE_SIZE + TILE_SIZE/2;
@@ -1692,13 +1712,12 @@ class Tower{
     this.hitSet = new Set();
     this.lastSwordAngle = 0;
     this.swingStart = 0;
-    this.swingArc = type === 'BERSERKER' ? Math.PI * 1.1 : type === 'SPEARMAN' ? Math.PI * SPEARMAN_SWEEP_ARC_FRACTION : Math.PI * 0.85; // SPEARMAN-SWEEP-01 (1.8.40): the Spearman's sweep is the widest melee arc in the game // Berserker's own wide cleave (~198°) — same per-type override precedent as TWOHANDER Swordsman's own chooseSpec(), just fixed at construction instead of chosen mid-game since Berserker is a whole separate class, not a spec pick
+    this.swingArc = type === 'BERSERKER' ? Math.PI * 1.1 : type === 'SPEARMAN' ? Math.PI * SPEARMAN_SWEEP_ARC_FRACTION : Math.PI * 0.85; // SPEARMAN-SWEEP-01
     this.swingDuration = type === 'SPEARMAN' ? 550 : 300;
     this.slowFactor = 0; this.slowDuration = 0; this.splashRadius = 0;
     this.meleeRange = 0; this.meleeDamage = 0; this.meleeCooldown = 0;
     this.stunMs = 0; // HAMMERMAN only, from tier config
     this.isDrawing = false; this.drawStart = 0; this.drawProgress = 0; this.baseDrawTime = 0; // ARCHER only
-    // CA380 — see HISTORY.md § [1.5.7] Code Archaeology, CA380
     this.maxHp = type === 'BARRICADE' ? 10 : isProducerType(type) ? PRODUCER_DEFS[type].hp[0] : (type === 'HACKER' ? HACKER_MAX_HP : (type === 'HAMMERMAN' ? 180 : 100));
     this.stealthUntil = 0;
     this.baseMaxHp = this.maxHp; // snapshot — STR's HP bonus and the Legendary bonus both multiply on top of this, not on top of each other
@@ -1714,17 +1733,14 @@ class Tower{
     this.bloodLustUntil = 0; // gameTime until the killstreak blood-lust aura fades
     this.killStreak = 0;     // consecutive kills within the streak time window; resets on a lapse or defeat
     this.critLuckBalance = 0; this.missLuckBalance = 0; // PRD-ROLLS-01: expected minus actual crits and misses
-    this.lastKillTime = 0;
     this.nextStreakTier = 0; // index into KILLSTREAK_TIERS, so each tier only fires once per streak
     this.isLegendary = false;
     this.legendaryName = '';
     this.hp = this.maxHp;
-    this.baseShieldPct = type === 'HAMMERMAN' ? 0.35 : 0; // flat damage reduction from breakaway attacks — class ability, not an item, kept separate from item-granted armor
-    // CA381 — see HISTORY.md § [1.5.7] Code Archaeology, CA381
+    this.baseShieldPct = type === 'HAMMERMAN' ? 0.35 : 0;
     this.shieldPct = this.baseShieldPct;
     this.disabledUntil = 0;   // can't attack while overrun (hp hit 0)
-    this.disabledWavesLeft = 0; // reaching 0 HP locks the tower out for the next 2 waves, not just a short timer
-    // CA382 — see HISTORY.md § [1.5.7] Code Archaeology, CA382
+    this.disabledWavesLeft = 0; // reaching 0 HP locks the tower out for the next TOWER_OVERRUN_WAVES waves
     this.telemetry = isStructureType(this.type) ? null : { shotsFired: 0, misses: 0, hitsLanded: 0, killsSecured: 0 }; // damage itself reuses the existing lifetimeDamage/waveDamage fields rather than a duplicate counter
     this.burnUntil = 0;       // FIRE breakaway status
     this.burnTickTimer = 0;
@@ -1733,7 +1749,7 @@ class Tower{
     // WC3-hero-style distributable stats: STR = damage, DEX = attack speed, INT = range
     this.foodConstitution = 0;
     this.str = 0; this.dex = 0; this.int = 0; this.statPoints = 0; this.autoSpend = false;
-    this.elementState = null; // null | 'PROTON' | 'QUASAR' | 'DARK_MATTER' — a MIXED element earned from the stat combination, see refreshElementState()
+    this.elementState = null;
     this.attunement = null; // null | 'FIRE' | 'ELECTRIC' | 'ICE' — permanently locked once set, see checkAttunementAndSpecialization()
     this.moveCharges = 1;
     this.bloodStains = undefined;this.bloodSegmentCount=0;this.bloodPose=undefined;
@@ -1744,8 +1760,8 @@ class Tower{
     this.baseMeleeDamage = 0; this.baseMeleeCooldown = 0; this.baseMeleeRange = 0;
     this.equippedItems = []; this.isHero = false;
     this.roundBuffs = null;
-    this.lastKillTime = -1e9; // KILL-READY-01 (1.8.40): when this stickman last secured a kill
-    this.lastTargetTime = 0; // grace-period anchor so briefly losing a target doesn't instantly snap the attack pose back to idle — see update()
+    this.lastKillTime = -1e9; // KILL-READY-01: when this stickman last secured a kill
+    this.lastTargetTime = 0;
     this.axeMode = 'MELEE'; // AXEMAN only: manual toggle, switchable once per wave
     this.axeSwitchesLeft = 1;
     this.spec = null; // SWORDSMAN only, chosen at level 5: 'TWOHANDER' | 'DUAL'
@@ -1759,24 +1775,22 @@ class Tower{
     this.rollSkinTones();
     this.rollBuild();
     this.active = true;
-    if(!isStructureType(type)) everBuiltFighter = true; // see checkAllFightersDown() — lets a genuine "sold/lost everything mid-wave" wipe end the run, without risking a false game-over before the player has built anything at all
+    if(!isStructureType(type)) everBuiltFighter = true;
     this.applyTierStats();
   }
   get def(){ return CONFIG.TOWERS[this.type]; }
+  minAttackCooldownMs(){ return this.type === 'NINJA' ? NINJA_MIN_COOLDOWN_MS : MIN_ATTACK_COOLDOWN_MS; }
   // STR raises stickman mass to 1.5x at the stat cap; appearance follows sqrt(mass).
   get weight(){ return 1 + clampNum(this.str || 0, 0, 500) / 1000; }
-  // CA383 — see HISTORY.md § [1.5.7] Code Archaeology, CA383
   rollSkinTones(){
     const jobColor = JOB_COLORS[this.type] || { main:'hsl(0,0%,80%)', shade:'hsl(0,0%,58%)' };
     const skinL = 35 + Math.random()*53;  // fully independent uniform roll, 35-88 — not anchored to this class's own preset skin lightness
-    // CA384 — see HISTORY.md § [1.5.7] Code Archaeology, CA384
-    const pantsL = 28 + Math.random()*64; // fully independent uniform roll, 28-92 — not anchored to this class's own preset pants lightness, and not derived from skinL either
+    const pantsL = 28 + Math.random()*64;
     this.skinMain = colorAtLightness(jobColor.main, skinL);
     this.skinShade = colorAtLightness(jobColor.shade, pantsL);
     this.faceColor = colorAtLightness(jobColor.main, clampNum(skinL - (8 + Math.random()*2), 25, 80)); // always 8-10% darker than THIS tower's own skinMain — the one non-independent layer, by design
-    this.mustacheColor = HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)]; // only ever visible once STR > 47 — see drawStickman() — but rolled here alongside the other stable per-tower appearance traits so it's set the moment the tower exists, not the moment it first qualifies
+    this.mustacheColor = HAIR_COLORS[Math.floor(Math.random() * HAIR_COLORS.length)];
   }
-  // CA385 — see HISTORY.md § [1.5.7] Code Archaeology, CA385
   rollBuild(){
     const base = JOB_BUILD[this.type] || { scaleX:1, scaleY:1 };
     const weightJitter = (Math.random()*2 - 1) * 0.14; // ±14% breadth/weight
@@ -1785,18 +1799,12 @@ class Tower{
     this.buildScaleY = clampNum(base.scaleY * (1 + heightJitter), 0.70, 1.40);
   }
   applyTierStats(){
-    this.burstCount = 0; this.burstDelay = 0; // cleared first — Object.assign only sets fields present in the new tier, so a class without burst-fire data (i.e. anything but Cowboy) must not inherit a stale value from whatever this tower was before evolving
-    // CA386 — see HISTORY.md § [1.5.7] Code Archaeology, CA386
+    this.burstCount = 0; this.burstDelay = 0;
     this.splashRadius = 0; this.slowFactor = 0; this.slowDuration = 0;
     Object.assign(this, this.def.tiers[Math.min(this.level, this.def.tiers.length) - 1]); // promotions past the authored tier table keep the top tier's baseline; growth comes from promotion stat rolls
-    // GLOBAL-ATTACK-SLOW-01 (1.6.60) — see HISTORY.md § [1.6.60]. Direct request: every tower
-    // attacks 20% slower. Applied once here, at the single point tier cooldown values land on the
-    // instance, rather than hand-editing every tier's cooldown number across every tower.
-    this.cooldown = Math.round(this.cooldown * 1.2);
-    this.cooldown = applyClassCooldownBalance(this.type, this.cooldown);
-    if(this.meleeCooldown) this.meleeCooldown = Math.round(this.meleeCooldown * 1.2);
-    // CA387 — see HISTORY.md § [1.5.7] Code Archaeology, CA387
-    const TIER_DAMAGE_GROWTH = 0.45; // only 45% of the raw tier-to-tier damage jump carries through
+    // GLOBAL-ATTACK-SLOW-01: every tier cooldown is 20% slower, applied once where tier values land on the instance.
+    this.cooldown = applyClassCooldownBalance(this.type, Math.round(this.cooldown * GLOBAL_ATTACK_SLOW_MULT));
+    if(this.meleeCooldown) this.meleeCooldown = Math.round(this.meleeCooldown * GLOBAL_ATTACK_SLOW_MULT);
     const tier1 = this.def.tiers[0];
     if(this.damage !== undefined && tier1.damage !== undefined){
       this.baseDamage = Math.round(tier1.damage + (this.damage - tier1.damage) * TIER_DAMAGE_GROWTH);
@@ -1820,15 +1828,17 @@ class Tower{
     this.burstShotsLeft = 0; // burst-fire state (Cowboy's revolver) — fresh cycle after any tier change
     this.recomputeStats();
   }
-  // CA388 — see HISTORY.md § [1.5.7] Code Archaeology, CA388
   recomputeStats(){
-    // CA389 — see HISTORY.md § [1.5.7] Code Archaeology, CA389
     if(this.type === 'BARRICADE'){ this.maxHp = 10; return; }
     if(isProducerType(this.type)){ this.maxHp = PRODUCER_DEFS[this.type].hp[this.level - 1] || PRODUCER_DEFS[this.type].hp[0]; this.baseMaxHp = this.maxHp; this.hp = Math.min(this.hp, this.maxHp); return; }
     let itemStr = 0, itemDex = 0, itemInt = 0, itemArmor = 0, rangeItemMult = 1;
     this.wearsFancyHat = false; this.wearsRunningShoes = false;
-    for(const it of this.equippedItems){ itemStr += it.str || 0; itemDex += it.dex || 0; itemInt += it.int || 0; itemArmor += it.armor || 0; rangeItemMult *= 1 + (it.rangeBonus || 0); if(it.id === 'FANCY_HAT') this.wearsFancyHat = true; if(it.extraMove) this.wearsRunningShoes = true; }
-    // CA390 — see HISTORY.md § [1.5.7] Code Archaeology, CA390
+    for(const item of this.equippedItems){
+      itemStr += item.str || 0; itemDex += item.dex || 0; itemInt += item.int || 0; itemArmor += item.armor || 0;
+      rangeItemMult *= 1 + (item.rangeBonus || 0);
+      if(item.id === 'FANCY_HAT') this.wearsFancyHat = true;
+      if(item.extraMove) this.wearsRunningShoes = true;
+    }
     this.shieldPct = Math.min(0.9, this.baseShieldPct + itemArmor*0.01);
     const heroBonus = this.isHero ? HERO_BONUS_STAT : 0;
     const globalStr = (globalPassiveCounts.GLOBAL_STR || 0)+(runBoonCounts.GLOBAL_STR || 0);
@@ -1837,83 +1847,69 @@ class Tower{
     const totalStr = this.str + itemStr + heroBonus + globalStr;
     const totalDex = this.dex + itemDex + heroBonus + globalDex;
     const totalInt = this.int + itemInt + heroBonus + globalInt;
-    // CA391 — see HISTORY.md § [1.5.7] Code Archaeology, CA391
     const archetype = CLASS_ARCHETYPE[this.type];
     const strEff = archetype === 'WARRIOR' ? totalStr * PREFERRED_STAT_MULT : totalStr;
     const dexEff = archetype === 'ARCHER' ? totalDex * PREFERRED_STAT_MULT : totalDex;
     const intEff = archetype === 'MAGE' ? totalInt * PREFERRED_STAT_MULT : totalInt;
     const strPref = archetype === 'WARRIOR' ? PREFERRED_STAT_MULT : 1, dexPref = archetype === 'ARCHER' ? PREFERRED_STAT_MULT : 1, intPref = archetype === 'MAGE' ? PREFERRED_STAT_MULT : 1;
     const strPoints = statEffectPoints((this.str + heroBonus + globalStr) * strPref, itemStr * strPref), dexPoints = statEffectPoints((this.dex + heroBonus + globalDex) * dexPref, itemDex * dexPref), intPoints = statEffectPoints((this.int + heroBonus + globalInt) * intPref, itemInt * intPref);
-    // CA392 — see HISTORY.md § [1.5.7] Code Archaeology, CA392
     const strMult = 1 + PRIMARY_DAMAGE_PER_POINT * strPoints;
-    // CA393 — see HISTORY.md § [1.5.7] Code Archaeology, CA393
     // DEX attack cadence uses the capped late-building curve below.
-    // CA394 — see HISTORY.md § [1.5.7] Code Archaeology, CA394
     const dexMult = attackRateFromDex(totalDex);
     const intRangeFraction = Math.min(1, intPoints / STAT_EFFECT_CAP); // reaches the class range cap exactly at 500 INT
-    // Crazy Chef is an Archer that hits with Strength — her knives are thrown, not shot.
-    const archerDamageStat = dexEff;
+    // CHEF-STRENGTH-01: the Crazy Chef is an Archer whose thrown knives scale with Strength, as her description and tip promise.
+    const damageScalesWithStr = archetype === 'WARRIOR' || this.type === 'CRAZY_CHEF';
     const dexDamageMult = 1 + PRIMARY_DAMAGE_PER_POINT * dexPoints;
     const intDamageMult = 1 + PRIMARY_DAMAGE_PER_POINT * intPoints;
-    // CA395 — see HISTORY.md § [1.5.7] Code Archaeology, CA395
-    const primaryDamageMult = archetype === 'WARRIOR' ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
+    const primaryDamageMult = damageScalesWithStr ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
     this.damage = Math.max(1, Math.round(this.baseDamage * primaryDamageMult * 0.7)); // COMBAT-BALANCE-181: lower direct damage, including loaded defenders
-    // CA396 — see HISTORY.md § [1.5.7] Code Archaeology, CA396
-    this.primaryStatEff = archetype === 'WARRIOR' ? strEff : archetype === 'ARCHER' ? archerDamageStat : archetype === 'MAGE' ? intEff : 0;
-    // CA397 — see HISTORY.md § [1.5.7] Code Archaeology, CA397
-    if(!this.isVeteran && !statPreviewRunning && EVOLVED_TOWER_TYPES.includes(this.type) && this.primaryStatEff >= 250){
+    this.primaryStatEff = damageScalesWithStr ? strEff : archetype === 'ARCHER' ? dexEff : archetype === 'MAGE' ? intEff : 0;
+    if(!this.isVeteran && !statPreviewRunning && UNLOCKED_CLASS_TYPES.includes(this.type) && this.primaryStatEff >= 250){
       this.isVeteran = true;
-      spawnFloatingText(this.x, this.y - this.radius - 18, '⭐ Veteran!', '#ffd700');
+      spawnFloatingText(this.x, this.y - 40, '⭐ Veteran!', '#ffd700');
     }
     if(this.isVeteran) this.damage = Math.round(this.damage * 1.1);
-    this.cooldown = Math.max(this.type==='NINJA'?45:80, Math.round(this.baseCooldown / dexMult));
+    this.cooldown = Math.max(this.minAttackCooldownMs(), Math.round(this.baseCooldown / dexMult));
     if(this.type === 'CLERIC' && this.baseHealAmount) this.healAmount = Math.round(this.baseHealAmount * (1 + intPoints / STAT_EFFECT_CAP));
-    // MELEE-RANGE-BALANCE-01 (1.6.108): Cleric used to keep a fixed range while every other class grew toward its cap with INT,
-    // so a trained Axeman out-reached it. Cleric now scales like everyone else, toward the longest cap of the melee and support lineage.
+    // MELEE-RANGE-BALANCE-01: every class, Cleric included, grows toward its range cap with INT.
     const cap = RANGE_CAPS[this.type] || this.baseRange * 2;
     this.range = interpolateRangeByInt(this.baseRange, cap, intRangeFraction) * rangeItemMult;
     if(this.baseMeleeDamage) this.meleeDamage = Math.max(1, Math.round(this.baseMeleeDamage * primaryDamageMult * 0.7));
-    if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.baseMeleeCooldown / dexMult));
+    if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(MIN_ATTACK_COOLDOWN_MS, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange){
       const cap = RANGE_CAPS[this.type] || this.baseMeleeRange * 2;
       this.meleeRange = interpolateRangeByInt(this.baseMeleeRange, cap, intRangeFraction) * rangeItemMult;
     }
     if(this.baseDrawTime) this.drawTime = Math.max(120, Math.round(this.baseDrawTime / dexMult));
-
     if(this.basePoisonDamage) this.poisonDamage = Math.round(this.basePoisonDamage * (1 + intPoints / STAT_EFFECT_CAP));
-
     const strForHp = EARLY_HP_CAP_TYPES.includes(this.type) ? Math.min(strPoints, EARLY_STAT_CAP_POINTS) : strPoints;
     const strHpMult = 1 + strForHp * 2 / STAT_EFFECT_CAP; // up to 3x max HP at 500 STR — STR is the late-wave survivability stat
-    // CA398 — see HISTORY.md § [1.5.7] Code Archaeology, CA398
     const hpStatBase = HP_STAT_BASE[archetype] || HP_STAT_BASE.MAGE;
     const hpStatRate = HP_STAT_RATE[archetype] || HP_STAT_RATE.MAGE;
-    this.hpStat = Math.min(STAT_EFFECT_CAP,hpStatBase + strForHp * hpStatRate * 0.5 + (this.foodConstitution || 0)); // FOOD-CONSTITUTION-01 (1.7.141)
+    this.hpStat = Math.min(STAT_EFFECT_CAP,hpStatBase + strForHp * hpStatRate * 0.5 + (this.foodConstitution || 0)); // FOOD-CONSTITUTION-01
     const hpStatBonus = Math.round(this.hpStat * 10);
     const newMaxHp = Math.round(this.baseMaxHp * strHpMult * this.legendaryHpMult) + hpStatBonus;
     const hpDelta = newMaxHp - this.maxHp;
     this.maxHp = newMaxHp;
     if(hpDelta > 0) this.hp += hpDelta; // gaining max HP heals by the increase, rather than being wasted or forcing a full heal
-
     const baseMissChance = BASE_MISS_CHANCE_BY_ARCHETYPE[archetype] || BASE_MISS_CHANCE_BY_ARCHETYPE.WARRIOR; // per-archetype baseline (see BASE_MISS_CHANCE_BY_ARCHETYPE)
-    this.missChance = computeMissChance(baseMissChance, dexEff); // front-loaded curve — see computeMissChance() for the full design writeup
-
-    // CA399 — see HISTORY.md § [1.5.7] Code Archaeology, CA399
+    this.missChance = computeMissChance(baseMissChance, dexEff); // front-loaded curve, see computeMissChance()
     this.critChance = Math.min(0.5, 0.025 + diminishingStatValue(dexEff, 0.005));
     this.critMult = Math.min(3, 1.2 + diminishingStatValue(intEff, 0.01));
 
     if(this.rageUntil > gameTime){
       this.damage = Math.round(this.damage * STICKMAN_RAGE_DAMAGE);
-      this.cooldown = Math.max(this.type==='NINJA'?45:80, Math.round(this.cooldown / STICKMAN_RAGE_SPEED));
+      this.cooldown = Math.max(this.minAttackCooldownMs(), Math.round(this.cooldown / STICKMAN_RAGE_SPEED));
       if(this.meleeDamage) this.meleeDamage = Math.round(this.meleeDamage * STICKMAN_RAGE_DAMAGE);
-      if(this.meleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.meleeCooldown / STICKMAN_RAGE_SPEED));
+      if(this.meleeCooldown) this.meleeCooldown = Math.max(MIN_ATTACK_COOLDOWN_MS, Math.round(this.meleeCooldown / STICKMAN_RAGE_SPEED));
     }
     const roundBuffs = this.roundBuffs;
     if(roundBuffs){
       this.damage = Math.round(this.damage * roundBuffs.damage);
-      this.cooldown = Math.max(this.type==='NINJA'?45:80, Math.round(this.cooldown / roundBuffs.speed));
+      this.cooldown = Math.max(this.minAttackCooldownMs(), Math.round(this.cooldown / roundBuffs.speed));
       this.range = Math.round(this.range * roundBuffs.range);
       if(this.meleeDamage) this.meleeDamage = Math.round(this.meleeDamage * roundBuffs.damage);
-      if(this.meleeCooldown) this.meleeCooldown = Math.max(80, Math.round(this.meleeCooldown / roundBuffs.speed));
+      if(this.meleeCooldown) this.meleeCooldown = Math.max(MIN_ATTACK_COOLDOWN_MS, Math.round(this.meleeCooldown / roundBuffs.speed));
       if(this.meleeRange) this.meleeRange = Math.round(this.meleeRange * roundBuffs.range);
     }
     if(this.type === 'HACKER'){ this.maxHp = HACKER_MAX_HP; this.hp = Math.min(this.hp, this.maxHp); }
@@ -1921,7 +1917,6 @@ class Tower{
   // Purchase and equip a type-matching shop item with gold (starter items have cost 0, used at creation).
   buyItem(def){
     if(this.equippedItems.length >= MAX_ITEM_SLOTS) return false;
-    // CA400 — see HISTORY.md § [1.5.7] Code Archaeology, CA400
     const useFreeCharge = def.isBarricade && freeBarricadesLeft > 0;
     if(!useFreeCharge){
       if(def.cost > 0 && gold < def.cost) return false;
@@ -1945,10 +1940,9 @@ class Tower{
     trackGameEvent('item_purchased', { item: def.id || def.name, payment_type: useFreeCharge ? 'free_charge' : (def.woodCost || def.stoneCost ? 'wood_stone' : def.cost > 0 ? 'gold' : 'free'), cost:Math.max(0,purchaseGoldBefore-gold), wood_cost:Math.max(0,purchaseWoodBefore-wood), stone_cost:Math.max(0,purchaseStoneBefore-stone) });
     return true;
   }
-  // CA401 — see HISTORY.md § [1.5.7] Code Archaeology, CA401
   receiveItem(def){
-    if(def && def.isGoldBag) return false; // see HISTORY.md § [1.6.176] Clarify notifications, expansion scenery, and first speed-up, GOLD-BAG-COIN-BURST-01.
-    if(isStructureType(this.type) && !isVaultType(this.type)) return false; // BARRICADE-NO-INVENTORY-01 (1.6.121) — see HISTORY.md § [1.6.121]
+    if(def && def.isGoldBag) return false; // GOLD-BAG-COIN-BURST-01
+    if(isStructureType(this.type) && !isVaultType(this.type)) return false; // BARRICADE-NO-INVENTORY-01
     const stack = STACKABLE_ITEM_IDS.has(def.id) ? this.equippedItems.find(item => item.id === def.id) : null;
     if(stack){ stack.count = heldCount(stack) + heldCount(def); if(stack.id === 'HONEY' && stack.count >= 5) awardMedal('HONEY_HOARDER'); refreshQuickUse(this); return true; }
     if(this.equippedItems.length >= itemCapacityOf(this)) return false;
@@ -1986,77 +1980,66 @@ class Tower{
   allocateStat(stat){
     if(isStructureType(this.type)) return false; // obstacle, not a tower — defensive invariant even though statPoints should already always be 0 for it
     if(this.statPoints <= 0) return false;
-    if(!['str','dex','int'].includes(stat)) return false;
+    if(!TRAINED_STATS.includes(stat)) return false;
     if(this[stat] >= STAT_EFFECT_CAP) return false;              // per-stat trained cap (500)
     if(getTrainedStatTotal(this) >= STAT_TOTAL_CAP) return false; // combined trained cap (1000)
     this[stat]++;
     this.statPoints--;
     logGameEvent(itemHolderLabel(this) + ' spent a point on ' + stat.toUpperCase() + ' (now ' + this[stat] + ', ' + this.statPoints + ' left to spend)');
     this.recomputeStats();
-    this.checkEvolution();
+    this.checkClassUnlocks();
     refreshProgressionMilestones(this);
     return true;
   }
-  // CA402 — see HISTORY.md § [1.5.7] Code Archaeology, CA402
-  checkEvolution(){
+  checkClassUnlocks(){
     if(BASE_ATTUNABLE_TYPES.includes(this.type)){
       this.checkAttunementAndSpecialization();
       return;
     }
     this.infuseElements();
-    const evoMap = EVOLUTIONS[this.type];
-    if(!evoMap) return; // not a base class, or has no further tier to unlock
+    const statUnlockMap = CLASS_STAT_UNLOCKS[this.type];
+    if(!statUnlockMap) return; // not a base class, or has no further tier to unlock
     let targetType = null;
-    if(evoMap.str && this.str >= evoMap.str.threshold) targetType = evoMap.str.target;
-    else if(evoMap.dex && this.dex >= evoMap.dex.threshold) targetType = evoMap.dex.target;
-    else if(evoMap.int && this.int >= evoMap.int.threshold) targetType = evoMap.int.target;
+    if(statUnlockMap.str && this.str >= statUnlockMap.str.threshold) targetType = statUnlockMap.str.target;
+    else if(statUnlockMap.dex && this.dex >= statUnlockMap.dex.threshold) targetType = statUnlockMap.dex.target;
+    else if(statUnlockMap.int && this.int >= statUnlockMap.int.threshold) targetType = statUnlockMap.int.target;
     if(targetType) unlockTowerTypeBuild(targetType);
   }
-  // ELEMENT-INFUSION-01 (1.7.36): every stickman, not only the three starting classes, can be infused at 250 in a stat
-  // and mixes a second element at 250 in another stat. Evolved classes use this; base classes also unlock branches above.
+  // ELEMENT-INFUSION-01: every stickman, not only the three starting classes, can be infused at 250 in a stat
+  // and mixes a second element at 250 in another stat. Unlocked classes use this; base classes also unlock branches above.
+  // Drops an attunement whose stat fell below the threshold, then attunes to the first stat (STR, DEX, INT) at the threshold; true when newly attuned.
+  attuneToReadyStat(){
+    if(this.attunement && (this[ATTUNEMENT_STAT_BY_ELEMENT[this.attunement]] || 0) < ELEMENT_INFUSE_THRESHOLD) this.attunement = null;
+    if(this.attunement) return false;
+    const readyStat = TRAINED_STATS.find(stat => this[stat] >= ELEMENT_INFUSE_THRESHOLD);
+    if(!readyStat) return false;
+    this.attunement = ATTUNEMENTS[readyStat];
+    return true;
+  }
   infuseElements(){
     if(isStructureType(this.type)) return;
-    if(this.attunement && (this[ATTUNEMENT_STAT_BY_ELEMENT[this.attunement]] || 0) < ELEMENT_INFUSE_THRESHOLD) this.attunement = null;
-    if(!this.attunement){
-      if(this.str >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.str;
-      else if(this.dex >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
-      else if(this.int >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.int;
-      if(this.attunement){
-        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Infused!', '#ffd700');
-        playSound('levelup');
-      }
+    if(this.attuneToReadyStat()){
+      spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Infused!', '#ffd700');
+      playSound('levelup');
     }
     refreshElementState(this);
   }
-  // CA403 — see HISTORY.md § [1.5.7] Code Archaeology, CA403
   checkAttunementAndSpecialization(){
-    if(this.attunement && (this[ATTUNEMENT_STAT_BY_ELEMENT[this.attunement]] || 0) < ELEMENT_INFUSE_THRESHOLD) this.attunement = null;
-    if(CLASS_ARCHETYPE[this.type] === 'ARCHER' && this.str >= ATTUNEMENT_THRESHOLD) unlockTowerTypeBuild('CRAZY_CHEF'); // an Archer who trains Strength learns to throw knives
-    if(!this.attunement){
-      if(this.str >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.str;
-      else if(this.dex >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.dex;
-      else if(this.int >= ELEMENT_INFUSE_THRESHOLD) this.attunement = ATTUNEMENTS.int;
-      if(this.attunement){
-        // CA404 — see HISTORY.md § [1.5.7] Code Archaeology, CA404
-        const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
-        const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
-        const remaining = Math.max(0, specializationThresholdFor(target) - (this[attunedStat]||0));
-        const suffix = target ? (' — ' + remaining + ' more ' + attunedStat.toUpperCase() + ' to ' + CONFIG.TOWERS[target].name) : '';
-        spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!' + suffix, '#ffd700');
-        playSound('levelup');
-      }
+    if(CLASS_ARCHETYPE[this.type] === 'ARCHER' && this.str >= CRAZY_CHEF_STR_THRESHOLD) unlockTowerTypeBuild('CRAZY_CHEF'); // an Archer who trains Strength learns to throw knives
+    if(this.attuneToReadyStat()){
+      const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
+      const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
+      const remaining = Math.max(0, specializationThresholdFor(target) - (this[attunedStat]||0));
+      const suffix = target ? (' — ' + remaining + ' more ' + attunedStat.toUpperCase() + ' to ' + CONFIG.TOWERS[target].name) : '';
+      spawnFloatingText(this.x, this.y - 40, ATTUNEMENT_ICON[this.attunement] + ' Attuned!' + suffix, '#ffd700');
+      playSound('levelup');
     }
-    // CA405 — see HISTORY.md § [1.5.7] Code Archaeology, CA405
     if(this.type === 'ARCHER' && this.dex >= SPECIALIZATION_THRESHOLD) unlockTowerTypeBuild('CAT_SNAPPER');
-    // CA406 — see HISTORY.md § [1.5.7] Code Archaeology, CA406
     refreshElementState(this);
     if(!this.attunement) return;
     const attunedStat = ATTUNEMENT_STAT_BY_ELEMENT[this.attunement];
-    {
-      const target = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
-      if(target && this[attunedStat] >= specializationThresholdFor(target)) unlockTowerTypeBuild(target); // no target defined for this (type, element) pair yet is a valid, permanent end state — see SPECIALIZATIONS comments
-    }
-    // CA407 — see HISTORY.md § [1.5.7] Code Archaeology, CA407
+    const specializationTarget = SPECIALIZATIONS[this.type] && SPECIALIZATIONS[this.type][this.attunement];
+    if(specializationTarget && this[attunedStat] >= specializationThresholdFor(specializationTarget)) unlockTowerTypeBuild(specializationTarget);
     for(const other of Object.values(ATTUNEMENTS)){
       if(other === this.attunement) continue;
       const otherStat = ATTUNEMENT_STAT_BY_ELEMENT[other];
@@ -2066,12 +2049,7 @@ class Tower{
       if(hybridTarget) unlockTowerTypeBuild(hybridTarget);
     }
   }
-  // NO-EVOLVE-IN-PLACE-01 (1.6.96) — see HISTORY.md § [1.6.96]. There is no evolve-in-place system:
-  // reaching a stat threshold permanently unlocks a new type for the Build tray (unlockTowerTypeBuild(),
-  // called from checkEvolution()/checkAttunementAndSpecialization() above); the existing tower that
-  // triggered it is untouched and keeps playing as what it already is. evolveInto() used to transform a
-  // tower in place; it had no remaining call sites and is removed.
-  // CA411 — see HISTORY.md § [1.5.7] Code Archaeology, CA411
+  // NO-EVOLVE-IN-PLACE-01: a stat threshold unlocks a new class in the Build tray; the tower that reached it keeps its own class.
   applyChefBurst(){
     if(this.type !== 'CRAZY_CHEF') return;
     if(this.chefKnivesLeft === undefined) this.chefKnivesLeft = CHEF_MAGAZINE;
@@ -2083,9 +2061,7 @@ class Tower{
     }
   }
   canUpgrade(){ if(isProducerType(this.type)) return this.level < PRODUCER_MAX_LEVEL; return this.type !== 'BARRICADE' && this.level < MAX_PROMOTION_LEVEL && this.promotionCapacity() > 0; }
-  // CA412 — see HISTORY.md § [1.5.7] Code Archaeology, CA412
   promotionCapacity(){ return Math.max(0, STAT_TOTAL_CAP - getTrainedStatTotal(this) - this.statPoints); }
-  // CA413 — see HISTORY.md § [1.5.7] Code Archaeology, CA413
   nextUpgradeCost(){ if(isProducerType(this.type)) return 0; return this.canUpgrade() ? promotionCostFor(firstPromotionCost(this.def), this.level) : 0; }
   updateProducer(dt){
     if(isVaultType(this.type)) return;
@@ -2111,18 +2087,20 @@ class Tower{
   }
   upgrade(){
     if(isProducerType(this.type)) return this.upgradeProducer();
-    if(this.type === 'BARRICADE') return false; // obstacle, not a tower — see recomputeStats() for the full rationale; independent guard here rather than only trusting canUpgrade()
+    if(this.type === 'BARRICADE') return false;
     if(!this.canUpgrade()) return false;
     const cost = this.nextUpgradeCost();
     if(gold < cost) return false;
     gold -= cost; this.totalSpent += cost; this.level++;
-    // CA414 — see HISTORY.md § [1.5.7] Code Archaeology, CA414
     const archetype = CLASS_ARCHETYPE[this.type];
     const favoredStat = archetype === 'WARRIOR' ? 'str' : archetype === 'ARCHER' ? 'dex' : archetype === 'MAGE' ? 'int' : null;
     const promotionDice = distributePromotionDice(PROMOTION_PASSIVE_ROLLS, favoredStat);
     const rolled = { str: rollPromotionDice(promotionDice.str), dex: rollPromotionDice(promotionDice.dex), int: rollPromotionDice(promotionDice.int) };
+    const talentStat = TRAINED_STATS[Math.floor(Math.random()*TRAINED_STATS.length)];
+    const talentBonus = rollPromotionDice(PROMOTION_TALENT_DICE_MIN + Math.floor(Math.random()*(PROMOTION_TALENT_DICE_MAX - PROMOTION_TALENT_DICE_MIN + 1)));
+    rolled[talentStat] += talentBonus;
     const granted = { str:0, dex:0, int:0 };
-    for(const stat of ['str','dex','int']){
+    for(const stat of TRAINED_STATS){
       for(let i = 0; i < rolled[stat]; i++){
         if(this[stat] >= STAT_EFFECT_CAP || getTrainedStatTotal(this) >= STAT_TOTAL_CAP) break;
         this[stat]++; granted[stat]++;
@@ -2130,13 +2108,13 @@ class Tower{
     }
     const spendablePoints = Math.min(this.promotionCapacity(), rollPromotionDice(PROMOTION_SPENDABLE_ROLLS));
     this.statPoints += spendablePoints;
-    if(this.autoSpend) autoSpendStatPoints(this); // two additional promotion rolls become player-allocated points; promotion remains stat-only
+    if(this.autoSpend) autoSpendStatPoints(this);
     spawnFloatingText(this.x, this.y - 52, '💪+' + granted.str + ' 🏃+' + granted.dex + ' 🧠+' + granted.int, '#ffd700');
     if(spendablePoints) spawnFloatingText(this.x, this.y - 68, '+' + spendablePoints + ' SPENDABLE', '#7dd3fc');
+    spawnFloatingText(this.x, this.y - 84, 'Talent: ' + PROMOTION_TALENT_LABELS[talentStat] + ' +' + talentBonus, '#ffb74d');
     refreshProgressionMilestones(this);
     this.rollSkinTones(); // re-rolls skin/face shade so leveling up is visibly reflected in appearance, not just stats
-    // CA415 — see HISTORY.md § [1.5.7] Code Archaeology, CA415
-    this.checkEvolution();
+    this.checkClassUnlocks();
     grantTowerMove(this, 'promotion');
     playSound('click');
     trackGameEvent('tower_upgraded', { tower_type: this.type, level: this.level, cost });
@@ -2158,7 +2136,6 @@ class Tower{
     playSound('click');
   }
   sellValue(){ return Math.floor(this.totalSpent * 0.7); }
-
   get targetingRange(){
     if(this.type === 'AXEMAN') return this.axeMode === 'MELEE' ? this.meleeRange : this.range;
     return this.range;
@@ -2178,7 +2155,7 @@ class Tower{
       if(distance <= this.targetingRange && distance < attackerDistance){ attacker = enemy; attackerDistance = distance; }
     }
     if(attacker){ this.target = attacker; return; }
-    // TARGET-MARK-01 (1.6.94): the marked target (see setMarkedTarget()) always wins while in range and
+    // TARGET-MARK-01: the marked target (see setMarkedTarget()) always wins while in range and
     // after immediate attackers, ahead of ordinary target ranking.
     if(markedTargetEnemy && markedTargetEnemy.active && !markedTargetEnemy.escaped){
       const markedDistance = Math.hypot(markedTargetEnemy.x-this.x, markedTargetEnemy.y-this.y);
@@ -2187,7 +2164,6 @@ class Tower{
         return;
       }
     }
-    // CA416 — see HISTORY.md § [1.5.7] Code Archaeology, CA416
     const hysteresisMult = this.type === 'MAGE' ? 6.0 : 1.15;
     const hysteresisMultNeg = this.type === 'MAGE' ? 0.35 : 0.85;
     const range = this.targetingRange;
@@ -2209,7 +2185,6 @@ class Tower{
     }
     this.target = best;
   }
-
   update(dt, enemyHash){
     this.updateHealthStatus(dt);
     if(this.shovelDig && gameTime >= this.shovelDig.finishAt){ const dig = this.shovelDig; this.shovelDig = null; digWithShovel(this, dig.site); refreshQuickUse(this); }
@@ -2220,16 +2195,15 @@ class Tower{
     const iceMult = this.iceSlowUntil > gameTime ? 0.5 : 1;
     const chocolateMult = chocolateAtkSpeedBuffUntil > gameTime ? (1 + CHOCOLATE_ATK_SPEED_BONUS) : 1;
     this.cooldownTimer -= dt*iceMult*chocolateMult;
-    // CA417 — see HISTORY.md § [1.5.7] Code Archaeology, CA417
-    const isMeleeTower = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN' || this.type === 'BERSERKER' || this.type === 'LANCER' || this.type === 'AXEMAN';
+    const isMeleeTower = MELEE_SWING_TYPES.has(this.type) || this.type === 'AXEMAN';
     let skipScan = false;
     if(!isMeleeTower){
       if(this.type === 'CLERIC' || this.type === 'POPE'){
-        skipScan = this.cooldownTimer > 0; // updateClericSmite/updatePopeSmite already no-op entirely in that state — no behavior change, just skips the scan that fed them nothing
+        skipScan = this.cooldownTimer > 0;
       } else if(this.cooldownTimer > 0 && this.target && this.target.active){
         const dCur = Math.hypot(this.target.x-this.x, this.target.y-this.y);
         if(dCur <= this.targetingRange) skipScan = true;
-        else this.target = null; // fell out of range mid-cooldown — drop it so the scan below finds a real target instead of the tower silently holding a dead aim until cooldown expires
+        else this.target = null;
       }
     }
     const nearby = skipScan ? EMPTY_QUERY_RESULT : queryNearby(enemyHash, this.x, this.y, this.targetingRange);
@@ -2240,31 +2214,23 @@ class Tower{
     this.findTarget(nearby);
     if(this.target && !this.target.active) this.target = null;
     if(this.target) this.lastTargetTime = gameTime; // grace-period anchor — see recentlyEngaged below
-    // CA418 — see HISTORY.md § [1.5.7] Code Archaeology, CA418
     const recentlyEngaged = this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500;
     if(this.target){
-      if(this.type === 'ARCHER' || this.type === 'MARKSMAN' || this.type === 'SNIPER' || this.type === 'BLOWDART' || this.type === 'SQUIRTGUN' || this.type === 'BLOW_GUNNER'){
-        // CA419 — see HISTORY.md § [1.5.7] Code Archaeology, CA419 (superseded in part — mid-flight homing
-        // correction is NOT skipped for these anymore, see HISTORY.md § [1.5.8]). Extended to
-        // Blowdart/Squirtgun/Blow Gunner in [1.6.7] — same "flies past, damage registers ~2s late"
-        // symptom reported for Blowdart specifically, same fix: an exact launch-time intercept
-        // instead of the shorter linear extrapolation below, while keeping the mid-flight
-        // correction as the safety net for a target that moves after launch.
+      if(EXACT_INTERCEPT_TYPES.has(this.type)){
+        // Straight-flying shots aim at the exact launch-time intercept; mid-flight correction covers a target that turns after launch.
         this.angle = calculateLeadIntercept(this.x, this.y, this.projectileSpeed || 1, this.target.x, this.target.y, this.target.vx, this.target.vy);
       } else {
         const dx = this.target.x-this.x, dy = this.target.y-this.y;
         const dist = Math.hypot(dx,dy) || 0.0001;
-        // CA420 — see HISTORY.md § [1.5.7] Code Archaeology, CA420
         const timeToImpact = this.projectileSpeed ? Math.min(dist / this.projectileSpeed, MAX_LEAD_PREDICT_TIME) : 0;
         const predX = this.target.x + this.target.vx*timeToImpact;
         const predY = this.target.y + this.target.vy*timeToImpact;
         this.angle = Math.atan2(predY-this.y, predX-this.x);
       }
     } else if(((usesRangedRestPose(this) && !this.target) || (!recentlyEngaged && this.type !== 'MAGE')) && !(gameTime - this.lastKillTime < POST_KILL_READY_MS)){
-      // CA421 — see HISTORY.md § [1.5.7] Code Archaeology, CA421
       this.angle = this.type === 'ARCHER' ? ARCHER_IDLE_ANGLE : IDLE_WEAPON_ANGLE;
     } // else: keep whatever this.angle already was — don't snap to idle mid-cooldown or during the grace window
-    if(this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'PALADIN' || this.type === 'BERSERKER' || this.type === 'LANCER') this.updateSwordsman(dt, nearby);
+    if(MELEE_SWING_TYPES.has(this.type)) this.updateSwordsman(dt, nearby);
     else if(this.type === 'AXEMAN') this.updateAxeman(dt, nearby);
     else if(this.type === 'ARCHER') this.updateArcher(dt);
     else this.updateRanged();
@@ -2280,20 +2246,17 @@ class Tower{
     }
     if(!target){ this.angle = IDLE_WEAPON_ANGLE; return; }
     this.angle = Math.atan2(target.y-this.y, target.x-this.x);
-    // CA797 — see HISTORY.md § [1.6.61] Cleric smite.
     // Cleric's smite is a direct holy hit, not a delayed poison effect. This makes its
     // anti-undead role legible on impact; it ignores armor but shares the attack miss roll.
-    // applyDamage() supplies a 1.5x holy-vs-undead multiplier. Divide the input by it
-    // first so the final smite is exactly 5x tower damage, before variance and crits.
-    const holyDamage = target.isUndead ? this.damage * (5 / 1.5) : this.damage;
+    // applyDamage() adds HOLY_VS_UNDEAD_MULT, so the input is divided by it to land at exactly CLERIC_SMITE_MULT before variance and crits.
+    const holyDamage = target.isUndead ? this.damage * (CLERIC_SMITE_MULT / HOLY_VS_UNDEAD_MULT) : this.damage;
     if(this.telemetry) this.telemetry.shotsFired++;
-    const missed=rollDirectAttackMiss(this,target); // ALL-CLASS-MISS-01 (1.7.137)
+    const missed=rollDirectAttackMiss(this,target); // ALL-CLASS-MISS-01
     if(!missed) target.applyDamage(holyDamage,this,true,true,false,true,true);
     spawnHolyBeam(target.x+(missed ? target.radius*2 : 0),target.y,'#fff3c4');
     playSound('cast_cleric', this.x, undefined, this.y);
     this.cooldownTimer = this.cooldown;
   }
-  // CA423 — see HISTORY.md § [1.5.7] Code Archaeology, CA423
   updatePopeSmite(dt, nearby){
     if(this.cooldownTimer > 0) return;
     if(!nearby.length){ this.angle = IDLE_WEAPON_ANGLE; return; }
@@ -2311,7 +2274,7 @@ class Tower{
     this.cooldownTimer = this.cooldown;
   }
   // Called from a breakaway enemy's attack. Returns true if this hit dropped the tower to 0 HP.
-  // HACKER-01 (1.7.36): when attacked the Hacker drops a smoke screen and goes stealth; enemies stop choosing him
+  // HACKER-01: when attacked the Hacker drops a smoke screen and goes stealth; enemies stop choosing him
   // (see findNearestActiveTower) but direct area damage still reaches him.
   goStealth(){
     this.stealthUntil = gameTime + HACKER_STEALTH_MS;
@@ -2326,7 +2289,6 @@ class Tower{
       chipBarricade(this, attacker);
       return this.hp <= 0;
     }
-    // CA424 — see HISTORY.md § [1.5.7] Code Archaeology, CA424
     const reduced = Math.max(1, Math.round(amount * (1-(this.shieldPct||0))));
     this.hp = Math.max(0, this.hp - reduced);
     spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
@@ -2338,27 +2300,28 @@ class Tower{
       if(hpFrac < 0.25) requestStickmanBark(this, BARK_TIER_VITAL, '🤕', BARK_LINES.CRITICAL, 1, BARK_CHANCE.CRITICAL);
       else if(hpFrac < 0.5) requestStickmanBark(this, BARK_TIER_IMPORTANT, '😟', BARK_LINES.HURT, 2, BARK_CHANCE.HURT);
     }
-    // CA425 — see HISTORY.md § [1.5.7] Code Archaeology, CA425
     if(isFighterTower(this) && (!this.lastHitChatterAt || gameTime - this.lastHitChatterAt > 2500)){
       this.lastHitChatterAt = gameTime;
       playSound('chatter_short', this.x, { archetype: CLASS_ARCHETYPE[this.type], pitchBias: -40 }, this.y);
     }
     if(statusType === 'BURN') this.burnUntil = gameTime + 3000;
     if(statusType === 'ICE') this.iceSlowUntil = Math.max(this.iceSlowUntil, gameTime + 3000);
-    if(this.hp <= 0 && this.disabledUntil <= gameTime){
-      this.disabledUntil = gameTime + 4000;
-      this.disabledWavesLeft = 3; // decrements at the start of each wave; 3 correctly locks through both N+1 and N+2, free by N+3 — "out for 2 of the next rounds"
-      reportTowerDowned(this, 'attack');
-      maybeShowFirstTimeAlert(FIRST_TOWER_DOWN_SEEN_KEY, '⚠️ ' + (this.def ? this.def.name : this.type) + ' overrun. Recovers in a few rounds.', '#ff4444');
-      this.hp = Math.round(this.maxHp * 0.3); // recovers with partial HP once the disable ends
-      this.killStreak = 0; this.nextStreakTier = 0;
-      spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
-      playSound('lose');
-      return true;
-    }
+    if(this.hp <= 0 && this.disabledUntil <= gameTime){ this.becomeOverrun('attack'); return true; }
     return false;
   }
-  maybeEnrage(){ // STICKMAN-RAGE-01 (1.8.20): a struck stickman has a small chance to fly into a rage
+  // TOWER-OVERRUN-01: a stickman at 0 HP sits out the next TOWER_OVERRUN_WAVES waves and recovers with part of its health, whatever downed it.
+  becomeOverrun(cause){
+    this.disabledUntil = gameTime + TOWER_OVERRUN_MS;
+    this.disabledWavesLeft = TOWER_OVERRUN_WAVES;
+    reportTowerDowned(this, cause);
+    maybeShowFirstTimeAlert(FIRST_TOWER_DOWN_SEEN_KEY, '⚠️ ' + (this.def ? this.def.name : this.type) + ' overrun. Recovers in a few rounds.', '#ff4444');
+    this.hp = Math.round(this.maxHp * TOWER_RECOVERY_HP_FRACTION);
+    this.killStreak = 0; this.nextStreakTier = 0;
+    spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
+    playSound('lose');
+    if(squadWipedOut() && gameState === 'PLAYING') endRunOnSquadWipe();
+  }
+  maybeEnrage(){ // STICKMAN-RAGE-01: a struck stickman has a small chance to fly into a rage
     if(this.hp <= 0 || this.rageUntil > gameTime || Math.random() >= STICKMAN_RAGE_CHANCE) return;
     this.rageUntil = gameTime + STICKMAN_RAGE_MS;
     awardMedal('ENRAGED');
@@ -2381,13 +2344,7 @@ class Tower{
         this.burnTickTimer = 500;
         this.hp = Math.max(0, this.hp - 4);
         spawnFloatingText(this.x, this.y - 30, '-4🔥', '#ff8844');
-        if(this.hp <= 0 && this.disabledUntil <= gameTime){
-          this.disabledUntil = gameTime + 4000;
-          this.disabledWavesLeft = 3;
-          reportTowerDowned(this, 'burn');
-          this.hp = Math.round(this.maxHp * 0.3);
-          this.killStreak = 0; this.nextStreakTier = 0;
-        }
+        if(this.hp <= 0 && this.disabledUntil <= gameTime) this.becomeOverrun('burn');
       }
     }
     if(this.type !== 'BARRICADE' && this.hp < this.maxHp && this.disabledUntil <= gameTime && this.disabledWavesLeft <= 0){
@@ -2395,7 +2352,6 @@ class Tower{
       this.hp = Math.min(this.maxHp, this.hp + this.maxHp*regenRate*dt/1000);
     }
   }
-
   archerNockAmount(){
     if(!this.target) return 0;
     if(this.isDrawing || this.cooldownTimer <= 0) return 1;
@@ -2432,42 +2388,28 @@ class Tower{
         } else {
           this.cooldownTimer = this.cooldown;
         }
-      } // else: pool exhausted this frame — cooldownTimer stays <=0 and burstShotsLeft is untouched, so the very next frame retries the same shot rather than silently consuming it
+      }
     }
   }
   fireProjectile(){
     this.lastFireTime = gameTime;
-    // CA426 — see HISTORY.md § [1.5.7] Code Archaeology, CA426
     const angle = this.angle;
-    // CA427 — see HISTORY.md § [1.5.7] Code Archaeology, CA427
     const armLen = 13;
-    const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
+    const weaponScale = (this.baseRange && this.baseRange > 0) ? clampNum(this.range / this.baseRange, 1.0, 1.6) : 1;
     let localReach;
-    switch(this.type){
-      case 'ARCHER': localReach = armLen + 5 + 2; break; // bowArmLen at full draw (drawAmt=1, since firing only happens then)
-      case 'MAGE': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
-      case 'SNAPCASTER': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
-      case 'BOMBER': localReach = armLen + weaponLenFromScale(12, 19, weaponScale); break;
-      case 'GATLING': localReach = armLen + weaponLenFromScale(14, 22, weaponScale); break;
-      case 'BLOWDART': localReach = armLen*0.7 + 14*weaponScale; break; // short pipe held near the mouth — matches the render formula exactly, which does scale the pipe length
-      case 'SQUIRTGUN': localReach = armLen*0.9 + weaponLenFromScale(11, 17, weaponScale); break;
-      case 'BLOW_GUNNER': localReach = armLen*0.85 + weaponLenFromScale(9, 14, weaponScale); break;
-      case 'CAT_SNAPPER': localReach = armLen + weaponLenFromScale(10, 16, weaponScale); break;
-      case 'NECROMANCER': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
-      case 'PROTON': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
-      case 'DARK_MATTER': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
-      case 'QUASAR': localReach = armLen + weaponLenFromScale(10, 15, weaponScale); break;
-      default: localReach = armLen + 10;
-    }
+    const weaponReach = MUZZLE_WEAPON_REACH[this.type];
+    if(this.type === 'ARCHER') localReach = armLen + 5 + 2; // bow arm at full draw: firing only happens then
+    else if(this.type === 'BLOWDART') localReach = armLen*0.7 + 14*weaponScale; // short pipe at the mouth, the same formula the renderer uses
+    else if(weaponReach) localReach = armLen*weaponReach.armShare + weaponLenFromScale(weaponReach.minLen, weaponReach.maxLen, weaponScale);
+    else localReach = armLen + 10;
     const muzzleOffset = localReach * STICKMAN_SCALE;
-    // CA428 — see HISTORY.md § [1.5.7] Code Archaeology, CA428
     const bodyScaleY = this.buildScaleY || (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
     const legendaryScale = this.isLegendary ? 1.1 : 1;
-    const pivotBaseY = (this.type === 'BLOWDART' || this.type === 'BLOW_GUNNER') ? -21 : this.type === 'ARCHER' ? ARCHER_ARROW_PIVOT_Y : -13; // ARROW-HEIGHT-01 (1.7.112): the archer's arrows leave 2 px higher, level with the string // Blow Gunner is also a mouth-anchored blowgun weapon, same as Blowdart — keep the spawn point in sync
+    const pivotBaseY = (this.type === 'BLOWDART' || this.type === 'BLOW_GUNNER') ? -21 : this.type === 'ARCHER' ? ARCHER_ARROW_PIVOT_Y : -13; // ARROW-HEIGHT-01
     const shoulderYWorld = pivotBaseY * STICKMAN_SCALE * bodyScaleY * legendaryScale;
     let spawnX = this.x + Math.cos(angle)*muzzleOffset;
     let spawnY = this.y + shoulderYWorld + Math.sin(angle)*muzzleOffset;
-    if(this.type==='ARCHER'){ // ARROW-GRIP-01 (1.7.124): the arrow is released from the bow hand itself (the grip at the middle of the bow), not from a point out ahead of it, so it no longer appears to leave the quiver side and drift to the target
+    if(this.type==='ARCHER'){ // ARROW-GRIP-01
       const arrowTip=archerNockedArrowTip(angle,1,0), bodyScaleX=(this.buildScaleX||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale, bodyScaleYWorld=(this.buildScaleY||1)*Math.sqrt(this.weight)*STICKMAN_SCALE*legendaryScale;
       spawnX=this.x+arrowTip.x*bodyScaleX; spawnY=this.y+arrowTip.y*bodyScaleYWorld;
     }
@@ -2479,7 +2421,7 @@ class Tower{
       spawnX=this.x+hx*this.buildScaleX*weightScale;
       spawnY=this.y+hy*this.buildScaleY*weightScale;
     }
-    // CLOSE-SHOT-01 (1.7.106) — see HISTORY.md § [1.7.106]: against an enemy closer than the muzzle reach the shot used to spawn beside or past the target and fly up to 180 degrees off the aim. The spawn point now stops a short run-up before the target's edge on the line from the shoulder, so the shot always travels forward along the aim.
+    // CLOSE-SHOT-01: against an enemy closer than the muzzle reach, the shot spawns on the line to the target instead of beside or past it.
     if(this.target && this.type !== 'NINJA'){
       const pivotY = this.y + shoulderYWorld, toTargetX = this.target.x - this.x, toTargetY = this.target.y - pivotY, pivotDistance = Math.hypot(toTargetX, toTargetY);
       const closeReach = pivotDistance - ((this.target.radius || 14) + CLOSE_SHOT_RUNUP_PX);
@@ -2495,88 +2437,57 @@ class Tower{
     p.active = true;
     p.renderPrevX = undefined; p.renderPrevY = undefined;
     p.x = spawnX; p.y = spawnY;
-    // PROJECTILE-AIM-01 (1.6.95) — see HISTORY.md § [1.6.95]. `angle` above is aimed from the tower's
-    // CENTER at the target, but the muzzle spawns well above center (shoulderYWorld — largest for
-    // Blowdart/Blow Gunner, mouth-anchored weapons). Firing along that same angle from the elevated
-    // spawn point sends the shot flying parallel to, but above, the correct line — worst at close
-    // range, exactly the reported "dart fires over the target's head" bug. Flight direction is
-    // recomputed from the actual spawn point to the target; the muzzle POSITION above still uses the
-    // tower-center angle, since that's what makes the weapon point convincingly at the target.
+    // PROJECTILE-AIM-01: the muzzle sits above the tower centre, so flight direction is re-aimed from the spawn point; the weapon pose keeps the centre angle.
     const flightAngle = this.target ? Math.atan2(this.target.y - spawnY, this.target.x - spawnX) : angle;
     p.vx = Math.cos(flightAngle)*this.projectileSpeed;
     p.vy = Math.sin(flightAngle)*this.projectileSpeed;
-    // CA429 — see HISTORY.md § [1.5.7] Code Archaeology, CA429
     p.spawnTime = gameTime;
     p.maxFlightMs = Math.max(600, (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000 * 1.8);
     p.damage = this.damage;
-    // CA430 — see HISTORY.md § [1.5.7] Code Archaeology, CA430
     if(this.type === 'GLAIVE' && this.target && this.target.isHutBuilding) p.damage = Math.round(p.damage * 5);
-    // CA431 — see HISTORY.md § [1.5.7] Code Archaeology, CA431
     if(this.burstCount === 2 && this.burstShotsLeft < this.burstCount) p.damage = Math.round(p.damage * 0.25);
-    p.angle = flightAngle; // PROJECTILE-AIM-01 (1.6.95): visual orientation matches the corrected flight direction, not the muzzle-position angle
+    p.angle = flightAngle; // PROJECTILE-AIM-01
     p.slowFactor = this.slowFactor || 0;
     p.slowDuration = this.slowDuration || 0;
     p.splashRadius = (this.splashRadius || 0) + (towerElement(this) === 'QUASAR' ? QUASAR_ELEMENT_SPLASH_RADIUS : 0);
     p.isAxe = false;
     p.ammo = PROJECTILE_AMMO_BY_TOWER[this.type] || 'ARROW';
-    const arcFlightDistancePx = Math.hypot(this.target.x - spawnX, this.target.y - spawnY); // ARROW-LOOK-01 (1.7.91)
+    const arcFlightDistancePx = Math.hypot(this.target.x - spawnX, this.target.y - spawnY); // ARROW-LOOK-01
     p.arcSpawnTime = gameTime; p.arcFlightMs = (arcFlightDistancePx / this.projectileSpeed) * 1000; p.flightDistancePx = arcFlightDistancePx;
     p.arcPx = p.ammo === 'ARROW' ? Math.min(ARROW_ARC_MAX_PX, arcFlightDistancePx * ARROW_ARC_PER_PX) : 0;
-    // CA432 — see HISTORY.md § [1.5.7] Code Archaeology, CA432
     p.isMoneyBag = this.type === 'MERCHANT';
     if(p.isMoneyBag){
       p.axeSpawnTime = gameTime;
       p.axeFlightMs = (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000;
     }
-    // CA433 — see HISTORY.md § [1.5.7] Code Archaeology, CA433
     p.effectType = this.type === 'CAT_SNAPPER' ? 'CAT' : null;
-    p.isMagicMissile = this.type === 'MAGE' || this.type === 'SNAPCASTER' || this.type === 'NECROMANCER' || this.type === 'PROTON' || this.type === 'DARK_MATTER' || this.type === 'QUASAR';
+    p.isMagicMissile = MAGIC_MISSILE_TYPES.has(this.type);
     p.sourceTower = this;
     p.poisonDamage = this.poisonDamage || 0;
     p.poisonDuration = this.poisonDuration || 0;
     p.acidDamage = this.acidDamage || 0; p.acidDuration = this.acidDuration || 0; p.acidSlow = this.acidSlow || 0; p.acidRadius = this.acidRadius || 0; // ACID-COAT-01
     p.elementKey = towerElement(this);
     p.elementColor = (ELEMENT_VISUALS[p.elementKey] || {}).color || null;
-    p.color = (this.type === 'MAGE' || this.type === 'SNAPCASTER') ? '#7dd3fc' : this.type === 'BOMBER' ? '#3a2a1a' : this.type === 'BLOWDART' ? '#7cb518' : this.type === 'CAT_SNAPPER' ? '#2a2a2a' : this.type === 'NECROMANCER' ? '#5a2d82' : this.type === 'BLOW_GUNNER' ? '#c8e8f0' : this.type === 'SQUIRTGUN' ? '#8bd62f' : this.type === 'PROTON' ? '#a855f7' : this.type === 'DARK_MATTER' ? '#1a1a2e' : this.type === 'QUASAR' ? '#fdf6d8' : '#f1c40f';
-    // CA434 — see HISTORY.md § [1.5.7] Code Archaeology, CA434
+    p.color = PROJECTILE_COLOR_BY_TOWER[this.type] || '#f1c40f';
     p.trackedTarget = null; p.trackedId = undefined; p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
     if(!p.splashRadius && this.target){
       p.trackedTarget = this.target; p.trackedId = this.target ? this.target.id : undefined;
-      const willHit = !prdRollFires(attackMissChance(this.missChance + windMissPenalty(this), this.target), this, 'missLuckBalance');
-      if(!willHit){
-        // CA436 — see HISTORY.md § [1.5.7] Code Archaeology, CA436
-        const missOffsetPx = Math.max(this.target.radius*1.8, 20) * (Math.random() < 0.5 ? -1 : 1);
-        const distToTarget = Math.hypot(this.target.x-spawnX, this.target.y-spawnY) || 1;
-        const angleOffset = Math.atan2(missOffsetPx, distToTarget);
-        const missAngle = angle + angleOffset;
-        p.vx = Math.cos(missAngle)*this.projectileSpeed;
-        p.vy = Math.sin(missAngle)*this.projectileSpeed;
-        p.angle = missAngle;
-        p.isGuaranteedMiss = true;
-        if(this.telemetry) this.telemetry.misses++;
-        p.missRevealAt = gameTime + (distToTarget/this.projectileSpeed)*1000;
-      }
+      const willHit = !prdRollFires(attackMissChance(this.missChance, this.target), this, 'missLuckBalance');
+      if(!willHit) deflectProjectileAsMiss(p, this, angle, this.target.radius, Math.hypot(this.target.x-spawnX, this.target.y-spawnY) || 1);
     }
-    const rangedSound = {
-      ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
-      BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
-      MARKSMAN: 'shot_gunalinder', CAT_SNAPPER: 'shot_cat', BLOW_GUNNER: 'shot_blowdart',
-      CRAZY_CHEF: 'shot_archer', BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage', NECROMANCER: 'cast_mage', PROTON: 'cast_mage', DARK_MATTER: 'cast_mage', QUASAR: 'cast_mage'
-    }[this.type] || 'shot_archer';
-    if(this.type!=='NINJA' || gameTime-(this.ninjaSoundAt ?? -Infinity)>=140){
-      playSound(this.type==='NINJA'?'shot_blowdart':rangedSound, this.x, undefined, this.y);
-      if(this.type==='NINJA') this.ninjaSoundAt=gameTime;
+    if(this.type !== 'NINJA' || gameTime - (this.ninjaSoundAt ?? -Infinity) >= NINJA_SHOT_SOUND_GAP_MS){
+      playSound(RANGED_SHOT_SOUND[this.type] || 'shot_archer', this.x, undefined, this.y);
+      if(this.type === 'NINJA') this.ninjaSoundAt = gameTime;
     }
     return true;
   }
-
   updateAxeman(dt, nearby){
     if(!this.target){ this.renderSwordAngle = IDLE_WEAPON_ANGLE; }
     if(this.target && !this.isSwinging && this.cooldownTimer <= 0){
       if(this.axeMode === 'MELEE'){
         this.isSwinging = true;
         this.swingStart = gameTime;
-        this.hitSet = new Set();
+        this.hitSet.clear();
         this.baseAngle = this.angle;
         this.lastSwordAngle = this.baseAngle - this.swingArc/2;
         this.cooldownTimer = this.meleeCooldown;
@@ -2600,12 +2511,12 @@ class Tower{
     const t = this.target;
     const dx = t.x-this.x, dy = t.y-this.y;
     const dist = Math.hypot(dx,dy) || 0.0001;
-    const timeToImpact = Math.min(dist / this.projectileSpeed, MAX_LEAD_PREDICT_TIME); // see MAX_LEAD_PREDICT_TIME note above (1.1.2)
+    const timeToImpact = Math.min(dist / this.projectileSpeed, MAX_LEAD_PREDICT_TIME);
     const predX = t.x + t.vx*timeToImpact;
     const predY = t.y + t.vy*timeToImpact;
     const angle = Math.atan2(predY-this.y, predX-this.x);
     const armLen = 13;
-    const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
+    const weaponScale = (this.baseRange && this.baseRange > 0) ? clampNum(this.range / this.baseRange, 1.0, 1.6) : 1;
     const muzzleOffset = (armLen + weaponLenFromScale(15, 24, weaponScale)) * STICKMAN_SCALE;
     const bodyScaleY = this.buildScaleY || (JOB_BUILD[this.type] && JOB_BUILD[this.type].scaleY) || 1;
     const legendaryScale = this.isLegendary ? 1.1 : 1;
@@ -2620,48 +2531,34 @@ class Tower{
     p.x = spawnX; p.y = spawnY;
     p.vx = Math.cos(angle)*this.projectileSpeed;
     p.vy = Math.sin(angle)*this.projectileSpeed;
-    // CA437 — see HISTORY.md § [1.5.7] Code Archaeology, CA437
     p.spawnTime = gameTime;
     p.maxFlightMs = Math.max(600, (Math.hypot(this.target.x-spawnX, this.target.y-spawnY) / this.projectileSpeed) * 1000 * 1.8);
     p.damage = this.damage;
     p.angle = angle;
     p.slowFactor = 0; p.slowDuration = 0; p.splashRadius = 0; p.poisonDamage = 0; p.poisonDuration = 0; p.acidDamage = 0;
     p.isAxe = true; p.spinAngle = 0; p.sourceTower = this; p.isMagicMissile = false;
-    // CA438 — see HISTORY.md § [1.5.7] Code Archaeology, CA438
     p.axeSpawnTime = gameTime;
     p.axeFlightMs = Math.max(200, timeToImpact*1000);
     p.effectType = null; // reset — see fireProjectile()'s identical reset for why this must be unconditional on every fire path
     p.color = '#9aa0a6';
-    // CA439 — see HISTORY.md § [1.5.7] Code Archaeology, CA439
     p.trackedTarget = t; p.trackedId = t ? t.id : undefined;
     const willHit = !prdRollFires(attackMissChance(this.missChance, t), this, 'missLuckBalance');
     p.isGuaranteedMiss = false; p.missRevealAt = 0; p.missRevealed = false;
-    if(!willHit){
-      const missOffsetPx = Math.max(t.radius*1.8, 20) * (Math.random() < 0.5 ? -1 : 1);
-      const angleOffset = Math.atan2(missOffsetPx, dist);
-      const missAngle = angle + angleOffset;
-      p.vx = Math.cos(missAngle)*this.projectileSpeed;
-      p.vy = Math.sin(missAngle)*this.projectileSpeed;
-      p.angle = missAngle;
-      p.isGuaranteedMiss = true;
-      if(this.telemetry) this.telemetry.misses++;
-      p.missRevealAt = gameTime + (dist/this.projectileSpeed)*1000;
-    }
+    if(!willHit) deflectProjectileAsMiss(p, this, angle, t.radius, dist);
     this.renderSwordAngle = angle;
     playSound('throw_axe', this.x, undefined, this.y);
     return true;
   }
-
   isTwoHandedMelee(){ return (this.type === 'SWORDSMAN' && this.spec === 'TWOHANDER') || this.type === 'HAMMERMAN' || this.type === 'PALADIN' || this.type === 'BERSERKER'; }
   updateSwordsman(dt, nearby){
     const hasDual = this.spec === 'DUAL';
     if(!this.isSwinging && this.target && this.cooldownTimer <= 0){
       this.isSwinging = true;
       this.swingStart = gameTime;
-      this.hitSet = new Set();
+      this.hitSet.clear();
       this.baseAngle = this.angle;
       this.lastSwordAngle = this.baseAngle - this.swingArc/2;
-      // TWOHANDED-RHYTHM-01 (1.6.110) — see HISTORY.md § [1.6.110]
+      // TWOHANDED-RHYTHM-01
       if(this.isTwoHandedMelee()){
         this.rhythmBeat = ((this.rhythmBeat || 0) + 1) % 2;
         this.cooldownTimer = this.cooldown * (this.rhythmBeat === 1 ? 0.4 : 1.6);
@@ -2672,14 +2569,13 @@ class Tower{
         : (this.type === 'HAMMERMAN' || this.type === 'PALADIN') ? 'swing_blunt'
         : 'swing_blade'; // Swordsman, Axeman, Berserker
       playSound(meleeSound, this.x, undefined, this.y);
-
       if(hasDual){
         const secondary = this.findSecondaryTarget(nearby);
         this.target2 = secondary;
         if(secondary){
           this.isSwinging2 = true;
-          this.swingStart2 = gameTime + this.swingDuration * DUAL_OFFHAND_DELAY_FRACTION; // DUAL-STAGGER-01 (1.6.121) — see HISTORY.md § [1.6.121]
-          this.hitSet2 = new Set();
+          this.swingStart2 = gameTime + this.swingDuration * DUAL_OFFHAND_DELAY_FRACTION; // DUAL-STAGGER-01
+          this.hitSet2.clear();
           this.baseAngle2 = Math.atan2(secondary.y-this.y, secondary.x-this.x);
           this.lastSwordAngle2 = this.baseAngle2 - this.swingArc/2;
         } else {
@@ -2724,11 +2620,10 @@ class Tower{
     }
     return best;
   }
-  // CA440 — see HISTORY.md § [1.5.7] Code Archaeology, CA440
   targetScore(e, distance){
     switch(this.targetMode){
       case 'FIRST': return e.traveled;
-      case 'LAST': return -e.traveled; // TARGET-LAST-01 (1.7.137)
+      case 'LAST': return -e.traveled; // TARGET-LAST-01
       case 'STRONGEST': return e.hp;
       case 'WEAKEST': return -e.hp;
       case 'FARM': {
@@ -2741,7 +2636,7 @@ class Tower{
       default: return -distance;
     }
   }
-  visualSwingOffset(t){ // same as swingOffset through the strike; the recovery settles on the aim so the blade never snaps back (MELEE-SWING-01)
+  visualSwingOffset(t){ // MELEE-SWING-01
     const w = this.swingArc;
     if(t < 0.6) return this.swingOffset(t);
     return w * (1 - easeInOutQuad((t - 0.6) / 0.4));
@@ -2760,15 +2655,12 @@ class Tower{
       return w - (w*p*0.5);
     }
   }
-  // CA441 — see HISTORY.md § [1.5.7] Code Archaeology, CA441
   checkConeHits(nearby, prevA, currA, hitSet, damage, radius, stunMs, isHoly){
     damage = damage ?? this.damage;
     radius = radius ?? this.range;
     const lo = Math.min(prevA, currA), hi = Math.max(prevA, currA);
     let streakClaimed = false;
-    // CA442 — see HISTORY.md § [1.5.7] Code Archaeology, CA442
     if(hitSet.size >= MELEE_SWEEP_MAX_TARGETS) return;
-    // CA443 — see HISTORY.md § [1.5.7] Code Archaeology, CA443
     const slotE = this._sweepE || (this._sweepE = new Array(MELEE_SWEEP_MAX_TARGETS));
     const slotD = this._sweepD || (this._sweepD = new Array(MELEE_SWEEP_MAX_TARGETS));
     let slotCount = 0;
@@ -2780,7 +2672,6 @@ class Tower{
       while(ang < lo - Math.PI) ang += Math.PI*2;
       while(ang > hi + Math.PI) ang -= Math.PI*2;
       if(ang < lo || ang > hi) continue;
-      // CA444 — see HISTORY.md § [1.5.7] Code Archaeology, CA444
       let insertAt = slotCount < MELEE_SWEEP_MAX_TARGETS ? slotCount : -1;
       for(let i = 0; i < slotCount; i++){
         if(d < slotD[i]){ insertAt = i; break; }
@@ -2797,13 +2688,9 @@ class Tower{
       const isFirstHitThisSwing = hitSet.size === 0; // captured before this hit is added below — true only for the very first target this whole swing connects with
       const fallenOff = Math.pow(1 - MELEE_SWEEP_FALLOFF, hitSet.size); // hitSet.size is this swing's hit count so far, before this one is added
       hitSet.add(e.id);
-      if(this.telemetry) this.telemetry.shotsFired++; // melee "shot" = one swing actually connecting with one target, hit or miss — see checkConeHits' own per-target roll below
+      if(this.telemetry) this.telemetry.shotsFired++;
       if(prdRollFires(attackMissChance(this.missChance, e), this, 'missLuckBalance')){
-        // CA445 — see HISTORY.md § [1.5.7] Code Archaeology, CA445
-        // HUT-PUSHBACK-01 (1.6.7) — see HISTORY.md § [1.6.7]. dodgeEnemyFromSwing() had no
-        // isHutBuilding guard, so a missed swing against a Hut/Castle physically shoved the
-        // building 7px sideways every time — a static structure visibly sliding on every miss,
-        // which is exactly what read as "pushback." Buildings don't dodge; only living enemies do.
+        // HUT-PUSHBACK-01: only living enemies dodge a missed swing; camp buildings never slide.
         if(!e.isHutBuilding) dodgeEnemyFromSwing(e, this);
         spawnFloatingText(e.x, e.y - e.radius - 6, 'MISS', '#aaaaaa');
         if(this.telemetry) this.telemetry.misses++;
@@ -2816,8 +2703,6 @@ class Tower{
       if(stunMs) e.applyStun(stunMs);
     }
   }
-
-  // CA446 — see HISTORY.md § [1.5.7] Code Archaeology, CA446
   drawElementSwingArc(ctx){
     const element = towerElement(this);
     if(!element || graphicsQuality === 'low' || underHeavyVisualLoad || !this.swingStart) return;
@@ -2836,32 +2721,26 @@ class Tower{
     ctx.stroke();
     ctx.restore();
   }
-  drawBloodLustAura(ctx){
-    const pulse = 0.5 + 0.5 * Math.sin(gameTime / 160);
-    const radius = 26 + pulse * 4;
+  drawRageMark(ctx){ // RAGE-MARK-01: an anger vein above the head, with steam venting during a rage
+    const pose = this.bloodPose;
+    if(!pose) return;
+    const markX = pose.x + 11*pose.sx, markY = pose.y - 38*pose.sy;
+    const throb = 1 + 0.18*Math.abs(Math.sin(presentationTime / 140));
     ctx.save();
-    // CA447 — see HISTORY.md § [1.5.7] Code Archaeology, CA447
-    if(graphicsQuality === 'low' || underHeavyVisualLoad){
-      ctx.fillStyle = 'rgba(180,10,10,' + (0.28 + pulse * 0.14).toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(this.x, this.y, radius * 0.82, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-      return;
+    ctx.translate(markX, markY); ctx.scale(throb, throb);
+    ctx.strokeStyle = '#d61f1f'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    for(let quadrant = 0; quadrant < 4; quadrant++){
+      ctx.rotate(Math.PI/2);
+      ctx.beginPath(); ctx.moveTo(1.4, -4.4); ctx.quadraticCurveTo(1.4, -1.4, 4.4, -1.4); ctx.stroke();
     }
-    const glow = ctx.createRadialGradient(this.x, this.y, radius * 0.25, this.x, this.y, radius);
-    glow.addColorStop(0, 'rgba(180,10,10,' + (0.35 + pulse * 0.2).toFixed(2) + ')');
-    glow.addColorStop(1, 'rgba(120,0,0,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(this.x, this.y, radius, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,40,40,' + (0.5 + pulse * 0.35).toFixed(2) + ')';
-    ctx.lineWidth = 2 + pulse;
-    ctx.beginPath(); ctx.arc(this.x, this.y, radius * 0.82, 0, Math.PI*2); ctx.stroke();
-    for(let i = 0; i < 5; i++){
-      const angle = (gameTime / 900) + i * (Math.PI * 2 / 5);
-      const dripPhase = ((gameTime / 12) + i * 37) % 26;
-      ctx.fillStyle = 'rgba(150,10,10,' + Math.max(0, 0.55 - dripPhase / 60).toFixed(2) + ')';
-      ctx.beginPath();
-      ctx.ellipse(this.x + Math.cos(angle) * radius * 0.82, this.y + Math.sin(angle) * radius * 0.5 + dripPhase, 1.6, 3.4, 0, 0, Math.PI*2);
-      ctx.fill();
+    ctx.restore();
+    if(this.rageUntil <= gameTime || graphicsQuality === 'low' || underHeavyVisualLoad) return;
+    const headX = pose.x, headY = pose.y - 28*pose.sy;
+    ctx.save();
+    for(let puff = 0; puff < 2; puff++){
+      const life = ((presentationTime + puff*350) % RAGE_STEAM_CYCLE_MS) / RAGE_STEAM_CYCLE_MS, side = puff ? 1 : -1;
+      ctx.fillStyle = 'rgba(235,235,235,' + (0.75*(1 - life)).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(headX + side*(7 + life*6)*pose.sx, headY - life*14*pose.sy, (2 + life*4)*pose.sx, 0, Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
@@ -2885,15 +2764,13 @@ class Tower{
   }
   draw(ctx, isSelected){
     if(isProducerType(this.type)){ this.drawProducer(ctx); return; }
-    if((this.bloodLustUntil > gameTime || this.rageUntil > gameTime) && isFighterTower(this)) this.drawBloodLustAura(ctx);
     this.drawElementSwingArc(ctx);
     if(this.type === 'BARRICADE'){
-      // ENEMY-HEADBUTT-01 (1.7.139): the attacking emoji carries the impact cue; no red damage disc.
-      ctx.font = pxFont(28*STICKMAN_SCALE); // 28*STICKMAN_SCALE is a true constant (STICKMAN_SCALE never changes at runtime) — this was rebuilding the identical string on literally every tower, every frame, forever
+      // ENEMY-HEADBUTT-01: the attacking emoji carries the impact cue; no red damage disc.
+      ctx.font = pxFont(28*STICKMAN_SCALE);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      // CA449 — see HISTORY.md § [1.5.7] Code Archaeology, CA449
       ctx.fillStyle = '#ffffff';
-      drawEmojiGroundShadow(ctx,'🚧',this.x,this.y,28*STICKMAN_SCALE,'serif',1); // SHADOW-ALIGN-01 (1.8.14): the mask uses the font the glyph is drawn with, so the foot lines up
+      drawEmojiGroundShadow(ctx,'🚧',this.x,this.y,28*STICKMAN_SCALE,'serif',1); // SHADOW-ALIGN-01: the mask uses the font the glyph is drawn with, so the foot lines up
       ctx.fillText('🚧', this.x, this.y);
       if(this.hp < this.maxHp && this.hp > 0){
         const frac = this.hp / this.maxHp;
@@ -2913,9 +2790,9 @@ class Tower{
       }
       return;
     }
-    // CA450 — see HISTORY.md § [1.5.7] Code Archaeology, CA450
     let lungeAmt = 0, swingProgress = 0;
-    if(this.isSwinging && (this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'HAMMERMAN' || this.type === 'AXEMAN' || this.type === 'BERSERKER' || this.type === 'LANCER')){
+    const usesSwingAngle = MELEE_SWING_TYPES.has(this.type) || this.type === 'AXEMAN';
+    if(this.isSwinging && usesSwingAngle){
       const st = Math.min(1, (gameTime-this.swingStart)/this.swingDuration);
       lungeAmt = meleeLungePx(st) * (this.type === 'SPEARMAN' || this.type === 'LANCER' ? 0.5 : 1); // lean back in the wind-up, step into the strike, settle (MELEE-SWING-01)
       swingProgress = st;
@@ -2924,26 +2801,23 @@ class Tower{
     if(this.type === 'MAGE' || this.type === 'SNAPCASTER' || this.type === 'PROTON' || this.type === 'DARK_MATTER' || this.type === 'QUASAR'){
       const sinceFired = gameTime - this.lastFireTime;
       if(sinceFired < MAGE_CAST_RECOIL_MS) castProgress = 1 - sinceFired/MAGE_CAST_RECOIL_MS;
-      lungeAmt = -mageRecoilKick(castProgress) * 3; // MAGE-RECOIL-01 (1.7.61): the body is pushed back as the staff kicks
+      lungeAmt = -mageRecoilKick(castProgress) * 3; // MAGE-RECOIL-01: the body is pushed back as the staff kicks
     }
-    // CA451 — see HISTORY.md § [1.5.7] Code Archaeology, CA451
     let throwProgress = 0;
     if(this.type === 'CAT_SNAPPER'){
       const sinceThrown = gameTime - this.lastFireTime;
       if(sinceThrown < 350) throwProgress = 1 - sinceThrown/350;
     }
-    // CA452 — see HISTORY.md § [1.5.7] Code Archaeology, CA452
     let chargeProgress = 0;
     if((this.type === 'MAGE' || this.type === 'SNAPCASTER' || (this.type === 'SWORDSMAN' && this.spec === 'TWOHANDER')) && this.cooldown > 0){
       chargeProgress = clampNum(1 - (Math.max(0, this.cooldownTimer - renderLeftoverMs()) / this.cooldown), 0, 1);
     }
     const headItemDef = this.equippedItems.find(it => it.headItem);
-    const weaponScale = (this.baseRange && this.baseRange > 0) ? Math.min(1.6, Math.max(1.0, this.range / this.baseRange)) : 1;
+    const weaponScale = (this.baseRange && this.baseRange > 0) ? clampNum(this.range / this.baseRange, 1.0, 1.6) : 1;
     const weaponThickness = Math.min(1.8, 1 + diminishingStatValue(this.str, 0.025)); // STR: noticeably thicker blade/head, diminishing and capped
-    // CA453 — see HISTORY.md § [1.5.7] Code Archaeology, CA453
-    const holdingAfterKill = gameTime - this.lastKillTime < POST_KILL_READY_MS; // KILL-READY-01 (1.8.40): after a kill the weapon stays raised for a few seconds before the idle pose
+    const holdingAfterKill = gameTime - this.lastKillTime < POST_KILL_READY_MS; // KILL-READY-01: after a kill the weapon stays raised for a few seconds before the idle pose
     const restBlend = clampNum(((gameTime - Math.max(this.lastTargetTime||0, this.lastKillTime + POST_KILL_READY_MS - 2000)) - 2000) / 1500, 0, 1);
-    const cheering = presentationTime < waveCheerUntil && !this.target && !this.isSwinging && !(this.disabledWavesLeft > 0) && isFighterTower(this); // WAVE-CHEER-01 (1.8.43)
+    const cheering = presentationTime < waveCheerUntil && !this.target && !this.isSwinging && !(this.disabledWavesLeft > 0) && isFighterTower(this); // WAVE-CHEER-01
     const hasTargetPose = !!this.target || holdingAfterKill || cheering || (!usesRangedRestPose(this) &&
       (this.cooldownTimer > 0 || (gameTime - (this.lastTargetTime||0)) < 500));
     const strSizeScale = Math.sqrt(this.weight);
@@ -2953,7 +2827,7 @@ class Tower{
     const extra = { trailFrom: swingTrail ? swingTrail.from : undefined, trailTo: swingTrail ? swingTrail.to : undefined, trailStrength: swingTrail ? swingTrail.strength : 0, thrustPx: isSpearType && this.isSwinging ? spearThrustPx(swingProgress) : 0, walkPhase: this.isWalking ? (this.walkPhase || 0) : undefined, skinMain: this.skinMain, skinShade: this.skinShade, faceColor: this.faceColor, buildScaleX: this.buildScaleX * strSizeScale, buildScaleY: this.buildScaleY * strSizeScale, lowGfx: graphicsQuality === 'low' || underHeavyVisualLoad, drawProgress: this.drawProgress, nockAmount: this.type === 'ARCHER' ? this.archerNockAmount() : undefined, lungeAmt, swingProgress, castProgress, chargeProgress, throwProgress, isLegendary: this.isLegendary, headItem: headItemDef ? headItemDef.headItem : null, hasTarget: hasTargetPose, weaponScale, weaponThickness, str: this.str, int: this.int, mustacheColor: this.mustacheColor, restBlend };
     extra.bloodOwner = this;
     extra.wearsFancyHat = !!this.wearsFancyHat; extra.wearsRunningShoes = !!this.wearsRunningShoes;
-    // ELEMENT-TINT-01 (1.6.86): a locked attunement or mixed element tints skin toward that element,
+    // ELEMENT-TINT-01: a locked attunement or mixed element tints skin toward that element,
     // blended on top of this tower's own native colors rather than replacing them outright.
     const activeElement = towerElement(this);
     const elementTint = activeElement && ELEMENT_SKIN_TINTS[activeElement];
@@ -2965,7 +2839,6 @@ class Tower{
       extra.spec = this.spec;
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
-    const usesSwingAngle = this.type === 'SWORDSMAN' || this.type === 'SPEARMAN' || this.type === 'AXEMAN' || this.type === 'HAMMERMAN' || this.type === 'BERSERKER' || this.type === 'LANCER';
     const swingingVisualAngle = (usesSwingAngle && this.isSwinging && this.baseAngle !== undefined)
       ? (this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
     const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : cheering ? -Math.PI/2 + Math.sin((presentationTime - waveCheerStart)/160 + this.id)*0.35 : (usesSwingAngle ? this.renderSwordAngle : this.angle);
@@ -3000,7 +2873,7 @@ class Tower{
 
     const isDisabled = this.disabledUntil > gameTime || this.disabledWavesLeft > 0;
     if(isDisabled){
-      // NO-CANVAS-FILTER-01 (1.6.79) — see HISTORY.md § [1.6.79]
+      // NO-CANVAS-FILTER-01
       ctx.save();
       ctx.globalAlpha = 0.55;
       extra.skinMain = DOWNED_TOWER_SKIN_MAIN;
@@ -3039,7 +2912,7 @@ class Tower{
     if(this.isHero){
       ctx.font = '13px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffd700'; // same missing-fillStyle class of bug as the enemy/barricade fixes — icon glyphs must never inherit a stale translucent color from whatever drew last
+      ctx.fillStyle = '#ffd700';
       const buildY = this.buildScaleY || (JOB_BUILD[this.type] || {scaleY:1}).scaleY;
       ctx.fillText('👑', this.x, this.y - 41*STICKMAN_SCALE*buildY);
     }
@@ -3057,7 +2930,7 @@ class Tower{
         ctx.fillText(this.legendaryName + ' ' + this.def.icon, this.x, this.y + 34*STICKMAN_SCALE);
       }
     }
-    // CA454 — see HISTORY.md § [1.5.7] Code Archaeology, CA454
+    if((this.bloodLustUntil > gameTime || this.rageUntil > gameTime) && isFighterTower(this)) this.drawRageMark(ctx);
     if(this.hp < this.maxHp){
       const barW = 26, barY = this.y - 34;
       ctx.fillStyle = '#3a1a1a';
@@ -3075,22 +2948,33 @@ const towerPool = Array.from({length: 80}, () => new Tower());
    ========================================================= */
 const CLOSE_SHOT_RUNUP_PX = 9;
 const ARROW_ARC_MAX_PX = 20, ARROW_ARC_PER_PX = 0.07, ARROW_DRAW_SCALE = 1.5;
-const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01 (1.6.129) — see HISTORY.md § [1.6.129]. Only the Archer shoots arrows; unlisted towers keep the arrow shape
+const PROJECTILE_AMMO_BY_TOWER = { // AMMO-KIND-01
   NINJA:'STAR', BLOWDART: 'DART', BLOW_GUNNER: 'DART', SQUIRTGUN: 'PELLET',
   GATLING: 'BULLET', GUNALINDER: 'BULLET', MARKSMAN: 'BULLET', SNIPER: 'BULLET',
   CRAZY_CHEF: 'KNIFE', GLAIVE: 'BLADE'
 };
-const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4, ARROW_SLOW_PER_ARROW = 0.08, ARROW_SLOW_FLOOR = 0.6; // BLEED-WHILE-STUCK-01 (1.6.131) — see HISTORY.md § [1.6.131]
-// STICK-CHANCE-01 (1.7.36): arrows sticking in enemies had fallen to 2% with a 2%-per-point slope, so it almost never happened below
+const BLEED_PER_ARROW_MAX_HP_SHARE = 0.004, BLEED_ARROW_REFRESH_MS = 1000, MAX_STUCK_ARROWS = 4, ARROW_SLOW_PER_ARROW = 0.08, ARROW_SLOW_FLOOR = 0.6; // BLEED-WHILE-STUCK-01
+// STICK-CHANCE-01: arrows sticking in enemies had fallen to 2% with a 2%-per-point slope, so it almost never happened below
 // 50 STR and was always on above it. Restored to a visible baseline that rises gradually with every STR point: about 12% at 0 STR,
 // about 52% at 250 and about 92% at 500 (the stat effect cap).
 const PROJECTILE_STICK_BASE_CHANCE = 0.12, PROJECTILE_STICK_PER_STRENGTH = 0.0016;
-function projectileStickChance(strength){ return clampNum(PROJECTILE_STICK_BASE_CHANCE + Math.min(STAT_EFFECT_CAP, Math.max(0, strength || 0))*PROJECTILE_STICK_PER_STRENGTH, 0, 0.95); }
+function projectileStickChance(strength){ return clampNum(PROJECTILE_STICK_BASE_CHANCE + clampNum(strength || 0, 0, STAT_EFFECT_CAP)*PROJECTILE_STICK_PER_STRENGTH, 0, 0.95); }
 const SPEARMAN_SWEEP_ARC_FRACTION = 1.3, POST_KILL_READY_MS = 4000;
+const ELECTRIC_CHAIN_RADIUS_PX = 70;
+const SNAPCASTER_PROC_CHANCE = 0.35, SNAPCASTER_BURN_SHARE = 0.15, SNAPCASTER_FREEZE_SHARE = 0.30;
+// The first live combat target, other than the origin, inside the radius.
+function firstOtherCombatTargetWithin(origin, radius){
+  for(const candidate of enemiesNear(origin.x, origin.y, radius)){
+    if(!isCombatTarget(candidate) || candidate === origin) continue;
+    const dx = candidate.x - origin.x, dy = candidate.y - origin.y;
+    if(dx*dx + dy*dy <= radius*radius) return candidate;
+  }
+  return null;
+}
 const ACID_MAX_STACKS = 3, ACID_STACK_GAP_MS = 450, ACID_TICK_MS = 600, ACID_SLOW_REFRESH_MS = 700;
 function coatEnemiesInAcid(x, y, projectile){
-  for(const enemy of enemyPool){
-    if(!enemy.active || Math.hypot(enemy.x-x, enemy.y-y) > projectile.acidRadius + enemy.radius) continue;
+  for(const enemy of enemiesNear(x, y, projectile.acidRadius)){
+    if(!isCombatTarget(enemy) || Math.hypot(enemy.x-x, enemy.y-y) > projectile.acidRadius + enemy.radius) continue;
     enemy.applyAcidCoat(projectile.acidDamage, projectile.acidDuration, projectile.acidSlow, projectile.sourceTower);
   }
   spawnParticles(x, y, '#8bd62f', 5);
@@ -3102,9 +2986,7 @@ function projectileStickKind(sourceTower){
   return Object.prototype.hasOwnProperty.call(PROJECTILE_AMMO_BY_TOWER, sourceTower.type) ? PROJECTILE_AMMO_BY_TOWER[sourceTower.type] : null;
 }
 function bleedSourceAllowed(sourceTower){ return !!projectileStickKind(sourceTower); }
-// GENERATION-CHECK-01 (1.7.51): enemies, towers and projectiles live in recycled pools, so a held reference can end up pointing at a different, newer occupant of the same slot. An outside
-// review reproduced a projectile reserving damage on, and homing onto, an enemy that was not the one it was fired at, and a cat attacking with a recycled tower's identity. Every enemy and
-// tower already gets a fresh id when it is created, so each holder now remembers the id it was given and treats a different id as "the target is gone".
+// GENERATION-CHECK-01: enemies, towers and projectiles live in recycled pools, so a held reference can end up pointing at a different, newer occupant of the same slot.
 function projectileTargetLost(p){ return !!(p.trackedTarget && (!p.trackedTarget.active || p.trackedTarget.id !== p.trackedId)); }
 class Projectile{
   constructor(){ this.active = false; }
@@ -3114,14 +2996,12 @@ class Projectile{
     this.x += this.vx*dt/1000; this.y += this.vy*dt/1000;
     if(this.isAxe) this.spinAngle = (this.spinAngle||0) + dt*0.018;
     if(this.x < -20 || this.x > WORLD_MAX_W+20 || this.y < -20 || this.y > WORLD_MAX_H+20 || (this.maxFlightMs && gameTime - this.spawnTime >= this.maxFlightMs)){
-      // CA458 — see HISTORY.md § [1.5.7] Code Archaeology, CA458
       if(this.trackedTarget && this.trackedTarget.active && !this.isGuaranteedMiss && !this.splashRadius){
-        this.x = this.trackedTarget.x; this.y = this.trackedTarget.y; // so onImpact's few this.x/this.y-based cosmetic effects (not just the correctly hitEnemy-anchored ones) land on the enemy, not off-world at the boundary
+        this.x = this.trackedTarget.x; this.y = this.trackedTarget.y;
         this.onImpact(this.trackedTarget);
       }
       this.active = false; return;
     }
-    // CA459 — see HISTORY.md § [1.5.7] Code Archaeology, CA459
     if(this.isGuaranteedMiss){
       if(!this.missRevealed && gameTime >= this.missRevealAt){
         this.missRevealed = true;
@@ -3131,24 +3011,21 @@ class Projectile{
       }
       return;
     }
-    // CA460 — see HISTORY.md § [1.5.7] Code Archaeology, CA460
     if(this.trackedTarget && !this.trackedTarget.active){
       this.active = false;
       spawnParticles(this.x, this.y, this.color || '#ffffff', 2);
       return;
     }
-    // CA461 — see HISTORY.md § [1.5.7] Code Archaeology, CA461. CA-FIX-01 (1.5.8) — this guard used to also
-    // exclude `this.exactIntercept` shots; that was a regression, see HISTORY.md § [1.5.8].
+    // Homing correction also applies to exactIntercept shots.
     if(this.trackedTarget && !this.splashRadius){
       const desiredAngle = Math.atan2(this.trackedTarget.y - this.y, this.trackedTarget.x - this.x);
       const curAngle = Math.atan2(this.vy, this.vx);
       let diff = desiredAngle - curAngle;
       while(diff > Math.PI) diff -= Math.PI*2;
       while(diff < -Math.PI) diff += Math.PI*2;
-      // CA462 — see HISTORY.md § [1.5.7] Code Archaeology, CA462
       if(Math.abs(diff) <= PROJECTILE_HOMING_MAX_ANGLE){
         const maxTurn = PROJECTILE_HOMING_MAX_TURN_RATE * dt/1000;
-        const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+        const turn = clampNum(diff, -maxTurn, maxTurn);
         const newAngle = curAngle + turn;
         const speed = Math.hypot(this.vx, this.vy);
         this.vx = Math.cos(newAngle)*speed;
@@ -3156,7 +3033,6 @@ class Projectile{
         this.angle = newAngle;
       }
     }
-    // CA463 — see HISTORY.md § [1.5.7] Code Archaeology, CA463
     const segLen = Math.hypot(this.x-prevX, this.y-prevY);
     const nearby = queryNearby(enemyHash, this.x, this.y, (this.splashRadius || 24) + segLen);
     for(const e of nearby){
@@ -3171,7 +3047,6 @@ class Projectile{
   }
   onImpact(hitEnemy){
     if(this.effectType === 'CAT'){
-      // CA464 — see HISTORY.md § [1.5.7] Code Archaeology, CA464
       const maxCats = (this.sourceTower && this.sourceTower.maxActiveCats) || 2;
       const perTowerCount = this.sourceTower
         ? catPool.reduce((n,c) => n + (c.active && c.sourceTower === this.sourceTower ? 1 : 0), 0)
@@ -3185,8 +3060,7 @@ class Projectile{
       return;
     }
     if(this.splashRadius > 0){
-      // CA465 — see HISTORY.md § [1.5.7] Code Archaeology, CA465
-      const missChance = this.sourceTower ? ((this.sourceTower.missChance || 0) + windMissPenalty(this.sourceTower)) : 0;
+      const missChance = this.sourceTower ? (this.sourceTower.missChance || 0) : 0;
       if(prdRollFires(attackMissChance(missChance, hitEnemy), this.sourceTower, 'missLuckBalance')){
         spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 6, 'MISS', '#aaaaaa');
         spawnParticles(this.x, this.y, '#999999', 2);
@@ -3194,8 +3068,8 @@ class Projectile{
       }
       let streakClaimed = false;
       if(this.sourceTower && this.sourceTower.telemetry) this.sourceTower.telemetry.hitsLanded++; // one shot, one hit — regardless of how many enemies the splash actually catches
-      for(const e of enemyPool){
-        if(!e.active) continue;
+      for(const e of enemiesNear(this.x, this.y, this.splashRadius)){ // SPLASH-HASH-01
+        if(!isCombatTarget(e)) continue;
         const d = Math.hypot(e.x-this.x, e.y-this.y);
         if(d <= this.splashRadius){
           e.applyDamage(this.damage, this.sourceTower, !streakClaimed, false, true, false, false, Math.atan2(e.y-this.y,e.x-this.x), this.sourceTower ? this.sourceTower.type : 'ENVIRONMENT');
@@ -3205,7 +3079,6 @@ class Projectile{
       }
       spawnParticles(this.x, this.y, '#ffb347', 14);
       playSound('death');
-      // CA466 — see HISTORY.md § [1.5.7] Code Archaeology, CA466
       if(this.isMoneyBag) spawnCoinBurst(this.x, this.y, 1 + Math.floor(Math.random()*7));
     } else {
       const impactAngle = Math.atan2(this.vy, this.vx);
@@ -3216,64 +3089,53 @@ class Projectile{
       if(this.acidDamage > 0) coatEnemiesInAcid(hitEnemy.x, hitEnemy.y, this);
       const stickKind = projectileStickKind(this.sourceTower);
       if(stickKind && hitEnemy.active && hitEnemy.embeddedArrows.length < MAX_STUCK_ARROWS && Math.random() < projectileStickChance(this.sourceTower.str)){
-          // CA467 — see HISTORY.md § [1.5.7] Code Archaeology, CA467
-          const stickDist = hitEnemy.radius*0.85;
-          const perp = impactAngle + Math.PI/2;
-          const lateralJitter = (Math.random()-0.5)*stickDist*0.5; // some natural scatter across the entry side, not perfectly on one exact line every time
-          const dx = -Math.cos(impactAngle)*stickDist + Math.cos(perp)*lateralJitter;
-          const dy = -Math.sin(impactAngle)*stickDist + Math.sin(perp)*lateralJitter;
-          hitEnemy.embeddedArrows.push({ dx, dy, angle: impactAngle + (Math.random()-0.5)*0.3, kind: stickKind });
-          hitEnemy.applyBleed(Math.max(1, Math.round(hitEnemy.maxHp * BLEED_PER_ARROW_MAX_HP_SHARE)), BLEED_ARROW_REFRESH_MS, this.sourceTower);
-        if(goreMode) startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // ongoing gush from the puncture, sized to how much this specific shot actually hurt
+        this.embedInEnemy(hitEnemy, impactAngle, stickKind);
       }
       if(this.sourceTower && this.sourceTower.type === 'SNAPCASTER' && hitEnemy.active){
         hitEnemy.shockedUntil = gameTime + SHOCK_BURST_WINDOW_MS;
-        spawnChainLightning(this.sourceTower, hitEnemy, 2); // SNAPCASTER-CHAIN-01 (1.6.110) — see HISTORY.md § [1.6.110]
-      }
-      if(this.sourceTower && this.sourceTower.type === 'SNAPCASTER' && hitEnemy.active){ // MAGE-NEUTRAL-01 (1.6.116) — see HISTORY.md § [1.6.116]
-        const isSnap = true;
-        // CA468 — see HISTORY.md § [1.5.7] Code Archaeology, CA468
-        const procChance = isSnap ? 0.35 : 0.15;
-        const burnCut = isSnap ? 0.15 : 0.34;
-        const freezeCut = isSnap ? 0.30 : 0.67;
-        if(Math.random() < procChance){
-        const roll = Math.random();
-        if(roll < burnCut){
-          hitEnemy.applyBurn(3000, this.sourceTower);
-          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🔥 Burning!', '#ff8844');
-          if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(180,60,20,0.7)');
-        } else if(roll < freezeCut){
-          hitEnemy.applySlow(0.85, 1500);
-          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🧊 Frozen!', '#7dd3fc');
-          if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(120,80,90,0.65)');
-        } else {
-          hitEnemy.applyStun(700);
-          spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '⚡ Shocked!', '#ffe14d');
-          let chainTarget = null;
-          for(const candidate of enemyPool){
-            if(!candidate.active || candidate === hitEnemy) continue;
-            const chainDx = candidate.x - hitEnemy.x, chainDy = candidate.y - hitEnemy.y;
-            if(chainDx*chainDx + chainDy*chainDy <= 4900){ chainTarget = candidate; break; }
-          }
-          if(chainTarget){
-            chainTarget.applyStun(400);
-            chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false, false, true, false);
-            spawnFloatingText(chainTarget.x, chainTarget.y - chainTarget.radius - 14, '⚡ Chained!', '#ffe14d');
-            if(graphicsQuality !== 'low'){
-              // CA469 — see HISTORY.md § [1.5.7] Code Archaeology, CA469
-              const steps = 5;
-              for(let i=1; i<steps; i++){
-                const t = i/steps;
-                spawnParticles(hitEnemy.x + (chainTarget.x-hitEnemy.x)*t, hitEnemy.y + (chainTarget.y-hitEnemy.y)*t, '#ffe14d', 1);
-              }
-            }
-          }
-        }
-        spawnParticles(hitEnemy.x, hitEnemy.y, '#c9a8ff', 6);
-        }
+        spawnChainLightning(this.sourceTower, hitEnemy, 2); // SNAPCASTER-CHAIN-01
+        if(Math.random() < SNAPCASTER_PROC_CHANCE) this.applySnapcasterProc(hitEnemy);
       }
       spawnParticles(this.x, this.y, this.color || '#ffffff', 3);
     }
+  }
+  embedInEnemy(hitEnemy, impactAngle, stickKind){
+    const stickDist = hitEnemy.radius*0.85, perpendicular = impactAngle + Math.PI/2;
+    const lateralJitter = (Math.random()-0.5)*stickDist*0.5; // natural scatter across the entry side
+    const dx = -Math.cos(impactAngle)*stickDist + Math.cos(perpendicular)*lateralJitter;
+    const dy = -Math.sin(impactAngle)*stickDist + Math.sin(perpendicular)*lateralJitter;
+    hitEnemy.embeddedArrows.push({ dx, dy, angle: impactAngle + (Math.random()-0.5)*0.3, kind: stickKind });
+    hitEnemy.applyBleed(Math.max(1, Math.round(hitEnemy.maxHp * BLEED_PER_ARROW_MAX_HP_SHARE)), BLEED_ARROW_REFRESH_MS, this.sourceTower);
+    if(goreMode) startDripSite(hitEnemy.x, hitEnemy.y, hexToRgba((hitEnemy.bloodProfile || getBloodProfile(hitEnemy.type)).dark, 0.75), this.damage / hitEnemy.maxHp); // the gush is sized to how much this shot hurt
+  }
+  // MAGE-NEUTRAL-01: a Snap Caster bolt sometimes burns, freezes or shocks; a shock jumps to one more enemy close by.
+  applySnapcasterProc(hitEnemy){
+    const roll = Math.random();
+    if(roll < SNAPCASTER_BURN_SHARE){
+      hitEnemy.applyBurn(3000, this.sourceTower);
+      spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🔥 Burning!', '#ff8844');
+      if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(180,60,20,0.7)');
+    } else if(roll < SNAPCASTER_FREEZE_SHARE){
+      hitEnemy.applySlow(0.85, 1500);
+      spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '🧊 Frozen!', '#7dd3fc');
+      if(goreMode) spawnSkinPeel(hitEnemy.x, hitEnemy.y, 'rgba(120,80,90,0.65)');
+    } else {
+      hitEnemy.applyStun(700);
+      spawnFloatingText(hitEnemy.x, hitEnemy.y - hitEnemy.radius - 14, '⚡ Shocked!', '#ffe14d');
+      const chainTarget = firstOtherCombatTargetWithin(hitEnemy, ELECTRIC_CHAIN_RADIUS_PX);
+      if(chainTarget){
+        chainTarget.applyStun(400);
+        chainTarget.applyDamage(Math.round(this.damage*0.4), this.sourceTower, false, false, true, false);
+        spawnFloatingText(chainTarget.x, chainTarget.y - chainTarget.radius - 14, '⚡ Chained!', '#ffe14d');
+        if(graphicsQuality !== 'low'){
+          for(let step = 1; step < 5; step++){
+            const t = step/5;
+            spawnParticles(hitEnemy.x + (chainTarget.x-hitEnemy.x)*t, hitEnemy.y + (chainTarget.y-hitEnemy.y)*t, '#ffe14d', 1);
+          }
+        }
+      }
+    }
+    spawnParticles(hitEnemy.x, hitEnemy.y, '#c9a8ff', 6);
   }
   // Short comet tail behind an elementally-charged shot, drawn opposite its travel direction.
   drawElementTrail(ctx){
@@ -3292,7 +3154,6 @@ class Projectile{
   draw(ctx){
     if(this.elementColor) this.drawElementTrail(ctx);
     if(this.splashRadius > 0){
-      // CA470 — see HISTORY.md § [1.5.7] Code Archaeology, CA470
       if(this.isMoneyBag){
         const flightProgress = this.axeFlightMs ? Math.min(1, (gameTime - this.axeSpawnTime) / this.axeFlightMs) : 0;
         const arcLift = Math.sin(flightProgress * Math.PI) * 30;
@@ -3328,7 +3189,6 @@ class Projectile{
       ctx.translate(this.x, this.y);
       ctx.rotate(this.angle);
       if(graphicsQuality === 'low'){
-        // CA471 — see HISTORY.md § [1.5.7] Code Archaeology, CA471
         ctx.strokeStyle = this.color || '#7dd3fc'; ctx.lineWidth = 3; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, 0); ctx.stroke();
         ctx.fillStyle = '#ffffff';
@@ -3336,22 +3196,21 @@ class Projectile{
         ctx.fillStyle = this.color || '#7dd3fc';
         ctx.globalAlpha = 0.55;
       } else {
-      // fading trail behind the missile — reads as a fast-moving bolt of energy, not an arrow
-      const trailGrad = ctx.createLinearGradient(-14, 0, 0, 0);
-      trailGrad.addColorStop(0, 'rgba(125,211,252,0)');
-      trailGrad.addColorStop(1, this.color || '#7dd3fc');
-      ctx.strokeStyle = trailGrad; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, 0); ctx.stroke();
-      // CA472 — see HISTORY.md § [1.5.7] Code Archaeology, CA472
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = this.color || '#7dd3fc';
-      ctx.globalAlpha = 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill(); // soft outer bloom, additive
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = this.color || '#7dd3fc';
-      ctx.globalAlpha = 0.55;
+        // fading trail behind the missile reads as a bolt of energy, not an arrow
+        const trailGrad = ctx.createLinearGradient(-14, 0, 0, 0);
+        trailGrad.addColorStop(0, 'rgba(125,211,252,0)');
+        trailGrad.addColorStop(1, this.color || '#7dd3fc');
+        ctx.strokeStyle = trailGrad; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(0, 0); ctx.stroke();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = this.color || '#7dd3fc';
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill(); // soft outer bloom, additive
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = this.color || '#7dd3fc';
+        ctx.globalAlpha = 0.55;
       }
       ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI*2); ctx.fill();
       ctx.restore();
@@ -3370,14 +3229,19 @@ class Projectile{
     const liftPerSecond = this.arcFlightMs > 0 ? arcPx * Math.PI * Math.cos(flightProgress * Math.PI) / (this.arcFlightMs / 1000) : 0;
     const heading = Math.atan2((this.vy || 0) - liftPerSecond, this.vx || 1), headColor = this.elementColor || '#cfd6d9';
     ctx.save(); ctx.translate(this.x, this.y - lift); ctx.rotate(heading); ctx.scale(ARROW_DRAW_SCALE, ARROW_DRAW_SCALE); ctx.lineCap = 'round';
-    if(graphicsQuality !== 'low'){ const trailEnd = -Math.min(20, 8 + (this.flightDistancePx || 0)*flightProgress/ARROW_DRAW_SCALE); ctx.strokeStyle = this.elementColor || 'rgba(255,246,214,0.6)'; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(trailEnd, 0); ctx.lineTo(-8, 0); ctx.stroke(); ctx.globalAlpha = 1; }
+    if(graphicsQuality !== 'low'){
+      const trailEnd = -Math.min(20, 8 + (this.flightDistancePx || 0)*flightProgress/ARROW_DRAW_SCALE);
+      ctx.strokeStyle = this.elementColor || 'rgba(255,246,214,0.6)'; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(trailEnd, 0); ctx.lineTo(-8, 0); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(2, 0); ctx.stroke();
     ctx.fillStyle = headColor; ctx.beginPath(); ctx.moveTo(4, 0); ctx.lineTo(-1, -2.5); ctx.lineTo(-1, 2.5); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#e8dfc8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, -2); ctx.moveTo(-8, 0); ctx.lineTo(-10.5, 2); ctx.stroke();
     ctx.restore();
   }
 }
-// AMMO-KIND-01 (1.6.129) — see HISTORY.md § [1.6.129]. Drawn at the origin, pointing along +x
+// AMMO-KIND-01: Drawn at the origin, pointing along +x
 function drawAmmoShape(ctx, ammo, color){
   if(ammo==='STAR'){
     ctx.fillStyle='#bfc8d6';ctx.strokeStyle='#596477';ctx.lineWidth=0.7;ctx.beginPath();
@@ -3418,7 +3282,6 @@ function drawAmmoShape(ctx, ammo, color){
   }
 }
 const projectilePool = Array.from({length: 150}, () => new Projectile());
-// CA474 — see HISTORY.md § [1.5.7] Code Archaeology, CA474
 const committedProjectileTargets = new Set();
 function tallyCommittedProjectileDamage(){
   for(const e of committedProjectileTargets) e.incomingDamage = 0;
@@ -3426,7 +3289,7 @@ function tallyCommittedProjectileDamage(){
   for(const p of projectilePool){
     if(p.active && p.trackedTarget && !p.isGuaranteedMiss && p.trackedTarget.active){
       if(p.trackedTarget.id !== p.trackedId) continue; // GENERATION-CHECK-01: never reserve damage on a recycled enemy
-    if(!committedProjectileTargets.has(p.trackedTarget)){ p.trackedTarget.incomingDamage = 0; committedProjectileTargets.add(p.trackedTarget); }
+      if(!committedProjectileTargets.has(p.trackedTarget)){ p.trackedTarget.incomingDamage = 0; committedProjectileTargets.add(p.trackedTarget); }
       p.trackedTarget.incomingDamage += p.damage || 0;
     }
   }

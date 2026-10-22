@@ -4,6 +4,315 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.90] — 2026-10-22 (UTC)
+
+- Phone layout pass at 390x780 (touch, 2x pixels) with every class unlocked and a stickman holding three-digit stats: no Build-menu name or cost, HUD button, stat button or inspect-panel label wraps to a second line or clips.
+- The same pass showed the Santa consent bar covering the selected stickman's panel (`#inspect-panel`) until the player answers it, so a new phone player could not see or spend stats. CONSENT-UNDER-MODAL-01 now also hides the bar while the panel is open; it returns unchanged when the stickman is deselected.
+
+## [1.8.89] — 2026-10-22 (UTC)
+
+- Act notices past the campaign (`announceActStart`, `actTitleForWave`, js/config.js): `actNumberForWave` clamps to the tenth act, so from wave 101 every tenth wave posted "Act X — The North Road… A new act begins" again, and the end screen named Act X for Expedition waves. Wave 101 now posts one "🧭 The Expedition" notice, later waves post none, and `actTitleForWave` returns "The Expedition" beyond `CAMPAIGN_WAVE_COUNT` (ACT-ANNOUNCE-01, with a design-contract check). The `act_started` analytics event reports the Expedition as act 11.
+- Wave summary notification said "Earned N player Gold"; it now says "Earned N gold", the wording used everywhere else.
+- `loadSaveFileText`: a file with no JSON said "Not a valid save file" while a malformed one added "— your current game is untouched"; both now say the latter, which is true in both cases.
+- Save round trip verified in Chromium: three stickmen, a mid-wave save at 5x, `serializeGameState` → `loadSaveFileText` → `serializeGameState`. The only differences are the per-save seed label, the expected `waveReplayed` reset (WAVE-SAVE-01) and fields that load as explicit `false`/`null` instead of absent.
+
+## [1.8.88] — 2026-10-21 (UTC)
+
+- Wind was not inert (WIND-REMOVED-01, project rule 7: no wind effect on accuracy anywhere). `windCeilingForWave` started at 0.15 on every page load and only dropped to 0 when a wave started, and `windStrength` then eased down over several seconds, so archers and mages carried up to about 3.75 extra percentage points of miss chance before and early in the first wave (troll and breakaway fights included) through `windMissPenalty` in `Tower.update` and `Projectile` hit rolls. Removed the whole system: `updateWind`, `windMissPenalty` and the wind state in js/config.js, the `updateWind(dt)` call in `update` (js/loop.js), the reset in `startNextWave` (js/waves.js) and the two wind self-tests, replaced by one check that no wind code exists. The flag flutter (`updateFlagWind`) is visual only and stays. AGENTS.md no longer calls the plumbing inert.
+- "🍃 Lucky Wave!" toast removed from `startNextWave`: it announced luck on a 2% roll but changed nothing in play. The leaf gust it accompanied still blows.
+- Toasts: the map-from-bag toast said "Click"; it now says "Press" like every other touch-and-mouse prompt. "New tower unlocked" says "New class unlocked" (CLASS-UNLOCK-WORDING-01).
+
+## [1.8.87] — 2026-10-21 (UTC)
+
+- Item Guide (`#item-guide-modal`, index.html) checked against the code and rewritten where it was wrong:
+  - It said a Gold Bag pays "its listed amount" on click; a bag opens in place or on a stickman and spills coins (ONE-KIND-OF-BAG-01), and coins are collected by sweeping over them.
+  - It said every item adds STR, DEX, INT or Armor; rare gear also adds range or a move (`itemStatSummary`), and food is eaten on drop. Meat raises maximum health through Constitution (`FOOD_STAT_BY_KIND.MEAT = 'con'`, `grantFoodConstitution`), not Strength.
+  - "All six slots filled is promoted to Hero" now says the six slots must hold gear and that the stickman "becomes" a Hero (`checkHeroStatus` ignores consumables; "promoted" is the Promote button's word).
+  - "Bosses always leave something special" now matches the boss table: guaranteed supplies (`BOSS_GUARANTEED_COMMON_ROLLS`) and often a rarer piece.
+- Stat button tooltips (`updateInspectPanelNow`, js/ui.js): the Crazy Chef's DEX tooltip claimed DEX raised her direct damage and the STR tooltip did not; the damage note now follows the same rule as `primaryDamageMult` in `Tower.recomputeStats` (CHEF-STRENGTH-01).
+- Build menu bug (`appendUnlockableRow` in `buildTowerModal`, js/ui.js): every unlocked class whose blurb lacked the words "Only one" was shown with " Only one can be active." appended, so 18 classes that can be built many times (Hammerman, Axeman, Gatling, Marksman, Cleric, Crazy Chef, Merchant, Glaive and others) told players they were limited to one. The note is now added only for `MAX_ONE_PER_BOARD_TYPES`, and those blurbs already say it. The line has been present since at least 1.8.47 (commit 611b5ba, where it moved into js/ui.js). Verified by rendering the Build menu with every class unlocked: zero rows now carry the stray note.
+
+## [1.8.86] — 2026-10-21 (UTC)
+
+- Medal audit (`MEDAL_DEFS`, js/config.js): every one of the 17 medals has an `awardMedal` call. Flawless Ten ("without losing a single life") tested `lives >= 100` at wave 10, so a run that lost lives and healed back (food, market lives, `loseLife` defibrillator path) could still earn it. A new `livesLostThisRun` counter, raised in `loseLife` after the donut shield, now decides it (FLAWLESS-MEDAL-01). The counter is saved with the run; older saves without it count as flawless only when their saved lives are at least 100.
+- Squad wipe (SQUAD-WIPE-01) had two near-duplicate checks with different rules and messages: `checkAllFightersDown` in js/loop.js counted the Hacker as a fighter (so a lone standing Hacker kept a run alive, against the rule) and ended with "Your whole squad was overrun…" / `squad_overrun`, while the downing path in js/towers.js used `squadWipedOut` and "Every stickman was overrun…" / `squad_down`. `checkAllFightersDown` now calls `squadWipedOut` (which also covers a squad sold down to nothing after `everBuiltFighter`), and both paths end through one `endRunOnSquadWipe` in js/environment.js with one message, one analytics reason (`squad_down`) and a wave number of at least 1 instead of "wave 0".
+
+## [1.8.85] — 2026-10-21 (UTC)
+
+- First-time tips checked against the code (`showTutorialTipOnce` calls):
+  - `zombies_incoming` (js/waves.js `maybeShowWaveTutorialTip`) told players to train a Mage's INT to 100 for the Cleric; the Cleric unlocks at 500 (`specializationThresholdFor('CLERIC')`). It now reads the threshold and `FAMILY_INTRODUCTION_WAVE.ZOMBIE` instead of hard-coded numbers, and names the Paladin as holy damage too (`applyDamage` `isHoly`).
+  - `first_early_call` reads `EARLY_CALL_WINDOW_MS` instead of a literal 20 seconds.
+  - `first_troll` said one troll arrives every fifth round; it is guaranteed every fifth round (`GUARANTEED_TROLL_EVERY_N_WAVES`) and can also arrive in between (`TROLL_EVENT_CHANCE_PER_WAVE`).
+  - `first_circus` said the circus sends "a new animal" and to watch for clowns; it now says performers are usually animals and sometimes a clown, matching `pickCircusPerformerType`.
+- In-game About: "global passive upgrades" now says "passive bonuses", the Shop's own section name.
+
+## [1.8.84] — 2026-10-21 (UTC)
+
+- README.md fact check against the code: "Each defender begins with a free item for its class" was false (`Tower.create` equips nothing; only `buyItem` from the Shop or drops add gear), so it now says defenders start with empty packs. "Lose every life and the run ends" now also names the squad wipe (SQUAD-WIPE-01, `endGame(..., 'lives')` in `loseLife`). Elites from wave 8 at double gold (`maybeMakeElite`), the early-call bonus (EARLY-CALL-01), the 2x2 start (`initRegionAndPath`), Performance mode, Space to pause and the placement hint were confirmed.
+- In-game About text (`getReadmeText`, js/ui.js): removed "free" and "in development" (README voice rule); "Tap a placed tower to upgrade" now says promote (CLASS-UNLOCK-WORDING-01); wood and stone now also name barricades, structures and the Log Mill and Stone Quarry; the Settings line lists all eight tabs (Items, Medals, Stats and Changes were missing).
+
+## [1.8.83] — 2026-10-21 (UTC)
+
+- Help text bug, js/ui.js Help body: the Crazy Chef was described as scaling on DEX; `Tower.update` (`damageScalesWithStr`) and its blurb and tip scale it on Strength. The Help sentence now says Strength.
+- Unlock wording in code (CLASS-UNLOCK-WORDING-01, NO-EVOLVE-IN-PLACE-01): `EVOLUTIONS` is now `CLASS_STAT_UNLOCKS`, `EVOLVED_TOWER_TYPES` is `UNLOCKED_CLASS_TYPES`, `Tower.checkEvolution` is `Tower.checkClassUnlocks`, and the `evolution` sound event is `class_unlock` (js/audio.js maps, js/config.js, js/environment.js). Comments on the Squirt Gun, Paladin and Gunalinder rows, the Pope mitre and the unlock-message toast no longer say "evolution". AGENTS.md code map updated to the new names.
+- `ATTUNEMENT_THRESHOLD` (100) never governed attunement (that is `ELEMENT_INFUSE_THRESHOLD`, 250); it is renamed `CRAZY_CHEF_STR_THRESHOLD`, and the Cleric mitre growth in `drawStickman` reads its own `CLERIC_HAT_INT_START` (100) instead of borrowing it. No behavior changes.
+- Unlock audit: every `TOWER_UNLOCK_SOURCE_BY_TARGET` rule was compared with its class blurb (23 classes); all thresholds and sources match, including Blowdart at 250 DEX (`SPECIALIZATION_THRESHOLD_OVERRIDE`) and Sniper from Cowboy or Marksman at 60 INT.
+
+## [1.8.82] — 2026-10-21 (UTC)
+
+- `TOWER_STRATEGY` in js/towers.js: four tips rewritten to plain, accurate sentences without filler. MARKSMAN: "Deep INT investment" replaced with the actual Sniper unlock (60 Intelligence). BLOW_GUNNER, CAT_SNAPPER and NECROMANCER: removed the "not just the one that…", "a genuinely different identity" and "the real question…" phrasing; each now states its unlock, what it does and one placement point.
+- Codebase sweep: no duplicate top-level functions or constants across the ten scripts, no function or upper-case constant defined without a use, and no `console.log`, `TODO` or commented-out code outside diagnostics.
+
+## [1.8.81] — 2026-10-21 (UTC)
+
+- index.html CSS: the Santa consent bar (`#consent-banner`, z-index 999) covered the bottom of Settings and other windows on short screens. While any `*-modal` window is open the bar is hidden and returns unchanged when the window closes (CONSENT-UNDER-MODAL-01); consent state and the bar's own buttons are untouched.
+- Performance profile (181 forced enemies, 3x speed, headless): simulation about 2.4 ms per tick, `updateBarricadesAndPileup` the largest single cost at about 0.6 ms in a worst-case single pile, garbage collection about 2%; no code change was warranted.
+
+## [1.8.80] — 2026-10-21 (UTC)
+
+- Sound design pass, js/audio.js: the effects reverb in `SoundEngine.initReverb` was raw white noise with no pre-delay, which hisses on every send; it now shares `buildDecayImpulse` with `buildMusicReverb` (REVERB-IMPULSE-01), giving it a 12 ms pre-delay and a smoothed, darker tail (`SFX_REVERB_SMOOTHING` 0.45). The duplicated impulse loop in `buildMusicReverb` is gone.
+- `SoundEngine.noise`: lowpassed effects far off screen also lose high end, down to 45% of their cutoff at the quietest distance (`SFX_DISTANCE_DARKEN_FLOOR`, SFX-DISTANCE-01), so distant combat sits behind on-screen hits instead of only getting quieter.
+
+## [1.8.79] — 2026-10-21 (UTC)
+
+- Forensic blood audit against the spec (quadratic drag, 7.65 m/s terminal velocity, α = arcsin(W/L) stains): `updateForensicDroplets` in js/effects.js now applies gravity, then drag F = −k|v|v as an implicit retention factor 1/(1 + k|v|dt) (DRAG-IMPLICIT-01), so fast sniper mist can never overshoot or reverse in one step; k stays g/v_t² per drop.
+- Attract screen droplets (`updateAttractDroplets`, js/loop.js) used an unrelated drag (0.0022) and a 620 px/s clamp that the drag never reached; `ATTRACT_DROPLET_TERMINAL` is now 7.65 m/s at the screen's own scale and `ATTRACT_DROPLET_DRAG` is derived from it, with the same implicit drag, and stain elongation shares `FORENSIC_MAX_STAIN_ASPECT` with gameplay.
+- Delta-time: `loop` in js/loop.js now resets a wall gap above 0.15 s to zero (`FRAME_GAP_RESET_MS`, DT-RESET-01) instead of clamping it, so a tab switch or stall advances nothing; the debug log counts the whole gap as clamped.
+- Audio mastering (`SoundEngine.prewarm`, js/audio.js): explicit glue-compressor attack 6 ms and release 160 ms, plus a brickwall limiter (−1.5 dB, 20:1, 1 ms attack) after it (MASTER-LIMITER-01) so dense waves cannot clip the output.
+
+## [1.8.78] — 2026-10-21 (UTC)
+### Second full pass: in-game text matches the game, page markup and styles cleaned, shared enemy attack code
+Player-facing text corrected against the code:
+- Locked Build rows (`buildTowerModal`, UNLOCK-HELP-01):
+  - Axeman, Spearman, Hammerman, Bomber, Gatling, Cleric, Blowdart, Marksman and Snap Caster also unlock on their own when their wave is cleared (`unlocksAfterWave`, `checkTowerUnlocks`), but their locked rows named only the training route. The row now adds the wave.
+  - The in-game README and the How Everything Works help say the same.
+- Class texts (`CONFIG.TOWERS`, `TOWER_STRATEGY` in `js/towers.js`):
+  - The Paladin blurb claimed holy damage that ignores armor; only the Cleric's smite does. Paladin swings hit undead 50% harder (`HOLY_VS_UNDEAD_MULT`) and break graves.
+  - The Berserker and Lancer tips said they unlock at 500 when `EVOLUTIONS` sets 40.
+  - The Squirt Gun tip described two DoT stacks; it has one acid coat that stacks to `ACID_MAX_STACKS` = 3.
+  - The Cowboy tip pointed at a 🥈 DPS icon that does not exist.
+  - The Proton, Dark Matter and Quasar blurbs described effects they do not have. They now name their two component effects (`ELEMENT_COMPONENTS`), matching their tips.
+- Enemy texts (`ENEMY_INFO` in `js/waves.js`):
+  - The Monarch is no longer "the fastest thing on the path" (the Cookie is faster).
+  - The Zombie names the Cleric's smite and the Pope's curse instead of "a Cleric's curse".
+  - The Wolf no longer claims pack hunting. Its `pack` flag was set and never read; the flag is removed and the text names its real trait, a higher break-off chance.
+- How Everything Works and Item Guide (`index.html`):
+  - The favoured stat counts 60% more (`PREFERRED_STAT_MULT` = 1.6), not 25%.
+  - Training XP comes from last hits, assists and cleared waves (not killstreaks or promotions).
+  - Gear drops from enemies and the Merchant opens the Shop (there is no class-specific Shop gear); Heroes get +5 to every stat (`HERO_BONUS_STAT`).
+  - Unlock paths are shown by the Build menu's ? rather than hidden.
+  - Items land beside the road, not on it.
+- Barricade help: the button is 📦 Pick up (not Store), and one expansion can be bought per wave (none queue).
+- Settings:
+  - The Audio note describes the field, battle and boss themes.
+  - The frame-rate note adds that phones run at 30 FPS.
+  - The decal presets are listed in ascending order.
+
+Page (`index.html`):
+- ERROR-OVERLAY-SCOPE-01: a cross-origin script error (only "Script error." with no file, as the Analytics tag reports) no longer covers the running game with the red boot-error screen.
+- The consent bar's styles moved from a `<style>` element inside `<body>`, which is not valid HTML there, into the head stylesheet.
+- Removed:
+  - the always-hidden `waveSummaryGold`, `waveSummaryXpList` and `newEnemyList` elements and their CSS;
+  - the unused `newEnemyWaddle` keyframes;
+  - duplicate `.hidden` and option-row rules;
+  - an overridden `box-shadow` on the Build menu;
+  - an empty SANTA-CONSENT-VOICE-01 comment.
+- Stale CSS comments are rewritten: the Shop is no longer described as tabbed, the Options and See changes buttons are described correctly, and version stamps are gone. The two settings dropdowns share `.settings-select` instead of repeated inline styles.
+
+Code:
+- ENEMY-ENGAGE-01 (`js/waves.js`):
+  - `closeOnAttackTarget(t, speed, dt)` and `strikeTower(t)` replace the copied approach-and-strike blocks in `updateBreakaway` and `updateEscapedMovement` and the leader strike in the queue code.
+  - A test confirmed breakaway and escaped enemies still reach and damage a stickman.
+- `attuneToReadyStat()` (`js/towers.js`) replaces the attunement choice copied in `infuseElements` and `checkAttunementAndSpecialization`.
+- `viewBoundsWithMargin` (`js/effects.js`) backs `decalViewBounds` and `fxViewBounds`.
+- `activeGrassCells` (`js/environment.js`) backs `generateScenery` and `generateFlora`.
+- `diagnosticFrameContext` (`js/loop.js`) backs both slow-frame and cap-event snapshots.
+- `IDLE_GUN_ANGLE` replaces 15 copies of `-Math.PI/2 + 0.96`, and `HONEY_GROUND_CAP` replaces a literal 20.
+- Analytics: `TELEMETRY_SHARED_PARAMS` omitted `build`, which every event sends. ANALYTICS-PARAMS-01 now checks name lengths only, and ANALYTICS-PARAM-BUDGET-01 derives its shared list from `TELEMETRY_SHARED_PARAMS` instead of a second copy.
+- Comments: the LOOT-TABLE-01 note no longer says bosses always drop gear, and the BLOOD-LAYER-01 and finish-line fallback notes no longer narrate history.
+
+## [1.8.77] — 2026-10-20 (UTC)
+### Line-by-line review of the remaining files: player-facing fixes, dead features removed
+Player-facing fixes:
+- Settings: the Introduction Text switch now persists across reloads; `savePrefs` (`js/config.js`) was not writing `introTextEnabled` although `loadPrefs` read it (INTRO-TEXT-01).
+- Inspect panel stat tooltips (`updateInspectPanelNow`, `js/ui.js`): the Intelligence button said INT drives every stickman's accuracy and overwrote the correct tooltips set just above it. Accuracy comes from DEX (`computeMissChance`). The overriding line is gone and the OWNER-LEDGER-01 self-test now checks the DEX wording.
+- In-game README (`getReadmeText`): elements attune at 250 rather than 100, mixed elements need two stats at 250 rather than 500 and apply both component effects, stickmen start with empty packs, any enemy (not only Fire and Ice) may break off the path, and Gatling was listed twice. XP, caps and proc numbers are now read from the game constants.
+- Settings > About "More info" text (`js/diagnostics.js`) describes the current expansion, Barricade, gear and Hero rules.
+- Donut shield (`loseLife`, `js/waves.js`): the sparkle for an absorbed leak was spawned at world point (0,0), the top-left corner of the map; it now appears at the finish line.
+- Defibrillator (`loseLife`): the revive passed the new lives total to `showLivesChange` as if it were a change, on top of the HUD's own pop; the HUD alone shows it. The Shop text says it fires when lives run out (`DEFIBRILLATOR_REVIVE_LIVES_FRACTION`).
+- `applyTreatItem` (`js/environment.js`): the Lollipop zone and sparkle no longer fall back to a non-existent `treatDef._x/_y`.
+
+Dead code and duplication:
+- RUN-REWARD-REMOVED-01: the wave choice-reward system sat behind an early `return;` in `offerRunReward`. It is removed: `RUN_REWARD_DEFS`, `pendingRunRewards`, `claimRunReward`, `openRunReward`, `runRecoveryHp`, the hidden 🎁 button and its CSS, the notification-popup branch and its self-test. `restoreRunBoons` still loads run blessings recorded by older saves.
+- Build menu (`buildTowerModal`, `js/ui.js`): each row's ? listener never ran because the grid's capture listener opens the shared help popup first (BUILD-HELP-01). They are removed, and the five copied select handlers are now `chooseBuildType(type)`.
+- Campfire crafting: `findLitCampfireNear`, `CAMPFIRE_COOK_REACH_PX` and every `fuelCost` branch in `craftItemOn` and `findCraftableRecipeFor` are removed (no crafting recipe uses fuel).
+- `drawOuterWastelandTrees` is removed (BRANCH-WASTELAND-02 forbids calling it). `paintGroundTile` replaces three copies of the tile-painting branch, with `DIRT_BACKGROUND_COLOR` instead of hard-coded hex and `FINISH_CARPET_DEPTH_PX`.
+- `damageSpreadHalfWidth(tower)` (DAMAGE-SPREAD-01) replaces three copies of the damage-variance formula in `applyDamage`, the inspect panel and `dpsBreakdownText`. `CLERIC_SMITE_MULT` and `HOLY_VS_UNDEAD_MULT` replace the literal 5 and 1.5.
+- `pauseGame()` and `keyboardFocusIsElsewhere()` (KEYBOARD-FOCUS-01) replace three copies each in `js/ui.js`. `openSettingsModal` is shared by both Settings buttons, `addDivider` builds every Shop divider, and `easeInOutCubic` serves both camera pans.
+- Removed:
+  - `statTierNote` (always empty) and the `checkLegendaryStatus` and `markFirstNextWaveCueAction` aliases;
+  - `itemStatLine` (an alias of `itemStatSummary`);
+  - `openNotificationEntry`'s unused override parameter and the `isImportantAudioEvent` context parameter;
+  - `expansionBlockedReason`'s constant check;
+  - the `resizeGameFrame` resize listeners.
+- LONG-TASK-LOG-01: the second long-task observer in `js/config.js` and its debug-log section duplicated the one in `js/loop.js`; only the richer one remains. The debug log no longer prints the hack and contract lines twice.
+- Audio (`js/audio.js`): `scheduleMusicStep` lost the constant `cadence=false` and the non-combat lead branches it made unreachable. `CHATTER_REGISTERS` and `CHATTER_TEMPO` (CHATTER-VOICES-01) replace two copied tables, and the truncated case comments are completed.
+- `pickWeighted` (`js/config.js`) is shared by the stim and summon rolls.
+
+Self-checks:
+- FIRST-BUILD-CUE-01 and FIRST-WAVE-ACTION-01 no longer report false problems mid-game: the Build hand may show during play, and the Start Wave label may carry the early-call gold.
+- The livestock-bounty check had an operator-precedence error that made it always pass.
+- Two vacuous contract conditions (`!String(Tower.prototype.update).length` and `!String(canvas.onpointermove || '1')`) are replaced with real checks.
+- Two self-tests only tested their own array filters; they now call `isCombatTarget`, and the second checks TARGET-MARK-01.
+
+Comments:
+- Version stamps, history narration and half-finished comments are rewritten across `js/config.js`, `js/ui.js`, `js/audio.js`, `js/environment.js`, `js/screens.js` and `js/diagnostics.js`.
+
+## [1.8.76] — 2026-10-20 (UTC)
+### Environment and effects review: shared helpers, dead code removed
+- TAUNT-PICK-01 (`towerTauntScore`, `findNearestActiveTower` in `js/environment.js`): taunt scoring split out and the nearest-tower search no longer allocates per call; the design-contract check in `js/diagnostics.js` follows the new function.
+- `dropTreasureBags(x,y,count)` and `dropBerries(x,y,count)` (`js/environment.js`) replace four copied drop loops in `updateScenery`, the CHEST and COIN_POUCH loot and `digWithShovel`.
+- `makeBranchPiece(gx,gy,rng)` and `SCENERY_TREE_SHARE` (`spawnScenery`): dead branch and unused `treeRockSplit` removed; the tree share now derives from `TREE_ROCK_TREE_SHARE_ON_EXPANSION`.
+- `isEndRingTile` no longer allocates; the unused `scatterSceneryInRing` and `waveMaxHpGainedFromMeat` are removed.
+- `updateBarricadesAndPileup`: magic numbers named `QUEUE_CATCHMENT_PX`, `QUEUE_MAX_TRAVELED_GAP_PX`, `BARRICADE_QUEUE_TIMEOUT_MS`.
+- `rollStimItem` and `rollSummonItem` use the shared `pickWeighted` (`js/config.js`) instead of two copied weighted rolls; `countChanceStructuresOnBoard` folded into `countSceneryOfType`.
+- `applyTreatItem`: the Lollipop zone and treat sparkle used a non-existent `treatDef._x/_y` fallback; both now use the resolved drop anchor.
+- SHOVEL-CHARGES-01 contract check (`js/diagnostics.js`) follows the dig loot into `dropTreasureBags`.
+- `js/effects.js` tail: `DECAL_ELONGATION`, `ROUND_CLEANUP_FADE_MS`, `GOLD_HUD_FLIGHT_MS`, `resetGoldHudFlights()`; dead `BLOOD_STAIN_DRY_RGB` removed; stale blood-ageing comments point at BLOOD-STABLE-01.
+
+## [1.8.75] — 2026-10-20 (UTC)
+### Analytics keeps every measured value; lighter share image; page comments cleaned
+- ANALYTICS-PARAM-BUDGET-01 (`window.trackEvent` in `index.html`): Google Analytics keeps 25 parameters per event. The 12 shared labels plus each event's own values pushed two events over that limit, and the sender silently cut the last ones:
+  - `wave_completed` lost `towers`, `fps_median` and `gap_p95_ms`;
+  - `game_over` lost `loose_end` and `fps_median`.
+
+  Over the budget, the sender now drops only the labels that can be rebuilt from other fields first (`telemetry_schema` is constant, `play_label` is platform/build, `event_group` follows from the event name), so measured values always arrive. A design contract check fails if any declared event would still overflow. Checked by sending both events in Chromium: each arrived with all its values at exactly 25 parameters.
+- `og-image.png` re-encoded losslessly without the unused alpha channel, so share previews and the manifest screenshot load faster. The pixels are identical, so the `?v=4` cache key stays.
+- `index.html` comments follow COMMENT-HYGIENE-01, like the scripts:
+  - CA pointers, HISTORY.md references and version stamps after rule IDs are removed;
+  - the rule IDs are kept.
+
+## [1.8.74] — 2026-10-20 (UTC)
+### Run ends on a squad wipe, four stickmen get their figures, line-by-line review of waves and towers
+- SQUAD-WIPE-01 (`squadWipedOut` in `js/environment.js`, called from `Tower.becomeOverrun`): the run ends with Game Over when every fighting stickman is down at once. Before this, a board of downed stickmen showing "3 rounds left" kept running while enemies stood on them. The Hacker never fights, so he cannot keep a run alive.
+- DOWNING-CAPTURE-01: the overlay showed three 3-second frame summaries per downing, which made it far wider than the screen. The overlay now shows one line ("downings captured: N (details in the debug log)"), and the full capture stays in the debug log.
+- Four stickmen had no `drawStickman` branch and were drawn with no arms or weapon. They now have figures:
+  - PALADIN-FIGURE-01: the Paladin carries the Hammerman's hammer and shield, gilded, with a cross on the shield.
+  - MERCHANT-FIGURE-01: the Merchant wears a turban and holds up his Money Bag.
+  - GLAIVE-FIGURE-01: the Glaive holds a heavy two-handed launcher with a curved blade at the muzzle.
+  - CHEF-FIGURE-01: the Crazy Chef wears a toque and holds a kitchen knife.
+  - Their muzzle points are added to `MUZZLE_WEAPON_REACH`, and the Paladin now lunges and swings like the other melee classes.
+- CHEF-STRENGTH-01 (`Tower.recomputeStats`): the Crazy Chef's description and tip say her damage scales with Strength, but the code used Dexterity like every other Archer. She now scales with Strength.
+- The Veteran text spawned at `this.radius`, which towers do not have, so it was placed at NaN and never showed. It now appears above the stickman.
+- TOWER-OVERRUN-01 (`Tower.becomeOverrun`): a burn now downs a stickman the same way an attack does, with the alert, the "Overrun!" text and the sound. The overrun timing is named in `TOWER_OVERRUN_MS`, `TOWER_OVERRUN_WAVES` and `TOWER_RECOVERY_HP_FRACTION`.
+- Player text corrections:
+  - Cleric: "a very long cooldown", where it said "the longest cooldown of any tower", which the Merchant has.
+  - Glaive: the 5x bonus applies to all camp buildings, including graves and the circus.
+  - Bomber tip: "the dedicated splash tower", where it said "the only splash tower".
+  - Marksman tip: the Archer's Intelligence specialization, where it said "Ice Archer".
+  - Hammerman tip: it stuns on every hit.
+- Strategy-tip icons that were overwritten at load were removed from `TOWER_STRATEGY`.
+- `js/waves.js` review:
+  - CAMP-BUILDINGS-01: `spawnCampBuilding` and `spawnCampGuardian` with `CAMP_BUILDING_KINDS` replace four building spawners and three guardian spawners.
+  - The surround-slot search is split into `isSurroundRival` and `surroundSlotIsFree`.
+  - `tierWalkSpeed` replaces `packedSpeed`, and the pack speed bonus, which was always 1, is removed.
+  - `ENEMY_STATUS_LABELS` and `Enemy.showStatusLabels` replace five copied lines.
+  - The bleed stack array is cleared instead of being reallocated on every tick for every enemy.
+  - Hunters (clown and troll) scan the towers once per frame instead of twice.
+  - `drawStuckProjectiles`, `drawStuckProjectileShape` and `drawAngryBrows` are split out of `Enemy.draw`.
+  - Enemy attack cadences are named in `LOOSE_MELEE_INTERVAL_MS` and `ENEMY_MELEE_INTERVAL_MS`.
+  - Unused `placeOnNearestRouteTile`, `routeLengthPx` and the `showFirstTimeNotice` alias are removed.
+  - The boot warm-up's scenery glyph lists are deduplicated.
+- `js/towers.js` review:
+  - `MELEE_SWING_TYPES`, `EXACT_INTERCEPT_TYPES`, `MAGIC_MISSILE_TYPES`, `PROJECTILE_COLOR_BY_TOWER`, `RANGED_SHOT_SOUND` and `MUZZLE_WEAPON_REACH` replace long type chains and per-shot object literals.
+  - `deflectProjectileAsMiss` replaces two copies of the miss logic.
+  - `Projectile.embedInEnemy` and `Projectile.applySnapcasterProc` are split out of `onImpact`; the second removes constant ternaries.
+  - Sword blades are drawn without allocating a dozen arrays per frame.
+  - `paintStickmanSilhouette` replaces two copies of the shadow-mask paint.
+  - Hit sets are reused instead of reallocated on every swing.
+  - `TRAINED_STATS` (`js/config.js`) replaces eight `['str','dex','int']` literals.
+- `js/effects.js` (first half):
+  - `DECAL_ELONGATION` table.
+  - The constant `growT` is removed from `drawOneDecal`.
+  - Stale ageing comments are corrected to BLOOD-STABLE-01.
+  - Blood on scenery reuses `sceneryEmojiFor`.
+  - The dead stain colour constant is removed.
+- Comments that narrated history or requests now state the current rule.
+- Checked over http in Chromium:
+  - design contract clean at boot, no console errors;
+  - every class attacked and drew;
+  - all four new figures rendered, both aiming and idle;
+  - camps and guardians spawned and respawned;
+  - one stickman down kept the run going, and all down ended it.
+
+## [1.8.73] — 2026-10-20 (UTC)
+### Line-by-line review: loop, helpers, comment voice, dead code
+Read `js/loop.js` in full and swept every other script for minified one-liners, per-frame allocations, unused functions and history narration in comments.
+- DIAG-RING-01 (`recordDiagFrame`, `copyDiagFrame`, `startDowningCapture` in `js/loop.js`): the diagnostics frame history is a preallocated ring (`diagRing`, `diagRingNext`) instead of an array that grew and shifted every frame.
+- `recordPerfEventSample` reuses `insertTopDurationEvent` instead of a second copy of the same sorted insert.
+- `update` (`js/loop.js`): wave-clear counts loose enemies once (`looseAtClear`) instead of three times; the two skull-worm loops are merged under `SKULL_WORM_CHANCE`; the HP percentage uses `clampNum`. The CLEAN-WAVE-EXPAND-01 contract check now matches `looseAtClear`.
+- `collectAmbientLogsOnClaimedGround` replaces a minified one-line loop in `updatePresentationEffects`.
+- `ATTRACT_ELEMENT_SKINS`: the start screen built its element skin table for every archer on every frame; it is now one constant.
+- SURROUND-CONTENDERS-01 (`enemySurroundPoint`, `js/waves.js`) and food stats (`grantFoodConstitution`, `grantFoodStatPoints` called from `grantFoodStat`, `js/environment.js`) carry the deduplication from this review.
+- `spawnRevealedScenery` and `countSceneryOfType` (`js/environment.js`) replace two copies of the reveal-and-restore-level sequence and an inline chest count (PROP-CAP-01).
+- `maybeSpawnExtraBuilding` counts live huts without `enemyPool.filter`; the skin-peel decal path draws without a `forEach` closure.
+- `refreshDesignContractProblems` (`js/waves.js`) replaces two copies of the contract warning.
+- CAMERA-SMOOTH-01 contract check ignores the idle probe while another camera motion (wave-start pan, enemy follow, inertia, drag) is active, so it no longer reports a false problem mid-wave.
+- Minified one-liners expanded in `Tower.recomputeStats` (equipped items), the scenery blood stamp in `js/towers.js`, and the notification row builder in `js/config.js`.
+- Dead functions removed: `agedBloodColor`, `buildSpiralPathTiles`, `countDistinctTiles`, `buildFallbackPath`.
+- COMMENT-HYGIENE-01, third pass: comments that narrated past behaviour, requests or regressions now state the current rule (MAP-CORRIDOR-01, PATHING-MASTER-01, SPAWN-FLAG-PLACEMENT-01, GLOBAL-ATTACK-SLOW-01, NO-EVOLVE-IN-PLACE-01, BUILD-ORDER-01, DOM-REFLOW-01 and others); the remaining version stamps and HISTORY.md pointers in code are gone.
+- Checked over http in Chromium: design contract clean at boot, self-tests pass, no console errors; a forced escape patrolled and engaged a stickman; the stress wave and blood stain run finished without errors. FIRST-BUILD-CUE-01 and FIRST-WAVE-ACTION-01 still appear mid-game, as on 1.8.69.
+
+## [1.8.72] — 2026-10-20 (UTC)
+### Code-wide audit: area queries, wildlife bugs, dead code, comment voice
+Audited every script with scans for whole-pool loops, duplicate helpers, unused functions and constants, loose equality, `var` and comment voice, then fixed what they found.
+- ENEMIES-NEAR-01 (`enemiesNear` in `js/loop.js`): one spatial-hash radius query, padded by `NEARBY_QUERY_MARGIN_PX` 40 and returned as a copy, now serves every area effect that scanned all 220 pool slots:
+  - `Projectile.onImpact` splash (SPLASH-HASH-01) and electric chain (radius named `ELECTRIC_CHAIN_RADIUS_PX`, was a bare 4900 squared);
+  - `coatEnemiesInAcid`, `spawnChainLightning`, `dischargeShockBurst`;
+  - `Enemy.updateHealAura` (radius named `HEALER_AURA_RADIUS_PX`), `startleNearbyAllies`, `Enemy.looseSeparationHeading`.
+- Wildlife bugs: `spawnChainLightning` could jump to bees and livestock that were never marked (TARGET-MARK-01). The Healer's aura (HEAL-AURA-ALLIES-01) healed farm animals and camp buildings. Both now skip them.
+- SURROUND-CONTENDERS-01 (`enemySurroundPoint`): rivals for a target's surround slots are gathered once per call instead of rescanning the whole pool for every candidate slot (up to 20 rings x dozens of slots).
+- BLOCKER-BOUNDS-01 (`forensicBlockerAlongPath`, `js/effects.js`): every landing droplet tested every stickman, enemy, cat, skeleton and scenery item, up to 700 droplets per gore burst. Bodies outside the flight's bounding box (40 px pad) are rejected first, and scenery is read only from the tiles the flight crosses (`sceneryMap.get`), not by iterating the whole map. The BLOOD-SURFACES-01 contract check now matches the tile lookup.
+- 43 inline `Math.max(a, Math.min(b, v))` clamps replaced with the existing `clampNum`.
+- Dead code removed; none had a reference anywhere in code, strings or `index.html`:
+  - functions `breedCircusAnimals`, `burnCampfiresAtWaveEnd`, `generateConflictFreePath`, `isGrownRoundBreeder`, `rollGoldBagCoinValue`, `stampSettledDebris`, `stampSettledDrop`;
+  - constants `AMBIENT_LOG_STACK_SLOTS`, `ARCHER_RATE_SHARE`, `CAMPFIRE_MAX_FUEL`, `CAMPFIRE_WOOD_PER_LOG`, `CAMPFIRE_FUEL_PER_LOG`, `ENEMY_HP_SCALE` (its use was dropped in commit ba30f1e), `FORENSIC_DRAG_K`, `LIVESTOCK_BREED_CHANCE`, `LIVESTOCK_BIRTHS_PER_EXPANSION`, `LIVESTOCK_PAIR_HEART_COOLDOWN_MS`, `LIVESTOCK_PAIR_HEART_COOLDOWN_SPREAD_MS`, `MEAT_MAXHP_BY_ID`, `MEAT_MAXHP_CAP_PER_WAVE`, `MEAT_MAXHP_OVERFLOW_GOLD_PER_POINT`, `MUSIC_MAJOR_INTERVALS`, `MUSIC_PHRYGIAN_INTERVALS`, `QUEUE_PACK_GAP_PER_RADIUS`, `SPRAY_DECAL_LIFE_MS`.
+- COMMENT-HYGIENE-01, second pass:
+  - 32 "owner decision/says/asked" phrasings removed;
+  - 229 "see HISTORY.md §" pointers and 546 version stamps after rule IDs removed (rule IDs stay searchable in CHANGELOG and HISTORY);
+  - 91 comments over 140 characters cut to their first sentence, and 39 orphaned continuation lines removed.
+- AGENTS.md gains the ENEMIES-NEAR-01 area-query rule and a dead-code rule.
+- Already clean: no `var` declarations and no loose `==` (one `!= null` idiom kept).
+- Checked over http in Chromium: design contract clean at boot, all self-tests pass, no console errors. A three-fighter wave ran at 5x, and chain lightning, splash and startle ran with live enemies. The two contract notes seen mid-game (FIRST-BUILD-CUE-01, FIRST-WAVE-ACTION-01) also appear on 1.8.69 and depend on game state.
+
+## [1.8.71] — 2026-10-20 (UTC)
+### Escapes spread out, splash damage uses the spatial hash
+- LOOSE-SEPARATION-01 (`Enemy.looseSeparationHeading`, called from `updateEscapedMovement`): escaped enemies within their radii plus 10 px of each other bend their heading apart (weight 2.5, neighbours from `queryNearby`). A group that escapes together no longer walks the rim as a single-file line. Constants `LOOSE_SEPARATION_RANGE_PX`, `LOOSE_SEPARATION_GAP_PX` and `LOOSE_SEPARATION_WEIGHT` in `js/waves.js`.
+- SPLASH-HASH-01 (`Projectile.onImpact`, `js/towers.js`): splash damage queried every enemy in `enemyPool` (BACKLOG 1.8.47, Ericson 7.1). It now reads the radius from the spatial hash with `queryNearby`, copying the list because damage callbacks reuse its scratch array. Passive wildlife stays out because the hash already excludes it (TARGET-MARK-01).
+- Checked over http in Chromium: design contract clean at boot, all self-tests pass, no console errors, a wave starts and a forced escape patrols.
+
+## [1.8.70] — 2026-10-20 (UTC)
+### Escapes patrol, solid scenery, passive wildlife, promotion value, rage look, comment cleanup
+- LOOSE-PERIMETER-01 (`js/waves.js` `Enemy.reachEnd`, `updateEscapedMovement`; `js/environment.js` `pickLoosePerimeterGoal`, `isLoosePerimeterTile`): an escaped enemy no longer stands still for 20-30 s (LOOSE-SETTLE-01 from 1.8.37 removed with `escapeSettleMs`, `LOOSE_SETTLE_*`, the loop-turn wander and `curiousTarget`). It patrols the grass rim at once, preferring rim tiles ahead of its heading, and engages a stickman only on contact (`LOOSE_CONTACT_RADIUS_TILES` 1.1). Bosses keep `BOSS_AGGRO_RADIUS`. Stroll speed 0.55 → 0.7 of lane speed.
+- SCENERY-SOLID-01 (`isSceneryBlockedAt`, `moveAroundScenery` in `js/environment.js`): trees and rocks are solid to every enemy walking off the road (breakaway chase, escaped chase, rim patrol). The walker turns to its own preferred side in 0.6 rad steps until its lookahead clears the tile. An enemy already standing on a tree or rock tile walks straight off it. Rim goals never land on scenery, and each pick adds a random spread so escaped enemies fan out along the rim instead of bunching at the finish.
+- TARGET-MARK-01 (`isCombatTarget` in `js/loop.js`): bees and livestock were still caught by splash (`Projectile` splash loop), acid (`coatEnemiesInAcid`) and chain lightning even though single-target aim skipped them. All four paths now share one filter: wildlife takes damage only after the player marks it.
+- PROMOTION-VALUE-01 (`Tower.upgrade`, `js/towers.js`): spendable points doubled (`PROMOTION_SPENDABLE_ROLLS` 10 → 20 dice), plus a random talent roll of 2-6 dice into one random stat, shown as "Talent: …". `PROMOTION_COST_GROWTH` 1.5 → 1.35, against 2.25 per extra copy (`SCALING_COST_GROWTH`). One-per-board unlocked classes are unchanged and enforced by `isTowerTypeAvailable`.
+- RAGE-MARK-01 (`Tower.drawRageMark` replaces `drawBloodLustAura`): the pulsing red disc, ring and dripping dots are gone. Rage and blood lust show a throbbing anger vein above the head, drawn on top of the figure from `bloodPose`; rage also vents two steam puffs (`RAGE_STEAM_CYCLE_MS` 700, High graphics only).
+- FORENSIC-PROMPT-LAND-01 (`updateForensicDroplets`, `FORENSIC_TIME_SCALE` 3): gore-burst droplets, mist above all, hung in the air for 1-3 s, so their stains and void patterns appeared well after the kill. Flight now runs three times faster; trajectories, impact angles and stain shapes are unchanged.
+- DRIP-TRAIL-FORENSIC-01 (`spawnDripTrail`, drip branch of the decal painter in `js/effects.js`; all 10 callers in `js/waves.js` pass the enemy): drip trails were drawn as straight screen-down streaks, a vertical-surface pattern that formed a comb of parallel lines along a horizontal road. On flat ground a drip from a moving bleeder now elongates along its travel (5-18 px, scaled by speed, ±0.17 rad jitter) and a still bleeder leaves a short run in a random direction.
+- FOOTPRINT-GAIT-01 (`updateWalkingBlood`): bloody footprints vary toe-out (±0.15 rad) and stride width per step instead of a ruler-straight double line.
+- STAIN-SURFACE-01 (`bloodSurfaceAt`, `applyStainSurface`, applied in `pushDecal` and `pushSprayDecal` to every drop stain): the target surface decides the edge, as in James, Kish & Sutton ch. 5. Drops on dirt (road and outer ground) get 2-5 short tapered spines; drops on grass break into 2-3 beads. Shapes are rolled once at creation, so baked and live stains match.
+- STAIN-TAIL-01 (`drawBloodDrop`): the parent tail lengthens with impact obliquity (`tailScale` 1.15 + 0.14 per unit of L/W above 1, capped at 2.4), so shallow hits read as exclamation marks pointing away from the source.
+- POOL-SERUM-01 (pool branch of the decal painter): pools of 3+ blobs show a faint pale-yellow serum ring while drying (lifeT 0.06-0.45), ahead of the existing dark-rim skeletonization.
+- STOMP-SPATTER-01 (`spawnStompSpatter`, from the wet-feet pickup in `updateWalkingBlood`): an enemy stepping into a pool under 3 s old splashes 4-7 long, narrow spatters around it. Their tails point back toward the pool, the reversed directionality that James, Kish & Sutton ch. 5 gives for splashes, where most spatters leave below 40°. It is a one-time stamp: no moving fluid and no per-frame cost. High graphics only.
+- WAVE-CASTOFF-01 (`applyStainSurface`, `drawBloodDrop`): 60% of stains with L/W ≥ 2.4 (impact ≤ ~25°) flip one satellite off the leading edge, its tail pointing back to the parent (Bevel & Gardner ch. 4).
+- BLUNT-EXPOSURE-01 (`spawnWeaponBloodContact`): a first blunt (FAN-profile: Hammerman, Paladin) blow throws 30% of the usual marks, rising 35% per further blow to the same enemy. Blood has to be exposed before blows spatter it (James ch. 7). Edged weapons are unchanged because they open a wound on the first hit.
+- DRIP-INTO-DRIP-01 (arterial-drip branch of `Enemy.update`): a still bleeder whose next drop lands within 12 px of its last drip throws 3-5 satellites in random directions. On the move, shed drops now carry the walker's momentum and elongate forward; before this they pointed backward, against the book physics.
+- DECAL-REBUILD-DEFER-01 (`sweepSettledDecals`): a debug capture showed a 160 ms render frame. Full re-stamps of the baked blood layer ran every 10 s once capacity evictions began, and cost 100+ ms on a bloody board. Mid-wave they now wait up to 60 s (`SETTLED_DECAL_REBUILD_IN_WAVE_MS`); between waves the 10 s cadence stays.
+- Item: `KNIGHT_PAWN` is shown as "Captured Pawn" (id kept for saves).
+- COMMENT-HYGIENE-01: 733 pointer-only `// CA### — see HISTORY.md` lines removed (the archaeology stays in HISTORY.md by number); 168 trailing comments over 110 characters cut to their rule IDs, or removed when they had none. AGENTS.md comment rule rewritten.
+- Checked over http in Chromium: design contract clean at boot, all self-tests pass, no console errors; a wave started, a forced escape picked a rim goal and engaged an adjacent stickman.
+
 ## [1.8.69] — 2026-10-20 (UTC)
 ### Final pass: wave stall fix, faster opening spawns, search snippet
 - RELEASE-HOLD-CAP-01 fix: the 1.8.64 cap reset `waveDispatch.releaseHoldMs` before the inter-batch `gapRemainingMs` was used up, so each frame of the gap restarted the 6 s hold. A batch held at the entrance could wait about 100 s instead of 6. `advanceWaveDispatch` in `js/waves.js` now clears the hold only when the batch advances. A trace of wave 3 showed the stall, and a new-player playthrough confirmed the fix.

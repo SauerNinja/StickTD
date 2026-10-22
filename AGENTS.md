@@ -65,7 +65,7 @@ Making a change:
 2. Fix the cause with the smallest change, reusing existing helpers. Keep anything drawn every frame free of allocation.
 3. Add a design-contract check (`designContractProblems`) for whatever should stay true.
 4. Owner testing scope (2026-10-08): test ONLY modified files' changed behavior and directly affected dependencies. For JavaScript edits run syntax checks; use focused function/browser checks as relevant. Do not run broad regression, stress or additional-check suites without a request or a concrete failure that requires them. State what was not verified. Before removing dead code, check external references and relevant history; keep old-save compatibility.
-5. Bump `GAME_VERSION`, add the changelog entry (the CHANGELOG header says how), and deliver only the full changed upload files with matching versions. No separate test/audit reports unless requested. Never a zip.
+5. Bump `GAME_VERSION`, add the changelog entry (the CHANGELOG header says how), and deliver every file that differs from the live GitHub `main` (DELIVER-SINCE-MAIN-01: diff against the latest commit, so changes from earlier rounds that were not uploaded ship too) with matching versions. No separate test/audit reports unless requested. Never a zip.
 
 Owner copy and handoff preference (2026-10-10): use direct, professional strategy-guide language grounded in actual mechanics. Avoid vague marketing headings such as “Growth”, “A growing road” and “Your pace”; do not pitch standard speed controls as a novel feature. Always deliver complete changed files with individual download links, retaining pending cumulative changes.
 
@@ -145,7 +145,7 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 19. Performance: do not let drawing cost creep back. Fighter shadows are cached per pose and a crowd of 24 or more enemies shares one batched shadow fill (SHADOW-CACHE-01, ENEMY-SHADOW-BATCH-01); when changing anything drawn every frame, benchmark the same scene against the previous release and against 1.6.159 with drawing forced to complete (see CHANGELOG 1.7.50 for the method), and never judge a shadow or effect cost without high graphics on.
 20. Every stat grant outside the point pool goes through grantStatPoints so caps and milestones always apply (STAT-GRANT-01); anything bought or saved must keep its paid price across a reload (MERCHANT-SAVE-01).
 21. Saving and loading: a load resets every run-scoped variable and is all or nothing (it rolls back on any error); a save made mid-wave replays that wave; any new run-scoped global must be added to clearRunScopedStateForLoad (LOAD-ALL-OR-NOTHING-01, WAVE-SAVE-01). Anything that holds an enemy, tower or projectile across ticks must remember its id and treat a changed id as gone (GENERATION-CHECK-01).
-22. Diagnostics stay honest: the overlay and the debug log show speed asked against speed done, cost per tick, HUD time, music scheduler time and a capture around every stickman downing (SPEED-ACHIEVED-01, SCHEDULER-TIMING-01, DOWNING-CAPTURE-01).
+22. Diagnostics stay honest: the overlay and the debug log show speed asked against speed done, cost per tick, HUD time and music scheduler time; the capture around every stickman downing goes in the debug log only, with a one-line count on the overlay (SPEED-ACHIEVED-01, SCHEDULER-TIMING-01, DOWNING-CAPTURE-01). SQUAD-WIPE-01: the run ends when every fighting stickman (not the Hacker) is down at once.
 23. When something that used to work breaks, compare against GitHub history, name the version where it changed, restore it, and add a check so it cannot return.
 24. Biomes (BIOMES-01, decision 1.7.66): the leafy tree is the only tree kind and meadow the only grass near the start; evergreens, palms and the Pinewood and Dunes ground colours appear only in wavy patches 8 or more tiles from the starting tile, like Minecraft biomes; a tile's biome never changes (it depends only on the tile and the run seed).
 
@@ -175,7 +175,7 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 3. `sitemap.xml` `lastmod` is set to the release date; `manifest.json`, `robots.txt` and `LICENSE` are delivered with the rest so the complete uploadable set is always present (images stay in the repository).
 4. The page loads with the design contract clean (no problems, no console errors, no `look changed` lines) and the regression suite passes; for any change to drawing or styles the before and after frames named in VISUAL-DRIFT-01 match except for what was asked.
 5. AGENTS.md ledger and BACKLOG.md updated when a rule or open item changed; memory updated with the new rule.
-6. All files are delivered together: index.html, CHANGELOG.md, AGENTS.md, README.md, BACKLOG.md, sitemap.xml, manifest.json, robots.txt, LICENSE.
+6. Every file that differs from the live GitHub `main` is delivered together (DELIVER-SINCE-MAIN-01), full files, never only the latest round's changes.
 
 ## Look continuity (VISUAL-DRIFT-01)
 Each item is a look the project rules settled; a later change does not undo it without a request.
@@ -325,7 +325,9 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
   truth) at https://github.com/SauerNinja/StickTD. Check the live URL or pull current repo state
   before assuming a local copy is current — this repo can be updated outside any given session.
 - **Current snapshot priority**: when a complete current project snapshot is supplied, use its `index.html`, `CHANGELOG.md`, and companion files as the active baseline ahead of older ZIP archives or remembered workspace versions. Record and verify its `GAME_VERSION`; keep any differences from earlier work explicit.
-- **Index comment references**: keep code comments brief and avoid embedding long rationale in `index.html`. Any pointer to a detailed changelog explanation must name the exact version heading and archive/entry ID, using the form `CHANGELOG.md § [x.y.z] Section, CA###`. Verify the cited version and ID exist before shipping; put the full explanation in the changelog.
+- **Code comments (COMMENT-HYGIENE-01)**: a comment states a rule ID or a non-obvious fact in one short line. No pointer-only lines (the `CA###` archaeology stays in HISTORY.md, searchable by number), no trailing essays, no narration of past fixes; the why lives in the CHANGELOG entry that names the rule ID.
+- **Area queries (ENEMIES-NEAR-01)**: any effect that reaches enemies within a radius (splash, acid, chain lightning, discharge, heal aura, startle, separation) asks `enemiesNear(x, y, radius)` and filters with `isCombatTarget`; no area effect scans the whole `enemyPool`. Shared math uses the existing helpers (`clampNum`, `queryNearby`) instead of inline copies.
+- **Dead code**: a function or constant with no reference anywhere (code, strings, `index.html`) is removed in the release that finds it, and the CHANGELOG names it.
 - **README voice**: `README.md` is a plain description of the game that gives a new player and a visitor the full picture: the name, a link to play, one image, two short sentences about what the game is, a small grid of general features, then short sections on how to play, the defender classes, elements, enemies and waves, resources and structures, items and the Shop, settings, saving, what it is made with, and the license. Owner decision (1.7.118): the old box-copy-only README left out too much, so game facts that are stable may now appear, including class names and the stat-to-element mapping. It still does not talk about its maker, its price, its version, its development state or its changes, and it holds no tuning numbers that change between releases (costs, damage, cooldowns, thresholds); keep those in the in-game Help. Write it as if the game were finished, in short plain sentences with no slogans, puns, hype or filler adjectives. A line fails if it sounds like marketing trying to be liked. Update it whenever a class, element, resource or mode is added or removed. It always ends its Made with section with the small AI-assisted coding note (AI-DISCLOSURE-01), and a rewrite never drops a section this rule lists (README-SECTIONS-01).
 - **Version lives in exactly one place**: `GAME_VERSION` in `index.html`, referenced everywhere
   else (start screen, Settings > About, save files). Never hardcode it a second time.
@@ -387,9 +389,10 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 - **Cleave weakens as it connects.** Melee cleave hits a bounded number of enemies with damage
   falling off on each successive target, and bleed only takes hold on the first, full-damage hit —
   never on the fall-off hits behind it.
-- **Wind is retired; Luck is removed (1.7.162).** Ambient miss-chance wind and DEX's bonus-gold Luck
-  were pulled for reading as confusing. Wind plumbing stays inert (see `windCeilingForWave`);
-  Luck has no stat display or bounty multiplier. Do not restore it without an owner request.
+- **Wind and Luck are removed (WIND-REMOVED-01).** Ambient miss-chance wind and DEX's bonus-gold Luck
+  were pulled for reading as confusing. No wind code remains; miss chance comes only from the
+  stickman's stats and the target. Luck has no stat display or bounty multiplier. Neither returns
+  without a project decision.
 - **Blood volume tracks crit, not randomness.** Spray size sits on a skewed scale — small most of
   the time, a large splatter only when a crit actually lands. Crit stays the rare, coveted stat;
   blood volume is how a player feels that rarity, not an independent coin flip.
@@ -665,32 +668,32 @@ hand — this part is not meant to be read in full every session.
   tier, base-class specialization or deep-tier alike.
 - The 3 base classes (Swordsman/Archer/Mage) unlock through a two-stage **elemental attunement**
   system: `ATTUNEMENTS` (STR→Fire/DEX→Electric/INT→Ice) permanently locks an element on whichever
-  stat first reaches `ATTUNEMENT_THRESHOLD` (100) — checked in
-  `Tower.checkAttunementAndSpecialization()`, called from `checkEvolution()` only for
+  stat first reaches `CRAZY_CHEF_STR_THRESHOLD` (100) — checked in
+  `Tower.checkAttunementAndSpecialization()`, called from `checkClassUnlocks()` only for
   `BASE_ATTUNABLE_TYPES`. Reaching `SPECIALIZATION_THRESHOLD` (500) in that *same* attuned stat then
   calls `unlockTowerTypeBuild(SPECIALIZATIONS[type][element])`, if one is defined — not every
   base/element combination is (Mage has no Fire specialization; see the comments directly above
   `SPECIALIZATIONS` in `index.html` and `BACKLOG.md` for exactly which cells are intentional gaps
-  vs. imperfect fits kept for scope reasons). `EVOLUTIONS` covers every deeper unlock beyond a base
+  vs. imperfect fits kept for scope reasons). `CLASS_STAT_UNLOCKS` covers every deeper unlock beyond a base
   class's own specialization (Blowdart → Squirt Gun, Hammerman → Paladin, Marksman → Sniper,
   Gatling → Bomber → Gunalinder) using the same flat stat-threshold pattern, unrelated to
-  attunement — `checkEvolution()`'s non-base-class branch calls `unlockTowerTypeBuild()` the exact
-  same way, never `evolveInto()`. Every class in `EVOLVED_TOWER_TYPES` traces to a real, reachable
+  attunement — `checkClassUnlocks()`'s non-base-class branch calls `unlockTowerTypeBuild()` the exact
+  same way, never `evolveInto()`. Every class in `UNLOCKED_CLASS_TYPES` traces to a real, reachable
   unlock now — verified directly, no orphaned classes (Bomber/Gunalinder were the last gap, closed
-  by adding `EVOLUTIONS.GATLING`).
+  by adding `CLASS_STAT_UNLOCKS.GATLING`).
 - `unlockedTowerTypes` (a `Set`, persists across save/load, resets on a genuinely new game — same
   precedent as the existing wave-gated starter unlocks via `isTowerUnlocked()`) tracks which
   evolution targets have actually been unlocked this game; `UNLOCKABLE_TOWER_TYPES` and
   `TOWER_UNLOCK_SOURCE_BY_TARGET` are both derived programmatically from `SPECIALIZATIONS` +
-  `EVOLUTIONS`, not a separately maintained list. Treat `TOWER_UNLOCK_SOURCE_BY_TARGET` as the
+  `CLASS_STAT_UNLOCKS`, not a separately maintained list. Treat `TOWER_UNLOCK_SOURCE_BY_TARGET` as the
   source for player-facing unlock descriptions. Keep locked-row copy direct, useful, and free of
   cryptic riddles; state the relevant wave, source class, or stat requirement when it helps the
   player understand their next goal. The in-game Help gives a broad roster and progression overview;
   these invariants and the verified source tables define exact behavior.
-- `EVOLVED_TOWER_TYPES` lists everything reachable only via unlock, never built directly from the
+- `UNLOCKED_CLASS_TYPES` lists everything reachable only via unlock, never built directly from the
   start (includes Hammerman itself). A base-type tower loaded from a save that predates the
   `attunement` field runs `migrateLegacyAttunement()` — deterministic, and in practice a no-op for
-  any real save, since `checkEvolution()` has always run synchronously after every stat change, so
+  any real save, since `checkClassUnlocks()` has always run synchronously after every stat change, so
   no still-base-type tower should ever actually have a stat at or above 100 in saved data.
 - Enemy status effects (burn, poison/curse, slow, stun) live as fields directly on the `Enemy`
   instance (`burnUntil`, `poisonUntil`, `slowTimer`, `stunnedUntil`), checked each tick in
@@ -829,7 +832,7 @@ it shows only when the currently-selected tower's inventory satisfies a recipe e
 ## Evolve-in-place — does not exist
 
 There is no in-place tower transformation. Reaching a stat threshold permanently unlocks a new type for the
-Build tray (`unlockTowerTypeBuild()`, called from `checkEvolution()`/`checkAttunementAndSpecialization()`);
+Build tray (`unlockTowerTypeBuild()`, called from `checkClassUnlocks()`/`checkAttunementAndSpecialization()`);
 the tower that triggered it is never changed. If you find yourself writing code that reassigns `tower.type`
 on an existing, already-built tower, stop — that pattern was removed on purpose (`NO-EVOLVE-IN-PLACE-01`).
 
@@ -939,7 +942,7 @@ Settings → Game → Reset options (`clearUnlocksAndRestart()`, `clearAllProgre
   not also setting this, so a Hammerman reached via the old transform-based evolution never got its
   35% — is now moot, since `evolveInto()` doesn't run at all anymore).
 - `validateGameDefinitions()` runs once at boot, cross-checks every data-driven table (WAVES/
-  TOWERS/ENEMIES, EVOLUTIONS, SPECIALIZATIONS, SPLIT_CHILD_TYPE, CLASS_ARCHETYPE, FOOTSTEP_WEIGHT,
+  TOWERS/ENEMIES, CLASS_STAT_UNLOCKS, SPECIALIZATIONS, SPLIT_CHILD_TYPE, CLASS_ARCHETYPE, FOOTSTEP_WEIGHT,
   JOB_QUOTES, TOWER_STRATEGY, starter/evolved type lists) for dangling references — extend it when
   adding a new table with cross-references of its own.
 
@@ -1381,7 +1384,7 @@ Use the section headers around each destination to navigate when line references
 - [`CONFIG.FLORA` / `spawnFlora()` — sparse cosmetic ground-cover accents, baked into the static map layer](https://github.com/SauerNinja/StickTD/blob/main/index.html#L2352)
 - [`spawnLeafGust()` / `updateAndDrawBlowingLeaves()` — one ambient gust of leaves drifting across the screen, 20-60s into a game](https://github.com/SauerNinja/StickTD/blob/main/index.html#L10827)
 - [`ATTUNEMENTS` / `SPECIALIZATIONS` — the two-stage elemental attunement (100, permanent lock) + specialization (500) tables](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1630)
-- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkEvolution()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9480)
+- [`checkAttunementAndSpecialization()` — the runtime check for the above, called from `checkClassUnlocks()` for the 3 base classes only](https://github.com/SauerNinja/StickTD/blob/main/index.html#L9480)
 - [`unlockedTowerTypes` / `unlockTowerTypeBuild()` — unlocks tower types for direct Build-menu purchase](https://github.com/SauerNinja/StickTD/blob/main/index.html#L1734)
 - [Audio synthesis (`SoundEngine`)](https://github.com/SauerNinja/StickTD/blob/main/index.html#L5703)
 - [Game state / save-load](https://github.com/SauerNinja/StickTD/blob/main/index.html#L6121)

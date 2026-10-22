@@ -1,5 +1,5 @@
 "use strict";
-// Spatial hash, enemy collisions, the fixed-timestep main loop, update and render, diagnostics frames, the attract screen and the merchant caravan. Loaded after js/effects.js.
+// Spatial hash, enemy collisions, the fixed-timestep main loop, update and render, diagnostics frames, the attract screen and the merchant caravan.
 // Contents (one line per section banner below, in file order; keep in step when sections change — FILE-CONTENTS-01):
 //   SPATIAL HASH
 //   MAIN LOOP: FIXED TIMESTEP AND UPDATE
@@ -15,10 +15,8 @@
 /* =========================================================
    SPATIAL HASH
    ========================================================= */
-// CA603 — see HISTORY.md § [1.5.7] Code Archaeology, CA603
 const SPATIAL_CELL_OFFSET = 256, SPATIAL_CELL_STRIDE = 1024;
 function spatialCellKey(cx, cy){ return (cx + SPATIAL_CELL_OFFSET) * SPATIAL_CELL_STRIDE + (cy + SPATIAL_CELL_OFFSET); }
-// CA604 — see HISTORY.md § [1.5.7] Code Archaeology, CA604
 function barricadeAttackReady(barricade){
   if(barricade.barricadeContactSince === undefined || barricade.barricadeContactSince === null) barricade.barricadeContactSince = gameTime;
   const since = Math.max(barricade.barricadeContactSince, barricade.lastBarricadeHitAt);
@@ -44,8 +42,7 @@ function chipBarricade(barricade, attacker){
     playSound('death');
   }
 }
-// CA605 — see HISTORY.md § [1.5.7] Code Archaeology, CA605
-// BARRICADE-STRIKE-01 (1.8.20): every enemy strike on a barricade throws wood and stone away from the attacker; the strike that removes a point also leaves rubble.
+// BARRICADE-STRIKE-01: every enemy strike on a barricade throws wood and stone away from the attacker; the strike that removes a point also leaves rubble.
 function spawnBarricadeStrikeDebris(barricade, attacker, isChip){
   const awayAngle = attacker ? Math.atan2(barricade.y - attacker.y, barricade.x - attacker.x) : undefined;
   spawnParticles(barricade.x, barricade.y, '#b07a3a', isChip ? 5 : 3, 140, 0.9, false, awayAngle, 1.2);
@@ -56,12 +53,10 @@ function spawnBarricadeStrikeDebris(barricade, attacker, isChip){
 function spawnBarricadeDebris(barricade){
   spawnParticles(barricade.x, barricade.y, '#b07a3a', 4);
   spawnParticles(barricade.x, barricade.y, '#9aa0a6', 3);
-  // CA606 — see HISTORY.md § [1.5.7] Code Archaeology, CA606
   spawnBarricadeChunk(barricade.x, barricade.y - 6, true); // the 1 stone chunk
   const woodPieces = 1 + (Math.random() < 0.5 ? 1 : 0); // 1-2 wood chunks
   for(let i = 0; i < woodPieces; i++) spawnBarricadeChunk(barricade.x, barricade.y - 6, false);
 }
-// CA607 — see HISTORY.md § [1.5.7] Code Archaeology, CA607
 const MELEE_DODGE_PX = 7;
 function dodgeEnemyFromSwing(enemy, tower){
   const dx = enemy.x - tower.x, dy = enemy.y - tower.y;
@@ -73,7 +68,7 @@ function dodgeEnemyFromSwing(enemy, tower){
   enemy.flinchDuration = 160;
   spawnParticles(enemy.x, enemy.y, '#d9d9d9', 2);
 }
-// LANE-LEASH-01 (1.6.110) — see HISTORY.md § [1.6.110]
+// LANE-LEASH-01
 const LANE_LEASH_PX = 14;
 function leashEnemyToLane(e){
   if(e.isBreakaway || e.escaped || e.isGuardian || e.isHutBuilding || e.isLivestock) return;
@@ -96,13 +91,11 @@ function leashAllEnemiesToLane(){
 }
 function isCampRouteCrossing(a, b){
   const aCamp = a.isGuardian || a.isHutBuilding, bCamp = b.isGuardian || b.isHutBuilding;
-  // CA608 — see HISTORY.md § [1.5.7] Code Archaeology, CA608
   return (aCamp && !bCamp && !b.escaped) || (bCamp && !aCamp && !a.escaped);
 }
-// QUEUE-HOLD-01 (1.7.87) — see HISTORY.md § [1.7.87]
+// QUEUE-HOLD-01
 function isEnemyHeldInPlace(e){ return e.stunnedUntil > gameTime || e.frozenUntil > gameTime; }
 function isEnemyFrozen(e){ return e.pileBlocked || isEnemyHeldInPlace(e); }
-// CA609 — see HISTORY.md § [1.5.7] Code Archaeology, CA609
 function checkStallWatchdog(dt){
   for(const e of enemyPool){
     if(!e.active || e.isBreakaway || e.escaped || e.isGuardian || e.isHutBuilding) continue;
@@ -114,23 +107,22 @@ function checkStallWatchdog(dt){
     e.stallWatchTimer += dt;
     if(e.stallWatchTimer < 500) continue;
     const displaced = Math.hypot(e.x - (e.stallWatchX ?? e.x), e.y - (e.stallWatchY ?? e.y));
-    e.stallWatchX = e.x; e.stallWatchY = e.y; // was 1000ms — checking twice as often catches a corner hang-up faster, especially in a mixed-size cluster where a stall can start and end within a couple of seconds
+    e.stallWatchX = e.x; e.stallWatchY = e.y;
     const progressed = Math.min(e.traveled - e.stallWatchTraveled, displaced); // real displacement, not just the path counter — collision push-back can keep `traveled` rising while the unit never actually moves
     e.stallWatchTimer = 0;
     e.stallWatchTraveled = e.traveled;
-    const expectedStepPx = (e.speed || 0) * (e.slowMultiplier === undefined ? 1 : enemyMoveMultiplier(e)) * 0.5; // STALL-JUMP-01 (1.6.116) — see HISTORY.md § [1.6.116]
+    const expectedStepPx = (e.speed || 0) * (e.slowMultiplier === undefined ? 1 : enemyMoveMultiplier(e)) * 0.5; // STALL-JUMP-01
     const stallThresholdPx = Math.min(e.radius*0.15, expectedStepPx*0.3);
-    if(progressed < stallThresholdPx){ // scaled to the enemy's own size rather than a flat 3px — a Boss/Tank crawling 3px in half a second might be genuinely fine, while a tiny fast Swarm doing the same is clearly stuck
+    if(progressed < stallThresholdPx){
       e.stallStrikes++;
       if(e.stallStrikes >= 3){ // 3 strikes at 500ms = ~1.5s of real stall before intervening, down from ~3s
         const target = waypointsPx[e.pathIndex+1];
         if(target){
           const dx = target.x-e.x, dy = target.y-e.y;
           const dist = Math.hypot(dx,dy) || 1;
-          const nudge = Math.min(dist, 14); // slightly stronger than before — enough to actually clear a mixed-size pileup at a corner, not just inch forward
+          const nudge = Math.min(dist, 14);
           e.x += (dx/dist)*nudge; e.y += (dy/dist)*nudge;
           e.traveled += nudge;
-          // CA610 — see HISTORY.md § [1.5.7] Code Archaeology, CA610
           if(nudge >= dist - 0.01) e.pathIndex++;
         }
         e.stallStrikes = 0;
@@ -140,8 +132,7 @@ function checkStallWatchdog(dt){
     }
   }
 }
-// CA611 — see HISTORY.md § [1.5.7] Code Archaeology, CA611
-// PERF-COLLISION-CAP-01 (1.6.44) — see HISTORY.md § [1.6.44]. Measured via a headless stress
+// PERF-COLLISION-CAP-01: Measured via a headless stress
 // harness against these exact functions: when enemies jam into a dense clump (a Barricade
 // chokepoint, a corner backup), a single queryNearby() call can return most of the active
 // population, and both collision functions below degrade toward O(n^2) instead of staying near the
@@ -152,10 +143,8 @@ function checkStallWatchdog(dt){
 // in one; same tradeoff already accepted for melee cleave's own MELEE_SWEEP_MAX_TARGETS cap.
 const COLLISION_QUERY_CAP = 48;
 function largestActiveEnemyRadius(){ let largest = 0; for(const e of enemyPool) if(e.active && e.radius > largest) largest = e.radius; return largest; }
-// COLLISION-ARRAYS-01 (1.8.60): the relaxation passes read and write each enemy's position, radius, speed and flags from flat typed arrays filled once per
-// call, then write the positions back. A profile with 220 enemies piled at the barricade showed this function and its caller at about 60% of all script
-// time; the enemy objects carry dozens of dynamically added properties, so every field read in the pair loop was slow (Albrecht, Pitfalls of Object
-// Oriented Programming). The arithmetic, the pair order and the neighbour selection are unchanged, so the results are identical.
+// COLLISION-ARRAYS-01: the relaxation passes work on flat typed arrays of position, radius, speed and flags filled once per call, then write the
+// positions back; arithmetic, pair order and neighbour selection match the object version, so results are identical.
 let collisionArrayLength = 0;
 let collisionX, collisionY, collisionRadius, collisionId, collisionVX, collisionVY, collisionFrozen, collisionHut, collisionCamp, collisionEscaped;
 function ensureCollisionArrays(length){
@@ -168,10 +157,10 @@ function ensureCollisionArrays(length){
 function resolveSweptEnemyCollisions(){
   const hash = buildEnemyHash(), largestRadius = largestActiveEnemyRadius();
   ensureCollisionArrays(enemyPool.length);
-  const X = collisionX, Y = collisionY, R = collisionRadius, PX = collisionVX, PY = collisionVY; // COLLISION-ARRAYS-01 (1.8.60): the velocity arrays hold the previous position during this pass
+  const X = collisionX, Y = collisionY, R = collisionRadius, PX = collisionVX, PY = collisionVY; // COLLISION-ARRAYS-01: the velocity arrays hold the previous position during this pass
   for(let slot = 0; slot < enemyPool.length; slot++){
     const e = enemyPool[slot];
-    if(!e.active || e.prevX === undefined || e.isLivestock || e.isBreakaway){ e.collisionSlot = -1; continue; } // BREAKAWAY-PHASE-01 (1.6.157): an enemy breaking off to attack a stickman is on its own phase
+    if(!e.active || e.prevX === undefined || e.isLivestock || e.isBreakaway){ e.collisionSlot = -1; continue; } // BREAKAWAY-PHASE-01: an enemy breaking off to attack a stickman is on its own phase
     e.collisionSlot = slot;
     X[slot] = e.x; Y[slot] = e.y; R[slot] = e.radius; collisionId[slot] = e.id; PX[slot] = e.prevX; PY[slot] = e.prevY;
     collisionFrozen[slot] = (isEnemyFrozen(e) || e.isHutBuilding) ? 1 : 0;
@@ -193,14 +182,13 @@ function resolveSweptEnemyCollisions(){
       const vSq = vx*vx + vy*vy;
       if(vSq < 0.01) continue; // negligible relative motion this frame — nothing could have tunneled
       let t = -(px*vx + py*vy) / vSq;
-      t = Math.max(0, Math.min(1, t));
+      t = clampNum(t, 0, 1);
       const closeX = px + vx*t, closeY = py + vy*t;
       const closeDist = Math.hypot(closeX, closeY);
       if(closeDist >= minDist) continue; // paths never actually came within collision range this frame
       const dx = X[i] - X[j], dy = Y[i] - Y[j];
       const dist = Math.hypot(dx,dy) || 0.0001;
       if(dist >= minDist){
-        // CA612 — see HISTORY.md § [1.5.7] Code Archaeology, CA612
         const normX = closeDist > 0.0001 ? closeX/closeDist : 1, normY = closeDist > 0.0001 ? closeY/closeDist : 0;
         const corr = (minDist - closeDist) * 0.5;
         if(!eFrozen){ X[i] += normX*corr; Y[i] += normY*corr; }
@@ -225,12 +213,10 @@ function loadCollisionArrays(){
   }
 }
 function resolveEnemyCollisions(){
-  // CA613 — see HISTORY.md § [1.5.7] Code Archaeology, CA613
   const PASSES = 3;
-  // CA614 — see HISTORY.md § [1.5.7] Code Archaeology, CA614
   const COLLISION_RELAX_FACTOR = 0.7;
   const COLLISION_RELAX_SPLIT = COLLISION_RELAX_FACTOR * 0.5; // 0.35 — the per-body coefficient when both sides share the correction
-  // PERF-01 (1.6.8) — see HISTORY.md § [1.6.8]. One hash for all three passes; per-pass displacement is a few pixels at most.
+  // PERF-01: One hash for all three passes; per-pass displacement is a few pixels at most.
   const hash = buildEnemyHash(), largestRadius = largestActiveEnemyRadius();
   loadCollisionArrays();
   const X = collisionX, Y = collisionY, R = collisionRadius;
@@ -254,22 +240,18 @@ function resolveEnemyCollisions(){
         if(dist > 0.0001){
           pushX = dx/dist; pushY = dy/dist;
         } else {
-          // CA615 — see HISTORY.md § [1.5.7] Code Archaeology, CA615
           const angle = ((collisionId[i] * 2654435761 + collisionId[j] * 40503) % 360) * Math.PI/180;
           pushX = Math.cos(angle); pushY = Math.sin(angle);
         }
         const eFrozen = collisionFrozen[i], otherFrozen = collisionFrozen[j];
-        // CA616 — see HISTORY.md § [1.5.7] Code Archaeology, CA616
         if(!eFrozen || !otherFrozen) correctionsThisPass++;
         if(!eFrozen && !otherFrozen){
-          // CA617 — see HISTORY.md § [1.5.7] Code Archaeology, CA617
           const speedE = Math.hypot(collisionVX[i], collisionVY[i]), speedO = Math.hypot(collisionVX[j], collisionVY[j]);
           if(speedE > 5 || speedO > 5){
             const tanX = speedE > speedO ? collisionVX[i]/(speedE||1) : collisionVX[j]/(speedO||1);
             const tanY = speedE > speedO ? collisionVY[i]/(speedE||1) : collisionVY[j]/(speedO||1);
             const along = pushX*tanX + pushY*tanY; // component of the push already aligned with travel direction
             const crossX = pushX - along*tanX, crossY = pushY - along*tanY; // perpendicular remainder
-            // CA618 — see HISTORY.md § [1.5.7] Code Archaeology, CA618
             pushX = along*tanX + crossX*0.3;
             pushY = along*tanY + crossY*0.3;
             const norm = Math.hypot(pushX, pushY) || 1;
@@ -282,7 +264,6 @@ function resolveEnemyCollisions(){
         } else if(!otherFrozen){
           X[j] -= pushX*overlap*COLLISION_RELAX_FACTOR; Y[j] -= pushY*overlap*COLLISION_RELAX_FACTOR;
         } else {
-          // CA619 — see HISTORY.md § [1.5.7] Code Archaeology, CA619
           const lateralX = -pushY, lateralY = pushX;
           const nudge = Math.min(overlap, 1.5) * 0.5;
           if(!collisionHut[i]){ X[i] += lateralX*nudge; Y[i] += lateralY*nudge; }
@@ -294,13 +275,11 @@ function resolveEnemyCollisions(){
   }
   for(let i = 0; i < enemyPool.length; i++){ const e = enemyPool[i]; if(e.collisionSlot >= 0){ e.x = X[i]; e.y = Y[i]; } }
 }
-// CA620 — see HISTORY.md § [1.5.7] Code Archaeology, CA620
 const EMPTY_ENEMY_HASH = Object.freeze({});
 const EMPTY_QUERY_RESULT = Object.freeze([]);
-// CA621 — see HISTORY.md § [1.5.7] Code Archaeology, CA621
 const enemyHashBucketPool = new Map();
-// CA622 — see HISTORY.md § [1.5.7] Code Archaeology, CA622
 let spatialQueryCallsThisFrame = 0, hashBuildsThisFrame = 0, queryNearbyMaxResultLenSeen = 0;
+function isCombatTarget(e){ return e.active && (!e.isLivestock || e.isHostileNpc || e === markedTargetEnemy); } // TARGET-MARK-01: wildlife is passive until the player marks it
 function buildEnemyHash(){
   hashBuildsThisFrame++;
   // Fresh short-lived container avoids property deletion on a reused object; the bucket arrays
@@ -308,7 +287,7 @@ function buildEnemyHash(){
   const hash = {_minCellX:Infinity,_maxCellX:-Infinity,_minCellY:Infinity,_maxCellY:-Infinity,_minYByColumn:{},_maxYByColumn:{}};
   for(const e of enemyPool){
     if(!e.active) continue;
-    if(e.isLivestock && !e.isHostileNpc && e !== markedTargetEnemy) continue; // TARGET-MARK-01 (1.6.94): passive until marked
+    if(!isCombatTarget(e)) continue;
     const cellX = Math.floor(e.x/TILE_SIZE), cellY = Math.floor(e.y/TILE_SIZE);
     if(cellX < hash._minCellX) hash._minCellX = cellX;
     if(cellX > hash._maxCellX) hash._maxCellX = cellX;
@@ -328,11 +307,14 @@ function buildEnemyHash(){
   }
   return hash._minCellX === Infinity ? EMPTY_ENEMY_HASH : hash;
 }
-// CA623 — see HISTORY.md § [1.5.7] Code Archaeology, CA623
 const queryNearbyScratch = [];
 let spatialQueryRotation = 0;
-// COLLISION-QUERY-EXACT-01 (1.8.43): collision passes ask for exactly the cells their reach touches (exactCells) instead of a padded square, so a crowd's
+// COLLISION-QUERY-EXACT-01: collision passes ask for exactly the cells their reach touches (exactCells) instead of a padded square, so a crowd's
 // capped neighbor list holds the enemies that can actually overlap rather than ones up to two tiles away.
+const NEARBY_QUERY_MARGIN_PX = 40; // covers the largest enemy radius and one tick of movement since the hash was built
+function enemiesNear(x, y, radius){ // ENEMIES-NEAR-01: one radius query for every area effect; a copy, because callbacks that damage enemies reuse the scratch list
+  return queryNearby(enemyHash || EMPTY_ENEMY_HASH, x, y, radius + NEARBY_QUERY_MARGIN_PX).slice();
+}
 function queryNearby(hash, x, y, range, maxResults, exactCells){
   spatialQueryCallsThisFrame++;
   if(hash === EMPTY_ENEMY_HASH) return EMPTY_QUERY_RESULT; // no active enemies at all — skip the entire cell scan below rather than doing real work to look for nothing
@@ -359,8 +341,8 @@ function queryNearby(hash, x, y, range, maxResults, exactCells){
       const arr = hash[spatialCellKey(cellX, cellY)];
       if(arr){
         const count = maxResults === undefined ? arr.length : Math.min(arr.length, maxResults-queryNearbyScratch.length);
-        // COLLISION-FAIR-01 (1.7.50): when a crowd is bigger than the result cap, always taking the first entries meant the same enemies were returned for everyone and the rest never got a
-        // collision pair (the review reproduced 32 of 80 stacked enemies still coincident after 20 passes). The read now starts at a rotating position, so over a few ticks every enemy is covered, with the same bounded work.
+        // COLLISION-FAIR-01: when a crowd is bigger than the result cap, always taking the first entries meant the same enemies were returned for everyone and the rest never got a
+        // collision pair (the review reproduced 32 of 80 stacked enemies still coincident after 20 passes).
         if(count < arr.length){ const startAt = (spatialQueryRotation++ * 17) % arr.length; for(let i=0;i<count;i++) queryNearbyScratch.push(arr[(startAt + i) % arr.length]); }
         else for(let i=0;i<count;i++) queryNearbyScratch.push(arr[i]);
         if(maxResults !== undefined && queryNearbyScratch.length >= maxResults){
@@ -388,17 +370,15 @@ function randomActiveEnemy(nearby){
 /* =========================================================
    MAIN LOOP: FIXED TIMESTEP AND UPDATE
    ========================================================= */
-const FIXED_DT = 1000/60;
+const FIXED_DT = 1000/60, SKULL_WORM_CHANCE = 0.1;
 function renderLeftoverMs(){ return gameState === 'PLAYING' ? Math.min(accumulator, FIXED_DT) : 0; } // SMOOTH-ANIM-01: the part of the next tick that has already elapsed
 let lastTime = 0, accumulator = 0;
 const NORMAL_MAX_FRAME_TIME_MS = 100;
 const FAST_FORWARD_MAX_FRAME_TIME_MS = 150;
+const FRAME_GAP_RESET_MS = 150; // DT-RESET-01: a gap longer than 0.15 s (tab switch, stall) advances nothing, so nothing teleports
 const MAX_SIMULATION_TICK_CAP = Math.ceil(FAST_FORWARD_MAX_FRAME_TIME_MS * MAX_SIMULATION_SPEED_MULTIPLIER / FIXED_DT);
-// MOBILE-FPS-CAP-01 (1.6.48) — see HISTORY.md § [1.6.48]. Standard touch/coarse-pointer
-// detection (not User-Agent sniffing, which is unreliable and explicitly discouraged) — computed
-// once at boot, never re-evaluated per frame.
-let frameCapNextAt = 0; // FRAME-CAP-01 (1.6.128)
-// VSYNC-PACE-01 (1.7.77) — see HISTORY.md § [1.7.77]
+let frameCapNextAt = 0; // FRAME-CAP-01
+// VSYNC-PACE-01
 const VSYNC_GAP_SAMPLES = 30, VSYNC_GAP_MIN_MS = 2, VSYNC_GAP_MAX_MS = 50;
 const vsyncGapRing = new Float32Array(VSYNC_GAP_SAMPLES), vsyncGapSorted = new Float32Array(VSYNC_GAP_SAMPLES);
 let vsyncGapCount = 0, vsyncLastCallbackAt = 0, vsyncIntervalMs = 0;
@@ -413,7 +393,7 @@ function sampleVsyncGap(now){
   vsyncGapSorted.sort();
   vsyncIntervalMs = vsyncGapSorted[VSYNC_GAP_SAMPLES >> 2];
 }
-// VSYNC-PROBE-01 (1.7.110): the screen's refresh interval is measured while the loading screen is up (the sampler used to start with the first game frame, so the first second ran on an unsnapped limit and the frame rate wandered between 60 and 30)
+// VSYNC-PROBE-01: the refresh interval is measured while the loading screen is up, so the first game second already runs on a snapped frame limit.
 let vsyncProbeActive = false;
 function probeVsyncDuringLoading(now){
   if(!vsyncProbeActive) return;
@@ -425,22 +405,10 @@ function vsyncSnappedCapMs(capMs){
   return Math.max(1, Math.round(capMs / vsyncIntervalMs)) * vsyncIntervalMs;
 }
 function frameCapEarlyToleranceMs(){ return vsyncIntervalMs > 0 ? vsyncIntervalMs * 0.5 : FRAME_CAP_EARLY_TOLERANCE_MS; }
-// CA648 — see HISTORY.md § [1.5.7] Code Archaeology, CA648
 function checkAllFightersDown(){
-  if(gameState !== 'PLAYING' || waveState === 'IDLE') return false;
-  if(!everBuiltFighter) return false; // nothing has ever been built yet — not a loss
-  // CA649 — see HISTORY.md § [1.5.7] Code Archaeology, CA649
-  let fighterCount = 0, anyStanding = false;
-  for(const t of towerPool){
-    if(!t.active || isStructureType(t.type)) continue;
-    fighterCount++;
-    if(t.disabledWavesLeft <= 0){ anyStanding = true; break; }
-  }
-  if(fighterCount === 0 || !anyStanding){
-    endGame('Your whole squad was overrun on wave ' + waveIndex + '.\nRebuild and try again.', 'squad_overrun');
-    return true;
-  }
-  return false;
+  if(gameState !== 'PLAYING' || waveState === 'IDLE' || !squadWipedOut()) return false;
+  endRunOnSquadWipe();
+  return true;
 }
 let shownEarlyCallBonus = 0;
 function update(dt){
@@ -449,7 +417,6 @@ function update(dt){
   updateFlagWind(dt);
   if(gameTime < hitStopUntil) return; // brief freeze-frame on Boss kills — rendering still happens, physics doesn't
   if(checkAllFightersDown()) return; // loss condition: every fighting stickman overrun at once — see checkAllFightersDown()
-  // CA650 — see HISTORY.md § [1.5.7] Code Archaeology, CA650
   if(presentationTime - lastGroundItemSweep > 1000){
     lastGroundItemSweep = presentationTime;
     if(groundItems.length){
@@ -461,27 +428,21 @@ function update(dt){
     }
   }
   updateGroundItemDrift(dt);
-  // CA651 — see HISTORY.md § [1.5.7] Code Archaeology, CA651
   let __pt = performance.now();
-  updateWind(dt);
   updateScenery(dt);
   updateTreatTacticalEffects(dt);
   updateLightningArcs();
-  // EXPAND-REALTIME-01 (1.7.36): the reveal is now driven from updatePresentationEffects() in real time, so it plays at the same calm pace at 1x and 10x.
-  // PATHING-MASTER-01 (1.5.9) — see HISTORY.md § [1.5.9]
   phaseTime.ambient += performance.now() - __pt; __pt = performance.now();
   if(waveState === 'SPAWNING'){
-    // CA652 — see HISTORY.md § [1.5.7] Code Archaeology, CA652
     if(!anyBarricadeQueued && !waveStartCameraPan){
       advanceWaveDispatch(dt);
     }
   }
   phaseTime.spawning += performance.now() - __pt; __pt = performance.now();
 
-  // CA653 — see HISTORY.md § [1.5.7] Code Archaeology, CA653
   updateBarricadesAndPileup();
   phaseTime.barricade += performance.now() - __pt; __pt = performance.now();
-  if(enemyPresenceDirty){ // TARGET-MARK-01 (1.6.94): livestock never block a wave from completing; LAG-PASS-02 (1.6.144): a rescan happens only after one of the events listed at enemyPresenceDirty
+  if(enemyPresenceDirty){ // TARGET-MARK-01, LAG-PASS-02
     laneEnemiesPresent = false; targetableWandererPresent = false;
     for(const scanned of enemyPool){
       if(!scanned.active) continue;
@@ -490,7 +451,7 @@ function update(dt){
     }
     enemyPresenceDirty = false;
   }
-  if(waveState === 'IDLE'){ const earlyBonus = earlyCallBonusNow(); if(earlyBonus !== shownEarlyCallBonus){ shownEarlyCallBonus = earlyBonus; updateHUD(); } } // EARLY-CALL-01 (1.8.63): the Next Wave label counts the bonus down
+  if(waveState === 'IDLE'){ const earlyBonus = earlyCallBonusNow(); if(earlyBonus !== shownEarlyCallBonus){ shownEarlyCallBonus = earlyBonus; updateHUD(); } } // EARLY-CALL-01: the Next Wave label counts the bonus down
   const anyActiveEnemies = laneEnemiesPresent, anyTargetableWanderer = targetableWandererPresent;
   if(anyActiveEnemies){
     let laneUpdated = 0;
@@ -500,7 +461,7 @@ function update(dt){
     resolveSweptEnemyCollisions(); // catches fast movers that fully crossed paths within this frame, before the regular end-of-frame pass
     resolveEnemyCollisions();
     leashAllEnemiesToLane();
-    checkStallWatchdog(dt); // last-resort failsafe — forces genuinely deadlocked (never legitimately-blocked) enemies to keep making progress
+    checkStallWatchdog(dt);
     phaseTime.collision += performance.now() - __pt; __pt = performance.now();
   }
   const enemyHashLocal = (anyActiveEnemies || anyTargetableWanderer) ? buildEnemyHash() : EMPTY_ENEMY_HASH;
@@ -523,15 +484,14 @@ function update(dt){
 
 
   if(waveState === 'ACTIVE'){
-    // CA654 — see HISTORY.md § [1.5.7] Code Archaeology, CA654
-    const anyAlive = waveRouteObligationsOutstanding(); // LAG-PASS-03 (1.6.152): a plain loop that stops at the first live enemy
-    // CA655 — see HISTORY.md § [1.5.7] Code Archaeology, CA655
+    const anyAlive = waveRouteObligationsOutstanding(); // LAG-PASS-03: a plain loop that stops at the first live enemy
     if(!anyAlive){
       waveState = 'IDLE';
-      audioEngine.setMusicPhase(countLooseEnemies() > 0 ? 'wave' : 'field');
-      if(countLooseEnemies() === 0) playSound('wave_clear');
+      const looseAtClear = countLooseEnemies();
+      audioEngine.setMusicPhase(looseAtClear > 0 ? 'wave' : 'field');
+      if(looseAtClear === 0) playSound('wave_clear');
       wavesCompleted++;
-      waveClearedAtGameTime = gameTime; // EARLY-CALL-01 (1.8.62)
+      waveClearedAtGameTime = gameTime; // EARLY-CALL-01
       sessionTelemetry.completedHere++;
       reportOnboardingStep('first_wave_completed');
       logGameEvent('wave cleared: lives ' + lives + ', gold ' + gold + ', waves completed ' + wavesCompleted);
@@ -544,15 +504,13 @@ function update(dt){
       maybeReportLag();
       trackGameEvent('wave_completed', {
         wave: waveIndex, duration_s: Math.round((telemetryActiveMs() - waveTelemetry.activeAtStartMs)/1000), simulation_duration_s: Math.round((gameTime - waveTelemetry.startedAtGameTime)/1000), lives_start: waveTelemetry.livesAtStart, lives_end: lives,
-        lives_lost: Math.max(0, waveTelemetry.livesAtStart - lives), escaped: waveTelemetry.escaped, loose_peak: waveTelemetry.loosePeak, loose_end: countLooseEnemies(),
+        lives_lost: Math.max(0, waveTelemetry.livesAtStart - lives), escaped: waveTelemetry.escaped, loose_peak: waveTelemetry.loosePeak, loose_end: looseAtClear,
         loose_drain_lives: waveTelemetry.looseDrainLives, towers_downed: waveTelemetry.towersDowned, gold_start: waveTelemetry.goldAtStart, gold_end: gold,
         towers: countActiveTowers(), fps_median: perfMedianFps(), gap_p95_ms: Math.round(perfPercentile(perfStats.wallGapMsHistory, 0.95))
       });
       if(wavesCompleted % 5 === 0) trackGameEvent('wave_milestone', { waves_completed: wavesCompleted }); // every 5th wave only — every single wave would be noisy without adding real signal
       reportEngagedPlayerOnce();
-      // CA656 — see HISTORY.md § [1.5.7] Code Archaeology, CA656
       if(ringRevealQueue.length) advanceRingReveal(1 + Math.floor(Math.random()*3));
-      // CA657 — see HISTORY.md § [1.5.7] Code Archaeology, CA657
       for(const s of skeletonPool) s.active = false;
       processClericHealing();
       checkTowerUnlocks();
@@ -562,36 +520,24 @@ function update(dt){
       grantEarlyGift();
       maybeSpawnCaravan();
       maybeShowWaveTutorialTip();
-      // TENNIS-SHOES-MOVE-01 (1.7.44), now the Running Shoes (1.7.113): shoes are a normal item with a passive bonus, not a used item: every pair a stickman carries gives one free move
-      // at the start of every round (counted once per pair, up to the cap), with no action from the player.
+      // TENNIS-SHOES-MOVE-01: every pair of Running Shoes a stickman carries gives one free move at the start of each round, up to the cap.
       for(const t of towerPool) if(t.active && isFighterTower(t)) for(const item of t.equippedItems) if(item.extraMove) grantTowerMove(t, '👟');
-      // CA658 — see HISTORY.md § [1.5.7] Code Archaeology, CA658
       if(wavesCompleted % 5 === 0 && freeBarricadesLeft < MAX_FREE_BARRICADES){
         freeBarricadesLeft++;
       }
-      // CA659 — see HISTORY.md § [1.5.7] Code Archaeology, CA659
-      for(const d of decals){
-        if(d.isEmojiDrop && d.char === '💀' && d.wormPending && !d.wormSpawned){
-          spawnWormFromSkull(d);
-          d.wormSpawned = true;
-          d.wormPending = false;
-        }
+      for(const d of decals){ // a skull marked last wave spawns its worm now; an unmarked one has a 10% chance to be marked for the next wave
+        if(!d.isEmojiDrop || d.char !== '💀' || d.wormSpawned) continue;
+        if(d.wormPending){ spawnWormFromSkull(d); d.wormSpawned = true; d.wormPending = false; }
+        else if(Math.random() < SKULL_WORM_CHANCE) d.wormPending = true;
       }
-      for(const d of decals){
-        if(d.isEmojiDrop && d.char === '💀' && !d.wormSpawned && !d.wormPending){
-          if(Math.random() < 0.1) d.wormPending = true;
-        }
-      }
-      { // FREE-EXPAND-EVERY-WAVE-01 (1.6.121) — see HISTORY.md § [1.6.121]
-        // CA660 — see HISTORY.md § [1.5.7] Code Archaeology, CA660
-        if(countLooseEnemies() === 0) freeExpansionOwed++; // CLEAN-WAVE-EXPAND-01 (1.7.135) — see HISTORY.md § [1.7.135]
+      { // FREE-EXPAND-EVERY-WAVE-01
+        if(looseAtClear === 0) freeExpansionOwed++; // CLEAN-WAVE-EXPAND-01
         else logGameEvent('free expansion forfeited: escaped enemies still alive at wave end');
       }
       if(wavesCompleted % 10 === 0){
         showMilestoneToast(wavesCompleted);
       }
       gold += 10 + Math.floor(wavesCompleted/2); // scaling reward — keeps pace with infinite waves
-      // CA661 — see HISTORY.md § [1.5.7] Code Archaeology, CA661
       if(Math.random() < WAVE_DROP_CHANCE){
         const fighters = towerPool.filter(t => t.active && isFighterTower(t));
         if(fighters.length){
@@ -609,7 +555,6 @@ function update(dt){
         statGain: t.waveStatPoints || 0
       }));
       showWaveSummary(waveIndex, gold - waveStartGold, towerReports);
-      offerRunReward(wavesCompleted);
       updateHUD();
     }
   }
@@ -626,12 +571,11 @@ const targetHpBarText = document.getElementById('targetHpBarText');
 const targetDefVal = document.getElementById('targetDefVal');
 const targetSpeedVal = document.getElementById('targetSpeedVal');
 const targetWeightVal = document.getElementById('targetWeightVal');
-// CA662 — see HISTORY.md § [1.5.7] Code Archaeology, CA662
 let targetFrameContentKey = '';
 let targetFrameWasVisible = false;
 let targetFrameLayoutDirty = true, targetFramePanelObserver = null;
 let targetFrameLastPanelTower = null, targetFrameLastPanelExpanded = false;
-let targetFrameLastTower = null; // #inspect-panel has no fixed height (rows are conditionally hidden per tower type), so switching to a different selected tower can change its geometry even while the target frame stays continuously visible throughout — this catches that case, which resize/visibility-transition alone don't
+let targetFrameLastTower = null;
 window.addEventListener('resize', () => { targetFrameLayoutDirty = true; });
 function updateTargetFrame(){
   if(!targetFramePanelObserver && typeof ResizeObserver === 'function'){ targetFramePanelObserver = new ResizeObserver(() => { targetFrameLayoutDirty = true; }); targetFramePanelObserver.observe(inspectPanel); }
@@ -643,17 +587,16 @@ function updateTargetFrame(){
     if(targetFrameWasVisible){ frame.classList.remove('show'); targetFrameWasVisible = false; }
     return;
   }
-  const hpPct = target.maxHp > 0 ? Math.max(0, Math.min(100, (target.hp/target.maxHp)*100)) : 0;
-  const moveSpeed = isEnemyHeldInPlace(target) ? 0 : Math.min(target.packedSpeed()*enemyMoveMultiplier(target), target.followSpeedCap === undefined ? Infinity : target.followSpeedCap); // TARGET-SPEED-01 (1.8.43): an enemy held at a barricade keeps its walking speed on the card and reads Blocked
+  const hpPct = target.maxHp > 0 ? clampNum((target.hp/target.maxHp)*100, 0, 100) : 0;
+  const moveSpeed = isEnemyHeldInPlace(target) ? 0 : Math.min(target.tierWalkSpeed()*enemyMoveMultiplier(target), target.followSpeedCap === undefined ? Infinity : target.followSpeedCap); // TARGET-SPEED-01: an enemy held at a barricade keeps its walking speed on the card and reads Blocked
   const contentKey = Math.round(moveSpeed) + ':' + pinned + ':' + target.id + ':' + Math.round(hpPct) + ':' + Math.round(target.hp) + ':' + target.armor + ':' + Math.round(target.speed) + ':' + target.weight.toFixed(2) + ':' + target.shieldHp + ':' + (target.frozenUntil > gameTime) + ':' + (target.stunnedUntil > gameTime) + ':' + (target.bleedUntil > gameTime) + ':' + (target.poisonUntil > gameTime) + ':' + (target.burnUntil > gameTime);
   if(contentKey !== targetFrameContentKey){
     targetFrameContentKey = contentKey;
     document.getElementById('targetHeaderLabel').textContent = pinned ? 'PINNED ENEMY' : 'TARGETING';
     targetPortraitFace.textContent = target.emoji;
     const info = ENEMY_INFO[target.type];
-    // CA663 — see HISTORY.md § [1.5.7] Code Archaeology, CA663
     targetName.textContent = target.isHutBuilding ? (target.buildingKind === 'CIRCUS' ? 'Circus' : target.buildingKind === 'CASTLE' ? 'Castle' : target.buildingKind === 'GRAVE' ? 'Zombie Grave' : 'Hut') : target.isGuardian ? (target.hutRef && target.hutRef.buildingKind === 'CASTLE' ? 'Castle Guardian' : target.hutRef && target.hutRef.buildingKind === 'GRAVE' ? 'Grave Zombie' : 'Hut Guardian') : (info ? info.name : target.type);
-    if(target.eliteKind && ELITE_KINDS[target.eliteKind]) targetName.textContent = ELITE_KINDS[target.eliteKind].label + ' ' + targetName.textContent; // ELITE-ENEMIES-01 (1.8.63): the enemy card names the elite kind
+    if(target.eliteKind && ELITE_KINDS[target.eliteKind]) targetName.textContent = ELITE_KINDS[target.eliteKind].label + ' ' + targetName.textContent; // ELITE-ENEMIES-01: the enemy card names the elite kind
     targetHpBarFill.style.width = hpPct + '%';
     targetHpBarText.textContent = Math.round(target.hp) + '/' + target.maxHp;
     targetDefVal.textContent = target.armor;
@@ -673,7 +616,7 @@ function updateTargetFrame(){
   }
   if((pinned ? target : t) !== targetFrameLastTower){
     targetFrameLastTower = pinned ? target : t;
-    targetFrameLayoutDirty = true; // a different tower's panel can have different height (rows are conditionally shown per type), even if the frame never hid in between
+    targetFrameLayoutDirty = true;
   }
   if(t !== targetFrameLastPanelTower || inspPanelExpanded !== targetFrameLastPanelExpanded){ targetFrameLayoutDirty = true; targetFrameLastPanelTower = t; targetFrameLastPanelExpanded = inspPanelExpanded; }
   if(!targetFrameLayoutDirty) return;
@@ -686,7 +629,7 @@ function updateTargetFrame(){
   const beside = !pinned && panelVisible && room >= 320;
   frame.style.left = beside ? sideLeft + 'px' : '8px';
   frame.style.right = 'auto';
-  const cardBottom = Math.min(!beside && panelVisible ? containerRect.bottom - panelRect.top + 8 : 8, Math.max(8,containerRect.height-200));
+  const cardBottom = clampNum(containerRect.height-200, 8, !beside && panelVisible ? containerRect.bottom - panelRect.top + 8 : 8);
   frame.style.bottom = cardBottom + 'px';
   frame.style.width = Math.min(420, beside ? room : containerRect.width - 16) + 'px';
   frame.style.maxWidth = 'calc(100% - 16px)';
@@ -694,10 +637,9 @@ function updateTargetFrame(){
   frame.style.maxHeight = Math.max(48,containerRect.height-cardBottom-80) + 'px';
   frame.style.overflowY = 'auto';
 }
-// CA665 — see HISTORY.md § [1.5.7] Code Archaeology, CA665
-// TARGET-MARK-01 (1.6.94): drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
-// RANGE-RING-SUITS-01 (1.7.112) — see HISTORY.md § [1.7.112]: the range edge is a slow counter-clockwise procession of the four card suits in black, white order (club, heart, spade,
-// diamond), spaced wide (92 px apart on screen), and everything outside the range is dimmed like fog of war. Real time, constant on-screen size at any zoom.
+// TARGET-MARK-01: drawn near drawSelectedTowerArrow() since both are player-aimed pointer UI
+// RANGE-RING-SUITS-01: the range edge is a slow counter-clockwise procession of the four card suits in black, white order (club, heart, spade,
+// diamond), spaced wide (92 px apart on screen), and everything outside the range is dimmed like fog of war.
 const RANGE_RING_DOT_PX = 13, RANGE_RING_DOT_SPACING_PX = 92, RANGE_RING_SPEED_PX_PER_S = 30, RANGE_FOG_ALPHA = 0.42;
 const RANGE_RING_SUITS = ['CLUB', 'HEART', 'SPADE', 'DIAMOND'];
 function traceSuitPath(ctx, suit){
@@ -751,7 +693,7 @@ function drawSelectedTowerRange(ctx){
 }
 function drawSelectedTowerArrow(ctx){
   if(!selectedTower || !selectedTower.active) return;
-  const bob = Math.sin(presentationTime/260) * 7; // GAME-SPEED-SCOPE-01 (1.6.93): a UI pointer, not gameplay — must not speed up with 2x/3x/5x/10x
+  const bob = Math.sin(presentationTime/260) * 7; // GAME-SPEED-SCOPE-01: a UI pointer, not gameplay — must not speed up with 2x/3x/5x/10x
   const arrowY = selectedTower.y - 58 + bob;
   ctx.save();
   ctx.font = '26px sans-serif';
@@ -760,7 +702,7 @@ function drawSelectedTowerArrow(ctx){
   ctx.fillText('👇', selectedTower.x, arrowY);
   ctx.restore();
 }
-// OVERLAY-RANK-CACHE-01 (1.7.53): the overlay's tower ranking filtered and sorted the whole pool every frame; it is now rebuilt at most every 250 ms.
+// OVERLAY-RANK-CACHE-01: the overlay's tower ranking filtered and sorted the whole pool every frame; it is now rebuilt at most every 250 ms.
 const OVERLAY_RANK_REFRESH_MS = 250;
 let overlayRankBuiltAt = -Infinity, overlayRankCache = [];
 function overlayTowerRanking(){
@@ -771,7 +713,7 @@ function overlayTowerRanking(){
   }
   return overlayRankCache;
 }
-// GROUND-GLOW-SPRITE-01 (1.7.52): ground-item glows were a new radial gradient, three colour strings and an arc fill per item per frame.
+// GROUND-GLOW-SPRITE-01: ground-item glows were a new radial gradient, three colour strings and an arc fill per item per frame.
 // Now one small canvas per (hue step, radius) is drawn once and blitted; the pulse is the blit's alpha, which is exactly how the gradient scaled.
 const GROUND_GLOW_HUE_STEP = 6;
 const groundItemGlowSprites = new Map();
@@ -810,31 +752,28 @@ function render(ctx){
   } else {
     screenShakeMag = 0;
   }
-  // PAN-SNAP-01 (1.7.36): the camera is drawn at whole device pixels. A fractional offset makes the cached map and every tile edge re-sample (blurred, shimmering
-  // seams) on every panning frame; the camera itself stays smooth and fractional, only the drawing position is snapped.
-  // PAN-SUBPIXEL-01 (1.7.124): rounding the camera to whole pixels cannot move smoothly below one pixel per frame, so the slow start and end of every automatic pan (and a drag or coast that is barely moving) showed 2 px jumps with frozen frames between them in a recorded clip. While the camera moves slower than PAN_SUBPIXEL_MAX_STEP_PX per frame it is drawn at its exact fractional position; faster motion and a still camera stay snapped.
+  // PAN-SNAP-01: the camera is drawn at whole device pixels.
+  // PAN-SUBPIXEL-01: rounding the camera to whole pixels cannot move smoothly below one pixel per frame, so the slow start and end of every automatic pan (and a drag or coast that is barely moving) showed 2 px jumps with frozen frames between them in a recorded clip.
   const cameraDrawX = camera.x + shakeX, cameraDrawY = camera.y + shakeY;
   if(perfStats.cameraSubpixelMotion) ctx.translate(cameraDrawX, cameraDrawY);
   else ctx.translate(Math.round(cameraDrawX * dprValue) / dprValue, Math.round(cameraDrawY * dprValue) / dprValue);
   ctx.scale(camera.zoom, camera.zoom);
 
-  // CA666 — see HISTORY.md § [1.5.7] Code Archaeology, CA666
   let __rpt = performance.now();
   const worldView = visibleWorldRect();
   if(camera.zoom > CRISP_MAP_MIN_ZOOM) drawCrispMap(ctx, worldView); else blitWorldLayer(ctx, mapCanvas, worldView); // static map, pre-rendered once — see BOOT; CRISP-MAP-01 above it
   if(graphicsQuality === 'high') drawAnimatedFlora(ctx, fxViewBounds());
-  drawPendingRingReveal(ctx); // spiral map-growth: tiles already buildable (isInActiveRegion) but not yet baked into mapCanvas — see advanceRingReveal()
+  drawPendingRingReveal(ctx);
   renderPhaseTime.mapBlit += performance.now() - __rpt; __rpt = performance.now();
   maintainDecals();
-  if(settledDecalCanvasReady && settledDecalHasContent && camera.zoom <= 1.25) blitWorldLayer(ctx, settledDecalCanvas, worldView); // settled/baked blood pools — one blit instead of hundreds of individual redraws, see rebuildSettledDecalCanvas()
-  // CA667 — see HISTORY.md § [1.5.7] Code Archaeology, CA667
+  if(settledDecalCanvasReady && settledDecalHasContent && camera.zoom <= 1.25) blitWorldLayer(ctx, settledDecalCanvas, worldView);
   drawDecals(ctx);
   renderPhaseTime.decals += performance.now() - __rpt; __rpt = performance.now();
   drawBuildPreview(ctx);
   drawBarricadeChunks(ctx);
   drawDeathAnims(ctx);
   if(markedTargetEnemy) markedTargetEnemy.pinPaintedId=-1; // only the current visible render may supply the pin anchor
-  drawDepthSortedLayer(ctx); // scenery + enemies + towers + bone/skull/worm debris, interleaved by Y-depth — see drawDepthSortedLayer() for why
+  drawDepthSortedLayer(ctx);
   drawSelectedTowerRange(ctx);
   drawSelectedTowerArrow(ctx);
   const depthSortedPhaseMs = performance.now() - __rpt;
@@ -864,8 +803,7 @@ function render(ctx){
       const t=Math.max(0,(presentationTime-gi.rejectStartedAt)/240),p=1-Math.pow(1-t,2);
       ctx.translate((gi.rejectFromX-gi.x)*(1-p),(gi.rejectFromY-gi.y)*(1-p)-Math.sin(t*Math.PI)*10);
     }
-    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'sans-serif',1); // SHADOW-ALIGN-01 (1.8.14)
-    // CA668 — see HISTORY.md § [1.5.7] Code Archaeology, CA668
+    drawEmojiGroundShadow(ctx,gi.itemDef.icon,gi.x,gi.y,GROUND_ITEM_EMOJI_PX,'sans-serif',1); // SHADOW-ALIGN-01
     const isFoodOrTreat = gi.itemDef.isFood || gi.itemDef.isTreat || gi.itemDef.isHutLoot;
     const isGoldCurrencyItem = !!gi.itemDef.isGoldBag || !!(gi.itemDef.isHutLoot && gi.itemDef.kind === 'gold');
     const itemRarity = isFoodOrTreat ? (gi.itemDef.isTreat ? TREAT_GLOW_STYLE : FOOD_GLOW_STYLE) : (ITEM_RARITIES[gi.itemDef.rarity] || ITEM_RARITIES.COMMON);
@@ -873,7 +811,6 @@ function render(ctx){
     const glowStyle = itemGlowStyle(gi.itemDef);
     const hue = isGoldCurrencyItem ? 44 : glowStyle.rainbow ? (presentationTime / hueSpeed + gi.id * 47) % 360 : glowStyle.hue;
     const ringColorHex = glowStyle.sat < 50 && !isGoldCurrencyItem ? 'hsl(0, 0%, 92%)' : `hsl(${hue.toFixed(0)}, 100%, 58%)`;
-    // CA669 — see HISTORY.md § [1.5.7] Code Archaeology, CA669
     const glowPulse = isGoldCurrencyItem ? 0.30 + (Math.sin(presentationTime/430 + gi.id)*0.5 + 0.5)*0.60 : 0.55 + Math.sin(presentationTime/280 + gi.id)*0.25;
     const glowRadius = isGoldCurrencyItem ? Math.max(23, itemRarity.glowRadius) : itemRarity.glowRadius;
     const glowSprite = groundItemGlowSprite(hue, glowRadius, isGoldCurrencyItem ? 100 : glowStyle.sat);
@@ -881,7 +818,7 @@ function render(ctx){
     ctx.globalAlpha = entryAlpha * Math.min(1, glowPulse);
     ctx.drawImage(glowSprite, gi.x - glowRadius, gi.y + bob - glowRadius);
     ctx.globalAlpha = entryAlpha;
-    if(graphicsQuality === 'high' && !underHeavyVisualLoad){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // GROUND-GLOW-SPRITE-01 (1.7.52): the glow is a cached sprite; the text halo stays on High only
+    if(graphicsQuality === 'high' && !underHeavyVisualLoad){ ctx.shadowColor = ringColorHex; ctx.shadowBlur = 8; } // GROUND-GLOW-SPRITE-01: the glow is a cached sprite; the text halo stays on High only
     ctx.font = GROUND_ITEM_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(gi.itemDef.icon, gi.x, gi.y + bob);
     ctx.restore();
@@ -901,7 +838,6 @@ function render(ctx){
     ctx.font = '26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(draggingGroundItem.itemDef.icon, dragItemPos.x, dragItemPos.y);
     ctx.restore();
-    // CA671 — see HISTORY.md § [1.5.7] Code Archaeology, CA671
     const hoverTarget = itemDropTargetAt(dragItemPos);
     if(hoverTarget){
       ctx.save();
@@ -924,7 +860,7 @@ function render(ctx){
   drawAmbientLogs(ctx);
   renderPhaseTime.particlesText += performance.now() - __rpt; __rpt = performance.now();
   for(const it of depthSortItems) if(it.kind==='e' && it.e.type==='BEE') it.e.draw(ctx); // above world emojis, below interface overlays
-  drawMarkedTargetIcon(ctx); // PIN-BEE-01 (1.8.18): after the bee's own pass, so a marked bee has an anchor this frame
+  drawMarkedTargetIcon(ctx); // PIN-BEE-01: after the bee's own pass, so a marked bee has an anchor this frame
   drawSpawnWarningMarker(ctx);
   drawWaveCountdown(ctx);
   for(const it of depthSortItems) if(it.kind === 's') drawClearingHourglass(ctx,it.item,it.size); // CLEAR-OVERLAY-01: above all world props and actors
@@ -969,9 +905,9 @@ if(typeof ResizeObserver !== 'undefined'){
   if(debugOverlayCanvasElement) debugOverlayResizeObserver.observe(debugOverlayCanvasElement);
   if(debugOverlayHudElement) debugOverlayResizeObserver.observe(debugOverlayHudElement);
 }
-// DEBUG-OVERLAY-CACHE-01 (1.6.152) — see HISTORY.md § [1.6.152]. The overlay's text and box size are rebuilt a few times a second, not every frame:
+// DEBUG-OVERLAY-CACHE-01: The overlay's text and box size are rebuilt a few times a second, not every frame:
 // the per-frame cost is one rectangle and a handful of text draws from the cached layout.
-// OVERLAY-HOST-HINT-01 (1.7.55): browsers never expose the CPU model, so the overlay reports what they do expose: OS and CPU architecture from User-Agent Client Hints, else the platform string.
+// OVERLAY-HOST-HINT-01: browsers never expose the CPU model, so the overlay reports what they do expose: OS and CPU architecture from User-Agent Client Hints, else the platform string.
 let hostHintText = (typeof navigator !== 'undefined' && navigator.platform) ? navigator.platform : '';
 if(navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
   navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness', 'platform']).then(hints => {
@@ -997,7 +933,7 @@ function drawDebugOverlay(ctx){
   for(let i = 0; i < layout.visibleLines.length; i++) ctx.fillText(layout.visibleLines[i], layout.boxLeft + 6, layout.belowHudY + 4 + i * layout.lineHeight);
   ctx.restore();
 }
-// OVERLAY-GRID-01 (1.7.119): the summary is a grid of short cells whose columns are as wide as their longest cell, so every row lines up and no cell is ever cut; single long items (GPU, last minute, scale) take a full row and wrap at word breaks instead of being truncated.
+// OVERLAY-GRID-01: the summary is a grid of short cells whose columns are as wide as their longest cell, so every row lines up and no cell is ever cut; single long items (GPU, last minute, scale) take a full row and wrap at word breaks instead of being truncated.
 const OVERLAY_COLUMN_GAP = 2;
 function overlayGridRow(...cells){ return cells.map(String); }
 function overlayFullRow(text){ return String(text); }
@@ -1038,12 +974,8 @@ function buildDebugOverlayLayout(ctx){
     overlayFullRow('scale ' + Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100) + '% auto ' + (autoRenderScaleEnabled ? 'on' : 'off') + '  ' + lastGovernorDecision)
   ];
   if(!compact) lines.splice(0, lines.length, ...alignOverlayRows(lines));
-  // CA672 — see HISTORY.md § [1.5.7] Code Archaeology, CA672
   const liveTowers = compact ? [] : overlayTowerRanking();
-  if(!compact) for(const capture of downingCaptures){
-    lines.push('--- downing capture: ' + capture.tower + ' downed in wave ' + capture.wave + (capture.cause ? ' by ' + capture.cause : '') + (capture.done ? '' : ' (still recording)') + ' ---');
-    lines.push('  3 s before: ' + summariseDiagFrames(capture.before)); lines.push('  3 s after:  ' + summariseDiagFrames(capture.after));
-  }
+  if(!compact && downingCaptures.length) lines.push('downings captured: ' + downingCaptures.length + ' (details in the debug log)'); // DOWNING-CAPTURE-01: the frame summaries are too wide for the overlay
   if(!compact && liveTowers.length){
     lines.push('--- tower telemetry (top ' + Math.min(10, liveTowers.length) + ' by dmg) ---');
     for(let i=0; i<Math.min(10, liveTowers.length); i++){
@@ -1060,25 +992,11 @@ function buildDebugOverlayLayout(ctx){
   ctx.save();
   const baseFontPx=compact ? 8 : 11;
   ctx.font = 'bold '+baseFontPx+'px monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-  // DEBUG-OVERLAY-WIDTH-01 (1.6.3) — see HISTORY.md § [1.6.3]. Restores a fix that existed on
-  // main before this session's file chain branched off an older commit and lost it: the backdrop
-  // used to be a flat 340px wide, sized before per-tower telemetry existed — a telemetry row
-  // (often 60+ monospace characters) regularly overflowed past the box's right edge. Box width is
-  // measured against the actual longest line each frame (ctx.measureText()) instead of a
-  // hardcoded guess, so it always fits whatever's currently shown.
-  // DEBUG-OVERLAY-TOPRIGHT-01 (1.6.56) — see HISTORY.md § [1.6.56]. Anchored top-right, below
-  // the FPS counter, instead of top-left below the HUD bar. Every modal that can cover the
-  // top-left corner (Build, Shop, Settings) opens from the left-side HUD buttons; top-right, under
-  // the FPS counter, is clear of all of them. Still takes the real HUD-bar measurement into
-  // account (not just the FPS counter's own height) so it can't collide with that either on an
-  // unusually tall or wrapped HUD layout — whichever constraint asks for more room wins.
+  // DEBUG-OVERLAY-WIDTH-01: the box is as wide as the longest measured line.
+  // DEBUG-OVERLAY-TOPRIGHT-01: anchored top-right, clear of the menus that open from the left, below both the FPS counter and the HUD bar.
   const belowFpsY = 4 + FPS_COUNTER_FONT_PX * 1.3 + 6;
   const belowHudY = Math.max(getDebugOverlayBelowHudY(), belowFpsY);
-  // DEBUG-OVERLAY-SHRINK-01 (1.6.53) — see HISTORY.md § [1.6.53]. Standing rule: text that
-  // doesn't fit its box shrinks to fit, it never wraps to a second physical line. A tower
-  // telemetry row is often 60+ monospace characters; if the longest visible line doesn't fit the
-  // available canvas width at the default 11px, the whole overlay's font scales down (bounded by
-  // MIN_DEBUG_FONT_PX) and every line is re-measured at that size — one line each, always.
+  // DEBUG-OVERLAY-SHRINK-01: when the lines do not fit, the whole overlay's font steps down to MIN_DEBUG_FONT_PX before anything is cut.
   const MIN_DEBUG_FONT_PX = 7;
   const availableWidth = compact ? Math.min(280,CANVAS_W*0.78)-12 : CANVAS_W-24;
   const maxPanelHeight = CANVAS_H - belowHudY - 12;
@@ -1100,7 +1018,7 @@ function buildDebugOverlayLayout(ctx){
     }
     return wrapped;
   };
-  // DEBUG-OVERLAY-NOCUT-01 (1.7.119): nothing is ever cut off. Rows wrap at word breaks to the panel width, and when the whole panel is taller than the room under the HUD the font shrinks (down to 7 px) until every row fits; rows are dropped only below that size.
+  // DEBUG-OVERLAY-NOCUT-01: nothing is ever cut off.
   let fontPx = baseFontPx, wrappedLines = wrapLinesToWidth(fontPx, availableWidth);
   while(fontPx > MIN_DEBUG_FONT_PX && wrappedLines.length * (fontPx + (compact ? 2 : 3)) + 8 > maxPanelHeight){
     fontPx--;
@@ -1121,15 +1039,13 @@ function buildDebugOverlayLayout(ctx){
   ctx.restore();
   return { visibleLines, fontPx, lineHeight, boxLeft, belowHudY, boxWidth, boxHeight, canvasW: CANVAS_W, canvasH: CANVAS_H };
 }
-const FPS_COUNTER_FONT_PX = 26; // FPS-CORNER-01 (1.6.121) — see HISTORY.md § [1.6.121]
+const FPS_COUNTER_FONT_PX = 26; // FPS-CORNER-01
 let fpsShownValue = 60, fpsShownAt = -1e9;
 function drawFpsCounter(ctx){
   const nowReal = performance.now();
   if(nowReal - fpsShownAt >= 1000){ fpsShownValue = Math.round(perfStats.smoothedFps || 60); fpsShownAt = nowReal; }
   const fps = fpsShownValue;
-  // FPS-DISPLAY-01 (1.6.56) — see HISTORY.md § [1.6.56]. Bigger and re-thresholded per direct
-  // request: 30+ reads as healthy (green), 20-29 as a real but tolerable drop (yellow), anything
-  // below 20 — including well below 10 — as a problem (red).
+  // FPS-DISPLAY-01: 30 and above green, 20 to 29 yellow, below 20 red.
   ctx.fillStyle = fps >= 30 ? '#4caf50' : fps >= 20 ? '#ffc107' : '#f44336';
   ctx.font = 'bold ' + FPS_COUNTER_FONT_PX + 'px monospace';
   ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
@@ -1137,24 +1053,22 @@ function drawFpsCounter(ctx){
   ctx.strokeText(fps + ' FPS', CANVAS_W - 10, CANVAS_H - 8);
   ctx.fillText(fps + ' FPS', CANVAS_W - 10, CANVAS_H - 8);
 }
-// CA674 — see HISTORY.md § [1.5.7] Code Archaeology, CA674
 function drawSpawnWarningMarker(ctx){
   if(waveState !== 'SPAWNING' || !waypointsPx || !waypointsPx.length) return;
   if(waveTimer >= WAVE_COUNTDOWN_MS) return;
   const spawn = waypointsPx[0];
-  const bob = Math.sin(presentationTime/220) * 4; // SPAWN-MARKER-CLOCK-01 (1.6.74) — see HISTORY.md § [1.6.74]
+  const bob = Math.sin(presentationTime/220) * 4; // SPAWN-MARKER-CLOCK-01
   ctx.save();
   ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#e63946';
   if(graphicsQuality !== 'low'){ ctx.shadowColor = '#e63946'; ctx.shadowBlur = 10; }
-  // CA675 — see HISTORY.md § [1.5.7] Code Archaeology, CA675
   ctx.translate(spawn.x, spawn.y - SPAWN_MARKER_RISE_PX + bob);
   ctx.scale(1.7, 1);
   ctx.fillText('❗', 0, 0);
   ctx.restore();
 }
-// MUSIC-COUNTDOWN-01 (1.8.37): the idle music plays on through the start of the 3-2-1 under a short riser, then the wave theme begins early enough that its three pickups fall on the countdown and its bass drop lands exactly on GO!
+// MUSIC-COUNTDOWN-01: the idle music plays on through the start of the 3-2-1 under a short riser, then the wave theme begins early enough that its three pickups fall on the countdown and its bass drop lands exactly on GO!
 function waveMusicLeadMs(){ return Math.round(MUSIC_STING_DROP_STEP * 60000 / MUSIC_COMBAT_TEMPO_BPM / 2) + 140; }
 function countdownHoldsFieldMusic(){ return waveState === 'SPAWNING' && countdownMusicStage < 2 && waveTimer < WAVE_COUNTDOWN_MS; }
 function advanceCountdownMusic(){
@@ -1217,18 +1131,23 @@ function drawBossCompass(ctx){
 /* =========================================================
    PERFORMANCE DIAGNOSTICS
    ========================================================= */
-// CA676 — see HISTORY.md § [1.5.7] Code Archaeology, CA676
 const speedWindow = { simMs: 0, wallMs: 0 };
-// DOWNING-CAPTURE-01 (1.7.51): the death spike is only visible in the frames just before and after a stickman goes down, and the normal history holds about two seconds. A ring of the last 600
-// frames (about ten seconds) is kept, and each time a stickman is downed the 3 seconds before and the 3 seconds after are captured and summarised in the debug log (the last 3 captures).
-const diagRing = [], DIAG_RING_MAX = 600, downingCaptures = [], DOWNING_CAPTURE_MS = 3000;
+// DOWNING-CAPTURE-01: the death spike is only visible in the frames just before and after a stickman goes down, and the normal history holds about two seconds.
+const DIAG_RING_MAX = 600, DOWNING_CAPTURE_MS = 3000, downingCaptures = [];
+const diagRing = Array.from({ length: DIAG_RING_MAX }, () => ({ t: -Infinity, frame: 0, upd: 0, rend: 0, hud: 0, ticks: 0, enemies: 0, decals: 0 })); // DIAG-RING-01: frame records are reused in place instead of allocated and shifted every frame
+let diagRingNext = 0;
+function copyDiagFrame(frame){ return { t: frame.t, frame: frame.frame, upd: frame.upd, rend: frame.rend, hud: frame.hud, ticks: frame.ticks, enemies: frame.enemies, decals: frame.decals }; }
 function recordDiagFrame(){
-  const frame = { t: presentationTime, frame: perfStats.frameMs, upd: perfStats.updateMs, rend: perfStats.renderMs, hud: perfStats.hudMs || 0, ticks: perfStats.ticksThisFrame, enemies: perfStats.totalActiveEnemies || 0, decals: perfStats.totalDecals || 0 };
-  diagRing.push(frame); if(diagRing.length > DIAG_RING_MAX) diagRing.shift();
-  for(const capture of downingCaptures) if(!capture.done){ capture.after.push(frame); if(presentationTime - capture.at >= DOWNING_CAPTURE_MS) capture.done = true; }
+  const frame = diagRing[diagRingNext];
+  diagRingNext = (diagRingNext + 1) % DIAG_RING_MAX;
+  frame.t = presentationTime; frame.frame = perfStats.frameMs; frame.upd = perfStats.updateMs; frame.rend = perfStats.renderMs; frame.hud = perfStats.hudMs || 0;
+  frame.ticks = perfStats.ticksThisFrame; frame.enemies = perfStats.totalActiveEnemies || 0; frame.decals = perfStats.totalDecals || 0;
+  for(const capture of downingCaptures) if(!capture.done){ capture.after.push(copyDiagFrame(frame)); if(presentationTime - capture.at >= DOWNING_CAPTURE_MS) capture.done = true; }
 }
 function startDowningCapture(tower, cause){
-  downingCaptures.push({ at: presentationTime, wave: waveIndex, tower: tower.type, cause: String(cause || ''), before: diagRing.filter(f => presentationTime - f.t <= DOWNING_CAPTURE_MS), after: [], done: false });
+  const before = [];
+  for(let i = 0; i < DIAG_RING_MAX; i++){ const frame = diagRing[(diagRingNext + i) % DIAG_RING_MAX]; if(presentationTime - frame.t <= DOWNING_CAPTURE_MS) before.push(copyDiagFrame(frame)); }
+  downingCaptures.push({ at: presentationTime, wave: waveIndex, tower: tower.type, cause: String(cause || ''), before, after: [], done: false });
   if(downingCaptures.length > 3) downingCaptures.shift();
 }
 function summariseDiagFrames(frames){
@@ -1240,35 +1159,25 @@ function summariseDiagFrames(frames){
 const perfStats = { frameMs: 0, updateMs: 0, renderMs: 0, ticksThisFrame: 0, maxTicksSeen: 0, achievedSpeed: 0, requestedSpeed: 1, msPerTick: 0,
   visibleScenery: 0, totalScenery: 0, visibleDecals: 0, totalDecals: 0, lastDepthSortedMs: 0,
   visibleParticles: 0, totalParticles: 0, visibleFloatingTexts: 0, totalFloatingTexts: 0,
-  // CA677 — see HISTORY.md § [1.5.7] Code Archaeology, CA677
   frameMsHistory: [], updateMsHistory: [], renderMsHistory: [],
-  // CA678 — see HISTORY.md § [1.5.7] Code Archaeology, CA678
   barricadeActiveScanned: 0, barricadeQueuedCount: 0, barricadeSnapCount: 0, barricadeMaxQueueLenSeen: 0,
-  // CA679 — see HISTORY.md § [1.5.7] Code Archaeology, CA679
   actualSpeedWindowRealMs: 0, actualSpeedWindowSimulationMs: 0, lastMeasuredActualSpeed: 0, lastAccumulatorDebtMs: 0,
   lastSimulationTickCap: MAX_SIMULATION_TICKS_PER_FRAME, lastFrameTimeClampMs: NORMAL_MAX_FRAME_TIME_MS,
   wallTimeClampHits: 0, wallTimeClampedMs: 0, simulationCatchUpCapHits: 0, cameraBudgetCapHits: 0, cameraBudgetDroppedMs: 0, simulationDebtDroppedMs: 0, lastDroppedSimulationTimeMs: 0,
   cameraMoveXLastFrame: 0, cameraMoveYLastFrame: 0, cameraMovePixelsLastFrame: 0, cameraZoomDeltaLastFrame: 0, cameraMovingLastFrame: false,
   simulationCapEvents: [], sessionTrendSamples: [],
   adaptiveVisualFrames: 0, depthSortPressureFrames: 0,
-  // CA680 — see HISTORY.md § [1.5.7] Code Archaeology, CA680
   worstFrameMs: 0, worstFrameAtWave: 0, worstFrameTicks: 0, worstFrameAtReal: 0,
   slowFrameEvents: [], longCallbackGapEvents: [], longTaskEvents: [], longTaskCount: 0, longTaskObserverActive: false, longTaskObserverError: '',
   longAnimationFrameEvents: [], longAnimationFrameCount: 0, longAnimationFrameObserverActive: false, longAnimationFrameObserverError: '',
   interactionEvents: [], interactionEventCount: 0, interactionObserverActive: false, interactionObserverError: '',
   runtimeErrors: [], runtimeErrorCount: 0,
-  // CA681 — see HISTORY.md § [1.5.7] Code Archaeology, CA681
   wallGapMsHistory: [], worstWallGapMs: 0, worstWallGapAtWave: 0, worstWallGapAtReal: 0,
-  // CA682 — see HISTORY.md § [1.5.7] Code Archaeology, CA682
   ticksThisFrameHistory: [],
-  // CA683 — see HISTORY.md § [1.5.7] Code Archaeology, CA683
   spatialQueryCallsLastFrame: 0, hashBuildsLastFrame: 0, enemyHashBucketPoolSize: 0,
-  // CA684 — see HISTORY.md § [1.5.7] Code Archaeology, CA684
   visibleEnemies: 0, totalActiveEnemies: 0, visibleTowers: 0, totalActiveTowers: 0,
-  // CA685 — see HISTORY.md § [1.5.7] Code Archaeology, CA685
   memorySupported: false, usedHeapMB: 0, totalHeapMB: 0, heapLimitMB: 0,
   heapHistory: [], lastMemorySampleAt: 0 };
-// CA686 — see HISTORY.md § [1.5.7] Code Archaeology, CA686
 const phaseTime = { ambient: 0, spawning: 0, barricade: 0, enemyUpdate: 0, collision: 0,
   hashBuild: 0, towerUpdate: 0, projectile: 0, catSkeleton: 0, particles: 0, waveLogic: 0 };
 const phaseMaxSeen = { ambient: 0, spawning: 0, barricade: 0, enemyUpdate: 0, collision: 0,
@@ -1276,8 +1185,7 @@ const phaseMaxSeen = { ambient: 0, spawning: 0, barricade: 0, enemyUpdate: 0, co
 function resetPhaseTime(){
   for(const k in phaseTime) phaseTime[k] = 0;
 }
-// CA687 — see HISTORY.md § [1.5.7] Code Archaeology, CA687
-const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0, hudDom: 0, inspectDom: 0 }; // HUD-DOM-PHASE-01 (1.8.55): hudDom times the HUD's DOM writes, which the canvas phases never counted. WORLD-SUBPHASES-01 (1.7.36): depthSorted is the whole world pass; the world* keys split it
+const renderPhaseTime = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0, hudDom: 0, inspectDom: 0 }; // HUD-DOM-PHASE-01, WORLD-SUBPHASES-01
 function phaseLabel(key){ return key === 'depthSorted' ? 'worldDrawing(whole pass, not only sorting)' : key; }
 const renderPhaseMaxSeen = { mapBlit: 0, decals: 0, depthSorted: 0, groundItems: 0, minionsProjectiles: 0, particlesText: 0, overlays: 0, worldSort: 0, worldScenery: 0, worldEnemies: 0, worldTowers: 0, worldDebris: 0, hudDom: 0, inspectDom: 0 };
 function resetRenderPhaseTime(){
@@ -1379,11 +1287,6 @@ function recordPerfEventSample(events, durationMs, minimumMs, wallGapMs){
     cameraX: camera.x,
     cameraY: camera.y,
     zoom: camera.zoom,
-    cameraMoveX: perfStats.cameraMoveXLastFrame,
-    cameraMoveY: perfStats.cameraMoveYLastFrame,
-    cameraMovePixels: perfStats.cameraMovePixelsLastFrame,
-    cameraZoomDelta: perfStats.cameraZoomDeltaLastFrame,
-    cameraMoving: perfStats.cameraMovingLastFrame,
     adaptiveDetailActive: underHeavyVisualLoad,
     adaptiveDetailHoldMs: Math.max(0, Math.round(heavyVisualLoadHoldUntil - performance.now())),
     depthSortMs: perfStats.lastDepthSortedMs,
@@ -1399,28 +1302,16 @@ function recordPerfEventSample(events, durationMs, minimumMs, wallGapMs){
     activeParticles: perfStats.totalParticles,
     activeTexts: perfStats.totalFloatingTexts,
     deathAnimations: deathAnims.length,
-    decalRebuildCount: extendedDiagnostics.decalRebuilds.count,
-    decalRebuildLastMs: extendedDiagnostics.decalRebuilds.lastMs,
-    recentDeaths: recentDiagnosticDeaths(),
-    audioState: audioEngine.ctx ? audioEngine.ctx.state : 'locked',
-    audioVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.activeVoiceExpiry,audioEngine.ctx.currentTime) : 0,
-    musicVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.musicVoiceExpiry,audioEngine.ctx.currentTime) : 0,
     decals: perfStats.totalDecals,
     visibleDecals: perfStats.visibleDecals,
     scenery: perfStats.totalScenery,
     groundItems: groundItems.length,
-    hashBuilds: perfStats.hashBuildsLastFrame,
-    spatialQueries: perfStats.spatialQueryCallsLastFrame,
     barricadeScanned: perfStats.barricadeActiveScanned,
     barricadeQueued: perfStats.barricadeQueuedCount,
     usedHeapMB: perfStats.memorySupported ? perfStats.usedHeapMB : null,
-    updatePhases: { ...phaseTime },
-    renderPhases: { ...renderPhaseTime }
+    ...diagnosticFrameContext()
   };
-  let index = 0;
-  while(index < events.length && events[index].durationMs >= durationMs) index++;
-  events.splice(index, 0, event);
-  if(events.length > PERF_EVENT_HISTORY_LIMIT) events.pop();
+  insertTopDurationEvent(events, event, PERF_EVENT_HISTORY_LIMIT);
 }
 const LONG_TASK_HISTORY_LIMIT = 20;
 const LONG_ANIMATION_FRAME_HISTORY_LIMIT = 20;
@@ -1563,25 +1454,31 @@ function recordPerfTrendFrame(now, rawGapMs){
   if(perfStats.sessionTrendSamples.length > SESSION_TREND_HISTORY_LIMIT) perfStats.sessionTrendSamples.shift();
   perfTrendWindow = createPerfTrendWindow(now);
 }
-function recordSimulationCapEvent(rawGapMs, droppedMs){
-  if(droppedMs <= 0) return;
-  const event = { durationMs: droppedMs, time: new Date().toISOString(), wallGapMs: rawGapMs,
-    wallTimeClampedMs: Math.max(0, rawGapMs - perfStats.lastFrameTimeClampMs), frameMs: perfStats.frameMs,
-    updateMs: perfStats.updateMs, renderMs: perfStats.renderMs, ticks: perfStats.ticksThisFrame, tickCap: perfStats.lastSimulationTickCap,
-    wave: waveIndex, waveState, gameState, gameSpeed, accumulatorMs: droppedMs,
-    activeEnemies: perfStats.totalActiveEnemies, activeTowers: perfStats.totalActiveTowers,
-    activeParticles: perfStats.totalParticles, decals: perfStats.totalDecals,
-    decalRebuildCount: extendedDiagnostics.decalRebuilds.count,
-    decalRebuildLastMs: extendedDiagnostics.decalRebuilds.lastMs,
+// The frame context every slow-frame and simulation-cap snapshot records: decal rebuilds, recent deaths, audio load, camera motion, spatial work and phase times.
+function diagnosticFrameContext(){
+  const audioNow = audioEngine.ctx ? audioEngine.ctx.currentTime : 0;
+  return {
+    decalRebuildCount: extendedDiagnostics.decalRebuilds.count, decalRebuildLastMs: extendedDiagnostics.decalRebuilds.lastMs,
     recentDeaths: recentDiagnosticDeaths(),
     audioState: audioEngine.ctx ? audioEngine.ctx.state : 'locked',
-    audioVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.activeVoiceExpiry,audioEngine.ctx.currentTime) : 0,
-    musicVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.musicVoiceExpiry,audioEngine.ctx.currentTime) : 0,
+    audioVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.activeVoiceExpiry, audioNow) : 0,
+    musicVoices: audioEngine.ctx ? countUnexpiredAudioSources(audioEngine.musicVoiceExpiry, audioNow) : 0,
     cameraMoveX: perfStats.cameraMoveXLastFrame, cameraMoveY: perfStats.cameraMoveYLastFrame,
     cameraMovePixels: perfStats.cameraMovePixelsLastFrame, cameraZoomDelta: perfStats.cameraZoomDeltaLastFrame,
     cameraMoving: perfStats.cameraMovingLastFrame,
     hashBuilds: perfStats.hashBuildsLastFrame, spatialQueries: perfStats.spatialQueryCallsLastFrame,
-    updatePhases: { ...phaseTime }, renderPhases: { ...renderPhaseTime } };
+    updatePhases: { ...phaseTime }, renderPhases: { ...renderPhaseTime }
+  };
+}
+function recordSimulationCapEvent(rawGapMs, droppedMs){
+  if(droppedMs <= 0) return;
+  const event = { durationMs: droppedMs, time: new Date().toISOString(), wallGapMs: rawGapMs,
+    wallTimeClampedMs: rawGapMs > FRAME_GAP_RESET_MS ? rawGapMs : Math.max(0, rawGapMs - perfStats.lastFrameTimeClampMs), frameMs: perfStats.frameMs,
+    updateMs: perfStats.updateMs, renderMs: perfStats.renderMs, ticks: perfStats.ticksThisFrame, tickCap: perfStats.lastSimulationTickCap,
+    wave: waveIndex, waveState, gameState, gameSpeed, accumulatorMs: droppedMs,
+    activeEnemies: perfStats.totalActiveEnemies, activeTowers: perfStats.totalActiveTowers,
+    activeParticles: perfStats.totalParticles, decals: perfStats.totalDecals,
+    ...diagnosticFrameContext() };
   insertTopDurationEvent(perfStats.simulationCapEvents, event, SIMULATION_CAP_EVENT_LIMIT);
 }
 function recordLongTaskEntries(entries){
@@ -1601,6 +1498,7 @@ function recordLongTaskEntries(entries){
     insertTopDurationEvent(perfStats.longTaskEvents, event, LONG_TASK_HISTORY_LIMIT);
   }
 }
+// LONG-TASK-LOG-01: main-thread tasks of 50 ms or more, so a debug log can tell a blocked page from a browser that delayed the frame.
 startDiagnosticObserver('longtask', recordLongTaskEntries,
   [{ type: 'longtask', buffered: true }, { type: 'longtask' }], 'longTaskObserverActive', 'longTaskObserverError');
 function recordLongAnimationFrameEntries(entries){
@@ -1678,18 +1576,14 @@ window.addEventListener('unhandledrejection', event => {
 /* =========================================================
    ATTRACT SCREEN
    ========================================================= */
-// CA688 — see HISTORY.md § [1.5.7] Code Archaeology, CA688
 const ATTRACT_FORMATION = [
   { xf: 0.50, yf: 0.32, element: 'FIRE' },     // top-center archer
   { xf: 0.28, yf: 0.62, element: 'ICE' },      // lower-left archer
   { xf: 0.72, yf: 0.62, element: 'ELECTRIC' }  // lower-right archer
 ];
-// CA689 — see HISTORY.md § [1.5.7] Code Archaeology, CA689
 const ATTRACT_ELEMENT_COLOR = { FIRE: '#ff6b35', ICE: '#7dd3fc', ELECTRIC: '#f1c40f' };
-// CA690 — see HISTORY.md § [1.5.7] Code Archaeology, CA690
 const ATTRACT_ENEMY_MOVE_SCALE = 0.60; // ATTRACT-PACE-01: movement only, not demo timing or gameplay
 const ATTRACT_ENEMY_POOL = ['GRUNT','SWARM','RUNNER','SPLITTER','SPLITMINI','ZOMBIE','WOLF','MONARCH']; // living creatures only: the archers never shoot rocks, bones, statues or other objects (ATTRACT-LIVING-01)
-// CA691 — see HISTORY.md § [1.5.7] Code Archaeology, CA691
 const ATTRACT_PHASES = [
   { name: 'CALM',      start: 0,     end: 3000,  spawnEvery: 1400, maxAlive: 3, enemySpeedMult: 0.75 },
   { name: 'ACTION',    start: 3000,  end: 9500,  spawnEvery: 650,  maxAlive: 7, enemySpeedMult: 1.0  },
@@ -1706,9 +1600,8 @@ function attractPhaseAt(loopMs){
   for(const p of ATTRACT_PHASES) if(loopMs >= p.start && loopMs < p.end) return p;
   return ATTRACT_PHASES[ATTRACT_PHASES.length - 1];
 }
-// CA692 — see HISTORY.md § [1.5.7] Code Archaeology, CA692
 function attractSpawnPoint(){
-  // ATTRACT-HORIZON-01 (1.7.36): enemies walk in from the left or right edge along the ground band, as if coming over the
+  // ATTRACT-HORIZON-01: enemies walk in from the left or right edge along the ground band, as if coming over the
   // horizon, and never drop in from the top or bottom of the screen.
   const fromLeft = Math.random() < 0.5, pad = 0.08;
   return { xf: fromLeft ? -pad : 1 + pad, yf: 0.38 + Math.random()*0.42 };
@@ -1733,11 +1626,11 @@ function attractSpawnEnemy(now){
   return {
     type: attractPickEnemyType(),
     fromXf: spawn.xf, fromYf: spawn.yf, toXf: targetXf, toYf: targetYf,
-    t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false, diedAt: 0, arrows: [], arrowHits: 0, arrowsToKill: attractRollArrowsToKill(), hitAt: -1e9, hitAngle: 0 // halved from 0.00028-0.00038 — a saunter, not a rush, per direct request
+    t: 0, speed: 0.00014 + Math.random()*0.00005, flashUntil: 0, spawnedAt: now, dead: false, diedAt: 0, arrows: [], arrowHits: 0, arrowsToKill: attractRollArrowsToKill(), hitAt: -1e9, hitAngle: 0 // a saunter, not a rush
   };
 }
 function initAttractLoop(now){
-  attractIsDaytime = null; // SCENE-TIME-OF-DAY-01 (1.7.36): every new attract scene re-rolls day or night, the sun or moon position and the moon phase
+  attractIsDaytime = null; // SCENE-TIME-OF-DAY-01
   attractLoopStartTime = now;
   attractLastFrameTime = now;
   attractNextSpawnAt = now;
@@ -1756,11 +1649,11 @@ function initAttractLoop(now){
 function attractEnemyScreenPos(e, t){
   return { xf: e.fromXf + (e.toXf - e.fromXf)*t, yf: e.fromYf + (e.toYf - e.fromYf)*t };
 }
-// ATTRACT-ARCHERS-01 (1.7.87) — see HISTORY.md § [1.7.87]
+// ATTRACT-ARCHERS-01
 const ATTRACT_EMOJI_PX = 62, ATTRACT_DRIFT_ZOOM_MAX = 1.05, ATTRACT_ENGAGE_T = 0.3, ATTRACT_ARROW_FLIGHT_MS = 300, ATTRACT_ARROW_ARC_PX = 22, ATTRACT_SPEED_EASE_MS = 600, ATTRACT_AIM_EASE_MS = 90, ATTRACT_CORPSE_MS = 450;
 const ATTRACT_STICKMAN_DRAW_SCALE = 1.8;
 const ATTRACT_STICK_RADIUS_PX = 22, ATTRACT_ARROW_DRAW_SCALE = 2.2, ATTRACT_MAX_STUCK_DRAWN = 5, ATTRACT_FLINCH_PX = 6, ATTRACT_FLINCH_MS = 110, ATTRACT_ARROW_WOBBLE_MS = 160;
-const ATTRACT_BLOOD_FADE_START_MS = 15000, ATTRACT_BLOOD_FADE_MS = 3500, ATTRACT_DROPLET_CAP = 90, ATTRACT_DROPLET_GRAVITY = 520, ATTRACT_DROPLET_DRAG = 0.0022, ATTRACT_DROPLET_TERMINAL = 620, ATTRACT_DROPLET_GROUND_SQUASH = 0.55;
+const ATTRACT_BLOOD_FADE_START_MS = 15000, ATTRACT_BLOOD_FADE_MS = 3500, ATTRACT_DROPLET_CAP = 90, ATTRACT_DROPLET_GRAVITY = 520, ATTRACT_DROPLET_TERMINAL = 7.65*ATTRACT_DROPLET_GRAVITY/9.81, ATTRACT_DROPLET_DRAG = ATTRACT_DROPLET_GRAVITY/(ATTRACT_DROPLET_TERMINAL*ATTRACT_DROPLET_TERMINAL), ATTRACT_DROPLET_GROUND_SQUASH = 0.55;
 let attractBloodCanvas = null, attractBloodCtx = null, attractBloodScale = 1;
 function ensureAttractBloodCanvas(){
   const scale = Math.min(dprValue, 1.5), width = Math.round(CANVAS_W * scale), height = Math.round(CANVAS_H * scale);
@@ -1792,13 +1685,13 @@ function emitAttractBlood(st, enemy, ex, ey, impactAngle, isKill){
 function updateAttractDroplets(st, dtSec){
   for(const d of st.droplets){
     if(!d.active) continue;
-    const dragRate = ATTRACT_DROPLET_DRAG * Math.hypot(d.vx, d.vy, d.vz);
-    d.vx -= d.vx * dragRate * dtSec; d.vy -= d.vy * dragRate * dtSec;
-    d.vz -= (ATTRACT_DROPLET_GRAVITY + d.vz * dragRate) * dtSec;
+    d.vz -= ATTRACT_DROPLET_GRAVITY * dtSec;
+    const dragRetention = 1 / (1 + ATTRACT_DROPLET_DRAG * Math.hypot(d.vx, d.vy, d.vz) * dtSec);
+    d.vx *= dragRetention; d.vy *= dragRetention; d.vz *= dragRetention;
     if(d.vz < -ATTRACT_DROPLET_TERMINAL) d.vz = -ATTRACT_DROPLET_TERMINAL;
     d.x += d.vx * dtSec; d.y += d.vy * dtSec * ATTRACT_DROPLET_GROUND_SQUASH; d.z += d.vz * dtSec;
     if(d.z > 0) continue;
-    const speed = Math.hypot(d.vx, d.vy, d.vz) || 1, sinImpact = clampNum(Math.abs(d.vz) / speed, 0.2, 1);
+    const speed = Math.hypot(d.vx, d.vy, d.vz) || 1, sinImpact = clampNum(Math.abs(d.vz) / speed, 1 / FORENSIC_MAX_STAIN_ASPECT, 1);
     stampAttractBlood(d.x, d.y, Math.atan2(d.vy, d.vx), d.size / sinImpact, d.size, d.color, 0.55 + Math.random() * 0.35);
     d.active = false;
   }
@@ -1862,6 +1755,11 @@ function drawAttractFlyingArrow(ctx, shot, target, now){
 }
 let attractSkyRolledAt = -1e9;
 let attractIsDaytime = null, attractSkyBodyT = 0.82, attractSkyBodyHeight = 0.35, attractMoonPhase = 4; // rolled once per visit in the attract renderer — day or night backdrop
+const ATTRACT_ELEMENT_SKINS = {
+  FIRE:     { skinMain: '#ff9466', skinShade: '#cc4a1f' },
+  ICE:      { skinMain: '#bfe8fd', skinShade: '#4fa8d8' },
+  ELECTRIC: { skinMain: '#fde68a', skinShade: '#d4a017' }
+};
 function renderAttractMode(ctx, now){
   if(!attractState) initAttractLoop(now);
   let dt = now - attractLastFrameTime;
@@ -1884,7 +1782,6 @@ function renderAttractMode(ctx, now){
     fadeT = 1 - clampNum((loopMs - fadePhase.start) / (fadePhase.end - fadePhase.start), 0, 1);
   }
 
-  // CA693 — see HISTORY.md § [1.5.7] Code Archaeology, CA693
   let aliveCount = 0;
   for(const enemy of st.enemies) if(!enemy.dead) aliveCount++;
   if(now >= attractNextSpawnAt && aliveCount < phase.maxAlive && phase.spawnEvery !== Infinity){
@@ -1907,7 +1804,6 @@ function renderAttractMode(ctx, now){
   ctx.save();
   ctx.globalAlpha=1; ctx.shadowBlur=0;
   ctx.fillStyle='#8b5a2b'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-  // CA694 — see HISTORY.md § [1.5.7] Code Archaeology, CA694
   const driftT = now / 9000;
   const driftZoom = 1 + 0.018 + 0.017*Math.sin(driftT);
   const driftPanX = Math.sin(driftT*0.7 + 1.3) * 10;
@@ -1915,19 +1811,15 @@ function renderAttractMode(ctx, now){
   ctx.translate(CANVAS_W/2 + driftPanX, CANVAS_H/2 + driftPanY);
   ctx.scale(driftZoom, driftZoom);
   ctx.translate(-CANVAS_W/2, -CANVAS_H/2);
-  // CA695 — see HISTORY.md § [1.5.7] Code Archaeology, CA695
   const horizonY = CANVAS_H * 0.12;
   attractSkyRolledAt = Math.max(attractSkyRolledAt, now - 3000); // treat continuous rendering as one visit
-  // CA696 — see HISTORY.md § [1.5.7] Code Archaeology, CA696
   if(attractIsDaytime === null || now - attractSkyRolledAt > 4000){
     attractSkyRolledAt = now;
     attractIsDaytime = Math.random() < 0.5;
-    // CA697 — see HISTORY.md § [1.5.7] Code Archaeology, CA697
     attractSkyBodyT = 0.12 + Math.random() * 0.76;      // horizontal position, kept off the edges
     attractSkyBodyHeight = 0.22 + Math.random() * 0.45; // height within the sky band
     attractMoonPhase = Math.floor(Math.random() * 8);   // 0 new, 4 full, 7 waning crescent
   }
-  // CA698 — see HISTORY.md § [1.5.7] Code Archaeology, CA698
   const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
   skyGrad.addColorStop(0, attractIsDaytime ? '#5aa7d8' : '#161022');
   skyGrad.addColorStop(1, attractIsDaytime ? '#cfe2c0' : '#3a2c1a');
@@ -1941,7 +1833,6 @@ function renderAttractMode(ctx, now){
   ctx.shadowBlur = graphicsQuality === 'low' ? 0 : (attractIsDaytime ? 26 : 18);
   ctx.beginPath(); ctx.arc(bodyX, bodyY, bodyR, 0, Math.PI*2); ctx.fill();
   if(!attractIsDaytime && attractMoonPhase !== 4){
-    // CA699 — see HISTORY.md § [1.5.7] Code Archaeology, CA699
     const illumination = Math.abs(attractMoonPhase - 4) / 4;  // 0 full ... 1 new
     const waning = attractMoonPhase > 4;
     ctx.shadowBlur = 0;
@@ -1954,7 +1845,6 @@ function renderAttractMode(ctx, now){
   ctx.save();
   ctx.fillStyle = '#f5f0e6';
   for(let i=0; i<(attractIsDaytime ? 0 : 14); i++){
-    // CA700 — see HISTORY.md § [1.5.7] Code Archaeology, CA700
     const sx = ((i*137.5) % 100)/100 * CANVAS_W;
     const sy = ((i*71.3) % 100)/100 * horizonY * 0.9;
     const twinkle = 0.35 + 0.5*Math.abs(Math.sin(now/900 + i*2.1));
@@ -1965,18 +1855,16 @@ function renderAttractMode(ctx, now){
   const groundRows = 16, groundCols = 10;
   for(let i=0; i<groundRows; i++){
     const t0 = i/groundRows, t1 = (i+1)/groundRows;
-    // CA701 — see HISTORY.md § [1.5.7] Code Archaeology, CA701
     const y0 = horizonY + (CANVAS_H-horizonY) * t0*t0;
     const y1 = horizonY + (CANVAS_H-horizonY) * t1*t1;
     for(let c=0; c<groundCols; c++){
-      ctx.fillStyle = (i+c)%2===0 ? (attractIsDaytime ? '#8fb268' : '#6f8f52') : (attractIsDaytime ? '#a6c77c' : '#84a562'); // daylight lifts the field so the day/night roll reads through the start-screen dimmer // checkerboard grass, same two-tone-square language as the real game's own buildable area
+      ctx.fillStyle = (i+c)%2===0 ? (attractIsDaytime ? '#8fb268' : '#6f8f52') : (attractIsDaytime ? '#a6c77c' : '#84a562');
       const colW = CANVAS_W/groundCols;
       ctx.fillRect(c*colW, y0, colW+1, y1-y0+1);
     }
   }
   ctx.globalAlpha = fadeT;
 
-  // CA702 — see HISTORY.md § [1.5.7] Code Archaeology, CA702
   ctx.save();
   ctx.fillStyle = '#e8dfc8';
   for(let i=0; i<18; i++){
@@ -1996,7 +1884,6 @@ function renderAttractMode(ctx, now){
     ctx.drawImage(attractBloodCanvas, 0, 0, CANVAS_W, CANVAS_H);
     ctx.restore();
   }
-  // CA703 — see HISTORY.md § [1.5.7] Code Archaeology, CA703
   for(const t of st.towers){
     const tx = t.xf*CANVAS_W, ty = t.yf*CANVAS_H;
     if(t.phase === 'draw' && (!t.target || t.target.dead)){ t.phase = 'idle'; t.target = null; t.nextAttackAt = now + 120; } // the target fell to another arrow: loose nothing and pick again
@@ -2006,7 +1893,7 @@ function renderAttractMode(ctx, now){
     }
     if(t.phase !== 'idle' && now - t.phaseStart >= t.phaseDur){
       if(t.target && !t.target.dead){
-        const bowGrip = archerNockedArrowTip(t.aimAngle, 1, 0), archerBuild = JOB_BUILD.ARCHER || { scaleX: 1, scaleY: 1 }; // ARROW-GRIP-01 (1.7.131): the attract archers loose from the bow hand too, not from the stickman's feet
+        const bowGrip = archerNockedArrowTip(t.aimAngle, 1, 0), archerBuild = JOB_BUILD.ARCHER || { scaleX: 1, scaleY: 1 }; // ARROW-GRIP-01: the attract archers loose from the bow hand too, not from the stickman's feet
         st.projectiles.push({ fromX: tx + bowGrip.x*STICKMAN_SCALE*archerBuild.scaleX*ATTRACT_STICKMAN_DRAW_SCALE, fromY: ty + bowGrip.y*STICKMAN_SCALE*archerBuild.scaleY*ATTRACT_STICKMAN_DRAW_SCALE, target: t.target, startTime: now, duration: ATTRACT_ARROW_FLIGHT_MS, element: t.element });
       }
       t.phase = 'idle'; t.target = null;
@@ -2021,21 +1908,17 @@ function renderAttractMode(ctx, now){
     st.projectiles.splice(i,1);
   }
 
-  // CA706 — see HISTORY.md § [1.5.7] Code Archaeology, CA706
   ctx.font = ATTRACT_EMOJI_PX + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  // CA707 — see HISTORY.md § [1.5.7] Code Archaeology, CA707
   for(const e of st.enemies){
     const p = attractEnemyScreenPos(e, Math.min(e.t, 1));
     const flinchAge = now - e.hitAt, flinch = flinchAge < ATTRACT_FLINCH_MS * 5 ? ATTRACT_FLINCH_PX * Math.exp(-flinchAge / ATTRACT_FLINCH_MS) : 0;
     const ex = p.xf*CANVAS_W + Math.cos(e.hitAngle) * flinch, ey = p.yf*CANVAS_H + Math.sin(e.hitAngle) * flinch;
     if(now < e.flashUntil){
-      // CA708 — see HISTORY.md § [1.5.7] Code Archaeology, CA708
       const flashProgress = 1 - (e.flashUntil - now)/150;
-      const scale = e.burstScale || 1; // enemies that "died" by reaching the formation silently (no projectile kill) never get burstScale set — falls back to a normal-size burst
+      const scale = e.burstScale || 1;
       const burstR = (8 + flashProgress * 24) * scale;
       const burstAlpha = 1 - flashProgress;
       const sparkCount = scale > 1.3 ? 10 : 7; // a bigger hit gets a few extra spark lines, reads as genuinely more dramatic rather than just scaled up
-      // CA709 — see HISTORY.md § [1.5.7] Code Archaeology, CA709
       const burstColor = e.procElement ? ATTRACT_ELEMENT_COLOR[e.procElement] : '#f1c40f';
       ctx.save();
       ctx.globalAlpha = burstAlpha;
@@ -2053,7 +1936,6 @@ function renderAttractMode(ctx, now){
           ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
           ctx.stroke();
         } else if(e.procElement === 'ICE'){
-          // CA710 — see HISTORY.md § [1.5.7] Code Archaeology, CA710
           ctx.beginPath();
           ctx.moveTo(ex + Math.cos(ang)*burstR*0.5, ey + Math.sin(ang)*burstR*0.5);
           ctx.lineTo(ex + Math.cos(ang)*burstR, ey + Math.sin(ang)*burstR);
@@ -2065,7 +1947,6 @@ function renderAttractMode(ctx, now){
           ctx.lineTo(shardX, shardY+shardSize); ctx.lineTo(shardX-shardSize*0.6, shardY);
           ctx.closePath(); ctx.fill();
         } else if(e.procElement === 'FIRE'){
-          // CA711 — see HISTORY.md § [1.5.7] Code Archaeology, CA711
           const perpAng = ang + Math.PI/2;
           const bow = burstR * 0.18;
           const cx2 = ex + Math.cos(ang)*burstR*0.75 + Math.cos(perpAng)*bow;
@@ -2084,11 +1965,9 @@ function renderAttractMode(ctx, now){
       ctx.restore();
     }
     if(!e.dead || now < e.flashUntil){
-      // CA712 — see HISTORY.md § [1.5.7] Code Archaeology, CA712
       const stridePhase = (e.t * 14) % (Math.PI*2); // ~14 "steps" over a full off-screen-to-formation walk
       const bob = Math.abs(Math.sin(stridePhase)) * 5; // always lifts up, never dips below the baseline — reads as a step, not a float
       const squash = 1 + Math.sin(stridePhase) * 0.06;
-      // CA713 — see HISTORY.md § [1.5.7] Code Archaeology, CA713
       const perspectiveScale = 0.65 + Math.min(e.t, 1) * 0.35;
       ctx.save();
       ctx.translate(ex, ey - bob);
@@ -2110,17 +1989,8 @@ function renderAttractMode(ctx, now){
     const angle = t.aimAngle;
     const extraAtk = { hasTarget: !!target };
     if(t.phase === 'draw') extraAtk.drawProgress = clampNum((now-t.phaseStart)/t.phaseDur, 0, 1);
-    // CA714 — see HISTORY.md § [1.5.7] Code Archaeology, CA714
-    const elementSkins = {
-      FIRE:     { skinMain: '#ff9466', skinShade: '#cc4a1f' },
-      ICE:      { skinMain: '#bfe8fd', skinShade: '#4fa8d8' },
-      ELECTRIC: { skinMain: '#fde68a', skinShade: '#d4a017' }
-    };
-    if(elementSkins[t.element]){
-      extraAtk.skinMain = elementSkins[t.element].skinMain;
-      extraAtk.skinShade = elementSkins[t.element].skinShade;
-    }
-    // CA715 — see HISTORY.md § [1.5.7] Code Archaeology, CA715
+    const elementSkin = ATTRACT_ELEMENT_SKINS[t.element];
+    if(elementSkin){ extraAtk.skinMain = elementSkin.skinMain; extraAtk.skinShade = elementSkin.skinShade; }
     ctx.save();
     ctx.translate(tx, ty);
     ctx.scale(ATTRACT_STICKMAN_DRAW_SCALE, ATTRACT_STICKMAN_DRAW_SCALE);
@@ -2137,9 +2007,7 @@ function renderAttractMode(ctx, now){
     ctx.beginPath(); ctx.arc(d.x, d.y - d.z, d.size * 0.5, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
-  // CA717 — see HISTORY.md § [1.5.7] Code Archaeology, CA717
 
-  // CA718 — see HISTORY.md § [1.5.7] Code Archaeology, CA718
   ctx.save();
   ctx.globalAlpha = fadeT;
   const vignetteGrad = ctx.createRadialGradient(
@@ -2168,11 +2036,11 @@ function scanFieldForMusic(){
 }
 let softwareRenderingNoticeShown = false;
 let attackStateClock = 0;
-// CARAVAN-01 (1.7.100) — see HISTORY.md § [1.7.100]
+// CARAVAN-01
 const CARAVAN_FIRST_ROUND_AFTER = 2, CARAVAN_CHANCE = 0.4, CARAVAN_MIN_GAP_ROUNDS = 2, CARAVAN_SPEED_PX_PER_S = 46, CARAVAN_TAP_RADIUS_PX = 36;
 const CARAVAN_CLOP_STRIDE_PX = 24, WOOD_SELL_GOLD = 2, STONE_SELL_GOLD = 4;
 const caravan = { active: false, exiting: false, phase: 'approach', x: 0, y: 0, dirX: 1, dirY: 0, targetIndex: 1, pathLength: 0, travelPx: 0, wheelPhase: 0, clopPx: 0, lastRound: -99, announced: false };
-// CARAVAN-JOURNEY-01 (1.8.40): the merchant crosses the whole map. He steps in from beyond the map edge along the line of the first road tile, walks the bare wilderness, passes the spawn flags, follows the road to the finish carpet, and leaves past it off the other edge, where he is cleared from memory.
+// CARAVAN-JOURNEY-01: the merchant crosses the whole map.
 const CARAVAN_EDGE_MARGIN_PX = 70, CARAVAN_MAX_TRAVEL_PX = 6000;
 function caravanOutsideWorld(x, y){ return x < -CARAVAN_EDGE_MARGIN_PX || x > WORLD_MAX_W + CARAVAN_EDGE_MARGIN_PX || y < -CARAVAN_EDGE_MARGIN_PX || y > WORLD_MAX_H + CARAVAN_EDGE_MARGIN_PX; }
 function caravanEdgePoint(fromX, fromY, unitX, unitY){
@@ -2248,7 +2116,7 @@ function updateCaravan(frameMs){
   caravan.clopPx += movedPx;
   if(caravan.clopPx >= CARAVAN_CLOP_STRIDE_PX){ caravan.clopPx -= CARAVAN_CLOP_STRIDE_PX; if(!caravanOutsideWorld(caravan.x, caravan.y)) playSound('caravan_clop', caravan.x, undefined, caravan.y); }
 }
-// CARAVAN-LOOK-01 (1.8.40): a covered wagon with a drawn camel and one swept ground shadow, in place of a flat ellipse, a mirrored animal emoji and a floating stack of icons.
+// CARAVAN-LOOK-01: a covered wagon with a drawn camel and one swept ground shadow, in place of a flat ellipse, a mirrored animal emoji and a floating stack of icons.
 function fillSweptShadow(ctx, footprint, sweepX, sweepY, alpha){
   const points = [];
   for(const point of footprint){ points.push([point[0], point[1]], [point[0] + sweepX, point[1] + sweepY]); }
@@ -2335,13 +2203,22 @@ function sellToCaravan(resource, requestedAmount){
 /* =========================================================
    PRESENTATION EFFECTS AND THE FRAME LOOP
    ========================================================= */
+function collectAmbientLogsOnClaimedGround(){
+  for(let index = ambientLogs.length - 1; index >= 0; index--){
+    const log = ambientLogs[index], key = Math.floor(log.x/TILE_SIZE) + ',' + Math.floor(log.y/TILE_SIZE);
+    if(!pathCells.has(key) && !nearPathTileSet.has(key) && !bonusGrassTiles.has(key)) continue;
+    wood += log.count*AMBIENT_LOG_WOOD/AMBIENT_LOG_STACK_SIZE;
+    ambientLogs.splice(index, 1);
+    updateHUD();
+  }
+}
 function updatePresentationEffects(frameMs){
   updateCampfireCooking(frameMs);
   updateCaravan(frameMs);
   attackStateClock += frameMs; if(attackStateClock >= 250){ attackStateClock = 0; refreshAttackState(); }
-  driveRingReveal(Math.min(frameMs, 100)); // EXPAND-REALTIME-01 (1.7.36): slower (1.9 s in 60 ms steps), always visible, and independent of game speed
+  driveRingReveal(Math.min(frameMs, 100)); // EXPAND-REALTIME-01: slower (1.9 s in 60 ms steps), always visible, and independent of game speed
   if(!softwareRenderingNoticeShown && renderEnvironment.softwareRendering === true && gameState === 'PLAYING'){
-    softwareRenderingNoticeShown = true; // GPU-NOTICE-01 (1.7.36): the browser is drawing on the CPU; a quiet bell note says how to fix it, never a popup
+    softwareRenderingNoticeShown = true; // GPU-NOTICE-01: the browser is drawing on the CPU; a quiet bell note says how to fix it, never a popup
     recordNotification('🖥️ Graphics acceleration is off', 'Your browser is drawing the game on the CPU (' + renderEnvironment.gpuRenderer + '). Turning on hardware acceleration in the browser settings (Settings, System, Use graphics acceleration when available, then restart) usually makes play much smoother. You can also pick Low graphics in Settings.');
   }
   if(freeExpansionOwed > 0 && waveState === 'IDLE'){ freeExpansionOwed--; if(!grantFreeExpansion()) freeExpansionOwed = 0; }
@@ -2352,7 +2229,7 @@ function updatePresentationEffects(frameMs){
   updateCoinPickups(clampedMs);
   updateGoldHudFlights(clampedMs);
   updateHeartHudFlights(clampedMs);
-  for(let n=ambientLogs.length-1;n>=0;n--){const log=ambientLogs[n],key=Math.floor(log.x/TILE_SIZE)+','+Math.floor(log.y/TILE_SIZE);if(pathCells.has(key)||nearPathTileSet.has(key)||bonusGrassTiles.has(key)){wood+=log.count*AMBIENT_LOG_WOOD/AMBIENT_LOG_STACK_SIZE;ambientLogs.splice(n,1);updateHUD();}}
+  collectAmbientLogsOnClaimedGround();
   ambientLogElapsedMs += clampedMs;
   if(ambientLogElapsedMs >= AMBIENT_LOG_INTERVAL_MS){ ambientLogElapsedMs %= AMBIENT_LOG_INTERVAL_MS; maybeSpawnAmbientLog(); }
   updateBarks(clampedMs);
@@ -2360,7 +2237,7 @@ function updatePresentationEffects(frameMs){
 }
 // Only combat during an actual wave fast-forwards. Between waves everything runs at 1x.
 function effectiveGameSpeed(){ return waveState === 'IDLE' ? 1 : gameSpeed; }
-// PAN-DIAG-01 (1.7.121, widened 1.7.123): whenever the camera moves, whether from a drag, inertia, the pan to a selected stickman or the wave-start pan, the real gap between frames and the distance the camera moved each frame are kept for the last 120 moving frames and stay after the motion ends. A steady stutter with a healthy FPS shows up here as a large worst gap or a high step jitter, which says whether the cause is frame pacing or uneven camera steps. The display rate and frame cap sit beside it because a cap that is not a clean divisor of the refresh rate paces frames unevenly.
+// PAN-DIAG-01: whenever the camera moves, whether from a drag, inertia, the pan to a selected stickman or the wave-start pan, the real gap between frames and the distance the camera moved each frame are kept for the last 120 moving frames and stay after the motion ends.
 const PAN_SUBPIXEL_MAX_STEP_PX = 8;
 const PAN_DIAG_FRAMES = 120, PAN_DIAG_IDLE_FRAMES_TO_RESET = 6;
 const panDiagnostic = { gaps: [], steps: [], idleFrames: PAN_DIAG_IDLE_FRAMES_TO_RESET };
@@ -2391,13 +2268,7 @@ function displayPacingCells(){
 }
 function loop(now){
   requestAnimationFrame(loop);
-  // MOBILE-FPS-CAP-01 (1.6.48) — see HISTORY.md § [1.6.48]. Skip the entire frame (simulation,
-  // render, and all perf bookkeeping) on mobile until the target interval has actually elapsed —
-  // deliberately BEFORE any work happens, not just skipping the draw call, so this genuinely cuts
-  // CPU/GPU work rather than only hiding it. Safe to skip whole frames here because the
-  // fixed-timestep accumulator below measures real elapsed time via `lastTime`, not callback
-  // count — the next processed frame simply has a larger `frameTime` and the catch-up logic
-  // (bounded by the speed-scaled cap calculated inside loop()) handles it.
+  // MOBILE-FPS-CAP-01: a capped frame is skipped before any work; the accumulator measures wall time, so the next frame catches up.
   sampleVsyncGap(now);
   const frameCapMs = vsyncSnappedCapMs(frameCapIntervalMs());
   if(frameCapMs > 0 && !IS_MOBILE_DEVICE && isCameraMotionActive(now)){
@@ -2415,13 +2286,16 @@ function loop(now){
   }
   repaintPending = false;
   const frameStart = performance.now();
-  let frameTime = Math.max(0, now - lastTime); // CLOCK-NEGATIVE-01 (1.6.117) — see HISTORY.md § [1.6.117]
-  // CA719 — see HISTORY.md § [1.5.7] Code Archaeology, CA719
+  let frameTime = Math.max(0, now - lastTime); // CLOCK-NEGATIVE-01
   const rawWallGapMs = frameTime;
   sampleRenderGovernor(rawWallGapMs);
   const maxFrameTimeMs = gameSpeed > 1 ? FAST_FORWARD_MAX_FRAME_TIME_MS : NORMAL_MAX_FRAME_TIME_MS;
   perfStats.lastFrameTimeClampMs = maxFrameTimeMs;
-  if(frameTime > maxFrameTimeMs){
+  if(frameTime > FRAME_GAP_RESET_MS){
+    perfStats.wallTimeClampHits++;
+    perfStats.wallTimeClampedMs += frameTime;
+    frameTime = 0;
+  } else if(frameTime > maxFrameTimeMs){
     perfStats.wallTimeClampHits++;
     perfStats.wallTimeClampedMs += frameTime - maxFrameTimeMs;
     frameTime = maxFrameTimeMs;
@@ -2434,10 +2308,9 @@ function loop(now){
   cameraPanClock += cameraFrameMs;
   const cameraAtFrameStartX = camera.x, cameraAtFrameStartY = camera.y, cameraAtFrameStartZoom = camera.zoom;
   applyPanInertia(cameraFrameMs);
-  // CA720 — see HISTORY.md § [1.5.7] Code Archaeology, CA720
   if(waveState === 'SPAWNING' && waveTimer < WAVE_COUNTDOWN_MS + WAVE_COUNTDOWN_GO_HOLD_MS && !anyBarricadeQueued && !waveStartCameraPan){
     waveTimer += frameTime;
-    const countdownBeat = Math.min(3, Math.floor(waveTimer / 1000)); // COUNTDOWN-BUZZER-01 (1.7.36): a buzzer on 3, 2, 1 and a higher one on GO
+    const countdownBeat = Math.min(3, Math.floor(waveTimer / 1000)); // COUNTDOWN-BUZZER-01: a buzzer on 3, 2, 1 and a higher one on GO
     if(countdownBeat > countdownBeatPlayed){ countdownBeatPlayed = countdownBeat; playSound(countdownBeat < 3 ? 'countdown_tick' : 'countdown_go', undefined, countdownBeat); }
     advanceCountdownMusic();
   }
@@ -2450,7 +2323,7 @@ function loop(now){
     Math.max(MAX_SIMULATION_TICKS_PER_FRAME, Math.ceil(maxFrameTimeMs * simulationSpeed / FIXED_DT)));
   perfStats.lastSimulationTickCap = tickCapThisFrame;
 
-  resetPhaseTime(); // per-phase breakdown accumulates across every tick this frame — see phaseTime/resetPhaseTime and the phaseTime.x += lines inside update()
+  resetPhaseTime();
   resetRenderPhaseTime(); // same pattern, for the render() breakdown below — see renderPhaseTime/resetRenderPhaseTime
   spatialQueryCallsThisFrame = 0; hashBuildsThisFrame = 0; // same: accumulate across every tick this frame, snapshotted into perfStats below
   const updateStart = performance.now();
@@ -2463,20 +2336,18 @@ function loop(now){
     ticksThisFrame++;
     if(cameraInputBudget && ticksThisFrame % 2 === 0 && performance.now()-updateStart >= 6){ cameraBudgetReached=true; break; }
   }
-  // CA721 — see HISTORY.md § [1.5.7] Code Archaeology, CA721
   if((ticksThisFrame >= tickCapThisFrame || cameraBudgetReached) && accumulator >= FIXED_DT){
     perfStats.simulationCatchUpCapHits++;
     droppedSimulationTimeThisFrame = Math.max(0, accumulator);
     perfStats.simulationDebtDroppedMs += droppedSimulationTimeThisFrame;
-    if(cameraBudgetReached && ticksThisFrame < tickCapThisFrame){ perfStats.cameraBudgetCapHits++; perfStats.cameraBudgetDroppedMs += droppedSimulationTimeThisFrame; } // CATCHUP-REASON-01 (1.8.41): the camera's 6 ms budget is counted apart from the tick cap
+    if(cameraBudgetReached && ticksThisFrame < tickCapThisFrame){ perfStats.cameraBudgetCapHits++; perfStats.cameraBudgetDroppedMs += droppedSimulationTimeThisFrame; } // CATCHUP-REASON-01: the camera's 6 ms budget is counted apart from the tick cap
     accumulator = 0;
   }
   perfStats.updateMs = performance.now() - updateStart;
-  const hudDomStart = performance.now(); flushHUDIfDirty(); renderPhaseTime.hudDom += performance.now() - hudDomStart; // coalesced to once per rendered frame regardless of how many updateHUD() calls happened across this frame's simulation ticks — see the comment above updateHUD() itself
+  const hudDomStart = performance.now(); flushHUDIfDirty(); renderPhaseTime.hudDom += performance.now() - hudDomStart;
   const renderStart = performance.now();
-  // SMOOTH-ANIM-01 (1.7.75): the simulation advances in fixed 16.7 ms ticks, so on a display that is not locked to 60 Hz, or after any slow frame, a rendered frame holds 0, 1 or 2 ticks
-  // and every animation timed by gameTime (swings, casts, axe flights, breathing) moves in uneven jumps even at 60 FPS. Drawing now happens at gameTime plus the unspent part of the
-  // tick, so those animations advance a little every displayed frame; enemies were already blended this way and projectiles are now too (drawProjectileSmoothed).
+  // SMOOTH-ANIM-01: the simulation advances in fixed 16.7 ms ticks, so on a display that is not locked to 60 Hz, or after any slow frame, a rendered frame holds 0, 1 or 2 ticks
+  // and every animation timed by gameTime (swings, casts, axe flights, breathing) moves in uneven jumps even at 60 FPS.
   const smoothedAheadMs = renderLeftoverMs();
   gameTime += smoothedAheadMs;
   try { render(ctx); } finally { gameTime -= smoothedAheadMs; }
@@ -2490,7 +2361,7 @@ function loop(now){
   recordPanDiagnostic(rawWallGapMs, perfStats.cameraMovePixelsLastFrame, perfStats.cameraMovingLastFrame);
   perfStats.frameMs = performance.now() - frameStart;
   perfStats.ticksThisFrame = ticksThisFrame;
-  // SPEED-ACHIEVED-01 (1.7.51): requested speed against the speed actually simulated over the last second (simulated game time divided by wall time), and the cost of one tick,
+  // SPEED-ACHIEVED-01: requested speed against the speed actually simulated over the last second (simulated game time divided by wall time), and the cost of one tick,
   // so a slow fast-forward can be told apart from an expensive tick.
   speedWindow.simMs += ticksThisFrame*FIXED_DT; speedWindow.wallMs += rawWallGapMs;
   if(speedWindow.wallMs >= 1000){ perfStats.achievedSpeed = speedWindow.simMs/speedWindow.wallMs; speedWindow.simMs = 0; speedWindow.wallMs = 0; }
@@ -2499,7 +2370,6 @@ function loop(now){
   recordExtendedDiagnostics(rawWallGapMs);
   recordDiagFrame();
   recordPerfSample(perfStats.frameMsHistory, perfStats.frameMs);
-  // CA722 — see HISTORY.md § [1.5.7] Code Archaeology, CA722
   const instFps = rawWallGapMs > 0 ? 1000/rawWallGapMs : 60;
   perfStats.smoothedFps = perfStats.smoothedFps ? perfStats.smoothedFps*0.9 + instFps*0.1 : instFps;
   recordPerfSample(perfStats.updateMsHistory, perfStats.updateMs);
@@ -2511,7 +2381,6 @@ function loop(now){
     perfStats.worstWallGapAtWave = waveIndex;
     perfStats.worstWallGapAtReal = Date.now(); // see sessionStartRealTime's own comment — debug-log use only
   }
-  // CA723 — see HISTORY.md § [1.5.7] Code Archaeology, CA723
   if(perfStats.frameMs > perfStats.worstFrameMs){
     perfStats.worstFrameMs = perfStats.frameMs;
     perfStats.worstFrameAtWave = waveIndex;
@@ -2524,7 +2393,6 @@ function loop(now){
   perfStats.spatialQueryCallsLastFrame = spatialQueryCallsThisFrame;
   perfStats.hashBuildsLastFrame = hashBuildsThisFrame;
   perfStats.enemyHashBucketPoolSize = enemyHashBucketPool.size;
-  // CA724 — see HISTORY.md § [1.5.7] Code Archaeology, CA724
   if(performance.memory){
     perfStats.memorySupported = true;
     if(now - perfStats.lastMemorySampleAt >= 1000){
@@ -2537,7 +2405,6 @@ function loop(now){
   }
   perfStats.lastAccumulatorDebtMs = accumulator; // leftover simulation time this frame couldn't catch up on, carried into the next one
   perfStats.lastDroppedSimulationTimeMs = droppedSimulationTimeThisFrame;
-  // CA725 — see HISTORY.md § [1.5.7] Code Archaeology, CA725
   perfStats.actualSpeedWindowRealMs += Math.max(0, rawWallGapMs);
   // Count completed simulation time against the raw callback gap; clamped frame time would
   // overstate achieved speed whenever the elapsed-time safety ceiling discards wall time.
@@ -2555,13 +2422,12 @@ function loop(now){
 /* =========================================================
    GEOMETRY HELPERS
    ========================================================= */
-// CA455 — see HISTORY.md § [1.5.7] Code Archaeology, CA455
 function pointSegmentDist2(px,py, ax,ay, bx,by){
   const abx=bx-ax, aby=by-ay;
   const apx=px-ax, apy=py-ay;
   const abLen2 = abx*abx+aby*aby;
   let t = abLen2 > 0 ? (apx*abx+apy*aby)/abLen2 : 0;
-  t = Math.max(0, Math.min(1, t));
+  t = clampNum(t, 0, 1);
   const cx = ax+abx*t, cy = ay+aby*t;
   const dx = px-cx, dy = py-cy;
   return dx*dx+dy*dy;
