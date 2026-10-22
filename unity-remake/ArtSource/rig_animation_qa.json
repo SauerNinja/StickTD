@@ -1,0 +1,52 @@
+{
+  "source": "StickTD_Rigged.blend",
+  "frames": 12,
+  "rendered_animation": "actual authored NLA clips evaluated through armature deformation",
+  "models": [
+    {
+      "name": "Swordsman",
+      "clip": "Attack",
+      "duration": 0.65
+    },
+    {
+      "name": "Archer",
+      "clip": "Attack",
+      "duration": 0.65
+    },
+    {
+      "name": "Mage",
+      "clip": "Special",
+      "duration": 1.4
+    },
+    {
+      "name": "Paladin",
+      "clip": "Walk",
+      "duration": 0.8
+    },
+    {
+      "name": "Gatling",
+      "clip": "Attack",
+      "duration": 0.65
+    },
+    {
+      "name": "Boss",
+      "clip": "Attack",
+      "duration": 0.65
+    },
+    {
+      "name": "Wolf",
+      "clip": "Walk",
+      "duration": 0.8
+    },
+    {
+      "name": "Chest",
+      "clip": "Special",
+      "duration": 1.4
+    },
+    {
+      "name": "Tree",
+      "clip": "Wind",
+      "duration": 2
+    }
+  ]
+}

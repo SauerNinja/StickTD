@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "code": "var r=UnityEditor.Build.Reporting.BuildReport.GetLatestReport();return new{result=r.summary.result.ToString(),r.summary.totalSize,seconds=r.summary.totalTime.TotalSeconds,r.summary.totalErrors,r.summary.totalWarnings,r.summary.outputPath};"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "result": "Succeeded",
+        "totalSize": 206358321,
+        "seconds": 9.7056107,
+        "totalErrors": 0,
+        "totalWarnings": 0,
+        "outputPath": "C:/Users/ajunk/Documents/ChatGPT/test/Builds/StickTD-Enhanced/StickTD.exe"
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

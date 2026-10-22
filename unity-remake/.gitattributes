@@ -1,0 +1,16 @@
+*.cs text eol=lf
+*.shader text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+LICENSE text eol=lf
+*.cmd text eol=crlf
+*.asset text eol=lf whitespace=-blank-at-eol
+*.meta text eol=lf whitespace=-blank-at-eol
+*.unity text eol=lf whitespace=-blank-at-eol
+*.fbx binary
+*.blend binary
+*.png binary
+*.gif binary
+*.wav binary

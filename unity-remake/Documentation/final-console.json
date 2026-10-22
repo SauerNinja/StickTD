@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "command": "command console",
+  "data": {
+    "command": "console",
+    "parameters": {
+      "level": "error",
+      "tail": "10"
+    },
+    "result": {
+      "entries": [
+        {
+          "seq": 5,
+          "timestampUtc": "2026-10-22T04:48:08.2503979Z",
+          "level": "error",
+          "logType": "Exception",
+          "message": "ArgumentOutOfRangeException: Index was out of range. Must be non-negative and less than the size of the collection.\r\nParameter name: index",
+          "stackTrace": "System.Collections.Generic.List`1[T].get_Item (System.Int32 index) (at <41d29b352f6a475ab1bf7c6628b82790>:0)\nUnityEditor.Search.SearchDatabase+<EnumerateAll>d__80.MoveNext () (at <5b34bb5dc7a045aaaa697e17baf62c78>:0)\nSystem.Linq.Enumerable.TryGetFirst[TSource] (System.Collections.Generic.IEnumerable`1[T] source, System.Boolean& found) (at <80564d689e48448fa2a7101993ee7201>:0)\nSystem.Linq.Enumerable.First[TSource] (System.Collections.Generic.IEnumerable`1[T] source) (at <80564d689e48448fa2a7101993ee7201>:0)\nUnityEditor.Search.SearchDatabase.GetDefaultSearchDatabase () (at <5b34bb5dc7a045aaaa697e17baf62c78>:0)\nUnityEditor.Search.SearchInit.IndexationOnStartup () (at <5b34bb5dc7a045aaaa697e17baf62c78>:0)\nUnityEditor.EditorApplication.Internal_CallDelayFunctions () (at <cf2607b209aa47de987ba5ed55932aa8>:0)\n",
+          "seeded": false
+        }
+      ],
+      "cursor": 9,
+      "session": "e92b0c98b0144a72ada22d5f81ea6857",
+      "returned": 1,
+      "dropped": false,
+      "reset": false,
+      "counts": {
+        "error": 1,
+        "warn": 0,
+        "log": 4
+      },
+      "groundTruth": {
+        "sampledUtc": "2026-10-22T04:54:14.3415192Z",
+        "ageMs": 101,
+        "compilationFailed": false,
+        "compiling": false,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "consoleLogs": 0,
+        "seeded": true
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

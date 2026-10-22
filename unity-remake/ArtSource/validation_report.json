@@ -1,0 +1,1051 @@
+{
+  "status": "PASS",
+  "model_count": 64,
+  "required_clips": {
+    "Idle": 2.0,
+    "Walk": 0.8,
+    "Attack": 0.65,
+    "Hit": 0.25,
+    "Death": 0.8,
+    "Special": 1.4
+  },
+  "checks": [
+    "actual FBX Skin and Cluster deformers",
+    "100% exported mesh vertex coverage",
+    "six distinct named baked takes with exact durations"
+  ],
+  "models": [
+    {
+      "name": "Swordsman",
+      "mesh_vertices": 1068,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 982620
+    },
+    {
+      "name": "Archer",
+      "mesh_vertices": 1086,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 984940
+    },
+    {
+      "name": "Mage",
+      "mesh_vertices": 1310,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 991564
+    },
+    {
+      "name": "Barricade",
+      "mesh_vertices": 495,
+      "skin_clusters": 4,
+      "fbx_bones": 4,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 293852
+    },
+    {
+      "name": "Hammerman",
+      "mesh_vertices": 1030,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 982124
+    },
+    {
+      "name": "Axeman",
+      "mesh_vertices": 984,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 977372
+    },
+    {
+      "name": "Spearman",
+      "mesh_vertices": 1034,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 981340
+    },
+    {
+      "name": "Paladin",
+      "mesh_vertices": 1336,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 998108
+    },
+    {
+      "name": "Gatling",
+      "mesh_vertices": 1166,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 988716
+    },
+    {
+      "name": "Blowdart",
+      "mesh_vertices": 1002,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 979084
+    },
+    {
+      "name": "Bomber",
+      "mesh_vertices": 1076,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 987820
+    },
+    {
+      "name": "Gunalinder",
+      "mesh_vertices": 1086,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 987532
+    },
+    {
+      "name": "Sniper",
+      "mesh_vertices": 1066,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 986060
+    },
+    {
+      "name": "DualSquirtGun",
+      "mesh_vertices": 1062,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 986700
+    },
+    {
+      "name": "Cleric",
+      "mesh_vertices": 1390,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 999868
+    },
+    {
+      "name": "Grunt",
+      "mesh_vertices": 924,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 974668
+    },
+    {
+      "name": "Swarm",
+      "mesh_vertices": 960,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 979148
+    },
+    {
+      "name": "Tank",
+      "mesh_vertices": 1162,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 991484
+    },
+    {
+      "name": "Runner",
+      "mesh_vertices": 960,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 978508
+    },
+    {
+      "name": "Boss",
+      "mesh_vertices": 1281,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 995100
+    },
+    {
+      "name": "Fire",
+      "mesh_vertices": 928,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 974652
+    },
+    {
+      "name": "Ice",
+      "mesh_vertices": 911,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 973740
+    },
+    {
+      "name": "Splitter",
+      "mesh_vertices": 1150,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 988540
+    },
+    {
+      "name": "Splitmini",
+      "mesh_vertices": 1150,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 989212
+    },
+    {
+      "name": "Boulder",
+      "mesh_vertices": 108,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 189004
+    },
+    {
+      "name": "Healer",
+      "mesh_vertices": 1370,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 999084
+    },
+    {
+      "name": "Shielded",
+      "mesh_vertices": 1230,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 995324
+    },
+    {
+      "name": "Wolf",
+      "mesh_vertices": 216,
+      "skin_clusters": 13,
+      "fbx_bones": 13,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 639804
+    },
+    {
+      "name": "Troll",
+      "mesh_vertices": 986,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 982172
+    },
+    {
+      "name": "Zombie",
+      "mesh_vertices": 1042,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 985564
+    },
+    {
+      "name": "Wraith",
+      "mesh_vertices": 1194,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 987260
+    },
+    {
+      "name": "Skeleton",
+      "mesh_vertices": 1160,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 989660
+    },
+    {
+      "name": "Reaper",
+      "mesh_vertices": 1056,
+      "skin_clusters": 20,
+      "fbx_bones": 20,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 982652
+    },
+    {
+      "name": "GrassTile",
+      "mesh_vertices": 324,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 278860
+    },
+    {
+      "name": "PathTile",
+      "mesh_vertices": 352,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 281756
+    },
+    {
+      "name": "Foundation",
+      "mesh_vertices": 288,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 192684
+    },
+    {
+      "name": "Tree",
+      "mesh_vertices": 378,
+      "skin_clusters": 5,
+      "fbx_bones": 5,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 379404
+    },
+    {
+      "name": "Rock",
+      "mesh_vertices": 216,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 193756
+    },
+    {
+      "name": "Chest",
+      "mesh_vertices": 380,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Open": 1.4
+      },
+      "file_bytes": 232412
+    },
+    {
+      "name": "Relic",
+      "mesh_vertices": 240,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 197084
+    },
+    {
+      "name": "Portal",
+      "mesh_vertices": 748,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 218684
+    },
+    {
+      "name": "Core",
+      "mesh_vertices": 468,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 204876
+    },
+    {
+      "name": "Arrow",
+      "mesh_vertices": 89,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 186892
+    },
+    {
+      "name": "Orb",
+      "mesh_vertices": 234,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 189932
+    },
+    {
+      "name": "Bullet",
+      "mesh_vertices": 9,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 180220
+    },
+    {
+      "name": "Bomb",
+      "mesh_vertices": 70,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 185868
+    },
+    {
+      "name": "HitSpark",
+      "mesh_vertices": 42,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 182412
+    },
+    {
+      "name": "SelectionRing",
+      "mesh_vertices": 192,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 186108
+    },
+    {
+      "name": "RangeRing",
+      "mesh_vertices": 384,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 191740
+    },
+    {
+      "name": "HeroCrown",
+      "mesh_vertices": 105,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 185468
+    },
+    {
+      "name": "GrassTuft",
+      "mesh_vertices": 55,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 261900
+    },
+    {
+      "name": "FlowerPatch",
+      "mesh_vertices": 609,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 288988
+    },
+    {
+      "name": "Fern",
+      "mesh_vertices": 420,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 276876
+    },
+    {
+      "name": "Mushroom",
+      "mesh_vertices": 318,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 195884
+    },
+    {
+      "name": "Log",
+      "mesh_vertices": 920,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 211372
+    },
+    {
+      "name": "Stump",
+      "mesh_vertices": 666,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 202348
+    },
+    {
+      "name": "SmallStone",
+      "mesh_vertices": 24,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 182044
+    },
+    {
+      "name": "Reed",
+      "mesh_vertices": 174,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "file_bytes": 267932
+    },
+    {
+      "name": "LeafParticle",
+      "mesh_vertices": 13,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 182236
+    },
+    {
+      "name": "RainDrop",
+      "mesh_vertices": 19,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 180668
+    },
+    {
+      "name": "Firefly",
+      "mesh_vertices": 48,
+      "skin_clusters": 3,
+      "fbx_bones": 3,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 225676
+    },
+    {
+      "name": "Cloud",
+      "mesh_vertices": 210,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 191404
+    },
+    {
+      "name": "ContactShadow",
+      "mesh_vertices": 96,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 182876
+    },
+    {
+      "name": "Puddle",
+      "mesh_vertices": 409,
+      "skin_clusters": 2,
+      "fbx_bones": 2,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "file_bytes": 194268
+    }
+  ]
+}

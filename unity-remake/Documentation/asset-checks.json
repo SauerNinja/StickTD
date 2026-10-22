@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "code": "return StickTDProject.ValidateAssets();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": "50 Blender models and nested maps validated"
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

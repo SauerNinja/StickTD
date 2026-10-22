@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "timeout": "230000",
+      "code": "StickTDProject.BuildWindows(); return \"Windows player built\";"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": "Windows player built"
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

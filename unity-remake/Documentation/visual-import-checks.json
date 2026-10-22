@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "timeout": "70000",
+      "code": "return VisualChecks.ValidateImports();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": "STICKTD_VISUAL_IMPORTS_OK: 64 rigged models, 384 required Legacy clips, 64 skinned meshes, 691 bone bindings; 3 character attack clips verified to deform vertices."
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

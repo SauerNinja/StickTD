@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "timeout": "30000",
+      "code": "return GameplayChecks.Run();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": "STICKTD_GAMEPLAY_CHECKS_OK — 85 assertions\nPASS legal/illegal placement, exact build costs, promotion, XP, evolution, specialist stability and Hero equipment\r\nPASS harvest rewards, clean NewGame resources and expansion route/cost/defender preservation\r\nPASS Splitter children and exactly one Skeleton revival with one final bounty\r\nPASS active-wave save/load roundtrip for economy, map, upgrades, actors, statuses, equipment and projectiles\r\n"
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

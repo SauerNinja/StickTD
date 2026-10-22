@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "command": "command script",
+  "data": {
+    "command": "script",
+    "parameters": {
+      "code": "return new {Motion=VisualChecks.MotionResult, Plants=UnityEngine.Object.FindFirstObjectByType<StickTD.MeadowVegetation>().PlantCount, FrameTime=UnityEngine.Time.smoothDeltaTime};"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "Motion": "STICKTD_SKELETAL_MOTION_OK: Walk=True, Pause=True, Attack=True, Death=True. Probe removed and original pause restored.",
+        "Plants": 1651,
+        "FrameTime": 0.020720182
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\ajunk\\Documents\\ChatGPT\\test\\Unity"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

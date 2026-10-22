@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-22",
+  "unity": "6000.3.19f1",
+  "models": 64,
+  "boneBindings": 691,
+  "bakedTakes": 392,
+  "gameplayAssertions": 85,
+  "liveMotion": {
+    "Attack": true,
+    "Pause": true,
+    "Death": true,
+    "Walk": true
+  },
+  "weatherTransition": {
+    "durationSeconds": 12,
+    "intermediateWetness": 0.221382767,
+    "finalWetness": 1,
+    "stormWind": 1.8,
+    "initialWetness": 0
+  },
+  "rainParticles": 372,
+  "stormParticles": 684,
+  "wave1": {
+    "kills": 8,
+    "gold": 113,
+    "lives": 100
+  },
+  "wave2": {
+    "consoleErrors": 0,
+    "kills": 25,
+    "consoleWarnings": 0,
+    "gold": 213,
+    "lives": 100
+  },
+  "standalone": {
+    "processId": 14628,
+    "startup": "Title screen rendered; no script exceptions or shader errors in startup log"
+  }
+}

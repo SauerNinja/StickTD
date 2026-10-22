@@ -1,0 +1,3217 @@
+{
+  "title": "StickTD: Forge \u2014 rigged detail upgrade",
+  "model_count": 64,
+  "authoring": "Blender 5.1 original geometry, armatures, weights and FK actions",
+  "units": "meters",
+  "fbx_export": "-Z forward, Y up, armature-compatible coordinate transforms",
+  "legacy_animation": true,
+  "clip_durations_seconds": {
+    "Idle": 2.0,
+    "Walk": 0.8,
+    "Attack": 0.65,
+    "Hit": 0.25,
+    "Death": 0.8,
+    "Special": 1.4
+  },
+  "palette": {
+    "Ink": "263744",
+    "Cream": "F4E9C9",
+    "Teal": "32B6A0",
+    "TealDark": "206F72",
+    "Gold": "E9B652",
+    "Steel": "A8BCC8",
+    "SteelDark": "526879",
+    "Wood": "80533B",
+    "WoodLight": "BA8757",
+    "Coral": "EF745C",
+    "Red": "B6424D",
+    "Violet": "9778CF",
+    "Purple": "573F84",
+    "Ice": "82D2E8",
+    "Blue": "438DD0",
+    "White": "F3F4ED",
+    "Grass": "7C9E68",
+    "GrassLight": "9CB880",
+    "GrassDark": "587756",
+    "Earth": "674A3B",
+    "Sand": "C7AE7E",
+    "SandLight": "DAC59A",
+    "Stone": "748489",
+    "StoneLight": "A5B1A4",
+    "Orange": "F19A42",
+    "Glow": "78E8BD",
+    "Moss": "67884D",
+    "Bone": "C7C7AE",
+    "DarkPurple": "333045",
+    "Pink": "E7A5BC",
+    "Black": "111F2A"
+  },
+  "models": [
+    {
+      "name": "Swordsman",
+      "file": "Swordsman.fbx",
+      "dimensions_blender_xyz_m": [
+        0.588,
+        0.3135,
+        1.0623
+      ],
+      "vertices": 1068,
+      "triangles": 1892,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1068,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.45951,
+        "Hit": 0.29062,
+        "Special": 0.65694
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Teal_32B6A0",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_Steel_A8BCC8",
+        "ST_White_F3F4ED",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "Archer",
+      "file": "Archer.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5484,
+        0.2741,
+        1.0323
+      ],
+      "vertices": 1086,
+      "triangles": 1920,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1086,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.35392,
+        "Hit": 0.23409,
+        "Special": 0.59989
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Grass_7C9E68",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Mage",
+      "file": "Mage.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5232,
+        0.36,
+        1.2723
+      ],
+      "vertices": 1310,
+      "triangles": 2356,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1310,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.78275,
+        "Hit": 0.33499,
+        "Special": 1.06137
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Violet_9778CF",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_Purple_573F84",
+        "ST_Steel_A8BCC8",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED",
+        "ST_TealDark_206F72"
+      ]
+    },
+    {
+      "name": "Barricade",
+      "file": "Barricade.fbx",
+      "dimensions_blender_xyz_m": [
+        0.636,
+        0.2272,
+        0.6622
+      ],
+      "vertices": 495,
+      "triangles": 874,
+      "bone_count": 4,
+      "bones": [
+        "Root",
+        "HingeL",
+        "HingeC",
+        "HingeR"
+      ],
+      "weighted_vertices": 495,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0734,
+        "Special": 0.0734
+      },
+      "materials": [
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_SteelDark_526879",
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "Hammerman",
+      "file": "Hammerman.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5922,
+        0.288,
+        1.0833
+      ],
+      "vertices": 1030,
+      "triangles": 1832,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1030,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.54824,
+        "Hit": 0.34697,
+        "Special": 0.77496
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Orange_F19A42",
+        "ST_WoodLight_BA8757",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Axeman",
+      "file": "Axeman.fbx",
+      "dimensions_blender_xyz_m": [
+        0.6582,
+        0.252,
+        1.1463
+      ],
+      "vertices": 984,
+      "triangles": 1744,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 984,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.54154,
+        "Hit": 0.37261,
+        "Special": 0.84873
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757",
+        "ST_Steel_A8BCC8",
+        "ST_Gold_E9B652",
+        "ST_Teal_32B6A0",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Spearman",
+      "file": "Spearman.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5295,
+        0.3135,
+        1.3443
+      ],
+      "vertices": 1034,
+      "triangles": 1832,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1034,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.92792,
+        "Hit": 0.40939,
+        "Special": 1.11069
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_TealDark_206F72",
+        "ST_WoodLight_BA8757",
+        "ST_Steel_A8BCC8",
+        "ST_Gold_E9B652",
+        "ST_Teal_32B6A0",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Paladin",
+      "file": "Paladin.fbx",
+      "dimensions_blender_xyz_m": [
+        0.588,
+        0.3375,
+        1.1793
+      ],
+      "vertices": 1336,
+      "triangles": 2360,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1336,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.45951,
+        "Hit": 0.29062,
+        "Special": 0.65694
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Gold_E9B652",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_White_F3F4ED",
+        "ST_WoodLight_BA8757",
+        "ST_TealDark_206F72"
+      ]
+    },
+    {
+      "name": "Gatling",
+      "file": "Gatling.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4512,
+        0.744,
+        1.0323
+      ],
+      "vertices": 1166,
+      "triangles": 2076,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1166,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.51317,
+        "Hit": 0.2677,
+        "Special": 0.84897
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Orange_F19A42",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_Gold_E9B652",
+        "ST_Teal_32B6A0",
+        "ST_WoodLight_BA8757",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Blowdart",
+      "file": "Blowdart.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.66,
+        1.2003
+      ],
+      "vertices": 1002,
+      "triangles": 1772,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1002,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.55875,
+        "Hit": 0.31211,
+        "Special": 0.91582
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Moss_67884D",
+        "ST_WoodLight_BA8757",
+        "ST_Grass_7C9E68",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Bomber",
+      "file": "Bomber.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5441,
+        0.423,
+        1.0323
+      ],
+      "vertices": 1076,
+      "triangles": 1912,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1076,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.25389,
+        "Hit": 0.23759,
+        "Special": 0.44427
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Red_B6424D",
+        "ST_Sand_C7AE7E",
+        "ST_Orange_F19A42",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_Ice_82D2E8",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_WoodLight_BA8757",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Gunalinder",
+      "file": "Gunalinder.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.618,
+        1.0323
+      ],
+      "vertices": 1086,
+      "triangles": 1936,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1086,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.51317,
+        "Hit": 0.2677,
+        "Special": 0.84897
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Coral_EF745C",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_WoodLight_BA8757",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Sniper",
+      "file": "Sniper.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.78,
+        1.0473
+      ],
+      "vertices": 1066,
+      "triangles": 1896,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1066,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.68032,
+        "Hit": 0.33764,
+        "Special": 1.10556
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Moss_67884D",
+        "ST_Wood_80533B",
+        "ST_Ice_82D2E8",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "DualSquirtGun",
+      "file": "DualSquirtGun.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4686,
+        0.462,
+        1.0323
+      ],
+      "vertices": 1062,
+      "triangles": 1888,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1062,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.40351,
+        "Hit": 0.22315,
+        "Special": 0.60952
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Blue_438DD0",
+        "ST_Orange_F19A42",
+        "ST_Ice_82D2E8",
+        "ST_Steel_A8BCC8",
+        "ST_Teal_32B6A0",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Cleric",
+      "file": "Cleric.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5232,
+        0.282,
+        1.1493
+      ],
+      "vertices": 1390,
+      "triangles": 2508,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1390,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.78275,
+        "Hit": 0.33499,
+        "Special": 1.06137
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_White_F3F4ED",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_Glow_78E8BD",
+        "ST_Red_B6424D",
+        "ST_Steel_A8BCC8",
+        "ST_Wood_80533B",
+        "ST_TealDark_206F72"
+      ]
+    },
+    {
+      "name": "Grunt",
+      "file": "Grunt.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4649,
+        0.258,
+        1.0323
+      ],
+      "vertices": 924,
+      "triangles": 1640,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 924,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.25389,
+        "Hit": 0.22315,
+        "Special": 0.2736
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Coral_EF745C",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Swarm",
+      "file": "Swarm.fbx",
+      "dimensions_blender_xyz_m": [
+        0.3171,
+        0.274,
+        0.7433
+      ],
+      "vertices": 960,
+      "triangles": 1700,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 960,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.29584,
+        "Attack": 0.1828,
+        "Hit": 0.16067,
+        "Special": 0.21863
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Orange_F19A42",
+        "ST_Coral_EF745C",
+        "ST_Steel_A8BCC8",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Tank",
+      "file": "Tank.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5856,
+        0.3611,
+        1.2517
+      ],
+      "vertices": 1162,
+      "triangles": 2064,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1162,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.48485,
+        "Attack": 0.4395,
+        "Hit": 0.32689,
+        "Special": 0.68494
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Red_B6424D",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_Wood_80533B",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Runner",
+      "file": "Runner.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4052,
+        0.3501,
+        0.9497
+      ],
+      "vertices": 960,
+      "triangles": 1700,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 960,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.37802,
+        "Attack": 0.23358,
+        "Hit": 0.2053,
+        "Special": 0.27935
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Orange_F19A42",
+        "ST_Coral_EF745C",
+        "ST_Steel_A8BCC8",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Boss",
+      "file": "Boss.fbx",
+      "dimensions_blender_xyz_m": [
+        0.7878,
+        0.465,
+        1.8977
+      ],
+      "vertices": 1281,
+      "triangles": 2250,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1281,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.63688,
+        "Attack": 0.70773,
+        "Hit": 0.49538,
+        "Special": 1.02414
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Red_B6424D",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_Gold_E9B652",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "Fire",
+      "file": "Fire.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5128,
+        0.2781,
+        1.1703
+      ],
+      "vertices": 928,
+      "triangles": 1640,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 928,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.23591,
+        "Hit": 0.28198,
+        "Special": 0.3441
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Orange_F19A42",
+        "ST_SteelDark_526879",
+        "ST_Gold_E9B652",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Ice",
+      "file": "Ice.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.2439,
+        1.2003
+      ],
+      "vertices": 911,
+      "triangles": 1606,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 911,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.18639,
+        "Hit": 0.29455,
+        "Special": 0.2736
+      },
+      "materials": [
+        "ST_SteelDark_526879",
+        "ST_Ice_82D2E8",
+        "ST_Ink_263744",
+        "ST_White_F3F4ED",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "Splitter",
+      "file": "Splitter.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.2661,
+        1.0773
+      ],
+      "vertices": 1150,
+      "triangles": 2084,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1150,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.18639,
+        "Hit": 0.2446,
+        "Special": 0.2736
+      },
+      "materials": [
+        "ST_DarkPurple_333045",
+        "ST_Pink_E7A5BC",
+        "ST_Ink_263744",
+        "ST_SteelDark_526879",
+        "ST_Violet_9778CF",
+        "ST_Purple_573F84",
+        "ST_Cream_F4E9C9",
+        "ST_Steel_A8BCC8",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Splitmini",
+      "file": "Splitmini.fbx",
+      "dimensions_blender_xyz_m": [
+        0.2423,
+        0.1464,
+        0.5925
+      ],
+      "vertices": 1150,
+      "triangles": 2084,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1150,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.22599,
+        "Attack": 0.10251,
+        "Hit": 0.13453,
+        "Special": 0.15048
+      },
+      "materials": [
+        "ST_DarkPurple_333045",
+        "ST_Pink_E7A5BC",
+        "ST_Ink_263744",
+        "ST_SteelDark_526879",
+        "ST_Violet_9778CF",
+        "ST_Purple_573F84",
+        "ST_Cream_F4E9C9",
+        "ST_Steel_A8BCC8",
+        "ST_WoodLight_BA8757",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Boulder",
+      "file": "Boulder.fbx",
+      "dimensions_blender_xyz_m": [
+        0.6049,
+        0.5676,
+        0.618
+      ],
+      "vertices": 108,
+      "triangles": 188,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Roll"
+      ],
+      "weighted_vertices": 108,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.466,
+        "Attack": 0.21405,
+        "Hit": 0.0619,
+        "Special": 0.15
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_Orange_F19A42",
+        "ST_Ink_263744",
+        "ST_StoneLight_A5B1A4"
+      ]
+    },
+    {
+      "name": "Healer",
+      "file": "Healer.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5232,
+        0.3045,
+        1.1493
+      ],
+      "vertices": 1370,
+      "triangles": 2472,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1370,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.78275,
+        "Hit": 0.33499,
+        "Special": 1.06137
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Moss_67884D",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_Glow_78E8BD",
+        "ST_White_F3F4ED",
+        "ST_Steel_A8BCC8",
+        "ST_Wood_80533B",
+        "ST_Red_B6424D"
+      ]
+    },
+    {
+      "name": "Shielded",
+      "file": "Shielded.fbx",
+      "dimensions_blender_xyz_m": [
+        0.6222,
+        0.3375,
+        1.0608
+      ],
+      "vertices": 1230,
+      "triangles": 2184,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1230,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.37245,
+        "Hit": 0.27703,
+        "Special": 0.58046
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Cream_F4E9C9",
+        "ST_SteelDark_526879",
+        "ST_Red_B6424D",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_Gold_E9B652",
+        "ST_Wood_80533B",
+        "ST_WoodLight_BA8757",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Wolf",
+      "file": "Wolf.fbx",
+      "dimensions_blender_xyz_m": [
+        0.3462,
+        0.8731,
+        0.6223
+      ],
+      "vertices": 216,
+      "triangles": 380,
+      "bone_count": 13,
+      "bones": [
+        "Root",
+        "Spine",
+        "Neck",
+        "Head",
+        "Tail",
+        "LegUpperFrontL",
+        "LegLowerFrontL",
+        "LegUpperFrontR",
+        "LegLowerFrontR",
+        "LegUpperHindL",
+        "LegLowerHindL",
+        "LegUpperHindR",
+        "LegLowerHindR"
+      ],
+      "weighted_vertices": 216,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.18446,
+        "Attack": 0.19812,
+        "Hit": 0.13504,
+        "Special": 0.13849
+      },
+      "materials": [
+        "ST_SteelDark_526879",
+        "ST_StoneLight_A5B1A4",
+        "ST_Cream_F4E9C9",
+        "ST_Ink_263744",
+        "ST_Coral_EF745C"
+      ]
+    },
+    {
+      "name": "Troll",
+      "file": "Troll.fbx",
+      "dimensions_blender_xyz_m": [
+        0.6899,
+        0.3826,
+        1.3879
+      ],
+      "vertices": 986,
+      "triangles": 1736,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 986,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.51361,
+        "Attack": 0.64841,
+        "Hit": 0.3882,
+        "Special": 0.91057
+      },
+      "materials": [
+        "ST_GrassDark_587756",
+        "ST_GrassLight_9CB880",
+        "ST_Ink_263744",
+        "ST_SteelDark_526879",
+        "ST_Moss_67884D",
+        "ST_Cream_F4E9C9",
+        "ST_Wood_80533B",
+        "ST_Stone_748489",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED",
+        "ST_Bone_C7C7AE"
+      ]
+    },
+    {
+      "name": "Zombie",
+      "file": "Zombie.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4405,
+        0.2478,
+        1.0323
+      ],
+      "vertices": 1042,
+      "triangles": 1852,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1042,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.25389,
+        "Hit": 0.22315,
+        "Special": 0.2736
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Moss_67884D",
+        "ST_SteelDark_526879",
+        "ST_Cream_F4E9C9",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED",
+        "ST_Bone_C7C7AE"
+      ]
+    },
+    {
+      "name": "Wraith",
+      "file": "Wraith.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5232,
+        0.372,
+        1.1493
+      ],
+      "vertices": 1194,
+      "triangles": 2160,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1194,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.52087,
+        "Attack": 0.78275,
+        "Hit": 0.33499,
+        "Special": 1.06137
+      },
+      "materials": [
+        "ST_DarkPurple_333045",
+        "ST_Glow_78E8BD",
+        "ST_SteelDark_526879",
+        "ST_Violet_9778CF",
+        "ST_Purple_573F84",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_Ink_263744",
+        "ST_Steel_A8BCC8",
+        "ST_Wood_80533B",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Skeleton",
+      "file": "Skeleton.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4962,
+        0.2466,
+        1.0623
+      ],
+      "vertices": 1160,
+      "triangles": 2064,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1160,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.45951,
+        "Hit": 0.29062,
+        "Special": 0.65694
+      },
+      "materials": [
+        "ST_Bone_C7C7AE",
+        "ST_Ink_263744",
+        "ST_SteelDark_526879",
+        "ST_Wood_80533B",
+        "ST_Gold_E9B652",
+        "ST_Steel_A8BCC8",
+        "ST_White_F3F4ED",
+        "ST_Coral_EF745C",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "Reaper",
+      "file": "Reaper.fbx",
+      "dimensions_blender_xyz_m": [
+        0.498,
+        0.372,
+        1.2543
+      ],
+      "vertices": 1056,
+      "triangles": 1864,
+      "bone_count": 20,
+      "bones": [
+        "Root",
+        "Hips",
+        "Spine",
+        "Neck",
+        "Head",
+        "ArmUpperL",
+        "ArmLowerL",
+        "HandL",
+        "WeaponL",
+        "ArmUpperR",
+        "ArmLowerR",
+        "HandR",
+        "WeaponR",
+        "Cape",
+        "LegUpperL",
+        "LegLowerL",
+        "FootL",
+        "LegUpperR",
+        "LegLowerR",
+        "FootR"
+      ],
+      "weighted_vertices": 1056,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.41089,
+        "Attack": 0.92514,
+        "Hit": 0.36955,
+        "Special": 1.09877
+      },
+      "materials": [
+        "ST_DarkPurple_333045",
+        "ST_Bone_C7C7AE",
+        "ST_Ink_263744",
+        "ST_SteelDark_526879",
+        "ST_Purple_573F84",
+        "ST_Wood_80533B",
+        "ST_Steel_A8BCC8",
+        "ST_Violet_9778CF",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED",
+        "ST_Red_B6424D"
+      ]
+    },
+    {
+      "name": "GrassTile",
+      "file": "GrassTile.fbx",
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0036,
+        0.4794
+      ],
+      "vertices": 324,
+      "triangles": 404,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 324,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.11339,
+        "Attack": 0.0,
+        "Hit": 0.09961,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Earth_674A3B",
+        "ST_Grass_7C9E68",
+        "ST_GrassLight_9CB880",
+        "ST_GrassDark_587756",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "PathTile",
+      "file": "PathTile.fbx",
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0036,
+        0.42
+      ],
+      "vertices": 352,
+      "triangles": 584,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 352,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.06181,
+        "Attack": 0.0,
+        "Hit": 0.09685,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Earth_674A3B",
+        "ST_Sand_C7AE7E",
+        "ST_SandLight_DAC59A",
+        "ST_Stone_748489",
+        "ST_Grass_7C9E68",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "Foundation",
+      "file": "Foundation.fbx",
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0,
+        0.45
+      ],
+      "vertices": 288,
+      "triangles": 552,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 288,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_StoneLight_A5B1A4",
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "Tree",
+      "file": "Tree.fbx",
+      "dimensions_blender_xyz_m": [
+        1.495,
+        0.9207,
+        2.2758
+      ],
+      "vertices": 378,
+      "triangles": 664,
+      "bone_count": 5,
+      "bones": [
+        "Root",
+        "Trunk",
+        "Crown",
+        "BranchL",
+        "BranchR"
+      ],
+      "weighted_vertices": 378,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.13364,
+        "Attack": 0.0,
+        "Hit": 0.11179,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Wood_80533B",
+        "ST_Grass_7C9E68",
+        "ST_GrassLight_9CB880",
+        "ST_WoodLight_BA8757",
+        "ST_GrassDark_587756"
+      ]
+    },
+    {
+      "name": "Rock",
+      "file": "Rock.fbx",
+      "dimensions_blender_xyz_m": [
+        0.7871,
+        0.5954,
+        0.58
+      ],
+      "vertices": 216,
+      "triangles": 380,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 216,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_StoneLight_A5B1A4",
+        "ST_Moss_67884D",
+        "ST_SteelDark_526879"
+      ]
+    },
+    {
+      "name": "Chest",
+      "file": "Chest.fbx",
+      "dimensions_blender_xyz_m": [
+        0.79,
+        0.6007,
+        0.615
+      ],
+      "vertices": 380,
+      "triangles": 684,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Lid"
+      ],
+      "weighted_vertices": 380,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Open": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.06443,
+        "Special": 0.6232
+      },
+      "materials": [
+        "ST_Wood_80533B",
+        "ST_WoodLight_BA8757",
+        "ST_Gold_E9B652",
+        "ST_Ink_263744"
+      ]
+    },
+    {
+      "name": "Relic",
+      "file": "Relic.fbx",
+      "dimensions_blender_xyz_m": [
+        0.86,
+        0.86,
+        0.86
+      ],
+      "vertices": 240,
+      "triangles": 432,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Gem"
+      ],
+      "weighted_vertices": 240,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.08216,
+        "Attack": 0.08397,
+        "Hit": 0.0915,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_Gold_E9B652",
+        "ST_Violet_9778CF",
+        "ST_Purple_573F84",
+        "ST_Cream_F4E9C9"
+      ]
+    },
+    {
+      "name": "Portal",
+      "file": "Portal.fbx",
+      "dimensions_blender_xyz_m": [
+        1.84,
+        0.6,
+        1.92
+      ],
+      "vertices": 748,
+      "triangles": 1436,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Energy"
+      ],
+      "weighted_vertices": 748,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.94045,
+        "Attack": 0.07334,
+        "Hit": 0.07991,
+        "Special": 1.33
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_DarkPurple_333045",
+        "ST_Violet_9778CF",
+        "ST_Glow_78E8BD",
+        "ST_Purple_573F84"
+      ]
+    },
+    {
+      "name": "Core",
+      "file": "Core.fbx",
+      "dimensions_blender_xyz_m": [
+        0.91,
+        0.91,
+        1.14
+      ],
+      "vertices": 468,
+      "triangles": 876,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Gem"
+      ],
+      "weighted_vertices": 468,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.14324,
+        "Attack": 0.12252,
+        "Hit": 0.1335,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_Gold_E9B652",
+        "ST_Glow_78E8BD",
+        "ST_TealDark_206F72",
+        "ST_Cream_F4E9C9"
+      ]
+    },
+    {
+      "name": "Arrow",
+      "file": "Arrow.fbx",
+      "dimensions_blender_xyz_m": [
+        0.12,
+        0.76,
+        0.12
+      ],
+      "vertices": 89,
+      "triangles": 158,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 89,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0645,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_WoodLight_BA8757",
+        "ST_Steel_A8BCC8",
+        "ST_Cream_F4E9C9"
+      ]
+    },
+    {
+      "name": "Orb",
+      "file": "Orb.fbx",
+      "dimensions_blender_xyz_m": [
+        0.436,
+        0.436,
+        0.3
+      ],
+      "vertices": 234,
+      "triangles": 464,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 234,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.05983,
+        "Attack": 0.15288,
+        "Hit": 0.0327,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Glow_78E8BD",
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "Bullet",
+      "file": "Bullet.fbx",
+      "dimensions_blender_xyz_m": [
+        0.07,
+        0.28,
+        0.07
+      ],
+      "vertices": 9,
+      "triangles": 14,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 9,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.024,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "Bomb",
+      "file": "Bomb.fbx",
+      "dimensions_blender_xyz_m": [
+        0.2853,
+        0.3,
+        0.44
+      ],
+      "vertices": 70,
+      "triangles": 128,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 70,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.04499,
+        "Attack": 0.30448,
+        "Hit": 0.06512,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Sand_C7AE7E",
+        "ST_Orange_F19A42"
+      ]
+    },
+    {
+      "name": "HitSpark",
+      "file": "HitSpark.fbx",
+      "dimensions_blender_xyz_m": [
+        0.58,
+        0.5023,
+        0.14
+      ],
+      "vertices": 42,
+      "triangles": 56,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 42,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.20338,
+        "Hit": 0.0435,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "SelectionRing",
+      "file": "SelectionRing.fbx",
+      "dimensions_blender_xyz_m": [
+        2.0,
+        2.0,
+        0.0433
+      ],
+      "vertices": 192,
+      "triangles": 384,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 192,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.11993,
+        "Attack": 0.0,
+        "Hit": 0.15005,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Gold_E9B652"
+      ]
+    },
+    {
+      "name": "RangeRing",
+      "file": "RangeRing.fbx",
+      "dimensions_blender_xyz_m": [
+        2.0,
+        2.0,
+        0.028
+      ],
+      "vertices": 384,
+      "triangles": 576,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 384,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.11993,
+        "Attack": 0.0,
+        "Hit": 0.15003,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Teal_32B6A0"
+      ]
+    },
+    {
+      "name": "HeroCrown",
+      "file": "HeroCrown.fbx",
+      "dimensions_blender_xyz_m": [
+        0.375,
+        0.3877,
+        0.255
+      ],
+      "vertices": 105,
+      "triangles": 166,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 105,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.05664,
+        "Attack": 0.0,
+        "Hit": 0.04673,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Gold_E9B652",
+        "ST_Glow_78E8BD"
+      ]
+    },
+    {
+      "name": "GrassTuft",
+      "file": "GrassTuft.fbx",
+      "dimensions_blender_xyz_m": [
+        0.3375,
+        0.3338,
+        0.305
+      ],
+      "vertices": 55,
+      "triangles": 44,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 55,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.06655,
+        "Attack": 0.0,
+        "Hit": 0.06789,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_GrassDark_587756",
+        "ST_GrassLight_9CB880"
+      ]
+    },
+    {
+      "name": "FlowerPatch",
+      "file": "FlowerPatch.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4075,
+        0.3749,
+        0.262
+      ],
+      "vertices": 609,
+      "triangles": 980,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 609,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.06023,
+        "Attack": 0.0,
+        "Hit": 0.06075,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_GrassDark_587756",
+        "ST_Grass_7C9E68",
+        "ST_Pink_E7A5BC",
+        "ST_Gold_E9B652",
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "Fern",
+      "file": "Fern.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4119,
+        0.4226,
+        0.2806
+      ],
+      "vertices": 420,
+      "triangles": 392,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 420,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.07611,
+        "Attack": 0.0,
+        "Hit": 0.0679,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_GrassDark_587756",
+        "ST_Grass_7C9E68",
+        "ST_GrassLight_9CB880"
+      ]
+    },
+    {
+      "name": "Mushroom",
+      "file": "Mushroom.fbx",
+      "dimensions_blender_xyz_m": [
+        0.3759,
+        0.3137,
+        0.285
+      ],
+      "vertices": 318,
+      "triangles": 564,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 318,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Cream_F4E9C9",
+        "ST_Coral_EF745C"
+      ]
+    },
+    {
+      "name": "Log",
+      "file": "Log.fbx",
+      "dimensions_blender_xyz_m": [
+        0.5227,
+        0.2252,
+        0.2415
+      ],
+      "vertices": 920,
+      "triangles": 1792,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 920,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Wood_80533B",
+        "ST_WoodLight_BA8757",
+        "ST_Earth_674A3B",
+        "ST_Moss_67884D"
+      ]
+    },
+    {
+      "name": "Stump",
+      "file": "Stump.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4439,
+        0.4628,
+        0.2715
+      ],
+      "vertices": 666,
+      "triangles": 1304,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 666,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Wood_80533B",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "SmallStone",
+      "file": "SmallStone.fbx",
+      "dimensions_blender_xyz_m": [
+        0.3399,
+        0.2382,
+        0.245
+      ],
+      "vertices": 24,
+      "triangles": 40,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 24,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Stone_748489",
+        "ST_StoneLight_A5B1A4"
+      ]
+    },
+    {
+      "name": "Reed",
+      "file": "Reed.fbx",
+      "dimensions_blender_xyz_m": [
+        0.4169,
+        0.3755,
+        0.5704
+      ],
+      "vertices": 174,
+      "triangles": 264,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "Stem",
+        "Tip"
+      ],
+      "weighted_vertices": 174,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4,
+        "Wind": 2.0
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.14541,
+        "Attack": 0.0,
+        "Hit": 0.11537,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_GrassDark_587756",
+        "ST_Wood_80533B",
+        "ST_Grass_7C9E68"
+      ]
+    },
+    {
+      "name": "LeafParticle",
+      "file": "LeafParticle.fbx",
+      "dimensions_blender_xyz_m": [
+        0.13,
+        0.2303,
+        0.0337
+      ],
+      "vertices": 13,
+      "triangles": 16,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 13,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0439,
+        "Attack": 0.0,
+        "Hit": 0.01807,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Orange_F19A42",
+        "ST_WoodLight_BA8757"
+      ]
+    },
+    {
+      "name": "RainDrop",
+      "file": "RainDrop.fbx",
+      "dimensions_blender_xyz_m": [
+        0.0322,
+        0.036,
+        0.16
+      ],
+      "vertices": 19,
+      "triangles": 30,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 19,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.027,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Ice_82D2E8"
+      ]
+    },
+    {
+      "name": "Firefly",
+      "file": "Firefly.fbx",
+      "dimensions_blender_xyz_m": [
+        0.1605,
+        0.0988,
+        0.058
+      ],
+      "vertices": 48,
+      "triangles": 80,
+      "bone_count": 3,
+      "bones": [
+        "Root",
+        "WingL",
+        "WingR"
+      ],
+      "weighted_vertices": 48,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0461,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Ink_263744",
+        "ST_Glow_78E8BD",
+        "ST_Cream_F4E9C9"
+      ]
+    },
+    {
+      "name": "Cloud",
+      "file": "Cloud.fbx",
+      "dimensions_blender_xyz_m": [
+        0.7834,
+        0.308,
+        0.402
+      ],
+      "vertices": 210,
+      "triangles": 400,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 210,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.09157,
+        "Attack": 0.0,
+        "Hit": 0.06092,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_White_F3F4ED"
+      ]
+    },
+    {
+      "name": "ContactShadow",
+      "file": "ContactShadow.fbx",
+      "dimensions_blender_xyz_m": [
+        1.0,
+        1.0,
+        0.001
+      ],
+      "vertices": 96,
+      "triangles": 188,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 96,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "Shadow_111F2A"
+      ]
+    },
+    {
+      "name": "Puddle",
+      "file": "Puddle.fbx",
+      "dimensions_blender_xyz_m": [
+        0.8796,
+        0.8767,
+        0.0087
+      ],
+      "vertices": 409,
+      "triangles": 792,
+      "bone_count": 2,
+      "bones": [
+        "Root",
+        "Motion"
+      ],
+      "weighted_vertices": 409,
+      "vertex_weight_coverage": 1.0,
+      "clips": {
+        "Idle": 2.0,
+        "Walk": 0.8,
+        "Attack": 0.65,
+        "Hit": 0.25,
+        "Death": 0.8,
+        "Special": 1.4
+      },
+      "deformation_probe_max_m": {
+        "Walk": 0.0,
+        "Attack": 0.0,
+        "Hit": 0.0,
+        "Special": 0.0
+      },
+      "materials": [
+        "ST_Puddle_438DD0",
+        "ST_Ice_82D2E8"
+      ]
+    }
+  ]
+}

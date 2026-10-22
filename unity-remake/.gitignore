@@ -1,0 +1,17 @@
+Unity/[Ll]ibrary/
+Unity/[Tt]emp/
+Unity/[Oo]bj/
+Unity/[Ll]ogs/
+Unity/[Uu]ser[Ss]ettings/
+Unity/.vs/
+Unity/*.csproj
+Unity/*.sln
+Unity/*.slnx
+Builds/
+Releases/
+Publishing/
+Reference/
+*.blend1
+*.blend2
+*.log
+Documentation/UnityCLI-guide.md

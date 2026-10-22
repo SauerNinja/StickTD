@@ -1,0 +1,17 @@
+{
+  "tag": "unity-enhanced-2026.10.22",
+  "originalUnchanged": true,
+  "originalFiles": 239,
+  "enhancedUnchanged": true,
+  "enhancedFiles": 238,
+  "archives": [
+    {
+      "name": "StickTD-Unity-Enhanced-2026.10.22-Windows-x64.zip",
+      "bytes": 72177109
+    },
+    {
+      "name": "StickTD-Unity-Original-2026.10.22-Windows-x64.zip",
+      "bytes": 63811110
+    }
+  ]
+}
