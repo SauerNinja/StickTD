@@ -41,7 +41,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.90'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.103'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 const GAME_SCRIPT_ORDER = ['audio', 'config', 'effects', 'loop', 'ui', 'diagnostics', 'screens', 'environment', 'towers', 'waves']; // FILE-SPLIT-01: the file map above, as data for the design contract
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
@@ -429,7 +429,8 @@ function getTrainedStatTotal(tower){ return (tower.str || 0) + (tower.dex || 0) 
 function statTailValue(points, perPointAtTailStart){
   return perPointAtTailStart * STAT_TAIL_SOFTNESS * Math.log(1 + points / STAT_TAIL_SOFTNESS);
 }
-const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.38, ARCHER: 0.34, WARRIOR: 0.36 };
+// ARCHETYPE-BALANCE-01: archers miss least and hit lightest at medium range; mages reach farthest, miss most and hit medium; melee hits hardest at the shortest range with medium accuracy.
+const BASE_MISS_CHANCE_BY_ARCHETYPE = { MAGE: 0.44, ARCHER: 0.28, WARRIOR: 0.36 };
 const ACCURACY_MIDPOINT_DEX = 100;
 const ACCURACY_MIDPOINT_MISS = 0.04;
 const ACCURACY_CAP_DEX = 500;
@@ -628,6 +629,7 @@ function reviveSelectedStickman(){
 function buyMedicalItem(def){
   if(gold < def.cost || (def.isRevive && hasDefibrillator)) return false;
   gold -= def.cost;
+  explainItemKindOnce(def);
   const missingLives = maxLivesNow() - lives;
   const healed = def.healFraction ? Math.round(missingLives*def.healFraction) : def.healLives ? Math.min(def.healLives, missingLives) : 0;
   if(def.isRevive) hasDefibrillator = true;
@@ -703,7 +705,7 @@ const DROP_ITEM_ROWS = [
   ['STAR_COMPASS', 'Star Compass', '⭐', 'RARE', { dex: 3, int: 3 }],
   ['ANCIENT_TOME', 'Ancient Tome', '📜', 'RARE', { int: 5, armor: 1 }],
   ['GUARDIAN_SHIELD', 'Guardian Shield', '🛡️', 'RARE', { armor: 6, str: 1 }],
-  ['LIGHTNING_BOLT', 'Lightning Bolt', '🌩️', 'RARE', { dex: 4, str: 2 }],
+  ['LIGHTNING_BOLT', 'Battery Pack', '🔋', 'RARE', { dex: 4, str: 2 }],
   ['CHAMPION_MEDAL', 'Champion Medal', '🏅', 'RARE', { str: 2, dex: 2, int: 2 }],
   ['PHOENIX_EMBER', 'Phoenix Ember', '🪔', 'EPIC', { str: 4, int: 4 }],
   ['TITAN_GAUNTLET', 'Titan Gauntlet', '🥊', 'EPIC', { str: 6, armor: 4 }],
@@ -717,8 +719,8 @@ const DROP_ITEM_ROWS = [
   ['FORTUNE_SLIP', 'Fortune Slip', '🥠', 'COMMON', { int: 2, dex: 1 }],
   ['KNIGHT_PAWN', 'Captured Pawn', '♟️', 'UNCOMMON', { str: 1, armor: 3 }],
   ['BRIDGE_TOLL', 'Bridge Toll', '💰', 'RARE', { str: 3, armor: 2, dex: 1 }],
-  ['EMBER_CORE', 'Ember Core', '🔥', 'UNCOMMON', { str: 3, int: 1 }],
-  ['FROST_SHARD', 'Frost Shard', '❄️', 'UNCOMMON', { int: 3, armor: 1 }],
+  ['EMBER_CORE', 'Oil Lantern', '🏮', 'UNCOMMON', { str: 3, int: 1 }],
+  ['FROST_SHARD', 'Snow Goggles', '🥽', 'UNCOMMON', { int: 3, armor: 1 }],
   ['SPORE_FLASK', 'Spore Flask', '🧪', 'UNCOMMON', { int: 3, dex: 1 }],
   ['MENDERS_PIN', 'Mender\'s Pin', '📌', 'UNCOMMON', { armor: 3, int: 1 }],
   ['FIELD_HELMET', 'Field Helmet', '🪖', 'UNCOMMON', { armor: 4, str: 1 }],
@@ -943,6 +945,8 @@ function buyPassive(id){
 }
 // RATE-CURVE-01: 50 DEX = 1.02x, 250 = 1.5x, 500 = 3x; no preferred-stat speed multiplier.
 function attackRateFromDex(dex){ const t = clampNum(dex / STAT_EFFECT_CAP, 0, 1); return 1 + 2*t*t; }
+// PLURAL-01: one helper for every player-facing count, so no label reads '1 rounds' or '1 kills'.
+function countLabel(count, singular, plural){ return count + ' ' + (count === 1 ? singular : (plural || singular + 's')); }
 const CONFIG = {};
 function validateGameDefinitions(){
   const problems = [];
@@ -1582,6 +1586,7 @@ function spawnGroundItem(x, y, itemDef, source){
   const lootTier = LOOT_DROP_SOUND_TIERS[item.itemDef.rarity];
   if(lootTier && !groundItemsRestoring) playSound('loot_drop', landing.x, lootTier, landing.y); // LOOT-RARITY-SOUND-01
   maybeShowItemGuide();
+  if(!groundItemsRestoring) explainItemKindOnce(item.itemDef);
   return item;
 }
 // LOOT-TABLE-01: supply = common (fruit, coin pouches), tonic = uncommon (potions, meat, vegetables,
@@ -1855,9 +1860,9 @@ function defaultNotificationExplanation(message){
   if(/boss|santa approaching/i.test(message)) return 'A boss phase is entering the road. Prepare your defenders before it reaches the base.';
   if(/unlock/i.test(message)) return 'This defender is now available in Build under Stickmen Defenders.';
   if(/map|expand/i.test(message)) return 'Map growth opens more buildable ground and extends the route. You can buy one expansion per wave, during or between waves.';
-  if(/gold|coin|💰/i.test(message)) return 'Gold is player currency. Click a landed coin to collect it immediately; fading gold coins pay automatically when they expire. Gold Bags pay their listed amount when opened.';
-  if(/item|found|drop|loot/i.test(message)) return 'This item or reward has appeared in the game. Open the item details or click the pickup to see how to collect it.';
-  return 'This notification records a game update. Open the related menu or inspect the board to see its current effect.';
+  if(/gold|coin|💰/i.test(message)) return 'Gold pays for stickmen, promotions, the Shop and new ground. Sweep over landed coins to collect them, and press a Gold Bag to open it.';
+  if(/item|found|drop|loot|spoils/i.test(message)) return 'Items land on the grass beside the road. Drag gear onto a stickman to equip it, or food onto a stickman to eat it at once. Items can also be passed between stickmen or stored in a Vault.';
+  return ''; // NOTIFICATION-DETAIL-ONLY-01: no generic filler; a notice without a real explanation opens no popup
 }
 function renderNotificationPanel(){
   const list = document.getElementById('notification-list');
@@ -1981,7 +1986,7 @@ function describeRunEnd(){
   if(isNewBest){ try{ localStorage.setItem(BEST_RUN_KEY, JSON.stringify({ wave: reached, kills: sessionKills })); }catch(err){ /* storage unavailable */ } }
   return [
     'Reached wave ' + reached + ' — ' + actTitleForWave(reached),
-    sessionKills + ' kills · best streak ' + bestKillStreak,
+    countLabel(sessionKills, 'kill') + ' · best streak ' + bestKillStreak,
     isNewBest ? '★ New personal best' : 'Personal best: wave ' + best.wave,
     'Run seed ' + runSeedCode
   ].join('\n');
@@ -2001,6 +2006,7 @@ function openNotificationEntry(id){
   const entry = notificationHistory.find(item => item.id === id);
   if(!entry) return;
   entry.read = true;
+  if(!entry.explanation && !(entry.enemyTypes && entry.enemyTypes.length)){ renderNotificationPanel(); return; }
   renderNotificationPanel();
   toggleNotificationPanel(false);
   const popup = document.getElementById('notification-detail-popup');

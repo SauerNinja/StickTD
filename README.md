@@ -81,7 +81,7 @@ In the Build list, a defender you have not unlocked yet shows as a dark silhouet
 
 Defeated enemies, chests and presents leave gear and food beside the road. Drag gear onto a defender to equip it; food is eaten on the spot and raises a stat. Defenders start with empty packs, and the Shop sells gear, supplies and upgrades that help every defender you own. Now and then a merchant caravan crosses the map with goods to trade. Rare finds such as a Merchant's Bell, a Circus Ticket or Troll Bait call a visitor to the road when used.
 
-While placing a defender, a gold outline suggests the spot that covers the most road, and each stat button shows what the next point will change.
+While placing a defender, a moving black-and-white outline suggests the spot that covers the most road, and each stat button shows what the next point will change.
 
 ## Life beside the road
 

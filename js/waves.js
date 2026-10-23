@@ -17,6 +17,10 @@
 /* =========================================================
    ENEMY DEFINITIONS (CONFIG.ENEMIES)
    ========================================================= */
+// BOSS-STUN-RESIST-01: bosses shake off stuns and freezes in about a third of the time, so a stun-on-hit tower slows a boss without pinning it in place.
+const STUN_RESISTANT_TYPES = new Set(['BOSS', 'SANTA', 'REAPER']), BOSS_STUN_SHARE = 0.35;
+const ICE_ENEMY_MIN_SLOW_MULT = 0.85, ICE_ENEMY_HOLD_SHARE = 0.35;
+const SKITTER_STEP_TYPES = new Set(['SWARM']); // ANT-SKITTER-01: insects tick across the ground instead of thudding
 const ENEMY_INFO = {
   GRUNT: { name:'Grunt', desc:'Basic all-rounder — no special tricks.' },
   SWARM: { name:'Swarm', desc:'Fast and numerous, but very fragile.' },
@@ -27,8 +31,8 @@ const ENEMY_INFO = {
   COOKIE: { name:'Cookie', desc:'One of Santa\'s own — small and weak, but very fast. Ho ho ho.' },
   CHESS: { name:'Chess Piece', desc:'A Castle guardian — a random chess piece each time, black or white. Breaks off to attack a tower far more often than anything else on the board.' },
   TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
-  FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly.' },
-  ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly.' },
+  FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly. Never burns.' },
+  ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly. Slows and freezes barely hold it.' },
   SPLITTER: { name:'Splitter', desc:'Splits into two smaller Splitmini on death.' },
   SPLITMINI: { name:'Splitmini', desc:'A smaller fragment left behind by a Splitter.' },
   HEALER: { name:'Healer', desc:'Heals nearby allies over time — kill it first.' },
@@ -102,16 +106,17 @@ function enemyDropTier(enemy){
 function enemyMoveMultiplier(e){ const stuckCount = e.embeddedArrows ? e.embeddedArrows.length : 0; return e.slowMultiplier * Math.max(ARROW_SLOW_FLOOR, 1 - ARROW_SLOW_PER_ARROW * stuckCount); }
 const ARMOR_MIN_DAMAGE_SHARE = 0.5;
 const ENEMY_DAMAGE_SCALE = 0.6, ENEMY_ATTACK_INTERVAL_SCALE = 1.6;
-const LOOSE_MELEE_INTERVAL_MS = 800, ENEMY_MELEE_INTERVAL_MS = Math.round(LOOSE_MELEE_INTERVAL_MS * ENEMY_ATTACK_INTERVAL_SCALE); // escaped enemies swing faster than breakaways and guardians
+const LOOSE_MELEE_INTERVAL_MS = 1200, ENEMY_MELEE_INTERVAL_MS = Math.round(LOOSE_MELEE_INTERVAL_MS * ENEMY_ATTACK_INTERVAL_SCALE); // escaped enemies swing faster than breakaways and guardians
 const ENEMY_FAMILY_SPEED_MIN = Math.min(...Object.values(CONFIG.ENEMIES).map(def => def.speed));
 const ENEMY_FAMILY_SPEED_MAX = Math.max(...Object.values(CONFIG.ENEMIES).map(def => def.speed));
 // MORE-ENEMIES-01: the game should not get harder, but since all you do is attack enemies, there should be more of them. The little, small and
 // standard counts are multiplied by ENEMY_COUNT_MULTIPLIER on every wave; enemy health, speed, damage, bounty and the Large and Boss counts are untouched, so each enemy is exactly as
 // strong as before, there are simply more of them to fight, farm and level on.
+const EARLY_COUNT_RAMP = [1.5, 1.15, 1.3, 1.4]; // EARLY-RAMP-01: wave 1 keeps its count; waves 2-4 grow back into the full count instead of jumping 2.4x while a three-stickman squad finds its feet
 const ENEMY_COUNT_MULTIPLIER = 1.5, LATE_ENEMY_COUNT_MULTIPLIER = 1.2; // after wave 50 the counts are already in the hundreds, so the extra is smaller to protect frame rate
 function tierPopulationForWave(waveNumber){
   const population = baseTierPopulationForWave(waveNumber);
-  const countMultiplier = waveNumber > 50 ? LATE_ENEMY_COUNT_MULTIPLIER : ENEMY_COUNT_MULTIPLIER;
+  const countMultiplier = waveNumber > 50 ? LATE_ENEMY_COUNT_MULTIPLIER : waveNumber <= EARLY_COUNT_RAMP.length ? EARLY_COUNT_RAMP[waveNumber - 1] : ENEMY_COUNT_MULTIPLIER;
   for(const tier of ['TINY','SMALL','STANDARD']) if(population[tier]) population[tier] = Math.max(1, Math.round(population[tier] * countMultiplier));
   return scaledPopulation(population, waveNumber);
 }
@@ -1165,7 +1170,7 @@ class Enemy{
     this.enrageCueFired = false; // one-shot low-HP growl for Boss/Troll (see update())
     this.isStealthSanta=false;
     this.escaped = false;
-    this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0;
+    this.wanderVx = 0; this.wanderVy = 0; this.wanderRepickTimer = 0; this.moveVx = 0; this.moveVy = 0; this.steerVx = 0; this.steerVy = 0;
     this.wanderGoalActive = false; this.wanderGoalX = 0; this.wanderGoalY = 0;
     this.escapedAttackTarget = null; this.escapedAttackTimer = 0; this.escapedAttackCheckTimer = 0;
     this.looseDrainMs = 0; this.dripSiteX = undefined;
@@ -1193,12 +1198,12 @@ class Enemy{
     this.dotTextPending[slot] = 0;
   }
   applySlow(factor, duration){
-    const newMultiplier = 1 - factor;
+    const newMultiplier = this.type === 'ICE' ? Math.max(ICE_ENEMY_MIN_SLOW_MULT, 1 - factor) : 1 - factor; // ELEMENTAL-ENEMY-RESIST-01: an ice enemy shrugs off most slows
     if(newMultiplier < this.slowMultiplier) this.slowMultiplier = newMultiplier; // strongest slow wins
     this.slowTimer = Math.max(this.slowTimer, duration);
   }
   applyStun(ms){
-    this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms);
+    this.stunnedUntil = Math.max(this.stunnedUntil, gameTime + ms * (STUN_RESISTANT_TYPES.has(this.type) ? BOSS_STUN_SHARE : 1));
   }
   checkLivestockPairHearts(dt){
     this.heartCheckTimer-=dt;if(this.heartCheckTimer>0) return;
@@ -1208,7 +1213,7 @@ class Enemy{
     if(livestockIsEgg(this)){ this.vx = 0; this.vy = 0; this.livestockWalking = false; return; }
     if(this.trollRoute && this.trollRoute.length){ this.walkTrollEntrance(dt); return; }
     if(!this.isHostileNpc && this.type!=='BEE') this.checkLivestockPairHearts(dt);
-    if(this.type==='BEE') updateBeeHoney(this,dt);
+    if(this.type==='BEE'){ updateBeeHoney(this,dt); this.updateBeeFlight(dt); return; }
     // LIVESTOCK-CUTE-01: idle a moment, then amble in a direction for a bit, then idle again. Driven in real time
     // once per rendered frame (updatePresentationEffects()), so animals move between waves and at every game speed.
     this.retargetTimer = (this.retargetTimer||0) - dt;
@@ -1262,22 +1267,55 @@ class Enemy{
         this.faceLivestockAlongVelocity();
       }
     }
-    if(!this.livestockWalking) return;
-    const walkSpeed = Math.hypot(this.vx, this.vy);
+    const walkSpeed = this.livestockWalking ? Math.hypot(this.vx, this.vy) : 0;
     if(walkSpeed > 0 && !isLooseWalkableAt(this.x + this.vx/walkSpeed*NPC_EDGE_LOOKAHEAD_PX, this.y + this.vy/walkSpeed*NPC_EDGE_LOOKAHEAD_PX)){
       const inward = nearestLooseWalkableTileCenter(this.x, this.y);
       const turn = inward ? Math.atan2(inward.y - this.y, inward.x - this.x) + (Math.random()-0.5)*0.8 : Math.random()*Math.PI*2;
       this.vx = Math.cos(turn)*walkSpeed; this.vy = Math.sin(turn)*walkSpeed;
       this.faceLivestockAlongVelocity();
     }
+    // LIVESTOCK-SMOOTH-01: vx/vy is where the animal wants to go; its actual motion eases toward that (plus the enemy-avoidance bend,
+    // computed fresh each frame) instead of snapping, so turns, starts and stops read as a walk rather than a twitch.
+    this.steerVx = this.livestockWalking ? this.vx : 0; this.steerVy = this.livestockWalking ? this.vy : 0;
     if(walkSpeed > 0 && !hunter) this.steerAroundEnemies(walkSpeed);
-    const stepX = this.x + this.vx*dt/1000, stepY = this.y + this.vy*dt/1000;
+    const ease = 1 - Math.exp(-dt / LIVESTOCK_MOTION_EASE_MS);
+    this.moveVx += (this.steerVx - this.moveVx) * ease; this.moveVy += (this.steerVy - this.moveVy) * ease;
+    this.faceLivestockAlongVelocity();
+    const stepX = this.x + this.moveVx*dt/1000, stepY = this.y + this.moveVy*dt/1000;
     if(isLooseWalkableAt(stepX, stepY)){ this.x = stepX; this.y = stepY; }
-    else { this.vx = 0; this.vy = 0; this.retargetTimer = 0; }
+    else { this.vx = 0; this.vy = 0; this.moveVx = 0; this.moveVy = 0; this.retargetTimer = 0; }
+  }
+  // BEE-GLIDE-01: a bee flies anywhere over the open map (road, rocks and trees included) on a heading that turns smoothly toward a slowly changing goal, with a gentle speed swell, instead of the
+  // walk/idle bursts, instant edge turns and enemy-steering nudges ground animals use, which made it jerk.
+  updateBeeFlight(dt){
+    const seconds = dt/1000, cruise = LIVESTOCK_TYPES.BEE.speed * LIVESTOCK_WALK_SPEED_MULT;
+    if(!Number.isFinite(this.beeHeading)){ this.beeHeading = Math.random()*Math.PI*2; this.beeGoalHeading = this.beeHeading; this.beePhase = Math.random()*Math.PI*2; }
+    this.retargetTimer = (this.retargetTimer||0) - dt;
+    const aheadX = this.x + Math.cos(this.beeHeading)*NPC_EDGE_LOOKAHEAD_PX, aheadY = this.y + Math.sin(this.beeHeading)*NPC_EDGE_LOOKAHEAD_PX;
+    if(!beeCanFlyAt(aheadX, aheadY)){
+      this.beeGoalHeading = Math.atan2((activeRegion.y0 + activeRegion.y1 + 1)*TILE_SIZE/2 - this.y, (activeRegion.x0 + activeRegion.x1 + 1)*TILE_SIZE/2 - this.x);
+      this.retargetTimer = BEE_RETARGET_MS_MIN;
+    } else if(this.retargetTimer <= 0){
+      this.beeGoalHeading = this.beeHeading + (Math.random()*2 - 1)*BEE_GOAL_SWING_RAD;
+      this.retargetTimer = BEE_RETARGET_MS_MIN + Math.random()*(BEE_RETARGET_MS_MAX - BEE_RETARGET_MS_MIN);
+    }
+    let turn = this.beeGoalHeading - this.beeHeading;
+    while(turn > Math.PI) turn -= Math.PI*2;
+    while(turn < -Math.PI) turn += Math.PI*2;
+    this.beeHeading += clampNum(turn, -BEE_TURN_RATE*seconds, BEE_TURN_RATE*seconds);
+    this.beePhase += seconds*BEE_SWELL_HZ*Math.PI*2;
+    const speed = cruise*(1 + BEE_SWELL_SHARE*Math.sin(this.beePhase));
+    this.vx = Math.cos(this.beeHeading)*speed; this.vy = Math.sin(this.beeHeading)*speed;
+    this.livestockWalking = true;
+    if(this.vx > cruise*BEE_FACE_FLIP_SHARE) this.livestockFacesRight = true;
+    else if(this.vx < -cruise*BEE_FACE_FLIP_SHARE) this.livestockFacesRight = false;
+    const stepX = this.x + this.vx*seconds, stepY = this.y + this.vy*seconds;
+    if(beeCanFlyAt(stepX, stepY) || !beeCanFlyAt(this.x, this.y)){ this.x = stepX; this.y = stepY; }
   }
   faceLivestockAlongVelocity(){
-    if(this.vx > 1) this.livestockFacesRight = true;
-    else if(this.vx < -1) this.livestockFacesRight = false;
+    const sideways = this.moveVx || this.vx;
+    if(sideways > LIVESTOCK_FACE_FLIP_PX_S) this.livestockFacesRight = true;
+    else if(sideways < -LIVESTOCK_FACE_FLIP_PX_S) this.livestockFacesRight = false;
   }
   walkTrollEntrance(dt){
     const stop = this.trollRoute[0], dx = stop.x - this.x, dy = stop.y - this.y, distance = Math.hypot(dx, dy);
@@ -1310,13 +1348,13 @@ class Enemy{
     const side = (awayX * headingY - awayY * headingX) >= 0 ? 1 : -1;
     const steerX = headingX + (awayX - awayY * side) * pushLength * LIVESTOCK_AVOID_STRENGTH, steerY = headingY + (awayY + awayX * side) * pushLength * LIVESTOCK_AVOID_STRENGTH;
     const steerLength = Math.hypot(steerX, steerY) || 1;
-    this.vx = steerX / steerLength * walkSpeed; this.vy = steerY / steerLength * walkSpeed;
-    this.faceLivestockAlongVelocity();
+    this.steerVx = steerX / steerLength * walkSpeed; this.steerVy = steerY / steerLength * walkSpeed;
   }
   applyFreeze(ms){
-    this.frozenUntil = Math.max(this.frozenUntil, gameTime + ms);
+    this.frozenUntil = Math.max(this.frozenUntil, gameTime + ms * (STUN_RESISTANT_TYPES.has(this.type) ? BOSS_STUN_SHARE : this.type === 'ICE' ? ICE_ENEMY_HOLD_SHARE : 1));
   }
   applyBurn(ms, sourceTower){
+    if(this.type === 'FIRE') return; // ELEMENTAL-ENEMY-RESIST-01: a fire enemy does not burn
     this.burnUntil = Math.max(this.burnUntil, gameTime + ms);
     if(sourceTower) this.lastBurnSource = sourceTower;
   }
@@ -1549,7 +1587,7 @@ class Enemy{
         if(typeof camera !== 'undefined'){
           const onScreenX = this.x*camera.zoom + camera.x, onScreenY = this.y*camera.zoom + camera.y;
           if(onScreenX > -80 && onScreenX < CANVAS_W+80 && onScreenY > -80 && onScreenY < CANVAS_H+80){
-            playSound('footstep', this.x, this.footstepWeight, this.y);
+            playSound(SKITTER_STEP_TYPES.has(this.type) ? 'skitter' : 'footstep', this.x, this.footstepWeight, this.y); // ANT-SKITTER-01
           }
         }
       }
@@ -1782,7 +1820,7 @@ class Enemy{
   looseSeparationHeading(heading){ // LOOSE-SEPARATION-01: escaped enemies steer apart instead of trailing each other in a line
     let pushX = 0, pushY = 0;
     for(const other of enemiesNear(this.x, this.y, LOOSE_SEPARATION_RANGE_PX)){
-      if(other === this || !other.active || !other.escaped) continue;
+      if(other === this || !other.active || other.isLivestock || other.isHutBuilding) continue; // LOOSE-SEPARATION-01: steer clear of every enemy, escaped or still on the road
       const dx = this.x - other.x, dy = this.y - other.y, distance = Math.hypot(dx, dy) || 0.001, reach = this.radius + other.radius + LOOSE_SEPARATION_GAP_PX;
       if(distance >= reach) continue;
       const strength = (reach - distance) / reach;
@@ -1805,7 +1843,7 @@ class Enemy{
       }
       return; // skip the aimless-wander movement below while actively engaging a tower
     }
-    this.escapedAttackCheckTimer -= dt; // LOOSE-PERIMETER-01: patrol the rim until a stickman is in contact range
+    this.escapedAttackCheckTimer -= dt; // LOOSE-ROAM-01: roam the open ground until a stickman is in contact range
     if(this.escapedAttackCheckTimer <= 0){
       const isBossType = this.bossDamageMult() > 1;
       this.escapedAttackCheckTimer = isBossType ? 400 : 250;
@@ -1817,7 +1855,7 @@ class Enemy{
     if(this.wanderGoalActive && Math.hypot(this.wanderGoalX - this.x, this.wanderGoalY - this.y) < LOOSE_WANDER_GOAL_REACHED_PX) this.wanderGoalActive = false;
     if(!this.wanderGoalActive || this.wanderRepickTimer <= 0){
       this.wanderRepickTimer = LOOSE_WANDER_COMMIT_MIN_MS + Math.random()*LOOSE_WANDER_COMMIT_SPREAD_MS;
-      const goal = pickLoosePerimeterGoal(this.x, this.y, heading);
+      const goal = pickLooseRoamGoal(this.x, this.y, heading);
       this.wanderGoalActive = !!goal;
       if(goal){ this.wanderGoalX = goal.x; this.wanderGoalY = goal.y; }
     }
@@ -1829,7 +1867,7 @@ class Enemy{
     }
     heading = this.looseSeparationHeading(heading);
     const strollSpeed = this.tierWalkSpeed() * LOOSE_WANDER_EXPLORE_SPEED;
-    heading = moveAroundScenery(this, Math.cos(heading), Math.sin(heading), strollSpeed, dt);
+    heading = moveAroundScenery(this, Math.cos(heading), Math.sin(heading), strollSpeed, dt, true);
     this.wanderVx = Math.cos(heading) * strollSpeed;
     this.wanderVy = Math.sin(heading) * strollSpeed;
   }

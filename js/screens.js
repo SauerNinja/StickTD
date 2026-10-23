@@ -133,10 +133,5 @@ function endGame(message, cause){
   if(stealthRun && stealthSantaSpawned && !stealthEncounterEnding){
     stealthEncounterEnding=true;
     if(stealthSantaDefeated) endTitle.textContent='Stealth Victory';
-    document.getElementById('consentSantaLine').textContent=stealthSantaDefeated
-      ? 'You beat Santa! Ninja is unlocked. Ho, ho, ho—would you give Santa analytics cookies for your next adventure? They help improve StickTD.'
-      : 'Ho, ho, ho! A brave adventure. Would you give Santa analytics cookies for your next adventure? They help improve StickTD.';
-    window.afterStealthConsentChoice=()=>window.location.reload();
-    window.openStickTDAnalyticsChoice();
   }
 }

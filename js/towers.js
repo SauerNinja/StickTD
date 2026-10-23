@@ -15,7 +15,7 @@
 CONFIG.TOWERS = {
   NINJA: {
     name:'Ninja', icon:'🥷', baseCost:300, unlocksAfterWave:0,
-    blurb:"Alternates throwing stars from each hand: the fastest sustained attacker, with light hits and no close-range blind spot. Unlocked by defeating the Stealth Santa, who arrives as the Wave 10 boss of a Stealth run (start with Play Stealth).",
+    blurb:"Alternates throwing stars from each hand: the fastest sustained attacker, with light hits and no close-range blind spot. Unlocked by defeating the Stealth Santa, who arrives as the Wave 10 boss of a Stealth run (turn on Stealth mode in Settings).",
     tiers:[
       {range:120,damage:2,cooldown:60,projectileSpeed:620},
       {range:135,damage:3,cooldown:55,projectileSpeed:660,upgradeCost:120},
@@ -26,7 +26,7 @@ CONFIG.TOWERS = {
     name: 'Swordsman', icon: '⚔️', baseCost: 50, unlocksAfterWave: 0,
     blurb: "A front-line fighter whose sweeping blade strikes every enemy in a cone ahead of him. Affordable and dependable, and the root of the melee branch: Strength, Dexterity or Intelligence trained to 250 attunes him to an element, and 500 in that stat unlocks a specialization.",
     tiers: [
-      { range: 90,  damage: 18, cooldown: 1700 },
+      { range: 90,  damage: 18, cooldown: 840 },
       { range: 100, damage: 28, cooldown: 770, upgradeCost: 80 },
       { range: 115, damage: 42, cooldown: 680, upgradeCost: 120 },
       { range: 125, damage: 58, cooldown: 630, upgradeCost: 175 },
@@ -35,7 +35,7 @@ CONFIG.TOWERS = {
   },
   ARCHER: {
     name: 'Archer', icon: '🏹', baseCost: 60, unlocksAfterWave: 0,
-    blurb: "A patient marksman who draws the bow fully before each shot. Arrows land hard, and the ones that bite deep leave the target bleeding. He is the root of the ranged branch: training a stat to 250 attunes him to an element, and 500 unlocks a specialization.",
+    blurb: "A patient marksman who draws the bow fully before each shot. His arrows rarely miss, and the ones that bite deep leave the target bleeding. He is the root of the ranged branch: training a stat to 250 attunes him to an element, and 500 unlocks a specialization.",
     tiers: [
       { range: 140, damage: 20, cooldown: 1430, drawTime: 800, projectileSpeed: 480 },
       { range: 170, damage: 30, cooldown: 1350, drawTime: 650, projectileSpeed: 540, upgradeCost: 95 },
@@ -100,9 +100,9 @@ CONFIG.TOWERS = {
     name: 'Mage', icon: '🔮', baseCost: 70, unlocksAfterWave: 0,
     blurb: "Fires rarely, but every shot counts: a slow, high-velocity blast that explodes on impact and slows whatever survives. Training Strength, Dexterity or Intelligence to 250 infuses him with an element that can burn, shock or freeze, and 500 unlocks a specialization.",
     tiers: [
-      { range: 180, damage: 128,  cooldown: 7800, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
-      { range: 200, damage: 346, cooldown: 7000, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
-      { range: 220, damage: 1051, cooldown: 6200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
+      { range: 180, damage: 197,  cooldown: 7800, projectileSpeed: 1400, slowFactor: 0.35, slowDuration: 1500 },
+      { range: 200, damage: 293, cooldown: 7000, projectileSpeed: 1500, slowFactor: 0.45, slowDuration: 1700, upgradeCost: 90 },
+      { range: 220, damage: 384, cooldown: 6200, projectileSpeed: 1600, slowFactor: 0.55, slowDuration: 2000, upgradeCost: 130 }
     ]
   },
   CAT_SNAPPER: {
@@ -1643,11 +1643,14 @@ const PROJECTILE_COLOR_BY_TOWER = Object.freeze({
   MAGE: '#7dd3fc', SNAPCASTER: '#7dd3fc', BOMBER: '#3a2a1a', BLOWDART: '#7cb518', CAT_SNAPPER: '#2a2a2a', NECROMANCER: '#5a2d82',
   BLOW_GUNNER: '#c8e8f0', SQUIRTGUN: '#8bd62f', PROTON: '#a855f7', DARK_MATTER: '#1a1a2e', QUASAR: '#fdf6d8'
 });
+const TANK_DAMAGE_PER_XP = 10;
+const HIT_FLINCH_MS = 180, HIT_FLINCH_PX = 3.5;
+const DIRECT_DAMAGE_SHARE = 0.8; // TOWER-BUFF-01 (was 0.7, COMBAT-BALANCE-181): every stickman hits about 14% harder
 const RANGED_SHOT_SOUND = Object.freeze({
   ARCHER: 'shot_archer', SNIPER: 'shot_sniper', GATLING: 'shot_gatling',
   BLOWDART: 'shot_blowdart', GUNALINDER: 'shot_gunalinder', SQUIRTGUN: 'shot_squirtgun',
-  MARKSMAN: 'shot_gunalinder', CAT_SNAPPER: 'shot_cat', BLOW_GUNNER: 'shot_blowdart', NINJA: 'shot_blowdart',
-  CRAZY_CHEF: 'shot_archer', BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage', NECROMANCER: 'cast_mage', PROTON: 'cast_mage', DARK_MATTER: 'cast_mage', QUASAR: 'cast_mage'
+  MARKSMAN: 'shot_rifle', CAT_SNAPPER: 'shot_cat', BLOW_GUNNER: 'shot_blowdart', NINJA: 'shot_star', GLAIVE: 'shot_glaive', MERCHANT: 'shot_coins',
+  CRAZY_CHEF: 'shot_knife', BOMBER: 'shot_bomber', MAGE: 'cast_mage', SNAPCASTER: 'cast_mage', NECROMANCER: 'cast_mage', PROTON: 'cast_mage', DARK_MATTER: 'cast_mage', QUASAR: 'cast_mage'
 });
 const NINJA_SHOT_SOUND_GAP_MS = 140;
 // A shot rolled as a miss flies past the target by at least 20 px, to a random side.
@@ -1862,7 +1865,7 @@ class Tower{
     const dexDamageMult = 1 + PRIMARY_DAMAGE_PER_POINT * dexPoints;
     const intDamageMult = 1 + PRIMARY_DAMAGE_PER_POINT * intPoints;
     const primaryDamageMult = damageScalesWithStr ? strMult : archetype === 'ARCHER' ? dexDamageMult : archetype === 'MAGE' ? intDamageMult : 1;
-    this.damage = Math.max(1, Math.round(this.baseDamage * primaryDamageMult * 0.7)); // COMBAT-BALANCE-181: lower direct damage, including loaded defenders
+    this.damage = Math.max(1, Math.round(this.baseDamage * primaryDamageMult * DIRECT_DAMAGE_SHARE));
     this.primaryStatEff = damageScalesWithStr ? strEff : archetype === 'ARCHER' ? dexEff : archetype === 'MAGE' ? intEff : 0;
     if(!this.isVeteran && !statPreviewRunning && UNLOCKED_CLASS_TYPES.includes(this.type) && this.primaryStatEff >= 250){
       this.isVeteran = true;
@@ -1874,7 +1877,7 @@ class Tower{
     // MELEE-RANGE-BALANCE-01: every class, Cleric included, grows toward its range cap with INT.
     const cap = RANGE_CAPS[this.type] || this.baseRange * 2;
     this.range = interpolateRangeByInt(this.baseRange, cap, intRangeFraction) * rangeItemMult;
-    if(this.baseMeleeDamage) this.meleeDamage = Math.max(1, Math.round(this.baseMeleeDamage * primaryDamageMult * 0.7));
+    if(this.baseMeleeDamage) this.meleeDamage = Math.max(1, Math.round(this.baseMeleeDamage * primaryDamageMult * DIRECT_DAMAGE_SHARE));
     if(this.baseMeleeCooldown) this.meleeCooldown = Math.max(MIN_ATTACK_COOLDOWN_MS, Math.round(this.baseMeleeCooldown / dexMult));
     if(this.baseMeleeRange){
       const cap = RANGE_CAPS[this.type] || this.baseMeleeRange * 2;
@@ -1942,6 +1945,7 @@ class Tower{
   }
   receiveItem(def){
     if(def && def.isGoldBag) return false; // GOLD-BAG-COIN-BURST-01
+    explainItemKindOnce(def);
     if(isStructureType(this.type) && !isVaultType(this.type)) return false; // BARRICADE-NO-INVENTORY-01
     const stack = STACKABLE_ITEM_IDS.has(def.id) ? this.equippedItems.find(item => item.id === def.id) : null;
     if(stack){ stack.count = heldCount(stack) + heldCount(def); if(stack.id === 'HONEY' && stack.count >= 5) awardMedal('HONEY_HOARDER'); refreshQuickUse(this); return true; }
@@ -2148,6 +2152,8 @@ class Tower{
     return true;
   }
   findTarget(nearby){
+    const current = this.target; // AIM-STEADY-01: stay on the attacker already being fought instead of flipping between a crowd of attackers every tick
+    if(current && current.active && !current.deathResolved && current.hp > 0 && current.attackBumpTarget === this && Math.hypot(current.x-this.x, current.y-this.y) <= this.targetingRange) return;
     let attacker = null, attackerDistance = Infinity;
     for(const enemy of nearby){
       if(!enemy.active || enemy.deathResolved || enemy.hp<=0 || enemy.attackBumpTarget !== this) continue;
@@ -2294,6 +2300,12 @@ class Tower{
     spawnFloatingText(this.x, this.y - 30, '-'+reduced, '#ff5555');
     lastCombatDamageAt = presentationTime;
     if(attacker && isFighterTower(this)){ spawnStickmanWound(this, attacker, reduced); this.maybeEnrage(); }
+    if(attacker && isFighterTower(this)){ this.hitFlinchAt = presentationTime; this.hitFlinchAngle = Math.atan2(this.y - attacker.y, this.x - attacker.x); } // HIT-FLINCH-01
+    if(isFighterTower(this) && this.type !== 'HACKER'){ // TANK-XP-01: a stickman learns from the punishment it takes, 1 XP per 10 damage
+      this.tankDamageBank = (this.tankDamageBank || 0) + reduced;
+      const tankXp = Math.floor(this.tankDamageBank / TANK_DAMAGE_PER_XP);
+      if(tankXp > 0){ this.tankDamageBank -= tankXp * TANK_DAMAGE_PER_XP; gainTowerExp(this, tankXp); }
+    }
     if(this.type === 'HACKER') this.goStealth();
     if(this.hp > 0){
       const hpFrac = this.hp / this.maxHp;
@@ -2840,11 +2852,12 @@ class Tower{
       extra.angle2 = this.spec === 'DUAL' ? this.renderSwordAngle2 : null;
     }
     const swingingVisualAngle = (usesSwingAngle && this.isSwinging && this.baseAngle !== undefined)
-      ? (this.type === 'LANCER' ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
+      ? (this.type === 'LANCER' || isFastForwardSimplified() ? this.baseAngle : this.baseAngle + this.visualSwingOffset(Math.min(1, (gameTime - this.swingStart) / this.swingDuration))) : null;
     const desiredDrawAngle = swingingVisualAngle !== null ? swingingVisualAngle : cheering ? -Math.PI/2 + Math.sin((presentationTime - waveCheerStart)/160 + this.id)*0.35 : (usesSwingAngle ? this.renderSwordAngle : this.angle);
     const poseElapsed = Math.min(100,Math.max(0,presentationTime-(this.poseDrawTime || presentationTime)));
     this.poseDrawTime=presentationTime;
-    if(!Number.isFinite(this.poseDrawAngle) || this.isSwinging || this.isSwinging2 || PREFERS_REDUCED_MOTION) this.poseDrawAngle=desiredDrawAngle;
+    const showSwingArc = (this.isSwinging || this.isSwinging2) && !isFastForwardSimplified(); // AIM-STEADY-01: at 5x and 10x a swing lasts a frame or two, so the blade eases toward the aim instead of flashing through its arc
+    if(!Number.isFinite(this.poseDrawAngle) || showSwingArc || PREFERS_REDUCED_MOTION) this.poseDrawAngle=desiredDrawAngle;
     else this.poseDrawAngle += Math.atan2(Math.sin(desiredDrawAngle-this.poseDrawAngle),Math.cos(desiredDrawAngle-this.poseDrawAngle))*(1-Math.exp(-poseElapsed/75));
     const drawAngle = this.poseDrawAngle;
 
@@ -2885,7 +2898,9 @@ class Tower{
     }
     extra.enchantElement = (activeElement && !isDisabled) ? activeElement : null; // drawn inside drawStickman, on the weapon itself (WEAPON-ENCHANT-SYNC-01)
     const cheerHop = cheering && !PREFERS_REDUCED_MOTION ? -Math.abs(Math.sin((presentationTime - waveCheerStart)/150 + this.id*1.7))*WAVE_CHEER_HOP_PX : 0;
-    drawStickman(ctx, this.x, this.y + cheerHop, drawAngle, this.level, this.type, extra);
+    const flinchT = PREFERS_REDUCED_MOTION || !Number.isFinite(this.hitFlinchAt) ? 1 : (presentationTime - this.hitFlinchAt) / HIT_FLINCH_MS;
+    const flinchPx = flinchT < 1 ? Math.sin(flinchT * Math.PI) * HIT_FLINCH_PX : 0; // HIT-FLINCH-01: a struck stickman rocks back from the blow and settles, inspired by the Unity remake's hit reactions
+    drawStickman(ctx, this.x + Math.cos(this.hitFlinchAngle || 0)*flinchPx, this.y + cheerHop + Math.sin(this.hitFlinchAngle || 0)*flinchPx, drawAngle, this.level, this.type, extra);
     if(this.shovelDig) drawShovelDigSwing(ctx, this);
     if(hackerStealth){
       ctx.restore();
@@ -2905,7 +2920,7 @@ class Tower{
       if(this.disabledWavesLeft > 0){
         ctx.font = 'bold 10px Verdana';
         ctx.fillStyle = '#ff6b6b';
-        ctx.fillText(this.disabledWavesLeft + ' rounds left', this.x, this.y - 44);
+        ctx.fillText(countLabel(this.disabledWavesLeft, 'round') + ' left', this.x, this.y - 44);
       }
     }
 

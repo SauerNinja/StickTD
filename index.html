@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.90">
+<meta name="application-version" content="1.8.103">
 <title>StickTD — Free Stickman Tower Defense Game, No Download</title>
 <meta name="description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, stickman games, tower defense game, free tower defense, browser tower defense game, tower defense online, no download games, free strategy game">
@@ -81,7 +81,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.90",
+  "softwareVersion": "1.8.103",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -495,6 +495,8 @@
   #hack-modal-body{padding:14px;overflow-y:auto;max-height:340px;color:var(--paper);}
   #hack-modal-body h3{margin:12px 0 6px;color:var(--gold);font-size:14px;}
   #hack-modal-body .hack-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  #hack-modal-body .hack-row-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));} /* HACK-ROWS-EVEN-01: four grants sit 4 across, or 2 by 2 on a phone, never 3 and 1 */
+  @media (max-width:560px){#hack-modal-body .hack-row-4{grid-template-columns:repeat(2,minmax(0,1fr));} #hack-modal-body .hack-row-stack{display:grid;grid-template-columns:minmax(0,1fr);}} /* long labels stack one per line on a phone */
   #hack-modal-body button{background:#1f3a1a;color:var(--paper);border:1px solid var(--gold);border-radius:6px;padding:8px 10px;min-height:40px;cursor:pointer;font-size:13px;}
   #hack-modal-body button.on{background:#2e7d32;}
   #hack-modal-body .hack-note{font-size:12px;opacity:0.8;margin:4px 0;}
@@ -576,6 +578,9 @@
   .shop-item-card .icon{font-size:26px;}
   .shop-item-card .name{font-weight:bold;margin-top:2px;font-size:12.5px;}
   .shop-item-card .stat-line{font-size:11px;color:#bdeaff;margin-top:4px;}
+  .shop-item-card .name,.shop-item-card .stat-line,.shop-item-card .cost,.shop-divider-title,.shop-divider-note{white-space:nowrap;overflow:hidden;}
+  .shop-divider-title,.shop-divider-note{display:block;}
+  .shop-divider-note{font-weight:normal;font-size:11px;opacity:0.85;}
   .shop-item-card .cost{color:var(--gold);font-size:12px;margin-top:4px;}
   .shop-item-card.disabled{opacity:0.5;cursor:default;}
   .shop-item-card.owned{border-color:#4caf50;}
@@ -872,6 +877,7 @@
   @media (max-width:640px){#startMenu #quality-picker{padding-bottom:calc(68px + var(--safe-bottom));}}
   body:has(#consent-banner:not(.hidden)) #startMenu #quality-picker{padding-bottom:calc(128px + var(--safe-bottom));} /* SANTA-CONSENT-BAR-01: the graphics picker sits above the Santa bar */
   @media (max-width:640px){body:has(#consent-banner:not(.hidden)) #startMenu #quality-picker{padding-bottom:calc(178px + var(--safe-bottom));}}
+  body:has(#consent-banner:not(.hidden)) #startSettingsBtn{bottom:auto;top:calc(14px + var(--safe-top, 0px));} /* START-OPTIONS-REACH-01: while the Santa bar covers the bottom, Options moves to the top-right corner */
   #playBtn{position:absolute;inset:0;margin:auto;width:fit-content;height:fit-content;display:flex;align-items:center;justify-content:center;padding:clamp(10px,1.8vh,16px) clamp(34px,6vw,60px);cursor:pointer;
     background:rgba(10,15,8,0.55);border:3px solid var(--gold);border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,0.5);transition:transform 0.12s ease,box-shadow 0.12s ease,background 0.12s ease;}
   #playBtn svg{display:block;width:clamp(120px,22vw,190px);height:auto;}
@@ -905,7 +911,9 @@
     padding:7px 12px;border-radius:6px;font-size:clamp(11px,1.8vw,14px);font-weight:bold;
     cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap;}
   .link-btn:hover{background:linear-gradient(180deg, rgba(105,72,46,0.95) 0%, rgba(74,47,29,0.95) 100%);}
-  #end-screen #endDownloadLogBtn{margin-top:14px;}
+  .link-btn.hidden{display:none;} /* END-RATE-HIDDEN-01: .link-btn sets display, so its hidden state needs its own rule */
+  #end-screen .link-btn{margin-top:10px;}
+  #end-screen #endDownloadLogBtn{margin-top:18px;}
   #inspTargetMoveRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px;gap:6px;}
   #inspTargetMoveRow > button{box-sizing:border-box;min-width:0;font-size:11px;padding:6px 3px;white-space:nowrap;}
   #inspSellBtn{grid-column:1;grid-row:1;}
@@ -953,7 +961,6 @@
     #consentActions button{flex:1;min-height:44px;}
   }
   #consentAccept{border:2px solid #f1c40f;background:#f1c40f;color:#3a2a00;}
-  #consentDecline{border:2px solid #b9a98e;background:transparent;color:#f5f0e6;}
 </style>
 </head>
 <body>
@@ -966,13 +973,11 @@
 <div id="consent-banner" class="hidden">
   <div id="consent-inner">
     <div id="consentSantaFace" aria-hidden="true">🎅</div>
-    <p id="consentSantaLine">Ho, ho, ho! Santa loves cookies. These analytics cookies help me
-    keep track of who's been naughty or nice in StickTD—and see how the game is played. Give Santa
-    cookies, and you'll make the list!</p>
+    <p id="consentSantaLine">Ho, ho, ho! Santa needs your cookies to remember if you're naughty or nice.</p>
     <p id="consentOpenSource">StickTD is
     <a href="https://github.com/SauerNinja/StickTD" target="_blank" rel="noopener" onclick="if(window.trackEvent) window.trackEvent('outbound_click', {destination:'github'});">open source</a>.
     You can also inspect or build the game yourself.</p>
-    <div id="consentActions"><button id="consentAccept" type="button">🍪 Give Santa Cookies</button><button id="consentDecline" type="button">🥷 Play Stealth</button></div>
+    <div id="consentActions"><button id="consentAccept" type="button">🍪 OK</button></div>
   </div>
 </div>
 <script>
@@ -994,19 +999,15 @@
     } else {
       banner.classList.remove('hidden');
     }
-    window.openStickTDAnalyticsChoice = function(){
-      banner.classList.remove('hidden');
-      window.consentBannerPending = true;
-    };
-    document.getElementById('consentAccept').addEventListener('click', function(){
+    window.grantStickTDAnalyticsConsent = function(){
       try { localStorage.setItem(STORAGE_KEY, 'granted'); } catch(e) {}
       window.analyticsConsentChoice = 'granted';
       applyConsent('granted');
       banner.classList.add('hidden');
       window.consentBannerPending = false;
       if(window.refreshAnalyticsConsentLabel) window.refreshAnalyticsConsentLabel();
-      if(window.afterStealthConsentChoice) window.afterStealthConsentChoice();
-    });
+    };
+    document.getElementById('consentAccept').addEventListener('click', window.grantStickTDAnalyticsConsent);
     window.declineStickTDAnalyticsConsent = function(){
       try { localStorage.setItem(STORAGE_KEY, 'denied'); } catch(e) {}
       window.analyticsConsentChoice = 'denied';
@@ -1014,9 +1015,7 @@
       banner.classList.add('hidden');
       window.consentBannerPending = false;
       if(window.refreshAnalyticsConsentLabel) window.refreshAnalyticsConsentLabel();
-      if(window.afterStealthConsentChoice) window.afterStealthConsentChoice();
     };
-    document.getElementById('consentDecline').addEventListener('click', window.declineStickTDAnalyticsConsent);
   })();
 </script>
 <section id="loading-screen" aria-live="polite">
@@ -1325,8 +1324,8 @@
             <p id="runSeedNote" class="stats-hint"></p>
             <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
 
-            <p id="analyticsConsentState">Analytics are off until you choose to allow them.</p>
-            <button type="button" id="analyticsConsentBtn" class="settings-inline-btn">Review Analytics Choice</button>
+            <label><input type="checkbox" id="settingsStealthToggle"> 🥷 Stealth mode — play without analytics cookies (default off)</label>
+            <p id="analyticsConsentState" class="stats-hint">Analytics are on.</p>
             <label><input type="checkbox" id="settingsGoreToggle"> 🩸 Blood and gore effects (default on)</label>
             <label><input type="checkbox" id="settingsBloodDropletsToggle"> Blood splatter droplets (default on)</label>
             <label><input type="checkbox" id="settingsHacksToggle"> 💻 Hacks enabled (default off — unlocks the Hacker stickman and his developer menu)</label>
@@ -1543,15 +1542,15 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.90"></script>
-<script src="js/config.js?v=1.8.90"></script>
-<script src="js/effects.js?v=1.8.90"></script>
-<script src="js/loop.js?v=1.8.90"></script>
-<script src="js/ui.js?v=1.8.90"></script>
-<script src="js/diagnostics.js?v=1.8.90"></script>
-<script src="js/screens.js?v=1.8.90"></script>
-<script src="js/environment.js?v=1.8.90"></script>
-<script src="js/towers.js?v=1.8.90"></script>
-<script src="js/waves.js?v=1.8.90"></script>
+<script src="js/audio.js?v=1.8.103"></script>
+<script src="js/config.js?v=1.8.103"></script>
+<script src="js/effects.js?v=1.8.103"></script>
+<script src="js/loop.js?v=1.8.103"></script>
+<script src="js/ui.js?v=1.8.103"></script>
+<script src="js/diagnostics.js?v=1.8.103"></script>
+<script src="js/screens.js?v=1.8.103"></script>
+<script src="js/environment.js?v=1.8.103"></script>
+<script src="js/towers.js?v=1.8.103"></script>
+<script src="js/waves.js?v=1.8.103"></script>
 </body>
 </html>

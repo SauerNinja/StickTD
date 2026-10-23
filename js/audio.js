@@ -127,6 +127,10 @@ const MUSIC_COMBAT_MELODY = [
   [7,4,null,1,2,1,null,0],
   [4,null,2,1,0,null,null,null]
 ];
+function musicUpperNeighbour(pitch, keyTonic){
+  for(const gap of [2, 1]) if(MUSIC_KEY_PITCH_CLASSES.has((((pitch + gap - keyTonic) % 12) + 12) % 12)) return pitch + gap;
+  return pitch;
+}
 function musicDiatonicAbove(pitch, keyTonic){
   for(const gap of MUSIC_HARMONY_GAPS) if(MUSIC_KEY_PITCH_CLASSES.has((((pitch + gap - keyTonic) % 12) + 12) % 12)) return pitch + gap;
   return pitch + 7;
@@ -137,6 +141,9 @@ function musicKeyShift(cycleIndex){
   return shift > 6 ? shift - 12 : shift;
 }
 // REVERB-IMPULSE-01: one decaying-noise impulse builder for the music and effects rooms; the one-pole smoothing darkens the tail so it never hisses.
+const EXPAND_JINGLE_NOTES = Object.freeze([[392, 0, 0.14], [493.88, 0.11, 0.14], [587.33, 0.22, 0.14], [783.99, 0.33, 0.3]]); // G, B, D, high G: [hz, start s, length s]
+const EXPAND_JINGLE_CHORD = Object.freeze([196, 587.33, 783.99, 987.77]), EXPAND_JINGLE_CHORD_AT = 0.5;
+const SKITTER_MIN_GAP_S = 0.11;
 const SFX_DISTANCE_DARKEN_FLOOR = 0.45; // SFX-DISTANCE-01: off-screen noise is darker as well as quieter, the way air absorbs highs
 const SFX_REVERB_SECONDS = 0.9, SFX_REVERB_PREDELAY_S = 0.012, SFX_REVERB_SMOOTHING = 0.45;
 function buildDecayImpulse(audioCtx, seconds, preDelaySeconds, smoothing, decayPower){
@@ -164,7 +171,7 @@ const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
   shot_gatling:0.04, shot_blowdart:0.055, shot_gunalinder:0.055,
-  shot_squirtgun:0.055, shot_cat:0.08, shot_bomber:0.12,
+  shot_squirtgun:0.055, shot_cat:0.08, shot_bomber:0.12, shot_star:0.045, shot_knife:0.05, shot_rifle:0.08, shot_glaive:0.2, shot_coins:0.15,
   cast_mage:0.075, cast_cleric:0.10, gore_death:0.065, foot_squelch:0.10,
   coin:0.045, bag:0.10, levelup:0.18, chatter_short:0.15,
   click:0.035, ui_open:0.08, ui_close:0.08, ui_buy:0.08, stat_spend:0.055, spawn_chatter:0.25,
@@ -678,7 +685,11 @@ class SoundEngine{
       const duration = beatStep === 0 ? 0.25 : beatStep % 2 ? 0.11 : 0.15;
       const accent = beatStep === 0 ? 1 : beatStep % 2 ? 0.78 : 0.90;
       const phraseGain = phraseBar === 3 ? 0.82 : section === 1 ? 0.94 : 1;
-      const leadPitch = 38 + shift + 12 + (boss && degree % 12 === 2 ? degree - 1 : degree);
+      const basePitch = 38 + shift + 12 + (boss && degree % 12 === 2 ? degree - 1 : degree);
+      // MUSIC-VARIATION-02: the theme never repeats exactly. Odd cycles turn weak eighth notes into upper neighbour tones, and every third cycle lifts the
+      // last phrase bar an octave as a climax, the way tracker composers varied a pattern on its repeat.
+      const neighbourTone = cycleIndex % 2 === 1 && beatStep % 2 === 1 && beatStep !== 7;
+      const leadPitch = (neighbourTone ? musicUpperNeighbour(basePitch, 38 + shift) : basePitch) + (cycleIndex % 3 === 2 && phraseBar === 3 && section === 2 ? 12 : 0);
       this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, 0.11*accent*phraseGain*(0.92 + Math.random()*0.16));
       if((boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
       if(boss || section > 0) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
@@ -686,6 +697,12 @@ class SoundEngine{
         this.popTone(midiToFrequency(leadPitch), time, duration, 'harmony', 0.026 * accent, true);
         this.popTone(midiToFrequency(leadPitch + 12), time + 0.002, duration * 0.8, 'bell', 0.03 * accent, true);
       }
+    }
+    // MUSIC-COUNTERLINE-01: in the last section of even cycles a slow counter-melody in the warm voice holds a chord tone for each bar, rising third to fifth,
+    // under the lead, so the big section grows a second voice without crowding the theme.
+    if(combat && !breath && section === 2 && cycleIndex % 2 === 0 && beatStep === 0 && this.musicBarRole !== 'landing'){
+      const counterTones = musicChordTones(baseChord);
+      this.popTone(midiToFrequency(chord + 12 + counterTones[1 + (bar % 2)]), time, stepSeconds * MUSIC_STEPS_PER_BAR * 0.92, 'warm', 0.032, true);
     }
     // MUSIC-BIP-01: a very quiet high pluck answers the lead in its rests, an octave above the note it follows, on alternating rests only, so the theme keeps its breaths and gains small bips between phrases.
     const echoedDegree = combat && !breath && degree === null && this.musicBarRole !== 'landing' && beatStep > 0 && (bar + beatStep) % 2 === 1 ? MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep - 1] : null;
@@ -1249,7 +1266,6 @@ class SoundEngine{
     const eventPan = this.panFor(worldX);
     switch(name){
       // ---- shared cues: hits, kills, waves and milestones ----
-      case 'bow':   this.tone(900,0.10,'sawtooth',150); break;
       case 'hit':   this.tone(300,0.06,'square',100); break;
       case 'death': this.noise(0.15); break;
       case 'gore_death': {
@@ -1375,6 +1391,30 @@ class SoundEngine{
         this.noise(0.04, 1400, 'bandpass', eventPan, false, 0, 0.08);
         this.tone(520, 0.07, 'sine', 820, eventPan, false, 0, false, false, 0.10);
         break;
+      // CLASS-SHOT-VOICE-01: classes that shared another weapon's sound get their own.
+      case 'shot_star': // Ninja: a thin whistle and a small metal ting
+        this.noise(0.03, 3600, 'highpass', eventPan, false, 0, 0.08);
+        this.tone(1650, 0.05, 'sine', 2400, eventPan, false, 0, false, false, 0.07);
+        this.tone(3100, 0.035, 'triangle', undefined, eventPan, false, 0.03, false, false, 0.04);
+        break;
+      case 'shot_knife': // Crazy Chef: a spinning-blade whoosh
+        this.noise(0.07, 1500, 'bandpass', eventPan, false, 0, 0.13);
+        this.tone(700, 0.06, 'triangle', 380, eventPan, false, 0.01, false, false, 0.07);
+        break;
+      case 'shot_rifle': // Marksman: a dry crack with a short low tail, sharper than the revolver
+        this.noise(0.03, 2200, 'highpass', eventPan, false, 0, 0.22);
+        this.tone(260, 0.07, 'triangle', 90, eventPan, false, 0, false, false, 0.15);
+        break;
+      case 'shot_glaive': // Glaive: a heavy, slow boom
+        this.tone(95, 0.22, 'sine', 42, eventPan, false, 0, false, false, 0.26);
+        this.noise(0.12, 300, 'lowpass', eventPan, true, 0, 0.22);
+        this.noise(0.03, 1800, 'bandpass', eventPan, false, 0, 0.10);
+        break;
+      case 'shot_coins': // Merchant: the Money Bag thrown with a jingle
+        this.tone(2093, 0.06, 'triangle', undefined, eventPan, false, 0, false, true, 0.06);
+        this.tone(2637, 0.06, 'triangle', undefined, eventPan, false, 0.035, false, true, 0.05);
+        this.tone(3136, 0.07, 'triangle', undefined, eventPan, false, 0.07, false, true, 0.04);
+        break;
       case 'shot_bomber':
         this.tone(150, 0.10, 'sine', 70, eventPan, false, 0, false, false, 0.20);
         this.noise(0.065, 400, 'lowpass', eventPan, false, 0, 0.18);
@@ -1453,6 +1493,17 @@ class SoundEngine{
         this.tone(90, 0.4, 'sine', 45, 0, true, 0.56, true, true, 0.2);
         this.noise(0.3, 700, 'lowpass', 0, true, 0.56, 0.14);
         this.tone(659.25, 0.2, 'triangle', undefined, 0, true, 0.72, true, true, 0.08);
+        { // EXPAND-JINGLE-01: after the hammering, new ground answers with a short rising discovery motif in the music's current key
+          this.duck(-5, 1.6);
+          const ratio = Math.pow(2, (this.musicShift || 0) / 12), start = 0.78;
+          EXPAND_JINGLE_NOTES.forEach(([freq, at, length], k) => {
+            this.tone(freq*ratio, length, 'triangle', undefined, (k % 2 ? 0.25 : -0.25), true, start + at, true, true, 0.11);
+            this.tone(freq*2*ratio, length*0.7, 'sine', undefined, 0, false, start + at, true, true, 0.035);
+          });
+          const chordAt = start + EXPAND_JINGLE_CHORD_AT;
+          EXPAND_JINGLE_CHORD.forEach((freq, k) => this.tone(freq*ratio, 0.9, k ? 'triangle' : 'sine', undefined, 0, true, chordAt, true, true, k ? 0.05 : 0.12));
+          this.noise(0.5, 6000, 'highpass', 0, true, chordAt, 0.05);
+        }
         break;
       case 'wave_clear': {
         // WAVE-CLEAR-FANFARE-01: a layered victory fanfare — rising brass arpeggio, a held major chord with octave bass,
@@ -1485,6 +1536,15 @@ class SoundEngine{
         const w = intensity || 0;
         const gainByWeight = [0.04, 0.06, 0.09][w] || 0.04;
         this.noise(0.03 + w*0.02, 550 - w*160, 'lowpass', panFS, undefined, undefined, gainByWeight);
+        break;
+      }
+      case 'skitter': { // ANT-SKITTER-01: a dry two-tick patter of six small legs, high and very quiet, never a thud
+        const nowSK = this.ctx.currentTime;
+        if(this.lastSkitterAt !== undefined && nowSK - this.lastSkitterAt < SKITTER_MIN_GAP_S) break;
+        this.lastSkitterAt = nowSK;
+        const panSK = this.panFor(worldX);
+        this.noise(0.006, 4200 + Math.random()*1400, 'bandpass', panSK, false, 0, 0.035);
+        this.noise(0.005, 5200 + Math.random()*1400, 'bandpass', panSK, false, 0.018 + Math.random()*0.012, 0.025);
         break;
       }
       case 'enrage': // a tough enemy (Boss or Troll) crossing a low-health threshold: a low snarl

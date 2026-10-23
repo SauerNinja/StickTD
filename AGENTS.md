@@ -10,7 +10,9 @@ RELEASE-CHECKLIST-01: before every upload — read the code being changed (never
 PERFORMANCE-MODE-01: the Low graphics setting is named Performance mode in Settings and on the quality buttons; behaviour is unchanged.
 ELITE-ENEMIES-01: from wave 8, 3% (growing 0.05% a wave, at most 8%) of Small, Standard and Large enemies spawn as elites with one modifier shown by a coloured ground patch: blue Swift (speed ×1.35), gold Tough (health ×2), red Fierce (damage to stickmen ×1.6). Elites pay double bounty. The patch is static, never a pulsing ring.
 EARLY-CALL-01: starting the next wave within 20 seconds of game time after a clear pays bonus gold (8 + 1.5 per wave cleared, shrinking to nothing over the window); not paid before the first wave.
-BUILD-SPOT-HINT-01: with a class chosen in the Build menu, the free tile covering the most road within that class's starting range gets a static gold dashed outline.
+ARCHETYPE-BALANCE-01: the three base archetypes keep a fixed order at every promotion level. Accuracy: Archer best, melee middle, Mage worst (`BASE_MISS_CHANCE_BY_ARCHETYPE`). Range: Mage longest, Archer middle, melee shortest. Damage after misses: melee highest, Mage middle, Archer lowest (bleed and the Mage's splash and slow are extras on top). Balance changes to the Swordsman, Archer or Mage tier tables are checked against this order.
+BOSS-STUN-RESIST-01, ELEMENTAL-ENEMY-RESIST-01: bosses (Boss, Santa, Reaper) keep 35% of any stun or freeze; Fire enemies never burn; Ice enemies keep at most a 15% slow and 35% of a freeze.
+BUILD-SPOT-HINT-01, BUILD-SPOT-MARCH-01: with a class chosen in the Build menu, the free tile covering the most road within that class's starting range gets a black-and-white dashed outline that marches clockwise around the tile (static under reduced motion).
 SUMMON-ITEMS-01: Merchant's Bell 🛎️, Circus Ticket 🎟️ and Troll Bait 🪤 call the caravan, a circus or a troll when used; supply crates give one instead of a stim 20% of the time; a blocked summon keeps the item (VISITOR-LIMIT-01).
 STAT-PREVIEW-01: each stat button's tooltip names what the next point changes (damage, range, attack time, health, miss, critical); the preview restores the stickman exactly.
 RELEASE-HOLD-CAP-01: a wave batch fighting a stickman near the entrance holds the next batch at most 6 seconds of game time (BATCH_RELEASE_MAX_HOLD_MS); never let a melee stickman freeze the dispatch.
@@ -406,7 +408,9 @@ the whole file fresh, and more reliable than assuming an uploaded copy is curren
 - **Santa is the real final boss.** Highest HP in the game, replacing the ordinary boss on the
   campaign's last wave, periodically summoning fast Cookie enemies instead of healing. The
   analytics-consent notice keeps Santa's cookie voice, naughty-or-nice framing and large Santa face,
-  with clear accept and decline actions; declining keeps analytics disabled while the game remains playable.
+  says simply that Santa needs your cookies to remember if you're naughty or nice, and has one button, OK
+  (CONSENT-OK-01). Stealth mode in Settings → Game turns analytics off and keeps the game fully playable,
+  with the Stealth Santa challenge on wave 10; no Google request leaves the page until OK is pressed.
 - **UI holds up at every screen size.** Stat buttons and every scale-to-fit HUD element stay
   legible and correctly sized on a large screen, not just a small one — verify both ends, not just
   mobile.

@@ -792,6 +792,9 @@ const LIVESTOCK_WALK_SPEED_MULT = 2.4; // the base speeds are for a slow amble; 
 function countLivestockOnBoard(){ return enemyPool.filter(e => e.active && e.isLivestock).length; }
 // NPC-SAFE-SPAWN-01
 const NPC_EDGE_LOOKAHEAD_PX = 28;
+const LIVESTOCK_MOTION_EASE_MS = 260, LIVESTOCK_FACE_FLIP_PX_S = 6; // LIVESTOCK-SMOOTH-01
+const BEE_TURN_RATE = 1.6, BEE_GOAL_SWING_RAD = 1.3, BEE_RETARGET_MS_MIN = 900, BEE_RETARGET_MS_MAX = 2200, BEE_SWELL_HZ = 0.7, BEE_SWELL_SHARE = 0.25, BEE_FACE_FLIP_SHARE = 0.35; // BEE-GLIDE-01
+function beeCanFlyAt(x, y){ return !!activeRegion && isInActiveRegion(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)); }
 const NPC_SPAWN_SAFETY_BUFFER_PX = 45, NPC_SPAWN_ATTEMPTS = 30;
 function pickNpcSpawnPointOutsideStickmanReach(preferredKeys){
   let candidateKeys = preferredKeys;
@@ -2077,6 +2080,33 @@ const FOOD_ITEMS = FOOD_ITEM_ROWS.map(([id, name, icon, kind]) => Object.freeze(
 // BUSH-BERRIES-01: the fruit ids a Bush can drop — every real berry-shaped fruit in the catalog.
 const BERRY_FOOD_IDS = ['STRAWBERRY', 'CHERRIES', 'BLUEBERRY', 'GRAPES'];
 const FOOD_BY_ID = new Map(FOOD_ITEMS.map(item => [item.id, item]));
+// ITEM-KIND-NOTICE-01: the first time each food kind and each medicine, stim or tonic appears in a player's game, a notice explains exactly what it does.
+function foodKindNotice(kind){ return ({
+  FRUIT: ['🍎 Fruit', 'Drop fruit on a stickman and it is eaten at once: it heals a little and adds ' + FOOD_STAT_GAIN_MIN + '–' + FOOD_STAT_GAIN_MAX + ' Intelligence and ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience.'],
+  VEGETABLE: ['🥕 Vegetables', 'Drop a vegetable on a stickman and it is eaten at once: it heals a little and adds ' + FOOD_STAT_GAIN_MIN + '–' + FOOD_STAT_GAIN_MAX + ' Dexterity and ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience.'],
+  MEAT: ['🍗 Meat', 'Drop meat on a stickman and it is eaten at once: it heals and adds ' + FOOD_STAT_GAIN_MIN + '–' + FOOD_STAT_GAIN_MAX + ' Constitution, which raises maximum health, plus ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience.']
+})[kind]; }
+function consumableEffectText(def){
+  if(def.isMedical) return def.isRevive ? 'When your lives run out, it brings them back to ' + Math.round(DEFIBRILLATOR_REVIVE_LIVES_FRACTION*100) + '% once.' : def.healFraction ? 'Restores ' + Math.round(def.healFraction*100) + '% of your missing lives.' : 'Restores ' + def.healLives + ' lives.';
+  if(def.isHutLoot) return def.kind === 'heal' ? 'Restores ' + def.amount + ' lives.' : def.kind === 'gold' ? 'Pays ' + def.amount + ' gold.' : 'Gives the stickman ' + def.amount + ' experience.';
+  const effects = def.effects || [{ stat: def.stat, value: def.value }];
+  return effects.map(effect => effect.stat === 'heal' ? 'Heals the stickman by ' + Math.round(effect.value*100) + '% of its health.'
+    : effect.stat === 'all' ? 'Raises damage, attack speed and range by ' + Math.round((effect.value-1)*100) + '% until the wave ends.'
+    : ROUND_BUFF_LABELS[effect.stat] + ' +' + Math.round((effect.value-1)*100) + '% until the wave ends.').join(' ');
+}
+function explainItemKindOnce(def){
+  if(!def || typeof seenTutorialTips === 'undefined') return;
+  let key, title, text;
+  if(def.isFood && foodKindNotice(def.kind)){ key = 'food_' + def.kind; [title, text] = foodKindNotice(def.kind); }
+  else if(def.isMedical || def.isHutLoot || (def.isStim && !def.isMeal)){
+    key = 'item_' + def.id; title = def.icon + ' ' + def.name;
+    text = consumableEffectText(def) + (def.isMedical ? '' : ' Drag it onto a stickman, then press it in the pack to use it.');
+  } else return;
+  if(seenTutorialTips.has(key)) return;
+  seenTutorialTips.add(key);
+  try{ localStorage.setItem(SEEN_TIPS_KEY, JSON.stringify([...seenTutorialTips])); }catch(e){ /* private mode or full storage: the notice shows again next session */ }
+  showToast(title, undefined, text);
+}
 // Food heals the receiving stickman; meat adds Constitution, fruit INT, vegetables DEX.
 const MEAT_HEAL_BY_ID = { BACON: 6, DRUMSTICK: 10, STEAK: 16, MEAT_BONE: 24 };
 // Kept only so old saves that carry it still load; food grants no player lives.
@@ -2953,22 +2983,22 @@ function pickLooseExploreGoal(fromX, fromY){
   return best;
 }
 const LOOSE_CONTACT_RADIUS_TILES = 1.1, LOOSE_PERIMETER_GOAL_MIN_TILES = 1, LOOSE_PERIMETER_GOAL_SAMPLES = 24;
-function isLoosePerimeterTile(tileX, tileY){
+// LOOSE-ROAM-01: escaped enemies roam the whole open map off the road (never walking back up it), preferring ground ahead of their heading.
+function isLooseRoamTile(tileX, tileY){
   const centerX = tileX*TILE_SIZE + TILE_SIZE/2, centerY = tileY*TILE_SIZE + TILE_SIZE/2;
-  if(!isLooseWalkableAt(centerX, centerY) || isSceneryBlockedAt(centerX, centerY)) return false;
-  return !isLooseWalkableAt(centerX + TILE_SIZE, centerY) || !isLooseWalkableAt(centerX - TILE_SIZE, centerY) || !isLooseWalkableAt(centerX, centerY + TILE_SIZE) || !isLooseWalkableAt(centerX, centerY - TILE_SIZE);
+  return isInActiveRegion(tileX, tileY) && !pathCells.has(tileX + ',' + tileY) && !isSceneryBlockedAt(centerX, centerY);
 }
-function pickLoosePerimeterGoal(fromX, fromY, headingRad){ // LOOSE-PERIMETER-01: escaped enemies patrol the outer rim, preferring tiles ahead of their heading
+function pickLooseRoamGoal(fromX, fromY, headingRad){
   if(!activeRegion) return null;
   let best = null, bestScore = -Infinity;
   for(let attempt = 0; attempt < LOOSE_PERIMETER_GOAL_SAMPLES; attempt++){
     const tileX = activeRegion.x0 + Math.floor(Math.random() * (activeRegion.x1 - activeRegion.x0 + 1));
     const tileY = activeRegion.y0 + Math.floor(Math.random() * (activeRegion.y1 - activeRegion.y0 + 1));
-    if(!isLoosePerimeterTile(tileX, tileY)) continue;
-    const goalX = tileX*TILE_SIZE + TILE_SIZE/2, goalY = tileY*TILE_SIZE + TILE_SIZE/2, distance = Math.hypot(goalX - fromX, goalY - fromY);
+    if(!isLooseRoamTile(tileX, tileY)) continue;
+    const goalX = tileX*TILE_SIZE + TILE_SIZE/2 + (Math.random()-0.5)*TILE_SIZE*0.6, goalY = tileY*TILE_SIZE + TILE_SIZE/2 + (Math.random()-0.5)*TILE_SIZE*0.6;
+    const distance = Math.hypot(goalX - fromX, goalY - fromY);
     if(distance < LOOSE_PERIMETER_GOAL_MIN_TILES*TILE_SIZE) continue;
-    const ahead = Math.cos(Math.atan2(goalY - fromY, goalX - fromX) - headingRad);
-    const score = ahead*2 - distance/(TILE_SIZE*6) + Math.random()*1.5;
+    const score = Math.cos(Math.atan2(goalY - fromY, goalX - fromX) - headingRad) + Math.random()*2 - distance/(TILE_SIZE*10);
     if(score > bestScore){ bestScore = score; best = { x: goalX, y: goalY }; }
   }
   return best || pickLooseExploreGoal(fromX, fromY);
@@ -2978,12 +3008,15 @@ function isSceneryBlockedAt(worldX, worldY){ // SCENERY-SOLID-01: trees and rock
   const item = sceneryMap.get(Math.floor(worldX / TILE_SIZE) + ',' + Math.floor(worldY / TILE_SIZE));
   return !!item && (item.type === 'TREE' || item.type === 'ROCK');
 }
-function moveAroundScenery(walker, dirX, dirY, speedPxPerS, dtMs){ // steps toward (dirX, dirY), turning to the walker's preferred side until the lookahead clears scenery
+function isRoadTileAt(worldX, worldY){ return pathCells.has(Math.floor(worldX / TILE_SIZE) + ',' + Math.floor(worldY / TILE_SIZE)); }
+function moveAroundScenery(walker, dirX, dirY, speedPxPerS, dtMs, avoidRoad){ // steps toward (dirX, dirY), turning to the walker's preferred side until the lookahead clears scenery (and the road, for an off-road roamer)
   const baseAngle = Math.atan2(dirY, dirX), stepPx = speedPxPerS * dtMs / 1000, lookaheadPx = (walker.radius || 10) + 6;
   const side = walker.detourSide || (walker.detourSide = Math.random() < 0.5 ? -1 : 1);
+  const keepOffRoad = avoidRoad && !isRoadTileAt(walker.x, walker.y);
   for(const offset of SCENERY_DETOUR_ANGLES){
     const angle = baseAngle + offset * side, cosA = Math.cos(angle), sinA = Math.sin(angle);
-    if(isSceneryBlockedAt(walker.x + cosA*lookaheadPx, walker.y + sinA*lookaheadPx)) continue;
+    const aheadX = walker.x + cosA*lookaheadPx, aheadY = walker.y + sinA*lookaheadPx;
+    if(isSceneryBlockedAt(aheadX, aheadY) || (keepOffRoad && isRoadTileAt(aheadX, aheadY))) continue;
     walker.vx = cosA * speedPxPerS; walker.vy = sinA * speedPxPerS;
     walker.x += cosA * stepPx; walker.y += sinA * stepPx;
     return angle;
@@ -3837,9 +3870,10 @@ function resizeMapCanvasForDpr(){
   }
 }
 const buildPreviewAppearance={preview:true,lowGfx:true,hasTarget:false,weaponScale:1,weaponThickness:1,drawProgress:0,castProgress:0,chargeProgress:0,swingProgress:0,throwProgress:0,str:0,int:0};
-// BUILD-SPOT-HINT-01: while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a gold
-// dashed outline, a "good spot" hint from Buckland's support-spot scoring. It is a suggestion only; any buildable tile can still be used.
+// BUILD-SPOT-HINT-01: while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a marching
+// black-and-white outline, a "good spot" hint from Buckland's support-spot scoring. It is a suggestion only; any buildable tile can still be used.
 let buildSpotHintCache = { key: '', tile: null };
+const BUILD_SPOT_DASH_PX = 9, BUILD_SPOT_MARCH_MS_PER_PX = 25;
 function bestBuildSpotFor(type){
   const def = CONFIG.TOWERS[type];
   if(!def || !def.tiers || !def.tiers[0] || !activeRegion || isProducerType(type) || type === 'BARRICADE') return null;
@@ -3861,9 +3895,15 @@ function drawBuildSpotHint(ctx){
   if(!selectedBuildType || moveModeTower) return;
   const spot = bestBuildSpotFor(selectedBuildType);
   if(!spot) return;
+  // BUILD-SPOT-MARCH-01: black and white dashes chase each other clockwise around the tile, so the hint reads as a live suggestion.
+  const marchOffset = PREFERS_REDUCED_MOTION ? 0 : -((presentationTime / BUILD_SPOT_MARCH_MS_PER_PX) % (BUILD_SPOT_DASH_PX * 2));
+  const inset = 4, side = TILE_SIZE - inset*2;
   ctx.save();
-  ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
-  ctx.strokeRect(spot.gx*TILE_SIZE + 4, spot.gy*TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+  ctx.lineWidth = 3; ctx.setLineDash([BUILD_SPOT_DASH_PX, BUILD_SPOT_DASH_PX]);
+  ctx.strokeStyle = '#111111'; ctx.lineDashOffset = marchOffset;
+  ctx.strokeRect(spot.gx*TILE_SIZE + inset, spot.gy*TILE_SIZE + inset, side, side);
+  ctx.strokeStyle = '#ffffff'; ctx.lineDashOffset = marchOffset + BUILD_SPOT_DASH_PX;
+  ctx.strokeRect(spot.gx*TILE_SIZE + inset, spot.gy*TILE_SIZE + inset, side, side);
   ctx.restore();
 }
 function drawBuildPreview(ctx){

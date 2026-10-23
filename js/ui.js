@@ -201,6 +201,13 @@ if(typeof ResizeObserver!=='undefined'){
   const notificationLayoutObserver=new ResizeObserver(()=>positionNotificationControls(true));
   for(const id of ['canvas-frame','hud-top','notification-bell'])notificationLayoutObserver.observe(document.getElementById(id));
 }
+// TEXT-FIT-01: text that does not fit its box shrinks until it sits on one line, down to a readable floor; it never wraps.
+const SHOP_TEXT_MIN_PX = 8;
+function shrinkTextToOneLine(el, minPx){
+  el.style.fontSize = '';
+  let size = parseFloat(getComputedStyle(el).fontSize);
+  while(el.scrollWidth > el.clientWidth + 0.5 && size > minPx){ size = Math.max(minPx, size - 0.5); el.style.fontSize = size + 'px'; }
+}
 function fitStatRowToOneLine(){
   const row = document.getElementById('inspCombatRow');
   const panel = document.getElementById('inspect-panel');
@@ -959,12 +966,12 @@ function openHackMenu(tower){
   const grant = label => '<button type="button" data-hack="' + label + '">' + label + '</button>';
   body.innerHTML =
     '<p class="hack-note">💰 ' + Math.floor(gold) + ' &nbsp; 🪵 ' + Math.floor(wood) + ' &nbsp; 🪨 ' + Math.floor(stone) + '</p>' +
-    '<h3>Gold</h3><div class="hack-row">' + ['+💰100','+💰1,000','+💰10,000','+💰100,000'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Gold</h3><div class="hack-row hack-row-4">' + ['+💰100','+💰1,000','+💰10,000','+💰100,000'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Wood</h3><div class="hack-row">' + ['+🪵100','+🪵1,000','+🪵10,000'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Stone</h3><div class="hack-row">' + ['+🪨100','+🪨1,000','+🪨10,000'].map(l => grant(l)).join('') + '</div>' +
-    '<h3>Stickmen</h3><div class="hack-row">' + ['Heal and revive all','+5 stat points to all','+25 stat points to all'].map(l => grant(l)).join('') + '</div>' +
-    '<h3>Field</h3><div class="hack-row">' + ['Defeat every enemy now','Expand the map now'].map(l => grant(l)).join('') + '</div>' +
-    '<h3>Summon</h3><div class="hack-row">' + ['Summon the caravan','Summon a circus','Summon a troll'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Stickmen</h3><div class="hack-row hack-row-stack">' + ['Heal and revive all','+5 stat points to all','+25 stat points to all'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Field</h3><div class="hack-row hack-row-stack">' + ['Defeat every enemy now','Expand the map now'].map(l => grant(l)).join('') + '</div>' +
+    '<h3>Summon</h3><div class="hack-row hack-row-stack">' + ['Summon the caravan','Summon a circus','Summon a troll'].map(l => grant(l)).join('') + '</div>' +
     '<h3>Rules</h3><div class="hack-row"><button type="button" data-hack="god" class="' + (hackGodMode ? 'on' : '') + '">Stickmen invulnerable: ' + (hackGodMode ? 'ON' : 'off') + '</button>' +
     '<button type="button" data-hack="free" class="' + (hackFreeBuild ? 'on' : '') + '">Free building: ' + (hackFreeBuild ? 'ON' : 'off') + '</button></div>' +
     '<p class="hack-note">Hacks are for testing and play-around. They are not saved and mark the debug log.</p>';
@@ -1071,8 +1078,8 @@ function shopTowerIsCurrent(tower){
 function openShopModal(){
   if(!requireShopAccess())return false;
   closeBuildMenuIfOpen();
-  buildShopGrid();
   document.getElementById('shop-modal').classList.remove('hidden');
+  buildShopGrid(); // after unhiding, so text fitting can measure
   playSound('ui_open');
   trackGameEvent('shop_opened', { gold });
   return true;
@@ -1085,7 +1092,7 @@ function buildShopGrid(){
   const grid = document.getElementById('shop-grid');
   const note = document.getElementById('shop-selected-note');
   grid.innerHTML = '';
-  const addDivider = text => { const divider = document.createElement('div'); divider.className = 'shop-section-divider'; divider.style.gridColumn = '1/-1'; divider.textContent = text; grid.appendChild(divider); };
+  const addDivider = text => { const divider = document.createElement('div'); divider.className = 'shop-section-divider'; divider.style.gridColumn = '1/-1'; const [title, ...rest] = text.split(' — '); divider.innerHTML = '<span class="shop-divider-title"></span><span class="shop-divider-note"></span>'; divider.firstChild.textContent = title; divider.lastChild.textContent = rest.join(' — '); grid.appendChild(divider); }; // SHOP-ONE-LINE-01: title and note each sit on their own line
   const shopTower=selectedTower;
   const towerSelected = !!(shopTower && shopTower.active);
   note.innerHTML = (towerSelected
@@ -1139,13 +1146,13 @@ function buildShopGrid(){
     }
     grid.appendChild(card);
   }
-  addDivider('🩹 Medical Supplies — used from your inventory, never equipped to a tower');
+  addDivider('🩹 Medical Supplies — used from your inventory, never equipped');
   for(const def of MEDICAL_ITEMS){
     const alreadyHeld = def.isRevive && hasDefibrillator;
     const canBuy = !alreadyHeld && gold >= def.cost;
     const card = document.createElement('div');
     card.className = 'shop-item-card' + (canBuy ? '' : ' disabled') + (alreadyHeld ? ' owned' : '');
-    const desc = def.isRevive ? 'When lives run out, restores ' + Math.round(DEFIBRILLATOR_REVIVE_LIVES_FRACTION*100) + '% of max lives once' : def.healFraction ? 'Restores 50% of missing lives' : 'Restores ' + def.healLives + ' lives';
+    const desc = def.isRevive ? 'Revives you once at ' + Math.round(DEFIBRILLATOR_REVIVE_LIVES_FRACTION*100) + '% lives' : def.healFraction ? 'Heals ' + Math.round(def.healFraction*100) + '% of lost lives' : 'Heals ' + def.healLives + ' lives';
     card.innerHTML =
       '<div class="icon">' + def.icon + '</div>' +
       '<div class="name">' + def.name + (alreadyHeld ? ' (held)' : '') + '</div>' +
@@ -1160,7 +1167,7 @@ function buildShopGrid(){
     }
     grid.appendChild(card);
   }
-  addDivider('🧪 Potions, Tonics and Revival — potions go into the selected stickman\u2019s pack; Revive brings a downed stickman back');
+  addDivider('🧪 Potions, Tonics and Revival — potions fill the pack; Revive raises the downed');
   const packHasRoom = towerSelected && isFighterTower(selectedTower) && selectedTower.type !== 'HACKER' && selectedTower.equippedItems.length < MAX_ITEM_SLOTS;
   for(const def of merchantPotionDefs()){
     const price = MERCHANT_POTION_PRICES[def.id], canBuy = packHasRoom && gold >= price;
@@ -1174,11 +1181,11 @@ function buildShopGrid(){
     const canRevive = canReviveSelectedStickman() && gold >= REVIVE_STICKMAN_COST;
     const reviveCard = document.createElement('div');
     reviveCard.className = 'shop-item-card' + (canRevive ? '' : ' disabled');
-    reviveCard.innerHTML = '<div class="icon">✨</div><div class="name">Revive</div><div class="stat-line">' + (canReviveSelectedStickman() ? 'Brings your selected stickman back at ' + Math.round(REVIVE_STICKMAN_HP_FRACTION*100) + '% health' : 'Select a downed stickman') + '</div><div class="cost">💰' + REVIVE_STICKMAN_COST + '</div>';
+    reviveCard.innerHTML = '<div class="icon">✨</div><div class="name">Revive</div><div class="stat-line">' + (canReviveSelectedStickman() ? 'Back at ' + Math.round(REVIVE_STICKMAN_HP_FRACTION*100) + '% health' : 'Select a downed stickman') + '</div><div class="cost">💰' + REVIVE_STICKMAN_COST + '</div>';
     if(canRevive) reviveCard.addEventListener('pointerdown', (e) => { e.stopPropagation(); if(!requireShopAccess()) return; if(reviveSelectedStickman()){ updateHUD(); updateInspectPanel(); buildShopGrid(); } });
     grid.appendChild(reviveCard);
   }
-  addDivider('✨ Passive Bonuses — applies permanently to every tower you own, current and future');
+  addDivider('✨ Passive Bonuses — permanent, for every stickman, now and later');
   for(const def of PASSIVE_UPGRADES){
     const cost = passiveCost(def);
     const count = globalPassiveCounts[def.id] || 0;
@@ -1205,7 +1212,7 @@ function buildShopGrid(){
     grid.appendChild(card);
   };
   const stickmanReady = towerSelected && isFighterTower(selectedTower) && selectedTower.type !== 'HACKER';
-  addDivider('🧺 Market — rations eaten at once by the selected stickman; each one bought makes the next cost more');
+  addDivider('🧺 Market — eaten at once; each one raises the next price');
   for(const ration of RATIONS) addCard(ration.icon, ration.name, '+' + RATION_STAT_GAIN + ' ' + ration.stat.toUpperCase() + ' · bought x' + (marketBought[ration.stat] || 0), rationCost(ration.stat), stickmanReady && gold >= rationCost(ration.stat), () => buyRation(ration.stat));
   addDivider('🏋️ Training Yard — experience for the selected stickman');
   addCard('🎯', 'Drill', '+' + (foodFruitXp()*DRILL_XP_MULTIPLIER) + ' XP · drilled x' + drillsBought, drillCost(), stickmanReady && gold >= drillCost(), () => buyDrill());
@@ -1232,6 +1239,7 @@ function buildShopGrid(){
     const sold = merchantBoughtIds.has(index), full = towerSelected && selectedTower.equippedItems.length >= MAX_ITEM_SLOTS;
     addCard(offer.def.icon, offer.def.name + (sold ? ' (sold)' : ''), (ITEM_RARITIES[offer.def.rarity] ? ITEM_RARITIES[offer.def.rarity].label + ' · ' : '') + itemStatSummary(offer.def), offer.cost, towerSelected && !sold && !full && gold >= offer.cost, () => buyMerchantItem(index), sold);
   });
+  for(const el of grid.querySelectorAll('.name, .stat-line, .cost, .shop-divider-title, .shop-divider-note')) shrinkTextToOneLine(el, SHOP_TEXT_MIN_PX);
 }
 document.getElementById('buildBtn').addEventListener('pointerdown', (e) => {
   e.stopPropagation();
@@ -1497,6 +1505,7 @@ document.querySelectorAll('.settings-tab').forEach(tab => {
     e.stopPropagation();
     document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
     tab.classList.add('active');
+    tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // a tab chosen at the edge of the scrolling row comes fully into view
     const target = tab.dataset.tab;
     document.querySelectorAll('.settings-panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== target));
     if(target === 'items') renderItemCodex();
@@ -1514,16 +1523,19 @@ document.getElementById('gfxLowRadio').addEventListener('change', () => {
   trackGameEvent('settings_changed', { setting: 'graphics_quality', setting_value: 'low' });
   document.querySelectorAll('.quality-btn').forEach(b => b.classList.toggle('selected', b.dataset.quality === 'low'));
 });
+// CONSENT-OK-01: the Santa notice has one button, OK; Stealth mode (no analytics, and the Stealth Santa challenge) is a Settings choice.
 function refreshAnalyticsConsentLabel(){
-  const label = document.getElementById('analyticsConsentState');
-  if(!label) return;
-  const choice = window.analyticsConsentChoice || 'unset';
-  label.textContent = choice === 'granted' ? 'Analytics are allowed. Change your choice any time.' : choice === 'denied' ? 'Analytics are declined and stay off.' : 'Analytics are off until you choose to allow them.';
+  const label = document.getElementById('analyticsConsentState'), toggle = document.getElementById('settingsStealthToggle');
+  const stealth = window.analyticsConsentChoice === 'denied';
+  if(toggle) toggle.checked = stealth;
+  if(label) label.textContent = stealth ? 'Stealth mode: analytics stay off, and Wave 10 of a run brings the Stealth Santa.' : 'Analytics are on.';
 }
 window.refreshAnalyticsConsentLabel = refreshAnalyticsConsentLabel;
 refreshAnalyticsConsentLabel();
-document.getElementById('analyticsConsentBtn').addEventListener('click', () => {
-  if(window.openStickTDAnalyticsChoice) window.openStickTDAnalyticsChoice();
+document.getElementById('settingsStealthToggle').addEventListener('change', (e) => {
+  if(e.target.checked) window.declineStickTDAnalyticsConsent();
+  else window.grantStickTDAnalyticsConsent();
+  playSound('click');
 });
 document.getElementById('settingsMuteToggle').addEventListener('change', (e) => {
   isMuted = e.target.checked; savePrefs(); audioEngine.applyMix();
@@ -1776,14 +1788,14 @@ AI_ASSIST_NOTE + '\n\n' +
 'others you buy with gold. You can buy one expansion per wave, during or between waves. The wave-end free expansion is lost if escaped enemies are still alive.\n\n' +
 'TOWERS\n' +
 '------\n' +
-'Swordsman - melee cone sweep, the starting warrior.\n' +
-'Archer - ranged bow attacks with a visible draw before firing.\n' +
+'Swordsman - melee cone sweep: the hardest hitter, with the shortest reach and medium accuracy.\n' +
+'Archer - the most accurate and the lightest hitter, at medium range; deep arrows cause bleeding.\n' +
 'Axeman - dual-wields hand axes, manually toggles between a close swing and a ranged throw.\n' +
 'Spearman - long melee reach, slow but hard-hitting.\n' +
 'Lancer - a knight lance whose damage scales with enemy weight, up to 1.75x on the heaviest foes.\n' +
 'Cleric - supports allies and directly smites undead for 5x damage, ignoring armor.\n' +
 'Hammerman - stuns on hit, carries a shield and extra HP.\n' +
-'Mage - slows enemies it hits.\n' +
+'Mage - the longest reach and medium damage, but misses most often; its blasts slow survivors.\n' +
 'Bomber - splash damage against groups.\n' +
 'Gatling - very fast, low damage per shot, shreds swarms.\n' +
 'More classes unlock as stickmen train, and many also unlock once enough waves are cleared: Marksman, Sniper, Blowdart, Cowboy, Glaive, Ninja, Paladin, Berserker, Necromancer, Pope, Cat Snapper, Merchant and more, plus Log Mill and Stone Quarry for wood and stone.\n' +
@@ -1977,7 +1989,7 @@ function updateInspectPanelNow(){
   inspPortraitFace.textContent = t.def.icon || '🙂';
   const hpPct = t.maxHp > 0 ? Math.max(0, Math.min(100, (t.hp/t.maxHp)*100)) : 0;
   inspHpBarFill.style.width = hpPct + '%';
-  const disabledSuffix = (!isBarricade && t.disabledWavesLeft > 0) ? (' (DOWNED · ' + t.disabledWavesLeft + ' rounds)') : '';
+  const disabledSuffix = (!isBarricade && t.disabledWavesLeft > 0) ? (' (DOWNED · ' + countLabel(t.disabledWavesLeft, 'round') + ')') : '';
   inspHpBarText.textContent = (hpBarShowPercent ? (Math.round(hpPct) + '%') : (Math.round(t.hp) + '/' + t.maxHp)) + disabledSuffix;
   if(isProducer){
     const upgradeCost = producerUpgradeCost(t);
@@ -2029,7 +2041,7 @@ function updateInspectPanelNow(){
         const leadingStat = stats.find(k => (t[k] || 0) === bestValue);
         const leadingElement = ATTUNEMENTS[leadingStat];
         evoHint.textContent = bestValue > 0
-          ? ATTUNEMENT_ICON[leadingElement] + ' ' + (ELEMENT_INFUSE_THRESHOLD - bestValue) + ' points until ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase() + ' Attunement'
+          ? ATTUNEMENT_ICON[leadingElement] + ' ' + countLabel(ELEMENT_INFUSE_THRESHOLD - bestValue, 'point') + ' until ' + leadingElement.charAt(0) + leadingElement.slice(1).toLowerCase() + ' Attunement'
           : '🎓 Spend points to start training — ' + (leadingPreferredStat ? leadingPreferredStat.toUpperCase() + ' is preferred' : 'any stat');
       }
       evoHint.classList.remove('hidden');
