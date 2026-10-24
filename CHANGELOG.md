@@ -4,6 +4,90 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.115] — 2026-10-24 (UTC)
+
+Callback round from Short & Adams, *Procedural Generation in Game Design* (ch. 21 Emily Short, "Callbacks to Earlier Events": callbacks create perceivable consequence; ch. 19 Grinblat: naming a generated actor positions it as a character) and Sylvester, *Designing Games* (end-of-run recap as story).
+
+- RUN-MVP-01 (js/config.js): new `runMvp` and `recordRunMvp(tower)`, called from `creditKill` after each kill. It keeps the class icon, name, level and kill count of the run's top killer, captured at kill time so a stickman who later falls is still remembered. `describeRunEnd` adds an "MVP: ⚔️ Swordsman (level 3) — 42 kills" line under the kill and streak line (or "No kills this run"). Nothing is removed from the summary.
+- Contract check RUN-MVP-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
+## [1.8.114] — 2026-10-24 (UTC)
+
+Variety round built from Tanya X. Short and Tarn Adams (eds.), *Procedural Generation in Game Design* (CRC Press, 2017), supplied by the owner (ch. 26 Bucklew, weighted distributions: "simulate not returning the ball back to the bag"; ch. 23 Auwae: track used variants so a pick is not used twice; ch. 1–3: boredom comes from visible repetition).
+
+- PCG-BAG-01 (js/config.js): new `drawFromShuffleBag(pool)` and `refillShuffleBag(bag, pool)`, keyed per pool array in the `shuffleBagByPool` WeakMap. Each pool is shuffled (Fisher–Yates), drawn without replacement, and refilled when empty; the refill never starts with the item that ended the last bag, so no item can come up twice in a row. Pools of fewer than two items return their only item.
+- PCG-BAG-01 call sites, previously independent `Math.random()` picks that could repeat back to back: `HUT_LOOT_ITEMS` (js/config.js hut chests), `requestStickmanBark` lines (js/config.js), `WAVE_DROP_ITEMS` (js/loop.js wave rewards), `TREAT_ITEMS`, `PASSIVE_UPGRADES` and `BERRY_FOOD_IDS` (js/environment.js chests and bushes). Drop chances and pool contents are unchanged; only the order is controlled.
+- Contract check PCG-BAG-01 added (js/diagnostics.js): three draws from a three-item probe pool must all differ, and barks must use the bag.
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
+## [1.8.113] — 2026-10-24 (UTC)
+
+Motion round built from Richard Williams, *The Animator's Survival Kit* (Faber, 2001), supplied by the owner (walks chapter: contact → down → passing (up) → up; "it's the up and down that gives the weight"; finish actions on a clean position rather than snapping).
+
+- WALK-WILLIAMS-01 (js/towers.js): new `stickmanWalkBobPx(walkPhase)`, `stickmanFootX(side, walkPhase)`, `stickmanFootY(side, walkPhase)` and constants `WALK_FOOT_SPREAD_PX` (8), `WALK_FOOT_LIFT_PX` (3), `WALK_DOWN_PX` (0.7), `WALK_UP_PX` (1.9), `WALK_DOWN_SHARE` (0.3). `drawStickman` previously slid both feet the same way (`legSwing`, ±7 px together) with a plain |sin| hop; now the feet scissor (together on the passing position, spread on the contacts), the swinging foot lifts, and the body dips just after each contact before rising through the passing position. Blood-segment recording and the Running Shoes use the same foot functions, so stains and shoes stay on the feet. The rest pose (feet at ±8, y 20) is unchanged.
+- WALK-SETTLE-01 (js/towers.js `Tower.advanceWalk`): on arrival the stickman finishes the stride and stops on the starting contact instead of snapping to the rest pose mid-step. Measured in Chromium on a walk between two build tiles: largest foot movement in one 16 ms frame fell from 15.7 px (first version, stopping on the mirrored contact) to 2.8 px; settling adds 192 ms (at most one stride, ≈286 ms).
+- WALK-WILLIAMS-01 (js/waves.js `Enemy.draw`): striding enemies use the same dip-after-contact, rise-on-passing curve (`stickmanWalkBobPx / WALK_UP_PX × radius × ENEMY_HOP_PER_RADIUS`) instead of a plain |sin| hop.
+- Contract check WALK-WILLIAMS-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke, stress and walk probes.
+
+## [1.8.112] — 2026-10-24 (UTC)
+
+Music round built from Michael Sweet, *Writing Interactive Music for Video Games* (Addison-Wesley, 2015), supplied by the owner. The score itself is unchanged; both additions sit on top of it.
+
+- MUSIC-PERIL-01 (js/audio.js): new `musicPerilFilter` low-pass after `musicFilter`, driven by `SoundEngine.updateMusicPeril(time)` from `scheduleMusicStep`. When lives drop under `MUSIC_PERIL_LIVES_SHARE` (25 %) of `maxLivesNow()` while `gameState === 'PLAYING'`, the cutoff sweeps on a log curve from 8 kHz down to `MUSIC_PERIL_MIN_HZ` (1100 Hz) at 0 lives. It closes over `MUSIC_PERIL_IN_SECONDS` (1.5 s) and reopens over `MUSIC_PERIL_OUT_SECONDS` (4 s); `MUSIC_PERIL_RETARGET_HZ` (150 Hz) stops it retargeting on every step. Why: Sweet ch9/ch11 recommend a low-health layer or low-pass to signal danger, with fade-ins of 0.5–1.5 s and fade-outs of 3–5 s, because a sudden fade-out sounds like a fault. Measured in Chromium at 5 % lives: 1636 Hz after 2.5 s; after lives were restored, 3549 Hz at 1.5 s and fully open (20 kHz) at 5.5 s. A first version used setTargetAtTime and reopened 68 % within 1.5 s; it was replaced with exponentialRampToValueAtTime.
+- MUSIC-STING-VARY-01 (js/audio.js): `scheduleMusicSting` now cycles through `MUSIC_STING_VARIANTS` using `musicStingCount`. The three pickup shapes are the original `MUSIC_STING_PICKUPS` (kept first), a descending 5–4–♭3 shape and a ♭7–1–♭3 shape, all in minor pentatonic over the same drop. Why: Sweet ch10 says a signature transition "will get old very fast" and that pentatonic stingers avoid clashing with the score. Verified that `musicStingCount` advances 0→4 over four stingers.
+- SWEET-MUSIC-01 (js/diagnostics.js): a new contract check that `updateMusicPeril` exists, that there are at least three stinger variants, that the fade-in is shorter than the fade-out, and that the stinger reads the variant table.
+- Verification: the design contract is empty and the console is clean in smoke, stress and peril probes.
+
+## [1.8.111] — 2026-10-23 (UTC)
+
+Audio round built from Andy Farnell, *Designing Sound* (MIT Press, 2010), supplied by the owner. Levels measured on the effects bus in Chromium (peak / RMS): Archer shot 0.12 / 0.008, gore death 0.25 / 0.014, Sniper 0.38 / 0.016, Marksman 0.30 / 0.013, Bomber blast 0.15 / 0.017, alarmed pig 0.08 / 0.012, cow call 0.04 / 0.006, campfire crackle 0.06 / 0.002.
+
+- GUNSHOT-LAYERS-01 (js/audio.js `shot_sniper`, `shot_rifle`): Farnell's gunshot model (practical 30) replaces the single noise-and-triangle crack: a constant-level sine chirp falling from `GUN_CHIRP_HIGH_HZ` (the detonation), a 150–175 Hz muzzle burst `GUN_MUZZLE_DELAY_S` (1.5 ms) later, and the weapon body ringing through a resonator bank, a 200–800 Hz housing cluster plus a ~2.5 kHz barrel cluster (`GUN_RIFLE_BODY_HZ`, `GUN_CARBINE_BODY_HZ`). The Sniper's chirp is shorter and harder, the Marksman's longer and rounder.
+- FARNELL-RESONATOR-01 (`resonatorBurst`): one noise excitation with a fast exponential decay rung through parallel band-pass filters, the struck-body model the gunshots use.
+- EXPLOSION-LAYERS-01 (new `explosion` event, played from `Projectile.onImpact` when a Bomber shell lands): practical 31's layers: a chirp thump (`EXPLOSION_THUMP_HZ` falling to 32 Hz), three 30 ms blasts darkening from 4.2 kHz to 1.3 kHz with random gaps (the "bam-bam" of the ground reflection), and a 0.75 s low-passed fireball rumble, all scaled by the blast radius. Dynamic level of audio detail: when the blast is far from view (`EXPLOSION_DETAIL_GAIN_FLOOR`) only the thump and rumble play, the parts that carry over distance. Previously the shell landed in silence; the launch sound is unchanged.
+- FOOTSTEP-GRF-01 (`footstep`): practical 26's rolling foot: each step is a dull heel contact followed `FOOTSTEP_ROLL_S` later by a shorter, brighter ball contact; heavier walkers roll onto the ball more slowly.
+- BEE-BUZZ-01 (`updateBeeBuzz`, `createBeeBuzzVoice`, js/loop.js `updateWildlifeSound`): each bee in view now hums with practical 27's flying-insect model: a 230 Hz wing-beat sawtooth plus its strong second harmonic, both warbling together on one slow random wander (±9 %), panned and faded by position, higher and louder while it flees (LIVESTOCK-FLEE-01). Silent off screen, when paused and on the start screen.
+- ANIMAL-CALLS-01 (`creatureCall`, `CREATURE_CALLS`, `animal_call`): practical 29's vocal model, a glottal sawtooth whose pitch rises and falls through two or three formant filters with a little breath noise. Pigs grunt and squeal, chickens cluck and squawk, cows moo, monkeys chatter and screech, elephants rumble and trumpet. A struck animal cries out once as it bolts; animals in view call on their own every 14–36 s.
+- CAMPFIRE-CRACKLE-01 (`fire_crackle`, js/environment.js `crackleBurningFire`): practical 11's fire: a burning campfire in view crackles with short noise bursts at random pitch, a hiss now and then and a soft flame woof, at 2–9 crackles a second along a slowly wandering flare level (kept in a WeakMap so it never enters a save).
+- Design contract: FARNELL-AUDIO-01 guards the new models and hooks.
+
+## [1.8.110] — 2026-10-23 (UTC)
+
+- LIVESTOCK-FLEE-01 (js/waves.js `Enemy.startLivestockFlee`, `steerLivestockFlee`, `applyDamage`, `updateLivestockWander`, `updateBeeFlight`): peaceful animals (bees, pigs and the rest, not the clown or troll) now bolt directly away from whatever struck them for 3 s (`LIVESTOCK_FLEE_MS`) at 2.6x speed (`LIVESTOCK_FLEE_SPEED_MULT`); a bee also turns three times faster while fleeing (`LIVESTOCK_FLEE_TURN_MULT`). They never set `attackBumpTarget` and never strike a stickman. Measured over 2 s after one hit from 30 px away: a pig ends 102 px from the attacker, a bee 59 px.
+- MUSIC-BREAKDOWN-01 (js/audio.js `scheduleCombatBreakdown`, `scheduleMusicStep`): the owner asked for more contrast in the music, building on the existing score rather than replacing it. On odd cycles of the wave theme (not the boss theme), bars 8–11 strip down to a heartbeat kick, a held warm chord, a clock-like high tick and the melody alone on a soft reed at 75% level (`MUSIC_BREAKDOWN_LEAD_SHARE`). Bar 11 is a rising snare roll, and bar 12 brings the full band back with a sub-bass drop and a crash. Measured note energy per bar on a breakdown cycle: about 0.6 in bars 8–10 against 2.6–3.3 in the same bars on a normal cycle, then 3.3 on the return.
+- MUSIC-STOP-TIME-01 (js/audio.js `scheduleFieldStep`): on even cycles of the field theme, bars 12–13 stop the bass, drums, arpeggios and idle layers. The band hits only each downbeat as one kick and chord stab while the melody carries on alone, then everything resumes at bar 14. Measured energy in those bars: 0.93 and 0.67 against about 1.5 in the bars around them.
+- Design contract: two new checks guard LIVESTOCK-FLEE-01 and MUSIC-BREAKDOWN-01 / MUSIC-STOP-TIME-01.
+
+## [1.8.109] — 2026-10-23 (UTC)
+
+- STAIN-STEADY-01 (js/effects.js `drawBloodStains`, js/towers.js `drawEmojiSurfaceBlood`): marks caught by a barricade (the void-pattern blood) blinked and changed rapidly because the drawn cap swapped between 64 and 6 whenever `underHeavyVisualLoad` toggled, and the stamp cache key included that flag, so the mask was rebuilt with a different set of marks. The cap now follows the quality setting only (`STATIC_STAIN_LOW_QUALITY_MAX = 6` on Low), and the flag is out of the stamp key, so barricade blood stays put until the normal end-of-round fade.
+- TURNTABLE-SFX-01 (js/audio.js, js/ui.js speed button): speed changes now sound like a record. Each faster setting plays `speed_up`, a sawtooth platter spin-up with vinyl wow (`turntableSweep`, 5.5 Hz wobble), crackle ticks and a click as it locks in, starting higher for each tier (`TURNTABLE_TIER_RATIO = 1.35`). Dropping from 10x back to 1x plays `record_scratch`: three back-and-forth bandpass strokes, a quick pitch flick, then the platter braking from 320 Hz to 40 Hz over 0.7 s while the music ducks 16 dB and comes back.
+- Spectral Veil renamed Hooded Cloak 🧥 (js/config.js `DROP_ITEM_ROWS`, the Wraith's signature drop): a spider web made no sense as something a stickman wears. The id `SPECTRAL_VEIL` and its stats are unchanged, so saves keep it.
+- WILDLIFE-MARK-DELIBERATE-01 (js/config.js `tryMarkTargetAt`, `tapTileHasStickman`): an Archer shot a bee the player never marked. Bees fly above stickmen, so a tap meant for a stickman landed on a bee passing over it and marked it as a target. A tap on a stickman's tile no longer marks wildlife; hostile animals and enemies are still marked as before.
+- BRANCH-SPREAD-01 (js/environment.js `drawBranchSprite`, js/effects.js `maybeSpawnAmbientLog`, js/config.js save restore): branch piles drew their two or three sticks on top of each other. Each stick now takes its own slot around the spot (`BRANCH_SPREAD_MIN = 0.36`, `BRANCH_SPREAD_RANGE = 0.16` of the size, slots evenly spaced with jitter), new branches keep at least 2.5 tiles apart (`AMBIENT_LOG_MIN_GAP_TILES`, was 1) and sit off the tile centre (`AMBIENT_LOG_TILE_JITTER = 0.5`), and a loaded save keeps each branch where it lay instead of snapping it to the tile centre.
+
+## [1.8.108] — 2026-10-23 (UTC)
+
+- CLOSE-CALL-REMOVED-01 (js/waves.js `Enemy.die`, js/config.js, js/diagnostics.js): the owner asked for no "close" hits. Removed the CLOSE-CALL-01 block that froze play for 140 ms and floated "CLOSE!" when an enemy died within 70 px of the finish, along with `CLOSE_CALL_RADIUS_PX`, `CLOSE_CALL_FREEZE_MS`, `CLOSE_CALL_GAP_MS` and `lastCloseCallAt`. The design contract now fails if `Enemy.die` shows CLOSE! again. The low-lives stickman remark (`BARK_LINES.CLOSE_CALL`) is a separate feature and stays.
+
+## [1.8.107] — 2026-10-23 (UTC)
+
+- BUILD-SPOT-MARCH-01 (js/environment.js): the suggested build-spot outline marched too fast (player report). `BUILD_SPOT_MARCH_MS_PER_PX` 25 → 90, so the dashes travel at about 11 px/s instead of 40 px/s: a slow, calm crawl that still reads as motion.
+
+## [1.8.106] — 2026-10-24 (UTC)
+
+- MEAL-NOTICE-01 (js/environment.js): campfire meals and Wedding Cake slices are `isFood` with `kind:'FRUIT'`, so `explainItemKindOnce` showed the raw-fruit notice (random 1–3 Intelligence) for them, which was wrong. Each cooked meal now gets its own first-time notice from the new `cookedMealNoticeText`, listing the fixed gains in its `cookedStats` (named through `COOKED_STAT_NAMES`), the heal and the experience range, so the routine of explaining every new item kind once also covers meals.
+
+## [1.8.105] — 2026-10-24 (UTC)
+
+- Enemy descriptions (`ENEMY_INFO`, js/waves.js, shown in new-enemy notices) checked against the code and completed: Boss, Santa and Reaper now mention BOSS-STUN-RESIST-01 (stuns and freezes last about a third as long); the Zombie line names the Paladin's 1.5x holy blows (`HOLY_VS_UNDEAD_MULT`) beside the Cleric and Pope; the Troll mentions the swings it takes at stickmen it passes (`updateTroll`); the Healer mentions that it heals itself when it strikes a stickman (`holyLifesteal`). The Boss rally (3% health every 3.5–5 s), Skeleton revive and armor claims were confirmed as written.
+
+## [1.8.104] — 2026-10-23 (UTC)
+
+- First-time notices extended (ITEM-KIND-NOTICE-01, `explainItemKindOnce` and `consumableEffectText` in js/environment.js) to every remaining consumable kind, following the routine set for food and medicine: each of the eight treats (healing, experience, spendable stat points and gold read from `TREAT_ITEMS`, plus the Donut's escape shield from `DONUT_SHIELD_GAIN`, the Chocolate's attack-speed burst and the Lollipop's slow zone), each summon item (Merchant's Bell, Circus Ticket, Troll Bait) and the Shovel (`SHOVEL_CHARGES_PER_ROUND` digs each round). Verified in Chromium, e.g. "🍩 Glazed Donut — A rare treat: it heals the stickman, gives 55 experience and 2 stat points. It also shields your lives from the next 3 escapes."
+
 ## [1.8.103] — 2026-10-23 (UTC)
 
 - Plurals (PLURAL-01): new `countLabel(count, singular, plural)` in js/config.js is used for the counts that read wrong at 1: the end-of-run summary ("1 kill", `describeRunEnd`), the inspect-panel downed suffix ("DOWNED · 1 round", `updateInspectPanelNow`), the attunement countdown ("1 point until Fire Attunement") and the downed label over a stickman (`Tower.draw`, replacing last round's one-off check).

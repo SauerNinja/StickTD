@@ -543,7 +543,7 @@ function update(dt){
         if(fighters.length){
           const near = fighters[Math.floor(Math.random()*fighters.length)];
           const angle = Math.random()*Math.PI*2, dist = 20 + Math.random()*20;
-          const drop = WAVE_DROP_ITEMS[Math.floor(Math.random()*WAVE_DROP_ITEMS.length)];
+          const drop = drawFromShuffleBag(WAVE_DROP_ITEMS);
           spawnGroundItem(near.x + Math.cos(angle)*dist, near.y + Math.sin(angle)*dist - 4, drop, 'wave reward');
           showToast(drop.icon + ' ' + drop.name + ' dropped!');
         }
@@ -2234,6 +2234,23 @@ function updatePresentationEffects(frameMs){
   if(ambientLogElapsedMs >= AMBIENT_LOG_INTERVAL_MS){ ambientLogElapsedMs %= AMBIENT_LOG_INTERVAL_MS; maybeSpawnAmbientLog(); }
   updateBarks(clampedMs);
   for(const animal of enemyPool) if(animal.active && animal.isLivestock) animal.updateLivestockWander(clampedMs);
+  updateWildlifeSound(clampedMs);
+}
+// BEE-BUZZ-01, ANIMAL-CALLS-01: visible bees hum continuously; other peaceful animals in view call now and then. Nothing sounds off screen,
+// while paused, or on the start screen, so the field gains life without adding to the battle mix.
+const ANIMAL_IDLE_CALL_MIN_MS = 14000, ANIMAL_IDLE_CALL_SPREAD_MS = 22000;
+function updateWildlifeSound(frameMs){
+  const audible = gameState === 'PLAYING' && audioEngine.unlocked;
+  const bounds = fxViewBounds(), beeVoices = [];
+  for(const animal of enemyPool){
+    if(!audible || !animal.active || !animal.isLivestock || animal.isHostileNpc || !fxVisible(animal.x, animal.y, bounds)) continue;
+    if(animal.type === 'BEE'){ beeVoices.push({ key: animal.id, pan: audioEngine.panFor(animal.x), gain: BEE_BUZZ_MAX_GAIN*audioEngine.gainFor(animal.x, animal.y), fleeing: animal.fleeMsLeft > 0 }); continue; }
+    if(!CREATURE_CALLS[animal.type]) continue;
+    if(!(animal.idleCallMs > 0)) animal.idleCallMs = ANIMAL_IDLE_CALL_MIN_MS + Math.random()*ANIMAL_IDLE_CALL_SPREAD_MS;
+    animal.idleCallMs -= frameMs;
+    if(animal.idleCallMs <= 0){ animal.idleCallMs = 0; playSound('animal_call', animal.x, { type: animal.type, alarmed: false }, animal.y); }
+  }
+  audioEngine.updateBeeBuzz(beeVoices, frameMs);
 }
 // Only combat during an actual wave fast-forwards. Between waves everything runs at 1x.
 function effectiveGameSpeed(){ return waveState === 'IDLE' ? 1 : gameSpeed; }

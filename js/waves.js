@@ -26,22 +26,22 @@ const ENEMY_INFO = {
   SWARM: { name:'Swarm', desc:'Fast and numerous, but very fragile.' },
   TANK: { name:'Tank', desc:'Slow, but tough and armored.' },
   RUNNER: { name:'Runner', desc:'Very fast, low HP — outruns most attack speeds.' },
-  BOSS: { name:'Boss', desc:'Massive HP and armor. Always arrives last in its wave and periodically rallies, restoring a little health.' },
-  SANTA: { name:'Santa', desc:'The true final boss — replaces the Boss on the very last wave. Highest HP in the game, and periodically summons a few fast Cookies instead of healing.' },
+  BOSS: { name:'Boss', desc:'Massive HP and armor. Always arrives last in its wave and periodically rallies, restoring a little health. Stuns and freezes wear off it in about a third of the time.' },
+  SANTA: { name:'Santa', desc:'The true final boss — replaces the Boss on the very last wave. Highest HP in the game, and periodically summons a few fast Cookies instead of healing. Stuns and freezes wear off it in about a third of the time.' },
   COOKIE: { name:'Cookie', desc:'One of Santa\'s own — small and weak, but very fast. Ho ho ho.' },
   CHESS: { name:'Chess Piece', desc:'A Castle guardian — a random chess piece each time, black or white. Breaks off to attack a tower far more often than anything else on the board.' },
-  TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward — kill it before it wanders off!' },
+  TROLL: { name:'Troll', desc:'Huge bounty, but walks backward toward the entrance instead of forward, swinging at stickmen it passes — kill it before it wanders off.' },
   FIRE: { name:'Fire', desc:'Can break off the path to burn a tower directly. Never burns.' },
   ICE: { name:'Ice', desc:'Can break off the path to slow a tower directly. Slows and freezes barely hold it.' },
   SPLITTER: { name:'Splitter', desc:'Splits into two smaller Splitmini on death.' },
   SPLITMINI: { name:'Splitmini', desc:'A smaller fragment left behind by a Splitter.' },
-  HEALER: { name:'Healer', desc:'Heals nearby allies over time — kill it first.' },
+  HEALER: { name:'Healer', desc:'Heals nearby allies over time, and heals itself when it strikes a stickman — kill it first.' },
   SHIELDED: { name:'Shielded', desc:'Absorbs hits with a shield before taking real damage.' },
-  ZOMBIE: { name:'Zombie', desc:'Heavily armored undead — the Cleric\'s smite and the Pope\'s curse hit it five times harder.' },
+  ZOMBIE: { name:'Zombie', desc:'Heavily armored undead — the Cleric\'s smite and the Pope\'s curse hit it five times harder, and the Paladin\'s holy blows half again as hard.' },
   WRAITH: { name:'Wraith', desc:'Fast, armored undead.' },
   SKELETON: { name:'Skeleton', desc:'Undead that revives once after being killed.' },
   WOLF: { name:'Wolf', desc:'Quick, and more likely than most to break off the path and attack a stickman.' },
-  REAPER: { name:'Reaper', desc:'The heaviest-armored undead in the roster.' },
+  REAPER: { name:'Reaper', desc:'The heaviest-armored undead in the roster. Stuns and freezes wear off it in about a third of the time.' },
   BOULDER: { name:'Boulder', desc:'Tanky, and splits on death like a heavier Splitter.' },
   ROCKLET: { name:'Rocklet', desc:'A smaller rock fragment left behind by a Boulder.' },
   MONARCH: { name:'Monarch', desc:'Among the fastest things on the path — hard to hit, doesn\'t hit hard back.' }
@@ -572,6 +572,7 @@ function loseLife(n){
 const TROLL_ATTACK_RADIUS = 58, TROLL_ATTACK_INTERVAL_MS = 1600, TROLL_ATTACK_DAMAGE = 10, TROLL_AGGRO_RADIUS = 300, TROLL_HUNT_SPEED_MULT = 1.3; // TROLL-HUNT-01
 // LIVESTOCK-01: farm animals, bees and circus performers wander the road and its grass border (isLooseWalkableAt), drop their meat item when
 // killed, and never count toward a wave. Towers attack one only after the player marks it (TARGET-MARK-01); hunters (clown, wandering troll) attack stickmen.
+const LIVESTOCK_FLEE_MS = 3000, LIVESTOCK_FLEE_SPEED_MULT = 2.6, LIVESTOCK_FLEE_TURN_MULT = 3; // LIVESTOCK-FLEE-01
 const LIVESTOCK_TYPES = {
   BEE: { emoji:'🐝', meatId:'HONEY', speed:24, radius:8 },
   CHICKEN: { emoji: '🐔', meatId: 'DRUMSTICK', speed: 18, radius: 10 },
@@ -1267,6 +1268,7 @@ class Enemy{
         this.faceLivestockAlongVelocity();
       }
     }
+    if(this.fleeMsLeft > 0 && !hunter) this.steerLivestockFlee(dt, LIVESTOCK_TYPES[this.type].speed * LIVESTOCK_WALK_SPEED_MULT * LIVESTOCK_FLEE_SPEED_MULT);
     const walkSpeed = this.livestockWalking ? Math.hypot(this.vx, this.vy) : 0;
     if(walkSpeed > 0 && !isLooseWalkableAt(this.x + this.vx/walkSpeed*NPC_EDGE_LOOKAHEAD_PX, this.y + this.vy/walkSpeed*NPC_EDGE_LOOKAHEAD_PX)){
       const inward = nearestLooseWalkableTileCenter(this.x, this.y);
@@ -1292,25 +1294,42 @@ class Enemy{
     if(!Number.isFinite(this.beeHeading)){ this.beeHeading = Math.random()*Math.PI*2; this.beeGoalHeading = this.beeHeading; this.beePhase = Math.random()*Math.PI*2; }
     this.retargetTimer = (this.retargetTimer||0) - dt;
     const aheadX = this.x + Math.cos(this.beeHeading)*NPC_EDGE_LOOKAHEAD_PX, aheadY = this.y + Math.sin(this.beeHeading)*NPC_EDGE_LOOKAHEAD_PX;
+    const fleeing = this.fleeMsLeft > 0;
+    if(fleeing){ this.fleeMsLeft -= dt; this.beeGoalHeading = Math.atan2(this.y - this.fleeFromY, this.x - this.fleeFromX); }
     if(!beeCanFlyAt(aheadX, aheadY)){
       this.beeGoalHeading = Math.atan2((activeRegion.y0 + activeRegion.y1 + 1)*TILE_SIZE/2 - this.y, (activeRegion.x0 + activeRegion.x1 + 1)*TILE_SIZE/2 - this.x);
       this.retargetTimer = BEE_RETARGET_MS_MIN;
-    } else if(this.retargetTimer <= 0){
+    } else if(this.retargetTimer <= 0 && !fleeing){
       this.beeGoalHeading = this.beeHeading + (Math.random()*2 - 1)*BEE_GOAL_SWING_RAD;
       this.retargetTimer = BEE_RETARGET_MS_MIN + Math.random()*(BEE_RETARGET_MS_MAX - BEE_RETARGET_MS_MIN);
     }
     let turn = this.beeGoalHeading - this.beeHeading;
     while(turn > Math.PI) turn -= Math.PI*2;
     while(turn < -Math.PI) turn += Math.PI*2;
-    this.beeHeading += clampNum(turn, -BEE_TURN_RATE*seconds, BEE_TURN_RATE*seconds);
+    const turnRate = BEE_TURN_RATE*(fleeing ? LIVESTOCK_FLEE_TURN_MULT : 1);
+    this.beeHeading += clampNum(turn, -turnRate*seconds, turnRate*seconds);
     this.beePhase += seconds*BEE_SWELL_HZ*Math.PI*2;
-    const speed = cruise*(1 + BEE_SWELL_SHARE*Math.sin(this.beePhase));
+    const speed = cruise*(1 + BEE_SWELL_SHARE*Math.sin(this.beePhase))*(fleeing ? LIVESTOCK_FLEE_SPEED_MULT : 1);
     this.vx = Math.cos(this.beeHeading)*speed; this.vy = Math.sin(this.beeHeading)*speed;
     this.livestockWalking = true;
     if(this.vx > cruise*BEE_FACE_FLIP_SHARE) this.livestockFacesRight = true;
     else if(this.vx < -cruise*BEE_FACE_FLIP_SHARE) this.livestockFacesRight = false;
     const stepX = this.x + this.vx*seconds, stepY = this.y + this.vy*seconds;
     if(beeCanFlyAt(stepX, stepY) || !beeCanFlyAt(this.x, this.y)){ this.x = stepX; this.y = stepY; }
+  }
+  // LIVESTOCK-FLEE-01: a peaceful animal never fights back; struck, it bolts directly away from whoever hit it for a few seconds.
+  startLivestockFlee(sourceTower){
+    if(!(this.fleeMsLeft > 0) && this.type !== 'BEE') playSound('animal_call', this.x, { type: this.type, alarmed: true }, this.y); // ANIMAL-CALLS-01: a struck animal cries out once as it bolts
+    this.fleeMsLeft = LIVESTOCK_FLEE_MS;
+    this.fleeFromX = sourceTower ? sourceTower.x : this.x - (this.vx || 1);
+    this.fleeFromY = sourceTower ? sourceTower.y : this.y - (this.vy || 0);
+    this.attackBumpTarget = null;
+  }
+  steerLivestockFlee(dt, fleeSpeed){
+    this.fleeMsLeft -= dt;
+    const awayX = this.x - this.fleeFromX, awayY = this.y - this.fleeFromY, awayLength = Math.hypot(awayX, awayY) || 1;
+    this.vx = awayX/awayLength*fleeSpeed; this.vy = awayY/awayLength*fleeSpeed;
+    this.livestockWalking = true; this.retargetTimer = Math.max(this.retargetTimer || 0, LIVESTOCK_WALK_MS_MIN);
   }
   faceLivestockAlongVelocity(){
     const sideways = this.moveVx || this.vx;
@@ -1941,6 +1960,7 @@ class Enemy{
   }
   applyDamage(amount, sourceTower, forStreak, isHoly, allowBleed, countsAsShotHit, ignoreArmor, bloodImpactAngle, bloodProfileKey){
     if(!this.active || this.deathResolved) return;
+    if(this.isLivestock && !this.isHostileNpc) this.startLivestockFlee(sourceTower);
     this.damageHitCount = (this.damageHitCount || 0) + 1;
     const isGraveTarget = (this.isHutBuilding && this.buildingKind === 'GRAVE') || (this.isGuardian && this.hutRef && this.hutRef.buildingKind === 'GRAVE');
     if(isGraveTarget && !isHoly) amount = Math.max(1, Math.round(amount * 0.05));
@@ -2323,12 +2343,6 @@ class Enemy{
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
-    const finish = waypointsPx[waypointsPx.length - 1];
-    if(finish && !this.escaped && !this.isLivestock && !this.isGuardian && presentationTime - lastCloseCallAt > CLOSE_CALL_GAP_MS && Math.hypot(this.x - finish.x, this.y - finish.y) < CLOSE_CALL_RADIUS_PX){
-      lastCloseCallAt = presentationTime;
-      hitStopUntil = Math.max(hitStopUntil, gameTime + CLOSE_CALL_FREEZE_MS);
-      spawnFloatingText(this.x, this.y - this.radius - 14, 'CLOSE!', '#ffd54f', 900);
-    }
     playSound('gore_death', this.x, goreScale, this.y);
     updateHUD();
     const deathElapsedMs = performance.now() - deathStartedAt;
@@ -2493,7 +2507,7 @@ class Enemy{
     const strideLift = isStriding ? Math.abs(Math.sin(strideAngle)) : 0;
     const startleLeft = this.startledUntil - presentationTime;
     const startleHop = startleLeft > 0 ? Math.sin((1 - startleLeft / ENEMY_STARTLE_MS) * Math.PI) * this.radius * 0.35 : 0;
-    const walkBob = this.isLivestock ? 0 : -strideLift * this.radius * ENEMY_HOP_PER_RADIUS - startleHop;
+    const walkBob = this.isLivestock ? 0 : (isStriding ? stickmanWalkBobPx(strideAngle) / WALK_UP_PX * this.radius * ENEMY_HOP_PER_RADIUS : 0) - startleHop; // WALK-WILLIAMS-01: the same dip-after-contact, rise-on-passing weight curve as the stickmen
     ctx.translate(this.x+bumpDx, this.y+bumpDy+walkBob);
     if(isStriding){
       const strideStretch = 1 + (strideLift - 0.5) * ENEMY_STRIDE_SQUASH; // taller at the top of the hop, wider on landing

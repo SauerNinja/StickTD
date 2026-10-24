@@ -1365,7 +1365,7 @@ function updateBloodTrails(dt){
   }
 }
 // BLOOD-VOID-01: a body that stands between a wound and the ground catches the droplets that would have landed behind it, which leaves a clean patch (a void pattern) in the spatter and blood on the body itself.
-const STICKMAN_STAIN_DRAW_MAX = 16, BLOOD_STAIN_MAX = 64, BLOOD_STAIN_LIFE_MS = 75000;
+const STICKMAN_STAIN_DRAW_MAX = 16, BLOOD_STAIN_MAX = 64, STATIC_STAIN_LOW_QUALITY_MAX = 6, BLOOD_STAIN_LIFE_MS = 75000;
 const VOID_BODY_HEIGHT_PX = 1.1*FORENSIC_PX_PER_METER, BLOCKER_BOUNDS_PAD_PX = 40;
 function stainEntity(entity, offsetX, offsetY, size, rgb, angle){
   if(!entity.bloodStains) entity.bloodStains = [];
@@ -1391,7 +1391,7 @@ function drawBloodStains(ctx, entity){
   }
   const stains = entity.bloodStains;
   if(!stains || !stains.length) return;
-  const drawCap = (graphicsQuality === 'low' || underHeavyVisualLoad) ? 6 : BLOOD_STAIN_MAX;
+  const drawCap = graphicsQuality === 'low' ? STATIC_STAIN_LOW_QUALITY_MAX : BLOOD_STAIN_MAX; // STAIN-STEADY-01: the cap follows the quality setting only, so a barricade's marks never blink in and out as the frame load changes
   ctx.save();
   for(let index = Math.max(0, stains.length - drawCap); index < stains.length; index++){
     const stain = stains[index], ageT = bloodStainLifeT(stain);
@@ -1664,7 +1664,7 @@ const COIN_GRAVITY_PX_PER_S2 = 900;
 const COIN_EMOJI_PX = 12;
 const COIN_PICKUP_MIN_MS = 15000, COIN_PICKUP_MAX_MS = 20000; // COIN-LIFETIME-01: coins stay 15 to 20 seconds before they despawn (was 5 to 15)
 // AMBIENT-LOG-STACK-01: a log pile holds three logs and each tap collects one (a third of the pile's wood)
-const AMBIENT_LOG_INTERVAL_MS = 45000, AMBIENT_LOG_WOOD = 15, AMBIENT_LOG_MAX_ON_BOARD = 12, AMBIENT_LOG_STACK_SIZE = 3;
+const AMBIENT_LOG_INTERVAL_MS = 45000, AMBIENT_LOG_WOOD = 15, AMBIENT_LOG_MAX_ON_BOARD = 12, AMBIENT_LOG_STACK_SIZE = 3, AMBIENT_LOG_MIN_GAP_TILES = 2.5, AMBIENT_LOG_TILE_JITTER = 0.5; // BRANCH-SPREAD-01
 const ambientLogs = [];
 let ambientLogElapsedMs = 0;
 function maybeSpawnAmbientLog(){
@@ -1674,8 +1674,8 @@ function maybeSpawnAmbientLog(){
   for(let attempt=0;attempt<96;attempt++){
     const gx=x0+Math.floor(Math.random()*(x1-x0+1)),gy=y0+Math.floor(Math.random()*(y1-y0+1)),key=gx+','+gy;
     if(pathCells.has(key) || nearPathTileSet.has(key) || bonusGrassTiles.has(key) || sceneryMap.has(key) || tileHasHut(gx,gy))continue;
-    const x=(gx+0.5)*TILE_SIZE,y=(gy+0.5)*TILE_SIZE;
-    if(ambientLogs.some(log=>Math.hypot(log.x-x,log.y-y)<TILE_SIZE) || groundItems.some(item=>Math.hypot(item.x-x,item.y-y)<TILE_SIZE))continue;
+    const x=(gx+0.5+(Math.random()-0.5)*AMBIENT_LOG_TILE_JITTER)*TILE_SIZE,y=(gy+0.5+(Math.random()-0.5)*AMBIENT_LOG_TILE_JITTER)*TILE_SIZE;
+    if(ambientLogs.some(log=>Math.hypot(log.x-x,log.y-y)<TILE_SIZE*AMBIENT_LOG_MIN_GAP_TILES) || groundItems.some(item=>Math.hypot(item.x-x,item.y-y)<TILE_SIZE))continue;
     candidates.push({x,y}); break;
   }
   if(!candidates.length) return false;

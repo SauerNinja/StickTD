@@ -1713,10 +1713,13 @@ function branchRandomFor(piece, variant){
     return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
   };
 }
+const BRANCH_SPREAD_MIN = 0.36, BRANCH_SPREAD_RANGE = 0.16;
 function drawBranchSprite(ctx, size, color, piece, variant = 0){
-  const random = branchRandomFor(piece, variant), glyphCount = 1 + Math.floor(random()*3);
+  const random = branchRandomFor(piece, variant), glyphCount = 1 + Math.floor(random()*3), slotStart = random()*Math.PI*2;
   for(let glyph = 0; glyph < glyphCount; glyph++){
-    const glyphSize = size*(0.38 + random()*0.24), offsetX = (random() - 0.5)*size*0.5, offsetY = (random() - 0.5)*size*0.32, angle = random()*Math.PI*2, mirrored = random() < 0.5;
+    // BRANCH-SPREAD-01: each stick takes its own slot around the spot instead of piling on the others.
+    const slotAngle = slotStart + glyph*Math.PI*2/glyphCount + (random() - 0.5)*0.6, spread = glyphCount > 1 ? size*(BRANCH_SPREAD_MIN + random()*BRANCH_SPREAD_RANGE) : 0;
+    const glyphSize = size*(0.34 + random()*0.2), offsetX = Math.cos(slotAngle)*spread, offsetY = Math.sin(slotAngle)*spread*0.7, angle = slotAngle + Math.PI/2 + (random() - 0.5)*0.8, mirrored = random() < 0.5;
     ctx.save();
     ctx.translate(offsetX, offsetY); ctx.rotate(angle); if(mirrored) ctx.scale(-1, 1);
     drawEmojiSprite(ctx, BRANCH_GLYPH, glyphSize);
@@ -1956,7 +1959,7 @@ function dropTreasureBags(x, y, count){
 }
 function dropBerries(x, y, count){
   for(let berry = 0; berry < count; berry++){
-    const berryId = BERRY_FOOD_IDS[Math.floor(Math.random()*BERRY_FOOD_IDS.length)], angle = berry / count * Math.PI * 2;
+    const berryId = drawFromShuffleBag(BERRY_FOOD_IDS), angle = berry / count * Math.PI * 2;
     spawnGroundItem(x + Math.cos(angle)*12, y - 4 + Math.sin(angle)*8, FOOD_BY_ID.get(berryId), 'scenery');
   }
 }
@@ -2012,7 +2015,7 @@ function updateScenery(dt){
         else dropBerries(item.x, item.y, 2 + Math.floor(Math.random()*2));
       }
       if(Math.random() < 0.25){
-        const dessert=TREAT_ITEMS[Math.floor(Math.random()*TREAT_ITEMS.length)];
+        const dessert=drawFromShuffleBag(TREAT_ITEMS);
         spawnGroundItem(item.x,item.y-4,dessert,'chest dessert');
         spawnFloatingText(item.x,item.y-24,dessert.icon+' '+dessert.name,'#7dd3fc',ITEM_POPUP_LIFE_MS);
       }
@@ -2027,7 +2030,7 @@ function updateScenery(dt){
       spawnParticles(item.x, item.y, '#ffd700', 10);
       playSound('wave');
     } else if(item.type === 'ITEM'){
-      const p = PASSIVE_UPGRADES[Math.floor(Math.random()*PASSIVE_UPGRADES.length)];
+      const p = drawFromShuffleBag(PASSIVE_UPGRADES);
       globalPassiveCounts[p.id] = (globalPassiveCounts[p.id]||0) + 1;
       for(const t of towerPool) if(t.active) t.recomputeStats();
       spawnFloatingText(item.x, item.y - 20, '✨ ' + p.name, '#a78bfa');
@@ -2080,7 +2083,7 @@ const FOOD_ITEMS = FOOD_ITEM_ROWS.map(([id, name, icon, kind]) => Object.freeze(
 // BUSH-BERRIES-01: the fruit ids a Bush can drop — every real berry-shaped fruit in the catalog.
 const BERRY_FOOD_IDS = ['STRAWBERRY', 'CHERRIES', 'BLUEBERRY', 'GRAPES'];
 const FOOD_BY_ID = new Map(FOOD_ITEMS.map(item => [item.id, item]));
-// ITEM-KIND-NOTICE-01: the first time each food kind and each medicine, stim or tonic appears in a player's game, a notice explains exactly what it does.
+// ITEM-KIND-NOTICE-01: the first time each food kind and each medicine, stim, tonic, treat, summon item or the shovel appears in a player's game, a notice explains exactly what it does.
 function foodKindNotice(kind){ return ({
   FRUIT: ['🍎 Fruit', 'Drop fruit on a stickman and it is eaten at once: it heals a little and adds ' + FOOD_STAT_GAIN_MIN + '–' + FOOD_STAT_GAIN_MAX + ' Intelligence and ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience.'],
   VEGETABLE: ['🥕 Vegetables', 'Drop a vegetable on a stickman and it is eaten at once: it heals a little and adds ' + FOOD_STAT_GAIN_MIN + '–' + FOOD_STAT_GAIN_MAX + ' Dexterity and ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience.'],
@@ -2088,17 +2091,32 @@ function foodKindNotice(kind){ return ({
 })[kind]; }
 function consumableEffectText(def){
   if(def.isMedical) return def.isRevive ? 'When your lives run out, it brings them back to ' + Math.round(DEFIBRILLATOR_REVIVE_LIVES_FRACTION*100) + '% once.' : def.healFraction ? 'Restores ' + Math.round(def.healFraction*100) + '% of your missing lives.' : 'Restores ' + def.healLives + ' lives.';
+  if(def.isTreat){
+    const extra = def.id === 'DONUT' ? ' It also shields your lives from the next ' + countLabel(DONUT_SHIELD_GAIN, 'escape') + '.'
+      : def.id === 'CHOCOLATE' ? ' It also raises attack speed by ' + Math.round(CHOCOLATE_ATK_SPEED_BONUS*100) + '% for ' + Math.round(CHOCOLATE_BUFF_DURATION_MS/1000) + ' seconds.'
+      : def.id === 'LOLLIPOP' ? ' It also leaves a sticky zone that slows enemies for ' + Math.round(LOLLIPOP_ZONE_DURATION_MS/1000) + ' seconds.' : '';
+    return 'A rare treat: it heals the stickman, gives ' + def.xp + ' experience and ' + countLabel(def.spendablePoints, 'stat point') + (def.gold ? ', and pays ' + def.gold + ' gold' : '') + '.' + extra;
+  }
+  if(def.isSummon) return def.summons === 'caravan' ? 'Calls the merchant caravan to the road.' : def.summons === 'circus' ? 'Calls a circus to set up beside the road.' : 'Lures a wandering troll onto the map.';
+  if(def.isDiggingTool) return 'Lets a stickman dig the ground nearby for buried items, ' + SHOVEL_CHARGES_PER_ROUND + ' digs each round.';
   if(def.isHutLoot) return def.kind === 'heal' ? 'Restores ' + def.amount + ' lives.' : def.kind === 'gold' ? 'Pays ' + def.amount + ' gold.' : 'Gives the stickman ' + def.amount + ' experience.';
   const effects = def.effects || [{ stat: def.stat, value: def.value }];
   return effects.map(effect => effect.stat === 'heal' ? 'Heals the stickman by ' + Math.round(effect.value*100) + '% of its health.'
     : effect.stat === 'all' ? 'Raises damage, attack speed and range by ' + Math.round((effect.value-1)*100) + '% until the wave ends.'
     : ROUND_BUFF_LABELS[effect.stat] + ' +' + Math.round((effect.value-1)*100) + '% until the wave ends.').join(' ');
 }
+// MEAL-NOTICE-01: a campfire meal explains its own fixed stat gains, which replace the random gain of raw food.
+const COOKED_STAT_NAMES = { con: 'Constitution', int: 'Intelligence', dex: 'Dexterity', str: 'Strength' };
+function cookedMealNoticeText(def){
+  const gains = Object.entries(def.cookedStats).map(([stat, amount]) => '+' + Math.round(amount) + ' ' + (COOKED_STAT_NAMES[stat] || stat.toUpperCase())).join(', ');
+  return 'A cooked meal: drop it on a stickman and it is eaten at once. It heals a little, gives ' + FOOD_XP_MIN + '–' + FOOD_XP_MAX + ' experience and adds ' + gains + '. Cooking multiplies what the raw ingredients would give, up to the limit for each stat.';
+}
 function explainItemKindOnce(def){
   if(!def || typeof seenTutorialTips === 'undefined') return;
   let key, title, text;
-  if(def.isFood && foodKindNotice(def.kind)){ key = 'food_' + def.kind; [title, text] = foodKindNotice(def.kind); }
-  else if(def.isMedical || def.isHutLoot || (def.isStim && !def.isMeal)){
+  if(def.isCookedMeal){ key = 'item_' + def.id; title = def.icon + ' ' + def.name; text = cookedMealNoticeText(def); }
+  else if(def.isFood && foodKindNotice(def.kind)){ key = 'food_' + def.kind; [title, text] = foodKindNotice(def.kind); }
+  else if(def.isMedical || def.isHutLoot || def.isTreat || def.isSummon || def.isDiggingTool || (def.isStim && !def.isMeal)){
     key = 'item_' + def.id; title = def.icon + ' ' + def.name;
     text = consumableEffectText(def) + (def.isMedical ? '' : ' Drag it onto a stickman, then press it in the pack to use it.');
   } else return;
@@ -2497,6 +2515,15 @@ function normalizeCookingJob(fire){
   if(job.woodUsed===0) job.segmentRemainingMs=0;
   job.progressMs=job.woodUsed*CAMPFIRE_WOOD_STEP_MS-job.segmentRemainingMs;
 }
+// CAMPFIRE-CRACKLE-01: a burning campfire in view crackles at a rate that wanders like a real fire's flare and lull.
+const FIRE_CRACKLES_PER_S_MIN = 2, FIRE_CRACKLES_PER_S_MAX = 9, FIRE_FLARE_DRIFT = 0.0008, fireFlareLevels = new WeakMap();
+function crackleBurningFire(fire, frameMs){
+  if(!fxVisible(fire.x, fire.y, fxViewBounds())) return;
+  const flare = clampNum((fireFlareLevels.has(fire) ? fireFlareLevels.get(fire) : 0.5) + (Math.random()*2 - 1)*FIRE_FLARE_DRIFT*frameMs, 0, 1);
+  fireFlareLevels.set(fire, flare); // kept outside the scenery object so it never enters a save
+  const cracklesPerSecond = FIRE_CRACKLES_PER_S_MIN + (FIRE_CRACKLES_PER_S_MAX - FIRE_CRACKLES_PER_S_MIN)*flare*flare;
+  if(Math.random() < cracklesPerSecond*frameMs/1000) playSound('fire_crackle', fire.x, flare, fire.y);
+}
 function updateCampfireCooking(frameMs){
   if(gameState!=='PLAYING') return;
   for(const fire of sceneryMap.values()){
@@ -2513,6 +2540,7 @@ function updateCampfireCooking(frameMs){
       job.segmentRemainingMs-=advance; job.progressMs+=advance; remaining-=advance;
     }
     fire.fuel=job.segmentRemainingMs>0?1:0;
+    if(fire.fuel>0) crackleBurningFire(fire, frameMs);
     if(job.progressMs>=recipe.woodCost*CAMPFIRE_WOOD_STEP_MS){
       spawnGroundItem(fire.x,fire.y,recipe.def,'cooked at campfire'); delete fire.cookingJob; fire.fuel=0;
       spawnFloatingText(fire.x,fire.y-25,recipe.def.icon+' Ready','#ffe082'); logGameEvent('cooking completed: '+recipe.id);
@@ -3873,7 +3901,7 @@ const buildPreviewAppearance={preview:true,lowGfx:true,hasTarget:false,weaponSca
 // BUILD-SPOT-HINT-01: while a class is chosen in the Build menu, the free tile that covers the most road within that class's starting range gets a marching
 // black-and-white outline, a "good spot" hint from Buckland's support-spot scoring. It is a suggestion only; any buildable tile can still be used.
 let buildSpotHintCache = { key: '', tile: null };
-const BUILD_SPOT_DASH_PX = 9, BUILD_SPOT_MARCH_MS_PER_PX = 25;
+const BUILD_SPOT_DASH_PX = 9, BUILD_SPOT_MARCH_MS_PER_PX = 90;
 function bestBuildSpotFor(type){
   const def = CONFIG.TOWERS[type];
   if(!def || !def.tiers || !def.tiers[0] || !activeRegion || isProducerType(type) || type === 'BARRICADE') return null;

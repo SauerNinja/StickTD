@@ -56,7 +56,11 @@ const MUSIC_VIBRATO_CENTS = 16;
 const MUSIC_KEY_PITCH_CLASSES = new Set([0, 2, 3, 5, 7, 8, 10, 11]);
 const MUSIC_HARMONY_GAPS = [5, 4, 3, 6];
 const MUSIC_TEMPO_CREEP = 0.06;
+const MUSIC_BREAKDOWN_FIRST_BAR = 8, MUSIC_BREAKDOWN_LAST_BAR = 11, MUSIC_BREAKDOWN_LEAD_SHARE = 0.75, MUSIC_BREAKDOWN_ROLL_FLOOR = 0.25, MUSIC_BREAKDOWN_SLAM_LEVEL = 0.95; // MUSIC-BREAKDOWN-01
+const MUSIC_STOP_TIME_BARS = new Set([12, 13]); // MUSIC-STOP-TIME-01
+const MUSIC_PERIL_LIVES_SHARE = 0.25, MUSIC_PERIL_MIN_HZ = 1100, MUSIC_PERIL_OPEN_HZ = 20000, MUSIC_PERIL_IN_SECONDS = 1.5, MUSIC_PERIL_OUT_SECONDS = 4, MUSIC_PERIL_RETARGET_HZ = 150; // MUSIC-PERIL-01 (Sweet ch9/11): low lives close a low-pass on the score; ~1.5 s in, ~4 s out
 const MUSIC_STING_PICKUPS = Object.freeze([[0, 0, 7, 0.05], [2, 3, 10, 0.062], [4, 5, 12, 0.076]]), MUSIC_STING_DROP_STEP = MUSIC_STEPS_PER_BAR; // MUSIC-STING-02: [step, root offset, fifth-or-above offset, gain]
+const MUSIC_STING_VARIANTS = Object.freeze([MUSIC_STING_PICKUPS, Object.freeze([[0, 7, 12, 0.05], [2, 5, 10, 0.062], [4, 3, 7, 0.076]]), Object.freeze([[0, -2, 3, 0.05], [2, 0, 7, 0.062], [4, 3, 10, 0.076]])]); // MUSIC-STING-VARY-01 (Sweet ch10): rotating minor-pentatonic pickups so the wave stinger never repeats twice running
 // MUSIC-ATTRACT-01: the start screen plays its own arrangement of the battle melody
 // MUSIC-ATTRACT-03: the start screen is a dark minor-key march (i, VI, VII, V), slower, in a lower register, without the sparkling arpeggio octave, open hats and claps
 // MUSIC-REFERENCE-01: the start screen slows to 88 BPM, holds each verse chord as a four-bar bass pedal under a quiet low fifth, answers the lead with an oboe line, rests twice per cycle and develops its motif; wave and field music gain a timpani downbeat and a fill every fourth bar
@@ -166,7 +170,27 @@ const SFX_VARIANT_PITCH = [1, 1.0595, 0.9439, 1.1225, 0.8909], SFX_VARIANT_NOISE
 // BUILD-MELODY-01: each placement plays the next note of a short phrase in the score's current key instead of the same click (SimGolf's placement tune, Sid Meier's Memoir!).
 const BUILD_MELODY_STEPS = [0, 3, 7, 5, 3, 7, 10, 12, 10, 7, 5, 3];
 const BUILD_MELODY_BASE_NOTE = 72;
-const SFX_VARIANT_EXEMPT = new Set(['loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','class_unlock','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
+// GUNSHOT-LAYERS-01, EXPLOSION-LAYERS-01, FOOTSTEP-GRF-01, CAMPFIRE-CRACKLE-01 (Farnell, Designing Sound, practicals 11, 26, 30, 31).
+const GUN_CHIRP_HIGH_HZ = 5200, GUN_MUZZLE_DELAY_S = 0.0015, GUN_RIFLE_BODY_HZ = [260, 410, 590, 770, 2450, 2700], GUN_CARBINE_BODY_HZ = [330, 520, 700, 2300, 2900];
+const EXPLOSION_THUMP_HZ = 480, EXPLOSION_BLAST_CUTOFFS_HZ = [4200, 2400, 1300], EXPLOSION_RUMBLE_S = 0.75, EXPLOSION_DETAIL_GAIN_FLOOR = 0.45, EXPLOSION_REFERENCE_RADIUS = 55;
+const FOOTSTEP_ROLL_S = 0.045, FOOTSTEP_BALL_SHARE = 0.55;
+const CREATURE_ALARM_GAIN = 0.06, CREATURE_IDLE_GAIN = 0.03;
+const FIRE_CRACKLE_MIN_HZ = 900, FIRE_CRACKLE_MAX_HZ = 7000, FIRE_HISS_CHANCE = 0.12, FIRE_LAP_CHANCE = 0.15;
+// FARNELL-RESONATOR-01, FARNELL-VOICE-01, BEE-BUZZ-01 (Farnell, Designing Sound, practicals 27, 29 and 30).
+const RESONATOR_DECAY_TIME_CONSTANTS = 4, RESONATOR_MAKEUP_GAIN = 6, CREATURE_PITCH_JITTER = 0.06, CREATURE_MAKEUP_GAIN = 3.5;
+const BEE_BUZZ_HZ = 230, BEE_BUZZ_WARBLE_SHARE = 0.09, BEE_BUZZ_WARBLE_MS = 250, BEE_BUZZ_WING_OFFSET = 0.012, BEE_BUZZ_HARMONIC_LEVEL = 0.7, BEE_BUZZ_BODY_HZ = 1700, BEE_BUZZ_FLEE_PITCH = 1.18, BEE_BUZZ_FLEE_GAIN = 1.6, BEE_BUZZ_MAX_GAIN = 0.022;
+// Creature calls: f0 = [start, peak, end] Hz, rise = share of the call spent rising, formants = vocal-tract band centres (Hz).
+const CREATURE_CALLS = {
+  PIG:      { alarm: { seconds: 0.42, f0: [480, 980, 620], rise: 0.35, formants: [1150, 2600], q: 5, breath: 0.25 }, idle: { seconds: 0.2, f0: [120, 105, 85], rise: 0.25, formants: [420, 1150], q: 4, breath: 0.6 } },
+  CHICKEN:  { alarm: { seconds: 0.28, f0: [760, 1250, 820], rise: 0.3, formants: [1600, 3300], q: 6, breath: 0.15 }, idle: { seconds: 0.07, f0: [520, 560, 480], rise: 0.4, formants: [1300, 2900], q: 5, breath: 0.2 } },
+  COW:      { alarm: { seconds: 0.55, f0: [170, 230, 150], rise: 0.4, formants: [560, 1050, 2300], q: 6, breath: 0.2 }, idle: { seconds: 0.95, f0: [130, 165, 105], rise: 0.45, formants: [480, 850, 2200], q: 6, breath: 0.15 } },
+  MONKEY:   { alarm: { seconds: 0.3, f0: [950, 1550, 1100], rise: 0.25, formants: [1900, 3600], q: 5, breath: 0.3 }, idle: { seconds: 0.16, f0: [700, 880, 650], rise: 0.4, formants: [1500, 3000], q: 5, breath: 0.25 } },
+  ELEPHANT: { alarm: { seconds: 0.7, f0: [300, 500, 380], rise: 0.3, formants: [900, 1850, 2800], q: 4, breath: 0.45 }, idle: { seconds: 0.6, f0: [60, 75, 50], rise: 0.4, formants: [220, 600], q: 3, breath: 0.5 } }
+};
+// TURNTABLE-SFX-01: speed changes sound like a record: a spin-up for each faster setting, a scratch and brake when it drops back to 1x.
+const TURNTABLE_BASE_HZ = 70, TURNTABLE_TIER_RATIO = 1.35, TURNTABLE_SPIN_UP_S = 0.42, TURNTABLE_BRAKE_S = 0.7, TURNTABLE_WOW_HZ = 5.5, TURNTABLE_WOW_DEPTH = 0.03, TURNTABLE_TONE_HZ = 1800, TURNTABLE_CRACKLE_TICKS = 6;
+const TURNTABLE_SCRATCH_STROKES = [[0, 2600, 0.07], [0.07, 1200, 0.08], [0.15, 2200, 0.05]];
+const SFX_VARIANT_EXEMPT = new Set(['speed_up','record_scratch','loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','class_unlock','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
 const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
@@ -174,10 +198,10 @@ const AUDIO_EVENT_GAPS = Object.freeze({
   shot_squirtgun:0.055, shot_cat:0.08, shot_bomber:0.12, shot_star:0.045, shot_knife:0.05, shot_rifle:0.08, shot_glaive:0.2, shot_coins:0.15,
   cast_mage:0.075, cast_cleric:0.10, gore_death:0.065, foot_squelch:0.10,
   coin:0.045, bag:0.10, levelup:0.18, chatter_short:0.15,
-  click:0.035, ui_open:0.08, ui_close:0.08, ui_buy:0.08, stat_spend:0.055, spawn_chatter:0.25,
+  click:0.035, ui_open:0.08, ui_close:0.08, ui_buy:0.08, animal_call:0.35, fire_crackle:0.03, explosion:0.05, speed_up:0.06, record_scratch:0.3, stat_spend:0.055, spawn_chatter:0.25,
   caravan_arrive:1.5, troll_arrive:1.5, clown_honk:0.3, caravan_clop:0.14, heart_break:0.3, threat:1.5, wave_clear:0.5, class_unlock:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
 });
-const AUDIO_PRIORITY_EVENTS = new Set(['caravan_arrive','troll_arrive','clown_honk','heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
+const AUDIO_PRIORITY_EVENTS = new Set(['speed_up','record_scratch','caravan_arrive','troll_arrive','clown_honk','heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
 const AUDIO_FOCUS_EVENTS = new Set(['ui_buy','roundStart','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
 // CHATTER-VOICES-01: [lowest start pitch Hz, random spread Hz] per archetype; Mages speak lowest and slowest, Archers highest.
 const CHATTER_REGISTERS = { MAGE: [280, 130], WARRIOR: [460, 160], ARCHER: [640, 220] }, CHATTER_NEUTRAL_REGISTER = [460, 220];
@@ -322,7 +346,13 @@ class SoundEngine{
     this.musicMakeup.connect(this.musicSectionGain);
     this.musicSectionGain.connect(this.musicAir);
     this.musicAir.connect(this.musicFilter);
-    this.musicFilter.connect(this.master);
+    this.musicPerilFilter = this.ctx.createBiquadFilter();
+    this.musicPerilFilter.type = 'lowpass';
+    this.musicPerilFilter.frequency.value = MUSIC_PERIL_OPEN_HZ;
+    this.musicPerilFilter.Q.value = 0.7;
+    this.musicPerilTargetHz = MUSIC_PERIL_OPEN_HZ;
+    this.musicFilter.connect(this.musicPerilFilter);
+    this.musicPerilFilter.connect(this.master);
     this.buildMusicReverb();
     this.musicEchoSend = this.ctx.createGain();
     this.musicEchoSend.gain.value = MUSIC_ECHO_SEND;
@@ -445,6 +475,18 @@ class SoundEngine{
     frequency.cancelScheduledValues(at);
     frequency.setValueAtTime(frequency.value, at);
     frequency.setTargetAtTime(open ? 14000 : MUSIC_FIELD_FILTER_HZ, at, open ? 0.3 : 0.5);
+  }
+  updateMusicPeril(time){
+    if(!this.musicPerilFilter) return;
+    const livesShare = typeof lives === 'number' && typeof maxLivesNow === 'function' ? lives / Math.max(1, maxLivesNow()) : 1;
+    const perilAmount = gameState === 'PLAYING' ? Math.max(0, Math.min(1, 1 - livesShare / MUSIC_PERIL_LIVES_SHARE)) : 0;
+    const targetHz = perilAmount > 0 ? MUSIC_PERIL_MIN_HZ * Math.pow(MUSIC_PERIL_OPEN_HZ * 0.4 / MUSIC_PERIL_MIN_HZ, 1 - perilAmount) : MUSIC_PERIL_OPEN_HZ;
+    if(Math.abs(targetHz - this.musicPerilTargetHz) < MUSIC_PERIL_RETARGET_HZ) return;
+    const closing = targetHz < this.musicPerilTargetHz, at = Math.max(time, this.ctx.currentTime), frequency = this.musicPerilFilter.frequency;
+    this.musicPerilTargetHz = targetHz;
+    frequency.cancelScheduledValues(at);
+    frequency.setValueAtTime(frequency.value, at);
+    frequency.exponentialRampToValueAtTime(targetHz, at + (closing ? MUSIC_PERIL_IN_SECONDS : MUSIC_PERIL_OUT_SECONDS));
   }
   musicStepSeconds(){
     return 60 / (this.musicPhase === 'attract' ? MUSIC_ATTRACT_TEMPO_BPM : this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2 / (1 + MUSIC_TEMPO_CREEP * (this.musicTempoCreep || 0));
@@ -620,6 +662,7 @@ class SoundEngine{
     const bar = Math.floor(step / MUSIC_STEPS_PER_BAR);
     const beatStep = step % MUSIC_STEPS_PER_BAR;
     if(beatStep === 0) this.musicPhase = this.requestedMusicPhase;
+    this.updateMusicPeril(time);
     const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
     const boss = this.musicPhase === 'boss';
     if(beatStep === 0) this.musicTempoCreep = (this.musicTempoCreep || 0) + ((combat ? this.musicIntensity || 0 : 0) - (this.musicTempoCreep || 0)) * 0.4;
@@ -647,7 +690,11 @@ class SoundEngine{
     const chord = baseChord + shift;
     const intensity = this.musicIntensity || 0;
     const breath = phraseBar === 3 && beatStep >= (combat && section === 2 ? 6 : combat ? 4 : 6);
-    if(combat){
+    const breakdownCycle = combat && !boss && cycleIndex % 2 === 1;
+    const breakdown = breakdownCycle && bar >= MUSIC_BREAKDOWN_FIRST_BAR && bar <= MUSIC_BREAKDOWN_LAST_BAR && this.musicBarRole !== 'landing';
+    if(breakdown) this.scheduleCombatBreakdown(time, bar, beatStep, baseChord, chord, stepSeconds);
+    if(breakdownCycle && bar === MUSIC_BREAKDOWN_LAST_BAR + 1 && beatStep === 0 && this.musicBarRole !== 'landing'){ this.musicBassDrop(time, chord, stepSeconds, MUSIC_BREAKDOWN_SLAM_LEVEL); this.musicCrash(time, 1); }
+    if(combat && !breakdown){
       if(beatStep === 0 || section === 1 && beatStep === 3 || section === 2 && beatStep === 6) this.musicTone(138, time, 0.15, 'kick', beatStep === 0 ? 0.15 : 0.10);
       if(beatStep === 0 && bar % 4 === 0) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.34, 'kick', 0.13);
       if(beatStep === 4){
@@ -671,28 +718,28 @@ class SoundEngine{
       if(!breath) this.scheduleCombatHats(time, beatStep, stepSeconds, 0.5 + 0.5 * intensity);
       if(!breath && (section > 0 || intensity > 0.35)) this.scheduleMusicArpeggio(time, baseChord, chord, beatStep, stepSeconds, 0.55 + 0.55 * intensity);
     }
-    if(combat) this.scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
+    if(combat && !breakdown) this.scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath);
     if(this.musicBarRole === 'landing') this.scheduleLeitmotif(time, beatStep, chord, stepSeconds, 'brass', boss ? 0.066 : 0.058);
     if(!combat && (bar === 7 || bar === 15) && beatStep === 7) return;
     if(combat || bar > 0) this.scheduleSectionAccent(time, bar, beatStep, cycleIndex, combat);
-    if(combat || bar >= 8) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
+    if((combat && !breakdown) || (!combat && bar >= 8)) this.scheduleDrumFill(time, bar, beatStep, stepSeconds, combat ? 1 : 0.6);
     this.scheduleCycleTurnaround(time, bar, beatStep, stepSeconds, cycleIndex, combat);
     if(!combat) this.scheduleFieldStep(time, bar, beatStep, phraseBar, shift, cycleIndex, breath);
     // MUSIC-THEME-01: the wave theme's lead plays only in combat; the field theme is scheduled by scheduleFieldStep().
     const degree = combat && this.musicBarRole !== 'landing' ? MUSIC_WAVE_THEME[bar % MUSIC_WAVE_THEME.length][beatStep] : null;
     if(degree !== null && !breath){
-      const voice = section === 2 && phraseBar === 2 ? 'fm' : 'brass';
+      const voice = breakdown ? 'reed' : section === 2 && phraseBar === 2 ? 'fm' : 'brass';
       const duration = beatStep === 0 ? 0.25 : beatStep % 2 ? 0.11 : 0.15;
       const accent = beatStep === 0 ? 1 : beatStep % 2 ? 0.78 : 0.90;
-      const phraseGain = phraseBar === 3 ? 0.82 : section === 1 ? 0.94 : 1;
+      const phraseGain = (phraseBar === 3 ? 0.82 : section === 1 ? 0.94 : 1) * (breakdown ? MUSIC_BREAKDOWN_LEAD_SHARE : 1);
       const basePitch = 38 + shift + 12 + (boss && degree % 12 === 2 ? degree - 1 : degree);
       // MUSIC-VARIATION-02: the theme never repeats exactly. Odd cycles turn weak eighth notes into upper neighbour tones, and every third cycle lifts the
       // last phrase bar an octave as a climax, the way tracker composers varied a pattern on its repeat.
       const neighbourTone = cycleIndex % 2 === 1 && beatStep % 2 === 1 && beatStep !== 7;
       const leadPitch = (neighbourTone ? musicUpperNeighbour(basePitch, 38 + shift) : basePitch) + (cycleIndex % 3 === 2 && phraseBar === 3 && section === 2 ? 12 : 0);
       this.musicTone(midiToFrequency(leadPitch), time + (Math.random() - 0.5) * 0.008, duration, voice, 0.11*accent*phraseGain*(0.92 + Math.random()*0.16));
-      if((boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
-      if(boss || section > 0) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
+      if(!breakdown && (boss || section > 0) && (beatStep === 0 || beatStep === 4)) this.musicTone(midiToFrequency(leadPitch - 12), time, duration, 'brass', 0.05 * accent, true);
+      if(!breakdown && (boss || section > 0)) this.musicTone(midiToFrequency(musicDiatonicAbove(leadPitch, 38 + shift)), time + 0.003, duration, 'brass', 0.042 * accent, true);
       if(boss || section === 2){
         this.popTone(midiToFrequency(leadPitch), time, duration, 'harmony', 0.026 * accent, true);
         this.popTone(midiToFrequency(leadPitch + 12), time + 0.002, duration * 0.8, 'bell', 0.03 * accent, true);
@@ -918,6 +965,23 @@ class SoundEngine{
     }
   }
   // MUSIC-LAYERS-01: the wave and boss themes gain a chord pad from the second section, a layered snare on the backbeat, and a noise riser through the last two bars of each section, so the 24 bars build instead of staying level
+  // MUSIC-BREAKDOWN-01: on odd cycles of the wave theme the first half of the middle section strips to a heartbeat kick, a held warm chord, a clock-like tick
+  // and the melody alone on a soft reed, then a rising snare roll hands back to the full band with a sub drop and a crash. Quiet against loud makes the return land.
+  scheduleCombatBreakdown(time, bar, beatStep, baseChord, chord, stepSeconds){
+    if(beatStep === 0) this.musicTone(110, time, 0.22, 'kick', 0.08);
+    if(beatStep === 2 && bar !== MUSIC_BREAKDOWN_LAST_BAR) this.musicTone(100, time, 0.18, 'kick', 0.045);
+    if(beatStep === 0){
+      const tones = musicChordTones(baseChord);
+      this.popTone(midiToFrequency(chord + 12), time, stepSeconds * MUSIC_STEPS_PER_BAR * 0.95, 'warm', 0.03, true);
+      this.popTone(midiToFrequency(chord + 12 + tones[1]), time, stepSeconds * MUSIC_STEPS_PER_BAR * 0.95, 'warm', 0.022, true);
+      this.popTone(midiToFrequency(chord + 19), time, stepSeconds * MUSIC_STEPS_PER_BAR * 0.95, 'warm', 0.018, true);
+    }
+    if(beatStep === 4 || beatStep === 6) this.musicTone(midiToFrequency(chord + 31), time, 0.05, 'pluck', 0.016, true);
+    if(bar === MUSIC_BREAKDOWN_LAST_BAR){
+      for(let half = 0; half < 2; half++) this.musicPercussion(time + half * stepSeconds / 2, beatStep >= 6, MUSIC_BREAKDOWN_ROLL_FLOOR + (1 - MUSIC_BREAKDOWN_ROLL_FLOOR) * (beatStep * 2 + half) / 15);
+      if(beatStep === 7) this.musicTone(195, time + stepSeconds / 2, 0.07, 'snap', 0.1);
+    }
+  }
   scheduleCombatLayers(time, bar, beatStep, section, baseChord, chord, boss, stepSeconds, breath){
     if(beatStep === 0 && bar % 2 === 0 && bar > 0 && (section > 0 || boss)){
       const tones = musicChordTones(baseChord), padGain = (section === 2 || boss ? 0.032 : 0.024);
@@ -984,7 +1048,9 @@ class SoundEngine{
   // MUSIC-STING-01
   scheduleMusicSting(time, shift, stepSeconds, boss){
     const tonic = 38 + shift + 24, level = boss ? 1.25 : 1, dropTime = time + MUSIC_STING_DROP_STEP * stepSeconds;
-    for(const [step, lowerOffset, upperOffset, gain] of MUSIC_STING_PICKUPS){
+    const pickups = MUSIC_STING_VARIANTS[(this.musicStingCount || 0) % MUSIC_STING_VARIANTS.length];
+    this.musicStingCount = (this.musicStingCount || 0) + 1;
+    for(const [step, lowerOffset, upperOffset, gain] of pickups){
       const hitTime = time + step * stepSeconds;
       this.musicTone(midiToFrequency(tonic + lowerOffset), hitTime, stepSeconds * 1.3, 'brass', gain * level);
       this.musicTone(midiToFrequency(tonic + upperOffset), hitTime, stepSeconds * 1.3, 'brass', gain * 0.8 * level);
@@ -1078,10 +1144,16 @@ class SoundEngine{
       return;
     }
     const drop = beatStep === 0 && (bar === 8 || bar === 16);
+    // MUSIC-STOP-TIME-01: on even cycles the band stops for two bars, hitting only the downbeat as one chord stab while the melody carries on alone.
+    const stopTime = cycleIndex % 2 === 0 && MUSIC_STOP_TIME_BARS.has(bar);
+    if(stopTime && beatStep === 0){
+      this.musicTone(110, time, 0.24, 'kick', 0.085);
+      for(const interval of [12, 12 + musicChordTones(baseRoot)[1], 19]) this.musicTone(midiToFrequency(root + interval), time + 0.003, 0.22, 'fmkeys', 0.035);
+    }
     if(drop) this.musicBassDrop(time, root, stepSeconds, bar === 16 ? 0.8 : 0.65);
     // bass
     const bassPattern = FIELD_BASS_PATTERNS[buildUp ? 2 : arrangement === 1 ? 1 : (barPick < 0.5 ? 0 : barPick < 0.8 ? 3 : 1)];
-    if(!breath && !drop) for(const [bassStep, interval] of bassPattern) if(bassStep === beatStep) this.musicTone(midiToFrequency(root + interval), time, beatStep === 0 ? 0.27 : 0.16, arrangement === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
+    if(!breath && !drop && !stopTime) for(const [bassStep, interval] of bassPattern) if(bassStep === beatStep) this.musicTone(midiToFrequency(root + interval), time, beatStep === 0 ? 0.27 : 0.16, arrangement === 1 ? 'fmbass' : 'triangle', beatStep === 0 ? 0.075 : 0.045);
     // pad drone under the answer and contrast arrangements
     if(beatStep === 0 && bar % 2 === 0 && (arrangement === 1 || arrangement === 2)){
       this.musicTone(midiToFrequency(root + 12), time, stepSeconds*7.5, 'triangle', 0.028);
@@ -1091,7 +1163,7 @@ class SoundEngine{
     if(beatStep === 0 && bar % 4 === 0 && !buildUp && !drop) this.musicTone(MUSIC_TIMPANI_HZ, time, 0.34, 'kick', 0.08);
     if(beatStep === 0 && bar % 4 === 0 && arrangement !== 1 && arrangement !== 2) this.musicTone(midiToFrequency(root + 19), time, stepSeconds*MUSIC_STEPS_PER_BAR*3.9, 'triangle', 0.014, true);
     // drums
-    if(!buildUp && !drop){
+    if(!buildUp && !drop && !stopTime){
       const drumStyle = arrangement === 0 ? 0 : arrangement === 1 ? 2 : arrangement === 2 ? 1 : (barPick2 < 0.5 ? 1 : 2);
       if(drumStyle === 0){
         if(beatStep === 0) this.musicTone(110, time, 0.22, 'kick', 0.07);
@@ -1105,12 +1177,12 @@ class SoundEngine{
     }
     if(phraseBar === 3 && beatStep >= 6) this.musicPercussion(time, beatStep === 7);
     if(bar % 8 === 7 && beatStep === 7) this.musicTone(195, time, 0.07, 'snap', 0.08);
-    if(!buildUp && !breath && arrangement > 0 && beatStep === 4) this.musicPercussion(time, true, 0.55);
-    if(!buildUp && !breath && section > 0 && arrangement >= 2 && beatStep % 2 === 0) this.musicPercussion(time + stepSeconds / 2, false, 0.7);
-    if(!buildUp && !breath) this.scheduleMusicArpeggio(time, baseRoot, root, beatStep, stepSeconds, section > 0 || cycleIndex > 0 ? 0.5 : 0.34);
+    if(!buildUp && !breath && !stopTime && arrangement > 0 && beatStep === 4) this.musicPercussion(time, true, 0.55);
+    if(!buildUp && !breath && !stopTime && section > 0 && arrangement >= 2 && beatStep % 2 === 0) this.musicPercussion(time + stepSeconds / 2, false, 0.7);
+    if(!buildUp && !breath && !stopTime) this.scheduleMusicArpeggio(time, baseRoot, root, beatStep, stepSeconds, section > 0 || cycleIndex > 0 ? 0.5 : 0.34);
     if(!buildUp && !breath && bar % 8 === 4) this.scheduleLeitmotif(time, beatStep, root, stepSeconds, 'oboe', 0.03);
     // melody
-    this.scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath);
+    this.scheduleIdleLayers(time, bar, beatStep, phraseBar, section, progression, baseRoot, root, stepSeconds, breath || stopTime);
     if(breath || (bar >= 8 && barPick3 < 0.08)) return;
     let notes = (arrangement === 2 ? FIELD_MELODY_B : MUSIC_FIELD_MELODY)[bar % 12];
     if(arrangement === 3) notes = fieldVariedBar(notes, mulberry32(cycleIndex*104729 + bar*7919));
@@ -1172,6 +1244,110 @@ class SoundEngine{
     this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, now);
     this.musicBus.gain.linearRampToValueAtTime(duckGain, now + 0.02);
     this.musicBus.gain.exponentialRampToValueAtTime(baseline, now + durationSec);
+  }
+  // TURNTABLE-SFX-01: a platter motor sweep with vinyl wow; swellIn ramps the level up for a spin-up, otherwise it starts loud and dies for a brake.
+  turntableSweep(startFreq, endFreq, duration, delay, amplitude, swellIn){
+    if(!this.unlocked || isMuted || audioSfxVolume <= 0) return;
+    if(!this.reserveVoiceSlot(duration, delay, true)) return;
+    const t0 = this.ctx.currentTime + (delay || 0), osc = this.ctx.createOscillator(), wow = this.ctx.createOscillator(), wowDepth = this.ctx.createGain(), gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(startFreq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), t0 + duration);
+    wow.frequency.value = TURNTABLE_WOW_HZ; wowDepth.gain.value = startFreq*TURNTABLE_WOW_DEPTH;
+    wow.connect(wowDepth); wowDepth.connect(osc.frequency);
+    const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = TURNTABLE_TONE_HZ;
+    const peak = Math.max(0.0001, amplitude*this.currentEventGain);
+    gain.gain.setValueAtTime(0.0001, t0);
+    if(swellIn){ gain.gain.exponentialRampToValueAtTime(peak, t0 + duration*0.8); gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration); }
+    else { gain.gain.linearRampToValueAtTime(peak, t0 + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration); }
+    osc.connect(filter); filter.connect(gain); gain.connect(this.feedbackBus || this.sfxBus || this.master);
+    osc.onended = () => { osc.disconnect(); wow.disconnect(); wowDepth.disconnect(); filter.disconnect(); gain.disconnect(); };
+    wow.start(t0); osc.start(t0); wow.stop(t0 + duration); osc.stop(t0 + duration);
+  }
+  // FARNELL-RESONATOR-01: one noise excitation with a cubed decay rung through a bank of parallel band-pass resonators, the way a struck body
+  // (gun housing, barrel, can, plank) colours an impulse. Reusing one bank per object keeps every sound that object makes coherent.
+  resonatorBurst(duration, bandsHz, q, pan, delay, gain){
+    if(!this.unlocked || isMuted || audioSfxVolume <= 0) return;
+    if(!this.reserveVoiceSlot(duration, delay, this.currentEventImportant)) return;
+    this.ensureNoiseBuffer();
+    const t0 = this.ctx.currentTime + (delay || 0), src = this.ctx.createBufferSource(), envelope = this.ctx.createGain(), sum = this.ctx.createGain();
+    src.buffer = this.noiseBuffer;
+    const peak = Math.max(0.0001, gain*this.currentEventGain);
+    envelope.gain.setValueAtTime(peak, t0);
+    envelope.gain.setTargetAtTime(0.0001, t0, duration/RESONATOR_DECAY_TIME_CONSTANTS);
+    src.connect(envelope);
+    const filters = bandsHz.map(frequency => { const filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = Math.min(this.ctx.sampleRate*0.45, frequency); filter.Q.value = q; envelope.connect(filter); filter.connect(sum); return filter; });
+    sum.gain.value = RESONATOR_MAKEUP_GAIN/Math.sqrt(bandsHz.length);
+    let node = sum;
+    if(pan){ const panner = this.ctx.createStereoPanner(); panner.pan.value = pan; sum.connect(panner); node = panner; }
+    node.connect((this.currentEventImportant ? this.feedbackBus : this.combatBus) || this.sfxBus || this.master);
+    src.onended = () => { src.disconnect(); envelope.disconnect(); for(const filter of filters) filter.disconnect(); sum.disconnect(); if(node !== sum) node.disconnect(); };
+    src.start(t0, Math.random()*Math.max(0, this.noiseBuffer.duration - duration - 0.01), duration);
+  }
+  // FARNELL-VOICE-01: a creature call as a glottal source (a sawtooth whose pitch rises to a peak and falls) shaped by a few formant band-pass
+  // filters for the vocal tract, with a little breath noise through the same tract and a soft rise and longer fall.
+  creatureCall(spec, pan, delay, gain){
+    if(!this.unlocked || isMuted || audioSfxVolume <= 0) return;
+    const duration = spec.seconds;
+    if(!this.reserveVoiceSlot(duration, delay, false)) return;
+    this.ensureNoiseBuffer();
+    const t0 = this.ctx.currentTime + (delay || 0), wobble = 1 + (Math.random()*2 - 1)*CREATURE_PITCH_JITTER;
+    const osc = this.ctx.createOscillator(), breath = this.ctx.createBufferSource(), breathGain = this.ctx.createGain(), envelope = this.ctx.createGain(), sum = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(spec.f0[0]*wobble, t0);
+    osc.frequency.linearRampToValueAtTime(spec.f0[1]*wobble, t0 + duration*spec.rise);
+    osc.frequency.exponentialRampToValueAtTime(spec.f0[2]*wobble, t0 + duration);
+    breath.buffer = this.noiseBuffer; breathGain.gain.value = spec.breath;
+    const peak = Math.max(0.0001, gain*this.currentEventGain);
+    envelope.gain.setValueAtTime(0.0001, t0);
+    envelope.gain.linearRampToValueAtTime(peak, t0 + duration*spec.rise);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(envelope); breath.connect(breathGain); breathGain.connect(envelope);
+    const filters = spec.formants.map(frequency => { const filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = frequency*wobble; filter.Q.value = spec.q; envelope.connect(filter); filter.connect(sum); return filter; });
+    sum.gain.value = CREATURE_MAKEUP_GAIN;
+    let node = sum;
+    if(pan){ const panner = this.ctx.createStereoPanner(); panner.pan.value = pan; sum.connect(panner); node = panner; }
+    node.connect(this.combatBus || this.sfxBus || this.master);
+    osc.onended = () => { osc.disconnect(); breath.disconnect(); breathGain.disconnect(); envelope.disconnect(); for(const filter of filters) filter.disconnect(); sum.disconnect(); if(node !== sum) node.disconnect(); };
+    osc.start(t0); osc.stop(t0 + duration + 0.02);
+    breath.start(t0, Math.random()*Math.max(0, this.noiseBuffer.duration - duration - 0.05), duration + 0.02);
+  }
+  // BEE-BUZZ-01: each visible bee hums with Farnell's flying-insect model: a wing-beat sawtooth plus its strong second harmonic, warbling as one
+  // slow random wander moves both wings together, louder and higher while it flees. Voices are persistent and fade out when the bee leaves.
+  updateBeeBuzz(voices, frameMs){
+    if(!this.unlocked || !this.ctx) return;
+    if(!this.beeBuzzVoices) this.beeBuzzVoices = new Map();
+    const now = this.ctx.currentTime, live = new Set();
+    for(const voice of voices){
+      live.add(voice.key);
+      let buzz = this.beeBuzzVoices.get(voice.key);
+      if(!buzz){ buzz = this.createBeeBuzzVoice(); this.beeBuzzVoices.set(voice.key, buzz); }
+      buzz.retargetMs -= frameMs;
+      if(buzz.retargetMs <= 0){ buzz.retargetMs = BEE_BUZZ_WARBLE_MS*(0.6 + Math.random()*0.8); buzz.warbleTarget = Math.random()*2 - 1; }
+      buzz.warble += (buzz.warbleTarget - buzz.warble)*Math.min(1, frameMs/BEE_BUZZ_WARBLE_MS);
+      const wingHz = BEE_BUZZ_HZ*(1 + BEE_BUZZ_WARBLE_SHARE*buzz.warble)*(voice.fleeing ? BEE_BUZZ_FLEE_PITCH : 1);
+      buzz.wing.frequency.setTargetAtTime(wingHz, now, 0.04);
+      buzz.harmonic.frequency.setTargetAtTime(wingHz*2*(1 + BEE_BUZZ_WING_OFFSET), now, 0.04);
+      buzz.gain.gain.setTargetAtTime(voice.gain*(voice.fleeing ? BEE_BUZZ_FLEE_GAIN : 1), now, 0.08);
+      buzz.panner.pan.setTargetAtTime(voice.pan, now, 0.08);
+    }
+    for(const [key, buzz] of this.beeBuzzVoices){
+      if(live.has(key)) continue;
+      buzz.gain.gain.setTargetAtTime(0, now, 0.08);
+      buzz.wing.stop(now + 0.5); buzz.harmonic.stop(now + 0.5);
+      this.beeBuzzVoices.delete(key);
+    }
+  }
+  createBeeBuzzVoice(){
+    const wing = this.ctx.createOscillator(), harmonic = this.ctx.createOscillator(), harmonicGain = this.ctx.createGain(), body = this.ctx.createBiquadFilter(), gain = this.ctx.createGain(), panner = this.ctx.createStereoPanner();
+    wing.type = 'sawtooth'; harmonic.type = 'sine'; harmonicGain.gain.value = BEE_BUZZ_HARMONIC_LEVEL;
+    wing.frequency.value = BEE_BUZZ_HZ; harmonic.frequency.value = BEE_BUZZ_HZ*2;
+    body.type = 'lowpass'; body.frequency.value = BEE_BUZZ_BODY_HZ; body.Q.value = 0.8;
+    gain.gain.value = 0;
+    wing.connect(body); harmonic.connect(harmonicGain); harmonicGain.connect(body); body.connect(gain); gain.connect(panner); panner.connect(this.sfxBus || this.master);
+    wing.onended = () => { wing.disconnect(); harmonic.disconnect(); harmonicGain.disconnect(); body.disconnect(); gain.disconnect(); panner.disconnect(); };
+    wing.start(); harmonic.start();
+    return { wing, harmonic, gain, panner, warble: 0, warbleTarget: 0, retargetMs: 0 };
   }
   tone(freq, duration, type, freqEnd, pan, reverbSend, delay, force, stablePitch, amplitude){
     if(!this.unlocked) return;
@@ -1369,9 +1545,11 @@ class SoundEngine{
         this.tone(860, 0.065, 'triangle', 240, eventPan, false, 0, false, false, 0.16);
         this.noise(0.025, 2400, 'bandpass', eventPan, false, 0, 0.07);
         break;
-      case 'shot_sniper':
-        this.noise(0.035, 2800, 'highpass', eventPan, false, 0, 0.25);
-        this.tone(420, 0.055, 'triangle', 100, eventPan, false, 0, false, false, 0.18);
+      case 'shot_sniper': // GUNSHOT-LAYERS-01: a short hard detonation chirp, the muzzle burst a beat later, then the rifle body ringing
+        this.tone(GUN_CHIRP_HIGH_HZ, 0.03, 'sine', 420, eventPan, false, 0, false, false, 0.16);
+        this.tone(175, 0.035, 'sine', 95, eventPan, false, GUN_MUZZLE_DELAY_S, false, false, 0.2);
+        this.noise(0.012, 3400, 'highpass', eventPan, false, 0, 0.22);
+        this.resonatorBurst(0.16, GUN_RIFLE_BODY_HZ, 9, eventPan, 0.002, 0.1);
         break;
       case 'shot_gatling':
         this.tone(540, 0.025, 'triangle', 220, eventPan, false, 0, false, false, 0.10);
@@ -1401,9 +1579,11 @@ class SoundEngine{
         this.noise(0.07, 1500, 'bandpass', eventPan, false, 0, 0.13);
         this.tone(700, 0.06, 'triangle', 380, eventPan, false, 0.01, false, false, 0.07);
         break;
-      case 'shot_rifle': // Marksman: a dry crack with a short low tail, sharper than the revolver
-        this.noise(0.03, 2200, 'highpass', eventPan, false, 0, 0.22);
-        this.tone(260, 0.07, 'triangle', 90, eventPan, false, 0, false, false, 0.15);
+      case 'shot_rifle': // Marksman: GUNSHOT-LAYERS-01 with a longer chirp, a rounder muzzle and the lighter carbine body
+        this.tone(GUN_CHIRP_HIGH_HZ*0.7, 0.045, 'sine', 300, eventPan, false, 0, false, false, 0.13);
+        this.tone(150, 0.04, 'sine', 80, eventPan, false, GUN_MUZZLE_DELAY_S, false, false, 0.18);
+        this.noise(0.014, 2600, 'highpass', eventPan, false, 0, 0.18);
+        this.resonatorBurst(0.12, GUN_CARBINE_BODY_HZ, 8, eventPan, 0.002, 0.09);
         break;
       case 'shot_glaive': // Glaive: a heavy, slow boom
         this.tone(95, 0.22, 'sine', 42, eventPan, false, 0, false, false, 0.26);
@@ -1419,6 +1599,17 @@ class SoundEngine{
         this.tone(150, 0.10, 'sine', 70, eventPan, false, 0, false, false, 0.20);
         this.noise(0.065, 400, 'lowpass', eventPan, false, 0, 0.18);
         break;
+      case 'explosion': { // EXPLOSION-LAYERS-01: a dull chirp thump, two or three harsh blasts darkening as they go, then a low fireball rumble.
+        // Dynamic level of audio detail: away from view only the thump and the rumble remain, the parts that carry over distance.
+        const blastScale = clampNum((intensity || 55)/EXPLOSION_REFERENCE_RADIUS, 0.8, 1.6);
+        this.tone(EXPLOSION_THUMP_HZ/blastScale, 0.07*blastScale, 'sine', 32, eventPan, false, 0, false, false, 0.27);
+        if(this.currentEventGain >= EXPLOSION_DETAIL_GAIN_FLOOR){
+          let blastAt = 0.004;
+          EXPLOSION_BLAST_CUTOFFS_HZ.forEach((cutoffHz, index) => { this.noise(0.03, cutoffHz, 'bandpass', eventPan, false, blastAt, 0.17*(1 - index*0.22)); blastAt += 0.008 + Math.random()*0.03; });
+        }
+        this.noise(EXPLOSION_RUMBLE_S*blastScale, 140, 'lowpass', eventPan, false, 0.012, 0.26);
+        break;
+      }
       case 'cast_mage':
         this.tone(620, 0.12, 'sine', 1180, eventPan, false, 0, false, false, 0.13);
         this.tone(930, 0.09, 'triangle', 1770, eventPan, false, 0.025, false, false, 0.065);
@@ -1485,6 +1676,24 @@ class SoundEngine{
         this.tone(330, 0.22, 'sawtooth', 660, panInject, false, 0.14, true, true, 0.06);
         break;
       }
+      case 'speed_up': { // TURNTABLE-SFX-01: the record spins up; each faster setting starts and ends higher
+        const tier = clampNum(intensity || 1, 1, 4), base = TURNTABLE_BASE_HZ*Math.pow(TURNTABLE_TIER_RATIO, tier - 1);
+        this.duck(-4, 0.5);
+        this.turntableSweep(base*0.5, base*1.5, TURNTABLE_SPIN_UP_S, 0, 0.07, true);
+        this.turntableSweep(base, base*3, TURNTABLE_SPIN_UP_S, 0, 0.03, true);
+        for(let tick = 0; tick < TURNTABLE_CRACKLE_TICKS; tick++) this.noise(0.012, 5200, 'highpass', (Math.random() - 0.5)*0.6, false, Math.random()*TURNTABLE_SPIN_UP_S, 0.09);
+        this.tone(base*3, 0.05, 'triangle', undefined, 0, false, TURNTABLE_SPIN_UP_S, true, true, 0.05);
+        break;
+      }
+      case 'record_scratch': { // TURNTABLE-SFX-01: a back-and-forth scratch, then the platter brakes to a stop under the ducked music
+        this.duck(-16, 1.1);
+        TURNTABLE_SCRATCH_STROKES.forEach(([at, bandHz, length]) => this.noise(length, bandHz, 'bandpass', 0, false, at, 0.5));
+        this.tone(1400, 0.08, 'sawtooth', 500, 0, false, 0, true, true, 0.05);
+        this.tone(450, 0.07, 'sawtooth', 1300, 0, false, 0.08, true, true, 0.05);
+        this.turntableSweep(320, 40, TURNTABLE_BRAKE_S, 0.16, 0.08, false);
+        this.noise(0.1, 180, 'lowpass', 0, false, 0.16 + TURNTABLE_BRAKE_S*0.9, 0.35);
+        break;
+      }
       case 'expand_build':
         for(let hit = 0; hit < 4; hit++){
           this.noise(0.05, 1100, 'bandpass', 0, false, hit*0.13, 0.22);
@@ -1535,7 +1744,10 @@ class SoundEngine{
         const panFS = this.panFor(worldX);
         const w = intensity || 0;
         const gainByWeight = [0.04, 0.06, 0.09][w] || 0.04;
+        // FOOTSTEP-GRF-01: a footfall rolls heel to ball (Farnell, practical 26): a dull heel contact, then a shorter, brighter ball contact.
+        // Heavier walkers press harder on the heel and roll more slowly onto the ball.
         this.noise(0.03 + w*0.02, 550 - w*160, 'lowpass', panFS, undefined, undefined, gainByWeight);
+        this.noise(0.018, 900 - w*150, 'lowpass', panFS, false, FOOTSTEP_ROLL_S + w*0.015, gainByWeight*FOOTSTEP_BALL_SHARE);
         break;
       }
       case 'skitter': { // ANT-SKITTER-01: a dry two-tick patter of six small legs, high and very quiet, never a thud
@@ -1545,6 +1757,21 @@ class SoundEngine{
         const panSK = this.panFor(worldX);
         this.noise(0.006, 4200 + Math.random()*1400, 'bandpass', panSK, false, 0, 0.035);
         this.noise(0.005, 5200 + Math.random()*1400, 'bandpass', panSK, false, 0.018 + Math.random()*0.012, 0.025);
+        break;
+      }
+      case 'animal_call': { // FARNELL-VOICE-01: intensity carries { type, alarmed }
+        const call = intensity && CREATURE_CALLS[intensity.type];
+        if(!call) break;
+        const spec = intensity.alarmed ? call.alarm : call.idle;
+        this.creatureCall(spec, eventPan, 0, intensity.alarmed ? CREATURE_ALARM_GAIN : CREATURE_IDLE_GAIN);
+        if(intensity.type === 'CHICKEN' && !intensity.alarmed) this.creatureCall(spec, eventPan, 0.12 + Math.random()*0.05, CREATURE_IDLE_GAIN*0.8);
+        break;
+      }
+      case 'fire_crackle': { // CAMPFIRE-CRACKLE-01: Farnell's fire (practical 11): short crackles at random tones, a hiss now and then, a soft flame woof
+        const crackleHz = FIRE_CRACKLE_MIN_HZ + Math.random()*(FIRE_CRACKLE_MAX_HZ - FIRE_CRACKLE_MIN_HZ);
+        this.noise(0.012 + Math.random()*0.02, crackleHz, 'bandpass', eventPan, false, 0, 0.05 + Math.random()*0.05);
+        if(Math.random() < FIRE_HISS_CHANCE) this.noise(0.15 + Math.random()*0.2, 4500, 'highpass', eventPan, false, 0.02, 0.02);
+        if(Math.random() < FIRE_LAP_CHANCE) this.noise(0.25, 120, 'lowpass', eventPan, false, 0, 0.07);
         break;
       }
       case 'enrage': // a tough enemy (Boss or Troll) crossing a low-health threshold: a low snarl

@@ -2436,6 +2436,7 @@ speedBtn.addEventListener('pointerdown', (e) => {
   unlockAudio();
   const i = SPEED_LEVELS.indexOf(gameSpeed);
   gameSpeed = SPEED_LEVELS[(i + 1) % SPEED_LEVELS.length];
+  if(gameSpeed === 1) playSound('record_scratch'); else playSound('speed_up', undefined, SPEED_LEVELS.indexOf(gameSpeed));
   markFirstSpeedUpUsed();
   trackGameEvent('game_speed_changed', { speed: gameSpeed });
   speedBtn.textContent = gameSpeed + 'x';

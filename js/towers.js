@@ -578,14 +578,14 @@ function drawEmojiSurfaceBlood(ctx,entity,size,emoji,scenery){
   if(!entity.bloodStains.some(stain=>bloodStainLifeT(stain)<1)){
     entity.bloodStains.length=0; entity.bloodStampKey=null; return; // expired marks never rerasterize an empty mask every 500ms
   }
-  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+(entity.bloodStains.some(stain=>stain.cleanupStarted) ? Math.floor(presentationTime/500) : 0)+':'+graphicsQuality+':'+underHeavyVisualLoad; // BLOOD-STAMP-CACHE-01
+  const stampKey=entity.bloodStainRevision+':'+emoji+':'+(entity.tallStretch || 1)+':'+(entity.widthStretch || 1)+':'+entity.flip+':'+size+':'+(entity.bloodStains.some(stain=>stain.cleanupStarted) ? Math.floor(presentationTime/500) : 0)+':'+graphicsQuality; // BLOOD-STAMP-CACHE-01
   let canvas=entity.bloodStampCanvas;
   if(!canvas || typeof canvas.getContext !== 'function'){
     canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
     Object.defineProperty(entity,'bloodStampCanvas',{value:canvas,writable:true,configurable:true,enumerable:false});entity.bloodStampKey=null; // renderer cache must never enter scenery saves
   }
   if(entity.bloodStampKey!==stampKey){
-    const m=canvas.getContext('2d'),scale=128/(size*1.8),cap=(graphicsQuality==='low' || underHeavyVisualLoad) ? 6 : BLOOD_STAIN_MAX;
+    const m=canvas.getContext('2d'),scale=128/(size*1.8),cap=graphicsQuality==='low' ? STATIC_STAIN_LOW_QUALITY_MAX : BLOOD_STAIN_MAX; // STAIN-STEADY-01
     m.setTransform(1,0,0,1,0,0);m.clearRect(0,0,128,128);m.save();m.translate(64,64);m.scale(scale,scale);
     const surfaceKey=emoji+':'+size+':'+(entity.widthStretch || 1)+':'+(entity.tallStretch || 1)+':'+entity.flip;
     let surfacePixels=null;
@@ -918,6 +918,14 @@ function drawMageStaffLight(ctx,x,y,radius,shadowPass,glow){
   ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fill();
 }
 const WALK_SPEED_PX_PER_MS = 0.17, FOOT_SIDES = Object.freeze([-1, 1]);
+const WALK_FOOT_SPREAD_PX = 8, WALK_FOOT_LIFT_PX = 3, WALK_DOWN_PX = 0.7, WALK_UP_PX = 1.9, WALK_DOWN_SHARE = 0.3; // WALK-WILLIAMS-01 (Williams, Animator's Survival Kit): scissoring contacts, foot lifts on its swing, dip after contact, rise on the passing position
+function stickmanWalkBobPx(walkPhase){
+  const stepProgress = ((walkPhase % Math.PI) + Math.PI) % Math.PI / Math.PI;
+  if(stepProgress < WALK_DOWN_SHARE) return WALK_DOWN_PX * Math.sin(stepProgress / WALK_DOWN_SHARE * Math.PI);
+  return -WALK_UP_PX * Math.sin((stepProgress - WALK_DOWN_SHARE) / (1 - WALK_DOWN_SHARE) * Math.PI);
+}
+function stickmanFootX(side, walkPhase){ return walkPhase === undefined ? side*WALK_FOOT_SPREAD_PX : side*WALK_FOOT_SPREAD_PX*Math.cos(walkPhase); }
+function stickmanFootY(side, walkPhase){ return walkPhase === undefined ? 20 : 20 - WALK_FOOT_LIFT_PX*Math.max(0, side*Math.sin(walkPhase)); }
 const MERCHANT_BAG_REACH = 6, CHEF_KNIFE_REACH = 13, GLAIVE_BARREL_MIN_LEN = 16, GLAIVE_BARREL_MAX_LEN = 24;
 const GATLING_BELT_STUDS = Object.freeze([0.2, 0.4, 0.6, 0.8]), BANDOLIER_STUDS = Object.freeze([0.25, 0.5, 0.75]);
 function drawHandSparks(ctx, handX, handY, tickSeed, angleOffsetDeg){
@@ -956,7 +964,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   weaponMarkCount = 0; weaponHandLast = null;
   const lunge = (extra && extra.lungeAmt) || 0;
   if(lunge) ctx.translate(Math.cos(angle)*lunge, Math.sin(angle)*lunge);
-  if(extra && extra.walkPhase !== undefined) ctx.translate(0, -Math.abs(Math.sin(extra.walkPhase))*1.6);
+  if(extra && extra.walkPhase !== undefined) ctx.translate(0, stickmanWalkBobPx(extra.walkPhase));
   if(extra && !extra.hasTarget){
     const breathPhase = (x*0.7 + y*0.3) % 1000;
     const breathY = Math.sin((gameTime + breathPhase) / 900) * 0.6;
@@ -973,7 +981,7 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
     if(!owner.bloodSegments) owner.bloodSegments=[];
     owner.bloodSegmentCount=0;
     const pose=owner.bloodPose || (owner.bloodPose={});
-    const walkY=extra.walkPhase !== undefined ? -Math.abs(Math.sin(extra.walkPhase))*1.6 : 0;
+    const walkY=extra.walkPhase !== undefined ? stickmanWalkBobPx(extra.walkPhase) : 0;
     const breathY=!extra.hasTarget ? Math.sin((gameTime+(x*0.7+y*0.3)%1000)/900)*0.6 : 0;
     pose.x=x+0.5+Math.cos(angle)*lunge;pose.y=y+0.5+Math.sin(angle)*lunge+walkY+breathY;
     pose.sx=STICKMAN_SCALE*legendaryScale*build.scaleX;pose.sy=STICKMAN_SCALE*legendaryScale*build.scaleY;
@@ -1019,17 +1027,15 @@ function drawStickman(ctx, x, y, angle, level, type, extra){
   // legs: shaded tone for a subtle two-tone look
   ctx.strokeStyle = skinShade;
   ctx.beginPath();
-  const legSwing = (extra && extra.walkPhase !== undefined) ? Math.sin(extra.walkPhase)*7 : 0; // walking: the feet swap places each step
-  ctx.moveTo(0,4); ctx.lineTo(-8 + legSwing, 20 - Math.max(0, legSwing)*0.25);
-  ctx.moveTo(0,4); ctx.lineTo(8 + legSwing, 20 - Math.max(0, -legSwing)*0.25);
+  const walkPhase = extra ? extra.walkPhase : undefined;
+  for(const side of FOOT_SIDES){ ctx.moveTo(0,4); ctx.lineTo(stickmanFootX(side, walkPhase), stickmanFootY(side, walkPhase)); }
   ctx.stroke();
-  recordBloodSegment(0,4,-8+legSwing,20-Math.max(0,legSwing)*0.25);
-  recordBloodSegment(0,4,8+legSwing,20-Math.max(0,-legSwing)*0.25);
+  for(const side of FOOT_SIDES) recordBloodSegment(0,4,stickmanFootX(side, walkPhase),stickmanFootY(side, walkPhase));
   if(extra && extra.wearsRunningShoes){
     const shoeFlip = Math.cos(angle) >= 0 ? -1 : 1; // the shoe emoji points left; mirror it to face the way the stickman faces
     for(const side of FOOT_SIDES){
       ctx.save();
-      ctx.translate(side*8 + legSwing, 20.5 - Math.max(0, -side*legSwing)*0.25);
+      ctx.translate(stickmanFootX(side, walkPhase), stickmanFootY(side, walkPhase) + 0.5);
       ctx.scale(shoeFlip, 1);
       drawEmojiSprite(ctx, '👟', 9);
       ctx.restore();
@@ -1687,8 +1693,13 @@ class Tower{
   }
   advanceWalk(dt){
     const dx = this.walkTargetX - this.x, dy = this.walkTargetY - this.y, dist = Math.hypot(dx, dy), step = (this.walkSpeed || WALK_SPEED_PX_PER_MS) * dt;
-    this.walkPhase = (this.walkPhase || 0) + dt*0.022;
-    if(dist <= step || dist < 0.5){ this.x = this.walkTargetX; this.y = this.walkTargetY; this.isWalking = false; this.walkPhase = undefined; invalidateSpawnFlags(); return; }
+    const priorPhase = this.walkPhase || 0;
+    this.walkPhase = priorPhase + dt*0.022;
+    if(dist <= step || dist < 0.5){
+      this.x = this.walkTargetX; this.y = this.walkTargetY;
+      if(Math.floor(this.walkPhase / (Math.PI * 2)) === Math.floor(priorPhase / (Math.PI * 2))) return; // WALK-SETTLE-01: finish the stride on the starting contact so the feet never snap to the rest pose
+      this.isWalking = false; this.walkPhase = undefined; invalidateSpawnFlags(); return;
+    }
     this.x += dx/dist*step; this.y += dy/dist*step;
   }
   setGridPosition(gridX, gridY){
@@ -3082,6 +3093,7 @@ class Projectile{
         return;
       }
       let streakClaimed = false;
+      if(this.sourceTower && this.sourceTower.type === 'BOMBER') playSound('explosion', this.x, this.splashRadius, this.y); // EXPLOSION-LAYERS-01: the Bomber's blast is heard where it lands
       if(this.sourceTower && this.sourceTower.telemetry) this.sourceTower.telemetry.hitsLanded++; // one shot, one hit — regardless of how many enemies the splash actually catches
       for(const e of enemiesNear(this.x, this.y, this.splashRadius)){ // SPLASH-HASH-01
         if(!isCombatTarget(e)) continue;

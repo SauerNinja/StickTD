@@ -41,7 +41,22 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.103'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.115'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const shuffleBagByPool = new WeakMap(); // PCG-BAG-01: draw without replacement so repeats wait until the pool is used up
+function drawFromShuffleBag(pool){
+  if(pool.length < 2) return pool[0];
+  let bag = shuffleBagByPool.get(pool);
+  if(!bag){ bag = { remaining: [], lastPick: undefined }; shuffleBagByPool.set(pool, bag); }
+  if(!bag.remaining.length) refillShuffleBag(bag, pool);
+  bag.lastPick = bag.remaining.pop();
+  return bag.lastPick;
+}
+function refillShuffleBag(bag, pool){
+  const order = pool.slice();
+  for(let i = order.length - 1; i > 0; i--){ const j = Math.floor(Math.random()*(i + 1)); const held = order[i]; order[i] = order[j]; order[j] = held; }
+  if(order[order.length - 1] === bag.lastPick){ const held = order[0]; order[0] = order[order.length - 1]; order[order.length - 1] = held; }
+  bag.remaining = order;
+}
 const GAME_SCRIPT_ORDER = ['audio', 'config', 'effects', 'loop', 'ui', 'diagnostics', 'screens', 'environment', 'towers', 'waves']; // FILE-SPLIT-01: the file map above, as data for the design contract
 const TILE_SIZE = 64, COLS = 32, ROWS = 20;
 const WORLD_MAX_W = TILE_SIZE * COLS, WORLD_MAX_H = TILE_SIZE * ROWS; // fixed maximum world extent — map generation/caching/bounds-checking always use this, never the viewport size
@@ -725,7 +740,7 @@ const DROP_ITEM_ROWS = [
   ['MENDERS_PIN', 'Mender\'s Pin', '📌', 'UNCOMMON', { armor: 3, int: 1 }],
   ['FIELD_HELMET', 'Field Helmet', '🪖', 'UNCOMMON', { armor: 4, str: 1 }],
   ['GRAVE_CHARM', 'Grave Charm', '⚰️', 'UNCOMMON', { armor: 2, str: 2 }],
-  ['SPECTRAL_VEIL', 'Spectral Veil', '🕸️', 'UNCOMMON', { dex: 3, int: 1 }],
+  ['SPECTRAL_VEIL', 'Hooded Cloak', '🧥', 'UNCOMMON', { dex: 3, int: 1 }],
   ['BONE_WHISTLE', 'Bone Whistle', '🦴', 'COMMON', { dex: 2, int: 1 }],
   ['WOLF_FANG', 'Wolf Fang', '🐾', 'UNCOMMON', { str: 2, dex: 2 }],
   ['MIDNIGHT_CHARM', 'Midnight Charm', '🌙', 'RARE', { int: 4, str: 1 }],
@@ -794,7 +809,7 @@ function spawnHutLootChest(x, y){
   const count = 3 + Math.floor(Math.random()*3);
   for(let i=0; i<count; i++){
     const angle = Math.random()*Math.PI*2, dist = 14 + Math.random()*26;
-    spawnGroundItem(x + Math.cos(angle)*dist, y + Math.sin(angle)*dist, HUT_LOOT_ITEMS[Math.floor(Math.random()*HUT_LOOT_ITEMS.length)], 'hut chest');
+    spawnGroundItem(x + Math.cos(angle)*dist, y + Math.sin(angle)*dist, drawFromShuffleBag(HUT_LOOT_ITEMS), 'hut chest');
   }
   spawnParticles(x, y, '#ffd23f', 16);
 }
@@ -1792,10 +1807,17 @@ function setMarkedTarget(enemy){
   if(enemy && enemy.type === 'BEE') awardMedal('BEE_WATCHER');
   if(enemy) trackGameEvent('target_marked', { target_type: enemy.isLivestock ? 'livestock' : 'enemy', enemy_type: enemy.type });
 }
+// WILDLIFE-MARK-DELIBERATE-01: a tap on a stickman's tile selects the stickman; a bee or animal passing over it is never marked by accident.
+function tapTileHasStickman(worldX, worldY){
+  const gx = Math.floor(worldX/TILE_SIZE), gy = Math.floor(worldY/TILE_SIZE);
+  return towerPool.some(t => t.active && t.gridX === gx && t.gridY === gy);
+}
 function tryMarkTargetAt(worldX, worldY){
   let closest = null, closestDistance = Infinity;
+  const onStickman = tapTileHasStickman(worldX, worldY);
   for(const e of enemyPool){
     if(!e.active || e.escaped) continue;
+    if(onStickman && e.isLivestock && !e.isHostileNpc) continue;
     if(!isWithinEmojiSquare(worldX, worldY, e.x, e.y, e.radius*2)) continue; // the enemy emoji is drawn at radius*2 px
     const distance = Math.hypot(e.x-worldX, e.y-worldY);
     if(distance < closestDistance){ closestDistance = distance; closest = e; }
@@ -1987,6 +2009,7 @@ function describeRunEnd(){
   return [
     'Reached wave ' + reached + ' — ' + actTitleForWave(reached),
     countLabel(sessionKills, 'kill') + ' · best streak ' + bestKillStreak,
+    runMvp ? 'MVP: ' + runMvp.icon + ' ' + runMvp.name + ' (level ' + runMvp.level + ') — ' + countLabel(runMvp.kills, 'kill') : 'No kills this run',
     isNewBest ? '★ New personal best' : 'Personal best: wave ' + best.wave,
     'Run seed ' + runSeedCode
   ].join('\n');
@@ -2644,9 +2667,16 @@ function gainTowerExp(tower, amount){
   }
   if(selectedTower === tower) updateInspectPanel();
 }
+let runMvp = null; // RUN-MVP-01 (Short & Adams ch. 21, callbacks): the run's top killer is remembered for the end screen even if it falls
+function recordRunMvp(tower){
+  if(runMvp && runMvp.kills >= tower.killCount) return;
+  const def = CONFIG.TOWERS[tower.type];
+  runMvp = { icon: def ? def.icon : '', name: def ? def.name : tower.type, level: tower.level, kills: tower.killCount };
+}
 function creditKill(tower, forStreak, lastHitXp){
   if(forStreak === undefined) forStreak = true;
   tower.killCount++;
+  recordRunMvp(tower);
   sessionKills++;
   gainTowerExp(tower, lastHitXp);
   tower.waveLastHits = (tower.waveLastHits || 0) + 1;
@@ -2754,7 +2784,7 @@ function requestStickmanBark(tower, tier, emoji, lines, style, chance){
   }
   if(!target) return;
   target.active = true; target.tower = tower; target.tier = tier; target.style = style || 0;
-  target.text = lines[Math.floor(Math.random()*lines.length)];
+  target.text = drawFromShuffleBag(lines);
   target.textWidth = null;
   target.emoji = emoji; target.timer = BARK_LIFE_MS;
   tower.lastBarkAt = presentationTime;
@@ -3111,7 +3141,7 @@ function restoreGameStateInner(state){
     if(!log || !Number.isFinite(log.x) || !Number.isFinite(log.y)) continue;
     const gx = Math.floor(log.x/TILE_SIZE), gy = Math.floor(log.y/TILE_SIZE);
     if(gx<1 || gy<1 || gx>=COLS-1 || gy>=ROWS-1 || pathCells.has(gx+','+gy) || nearPathTileSet.has(gx+','+gy) || bonusGrassTiles.has(gx+','+gy) || tileHasHut(gx, gy) || ambientLogs.some(saved => Math.floor(saved.x/TILE_SIZE) === gx && Math.floor(saved.y/TILE_SIZE) === gy)) continue;
-    ambientLogs.push({ x:gx*TILE_SIZE+TILE_SIZE/2, y:gy*TILE_SIZE+TILE_SIZE/2, count:Number.isFinite(log.count) ? clampNum(Math.round(log.count), 1, AMBIENT_LOG_STACK_SIZE) : AMBIENT_LOG_STACK_SIZE });
+    ambientLogs.push({ x:log.x, y:log.y, count:Number.isFinite(log.count) ? clampNum(Math.round(log.count), 1, AMBIENT_LOG_STACK_SIZE) : AMBIENT_LOG_STACK_SIZE });
   }
 }
 function validateSaveShape(state){
@@ -3264,9 +3294,6 @@ let hitStopUntil = 0; // brief physics freeze on Boss kills
 // WAVE-CHEER-01: when a wave is cleared every standing fighter raises his weapon and hops for a moment; the ground shadow stays put, so the hop reads as a jump.
 const WAVE_CHEER_MS = 1800, WAVE_CHEER_HOP_PX = 5;
 let waveCheerStart = -1e9, waveCheerUntil = -1e9;
-// CLOSE-CALL-01: an enemy killed within one tile of the finish freezes the action for a beat and shows CLOSE!, at most once every few seconds.
-const CLOSE_CALL_RADIUS_PX = 70, CLOSE_CALL_FREEZE_MS = 140, CLOSE_CALL_GAP_MS = 4000;
-let lastCloseCallAt = -1e9;
 let pausedRenderQueued = false;
 function requestPausedRender(){
   if(pausedRenderQueued) return;
