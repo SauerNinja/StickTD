@@ -41,7 +41,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.115'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.134'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 const shuffleBagByPool = new WeakMap(); // PCG-BAG-01: draw without replacement so repeats wait until the pool is used up
 function drawFromShuffleBag(pool){
   if(pool.length < 2) return pool[0];
@@ -954,7 +954,7 @@ function buyPassive(id){
   gold -= cost;
   globalPassiveCounts[id] = (globalPassiveCounts[id]||0) + 1;
   for(const t of towerPool) if(t.active) t.recomputeStats();
-  playSound('click');
+  playSound('ui_buy');
   updateHUD();
   return true;
 }
@@ -1237,7 +1237,7 @@ function buyDrill(){
   if(gold < cost) return false;
   gold -= cost; drillsBought++;
   const xp = foodFruitXp() * DRILL_XP_MULTIPLIER; gainTowerExp(tower, xp);
-  spawnFloatingText(tower.x, tower.y - 30, 'XP +' + xp, '#7dd3fc'); playSound('click');
+  spawnFloatingText(tower.x, tower.y - 30, 'XP +' + xp, '#7dd3fc'); playSound('ui_buy');
   updateInspectPanel(); updateHUD();
   return true;
 }
@@ -1248,7 +1248,7 @@ function buyMerchantItem(index){
   if(!offer || merchantBoughtIds.has(index) || gold < offer.cost) return false;
   const priced = Object.create(offer.def, { cost: { value: offer.cost, enumerable: true, writable: true } }); // the item definitions are frozen, so the price is set as an own property
   if(!tower.buyItem(priced)) return false;
-  merchantBoughtIds.add(index); awardMedal('TRADER'); playSound('click'); updateInspectPanel(); updateHUD();
+  merchantBoughtIds.add(index); awardMedal('TRADER'); playSound('ui_buy'); updateInspectPanel(); updateHUD();
   return true;
 }
 let livesLostThisRun = 0; // FLAWLESS-MEDAL-01: lives actually lost, so healing back to full cannot earn Flawless Ten
@@ -1381,7 +1381,7 @@ function runSeedFor(salt){ return hashSeedText(runSeedCode, salt); }
 function savePrefs(){
   const started = performance.now();
   try{
-    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, bloodDropletsEnabled, hacksEnabled, introTextEnabled, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, medalNotificationsEnabled, decalBudgetOverride });
+    const payload = JSON.stringify({ manualRenderScaleStep:!autoRenderScaleEnabled ? renderScaleStep : undefined, graphicsQuality, goreMode, bloodDropletsEnabled, hacksEnabled, introTextEnabled, isMuted, audioMasterVolume, audioMusicVolume, audioSfxVolume, showFpsCounter, screenShakeEnabled, screenShakeUserSet, frameCapEnabled, frameCapFps: frameCapFpsUser === null ? undefined : frameCapFpsUser, autoRenderScaleEnabled, autoRenderScaleChoiceMade: autoRenderScaleUserSet ? true : undefined, lowFpsOfferAnswered, renderScaleFloorPercent: renderScaleFloorUserSet ? renderScaleFloorPercent : undefined, debugOverlay, autoCameraPans, medalNotificationsEnabled, autoStartWavesEnabled, decalBudgetOverride });
     const jsonDone = performance.now();
     localStorage.setItem(PREFS_KEY,payload);
     retainDiagnostic(extendedDiagnostics.saves,{time:new Date().toISOString(),kind:'preferences',success:true,jsonMs:jsonDone-started,writeMs:performance.now()-jsonDone,codeUnits:payload.length},20);
@@ -1407,6 +1407,7 @@ function loadPrefs(){
     if(typeof p.debugOverlay === 'boolean') debugOverlay = p.debugOverlay;
     if(typeof p.autoCameraPans === 'boolean') autoCameraPans = p.autoCameraPans;
     if(typeof p.medalNotificationsEnabled === 'boolean') medalNotificationsEnabled = p.medalNotificationsEnabled;
+    if(typeof p.autoStartWavesEnabled === 'boolean') autoStartWavesEnabled = p.autoStartWavesEnabled;
     if(typeof p.screenShakeEnabled === 'boolean'){ screenShakeEnabled = p.screenShakeEnabled; screenShakeUserSet = true; }
     else screenShakeEnabled = graphicsQuality === 'high' && !PREFERS_REDUCED_MOTION;
     if(typeof p.frameCapEnabled === 'boolean') frameCapEnabled = p.frameCapEnabled;
@@ -1959,6 +1960,9 @@ const MEDAL_DEFS = Object.freeze([
   { id:'TRADER', icon:'🐪', name:'Trader', text:'Trade with a merchant.' }
 ]);
 let medalNotificationsEnabled = true;
+// GAMEACE-AUTO-WAVE-01: optional auto-start of the next wave a few seconds after a clear (default off; manual calls and the early-call bonus are unchanged).
+let autoStartWavesEnabled = false;
+const AUTO_START_WAVE_DELAY_MS = 4000;
 const earnedMedals = new Set();
 try{ for(const id of JSON.parse(localStorage.getItem(MEDALS_KEY) || '[]')) if(MEDAL_DEFS.some(def => def.id === id)) earnedMedals.add(id); }catch(err){ /* storage unavailable: medals last for this session */ }
 function renderMedalList(){
@@ -1983,6 +1987,7 @@ function awardMedal(id){
   renderMedalList();
   trackGameEvent('medal_earned', { medal: id, medals_total: earnedMedals.size });
   if(medalNotificationsEnabled) recordNotification(def.icon + ' Medal: ' + def.name, def.text, undefined, true);
+  playSound('medal');
 }
 function awardWaveMedals(){
   if(wavesCompleted >= 1) awardMedal('FIRST_STEPS');
@@ -1991,6 +1996,16 @@ function awardWaveMedals(){
   if(wavesCompleted >= 25) awardMedal('QUARTER');
   if(wavesCompleted >= 50) awardMedal('HALFWAY');
   if(wavesCompleted >= 100) awardMedal('CENTURY');
+}
+let personalBestPassedThisRun = false;
+function announcePersonalBestPassed(){
+  if(personalBestPassedThisRun) return;
+  let best = null;
+  try{ best = JSON.parse(localStorage.getItem(BEST_RUN_KEY) || 'null'); }catch(err){ return; }
+  if(!best || !(wavesCompleted > best.wave)) return;
+  personalBestPassedThisRun = true;
+  showToast('★ New personal best — past wave ' + best.wave + '!');
+  playSound('personal_best');
 }
 let sessionKills = 0, bestKillStreak = 0, runEndedAsBest = false;
 // RUN-SHARE-01: gamers can copy the run seed from the end screen, and players on a storefront build get a button to that storefront's page to rate or comment.
@@ -2009,6 +2024,7 @@ function describeRunEnd(){
   return [
     'Reached wave ' + reached + ' — ' + actTitleForWave(reached),
     countLabel(sessionKills, 'kill') + ' · best streak ' + bestKillStreak,
+    ...(typeof runBossesFelled !== 'undefined' && runBossesFelled.length ? ['Bosses felled: ' + runBossesFelled.slice(-3).join(', ') + (runBossesFelled.length > 3 ? ' and ' + (runBossesFelled.length - 3) + ' more' : '')] : []),
     runMvp ? 'MVP: ' + runMvp.icon + ' ' + runMvp.name + ' (level ' + runMvp.level + ') — ' + countLabel(runMvp.kills, 'kill') : 'No kills this run',
     isNewBest ? '★ New personal best' : 'Personal best: wave ' + best.wave,
     'Run seed ' + runSeedCode
@@ -2282,7 +2298,7 @@ function showKillstreakBanner(label){
   }
   clearTimeout(showKillstreakBanner._t);
   showKillstreakBanner._t = setTimeout(() => el.classList.remove('show'), 2200);
-  playSound('wave');
+  playSound('killstreak');
 }
 /* =========================================================
    ELEMENTS, ATTUNEMENT AND CHAIN LIGHTNING

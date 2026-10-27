@@ -4,6 +4,163 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.134] — 2026-10-27 (UTC)
+
+From Sweet ch24, Williams, *The Animator's Survival Kit* (a hard accent hits the extreme at once and springs back past rest before settling) and Farnell, *Designing Sound* (alarm grammar: a falling sequence means "definitely negative"; chapters 7–14 read in full, where smooth gain changes and equal-power panning are already in place).
+
+- **WILLIAMS-ACCENT-01** (js/effects.js new `flinchAccentCurve()`, `FLINCH_ACCENT_TURNS`; js/waves.js enemy draw): a hit flinch used to fade straight back from full push to rest. It now springs back about a quarter of the way past rest before settling, so heavy hits read as a jolt. Same duration and push size, no new drawing.
+- **FARNELL-RUN-END-01** (js/audio.js `lose` case, constants `RUN_END_FALL_HZ`, `RUN_END_FALL_START_S`, `RUN_END_FALL_STEP_S`): the run-over sound keeps its sawtooth slide and now ends with four soft triangle notes falling down the minor triad, tuned to the music's key through `musicKeyRatio()`.
+- **SWEET-LAST-ENEMY-01** (js/waves.js new `cueLastStandOncePerWave()` called from `refreshLastStandEnemy()`; js/audio.js new `last_enemy` case): when a wave is down to its last non-boss enemy, a quiet rising three-note sine cue plays once, in the music's key. From Sweet ch24: a single combat state misses the drama of one enemy left.
+- Contract checks WILLIAMS-ACCENT-01, FARNELL-RUN-END-01 and SWEET-LAST-ENEMY-01 added (js/diagnostics.js).
+- Verification: `python3 release.py check` passes; Chromium smoke run shows an empty design contract, passing self-tests and no console errors.
+
+## [1.8.133] — 2026-10-27 (UTC)
+
+From Sweet, *Writing Interactive Music for Video Games* ch24 (Marty O'Donnell's fix for a stuck player hearing one cue on repeat: fade the music when the player is not making progress).
+
+- **MUSIC-IDLE-REST-01** (js/audio.js new `musicRestGain` node after the peril filter, `updateMusicRest()`, `notePlayerInput()`, constants `MUSIC_REST_AFTER_MS`, `MUSIC_REST_GAIN`, `MUSIC_REST_FADE_SECONDS`, `MUSIC_REST_WAKE_SECONDS`; the music reverb return now passes through the same node): after 90 seconds of standby between waves with no tap, click or key, the score sinks over 6 seconds to 35% volume; the next input brings it back in under a second. The music itself is unchanged and combat never rests.
+- Contract check MUSIC-IDLE-REST-01 added (js/diagnostics.js).
+- Verification: `python3 release.py check` passes; Chromium smoke run shows an empty design contract, passing self-tests and no console errors.
+
+## [1.8.132] — 2026-10-27 (UTC)
+
+From Farnell, *Designing Sound* (alarm grammar: rising = go, falling = stop), Rogers, *Level Up!* (positive sounds rise, negative fall; never a button that gives no response) and Schell ch15 (sound maps to touch).
+
+- **FARNELL-PAUSE-CUE-01** (js/audio.js new `pause_cue`/`resume_cue` cases; js/ui.js pause button and Space key): pausing by the button or Space now plays a soft falling two-note triangle cue (G5 to D5) and resuming by the button plays the same pair rising, both tuned to the music's current key through `musicKeyRatio()`. Pauses the game makes on its own (hidden tab, pop-ups) stay silent.
+- Contract check FARNELL-PAUSE-CUE-01 added (js/diagnostics.js).
+- Verified: Chromium smoke test, design contract empty, no console errors.
+
+## [1.8.131] — 2026-10-27 (UTC)
+
+From Schell, *The Art of Game Design* ch14 (Lens #55, Visible Progress: players need to see they are getting closer) and Rogers, *Level Up!* (show the player how close the end is).
+
+- **SCHELL-VISIBLE-PROGRESS-01** (js/ui.js `updateHUDImmediate`): once a wave has finished arriving (FIGHTING phase), the wave-phase label shows how many enemies are still on the route, e.g. "7 LEFT", counting down with each kill or leak, and returns to STANDBY at the clear. Uses the existing `routeObligationCount()` only when the HUD is already redrawing (kills, gold, lives), never per frame. `data-phase` stays FIGHTING so its colour is unchanged; the text is shorter than "FIGHTING" so the phone HUD row does not grow.
+- Contract check SCHELL-VISIBLE-PROGRESS-01 added (js/diagnostics.js).
+- Verified: Chromium smoke test, design contract empty, no console errors; label read "N LEFT" mid-wave.
+
+## [1.8.130] — 2026-10-27 (UTC)
+
+Safe wins from Jesse Schell, *The Art of Game Design* (ch15 interface: channels and dimensions; ch13 balance) and the Game-Ace tower-defense engineering article the owner supplied (HUD speed control, auto-start toggle, 44–48 px tap targets).
+
+- **DAMAGE-TEXT-SCALE-01** (js/effects.js new `scaleLastFloatingText()`, `fontPx` field on floating texts, `drawFloatingTexts`; js/waves.js hit path): damage numbers now use their size as a second channel. A hit worth 25% or more of the target's max HP draws at 17 px, under 5% at 11 px, everything else unchanged at 13 px. Three fixed sizes keep the text-sprite cache small; skipped in simplified fast-forward like the text itself.
+- **GAMEACE-AUTO-WAVE-01** (js/config.js `autoStartWavesEnabled`, `AUTO_START_WAVE_DELAY_MS` 4000, saved in prefs; js/loop.js; js/ui.js; index.html Options toggle): optional "Auto-start the next wave 4 seconds after a clear", default off. Uses the existing `startNextWave()`, so the early-call bonus still pays its remaining share. The speed control was already on the HUD (`speedBtn`).
+- **GAMEACE-TAP-TARGET-01** (index.html CSS): on touch screens (`pointer:coarse`) HUD buttons are at least 44×44 px (were 36×38). Mouse layouts unchanged.
+- Contract checks GAMEACE-AUTO-WAVE-01 and DAMAGE-TEXT-SCALE-01 added (js/diagnostics.js).
+
+## [1.8.129] — 2026-10-27 (UTC)
+
+Built from Michael Sweet, *Writing Interactive Music for Video Games*, chapter 12 ("Music as a Gameplay Element"). Sweet says sound effects must not clash with the score by being in the wrong key, and that games which play notes from the interface or world (Chime, Rez, BioShock Infinite) tune those notes to the underlying harmony.
+
+- **SFX-IN-KEY-01** (js/audio.js new `SoundEngine.musicKeyRatio()`; the `medal`, `personal_best`, `crate_open`, `chest_open` and `diamond` cases): the score already moves to a new key every cycle and every ten waves (`musicShift`), and the wave-clear fanfare and kill-streak stab follow it. The five newer reward and find chimes were fixed at C, so after a key change they could clash with the music. Their pitches are now multiplied by 2^(musicShift/12) and sit in the current key. Noise layers are unaffected.
+- Contract check SFX-IN-KEY-01 added (js/diagnostics.js).
+- Verification: with `musicShift` at 0 the medal chime played 659 and 988 Hz; at +5 semitones it played 880 and 1319 Hz, a perfect fourth up as expected. Design contract empty; no console errors in smoke, stress and sound probes.
+
+## [1.8.128] — 2026-10-27 (UTC)
+
+- **DISTINCT-ALERTS-03** (js/environment.js supply crate and chest branches of the scenery-open handler, js/effects.js diamond pickup, js/audio.js `crate_open`, `chest_open`, `diamond`): opening a supply crate, opening a treasure chest and picking up a diamond all played `wave`, the wave chime, so three different finds sounded alike and alike to a wave event. Each now has its own sound, positioned where it happens: the crate gets a dry wood split, a knock and a small chime; the chest gets a latch click, a lid creak, a coin jingle and a rising chime; the diamond gets a glassy three-note sparkle. This follows Farnell: one sound per meaning, and the material decides the sound. `wave` is unchanged for bushes, legacy coin pouches, ground items and everything else.
+- Contract check DISTINCT-ALERTS-03 added (js/diagnostics.js).
+- Verification: `crate_open` started 3 synth voices, `chest_open` 7 and `diamond` 4; design contract empty; no console errors in smoke and stress probes. Not verified: how they sound by ear.
+
+## [1.8.127] — 2026-10-26 (UTC)
+
+- **DISTINCT-ALERTS-02** (js/config.js passive purchase, `buyMerchantItem`, drill purchase; js/waves.js `loseLife`, `Enemy.die`; js/audio.js `reanimate`, `revive`). Five events played sounds that meant something else:
+  - Buying a passive upgrade, a merchant item or a drill played the plain menu `click`. They now play `ui_buy`, the purchase chime that potion buys already used.
+  - An enemy reanimating (a hostile event) played `wave`, the cheerful wave chime. It now plays `reanimate`, a dark rising minor second with a hiss, positioned at the enemy.
+  - The Defibrillator saving the run also played `wave`. It now plays `revive`: a charge whine, the shock, then two heartbeats.
+
+  The `click` and `wave` sounds are unchanged everywhere else.
+- Contract check DISTINCT-ALERTS-02 added (js/diagnostics.js).
+- Verification: `reanimate` started 3 synth voices, `revive` 4 and `ui_buy` 2; design contract empty; no console errors in smoke and stress probes. Not verified: how they sound by ear.
+
+## [1.8.126] — 2026-10-26 (UTC)
+
+- **DISTINCT-ALERTS-01** (js/towers.js `Tower.becomeOverrun`, js/config.js `showKillstreakBanner`, js/audio.js `tower_down` and `killstreak`): two events borrowed other events' sounds. A downed stickman played `lose`, the game-over sound, so losing one fighter sounded like losing the run. A kill-streak milestone played `wave`, the generic wave cue. Each now has its own sound: `tower_down` is a positioned body-fall thud with a falling minor third, and `killstreak` is a short power stab (root, fifth and octave, transposed to the current music key) with a rising top note. This follows Farnell's alarm practical: one sound per meaning. `lose` and `wave` are unchanged everywhere else.
+- Help-text audit: every number in the in-game help was checked against its constant and all match: Hero +5 (`HERO_BONUS_STAT`), stat caps 500/1,000, naming at 500, 25 XP per gold, burn 4 % every 0.5 s, poison every 0.6 s, streak window 1.2 s (`STREAK_TIMEOUT_MS`), Killing Spree 100 to Ascended 1,000, favored stat ×1.6 ("60 % more"), and the overrun lockout of 2 full waves (`TOWER_OVERRUN_WAVES` = 3, counted down at each wave start, so the rest of the current wave plus 2 full waves).
+- Contract check DISTINCT-ALERTS-01 added (js/diagnostics.js).
+- Verification: in Chromium every new sound from 1.8.120 to 1.8.126 started synth voices (`tower_down` 3, `killstreak` 5, `boss_siren` 4, `boss_bell` 5, `red_alert` 4, `medal` 2, `personal_best` 3, `ui_deny` 2); design contract empty; no console errors. Not verified: how they sound by ear.
+
+## [1.8.125] — 2026-10-26 (UTC)
+
+- **A11Y-LABELS-01** (index.html `#inspTargetBtn`, `#settingsFrameCapSlider`): the targeting-priority button, which shows only 🎯, and the frame-rate slider now have `aria-label`s. They were the only two controls a screen reader announced without a name; an audit of all 75 buttons and the range and file inputs found the rest labelled. A spellcheck of all player-facing text (page text, toasts, notices) found no typos.
+- **SEO-SAMEAS-01** (index.html VideoGame structured data `sameAs`): added the Game Jolt page, which the game already links to from its rating button (`PLATFORM_RATING_PAGES`). Search engines use `sameAs` to connect the storefront pages to this site as one game.
+- Contract checks A11Y-LABELS-01, SEARCH-CONSOLE-VERIFY-01 and SEO-SINGLE-H1-01 added (js/diagnostics.js); a negative probe (label removed, second h1 added) made both fire.
+- Verification: design contract empty, no console errors or warnings in smoke and a full play start; structured data parses as JSON; spellcheck clean.
+
+## [1.8.124] — 2026-10-26 (UTC)
+
+- **ISBISTER-LAST-STAND-01** (js/waves.js `refreshLastStandEnemy`, `lastStandEnemy`, `LAST_STAND_REFRESH_MS` = 250, `LAST_STAND_LEAN_RADIANS` = 0.12, `LAST_STAND_SLUMP_Y` = 0.93, `LAST_STAND_SPREAD_X` = 1.05; enemy draw in `Enemy.draw`; js/loop.js wave update): once a wave has fully spawned and only one enemy is left on the road, it slumps and leans forward, beaten. This is Isbister's body language for a side that is losing. Bosses never slump. The survivor is found with one pool pass every 250 ms, not every frame, and the pose is drawing-only, so gameplay is unchanged.
+- **FARNELL-ALARM-02** (js/audio.js `ui_deny`): the blocked-action buzz now has a second, lower buzz 110 ms later, making Farnell's "wrong" pair. The original buzz is unchanged.
+- Contract checks ISBISTER-LAST-STAND-01 and FARNELL-ALARM-02 added (js/diagnostics.js).
+- Verification: design contract empty and no console errors in smoke; a forced one-survivor probe picked the Grunt as `lastStandEnemy`. Not verified: the slump seen on screen.
+- Rejected this session at the owner's request, and removed before release: squad-wide medal hats, and drawing carried items on the stickman's body. Neither shipped.
+
+## [1.8.123] — 2026-10-26 (UTC)
+
+- **SEO-SINGLE-H1-01** (index.html `#endTitle`, end-screen heading CSS): the Game Over heading is now an `h2` with the same look, so the page has one `h1` (the title wordmark). Search engines read the single `h1` as the page topic; a second "Game Over" `h1` diluted it.
+- **SITEMAP-LASTMOD-01** (sitemap.xml): `lastmod` is now 2026-10-26. It had stayed at 2026-10-20 through six releases, and crawlers use it to decide when to revisit.
+- Contract check SEO-SINGLE-H1-01 added in 1.8.125.
+- Verification: design contract empty, no console errors in smoke and boss probes.
+
+## [1.8.122] — 2026-10-26 (UTC)
+
+- **FARNELL-ALARM-01** (js/audio.js `medal`, js/config.js `awardMedal`): earning a medal now plays two short mellow blips rising a fifth. This is Farnell's alarm-practical grammar for "good operation". Before this, medals were silent.
+- **PERSONAL-BEST-LIVE-01** (js/config.js `announcePersonalBestPassed`, `personalBestPassedThisRun`; js/loop.js after `awardWaveMedals`; js/audio.js `personal_best`): the wave that takes a run past the stored best wave (`BEST_RUN_KEY`) now shows "★ New personal best — past wave N!" with two rising blips and a bright top note, once per run. Before this, the player only learned it on the game-over recap. The check reads storage once per completed wave, never per frame.
+- Contract check FARNELL-ALARM-01 / PERSONAL-BEST-LIVE-01 added (js/diagnostics.js).
+- Verification: with the stored best set to wave 3, the toast and chime fired once, after wave 4; the medal chime played; design contract empty; no console errors.
+
+## [1.8.121] — 2026-10-26 (UTC)
+
+- **FARNELL-RED-ALERT-01** (js/audio.js `red_alert`, js/waves.js `soundLowLivesAlert`, `loseLife`, `LOW_LIVES_ALERT_FRACTION` = 0.25): the first time in a run that lives fall to a quarter of the maximum, two rising sawtooth klaxon whoops play (360→847 Hz, the pitch rise Farnell measured for the starship red alert) and a toast says lives are running low. It fires once per run, from the life-loss event only, so it adds no per-frame cost.
+- SEARCH-CONSOLE-VERIFY-01 (index.html `<head>`): added the Google Search Console HTML-tag verification meta. The Google Analytics verification method cannot work here, because analytics loads only after the player consents.
+- Contract check FARNELL-RED-ALERT-01 added (js/diagnostics.js).
+- Verification: a lives probe fired the toast exactly once across repeated losses; design contract empty; no console errors.
+
+## [1.8.120] — 2026-10-26 (UTC)
+
+- **FARNELL-SIREN-01** (js/audio.js `boss_siren`, js/waves.js `Enemy.spawn`): a named boss now arrives with one siren sweep (triangle 300→1100→300 Hz over 0.9 s, plus an overdriven square layer an octave up). This follows Farnell's police siren practical: a swept oscillator, driven hard. It plays once per boss, so it adds no per-frame cost.
+- **FARNELL-BELL-01** (js/audio.js `boss_bell`, js/waves.js `Enemy.die`): a felled named boss now rings a bell. The strike tone is 660 Hz, with the "hum" an octave below and inharmonic partials at ×2.76 and ×5.4 that die away first, plus a 12 ms strike click. This follows Farnell's telephone bell practical.
+- Contract check FARNELL-SIREN-01 / FARNELL-BELL-01 added (js/diagnostics.js).
+- Verification: the boss probe spawned and killed a named boss and showed the fallen toast and the recap line; design contract empty; no console errors. Not verified: the sounds heard by ear.
+
+## [1.8.119] — 2026-10-26 (UTC)
+
+Review round: the owner asked for every supplied book to be reviewed again. Re-reading the notes showed most of their ideas already in the game (luck-balanced crits and misses PRD-ROLLS-01, a 40 ms boss hit-stop, loot rarity sounds LOOT-RARITY-SOUND-01, act announcements, boss-kill barks, the archer's bow draw, spawn spacing, HUD pulses). One cheap idea was missing: Steve Swink, *Game Feel* (ch. 12, Asteroids: "sound pitch scales with rock size") with Andy Farnell, *Designing Sound* (practical 52: bigger bodies have lower fundamentals and longer calls).
+
+- BODY-PITCH-01 (js/audio.js, js/waves.js): `playSound` and `SoundEngine.play` take an optional `bodyRadius`; new constants `BODY_PITCH_REFERENCE_RADIUS` (15, a Grunt), `BODY_PITCH_MIN_SCALE` (0.6) and `BODY_PITCH_MAX_SCALE` (1.4). The `gore_death` sound scales its pitch and low-pass by sqrt(15 / radius) and its length by the inverse, so an ant (radius 9) dies about 29 % higher and shorter, a Grunt sounds as before, and a Boss (radius 34) about 34 % lower and longer. `Enemy.die` passes `this.radius`; other callers are unchanged.
+- Cost: one square root per death; nothing per frame.
+- Contract check BODY-PITCH-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
+## [1.8.118] — 2026-10-25 (UTC)
+
+Audio round from Robert Nystrom, *Game Programming Patterns* (Object Pool: when a pool of playing sounds is full, "find the quietest sound already playing and replace that with our new sound"; "if the disappearance of an existing object would be less noticeable than the absence of a new one, this may be the right choice") and Andy Farnell, *Designing Sound* (ch. 22, voice management).
+
+- VOICE-STEAL-01 (js/audio.js): new `activeVoiceRecords` (kept in step with `activeVoiceExpiry`), `SoundEngine.stealQuietestVoice(now, important)`, `SoundEngine.attachVoice(gainNode, peak)` and constants `VOICE_STEAL_FADE_S` (15 ms) and `VOICE_STEAL_MIN_REMAINING_S` (30 ms). `reserveVoiceSlot` previously refused every new sound once `MAX_VOICES` (28) were playing; now it first fades out the quietest playing voice that is not a priority cue and has more than 30 ms left, and gives its slot to the new sound. `tone`, `noise` and `resonatorBurst` attach their envelope gain so they can be faded; priority cues and forced tones are never stolen. A new `voicesStolen` debug counter records it.
+- Measured in Chromium (audio unlocked): 60 overlapping 0.6 s tones requested at once → 28 playing, 32 steals; before this change the last 32 would have been silent.
+- Cost: one short array scan only when the budget is already full; nothing added per frame.
+- Contract check VOICE-STEAL-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
+## [1.8.117] — 2026-10-24 (UTC)
+
+Character round with no per-frame cost (owner asked for additions that cannot add lag), from Short & Adams, *Procedural Generation in Game Design* (ch. 19 Grinblat: a name and descriptive title position a generated foe as a character; ch. 21 Short: callbacks to earlier events).
+
+- BOSS-NAMES-01 (js/waves.js): new `BOSS_NAMES` (12), `BOSS_TITLES` (10), `nameBoss(enemy)` and `runBossesFelled`. `Enemy.spawn` gives every Boss a `bossTitle` drawn from shuffle bags (`drawFromShuffleBag`, PCG-BAG-01, so names do not repeat until the pool is used) and announces "👹 Skarn the Hungry joins the fight!". When a named Boss dies on the field its fall is announced and recorded; escaped bosses are not counted. Non-bosses clear `bossTitle` on spawn so pooled enemies never inherit a name.
+- RUN-MVP-01 follow-up (js/config.js `describeRunEnd`): adds "Bosses felled: …" (last three, plus a count of the rest) above the MVP line when any boss fell. Existing recap lines are unchanged.
+- Cost: string work only at boss spawn and death; nothing runs per frame.
+- Contract check BOSS-NAMES-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
+## [1.8.116] — 2026-10-24 (UTC)
+
+Owner report from a Pixel 10 in Firefox: the low graphics button was labelled "Performance" instead of "Low", and the debug overlay showed "GPU PowerVR SGX 540, or similar", which is Firefox's fixed privacy value rather than the phone's GPU.
+
+- Graphics label (index.html start screen `#qualityLow`, Options `#gfxLowRadio`; README.md): "Performance" / "Performance mode" renamed to "Low". The setting itself (`graphicsQuality === 'low'`) is unchanged.
+- DEBUG-DEVICE-01 (js/loop.js): new `MASKED_GPU_PATTERN`, `gpuOverlayLabel()`, `debugBrowserName()` and `debugDeviceLabel()`. Masked GPU names now read "masked by browser"; the compact (phone) overlay adds the browser and version, Android version and device model when the browser exposes it, screen size with device pixel ratio and the canvas backing size, and the frame cap (marked "phone lock" when MOBILE-LOCK-30-01 applies) with the render scale. The desktop overlay's GPU row carries the same browser and device label. Nothing was removed from either overlay.
+- Note for the lag report: the overlay showed 2–4 ms per frame, so the game's own work fits easily; phones are deliberately held at 30 FPS by MOBILE-LOCK-30-01, which the new "cap" line now shows.
+- Contract check DEBUG-DEVICE-01 added (js/diagnostics.js).
+- Verification: design contract empty, no console errors in smoke and stress probes.
+
 ## [1.8.115] — 2026-10-24 (UTC)
 
 Callback round from Short & Adams, *Procedural Generation in Game Design* (ch. 21 Emily Short, "Callbacks to Earlier Events": callbacks create perceivable consequence; ch. 19 Grinblat: naming a generated actor positions it as a character) and Sylvester, *Designing Games* (end-of-run recap as story).

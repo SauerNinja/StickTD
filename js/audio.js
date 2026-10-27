@@ -59,6 +59,12 @@ const MUSIC_TEMPO_CREEP = 0.06;
 const MUSIC_BREAKDOWN_FIRST_BAR = 8, MUSIC_BREAKDOWN_LAST_BAR = 11, MUSIC_BREAKDOWN_LEAD_SHARE = 0.75, MUSIC_BREAKDOWN_ROLL_FLOOR = 0.25, MUSIC_BREAKDOWN_SLAM_LEVEL = 0.95; // MUSIC-BREAKDOWN-01
 const MUSIC_STOP_TIME_BARS = new Set([12, 13]); // MUSIC-STOP-TIME-01
 const MUSIC_PERIL_LIVES_SHARE = 0.25, MUSIC_PERIL_MIN_HZ = 1100, MUSIC_PERIL_OPEN_HZ = 20000, MUSIC_PERIL_IN_SECONDS = 1.5, MUSIC_PERIL_OUT_SECONDS = 4, MUSIC_PERIL_RETARGET_HZ = 150; // MUSIC-PERIL-01 (Sweet ch9/11): low lives close a low-pass on the score; ~1.5 s in, ~4 s out
+const RUN_END_FALL_HZ = [523.25, 440, 349.23, 261.63], RUN_END_FALL_START_S = 0.42, RUN_END_FALL_STEP_S = 0.17; // FARNELL-RUN-END-01
+const MUSIC_REST_AFTER_MS = 90000, MUSIC_REST_GAIN = 0.35, MUSIC_REST_FADE_SECONDS = 6, MUSIC_REST_WAKE_SECONDS = 0.8; // MUSIC-IDLE-REST-01 (Sweet ch24, O'Donnell): a long untouched standby lets the score sink, any input brings it back
+let lastPlayerInputAt = performance.now();
+function notePlayerInput(){ lastPlayerInputAt = performance.now(); }
+window.addEventListener('pointerdown', notePlayerInput, true);
+window.addEventListener('keydown', notePlayerInput, true);
 const MUSIC_STING_PICKUPS = Object.freeze([[0, 0, 7, 0.05], [2, 3, 10, 0.062], [4, 5, 12, 0.076]]), MUSIC_STING_DROP_STEP = MUSIC_STEPS_PER_BAR; // MUSIC-STING-02: [step, root offset, fifth-or-above offset, gain]
 const MUSIC_STING_VARIANTS = Object.freeze([MUSIC_STING_PICKUPS, Object.freeze([[0, 7, 12, 0.05], [2, 5, 10, 0.062], [4, 3, 7, 0.076]]), Object.freeze([[0, -2, 3, 0.05], [2, 0, 7, 0.062], [4, 3, 10, 0.076]])]); // MUSIC-STING-VARY-01 (Sweet ch10): rotating minor-pentatonic pickups so the wave stinger never repeats twice running
 // MUSIC-ATTRACT-01: the start screen plays its own arrangement of the battle melody
@@ -190,7 +196,7 @@ const CREATURE_CALLS = {
 // TURNTABLE-SFX-01: speed changes sound like a record: a spin-up for each faster setting, a scratch and brake when it drops back to 1x.
 const TURNTABLE_BASE_HZ = 70, TURNTABLE_TIER_RATIO = 1.35, TURNTABLE_SPIN_UP_S = 0.42, TURNTABLE_BRAKE_S = 0.7, TURNTABLE_WOW_HZ = 5.5, TURNTABLE_WOW_DEPTH = 0.03, TURNTABLE_TONE_HZ = 1800, TURNTABLE_CRACKLE_TICKS = 6;
 const TURNTABLE_SCRATCH_STROKES = [[0, 2600, 0.07], [0.07, 1200, 0.08], [0.15, 2200, 0.05]];
-const SFX_VARIANT_EXEMPT = new Set(['speed_up','record_scratch','loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','class_unlock','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
+const SFX_VARIANT_EXEMPT = new Set(['last_enemy','speed_up','record_scratch','loot_drop','build_note','heart_break','item_scroll','item_inject','wave_clear','levelup','class_unlock','hero','legendary','countdown_tick','countdown_go','coin','ui_buy','ui_deny','ui_open','ui_close','lose','wave','threat','item_eat','item_potion','expand_build']);
 const AUDIO_EVENT_GAPS = Object.freeze({
   swing_blade:0.055, swing_pierce:0.055, swing_blunt:0.09, swing_axe:0.07,
   throw_axe:0.055, monster_swing:0.12, shot_archer:0.055, shot_sniper:0.08,
@@ -202,6 +208,9 @@ const AUDIO_EVENT_GAPS = Object.freeze({
   caravan_arrive:1.5, troll_arrive:1.5, clown_honk:0.3, caravan_clop:0.14, heart_break:0.3, threat:1.5, wave_clear:0.5, class_unlock:0.5, hero:0.5, legendary:1, lose:0.5, roundStart:0.6, wave:0.25, ui_deny:0.12
 });
 const AUDIO_PRIORITY_EVENTS = new Set(['speed_up','record_scratch','caravan_arrive','troll_arrive','clown_honk','heart_break','click','ui_open','ui_close','ui_buy','ui_deny','stat_spend','coin','bag','roundStart','wave','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
+// BODY-PITCH-01 (Swink, Asteroids: sound pitch tracks size; Farnell ch. 52: bigger bodies sound lower and longer): death sounds scale by sqrt(reference radius / enemy radius).
+const BODY_PITCH_REFERENCE_RADIUS = 15, BODY_PITCH_MIN_SCALE = 0.6, BODY_PITCH_MAX_SCALE = 1.4;
+const VOICE_STEAL_FADE_S = 0.015, VOICE_STEAL_MIN_REMAINING_S = 0.03;
 const AUDIO_FOCUS_EVENTS = new Set(['ui_buy','roundStart','wave_clear','threat','lose','class_unlock','hero','legendary','levelup']);
 // CHATTER-VOICES-01: [lowest start pitch Hz, random spread Hz] per archetype; Mages speak lowest and slowest, Archers highest.
 const CHATTER_REGISTERS = { MAGE: [280, 130], WARRIOR: [460, 160], ARCHER: [640, 220] }, CHATTER_NEUTRAL_REGISTER = [460, 220];
@@ -210,6 +219,7 @@ class SoundEngine{
   constructor(){
     this.unlocked=false;
     this.activeVoiceExpiry = [];
+    this.activeVoiceRecords = []; // VOICE-STEAL-01: parallel to activeVoiceExpiry — { node, peak, important } once the voice attaches its envelope gain
     this.currentEventImportant = false;
     this.currentEventGain = 1;
     this.combatDuckUntil = 0;
@@ -234,7 +244,7 @@ class SoundEngine{
     this.musicReverbSend = this.ctx.createGain();
     this.musicReverbSend.gain.value = MUSIC_REVERB_SEND;
     this.musicReverbSend.connect(this.musicReverb);
-    this.musicReverb.connect(this.master);
+    this.musicReverb.connect(this.musicRestGain || this.master);
   }
   setMusicSectionLevel(time, section){
     if(!this.musicSectionGain) return;
@@ -257,15 +267,33 @@ class SoundEngine{
     const now = this.ctx.currentTime;
     let voiceWriteIdx = 0;
     for(let i=0; i<this.activeVoiceExpiry.length; i++){
-      if(this.activeVoiceExpiry[i] > now) this.activeVoiceExpiry[voiceWriteIdx++] = this.activeVoiceExpiry[i];
+      if(this.activeVoiceExpiry[i] > now){ this.activeVoiceRecords[voiceWriteIdx] = this.activeVoiceRecords[i]; this.activeVoiceExpiry[voiceWriteIdx++] = this.activeVoiceExpiry[i]; }
     }
-    this.activeVoiceExpiry.length = voiceWriteIdx;
-    if(this.activeVoiceExpiry.length >= this.MAX_VOICES + (important ? 4 : 0)) return false; // budget full — this specific call silently produces no sound rather than piling on further
+    this.activeVoiceExpiry.length = voiceWriteIdx; this.activeVoiceRecords.length = voiceWriteIdx;
+    if(this.activeVoiceExpiry.length >= this.MAX_VOICES + (important ? 4 : 0) && !this.stealQuietestVoice(now, important)) return false; // budget full and nothing quiet enough to give way — this call produces no sound
     this.debugCounters.voicesStarted++;
     this.activeVoiceExpiry.push(now + (delay || 0) + duration);
+    this.activeVoiceRecords.push(null);
     if(this.activeVoiceExpiry.length > this.debugCounters.peakVoices) this.debugCounters.peakVoices = this.activeVoiceExpiry.length;
     return true;
   }
+  // VOICE-STEAL-01 (Nystrom, Object Pool: "find the quietest sound already playing and replace that"; Farnell ch. 22): when the budget is full,
+  // the quietest attached voice that is not a priority cue fades out over VOICE_STEAL_FADE_S and frees its slot, so the newest sound is heard.
+  stealQuietestVoice(now, important){
+    let victim = -1;
+    for(let i = 0; i < this.activeVoiceRecords.length; i++){
+      const record = this.activeVoiceRecords[i];
+      if(!record || record.important || this.activeVoiceExpiry[i] - now < VOICE_STEAL_MIN_REMAINING_S) continue;
+      if(victim < 0 || record.peak < this.activeVoiceRecords[victim].peak) victim = i;
+    }
+    if(victim < 0) return false;
+    const gainParam = this.activeVoiceRecords[victim].node.gain;
+    try{ gainParam.cancelScheduledValues(now); gainParam.setValueAtTime(gainParam.value, now); gainParam.linearRampToValueAtTime(0, now + VOICE_STEAL_FADE_S); }catch(err){ /* node already finished */ }
+    this.activeVoiceExpiry.splice(victim, 1); this.activeVoiceRecords.splice(victim, 1);
+    this.debugCounters.voicesStolen = (this.debugCounters.voicesStolen || 0) + 1;
+    return true;
+  }
+  attachVoice(gainNode, peak){ this.activeVoiceRecords[this.activeVoiceRecords.length - 1] = { node: gainNode, peak, important: this.currentEventImportant }; }
   unlock(){
     if(this.unlocked){
       if(this.ctx && this.ctx.state !== 'running' && this.ctx.resume){
@@ -352,7 +380,11 @@ class SoundEngine{
     this.musicPerilFilter.Q.value = 0.7;
     this.musicPerilTargetHz = MUSIC_PERIL_OPEN_HZ;
     this.musicFilter.connect(this.musicPerilFilter);
-    this.musicPerilFilter.connect(this.master);
+    this.musicRestGain = this.ctx.createGain();
+    this.musicRestGain.gain.value = 1;
+    this.musicResting = false;
+    this.musicPerilFilter.connect(this.musicRestGain);
+    this.musicRestGain.connect(this.master);
     this.buildMusicReverb();
     this.musicEchoSend = this.ctx.createGain();
     this.musicEchoSend.gain.value = MUSIC_ECHO_SEND;
@@ -487,6 +519,16 @@ class SoundEngine{
     frequency.cancelScheduledValues(at);
     frequency.setValueAtTime(frequency.value, at);
     frequency.exponentialRampToValueAtTime(targetHz, at + (closing ? MUSIC_PERIL_IN_SECONDS : MUSIC_PERIL_OUT_SECONDS));
+  }
+  updateMusicRest(time){
+    if(!this.musicRestGain) return;
+    const resting = gameState === 'PLAYING' && waveState === 'IDLE' && performance.now() - lastPlayerInputAt >= MUSIC_REST_AFTER_MS;
+    if(resting === this.musicResting) return;
+    this.musicResting = resting;
+    const at = Math.max(time, this.ctx.currentTime), gain = this.musicRestGain.gain;
+    gain.cancelScheduledValues(at);
+    gain.setValueAtTime(gain.value, at);
+    gain.linearRampToValueAtTime(resting ? MUSIC_REST_GAIN : 1, at + (resting ? MUSIC_REST_FADE_SECONDS : MUSIC_REST_WAKE_SECONDS));
   }
   musicStepSeconds(){
     return 60 / (this.musicPhase === 'attract' ? MUSIC_ATTRACT_TEMPO_BPM : this.musicPhase === 'boss' ? MUSIC_BOSS_TEMPO_BPM : this.musicPhase === 'wave' ? MUSIC_COMBAT_TEMPO_BPM : MUSIC_TEMPO_BPM) / 2 / (1 + MUSIC_TEMPO_CREEP * (this.musicTempoCreep || 0));
@@ -663,6 +705,7 @@ class SoundEngine{
     const beatStep = step % MUSIC_STEPS_PER_BAR;
     if(beatStep === 0) this.musicPhase = this.requestedMusicPhase;
     this.updateMusicPeril(time);
+    this.updateMusicRest(time);
     const combat = this.musicPhase === 'wave' || this.musicPhase === 'boss';
     const boss = this.musicPhase === 'boss';
     if(beatStep === 0) this.musicTempoCreep = (this.musicTempoCreep || 0) + ((combat ? this.musicIntensity || 0 : 0) - (this.musicTempoCreep || 0)) * 0.4;
@@ -1275,6 +1318,7 @@ class SoundEngine{
     const peak = Math.max(0.0001, gain*this.currentEventGain);
     envelope.gain.setValueAtTime(peak, t0);
     envelope.gain.setTargetAtTime(0.0001, t0, duration/RESONATOR_DECAY_TIME_CONSTANTS);
+    this.attachVoice(envelope, peak);
     src.connect(envelope);
     const filters = bandsHz.map(frequency => { const filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = Math.min(this.ctx.sampleRate*0.45, frequency); filter.Q.value = q; envelope.connect(filter); filter.connect(sum); return filter; });
     sum.gain.value = RESONATOR_MAKEUP_GAIN/Math.sqrt(bandsHz.length);
@@ -1364,6 +1408,7 @@ class SoundEngine{
     gain.gain.setValueAtTime(0.0001,t0);
     gain.gain.linearRampToValueAtTime(Math.max(0.0001,peak),t0+Math.min(0.002,duration*0.1));
     gain.gain.exponentialRampToValueAtTime(0.0001, t0+duration);
+    if(!force) this.attachVoice(gain, peak);
     let node = gain;
     if(pan){
       const panner = this.ctx.createStereoPanner();
@@ -1394,6 +1439,7 @@ class SoundEngine{
     envelope.gain.setValueAtTime(0, t0);
     envelope.gain.linearRampToValueAtTime(peak,t0+Math.min(0.002,duration*0.1));
     envelope.gain.linearRampToValueAtTime(0, t0 + duration);
+    this.attachVoice(envelope, peak);
     const filter = this.ctx.createBiquadFilter();
     filter.type = filterType || 'lowpass'; filter.frequency.value = Math.min(this.ctx.sampleRate*0.45,(filterFreq || 1200)*this.sfxVariantNoise*(0.95+Math.random()*0.10)*(filter.type === 'lowpass' ? SFX_DISTANCE_DARKEN_FLOOR + (1 - SFX_DISTANCE_DARKEN_FLOOR)*this.currentEventGain : 1));
     let node = filter;
@@ -1411,8 +1457,10 @@ class SoundEngine{
     };
     src.start(t0, offset, duration);
   }
-  play(name, worldX, intensity, worldY){
+  musicKeyRatio(){ return Math.pow(2, (this.musicShift || 0) / 12); } // SFX-IN-KEY-01 (Sweet ch12): reward chimes sit in the score's current key
+  play(name, worldX, intensity, worldY, bodyRadius){
     if(!this.unlocked || isMuted || audioSfxVolume <= 0) return;
+    this.currentEventBodyScale = bodyRadius ? clampNum(Math.sqrt(BODY_PITCH_REFERENCE_RADIUS / bodyRadius), BODY_PITCH_MIN_SCALE, BODY_PITCH_MAX_SCALE) : 1;
     const previousPriority = this.currentEventImportant, previousGain = this.currentEventGain;
     this.currentEventImportant = isImportantAudioEvent(name);
     this.currentEventGain = this.currentEventImportant ? 1 : this.gainFor(worldX,worldY);
@@ -1446,9 +1494,9 @@ class SoundEngine{
       case 'death': this.noise(0.15); break;
       case 'gore_death': {
         const panD = this.panFor(worldX);
-        const wetness = 1 + Math.min(1.2, (intensity||1) - 1)*0.4;
-        this.noise(0.13*wetness, 650, 'lowpass', panD);
-        this.tone(130, 0.15*wetness, 'sawtooth', 50, panD);
+        const wetness = 1 + Math.min(1.2, (intensity||1) - 1)*0.4, body = this.currentEventBodyScale || 1; // BODY-PITCH-01
+        this.noise(0.13*wetness/body, 650*body, 'lowpass', panD);
+        this.tone(130*body, 0.15*wetness/body, 'sawtooth', 50*body, panD);
         this.noise(0.045, 2400, 'bandpass', panD);
         break;
       }
@@ -1494,7 +1542,12 @@ class SoundEngine{
         this.tone(311, 0.34, 'sine', 262, 0, true, 0.15, true, true, 0.12);
         this.tone(78, 0.22, 'sine', 55, 0, false, 0.02, true, true, 0.09);
         break;
-      case 'lose':  this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true); break;
+      case 'lose': {
+        this.duck(-3, 0.3); this.tone(200,0.4,'sawtooth',50,undefined,undefined,undefined,true);
+        const keyRatio = this.musicKeyRatio(); // FARNELL-RUN-END-01: "definitely negative" — four soft notes falling down the minor triad after the slide
+        RUN_END_FALL_HZ.forEach((hz, i) => this.tone(hz*keyRatio, 0.16, 'triangle', undefined, 0, false, RUN_END_FALL_START_S + i*RUN_END_FALL_STEP_S, true, true, 0.08 - i*0.012));
+        break;
+      }
       case 'levelup': this.duck(-2.5, 0.25); this.tone(520,0.09,'sine',780,undefined,undefined,undefined,true); this.tone(780,0.14,'sine',1040,0,0,0.07,true); break;
       case 'class_unlock': // unlocking a new tower type, one of the rarest moments in a run
         this.duck(-4, 0.4);
@@ -1737,6 +1790,109 @@ class SoundEngine{
         this.noise(0.18, 260, 'lowpass', 0, false, 0, 0.2);
         break;
       }
+      case 'boss_siren': { // FARNELL-SIREN-01: one slow triangle sweep up and down, driven hard, with a soft echo — a named boss arrives
+        this.duck(-2, 0.9);
+        this.tone(300, 0.45, 'triangle', 1100, 0, true, 0, true, true, 0.09);
+        this.tone(1100, 0.45, 'triangle', 300, 0, true, 0.45, true, true, 0.09);
+        this.tone(600, 0.45, 'square', 2200, 0, false, 0, true, true, 0.025);
+        this.tone(2200, 0.45, 'square', 600, 0, false, 0.45, true, true, 0.025);
+        break;
+      }
+      case 'boss_bell': { // FARNELL-BELL-01: a struck bell — the hum an octave below, the strike tone and inharmonic partials decaying fastest first
+        const strike = 660;
+        this.tone(strike/2, 1.6, 'sine', undefined, 0, true, 0, true, true, 0.12);
+        this.tone(strike, 1.2, 'sine', undefined, 0, true, 0, true, true, 0.13);
+        this.tone(strike*2.76, 0.6, 'sine', undefined, 0, true, 0, true, true, 0.05);
+        this.tone(strike*5.4, 0.3, 'sine', undefined, 0, false, 0, true, true, 0.03);
+        this.noise(0.012, 3000, 'highpass', 0, false, 0, 0.12);
+        break;
+      }
+      case 'red_alert': { // FARNELL-RED-ALERT-01: two rising sawtooth klaxon whoops (360→847 Hz) through a soft echo — lives have run low
+        this.duck(-3, 1.2);
+        for(const delay of [0, 0.55]){
+          this.tone(360, 0.45, 'sawtooth', 847, 0, true, delay, true, true, 0.06);
+          this.tone(720, 0.45, 'triangle', 1694, 0, false, delay, true, true, 0.03);
+        }
+        break;
+      }
+      case 'medal': { // FARNELL-ALARM-01: "good operation" — two short mellow blips rising a fifth
+        const keyRatio = this.musicKeyRatio(); // SFX-IN-KEY-01
+        this.tone((659.25)*keyRatio, 0.07, 'sine', undefined, 0, true, 0, true, true, 0.09);
+        this.tone((987.77)*keyRatio, 0.10, 'sine', undefined, 0, true, 0.11, true, true, 0.09);
+        break;
+      }
+      case 'personal_best': { // FARNELL-ALARM-01: "definitely positive" — two longer blips rising, then a bright third an octave up
+        const keyRatio = this.musicKeyRatio(); // SFX-IN-KEY-01
+        this.duck(-2, 0.6);
+        this.tone((523.25)*keyRatio, 0.12, 'triangle', 587.33*keyRatio, 0, true, 0, true, true, 0.1);
+        this.tone((783.99)*keyRatio, 0.16, 'triangle', 880*keyRatio, 0, true, 0.16, true, true, 0.1);
+        this.tone((1318.51)*keyRatio, 0.22, 'sine', undefined, 0, true, 0.34, true, true, 0.07);
+        break;
+      }
+      case 'tower_down': { // DISTINCT-ALERTS-01: a stickman is overrun — a body-fall thud and a falling minor third, no longer the game-over sound
+        this.noise(0.12, 220, 'lowpass', 0, false, 0, 0.35);
+        this.tone(330, 0.16, 'triangle', 277.18, 0, true, 0.02, true, true, 0.1);
+        this.tone(277.18, 0.28, 'triangle', 220, 0, true, 0.17, true, true, 0.09);
+        break;
+      }
+      case 'killstreak': { // DISTINCT-ALERTS-01: a kill-streak milestone — a short power stab, root, fifth and octave struck together, instead of the generic wave cue
+        this.duck(-2, 0.4);
+        const ratio = Math.pow(2, (this.musicShift || 0) / 12);
+        for(const freq of [220, 329.63, 440]) this.tone(freq*ratio, 0.22, 'sawtooth', undefined, 0, true, 0, true, true, 0.06);
+        this.tone(880*ratio, 0.18, 'triangle', 1174.66*ratio, 0, true, 0.06, true, true, 0.05);
+        this.noise(0.08, 4200, 'highpass', 0, false, 0, 0.06);
+        break;
+      }
+      case 'reanimate': { // DISTINCT-ALERTS-02: an enemy rises again — a hostile event, so a dark rising minor second with a breathy hiss, not the cheerful wave chime
+        this.tone(110, 0.5, 'sawtooth', 155.56, 0, true, 0, true, true, 0.06);
+        this.tone(116.54, 0.5, 'sawtooth', 164.81, 0, true, 0, true, true, 0.05);
+        this.noise(0.4, 1800, 'bandpass', 0, true, 0.05, 0.05);
+        break;
+      }
+      case 'revive': { // DISTINCT-ALERTS-02: the Defibrillator saves the run — a charge whine, the shock, then two heartbeats
+        this.duck(-3, 0.9);
+        this.tone(600, 0.25, 'sine', 2400, 0, false, 0, true, true, 0.05);
+        this.noise(0.05, 3000, 'highpass', 0, false, 0.26, 0.12);
+        for(const beat of [0.5, 0.78]) this.tone(70, 0.12, 'sine', 45, 0, false, beat, true, true, 0.22);
+        break;
+      }
+      case 'crate_open': { // DISTINCT-ALERTS-03: a supply crate cracks open — a dry wood split and a short knock, then a small find chime
+        const keyRatio = this.musicKeyRatio(); // SFX-IN-KEY-01
+        this.noise(0.06, 900, 'bandpass', 0, false, 0, 0.18);
+        this.tone((160)*keyRatio, 0.05, 'square', 90*keyRatio, 0, false, 0.02, true, true, 0.06);
+        this.tone((783.99)*keyRatio, 0.12, 'sine', undefined, 0, true, 0.1, true, true, 0.06);
+        break;
+      }
+      case 'chest_open': { // DISTINCT-ALERTS-03: a treasure chest — latch click, lid creak, then a coin jingle and a rising find chime
+        const keyRatio = this.musicKeyRatio(); // SFX-IN-KEY-01
+        this.tone((1800)*keyRatio, 0.015, 'square', undefined, 0, false, 0, true, true, 0.05);
+        this.tone((140)*keyRatio, 0.18, 'sawtooth', 210*keyRatio, 0, false, 0.03, true, true, 0.03);
+        for(const [freq, delay] of [[2637, 0.2], [3136, 0.26], [2793.83, 0.31]]) this.tone((freq)*keyRatio, 0.06, 'triangle', undefined, 0, false, delay, true, true, 0.04);
+        this.tone((659.25)*keyRatio, 0.1, 'sine', undefined, 0, true, 0.22, true, true, 0.07);
+        this.tone((987.77)*keyRatio, 0.18, 'sine', undefined, 0, true, 0.32, true, true, 0.07);
+        break;
+      }
+      case 'diamond': { // DISTINCT-ALERTS-03: a diamond — a bright glassy sparkle, three quick high partials falling into place
+        const keyRatio = this.musicKeyRatio(); // SFX-IN-KEY-01
+        for(const [freq, delay] of [[2093, 0], [2637, 0.05], [3520, 0.1]]) this.tone((freq)*keyRatio, 0.14, 'sine', undefined, 0, true, delay, true, true, 0.05);
+        this.noise(0.05, 7000, 'highpass', 0, false, 0, 0.04);
+        break;
+      }
+      case 'last_enemy': { // SWEET-LAST-ENEMY-01: a quiet rising fifth to octave, in key — one left
+        const keyRatio = this.musicKeyRatio();
+        this.tone(659.25*keyRatio, 0.12, 'sine', undefined, 0, false, 0, true, true, 0.05);
+        this.tone(987.77*keyRatio, 0.12, 'sine', undefined, 0, false, 0.1, true, true, 0.045);
+        this.tone(1318.51*keyRatio, 0.22, 'sine', undefined, 0, false, 0.2, true, true, 0.04);
+        break;
+      }
+      case 'pause_cue': // FARNELL-PAUSE-CUE-01: player pause falls (stop), resume rises (go), in key with the music
+      case 'resume_cue': {
+        const keyRatio = this.musicKeyRatio();
+        const notes = name === 'pause_cue' ? [784, 587.33] : [587.33, 784];
+        this.tone(notes[0]*keyRatio, 0.06, 'triangle', undefined, 0, false, 0, true, true, 0.07);
+        this.tone(notes[1]*keyRatio, 0.08, 'triangle', undefined, 0, false, 0.07, true, true, 0.06);
+        break;
+      }
       case 'footstep': {
         const nowFS = this.ctx.currentTime;
         if(this.lastFootstepAt !== undefined && nowFS - this.lastFootstepAt < 0.07) break; // another step already played too recently — skip, don't queue
@@ -1823,7 +1979,7 @@ class SoundEngine{
       case 'ui_open': this.tone(783.99,0.045,'triangle',undefined,0,false,0,true,true,0.07); this.tone(1174.66,0.075,'sine',undefined,0,false,0.035,true,true,0.055); break;
       case 'ui_close': this.tone(1174.66,0.040,'triangle',undefined,0,false,0,true,true,0.055); this.tone(783.99,0.055,'sine',undefined,0,false,0.025,true,true,0.04); break;
       case 'ui_buy':    this.tone(700, 0.06, 'sine', 1000, undefined, undefined, undefined, true, true); this.tone(1000, 0.08, 'sine', 1300, 0, 0, 0.05, true, true); break; // purchase — cheerful two-note chime
-      case 'ui_deny':   this.tone(220, 0.075, 'triangle', 140, 0, false, 0, true, true, 0.14); break; // blocked/disabled action — low buzz
+      case 'ui_deny':   this.tone(220, 0.075, 'triangle', 140, 0, false, 0, true, true, 0.14); this.tone(196, 0.075, 'triangle', 125, 0, false, 0.11, true, true, 0.11); break; // FARNELL-ALARM-02: a second, lower buzz makes the "wrong" pair // blocked/disabled action — low buzz
       case 'stat_spend': // allocating a stat point: warmer and longer than a click
         this.tone(440, 0.18, 'sine', 550, undefined, true, undefined, true);
         this.tone(660, 0.22, 'sine', 720, 0, true, 0.03, true);
@@ -1873,7 +2029,7 @@ const audioEngine = new SoundEngine();
 /* =========================================================
    SOUND EFFECT DISPATCH AND AUDIO UNLOCK
    ========================================================= */
-function playSound(name, worldX, intensity, worldY){ audioEngine.play(name, worldX, intensity, worldY); }
+function playSound(name, worldX, intensity, worldY, bodyRadius){ audioEngine.play(name, worldX, intensity, worldY, bodyRadius); }
 function isImportantAudioEvent(eventType){ return AUDIO_PRIORITY_EVENTS.has(eventType); }
 function towerAudioBias(towerId){
   if(towerId === undefined) return 1;

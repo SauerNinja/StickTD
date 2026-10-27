@@ -2003,7 +2003,7 @@ function updateScenery(dt){
       spawnGroundItem(item.x, item.y - 4, stim, 'scenery');
       spawnFloatingText(item.x, item.y - 24, stim.icon + ' ' + stim.name, '#7dd3fc', ITEM_POPUP_LIFE_MS);
       spawnParticles(item.x, item.y, '#b0895a', 8);
-      playSound('wave');
+      playSound('crate_open', item.x, undefined, item.y);
     } else if(item.type === 'CHEST'){
       { // CHEST-LOOT-01
         // gold bag (25%), two gold bags (5%), a stim (12%) or a handful of berries (13%), so a bag comes out of only 30% of chests and no two chests feel the same.
@@ -2020,7 +2020,7 @@ function updateScenery(dt){
         spawnFloatingText(item.x,item.y-24,dessert.icon+' '+dessert.name,'#7dd3fc',ITEM_POPUP_LIFE_MS);
       }
       spawnParticles(item.x, item.y, '#ffd700', 12);
-      playSound('wave');
+      playSound('chest_open', item.x, undefined, item.y);
       if(Math.random() < 0.08){
         spawnGroundItem(item.x, item.y - 4, LUCKY_BRANCH, 'scenery');
         spawnFloatingText(item.x, item.y - 36, '🌿 Sturdy Branch!', '#8bc34a');

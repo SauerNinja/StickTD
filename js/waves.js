@@ -239,6 +239,11 @@ function scaledPopulation(population, waveNumber){
   for(const tier of ['TINY','SMALL','STANDARD']) if(population[tier]) population[tier] = Math.round(population[tier] * factor);
   return population;
 }
+// BOSS-NAMES-01 (Short & Adams ch. 19: a name and title turn a generated foe into a character): every Boss gets a name and title from shuffle bags, announced on arrival and death and listed in the run recap. Text only, no per-frame cost.
+const BOSS_NAMES = Object.freeze(['Grumbold', 'Skarn', 'Mother Brine', 'Old Knuckles', 'Vexa', 'Brother Tusk', 'Hagwort', 'Ironjaw', 'Grizzlecrag', 'Duchess Muck', 'Lord Splinter', 'Nubbin']);
+const BOSS_TITLES = Object.freeze(['the Unwashed', 'Breaker of Fences', 'the Hungry', 'of the Long Road', 'the Sulking', 'Eater of Hats', 'the Undefeated (So Far)', 'the Loud', 'Bane of Stickmen', 'the Very Angry', 'the Large']);
+const runBossesFelled = [];
+function nameBoss(enemy){ enemy.bossTitle = drawFromShuffleBag(BOSS_NAMES) + ' ' + drawFromShuffleBag(BOSS_TITLES); }
 function bossHpScale(waveNumber){ return waveNumber < 20 ? 0.4 : 1; }
 const BOSS_WARNING_MS = 2600;
 let bossWarningUntil = 0;
@@ -546,6 +551,14 @@ function maybeSpawnExtraBuilding(){
     spawnCampBuilding(roll < 0.40 ? 'HUT' : roll < 0.73 ? 'CASTLE' : 'GRAVE', tile.x, tile.y);
   } else spawnCampBuilding(Math.random() < 0.6 ? 'HUT' : 'CASTLE', tile.x, tile.y);
 }
+const LOW_LIVES_ALERT_FRACTION = 0.25;
+let lowLivesAlertSounded = false;
+function soundLowLivesAlert(){
+  if(lowLivesAlertSounded || lives <= 0 || lives > maxLivesNow() * LOW_LIVES_ALERT_FRACTION) return;
+  lowLivesAlertSounded = true;
+  playSound('red_alert');
+  showToast('🚨 Lives running low — a quarter left!');
+}
 function loseLife(n){
   if(absorbLeakWithDonutShield()){
     const finish = waypointsPx && waypointsPx.length ? waypointsPx[waypointsPx.length - 1] : null; // the shield sparkles where the leak would have happened
@@ -558,12 +571,13 @@ function loseLife(n){
   if(lives <= 0 && hasDefibrillator){
     hasDefibrillator = false;
     lives = Math.max(1, Math.ceil(maxLivesNow() * DEFIBRILLATOR_REVIVE_LIVES_FRACTION)); // the HUD shows the change itself
-    playSound('wave');
+    playSound('revive');
     trackGameEvent('defibrillator_used', { lives_after: lives });
     updateHUD();
     return;
   }
   if(lives <= 0){ lives = 0; endGame(undefined, 'lives'); }
+  else soundLowLivesAlert();
   updateHUD();
 }
 /* =========================================================
@@ -884,6 +898,28 @@ function waveRouteObligationsOutstanding(){
   for(const e of enemyPool) if(isRouteObligation(e)) return true;
   return false;
 }
+// ISBISTER-LAST-STAND-01: the last enemy left on the road in a fully dispatched wave slumps and leans, beaten; refreshed a few times a second, never per frame.
+const LAST_STAND_REFRESH_MS = 250, LAST_STAND_LEAN_RADIANS = 0.12, LAST_STAND_SLUMP_Y = 0.93, LAST_STAND_SPREAD_X = 1.05;
+let lastStandEnemy = null, lastStandCheckedAt = -Infinity;
+function refreshLastStandEnemy(){
+  if(presentationTime - lastStandCheckedAt < LAST_STAND_REFRESH_MS) return;
+  lastStandCheckedAt = presentationTime;
+  let survivor = null;
+  for(const e of enemyPool){
+    if(!isRouteObligation(e)) continue;
+    if(survivor){ lastStandEnemy = null; return; }
+    survivor = e;
+  }
+  lastStandEnemy = survivor && survivor.type !== 'BOSS' ? survivor : null;
+  cueLastStandOncePerWave();
+}
+// SWEET-LAST-ENEMY-01 (Sweet ch24: a broad combat state misses the drama of one enemy left): one soft in-key cue the moment a wave is down to its last enemy.
+let lastStandCuedWave = -1;
+function cueLastStandOncePerWave(){
+  if(!lastStandEnemy || lastStandCuedWave === waveIndex) return;
+  lastStandCuedWave = waveIndex;
+  playSound('last_enemy');
+}
 function routeObligationCount(){
   let count = 0;
   for(const e of enemyPool) if(isRouteObligation(e)) count++;
@@ -1064,6 +1100,8 @@ class Enemy{
     this.pinPaintedId=-1;this.pinTopDeviceY=undefined;
     this.type = type;
     this.emoji = def.emoji;
+    this.bossTitle = null;
+    if(type === 'BOSS'){ nameBoss(this); showToast(def.emoji + ' ' + this.bossTitle + ' joins the fight!'); playSound('boss_siren'); }
     this.startledUntil = 0;
     this.eliteKind = null;
     this.armor = def.armor;
@@ -2013,6 +2051,7 @@ class Enemy{
     } else {
       spawnRoutineCombatText(this.x, this.y - this.radius, Math.round(dmg).toString(), '#ff6b6b');
     }
+    if(!isFastForwardSimplified()) scaleLastFloatingText(dmg / this.maxHp);
     // PERF-DEATH-01: hit splashes thin to 15% on Low graphics, under heavy load and while panning at 5x or faster; death bursts keep their own budget.
     if(this.isHutBuilding){
       if(Math.random() < 0.15) spawnBarricadeDebris(this);
@@ -2162,7 +2201,7 @@ class Enemy{
       this.hp = this.maxHp;
       spawnFloatingText(this.x, this.y - this.radius - 10, '💀 Reanimated!', '#c9a8ff');
       spawnParticles(this.x, this.y, '#c9a8ff', 10);
-      playSound('wave');
+      playSound('reanimate', this.x, undefined, this.y);
       return; // not actually dead yet — no bounty, no kill credit, skip normal death handling
     }
     this.deathResolved = true;
@@ -2216,6 +2255,7 @@ class Enemy{
     }
     dropItemsFromEnemy(this);
     if(this.type === 'BOSS' || this.type === 'SANTA') dropTreatFromBoss(this);
+    if(this.bossTitle && !this.escaped){ runBossesFelled.push(this.bossTitle); showToast('☠️ ' + this.bossTitle + ' has fallen!'); playSound('boss_bell'); }
     // PERF-DEATH-01: Low graphics and crowded battles take the lighter death-effect path.
     const low = graphicsQuality === 'low' || underHeavyVisualLoad;
     const proximityT = clampNum(this.traveled / (routeTotalLength() || 1), 0, 1); // 0 at spawn, 1 at the finish line
@@ -2343,7 +2383,7 @@ class Enemy{
     } else {
       spawnParticles(this.x, this.y, '#ffd23f', low ? 5 : 9);
     }
-    playSound('gore_death', this.x, goreScale, this.y);
+    playSound('gore_death', this.x, goreScale, this.y, this.radius);
     updateHUD();
     const deathElapsedMs = performance.now() - deathStartedAt;
     enemyDeathTiming.count++;
@@ -2496,7 +2536,7 @@ class Enemy{
     }
     const flinchElapsed = realTime - this.flinchStart;
     if(flinchElapsed < this.flinchDuration){
-      const flinchT = 1 - flinchElapsed/this.flinchDuration;
+      const flinchT = flinchAccentCurve(flinchElapsed/this.flinchDuration);
       bumpDx += Math.cos(this.flinchAngle) * this.flinchMag * flinchT;
       bumpDy += Math.sin(this.flinchAngle) * this.flinchMag * flinchT;
     }
@@ -2513,6 +2553,10 @@ class Enemy{
       const strideStretch = 1 + (strideLift - 0.5) * ENEMY_STRIDE_SQUASH; // taller at the top of the hop, wider on landing
       ctx.rotate(Math.cos(strideAngle) * ENEMY_TILT_RADIANS); // lean toward the stepping side, alternating each step
       ctx.scale(1/strideStretch, strideStretch);
+    }
+    if(this === lastStandEnemy){
+      ctx.rotate(this.vx >= 0 ? LAST_STAND_LEAN_RADIANS : -LAST_STAND_LEAN_RADIANS);
+      ctx.scale(LAST_STAND_SPREAD_X, LAST_STAND_SLUMP_Y);
     }
     if(this.isLivestock){
       if(this.livestockFacesRight) ctx.scale(-1, 1); // the farm emoji face left by default

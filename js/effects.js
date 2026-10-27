@@ -1222,6 +1222,10 @@ const WEAPON_BLOOD_PROFILES = Object.freeze({
 function forensicSpatterProfile(sourceTower, profileKey){
   return WEAPON_BLOOD_PROFILES[profileKey || (sourceTower && sourceTower.type)] || WEAPON_BLOOD_PROFILES.ENVIRONMENT;
 }
+const FLINCH_ACCENT_TURNS = 1.25; // WILLIAMS-ACCENT-01 (Williams, Animator's Survival Kit: a hard accent snaps to the extreme, then springs back past rest before it settles)
+function flinchAccentCurve(progress){
+  return (1 - progress) * Math.cos(progress * Math.PI * FLINCH_ACCENT_TURNS);
+}
 function weaponBloodAngle(victim, sourceTower, incomingAngle){
   return Number.isFinite(incomingAngle) ? incomingAngle : sourceTower ? Math.atan2(victim.y-sourceTower.y,victim.x-sourceTower.x) : Math.PI/2;
 }
@@ -1624,7 +1628,12 @@ function spawnFloatingText(x,y,text,color,lifeMs){
   textIndex = (textIndex+1) % TEXT_COUNT;
   t.active = true; t.x = x; t.y = y; t.text = text; t.color = color;
   t.life = t.maxLife = lifeMs || 550;
-  t.isIcon = false; t.isXp = false;
+  t.isIcon = false; t.isXp = false; t.fontPx = 0;
+}
+// DAMAGE-TEXT-SCALE-01 (Schell ch15 channels/dimensions): number size carries hit weight; three fixed sizes keep the text-sprite cache small.
+function scaleLastFloatingText(fraction){
+  const t = floatingTexts[(textIndex + TEXT_COUNT - 1) % TEXT_COUNT];
+  t.fontPx = fraction >= 0.25 ? 17 : fraction < 0.05 ? 11 : 0;
 }
 function spawnRoutineCombatText(x,y,text,color,lifeMs){
   if(isFastForwardSimplified()) return;
@@ -1641,7 +1650,7 @@ function spawnTowerQuip(x,y,text){
   textIndex = (textIndex+1) % TEXT_COUNT;
   t.active = true; t.x = x; t.y = y; t.text = text; t.color = '#ffe9a8';
   t.life = t.maxLife = 1800;
-  t.isIcon = false;
+  t.isIcon = false; t.fontPx = 0;
 }
 function updateFloatingTexts(frameMs){
   for(const t of floatingTexts){
@@ -1866,7 +1875,7 @@ function creditCoin(c, textColor, withFlight){
     if(withFlight) launchGoldHudFlight(c.x, c.y, '💎');
     spawnFloatingText(c.x, c.y - 34, '+💎' + diamondGold, '#8ee8ff');
     spawnParticles(c.x, c.y, '#8ee8ff', 10);
-    playSound('wave');
+    playSound('diamond', c.x, undefined, c.y);
     updateHUD();
     return;
   }
@@ -2129,7 +2138,7 @@ function drawFloatingTexts(ctx){
       ctx.restore();
     } else {
       ctx.globalAlpha = Math.max(0, t.life/t.maxLife);
-      drawTextSprite(ctx, t.text, t.isXp ? 9 : 13, t.color, t.x, t.y);
+      drawTextSprite(ctx, t.text, t.isXp ? 9 : (t.fontPx || 13), t.color, t.x, t.y);
     }
   }
   ctx.globalAlpha = 1;

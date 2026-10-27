@@ -483,6 +483,9 @@ function update(dt){
   phaseTime.particles += performance.now() - __pt; __pt = performance.now();
 
 
+  if(waveState === 'ACTIVE') refreshLastStandEnemy();
+  else lastStandEnemy = null;
+  if(waveState === 'IDLE' && autoStartWavesEnabled && wavesCompleted > 0 && gameTime - waveClearedAtGameTime >= AUTO_START_WAVE_DELAY_MS) startNextWave(); // GAMEACE-AUTO-WAVE-01
   if(waveState === 'ACTIVE'){
     const anyAlive = waveRouteObligationsOutstanding(); // LAG-PASS-03: a plain loop that stops at the first live enemy
     if(!anyAlive){
@@ -498,6 +501,7 @@ function update(dt){
       clearDonutShieldAtWaveEnd();
       clearRoundBuffs();
       awardWaveMedals();
+      announcePersonalBestPassed();
       resetShovelCharges();
       beginRoundDebrisCleanup();
       if(lives < 20) barkFromRandomTower(BARK_TIER_IMPORTANT, '😮‍💨', BARK_LINES.CLOSE_CALL, BARK_CHANCE.CLOSE_CALL);
@@ -942,6 +946,25 @@ function alignOverlayRows(entries){
   for(const entry of entries) if(Array.isArray(entry)) entry.forEach((cell, column) => { columnWidths[column] = Math.max(columnWidths[column] || 0, cell.length); });
   return entries.map(entry => Array.isArray(entry) ? entry.map((cell, column) => column === entry.length - 1 ? cell : cell.padEnd(columnWidths[column] + OVERLAY_COLUMN_GAP)).join('').trimEnd() : entry);
 }
+// DEBUG-DEVICE-01: Firefox and other privacy-minded browsers report a fixed fake GPU ("PowerVR SGX 540, or similar", "Adreno (TM) 540"), so the overlay labels it as masked and adds the browser, OS and device model so a phone report has real context.
+const MASKED_GPU_PATTERN = /, or similar$|^Adreno \(TM\) 540$|renderer name hidden/;
+function gpuOverlayLabel(){
+  const name = String(renderEnvironment.gpuRenderer);
+  return MASKED_GPU_PATTERN.test(name) ? 'masked by browser' : name.slice(0, 40);
+}
+function debugBrowserName(){
+  const ua = navigator.userAgent;
+  const match = ua.match(/(Firefox|FxiOS|EdgA?|SamsungBrowser|OPR|Chrome|CriOS|Version)\/(\d+)/);
+  if(!match) return 'browser ?';
+  const name = { FxiOS: 'Firefox', EdgA: 'Edge', Edg: 'Edge', OPR: 'Opera', CriOS: 'Chrome', Version: 'Safari' }[match[1]] || match[1];
+  return name + ' ' + match[2];
+}
+function debugDeviceLabel(){
+  const androidMatch = navigator.userAgent.match(/Android (\d+)(?:; ([^;)]+))?/);
+  const model = deviceDiagnostics.model !== 'unavailable' && deviceDiagnostics.model ? deviceDiagnostics.model : (androidMatch && androidMatch[2] && androidMatch[2] !== 'K' && androidMatch[2] !== 'Mobile' ? androidMatch[2] : '');
+  const os = androidMatch ? 'Android ' + androidMatch[1] : (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  return [debugBrowserName(), os, model].filter(Boolean).join(' · ');
+}
 function buildDebugOverlayLayout(ctx){
   const compact=CANVAS_W<600;
   let onPath = 0, escaped = 0, dying = 0;
@@ -957,12 +980,15 @@ function buildDebugOverlayLayout(ctx){
     'wave '+waveIndex+' '+waveState+' enemies '+(onPath+escaped),
     'towers '+countActive(towerPool)+' shots '+countActive(projectilePool)+' decals '+decals.length,
     'CPU '+(navigator.hardwareConcurrency || '?')+' threads RAM ~'+(navigator.deviceMemory || '?')+'GiB',
-    'GPU '+String(renderEnvironment.gpuRenderer).slice(0,30)
+    'GPU '+gpuOverlayLabel(),
+    debugDeviceLabel(),
+    'screen '+screen.width+'x'+screen.height+' @'+(window.devicePixelRatio || 1).toFixed(2)+' backing '+canvas.width+'x'+canvas.height,
+    'cap '+Math.round(frameCapFps())+'fps'+(IS_MOBILE_DEVICE ? ' (phone lock)' : '')+' scale '+Math.round(RENDER_SCALE_STEPS[renderScaleStep]*100)+'%'
   ] : [
     overlayGridRow('v' + GAME_VERSION + ' ' + graphicsQuality + ' ' + Math.round(perfStats.smoothedFps || 0) + ' FPS', 'zoom ' + camera.zoom.toFixed(2), 'cam ' + Math.round(camera.x) + ',' + Math.round(camera.y)),
     overlayGridRow('CPU ' + (navigator.hardwareConcurrency || '?') + ' threads', 'RAM ' + (navigator.deviceMemory ? '~' + navigator.deviceMemory + ' GiB' : '?'), performance.memory ? 'heap ' + (performance.memory.usedJSHeapSize/1048576).toFixed(0) + ' MiB' : ''),
     overlayGridRow(hostHintText || '', 'screen ' + screen.width + 'x' + screen.height + ' @' + (window.devicePixelRatio || 1).toFixed(2), 'canvas ' + CANVAS_W + 'x' + CANVAS_H),
-    overlayFullRow('GPU ' + String(renderEnvironment.gpuRenderer)),
+    overlayFullRow('GPU ' + gpuOverlayLabel() + '  ' + debugDeviceLabel()),
     overlayGridRow('frame ' + (perfStats.frameMs || 0).toFixed(1) + 'ms', 'upd ' + (perfStats.updateMs || 0).toFixed(1) + ' rend ' + (perfStats.renderMs || 0).toFixed(1), 'hud ' + (perfStats.hudMs || 0).toFixed(2) + ' tick ' + (perfStats.msPerTick || 0).toFixed(2)),
     overlayGridRow('speed ' + (perfStats.requestedSpeed || 1).toFixed(0) + 'x asked ' + (perfStats.achievedSpeed || 0).toFixed(1) + 'x', 'ticks x' + (perfStats.ticksThisFrame || 0), 'music ' + ((audioEngine.debugCounters && audioEngine.debugCounters.musicSchedulerAvgMs) || 0).toFixed(2) + 'ms'),
     overlayGridRow('wave ' + waveIndex + ' ' + waveState, phase ? phase.sizeTier + ' b' + (waveDispatch.batchIndex + 1) + '/' + phase.batches.length : '', 'enemies ' + onPath + ' esc ' + escaped + ' die ' + dying),

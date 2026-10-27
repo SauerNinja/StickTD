@@ -171,6 +171,9 @@ Each line is a rule stated in play-testing. The id after it is the design-contra
 
 40. Music borrows techniques, not notes (MUSIC-REFERENCE-01). Reference scores teach structure: hold a bass pedal for four bars or more, repeat a short motif over a fixed groove, pair two timbres, leave rests, accent with timpani. A melody, chord sequence or rhythm is never copied from a copyrighted score into the game. Every music change runs all 192 steps of the start screen, field, wave and boss themes without errors and keeps the voice load within a few percent of the previous version.
 
+### Owner rejections (1.8.125)
+NO-SQUAD-COSMETICS-01: no squad-wide cosmetic items (medal-unlocked hats were built and rejected). NO-WORN-ITEM-ART-01: carried items are not drawn on the stickman's body, as emoji or as vector art ("looks horrible"); the existing Fancy Hat and Running Shoes (WEARABLE-ITEMS-01) stay. Prefer safe, low-risk wins (sounds on existing events, accessibility, SEO, text accuracy) over new visual systems.
+
 ### Mandatory pre-delivery checklist (run before every present_files)
 1. `GAME_VERSION` bumped; top `CHANGELOG.md` heading is `## [x.y.z] — date (UTC)` for the same version; the two agree.
 2. Every change is described under that version with `###` subheadings: what was asked, what was found, what changed, how it was verified, what was not verified. Never put new work under an old version or without a version.

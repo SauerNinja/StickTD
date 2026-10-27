@@ -63,6 +63,9 @@ Elements belong to the fighters who earn them. They are never bought from the Bu
 - New enemy families arrive one chapter at a time.
 - Some enemies break away from the road to fight a defender on their own.
 - A longer road draws larger groups.
+- Every boss has a name and title. A siren sounds when one joins the fight, a bell rings when it falls, and the run summary lists the bosses you felled.
+- When lives fall to a quarter, a klaxon sounds once as a warning.
+- Passing your best wave is announced during the run, not only on the end screen.
 - From the eighth wave, some enemies arrive as elites standing on a coloured patch: blue ones are swift, gold ones are tough and red ones hit hard. Elites are worth double gold.
 - Calling the next wave soon after clearing one pays bonus gold, shown on the Next Wave button while it lasts.
 
@@ -91,7 +94,7 @@ Blood shows the story of each hit. A blade leaves a curved fan of cast-off, a ha
 
 ## Settings
 
-- **Video**: graphics quality, including a Performance mode with lighter effects, and automatic render resolution.
+- **Video**: graphics quality, including a Low mode with lighter effects, and automatic render resolution.
 - **Audio**: music and sound effects, with separate volume controls.
 - **Game**: blood and gore, saving and loading, first-time tips and reset options.
 - **Items, Medals and Stats**: an item guide, earned medals and run records.
@@ -99,7 +102,7 @@ Blood shows the story of each hit. A blade leaves a curved fan of cast-off, a ha
 
 ## Your pace, your way
 
-Set the speed, choose your moment, and play on a phone or a computer with touch or mouse. Space pauses and resumes, and the game pauses by itself when the tab is hidden. Save a run to a file and pick it up whenever you like.
+Set the speed, choose your moment (or turn on auto-start in Options to roll the next wave four seconds after a clear), and play on a phone or a computer with touch or mouse. Space pauses and resumes, and the game pauses by itself when the tab is hidden. Save a run to a file and pick it up whenever you like.
 
 ## Get the game
 

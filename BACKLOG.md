@@ -1,3 +1,30 @@
+## 1.8.130 — Schell and Game-Ace safe wins
+
+- 1.8.132: pause/resume sound cues (FARNELL-PAUSE-CUE-01).
+- 1.8.133: idle standby lets the score rest quieter until the next input (MUSIC-IDLE-REST-01).
+- 1.8.134: hit flinch springs back past rest (WILLIAMS-ACCENT-01); run-over sound ends with four falling notes (FARNELL-RUN-END-01); a soft cue when one enemy is left (SWEET-LAST-ENEMY-01).
+- 1.8.131: wave label counts enemies left during the fight (SCHELL-VISIBLE-PROGRESS-01).
+
+- Done: damage numbers sized by hit weight (DAMAGE-TEXT-SCALE-01), optional auto-start wave toggle (GAMEACE-AUTO-WAVE-01), 44 px touch HUD buttons (GAMEACE-TAP-TARGET-01).
+- Already present, no change: HUD speed control, early-call bonus (Schell triangularity), player-chosen difficulty and medal grades instead of hidden dynamic difficulty.
+- Open (needs owner approval, changes balance): variable kill-gold rewards with the same average (Schell ch13); a risky optional bounty target per wave.
+
+## 1.8.120–1.8.125 — Farnell practicals, safe wins, and two rejected ideas
+- *Done 1.8.120 (FARNELL-SIREN-01, FARNELL-BELL-01)* — Named bosses arrive with a siren sweep and fall with a struck bell.
+- *Done 1.8.121 (FARNELL-RED-ALERT-01)* — One klaxon when lives first fall to a quarter.
+- *Done 1.8.122 (FARNELL-ALARM-01, PERSONAL-BEST-LIVE-01)* — Medals chime; passing the best wave is announced mid-run.
+- *Done 1.8.123 (SEO-SINGLE-H1-01, SITEMAP-LASTMOD-01)* — One h1; sitemap date kept current.
+- *Done 1.8.124 (ISBISTER-LAST-STAND-01, FARNELL-ALARM-02)* — The last enemy on the road slumps; the blocked-action buzz is a pair.
+- *Done 1.8.125 (A11Y-LABELS-01, SEO-SAMEAS-01)* — The two unnamed controls are labelled; Game Jolt is added to `sameAs`.
+- *Done 1.8.126 (DISTINCT-ALERTS-01)* — An overrun stickman no longer plays the game-over sound, and kill streaks no longer play the wave cue; each has its own sound.
+- *Done 1.8.127 (DISTINCT-ALERTS-02)* — Shop buys use the purchase chime; enemy reanimation and the Defibrillator revive have their own sounds.
+- *Done 1.8.128 (DISTINCT-ALERTS-03)* — Crates, chests and diamonds each have their own find sound.
+- *Done 1.8.129 (SFX-IN-KEY-01)* — Reward and find chimes follow the score's key (Sweet ch12).
+- *Rejected by the owner* — Squad-wide cosmetic hats unlocked by medals, and drawing carried items (helmets, scarves, vests, boots) on the stickman's body ("looks horrible"). Do not propose either again; the existing Fancy Hat and Running Shoes stay.
+- *Owner action* — Search Console: verify with the HTML tag (already in the head), submit `sitemap.xml`, request indexing, then import into Bing Webmaster Tools.
+- *Needs approval (new files)* — 192 px and 512 px install icons for `manifest.json`; today only the 32 px `favicon.png` exists.
+- *Candidate* — Gloves and gauntlets cannot be placed reliably because each class has its own arm pose; this is moot while worn-item visuals are rejected.
+
 ## 1.8.50 — second set of reference books checked against the code
 Sid Meier's Memoir!, Stay Awhile and Listen Book I (Diablo, WarCraft), The WoW Diary, Better Game Characters by Design (Isbister) and Pitfalls of Object Oriented Programming, compared with the current code.
 - *Done 1.8.51 (PRD-ROLLS-01)* — Critical hits and attack misses used a plain `Math.random()` roll each time (`Enemy` damage path in `js/waves.js`, `attackMissChance` rolls in `Tower` in `js/towers.js`), so streaks of misses or crit droughts happen at full random rates. A pseudo-random roll that raises the chance after each failure and resets on success keeps the same average rate with fewer streaks (Meier on Civilization Revolution: "less random so it feels more random"; Schreiber and Romero Ch19-20). Favored rolls (miss chance under about 10%) should never fail twice in a row.

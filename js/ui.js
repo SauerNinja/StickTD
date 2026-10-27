@@ -712,7 +712,10 @@ function updateHUDImmediate(){
   const wavePhaseEl = document.getElementById('wavePhase');
   if(wavePhaseEl){
     const phaseLabel = waveState === 'IDLE' ? 'STANDBY' : waveState === 'SPAWNING' ? 'INCOMING' : 'FIGHTING'; // WAVE-PHASE-TEXT-01
-    if(wavePhaseEl.dataset.phase !== phaseLabel){ wavePhaseEl.dataset.phase = phaseLabel; wavePhaseEl.textContent = phaseLabel; }
+    if(wavePhaseEl.dataset.phase !== phaseLabel) wavePhaseEl.dataset.phase = phaseLabel;
+    const enemiesLeft = waveState === 'ACTIVE' ? routeObligationCount() : 0; // SCHELL-VISIBLE-PROGRESS-01: once every enemy is out, the label counts down what is left
+    const phaseText = enemiesLeft > 0 ? enemiesLeft + ' LEFT' : phaseLabel;
+    if(wavePhaseEl.textContent !== phaseText) wavePhaseEl.textContent = phaseText;
   }
   const waveActionText = nextWaveActionLabel(waveIndex) + ' ';
   if(nextWaveBtn.firstChild && nextWaveBtn.firstChild.textContent !== waveActionText) nextWaveBtn.firstChild.textContent = waveActionText;
@@ -1458,6 +1461,7 @@ function syncSettingsUI(){
   document.getElementById('settingsDebugToggle').checked = debugOverlay;
   document.getElementById('settingsAutoPanToggle').checked = autoCameraPans;
   document.getElementById('settingsMedalToggle').checked = medalNotificationsEnabled;
+  document.getElementById('settingsAutoWaveToggle').checked = autoStartWavesEnabled;
   document.getElementById('runSeedNote').textContent = 'This run: ' + runSeedCode;
   renderMedalList();
   document.getElementById('settingsIntroTextToggle').checked = introTextEnabled;
@@ -1590,6 +1594,10 @@ document.getElementById('settingsDebugToggle').addEventListener('change', (e) =>
 });
 document.getElementById('endCopySeedBtn').addEventListener('click', (e) => copyRunSeed(e.currentTarget));
 document.getElementById('endRateBtn').addEventListener('click', () => { const page = PLATFORM_RATING_PAGES[window.STICKTD_PLATFORM]; if(page) window.open(page, '_blank', 'noopener'); });
+document.getElementById('settingsAutoWaveToggle').addEventListener('change', (e) => {
+  autoStartWavesEnabled = e.target.checked;
+  savePrefs();
+});
 document.getElementById('settingsMedalToggle').addEventListener('change', (e) => {
   medalNotificationsEnabled = e.target.checked;
   savePrefs();
@@ -2385,9 +2393,11 @@ pauseBtn.addEventListener('pointerdown', (e) => {
   unlockAudio();
   if(gameState === 'PLAYING'){
     pauseGame();
+    playSound('pause_cue');
     render(ctx);
   } else if(gameState === 'PAUSED'){
     resumeGame();
+    playSound('resume_cue');
   }
 });
 document.addEventListener('keydown', (e) => {
@@ -2397,6 +2407,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     unlockAudio();
     pauseGame();
+    playSound('pause_cue');
     render(ctx);
   }
 });

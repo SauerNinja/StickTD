@@ -2341,7 +2341,7 @@ class Tower{
     this.hp = Math.round(this.maxHp * TOWER_RECOVERY_HP_FRACTION);
     this.killStreak = 0; this.nextStreakTier = 0;
     spawnFloatingText(this.x, this.y - 44, '⚠️ Overrun!', '#ff4444');
-    playSound('lose');
+    playSound('tower_down', this.x, undefined, this.y);
     if(squadWipedOut() && gameState === 'PLAYING') endRunOnSquadWipe();
   }
   maybeEnrage(){ // STICKMAN-RAGE-01: a struck stickman has a small chance to fly into a rage

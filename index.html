@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.115">
+<meta name="application-version" content="1.8.134">
 <title>StickTD — Free Stickman Tower Defense Game, No Download</title>
+<meta name="google-site-verification" content="rIkjVwAgoJMHz-9f2MM2nIyXSGgI62WL16opMbpAP60">
 <meta name="description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
 <meta name="keywords" content="StickTD, stick tower defense, stickman tower defense, stickman games, tower defense game, free tower defense, browser tower defense game, tower defense online, no download games, free strategy game">
 <meta name="author" content="SauerNinja">
@@ -61,6 +62,7 @@
   "license": "https://opensource.org/licenses/MIT",
   "sameAs": [
     "https://sauerninja.itch.io/sticktd",
+    "https://gamejolt.com/games/sticktd/1103755",
     "https://github.com/SauerNinja/StickTD"
   ],
   "author": {
@@ -81,7 +83,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.115",
+  "softwareVersion": "1.8.134",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -358,6 +360,7 @@
     border-radius:6px;min-width:36px;min-height:38px;font-size:clamp(13px,2vw,16px);
     font-weight:bold;cursor:pointer;padding:4px 6px;}
   .hud-btn.active{background:var(--gold);color:#3a2a00;}
+  @media (pointer:coarse){.hud-btn{min-width:44px;min-height:44px;}} /* GAMEACE-TAP-TARGET-01 */
   #nextWaveBtn{pointer-events:auto;
     background:linear-gradient(180deg, #ffe066 0%, var(--gold) 45%, #c9960b 100%);color:#3a2a00;border:none;
     padding:6px 10px;border-radius:6px;font-weight:bold;font-size:clamp(12px,2vw,16px);
@@ -865,7 +868,7 @@
   #first-build-hint.hidden{display:none;}
   @keyframes firstBuildHandBob{0%,100%{margin-top:0;}50%{margin-top:-5px;}}
   @media (prefers-reduced-motion:reduce){#first-build-hint{animation:none;}}
-  #start-screen h1,#end-screen h1{font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;
+  #start-screen h1,#end-screen h1,#end-screen h2{font-family:Georgia,'Times New Roman',serif;letter-spacing:1px;
     font-size:clamp(22px,5vw,40px);color:var(--gold);
     text-shadow:2px 2px 0 #000, 0 0 18px rgba(241,196,15,0.35), 0 -1px 0 rgba(255,255,255,0.2);
     margin-bottom:6px;}
@@ -1085,7 +1088,7 @@
           <button id="inspUpgradeBtn">🆙 Promote <span id="inspUpgradeCost"></span></button>
           <button id="inspRepairBtn" class="hidden">🔨 Repair <span id="inspRepairCost"></span></button>
           <span id="inspDpsBetween" role="button" tabindex="0" title="How this class calculates damage"><span class="dps-label">DPS</span><span id="inspDpsVal">0</span><span id="inspDpsRangeVal"></span></span>
-          <button id="inspTargetBtn" title="Targeting priority">🎯 <span id="inspTargetMode"></span></button>
+          <button id="inspTargetBtn" title="Targeting priority" aria-label="Targeting priority">🎯 <span id="inspTargetMode"></span></button>
           <button id="inspStoreBtn" class="hidden">📦 Pick up</button>
         </div>
         <div class="insp-opt-row" id="inspTargetMoveRow">
@@ -1261,13 +1264,13 @@
         <div id="settings-body">
           <div class="settings-panel" data-panel="video">
             <label><input type="radio" name="gfxSetting" id="gfxHighRadio"> High graphics</label>
-            <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Performance mode — lighter effects</label>
+            <label><input type="radio" name="gfxSetting" id="gfxLowRadio"> Low — lighter effects</label>
             <p class="settings-help" id="gfxHelpText">Low is a good starting point for phones and laptops with integrated graphics. High adds richer visual effects for capable desktops and console-class hardware. Actual performance depends on your device and browser, so switch profiles if play is not smooth.</p>
             <label><input type="checkbox" id="settingsFpsToggle"> 📊 Show FPS counter (default off)</label>
             <label><input type="checkbox" id="settingsFrameCapToggle"> ⏱️ Limit frame rate (default on) — 30 FPS on Low and on phones, 60 FPS on High; turn off to run at your screen's full speed</label>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
               <span>Frame rate limit: <output id="settingsFrameCapValue"></output> FPS</span>
-              <input type="range" id="settingsFrameCapSlider" min="30" max="250" step="10" style="width:100%;">
+              <input type="range" id="settingsFrameCapSlider" aria-label="Frame rate limit" min="30" max="250" step="10" style="width:100%;">
             </label>
             <label><input type="checkbox" id="settingsScreenShakeToggle"> 💥 Screen shake on kills — heavier enemies shake harder (default on for High, off for Low)</label>
             <label>Render scale
@@ -1320,6 +1323,7 @@
             <label><input type="checkbox" id="settingsDebugToggle"> 🛠️ Debug overlay — FPS, entities, wave phase, version (default off)</label>
             <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
             <label><input type="checkbox" id="settingsMedalToggle"> 🏅 Medal notifications (default on)</label>
+            <label><input type="checkbox" id="settingsAutoWaveToggle"> ⏩ Auto-start the next wave 4 seconds after a clear (default off)</label>
             <label>🎲 Seed for your next run (blank = random) <input type="text" id="settingsRunSeed" maxlength="24" autocomplete="off" style="width:130px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;"></label>
             <p id="runSeedNote" class="stats-hint"></p>
             <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
@@ -1487,7 +1491,7 @@
       <div id="quality-picker">
         <span class="quality-label">Graphics:</span>
         <button class="quality-btn" id="qualityHigh" data-quality="high">High</button>
-        <button class="quality-btn selected" id="qualityLow" data-quality="low">Performance</button>
+        <button class="quality-btn selected" id="qualityLow" data-quality="low">Low</button>
       </div>
       </nav>
       <button id="startSettingsBtn" title="Options">⚙️ Options</button>
@@ -1513,7 +1517,7 @@
     </div>
 
     <div id="end-screen" class="hidden">
-      <h1 id="endTitle">Game Over</h1>
+      <h2 id="endTitle">Game Over</h2>
       <p id="endMessage"></p>
       <p id="endRunSummary"></p>
       <button class="big-btn" id="restartBtn">↻ Play Again</button>
@@ -1542,15 +1546,15 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.115"></script>
-<script src="js/config.js?v=1.8.115"></script>
-<script src="js/effects.js?v=1.8.115"></script>
-<script src="js/loop.js?v=1.8.115"></script>
-<script src="js/ui.js?v=1.8.115"></script>
-<script src="js/diagnostics.js?v=1.8.115"></script>
-<script src="js/screens.js?v=1.8.115"></script>
-<script src="js/environment.js?v=1.8.115"></script>
-<script src="js/towers.js?v=1.8.115"></script>
-<script src="js/waves.js?v=1.8.115"></script>
+<script src="js/audio.js?v=1.8.134"></script>
+<script src="js/config.js?v=1.8.134"></script>
+<script src="js/effects.js?v=1.8.134"></script>
+<script src="js/loop.js?v=1.8.134"></script>
+<script src="js/ui.js?v=1.8.134"></script>
+<script src="js/diagnostics.js?v=1.8.134"></script>
+<script src="js/screens.js?v=1.8.134"></script>
+<script src="js/environment.js?v=1.8.134"></script>
+<script src="js/towers.js?v=1.8.134"></script>
+<script src="js/waves.js?v=1.8.134"></script>
 </body>
 </html>
