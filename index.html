@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="application-version" content="1.8.134">
+<meta name="application-version" content="1.8.136">
 <title>StickTD — Free Stickman Tower Defense Game, No Download</title>
 <meta name="google-site-verification" content="rIkjVwAgoJMHz-9f2MM2nIyXSGgI62WL16opMbpAP60">
 <meta name="description" content="Play StickTD free in your browser: a stickman tower defense game with 25+ classes, loot and 100 waves. No download. Works on phone, tablet and PC.">
@@ -83,7 +83,7 @@
   },
   "@id": "https://sauerninja.github.io/StickTD/#game",
   "browserRequirements": "Requires JavaScript and a modern browser with Canvas and Web Audio support.",
-  "softwareVersion": "1.8.134",
+  "softwareVersion": "1.8.136",
   "playMode": "SinglePlayer"
 }
 </script>
@@ -1024,7 +1024,7 @@
 <section id="loading-screen" aria-live="polite">
   <div id="loadingTrack"><div id="loadingGrunt" aria-hidden="true"><span>😡</span></div></div>
   <p>Loading...</p>
-  <progress id="loadingProgress" max="100" value="0"></progress>
+  <progress id="loadingProgress" max="100" value="0">Loading…</progress>
 </section>
 <div id="game-wrapper">
   <div id="canvas-frame">
@@ -1269,7 +1269,7 @@
             <label><input type="checkbox" id="settingsFpsToggle"> 📊 Show FPS counter (default off)</label>
             <label><input type="checkbox" id="settingsFrameCapToggle"> ⏱️ Limit frame rate (default on) — 30 FPS on Low and on phones, 60 FPS on High; turn off to run at your screen's full speed</label>
             <label style="align-items:flex-start;flex-direction:column;gap:4px;">
-              <span>Frame rate limit: <output id="settingsFrameCapValue"></output> FPS</span>
+              <span>Frame rate limit: <output id="settingsFrameCapValue" for="settingsFrameCapSlider"></output> FPS</span>
               <input type="range" id="settingsFrameCapSlider" aria-label="Frame rate limit" min="30" max="250" step="10" style="width:100%;">
             </label>
             <label><input type="checkbox" id="settingsScreenShakeToggle"> 💥 Screen shake on kills — heavier enemies shake harder (default on for High, off for Low)</label>
@@ -1313,9 +1313,9 @@
             <div id="towerTelemetry"></div>
           </div>
           <div class="settings-panel hidden" data-panel="audio">
-            <div class="audio-mix-control"><label for="audioMasterVolume">Overall <output id="audioMasterValue">100%</output></label><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Overall volume"></div>
-            <div class="audio-mix-control"><label for="audioMusicVolume">Music <output id="audioMusicValue">100%</output></label><input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Music volume"></div>
-            <div class="audio-mix-control"><label for="audioSfxVolume">Sound effects <output id="audioSfxValue">100%</output></label><input id="audioSfxVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound effects volume"></div>
+            <div class="audio-mix-control"><label for="audioMasterVolume">Overall <output id="audioMasterValue" for="audioMasterVolume">100%</output></label><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Overall volume"></div>
+            <div class="audio-mix-control"><label for="audioMusicVolume">Music <output id="audioMusicValue" for="audioMusicVolume">100%</output></label><input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Music volume"></div>
+            <div class="audio-mix-control"><label for="audioSfxVolume">Sound effects <output id="audioSfxValue" for="audioSfxVolume">100%</output></label><input id="audioSfxVolume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound effects volume"></div>
             <p class="stats-hint">A calm field theme plays between waves; each wave switches to a faster battle theme, and a boss brings a darker one. Music keeps its tempo when you fast-forward.</p>
             <label><input type="checkbox" id="settingsMuteToggle"> Mute all sound</label>
           </div>
@@ -1324,7 +1324,7 @@
             <label><input type="checkbox" id="settingsAutoPanToggle"> 🎥 Auto camera pans on killstreaks (default on)</label>
             <label><input type="checkbox" id="settingsMedalToggle"> 🏅 Medal notifications (default on)</label>
             <label><input type="checkbox" id="settingsAutoWaveToggle"> ⏩ Auto-start the next wave 4 seconds after a clear (default off)</label>
-            <label>🎲 Seed for your next run (blank = random) <input type="text" id="settingsRunSeed" maxlength="24" autocomplete="off" style="width:130px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;"></label>
+            <label>🎲 Seed for your next run (blank = random) <input type="text" id="settingsRunSeed" maxlength="24" autocomplete="off" spellcheck="false" autocapitalize="off" style="width:130px;background:var(--wood-light);color:var(--paper);border:1px solid var(--gold);border-radius:4px;padding:4px 6px;"></label>
             <p id="runSeedNote" class="stats-hint"></p>
             <label><input type="checkbox" id="settingsIntroTextToggle"> 📘 First-time tips and alerts (default on)</label>
 
@@ -1546,15 +1546,15 @@
     });
   })();
 </script>
-<script src="js/audio.js?v=1.8.134"></script>
-<script src="js/config.js?v=1.8.134"></script>
-<script src="js/effects.js?v=1.8.134"></script>
-<script src="js/loop.js?v=1.8.134"></script>
-<script src="js/ui.js?v=1.8.134"></script>
-<script src="js/diagnostics.js?v=1.8.134"></script>
-<script src="js/screens.js?v=1.8.134"></script>
-<script src="js/environment.js?v=1.8.134"></script>
-<script src="js/towers.js?v=1.8.134"></script>
-<script src="js/waves.js?v=1.8.134"></script>
+<script src="js/audio.js?v=1.8.136"></script>
+<script src="js/config.js?v=1.8.136"></script>
+<script src="js/effects.js?v=1.8.136"></script>
+<script src="js/loop.js?v=1.8.136"></script>
+<script src="js/ui.js?v=1.8.136"></script>
+<script src="js/diagnostics.js?v=1.8.136"></script>
+<script src="js/screens.js?v=1.8.136"></script>
+<script src="js/environment.js?v=1.8.136"></script>
+<script src="js/towers.js?v=1.8.136"></script>
+<script src="js/waves.js?v=1.8.136"></script>
 </body>
 </html>

@@ -1694,13 +1694,23 @@ document.getElementById('downloadSaveBtn').addEventListener('pointerdown', (e) =
   e.stopPropagation();
   downloadSaveFile();
 });
+const SAVE_FILE_MAX_BYTES = 50 * 1024 * 1024; // MACDONALD-FILE-GUARD-01
 document.getElementById('loadSaveInput').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if(!file) return;
+  e.target.value = '';
+  if(file.size > SAVE_FILE_MAX_BYTES){
+    trackGameEvent('save_load_failed', {reason:'too_large'});
+    showToast('⚠️ That file is too big to be a save — your current game is untouched');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => loadSaveFileText(reader.result);
+  reader.onerror = () => {
+    trackGameEvent('save_load_failed', {reason:'read_error'});
+    showToast('⚠️ Could not read that save file');
+  };
   reader.readAsText(file);
-  e.target.value = ''; // allow re-selecting the same file later
 });
 // RESET-OPTIONS-01
 const STICKTD_STORAGE_PREFIXES = ['stickTD_', 'sticktd:'];

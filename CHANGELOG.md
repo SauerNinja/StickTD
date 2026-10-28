@@ -4,6 +4,30 @@ Current minor-version family only. Older entries: [HISTORY.md](HISTORY.md). Vers
 
 Entry rules: every entry names the functions, rule IDs, constants and files it changed; cites the commit SHA or version where a behavior was introduced or last worked (`git show <sha> -- index.html`) whenever that history explains the change; and says why. One bullet per change. Entries are never edited after their release ships, and release notes list every entry since the previous published release automatically.
 
+## [1.8.136] — 2026-10-28 (UTC)
+
+Release workflow reorganized so a broken game can't become a release, and every built file is launched or checked before publishing.
+
+- **CI-MATRIX-01** (.github/workflows/release.yml `desktop` job): the five near-identical desktop jobs are now one build matrix (Windows, Linux x64, Linux ARM64, macOS ARM64, macOS x64). Each entry builds, smoke-tests and uploads on its own runner; `fail-fast: false` so one platform failing still shows the others' results.
+- **CI-WEB-SMOKE-01** (release.yml new `web_smoke` job): before any build starts, Playwright loads `index.html` and fails on any design-contract problem, failed self-test, console error or a `GAME_VERSION` that doesn't match `release.py check`. All builds wait for it.
+- **CI-DESKTOP-SMOKE-01** (release.py `write_native_project()` → generated `main.cjs` new `runSmokeCheck()`, `SMOKE_SETTLE_MS`, `SMOKE_TIMEOUT_MS`; release.yml launch step): when `STICKTD_SMOKE_REPORT` is set, the packaged app loads the game, runs the same contract and self-tests, writes a JSON report and quits. Every desktop entry launches its own built app this way (Linux under a virtual display) and fails if the report is missing, failing or the wrong version. Normal launches are unchanged.
+- **CI-MAC-INTEL-01** (release.yml matrix): macOS x64 now builds on the `macos-15-intel` runner instead of cross-building on ARM, so its app can be launched and tested. (`macos-13` was retired by GitHub in December 2025.)
+- **CI-APK-CHECK-01** (release.yml `android` job): `apksigner verify` now runs on debug builds too, and `aapt dump badging` confirms the APK's versionCode, versionName and package id.
+- **CI-PUBLISHED-CHECKSUMS-01** (release.yml `release` job): after publishing, the release files are downloaded again and checked against `SHA256SUMS.txt`.
+- **CI-HOUSEKEEPING-01** (release.yml): npm, Electron and Gradle downloads are cached, keyed on `release.py`; every job has `timeout-minutes`; `android-actions/setup-android` is pinned to commit `9fc6c4e` (v3, the one third-party action that sees signing secrets); pull requests now run the check and web smoke only, never builds or a release.
+- Contract: `read_game_version()` in release.py now blocks a release if the workflow loses its web smoke, desktop smoke, APK check or checksum step. This check lives in release.py rather than js/diagnostics.js because the game in the browser can't see the workflow file.
+- Verification: `python3 release.py check` passes; the workflow YAML parses; the web smoke script run locally passes on 1.8.136 and exits 1 on a version mismatch; the generated `main.cjs` passes `node --check`. The desktop launch step could not be run here (Electron's binary download is blocked in this sandbox), so its first real test is the next CI run.
+
+## [1.8.135] — 2026-10-28 (UTC)
+
+From MacDonald, *HTML5: The Missing Manual* (read in full: `<output for>` names its source controls, progress elements carry fallback text, FileReader needs an error handler and a size check, non-prose text boxes turn spellcheck off) and the HTML5 Mastery note MASTERY-OUTPUT-FOR-01. Clean Code (Appendices B–C) was also finished; it gave no new code change this round.
+
+- **MASTERY-OUTPUT-FOR-01** (index.html): the frame-rate, overall, music and sound-effects `<output>`s now name their sliders with `for=`, and `#loadingProgress` carries "Loading…" fallback text.
+- **MACDONALD-FILE-GUARD-01** (js/ui.js `loadSaveInput` change handler, new `SAVE_FILE_MAX_BYTES`): files over 50 MB are refused with a toast before reading, and a FileReader read error now shows "Could not read that save file" instead of failing silently. Both log `save_load_failed`. The file input is cleared before reading so the same file can be picked again.
+- **MACDONALD-SEED-INPUT-01** (index.html `#settingsRunSeed`): the seed box no longer spellchecks or auto-capitalizes.
+- Contract checks MASTERY-OUTPUT-FOR-01 and MACDONALD-FILE-GUARD-01 / MACDONALD-SEED-INPUT-01 added (js/diagnostics.js).
+- Verification: `python3 release.py check` passes; Chromium smoke run shows an empty design contract, passing self-tests and no console errors.
+
 ## [1.8.134] — 2026-10-27 (UTC)
 
 From Sweet ch24, Williams, *The Animator's Survival Kit* (a hard accent hits the extreme at once and springs back past rest before settling) and Farnell, *Designing Sound* (alarm grammar: a falling sequence means "definitely negative"; chapters 7–14 read in full, where smooth gain changes and equal-power panning are already in place).

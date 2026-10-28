@@ -41,7 +41,7 @@
 /* =========================================================
    CONFIG
    ========================================================= */
-const GAME_VERSION = '1.8.134'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
+const GAME_VERSION = '1.8.136'; // Every upload bumps this and the top CHANGELOG.md heading together (RELEASE-VERSION-01).
 const shuffleBagByPool = new WeakMap(); // PCG-BAG-01: draw without replacement so repeats wait until the pool is used up
 function drawFromShuffleBag(pool){
   if(pool.length < 2) return pool[0];

@@ -56,6 +56,10 @@ def read_game_version():
         raise SystemExit(f'Release blocked: js files without a script tag in index.html: {untagged} (FILE-SPLIT-01).')
     if AI_ASSIST_NOTE not in html or AI_ASSIST_NOTE not in (ROOT / 'README.md').read_text(encoding='utf-8'):
         raise SystemExit(f'Release blocked: README.md and Settings > About must carry "{AI_ASSIST_NOTE}" (AI-DISCLOSURE-01).')
+    workflow = (ROOT / '.github' / 'workflows' / 'release.yml').read_text(encoding='utf-8')
+    for marker, rule in (('web_smoke:', 'CI-WEB-SMOKE-01'), ('STICKTD_SMOKE_REPORT', 'CI-DESKTOP-SMOKE-01'), ('sha256sum -c SHA256SUMS.txt', 'CI-PUBLISHED-CHECKSUMS-01'), ('aapt" dump badging', 'CI-APK-CHECK-01')):
+        if marker not in workflow:
+            raise SystemExit(f'Release blocked: .github/workflows/release.yml lost its {rule} step ({marker}).')
     return version
 
 
@@ -172,6 +176,9 @@ def write_native_project(version):
     (PACKAGING / 'capacitor.config.json').write_text(json.dumps({'appId': 'io.github.sauerninja.sticktd', 'appName': 'StickTD', 'webDir': 'www', 'backgroundColor': '#1a1f14'}), encoding='utf-8')
     (PACKAGING / 'main.cjs').write_text("""const {app,BrowserWindow,shell}=require('electron');
 const path=require('node:path');
+const fs=require('node:fs');
+const SMOKE_REPORT=process.env.STICKTD_SMOKE_REPORT||'';
+const SMOKE_SETTLE_MS=4000, SMOKE_TIMEOUT_MS=60000;
 app.commandLine.appendSwitch('autoplay-policy','no-user-gesture-required');
 if(!app.requestSingleInstanceLock()) app.quit();
 let mainWindow=null;
@@ -183,9 +190,23 @@ app.whenReady().then(()=>{
  mainWindow.webContents.setWindowOpenHandler(({url})=>{ if(/^https:\\/\\//.test(url)) shell.openExternal(url); return {action:'deny'}; });
  mainWindow.webContents.on('will-navigate',event=>event.preventDefault());
  mainWindow.webContents.on('before-input-event',(event,input)=>{ if(input.type==='keyDown' && input.key==='F11'){ mainWindow.setFullScreen(!mainWindow.isFullScreen()); event.preventDefault(); } });
+ if(SMOKE_REPORT) runSmokeCheck(mainWindow);
  mainWindow.loadFile(path.join(__dirname,'www','index.html'),{query:{os:process.platform,arch:process.arch}});
 });
 app.on('window-all-closed',()=>app.quit());
+function runSmokeCheck(win){
+ const errors=[];
+ const finish=(report)=>{ fs.writeFileSync(SMOKE_REPORT,JSON.stringify(report,null,1)); app.exit(report.pass?0:1); };
+ setTimeout(()=>finish({pass:false,errors:['smoke check timed out']}),SMOKE_TIMEOUT_MS);
+ win.webContents.on('console-message',(event)=>{ const level=event.level ?? event.params?.level; const message=event.message ?? event.params?.message ?? ''; if((level===3||level==='error') && !/net::|Failed to load resource/.test(message)) errors.push(message); });
+ win.webContents.on('render-process-gone',(event,details)=>finish({pass:false,errors:['renderer gone: '+details.reason]}));
+ win.webContents.once('did-finish-load',()=>setTimeout(async()=>{
+  try{
+   const result=await win.webContents.executeJavaScript("({version:GAME_VERSION,contract:validateDesignContract(),tests:runDebugSelfTests(false).filter(r=>!r.pass).map(r=>r.name+' '+(r.detail||''))})");
+   finish({...result,errors,pass:result.contract.length===0&&result.tests.length===0&&errors.length===0});
+  }catch(err){ finish({pass:false,errors:[...errors,String(err)]}); }
+ },SMOKE_SETTLE_MS));
+}
 """, encoding='utf-8')
 
 

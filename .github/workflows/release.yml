@@ -2,15 +2,17 @@ name: Release StickTD
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: release-${{ github.sha }}
-  cancel-in-progress: false
+  group: release-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
       publish: ${{ steps.version.outputs.publish }}
@@ -24,11 +26,15 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           version=$(python release.py check)
           test -n "$version"
-          if gh release view "v${version}" >/dev/null 2>&1; then
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            publish=false
+            echo "::notice::Pull request: checks and web smoke only, no builds or release."
+          elif gh release view "v${version}" >/dev/null 2>&1; then
             publish=false
             echo "::notice::Release v${version} already exists and is never replaced. Bump GAME_VERSION and add a CHANGELOG.md entry to publish new builds."
           else
@@ -37,11 +43,107 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "publish=${publish}" >> "$GITHUB_OUTPUT"
           echo "tags=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
-  windows:
-    name: Windows
+
+  web_smoke:
+    name: Web smoke test
     needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/smoke"
+          cd "$RUNNER_TEMP/smoke"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.64.1
+          npx playwright install --with-deps chromium
+      - name: Load the game and check the design contract, self-tests and console
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8765 >/dev/null 2>&1 &
+          server=$!
+          trap 'kill $server' EXIT
+          for _ in $(seq 1 30); do curl -sf http://localhost:8765/index.html >/dev/null && break; sleep 1; done
+          cat > "$RUNNER_TEMP/smoke/web-smoke.cjs" <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+            const errors = [];
+            page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+            page.on('console', m => { if (m.type() === 'error' && !/net::|Failed to load resource/.test(m.text())) errors.push('console: ' + m.text()); });
+            await page.goto('http://localhost:8765/index.html');
+            await page.waitForTimeout(4000);
+            const report = await page.evaluate(() => ({
+              version: GAME_VERSION,
+              contract: validateDesignContract(),
+              tests: runDebugSelfTests(false).filter(r => !r.pass).map(r => r.name + ' ' + (r.detail || '')),
+            }));
+            await browser.close();
+            report.errors = errors;
+            console.log(JSON.stringify(report, null, 1));
+            const pass = report.version === process.env.VERSION && report.contract.length === 0 && report.tests.length === 0 && errors.length === 0;
+            process.exit(pass ? 0 : 1);
+          })().catch(err => { console.error(err); process.exit(1); });
+          JS
+          node "$RUNNER_TEMP/smoke/web-smoke.cjs"
+
+  desktop:
+    name: ${{ matrix.name }}
+    needs: [prepare, web_smoke]
     if: needs.prepare.outputs.publish == 'true'
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            runner: windows-latest
+            builder_args: --win portable --x64
+            artifact: win-x64
+            files: packaging/dist/*.exe
+            smoke_bin: packaging/dist/win-unpacked/StickTD.exe
+            signing: win
+          - name: Linux x64
+            runner: ubuntu-latest
+            builder_args: --linux AppImage --x64
+            artifact: linux-x64
+            files: packaging/dist/*.AppImage
+            smoke_bin: packaging/dist/linux-unpacked/sticktd
+            signing: none
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            builder_args: --linux AppImage --arm64
+            artifact: linux-arm64
+            files: packaging/dist/*.AppImage
+            smoke_bin: packaging/dist/linux-arm64-unpacked/sticktd
+            signing: none
+          - name: macOS ARM64
+            runner: macos-latest
+            builder_args: --mac dmg --arm64
+            artifact: mac-arm64
+            files: packaging/dist/*.dmg
+            smoke_bin: packaging/dist/mac-arm64/StickTD.app/Contents/MacOS/StickTD
+            signing: mac
+          - name: macOS x64
+            runner: macos-15-intel
+            builder_args: --mac dmg --x64
+            artifact: mac-x64
+            files: packaging/dist/*.dmg
+            smoke_bin: packaging/dist/mac/StickTD.app/Contents/MacOS/StickTD
+            signing: mac
+    env:
+      SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -51,168 +153,77 @@ jobs:
         with:
           python-version: '3.12'
       - run: python release.py native
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: desktop-${{ matrix.artifact }}-${{ hashFiles('release.py') }}
+          restore-keys: desktop-${{ matrix.artifact }}-
       - run: npm install --no-audit --no-fund
         working-directory: packaging
       - name: Build
         shell: bash
         working-directory: packaging
         env:
+          SIGNING: ${{ matrix.signing }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          if [ -n "${WIN_CSC_LINK:-}" ]; then
+          if [ "$SIGNING" = "win" ] && [ -n "${WIN_CSC_LINK:-}" ]; then
             export CSC_LINK="$WIN_CSC_LINK" CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
-          else
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
-          npx electron-builder --win portable --x64 --publish never
-      - uses: actions/upload-artifact@v5
-        with:
-          name: win-x64
-          path: packaging/dist/*.exe
-          if-no-files-found: error
-  linux_x64:
-    name: Linux x64
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - run: python release.py native
-      - run: npm install --no-audit --no-fund
-        working-directory: packaging
-      - name: Build
-        shell: bash
-        working-directory: packaging
-        run: |
-          set -euo pipefail
-          export CSC_IDENTITY_AUTO_DISCOVERY=false
-          npx electron-builder --linux AppImage --x64 --publish never
-      - uses: actions/upload-artifact@v5
-        with:
-          name: linux-x64
-          path: packaging/dist/*.AppImage
-          if-no-files-found: error
-  linux_arm64:
-    name: Linux ARM64
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - run: python release.py native
-      - run: npm install --no-audit --no-fund
-        working-directory: packaging
-      - name: Build
-        shell: bash
-        working-directory: packaging
-        run: |
-          set -euo pipefail
-          export CSC_IDENTITY_AUTO_DISCOVERY=false
-          npx electron-builder --linux AppImage --arm64 --publish never
-      - uses: actions/upload-artifact@v5
-        with:
-          name: linux-arm64
-          path: packaging/dist/*.AppImage
-          if-no-files-found: error
-  mac_arm64:
-    name: macOS ARM64
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: macos-latest
-    env:
-      SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - run: python release.py native
-      - run: npm install --no-audit --no-fund
-        working-directory: packaging
-      - name: Build
-        shell: bash
-        working-directory: packaging
-        env:
-          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          if [ -n "${MAC_CSC_LINK:-}" ]; then
+          elif [ "$SIGNING" = "mac" ] && [ -n "${MAC_CSC_LINK:-}" ]; then
             export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
           else
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
-          npx electron-builder --mac dmg --arm64 --publish never
-      - uses: actions/upload-artifact@v5
-        with:
-          name: mac-arm64
-          path: packaging/dist/*.dmg
-          if-no-files-found: error
-  mac_x64:
-    name: macOS x64
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: macos-latest
-    env:
-      SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - run: python release.py native
-      - run: npm install --no-audit --no-fund
-        working-directory: packaging
-      - name: Build
+          npx electron-builder ${{ matrix.builder_args }} --publish never
+      - name: Install a virtual display
+        if: runner.os == 'Linux'
+        run: command -v xvfb-run >/dev/null || (sudo apt-get update && sudo apt-get install -y xvfb)
+      - name: Launch the built app and check the game
         shell: bash
-        working-directory: packaging
         env:
-          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SMOKE_BIN: ${{ matrix.smoke_bin }}
         run: |
           set -euo pipefail
-          if [ -n "${MAC_CSC_LINK:-}" ]; then
-            export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+          report="$RUNNER_TEMP/desktop-smoke.json"
+          rm -f "$report"
+          export STICKTD_SMOKE_REPORT="$report"
+          test -x "$SMOKE_BIN" || test -f "$SMOKE_BIN"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a "$SMOKE_BIN" --no-sandbox &
           else
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            "$SMOKE_BIN" &
           fi
-          npx electron-builder --mac dmg --x64 --publish never
+          for _ in $(seq 1 90); do [ -s "$report" ] && break; sleep 1; done
+          test -s "$report" || { echo "::error::The app wrote no smoke report within 90 seconds"; exit 1; }
+          cat "$report"
+          python -c "import json,os,sys; r=json.load(open(sys.argv[1])); sys.exit(0 if r.get('pass') and r.get('version')==os.environ['VERSION'] else 1)" "$report"
       - uses: actions/upload-artifact@v5
         with:
-          name: mac-x64
-          path: packaging/dist/*.dmg
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
           if-no-files-found: error
+
   android:
     name: Android
-    needs: prepare
+    needs: [prepare, web_smoke]
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -222,13 +233,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
         with:
           packages: 'platform-tools'
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - run: python release.py native
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-${{ hashFiles('release.py') }}
+          restore-keys: android-
       - run: npm install --no-audit --no-fund --ignore-scripts
         working-directory: packaging
       - run: npx cap add android && npx cap sync android
@@ -268,25 +287,42 @@ jobs:
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             "$tools/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
             "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-pass env:ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass env:ANDROID_KEY_PASSWORD --out "$out/StickTD-${VERSION}-android.apk" "$RUNNER_TEMP/aligned.apk"
-            "$tools/apksigner" verify "$out/StickTD-${VERSION}-android.apk"
           else
             ./gradlew assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk "$out/StickTD-${VERSION}-android-debug.apk"
           fi
+      - name: Check the APK signature and version
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          apk=$(ls dist/*.apk | head -1)
+          "$tools/apksigner" verify "$apk"
+          badging=$("$tools/aapt" dump badging "$apk" | head -1)
+          echo "$badging"
+          IFS=. read -r major minor patch <<< "$VERSION"
+          code=$((major*1000000 + minor*10000 + patch))
+          grep -q "versionCode='${code}'" <<< "$badging" || { echo "::error::APK versionCode is not ${code}"; exit 1; }
+          grep -q "versionName='${VERSION}'" <<< "$badging" || { echo "::error::APK versionName is not ${VERSION}"; exit 1; }
+          grep -q "package: name='io.github.sauerninja.sticktd'" <<< "$badging" || { echo "::error::APK package id changed"; exit 1; }
       - uses: actions/upload-artifact@v5
         with:
           name: android
           path: dist/*.apk
           if-no-files-found: error
+
   release:
     name: Publish release
-    needs: [prepare, windows, linux_x64, linux_arm64, mac_arm64, mac_x64, android]
-    if: always() && needs.prepare.outputs.publish == 'true' && needs.windows.result == 'success' && needs.linux_x64.result == 'success' && needs.linux_arm64.result == 'success' && needs.mac_arm64.result == 'success' && needs.mac_x64.result == 'success' && needs.android.result == 'success'
+    needs: [prepare, web_smoke, desktop, android]
+    if: always() && needs.prepare.outputs.publish == 'true' && needs.web_smoke.result == 'success' && needs.desktop.result == 'success' && needs.android.result == 'success'
     permissions:
       contents: write
       id-token: write
       attestations: write
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       SIGN_WIN: ${{ secrets.WIN_CSC_LINK != '' && 'true' || 'false' }}
       SIGN_MAC: ${{ secrets.MAC_CSC_LINK != '' && 'true' || 'false' }}
@@ -319,3 +355,14 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "v${VERSION}" --target "$GITHUB_SHA" --title "StickTD ${VERSION}" --notes-file dist/release-notes.md --latest dist/*.exe dist/*.dmg dist/*.AppImage dist/*.apk dist/SHA256SUMS.txt
+      - name: Download the published files and verify checksums
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/published"
+          cd "$RUNNER_TEMP/published"
+          gh release download "v${VERSION}" --repo "$GITHUB_REPOSITORY"
+          sha256sum -c SHA256SUMS.txt

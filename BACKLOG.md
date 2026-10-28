@@ -2,6 +2,8 @@
 
 - 1.8.132: pause/resume sound cues (FARNELL-PAUSE-CUE-01).
 - 1.8.133: idle standby lets the score rest quieter until the next input (MUSIC-IDLE-REST-01).
+- 1.8.136: release workflow is a desktop build matrix; web smoke test gates all builds; each built app is launched and checked; APK version/signature check; published files re-verified against checksums; caching, timeouts, Intel mac runner (CI-MATRIX-01 and related).
+- 1.8.135: settings outputs name their sliders and the loading bar has fallback text (MASTERY-OUTPUT-FOR-01); oversized or unreadable save files are refused with a toast (MACDONALD-FILE-GUARD-01); seed box skips spellcheck (MACDONALD-SEED-INPUT-01).
 - 1.8.134: hit flinch springs back past rest (WILLIAMS-ACCENT-01); run-over sound ends with four falling notes (FARNELL-RUN-END-01); a soft cue when one enemy is left (SWEET-LAST-ENEMY-01).
 - 1.8.131: wave label counts enemies left during the fight (SCHELL-VISIBLE-PROGRESS-01).
 
